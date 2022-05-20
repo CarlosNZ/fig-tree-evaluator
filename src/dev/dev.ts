@@ -3,15 +3,15 @@ import { ExpressionEvaluator } from '../Evaluator'
 
 const exp = new ExpressionEvaluator({})
 
-const x = 10 * Math.random()
-
 exp
   .evaluate(
     {
-      operator: 'objectProperties',
-      property: 'user.name',
+      operator: 'or',
+      values: [true, false],
     },
     { objects: { user: { name: 'Carl Smith' } } }
   )
   .then((res) => console.log(res))
   .catch((err) => console.log(err.message))
+
+evaluateExpression({ operator: '+', children: [1, 2, 3] }).then((res) => console.log(res))

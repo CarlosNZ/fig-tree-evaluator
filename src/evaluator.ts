@@ -1,5 +1,5 @@
 import { EvaluatorNode, EvaluatorOptions } from './types'
-import evaluateExpressionFunction from './evaluateExpression'
+import evaluateExpression from './evaluateExpression'
 
 export class ExpressionEvaluator {
   options: EvaluatorOptions
@@ -9,9 +9,10 @@ export class ExpressionEvaluator {
 
   public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions) {
     // Update options from current instance if specified
-    return await evaluateExpressionFunction(expression, { ...this.options, ...options })
+    return await evaluateExpression(expression, { ...this.options, ...options })
+  }
+
+  public updateOptions(options: EvaluatorOptions) {
+    this.options = { ...this.options, ...options }
   }
 }
-
-export const evaluateExpression = async (expression: EvaluatorNode, options: EvaluatorOptions) =>
-  await evaluateExpressionFunction(expression, options)

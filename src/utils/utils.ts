@@ -1,5 +1,6 @@
 import extractProperty from 'object-property-extractor/build/extract'
 import { OperatorNode, OutputType, BasicObject } from '../types'
+import { camelCase } from 'lodash'
 
 export const fallbackOrError = (fallback: any, errorMessage?: string) => {
   if (fallback !== undefined) return fallback
@@ -17,7 +18,8 @@ export const convertOutputMethods: {
 }
 
 export const standardiseOperatorName = (name: string) => {
-  return name
+  const camelCaseName = camelCase(name)
+  return camelCaseName ? camelCaseName : name
 }
 
 export const allPropsOk = (props: string[], expression: OperatorNode) => {

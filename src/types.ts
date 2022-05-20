@@ -42,6 +42,7 @@ export interface EvaluatorOptions {
   graphQLConnection?: GraphQLConnection
   APIfetch?: Function
   headers?: { [key: string]: string }
+  returnErrorAsString?: boolean
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'

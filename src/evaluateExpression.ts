@@ -1,4 +1,11 @@
-import { EvaluatorOptions, EvaluatorNode, Operator, ValueNode, OperatorNode } from './types'
+import {
+  EvaluatorOptions,
+  EvaluatorNode,
+  Operator,
+  ValueNode,
+  OperatorNode,
+  OutputType,
+} from './types'
 import { operatorReference, operatorMethods } from './operatorReference'
 import {
   fallbackOrError,
@@ -9,7 +16,7 @@ import {
 
 const evaluateExpression = async (
   expression: EvaluatorNode,
-  options: EvaluatorOptions
+  options?: EvaluatorOptions
 ): Promise<ValueNode> => {
   // TO-DO Check for JSON String
 
@@ -29,6 +36,7 @@ const evaluateExpression = async (
     'children' in expression ? expression.children : parse(expression as OperatorNode)
 
   let childrenResolved: any[] = []
+
   // Recursive case
   try {
     childrenResolved = await Promise.all(
@@ -55,6 +63,7 @@ const evaluateExpression = async (
   // Type conversion
   if (!(expression.type in convertOutputMethods))
     return fallbackOrError(fallback, `Invalid output type: ${expression.type}`)
+  else return convertOutputMethods[expression.type as OutputType]
 }
 
 export default evaluateExpression
