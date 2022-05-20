@@ -1,0 +1,16 @@
+.App {
+  text-align: center;
+}
+
+.result-text {
+  font-size: 1.5rem;
+}
+
+.error-text {
+  font-size: 1.5rem;
+  color: red;
+}
+
+pre {
+  white-space: pre-wrap;
+}

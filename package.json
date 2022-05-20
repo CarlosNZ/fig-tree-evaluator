@@ -1,0 +1,31 @@
+{
+  "name": "expression-evaluator",
+  "version": "2.0.0-alpha.1",
+  "description": "Module to evaluate JSON-structured expressions",
+  "main": "lib/evaluateExpression.js",
+  "types": "lib/evaluateExpression.d.ts",
+  "author": "Carl Smith",
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "@types/jest": "^26.0.10",
+    "@types/node": "^14.6.0",
+    "@types/node-fetch": "^2.5.7",
+    "@types/pg": "^7.14.4",
+    "jest": "^26.4.0",
+    "node-fetch": "^2.6.1",
+    "pg": "^8.4.0",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^26.2.0",
+    "ts-node": "^8.10.2",
+    "typescript": "^3.9.7"
+  },
+  "scripts": {
+    "build": "rimraf ./lib && tsc",
+    "test": "jest",
+    "gui": "cd expression-evaluate-gui && yarn start"
+  },
+  "dependencies": {},
+  "files": [
+    "lib/**/*"
+  ]
+}
