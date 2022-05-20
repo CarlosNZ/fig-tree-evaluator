@@ -11,6 +11,7 @@
     "@types/node": "^14.6.0",
     "@types/node-fetch": "^2.5.7",
     "@types/pg": "^7.14.4",
+    "@types/lodash": "^4.14.182",
     "jest": "^26.4.0",
     "node-fetch": "^2.6.1",
     "pg": "^8.4.0",
@@ -22,9 +23,10 @@
   "scripts": {
     "build": "rimraf ./lib && tsc",
     "test": "jest",
-    "gui": "cd expression-evaluate-gui && yarn start"
+    "gui": "cd gui && yarn start"
   },
   "dependencies": {
+    "lodash": "^4.17.21",
     "object-property-extractor": "^1.0.0"
   },
   "files": [
