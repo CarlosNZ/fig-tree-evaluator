@@ -24,7 +24,9 @@
     "test": "jest",
     "gui": "cd expression-evaluate-gui && yarn start"
   },
-  "dependencies": {},
+  "dependencies": {
+    "object-property-extractor": "^1.0.0"
+  },
   "files": [
     "lib/**/*"
   ]

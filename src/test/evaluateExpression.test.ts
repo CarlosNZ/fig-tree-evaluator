@@ -3,7 +3,7 @@
 import evaluateExpression from "../evaluateExpression";
 import { testData } from "./evaluateExpressionTestData";
 import config from "../config.json";
-import secrets from "../testSecrets.json";
+// import secrets from "../testSecrets.json";
 
 const { Client } = require("pg");
 
@@ -290,7 +290,9 @@ test("Test unresolved object", async () => {
       objects: { application: testData.application },
     });
   } catch (e) {
-    expect(e.message).toMatch("Object property not found");
+    expect(e.message).toMatch(
+      /Unable to extract object property\nLooking for property: q5\nIn object: {\"q1\":\"What is the answer\?\",\"q2\":\"Enter your name\"}/
+    );
   }
 });
 
@@ -385,25 +387,25 @@ test("String substitution - repeated parameters", () => {
 });
 
 // GET operator
-test("GET: Check username is unique", () => {
-  return evaluateExpression(testData.APIisUnique, {
-    APIfetch: fetch,
-    headers: {
-      Authorization: secrets.nonRegisteredAuth,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual({ unique: true, message: "" });
-  });
-});
+// test("GET: Check username is unique", () => {
+//   return evaluateExpression(testData.APIisUnique, {
+//     APIfetch: fetch,
+//     headers: {
+//       Authorization: secrets.nonRegisteredAuth,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual({ unique: true, message: "" });
+//   });
+// });
 
-test("GET: Check username is unique using custom query authentication", () => {
-  return evaluateExpression(testData.APIisUniqueWithHeaders, {
-    objects: { secrets },
-    APIfetch: fetch,
-  }).then((result: any) => {
-    expect(result).toEqual({ unique: false, message: "" });
-  });
-});
+// test("GET: Check username is unique using custom query authentication", () => {
+//   return evaluateExpression(testData.APIisUniqueWithHeaders, {
+//     objects: { secrets },
+//     APIfetch: fetch,
+//   }).then((result: any) => {
+//     expect(result).toEqual({ unique: false, message: "" });
+//   });
+// });
 
 test("GET: Lookup ToDo in online testing API", () => {
   return evaluateExpression(testData.onlineTestAPI, {
@@ -430,195 +432,195 @@ test("GET: Return an array of titles plucked from inside array of objects", () =
 });
 
 // POST operator
-test("POST: Check user login credentials", () => {
-  return evaluateExpression(testData.APIlogin, {
-    APIfetch: fetch,
-  }).then((result: any) => {
-    expect(result).toEqual(true);
-  });
-});
+// test("POST: Check user login credentials", () => {
+//   return evaluateExpression(testData.APIlogin, {
+//     APIfetch: fetch,
+//   }).then((result: any) => {
+//     expect(result).toEqual(true);
+//   });
+// });
 
 // SQL operator
 
-test("Test Postgres lookup single string", () => {
-  return evaluateExpression(testData.getApplicationName, { pgConnection: pgConnect }).then((result: any) => {
-    expect(result).toBe("Company License -- Modern medicines or Medical devices - S-GZY-0010");
-  });
-});
+// test("Test Postgres lookup single string", () => {
+//   return evaluateExpression(testData.getApplicationName, { pgConnection: pgConnect }).then((result: any) => {
+//     expect(result).toBe("Company License -- Modern medicines or Medical devices - S-GZY-0010");
+//   });
+// });
 
-test("Test Postgres get array of template names", () => {
-  return evaluateExpression(testData.getListOfTemplates, { pgConnection: pgConnect }).then((result: any) => {
-    expect(result).toEqual([
-      "User Registration",
-      "Edit User Details",
-      "Grant User Permissions",
-      "Add User to Company",
-      "Company License -- Modern medicines or Medical devices",
-    ]);
-  });
-});
+// test("Test Postgres get array of template names", () => {
+//   return evaluateExpression(testData.getListOfTemplates, { pgConnection: pgConnect }).then((result: any) => {
+//     expect(result).toEqual([
+//       "User Registration",
+//       "Edit User Details",
+//       "Grant User Permissions",
+//       "Add User to Company",
+//       "Company License -- Modern medicines or Medical devices",
+//     ]);
+//   });
+// });
 
-test("Test Postgres get Count of templates", () => {
-  return evaluateExpression(testData.countTemplates, { pgConnection: pgConnect }).then((result: any) => {
-    expect(result).toEqual(24);
-  });
-});
+// test("Test Postgres get Count of templates", () => {
+//   return evaluateExpression(testData.countTemplates, { pgConnection: pgConnect }).then((result: any) => {
+//     expect(result).toEqual(24);
+//   });
+// });
 
-test("Test Postgres get template names -- no type", () => {
-  return evaluateExpression(testData.getListOfTemplates_noType, { pgConnection: pgConnect }).then((result: any) => {
-    expect(result).toEqual([
-      { name: "User Registration" },
-      { name: "Edit User Details" },
-      { name: "Grant User Permissions" },
-      { name: "Add User to Company" },
-      { name: "Company License -- Modern medicines or Medical devices" },
-    ]);
-  });
-});
+// test("Test Postgres get template names -- no type", () => {
+//   return evaluateExpression(testData.getListOfTemplates_noType, { pgConnection: pgConnect }).then((result: any) => {
+//     expect(result).toEqual([
+//       { name: "User Registration" },
+//       { name: "Edit User Details" },
+//       { name: "Grant User Permissions" },
+//       { name: "Add User to Company" },
+//       { name: "Company License -- Modern medicines or Medical devices" },
+//     ]);
+//   });
+// });
 
-test("Test Postgres get application list with IDs", () => {
-  return evaluateExpression(testData.getListOfApplications_withId, {
-    pgConnection: pgConnect,
-  }).then((result: any) => {
-    expect(result).toEqual([
-      { id: 18, name: "Company License -- Modern medicines or Medical devices - S-GZY-0010" },
-      { id: 22, name: "Company Registration - S-ECL-0011" },
-      { id: 23, name: "Product Registration - S-WJY-0006" },
-      { id: 26, name: "Company Registration - Pharma123" },
-      { id: 27, name: "Company Registration - Holistic Medicine AU" },
-    ]);
-  });
-});
+// test("Test Postgres get application list with IDs", () => {
+//   return evaluateExpression(testData.getListOfApplications_withId, {
+//     pgConnection: pgConnect,
+//   }).then((result: any) => {
+//     expect(result).toEqual([
+//       { id: 18, name: "Company License -- Modern medicines or Medical devices - S-GZY-0010" },
+//       { id: 22, name: "Company Registration - S-ECL-0011" },
+//       { id: 23, name: "Product Registration - S-WJY-0006" },
+//       { id: 26, name: "Company Registration - Pharma123" },
+//       { id: 27, name: "Company Registration - Holistic Medicine AU" },
+//     ]);
+//   });
+// });
 
 // GraphQL operator
 
-test("Test GraphQL -- get single application name", () => {
-  return evaluateExpression(testData.simpleGraphQL, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-    headers: {
-      Authorization: secrets.adminAuth,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual("Company Registration - S-ECL-0011");
-  });
-});
+// test("Test GraphQL -- get single application name", () => {
+//   return evaluateExpression(testData.simpleGraphQL, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//     headers: {
+//       Authorization: secrets.adminAuth,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual("Company Registration - S-ECL-0011");
+//   });
+// });
 
-test("Test GraphQL -- get single application name with custom query authorization", () => {
-  return evaluateExpression(testData.simpleGraphQLCustomHeader, {
-    objects: { secrets },
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual("Company Registration - S-ECL-0011");
-  });
-});
+// test("Test GraphQL -- get single application name with custom query authorization", () => {
+//   return evaluateExpression(testData.simpleGraphQLCustomHeader, {
+//     objects: { secrets },
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual("Company Registration - S-ECL-0011");
+//   });
+// });
 
-test("Test GraphQL -- List of Application Names", () => {
-  return evaluateExpression(testData.GraphQL_listOfApplications, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-      headers: {
-        Authorization: secrets.adminAuth,
-      },
-    },
-  }).then((result: any) => {
-    expect(result).toEqual([
-      "Company Registration - Advance Phamaceutical Manufacturing",
-      "Company Registration - Bayer (Pty) Ltd",
-      "Company Registration - Novartis Spain",
-    ]);
-  });
-});
+// test("Test GraphQL -- List of Application Names", () => {
+//   return evaluateExpression(testData.GraphQL_listOfApplications, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//       headers: {
+//         Authorization: secrets.adminAuth,
+//       },
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual([
+//       "Company Registration - Advance Phamaceutical Manufacturing",
+//       "Company Registration - Bayer (Pty) Ltd",
+//       "Company Registration - Novartis Spain",
+//     ]);
+//   });
+// });
 
-test("Test GraphQL -- List of Application Names with Ids", () => {
-  return evaluateExpression(testData.GraphQL_listOfApplicationsWithId, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-      headers: {
-        Authorization: secrets.adminAuth,
-      },
-    },
-  }).then((result: any) => {
-    expect(result).toEqual([
-      { id: 45, name: "Product Registration - S-LZU-0014" },
-      { id: 46, name: "Company License -- Modern medicines or Medical devices - S-MTC-0013" },
-      { id: 47, name: "Product Registration - Epivir 150 mg film-coated tablet" },
-    ]);
-  });
-});
+// test("Test GraphQL -- List of Application Names with Ids", () => {
+//   return evaluateExpression(testData.GraphQL_listOfApplicationsWithId, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//       headers: {
+//         Authorization: secrets.adminAuth,
+//       },
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual([
+//       { id: 45, name: "Product Registration - S-LZU-0014" },
+//       { id: 46, name: "Company License -- Modern medicines or Medical devices - S-MTC-0013" },
+//       { id: 47, name: "Product Registration - Epivir 150 mg film-coated tablet" },
+//     ]);
+//   });
+// });
 
-test("Test GraphQL -- Get list of templates -- no return node specifed", () => {
-  return evaluateExpression(testData.GraphQL_listOfTemplates_noReturnSpecified, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-    headers: {
-      Authorization: secrets.adminAuth,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual({
-      templates: {
-        edges: [
-          {
-            node: {
-              name: "Product Registration",
-            },
-          },
-          {
-            node: {
-              name: "Company Registration",
-            },
-          },
-        ],
-      },
-    });
-  });
-});
+// test("Test GraphQL -- Get list of templates -- no return node specifed", () => {
+//   return evaluateExpression(testData.GraphQL_listOfTemplates_noReturnSpecified, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//     headers: {
+//       Authorization: secrets.adminAuth,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual({
+//       templates: {
+//         edges: [
+//           {
+//             node: {
+//               name: "Product Registration",
+//             },
+//           },
+//           {
+//             node: {
+//               name: "Company Registration",
+//             },
+//           },
+//         ],
+//       },
+//     });
+//   });
+// });
 
-test("Test GraphQL -- Count templates -- passing params as object option", () => {
-  return evaluateExpression(testData.GraphQL_CountTemplates_objectParamsOption, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual(24);
-  });
-});
+// test("Test GraphQL -- Count templates -- passing params as object option", () => {
+//   return evaluateExpression(testData.GraphQL_CountTemplates_objectParamsOption, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual(24);
+//   });
+// });
 
-test("Test GraphQL -- count Responses on current Application - using empty url (default)", () => {
-  return evaluateExpression(testData.GraphQL_CountApplicationResponses, {
-    objects: { application: testData.application },
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-    headers: {
-      Authorization: secrets.adminAuth,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual(20);
-  });
-});
+// test("Test GraphQL -- count Responses on current Application - using empty url (default)", () => {
+//   return evaluateExpression(testData.GraphQL_CountApplicationResponses, {
+//     objects: { application: testData.application },
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//     headers: {
+//       Authorization: secrets.adminAuth,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual(20);
+//   });
+// });
 
-test("Test GraphQL -- get continents list from External Graphql API ", () => {
-  return evaluateExpression(testData.GraphQL_GetContinentsList_ExternalAPI, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-  }).then((result: any) => {
-    expect(result).toEqual(testData.continentsResult);
-  });
-});
+// test("Test GraphQL -- get continents list from External Graphql API ", () => {
+//   return evaluateExpression(testData.GraphQL_GetContinentsList_ExternalAPI, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toEqual(testData.continentsResult);
+//   });
+// });
 
 test("Test GraphQL -- get country details by code from External Graphql API ", () => {
   return evaluateExpression(testData.GraphQL_GetCountryByCode_ExternalAPI, {
@@ -652,29 +654,29 @@ test("Test concatenate user First and Last names", () => {
   });
 });
 
-test("Test Validation: Company name is unique", () => {
-  return evaluateExpression(testData.complexValidation, {
-    objects: { form2: testData.form2 },
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-  }).then((result: any) => {
-    expect(result).toBe(true);
-  });
-});
+// test("Test Validation: Company name is unique", () => {
+//   return evaluateExpression(testData.complexValidation, {
+//     objects: { form2: testData.form2 },
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toBe(true);
+//   });
+// });
 
-test("Test email validation -- email is unique and is valid email", () => {
-  return evaluateExpression(testData.emailValidation, {
-    objects: { form: testData.form },
-    APIfetch: fetch,
-    headers: {
-      Authorization: secrets.nonRegisteredAuth,
-    },
-  }).then((result: any) => {
-    expect(result).toBe(true);
-  });
-});
+// test("Test email validation -- email is unique and is valid email", () => {
+//   return evaluateExpression(testData.emailValidation, {
+//     objects: { form: testData.form },
+//     APIfetch: fetch,
+//     headers: {
+//       Authorization: secrets.nonRegisteredAuth,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toBe(true);
+//   });
+// });
 
 test("Test visibility condition -- Answer to Q1 is Drug Registration and user belongs to at least one organisation", () => {
   return evaluateExpression(testData.complex1, {
@@ -781,18 +783,18 @@ test("Extract numbers from array", () => {
   });
 });
 
-test("Join array into single string", () => {
-  return evaluateExpression(testData.listOfOrgs, {
-    graphQLConnection: {
-      fetch: fetch,
-      endpoint: graphQLendpoint,
-    },
-  }).then((result: any) => {
-    expect(result).toBe(
-      "Food & Drug Agency,Pharma123,Manufacturer Medical,National Medical,Holistic Medicine AU,Bayer (Pty) Ltd,Novartis Spain,Fine Chemicals Corp (Pty) Ltd,Pharma Suppliers,Regional Pharm First,Pharmed Corp Ltd Pty,Global Health Incorporated,Adam Company 2"
-    );
-  });
-});
+// test("Join array into single string", () => {
+//   return evaluateExpression(testData.listOfOrgs, {
+//     graphQLConnection: {
+//       fetch: fetch,
+//       endpoint: graphQLendpoint,
+//     },
+//   }).then((result: any) => {
+//     expect(result).toBe(
+//       "Food & Drug Agency,Pharma123,Manufacturer Medical,National Medical,Holistic Medicine AU,Bayer (Pty) Ltd,Novartis Spain,Fine Chemicals Corp (Pty) Ltd,Pharma Suppliers,Regional Pharm First,Pharmed Corp Ltd Pty,Global Health Incorporated,Adam Company 2"
+//     );
+//   });
+// });
 
 test("Coerce string to boolean", () => {
   return evaluateExpression({
@@ -857,7 +859,7 @@ test("Try and access non-indexable object", async () => {
       }
     );
   } catch (e) {
-    expect(e.message).toMatch("Object not index-able");
+    expect(e.message).toMatch(/Unable to extract object property\nLooking for property: 2\nIn object: {\"id\":629/);
   }
 });
 
@@ -880,7 +882,9 @@ test("Error bubbles up from child -- unresolved object property", async () => {
       objects: { responses: testData.responses },
     });
   } catch (e) {
-    expect(e.message).toMatch("Object property not found");
+    expect(e.message).toMatch(
+      /Unable to extract object property\nLooking for property: application\nIn object: {\"responses\":/
+    );
   }
 });
 
