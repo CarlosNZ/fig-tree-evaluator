@@ -2,9 +2,9 @@ import { allPropsOk } from '../utils/utils'
 import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
 const parse = (expression: OperatorNode): EvaluatorNode[] => {
-  const { pattern, testString } = expression
-  allPropsOk(['pattern', 'testString'], expression)
-  return [pattern, testString]
+  const { testString, pattern } = expression
+  allPropsOk(['testString', 'pattern'], expression)
+  return [testString, pattern]
 }
 
 const operate = ({ children }: OperationInput): ValueNode => {

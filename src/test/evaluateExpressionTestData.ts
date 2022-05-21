@@ -1,27 +1,16 @@
-interface ITestData {
+interface TestData {
   [key: string]: any
 }
 
-export const testData: ITestData = {}
+export const testData: TestData = {}
 
 // Basic (single level literals)
-testData.basicStringLiteral = {
-  type: 'string',
-  value: 'First Name',
-}
 
-testData.basicStringLiteralNoType = {
-  value: 'First Name',
-}
+testData.basicStringLiteral = 'First Name'
 
-testData.basicBoolean = {
-  value: true,
-}
+testData.basicBoolean = true
 
-testData.basicArray = {
-  type: 'array',
-  value: ['Pharmaceutical', 'Natural Product', 'Other'],
-}
+testData.basicArray = ['Pharmaceutical', 'Natural Product', 'Other']
 
 testData.continentsResult = [
   'Africa',
@@ -35,79 +24,25 @@ testData.continentsResult = [
 
 // AND
 testData.operatorAND_2values = {
-  type: 'boolean',
   operator: 'AND',
-  children: [
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-  ],
+  children: [true, true],
 }
 
 testData.operatorAND_2values_false = {
   type: 'boolean',
   operator: 'AND',
-  children: [
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: false,
-    },
-  ],
+  children: [true, false],
 }
 
 testData.operatorAND_4values = {
-  type: 'boolean',
   operator: 'AND',
-  children: [
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-  ],
+  values: [true, true, true, true],
 }
 
 testData.operatorAND_4values_false = {
   type: 'boolean',
   operator: 'AND',
-  children: [
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: false,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-    {
-      type: 'boolean',
-      value: true,
-    },
-  ],
+  values: [true, true, true, true],
 }
 
 // OR

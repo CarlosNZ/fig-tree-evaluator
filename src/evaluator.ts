@@ -3,11 +3,11 @@ import evaluateExpression from './evaluateExpression'
 
 export class ExpressionEvaluator {
   options: EvaluatorOptions
-  constructor(options: EvaluatorOptions) {
+  constructor(options: EvaluatorOptions = {}) {
     this.options = options
   }
 
-  public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions) {
+  public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
     // Update options from current instance if specified
     return await evaluateExpression(expression, { ...this.options, ...options })
   }

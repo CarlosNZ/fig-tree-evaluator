@@ -3,15 +3,13 @@ import { ExpressionEvaluator } from '../Evaluator'
 
 const exp = new ExpressionEvaluator({})
 
-exp
-  .evaluate(
-    {
-      operator: 'or',
-      values: [true, false],
-    },
-    { objects: { user: { name: 'Carl Smith' } } }
-  )
-  .then((res) => console.log(res))
-  .catch((err) => console.log(err.message))
-
-evaluateExpression({ operator: '+', children: [1, 2, 3] }).then((res) => console.log(res))
+evaluateExpression({
+  operator: 'stringSubstitution',
+  children: [
+    'We have %1 %2 listed with an average value of %3: %4',
+    2,
+    'people',
+    4.53,
+    { value: ['Boba', 'Mando'] },
+  ],
+}).then((res) => console.log(res))

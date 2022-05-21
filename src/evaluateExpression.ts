@@ -63,7 +63,9 @@ const evaluateExpression = async (
   // Type conversion
   if (!(expression.type in convertOutputMethods))
     return fallbackOrError(fallback, `Invalid output type: ${expression.type}`)
-  else return convertOutputMethods[expression.type as OutputType]
+  else {
+    return convertOutputMethods[expression.type as OutputType](result)
+  }
 }
 
 export default evaluateExpression
