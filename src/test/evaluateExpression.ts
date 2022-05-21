@@ -406,58 +406,58 @@ test('String substitution - repeated parameters', () => {
 })
 
 // GET operator
-// test("GET: Check username is unique", () => {
-//   return evaluateExpression(testData.APIisUnique, {
-//     APIfetch: fetch,
-//     headers: {
-//       Authorization: secrets.nonRegisteredAuth,
-//     },
-//   }).then((result: any) => {
-//     expect(result).toEqual({ unique: true, message: "" });
-//   });
-// });
+test('GET: Check username is unique', () => {
+  return evaluateExpression(testData.APIisUnique, {
+    APIfetch: fetch,
+    headers: {
+      Authorization: secrets.nonRegisteredAuth,
+    },
+  }).then((result: any) => {
+    expect(result).toEqual({ unique: true, message: '' })
+  })
+})
 
-// test("GET: Check username is unique using custom query authentication", () => {
-//   return evaluateExpression(testData.APIisUniqueWithHeaders, {
-//     objects: { secrets },
-//     APIfetch: fetch,
-//   }).then((result: any) => {
-//     expect(result).toEqual({ unique: false, message: "" });
-//   });
-// });
+test('GET: Check username is unique using custom query authentication', () => {
+  return evaluateExpression(testData.APIisUniqueWithHeaders, {
+    objects: { secrets },
+    APIfetch: fetch,
+  }).then((result: any) => {
+    expect(result).toEqual({ unique: false, message: '' })
+  })
+})
 
-// test("GET: Lookup ToDo in online testing API", () => {
-//   return evaluateExpression(testData.onlineTestAPI, {
-//     APIfetch: fetch,
-//   }).then((result: any) => {
-//     expect(result).toBe("delectus aut autem");
-//   });
-// });
+test('GET: Lookup ToDo in online testing API', () => {
+  return evaluateExpression(testData.onlineTestAPI, {
+    APIfetch: fetch,
+  }).then((result: any) => {
+    expect(result).toBe('delectus aut autem')
+  })
+})
 
-// test("GET: Return an array from online API", () => {
-//   return evaluateExpression(testData.onlineArrayReturn, {
-//     APIfetch: fetch,
-//   }).then((result: any) => {
-//     expect(result).toEqual(testData.onlineArrayReturnResult);
-//   });
-// });
+test('GET: Return an array from online API', () => {
+  return evaluateExpression(testData.onlineArrayReturn, {
+    APIfetch: fetch,
+  }).then((result: any) => {
+    expect(result).toEqual(testData.onlineArrayReturnResult)
+  })
+})
 
-// test("GET: Return an array of titles plucked from inside array of objects", () => {
-//   return evaluateExpression(testData.onlineArrayNodes, {
-//     APIfetch: fetch,
-//   }).then((result: any) => {
-//     expect(result).toEqual(testData.onlineArrayNodesResult);
-//   });
-// });
+test('GET: Return an array of titles plucked from inside array of objects', () => {
+  return evaluateExpression(testData.onlineArrayNodes, {
+    APIfetch: fetch,
+  }).then((result: any) => {
+    expect(result).toEqual(testData.onlineArrayNodesResult)
+  })
+})
 
 // POST operator
-// test("POST: Check user login credentials", () => {
-//   return evaluateExpression(testData.APIlogin, {
-//     APIfetch: fetch,
-//   }).then((result: any) => {
-//     expect(result).toEqual(true);
-//   });
-// });
+test('POST: Check user login credentials', () => {
+  return evaluateExpression(testData.APIlogin, {
+    APIfetch: fetch,
+  }).then((result: any) => {
+    expect(result).toEqual(true)
+  })
+})
 
 // SQL operator
 

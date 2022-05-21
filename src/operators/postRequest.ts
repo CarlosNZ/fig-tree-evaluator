@@ -1,10 +1,4 @@
-import {
-  allPropsOk,
-  zipArraysToObject,
-  assignChildNodesToQuery,
-  extractAndSimplify,
-  fetchAPIrequest,
-} from '../utils/utils'
+import { allPropsOk } from '../utils/utils'
 import { processAPIquery } from './getRequest'
 import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 

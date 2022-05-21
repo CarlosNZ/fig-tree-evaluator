@@ -36,3 +36,5 @@ typings/
 
 #Misc
 .DS_Store
+
+# Duplicated source code for GUI app

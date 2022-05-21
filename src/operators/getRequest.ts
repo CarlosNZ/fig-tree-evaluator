@@ -50,6 +50,8 @@ export const processAPIquery = async (
       throw new Error('Invalid API query')
     }
     let data
+    console.log(urlWithQuery)
+    console.log(requestBody)
     try {
       data = isPostRequest
         ? await fetchAPIrequest({
@@ -60,8 +62,8 @@ export const processAPIquery = async (
             headers,
           })
         : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
-    } catch {
-      throw new Error('Problem with API call')
+    } catch (err) {
+      throw new Error(err)
     }
     return extractAndSimplify(data, returnedProperty)
   }
