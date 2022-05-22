@@ -2,8 +2,8 @@ import { allPropsOk } from '../utils/utils'
 import { OperatorNode, EvaluatorNode, ValueNode, OperationInput, PGConnection } from '../types'
 
 const parse = (expression: OperatorNode): EvaluatorNode[] => {
-  const { query, values } = expression
-  allPropsOk(['query', 'values'], expression)
+  const { query, values = [] } = expression
+  allPropsOk(['query'], expression)
   return [query, ...values]
 }
 

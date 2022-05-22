@@ -14,7 +14,7 @@ const parse = (expression: OperatorNode): EvaluatorNode[] => {
   return children
 }
 
-const operate = async ({ children, expression, options }: OperationInput): Promise<ValueNode> => {
+const operate = async ({ children, options }: OperationInput): Promise<ValueNode> => {
   if (!options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
   const gqlHeaders = options?.headers ?? options.graphQLConnection.headers
   return await processGraphQL(children, options.graphQLConnection, gqlHeaders)

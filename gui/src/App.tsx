@@ -30,15 +30,6 @@ async function fetchNative(url: string, obj: any) {
   return result
 }
 
-// const useStyles = makeStyles((theme: any) => ({
-//   margin: {
-//     margin: theme.spacing(1),
-//   },
-//   textField: {
-//     fontFamily: ['monospace'],
-//   },
-// }))
-
 function App() {
   // const classes = useStyles()
 

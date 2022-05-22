@@ -10,10 +10,11 @@ const parse = (expression: OperatorNode): EvaluatorNode[] => {
 const operate = ({ children }: OperationInput): ValueNode => {
   try {
     const str: string = children[0]
+    if (typeof children[1] !== 'string') throw new Error('Invalid Regex pattern')
     const re: RegExp = new RegExp(children[1])
     return re.test(str)
-  } catch {
-    throw new Error('Problem with REGEX')
+  } catch (err) {
+    throw err
   }
 }
 

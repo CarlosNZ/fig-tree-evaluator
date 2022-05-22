@@ -2,7 +2,7 @@
   "pg_database_connection": {
     "user": "postgres",
     "host": "localhost",
-    "database": "tmf_app_manager",
+    "database": "northwind",
     "password": "",
     "port": 5432,
     "max": 20,

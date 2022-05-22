@@ -33,7 +33,7 @@ test('FALLBACK - Invalid operator', () => {
     children: [1, 2],
     fallback: 'Safe',
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe('Safe')
   })
 })
@@ -53,7 +53,7 @@ test('ERROR as string - Invalid/Missing children', () => {
     operator: 'OR',
     children: 2,
   }
-  return evaluateExpression(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
     expect(result).toBe('Invalid child nodes (children) array')
   })
 })
@@ -73,7 +73,7 @@ test('OR - Error', async () => {
   const expression = {
     operator: 'OR',
   }
-  await expect(evaluateExpression(expression)).rejects.toThrow('Missing properties: values')
+  await expect(exp.evaluate(expression)).rejects.toThrow('Missing properties: values')
 })
 
 test('OR - Error as string', () => {
@@ -90,7 +90,7 @@ test('OR - Fallback', () => {
     operator: 'OR',
     fallback: 'All good',
   }
-  return evaluateExpression(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
     expect(result).toBe('All good')
   })
 })
@@ -121,8 +121,92 @@ test('OR - Fallback', () => {
   })
 })
 
-// Error bubbles up from nested
+test('REGEX - Error', async () => {
+  const expression = {
+    operator: 'regex',
+    pattern: { one: 1 },
+    testString: 'anything',
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('Invalid Regex pattern')
+})
+
+test('REGEX - Fallback', () => {
+  const expression = {
+    operator: 'pattern-match',
+    pattern: { one: 1 },
+    testString: 'anything',
+    fallback: 'Saved from error',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Saved from error')
+  })
+})
+
+// Obj Properties errors tested in 7_objectProperties.test.ts
+
+test('API - Fallback', () => {
+  const expression = {
+    operator: 'get',
+    // Typo in URL
+    url: 'https://restcountries.com/v3.1/name/zealands',
+    returnProperty: 'name.common',
+    fallback: null,
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBeNull()
+  })
+})
+
+test('ERROR - bubble up from nested', async () => {
+  const expression = {
+    operator: 'and',
+    children: [
+      { operator: '=', values: [{ operator: 'plus', values: [5, 4] }, 9] },
+      {
+        operator: 'regex',
+        pattern: { one: 1 },
+        testString: 'anything',
+      },
+    ],
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('Invalid Regex pattern')
+})
 
 // Fallback bubbles up from nested
 
-// Array of fallbacks from children
+test('FALLBACK - multiple bubble up and join', () => {
+  const expression = {
+    operator: 'join',
+    values: [
+      {
+        operator: 'get',
+        // Typo in URL
+        url: 'https://restcountries.com/v3.1/name/zealands',
+        returnProperty: 'name.common',
+        fallback: 'First Error',
+      },
+      ' / ',
+      {
+        operator: 'pattern-match',
+        pattern: { one: 1 },
+        testString: 'anything',
+        fallback: 'Second Error',
+      },
+    ],
+  }
+  return evaluateExpression(expression).then((result: any) => {
+    expect(result).toBe('First Error / Second Error')
+  })
+})
+
+// Edge cases
+
+test('Loose equality - null == undefined', () => {
+  const expression = {
+    operator: '=',
+    values: [null, undefined],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
