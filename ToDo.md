@@ -9,6 +9,7 @@
 - Allow "outputType" as alias for "type"
 - Aliases for property names
 - Figure out how to type individual operator nodes properly
+- Logging option
 
 ### GUI
 

@@ -92,8 +92,8 @@ export const operatorMethods: {
   },
 }
 
-// Converts from a range of allowed operator names into their canonical form
-export const operatorReference: OperatorReference = {
+// Converts from a range of allowed operator aliases into their canonical form
+export const operatorAliases: OperatorReference = {
   and: 'AND',
   '&': 'AND',
   '&&': 'AND',
@@ -148,3 +148,5 @@ export const operatorReference: OperatorReference = {
   functions: 'OBJECT_FUNCTIONS',
   runFunction: 'OBJECT_FUNCTIONS',
 }
+
+const propertyAliases = {}

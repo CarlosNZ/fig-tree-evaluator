@@ -43,6 +43,7 @@ export interface EvaluatorOptions {
   APIfetch?: Function
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
+  allowJSONStringInput?: boolean
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'

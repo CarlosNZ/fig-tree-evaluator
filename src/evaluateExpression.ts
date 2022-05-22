@@ -6,7 +6,7 @@ import {
   OperatorNode,
   OutputType,
 } from './types'
-import { operatorReference, operatorMethods } from './operatorReference'
+import { operatorAliases, operatorMethods } from './operatorReference'
 import {
   fallbackOrError,
   convertOutputMethods,
@@ -18,7 +18,9 @@ const evaluateExpression = async (
   expression: EvaluatorNode,
   options?: EvaluatorOptions
 ): Promise<ValueNode> => {
-  // TO-DO Check for JSON String
+  if (options?.allowJSONStringInput) {
+    // TO-DO Check for JSON String
+  }
 
   // Base cases -- leaves get returned unmodified
   if (!(expression instanceof Object)) return expression
@@ -28,7 +30,7 @@ const evaluateExpression = async (
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   try {
-    const operator: Operator = operatorReference?.[standardiseOperatorName(expression.operator)]
+    const operator: Operator = operatorAliases?.[standardiseOperatorName(expression.operator)]
 
     if (!operator)
       return fallbackOrError(
