@@ -4,6 +4,7 @@ import {
   Operator,
   ValueNode,
   OperatorNode,
+  FullOperatorNode,
   OutputType,
 } from './types'
 import { operatorAliases, operatorMethods } from './operatorReference'

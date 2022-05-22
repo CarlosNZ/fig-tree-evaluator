@@ -1,7 +1,7 @@
 import { allPropsOk } from '../utils/utils'
-import { EvaluatorNode, OperatorNode, OperationInput } from '../types'
+import { EvaluatorNode, OperatorNode, OperationInput, AndNode } from '../types'
 
-export const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export const parse = (expression: AndNode): EvaluatorNode[] => {
   const { values } = expression
   allPropsOk(['values'], expression)
   return values as EvaluatorNode[]

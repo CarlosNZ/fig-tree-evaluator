@@ -5,6 +5,8 @@ import {
   OperatorReference,
   ValueNode,
   OperationInput,
+  FullOperatorNode,
+  AndNode,
 } from './types'
 import {
   logicalAnd,
@@ -26,12 +28,12 @@ import {
 
 export const operatorMethods: {
   [key in Operator]: {
-    parse: (expression: OperatorNode) => EvaluatorNode[]
+    parse: (expression: FullOperatorNode) => EvaluatorNode[]
     operate: ({ children, expression, options }: OperationInput) => ValueNode | Promise<ValueNode>
   }
 } = {
   AND: {
-    parse: logicalAnd.parse,
+    parse: logicalAnd.parse as (expression: AndNode) => EvaluatorNode[],
     operate: logicalAnd.operate,
   },
   OR: {

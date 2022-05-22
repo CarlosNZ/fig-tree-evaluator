@@ -56,6 +56,13 @@ export interface OperatorNode {
   [key: string]: any
 }
 
+export interface AndNode extends OperatorNode {
+  operator: 'AND'
+  values?: EvaluatorNode[]
+}
+
+export type FullOperatorNode = OperatorNode | AndNode
+
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 
 export interface OperatorReference {
@@ -65,8 +72,8 @@ export interface OperatorReference {
 // For objectReference methods
 export interface OperationInput {
   children: any[]
-  expression?: OperatorNode
+  expression?: FullOperatorNode
   options?: EvaluatorOptions
 }
 
-export type EvaluatorNode = OperatorNode | ValueNode
+export type EvaluatorNode = FullOperatorNode | ValueNode
