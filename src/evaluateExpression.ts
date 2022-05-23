@@ -44,7 +44,7 @@ const evaluateExpression = async (
     const childNodes =
       'children' in expression
         ? expression.children
-        : await parse(mapPropertyAliases(operator, expression as OperatorNode))
+        : await parse(mapPropertyAliases(operator, expression as OperatorNode), options)
 
     if (!Array.isArray(childNodes)) {
       return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)
@@ -53,7 +53,6 @@ const evaluateExpression = async (
     let childrenResolved: any[] = []
 
     // Recursive case
-
     childrenResolved = await Promise.all(
       childNodes.map((child: EvaluatorNode) => evaluateExpression(child, options))
     )

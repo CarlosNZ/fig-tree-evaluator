@@ -15,25 +15,36 @@ For testing/playing round during development. Use `yarn ts-node src/dev/playgrou
 const exp = new ExpressionEvaluator({
   APIfetch: fetch,
   // pgConnection: pgConnect,
-  // graphQLConnection: {
-  //   fetch: fetch,
-  //   endpoint: 'https://countries.trevorblades.com/',
-  // },
+  graphQLConnection: {
+    fetch: fetch,
+    endpoint: 'https://countries.trevorblades.com/',
+  },
   objects: {
     user: { name: 'Iron Man' },
   },
 })
 
 const expression = {
-  operator: 'POST',
-  url: 'https://reqres.in/api/login',
-  parameters: {
+  operator: 'graphQL',
+  query: `query getCountry($code: String!) {
+        countries(filter: {code: {eq: $code}}) {
+          name
+          emoji
+        }
+      }`,
+  variables: {
     operator: 'buildObject',
-    properties: [
-      { key: 'email', value: 'eve.holt@reqres.in' },
-      { key: { operator: '+', values: ['pass', 'word'] }, value: 'cityslicka' },
+    values: [
+      {
+        key: 'code',
+        value: {
+          operator: 'GET',
+          children: ['https://restcountries.com/v3.1/name/india', [], '[1].cca2'],
+        },
+      },
     ],
   },
+  returnNode: 'countries[0].emoji',
 }
 
 exp
