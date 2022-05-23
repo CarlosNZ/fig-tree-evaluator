@@ -1,7 +1,13 @@
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface ConditionalNode extends BaseOperatorNode {
+  condition?: string
+  valueIfTrue?: EvaluatorNode
+  valueIfFalse?: EvaluatorNode
+}
+
+const parse = (expression: ConditionalNode): EvaluatorNode[] => {
   const { condition, valueIfTrue, valueIfFalse } = expression
   allPropsOk(['condition', 'valueIfTrue', 'valueIfFalse'], expression)
   return [condition, valueIfTrue, valueIfFalse]

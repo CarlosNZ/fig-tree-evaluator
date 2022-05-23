@@ -1,43 +1,7 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { OperatorNode, OutputType, BasicObject, EvaluatorNode } from '../types'
-import { camelCase } from 'lodash'
+import { BasicObject, BaseOperatorNode } from '../types'
 
-export const fallbackOrError = (
-  fallback: any,
-  errorMessage: string,
-  returnErrorAsString: boolean
-) => {
-  if (fallback !== undefined) return fallback
-  if (returnErrorAsString) return errorMessage
-  else throw new Error(errorMessage)
-}
-
-export const convertOutputMethods: {
-  [key in OutputType]: <T>(val: T) => number | string | boolean | T[]
-} = {
-  number: (value: any) => (Number.isNaN(Number(value)) ? value : Number(value)),
-  string: (value: any) => String(value),
-  array: (value: any) => (Array.isArray(value) ? value : [value]),
-  boolean: (value: any) => Boolean(value),
-  bool: (value: any) => Boolean(value),
-}
-
-export const parseIfJson = (input: EvaluatorNode) => {
-  if (typeof input !== 'string') return input
-  try {
-    const parsed = JSON.parse(input)
-    return parsed instanceof Object && 'operator' in parsed ? parsed : input
-  } catch (err) {
-    return input
-  }
-}
-
-export const standardiseOperatorName = (name: string) => {
-  const camelCaseName = camelCase(name)
-  return camelCaseName ? camelCaseName : name
-}
-
-export const allPropsOk = (props: string[], expression: OperatorNode) => {
+export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   const missingProps: string[] = []
   props.forEach((prop) => {
     if (!(prop in expression)) missingProps.push(prop)
@@ -45,9 +9,6 @@ export const allPropsOk = (props: string[], expression: OperatorNode) => {
   if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
   else return true
 }
-
-// Workaround to prevent typescript errors for err.message
-export const errorMessage = (err: unknown) => (err as Error).message
 
 export const zipArraysToObject = (variableNames: string[], variableValues: any[]) => {
   const createdObject: BasicObject = {}

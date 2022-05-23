@@ -1,8 +1,8 @@
-import { allPropsOk } from '../utils/utils'
+import { allPropsOk } from './helpers'
 import { processAPIquery } from './getRequest'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { url, parameters = {}, returnProperty } = expression
   allPropsOk(['url'], expression)
   const children = [url, Object.keys(parameters), ...Object.values(parameters)]

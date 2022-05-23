@@ -1,3 +1,5 @@
+import { BasicExtendedNode } from './operators'
+
 export type Operator =
   | 'AND'
   | 'OR'
@@ -48,7 +50,7 @@ export interface EvaluatorOptions {
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
-export interface OperatorNode {
+export interface BaseOperatorNode {
   operator: Operator
   type?: OutputType
   children?: Array<EvaluatorNode>
@@ -56,12 +58,7 @@ export interface OperatorNode {
   [key: string]: any
 }
 
-export interface AndNode extends OperatorNode {
-  operator: 'AND'
-  values?: EvaluatorNode[]
-}
-
-export type FullOperatorNode = OperatorNode | AndNode
+export type OperatorNode = BaseOperatorNode | BasicExtendedNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 
@@ -72,8 +69,8 @@ export interface OperatorReference {
 // For objectReference methods
 export interface OperationInput {
   children: any[]
-  expression?: FullOperatorNode
+  expression?: OperatorNode
   options?: EvaluatorOptions
 }
 
-export type EvaluatorNode = FullOperatorNode | ValueNode
+export type EvaluatorNode = OperatorNode | ValueNode

@@ -2,12 +2,11 @@ import { mapKeys } from 'lodash'
 import {
   EvaluatorNode,
   Operator,
-  OperatorNode,
+  BaseOperatorNode,
   OperatorReference,
   ValueNode,
   OperationInput,
-  FullOperatorNode,
-  AndNode,
+  OperatorNode,
 } from './types'
 import {
   logicalAnd,
@@ -29,12 +28,12 @@ import {
 
 export const operatorMethods: {
   [key in Operator]: {
-    parse: (expression: FullOperatorNode) => EvaluatorNode[]
+    parse: (expression: OperatorNode) => EvaluatorNode[] | Promise<EvaluatorNode[]>
     operate: ({ children, expression, options }: OperationInput) => ValueNode | Promise<ValueNode>
   }
 } = {
   AND: {
-    parse: logicalAnd.parse as (expression: AndNode) => EvaluatorNode[],
+    parse: logicalAnd.parse,
     operate: logicalAnd.operate,
   },
   OR: {
@@ -205,7 +204,10 @@ const propertyAliases: { [key in Operator]: { [key: string]: string } } = {
   },
 }
 
-export const mapPropertyAliases = (operator: Operator, expression: OperatorNode): OperatorNode =>
+export const mapPropertyAliases = (
+  operator: Operator,
+  expression: BaseOperatorNode
+): BaseOperatorNode =>
   mapKeys(expression, (_, key: string) =>
     key in propertyAliases[operator] ? propertyAliases[operator][key] : key
-  ) as OperatorNode
+  ) as BaseOperatorNode

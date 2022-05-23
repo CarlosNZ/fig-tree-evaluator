@@ -1,8 +1,8 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { functionPath, args } = expression
   allPropsOk(['functionPath'], expression)
   return [functionPath, ...args]

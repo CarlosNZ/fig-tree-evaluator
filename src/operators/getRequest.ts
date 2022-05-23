@@ -4,13 +4,20 @@ import {
   assignChildNodesToQuery,
   extractAndSimplify,
   fetchAPIrequest,
-} from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+} from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface APINode extends BaseOperatorNode {
+  url?: EvaluatorNode
+  parameters?: EvaluatorNode
+  returnProperty?: EvaluatorNode
+}
+
+const parse = async (expression: APINode): Promise<EvaluatorNode[]> => {
   const { url, parameters = {}, returnProperty } = expression
   allPropsOk(['url'], expression)
-  const children = [url, Object.keys(parameters), ...Object.values(parameters)]
+
+  const children = [url, Object.keys(parameters as object), ...Object.values(parameters as object)]
   if (returnProperty) children.push(returnProperty)
   return children
 }

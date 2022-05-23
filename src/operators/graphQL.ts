@@ -3,10 +3,16 @@ import {
   zipArraysToObject,
   assignChildNodesToQuery,
   extractAndSimplify,
-} from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput, GraphQLConnection } from '../types'
+} from './helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  ValueNode,
+  OperationInput,
+  GraphQLConnection,
+} from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { query, url = '', variables = {}, returnNode } = expression
   allPropsOk(['query'], expression)
   const children = [query, url, Object.keys(variables), ...Object.values(variables)]

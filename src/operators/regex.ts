@@ -1,7 +1,7 @@
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { testString, pattern } = expression
   allPropsOk(['testString', 'pattern'], expression)
   return [testString, pattern]
