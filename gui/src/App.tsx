@@ -22,6 +22,7 @@ import config from './config.json'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
+import { ValueNode } from './expression-evaluator/types'
 
 const looseJSON = require('loose-json')
 const graphQLendpoint = config.graphQLendpoint
@@ -36,18 +37,42 @@ const evaluatorParams = {
 const expDev = new EvaluatorDev(evaluatorParams)
 const expPub = new EvaluatorPublished(evaluatorParams)
 
+interface InputState {
+  expression: string
+  objects: string
+}
+
+interface IsValidState {
+  expression: boolean
+  objects: boolean
+}
+
+interface ConfigState {
+  pgConnection: PostgresInterface
+  graphQLConnection: any
+  APIfetch: (url: string, obj: any) => Promise<Response>
+}
+
+interface Result {
+  result: ValueNode
+  error: string | false
+}
+
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
-  const [result, setResult] = useState<string>()
-  const [resultType, setResultType] = useState('string')
 
-  const [input, setInput] = useState(
-    localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression)
-  )
-  const [objectsInput, setObjectsInput] = useState(
-    localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects)
-  )
-  const [objects, setObjects] = useState<object>()
+  const [inputState, setInputState] = useState<InputState>({
+    expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
+    objects: localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects),
+  })
+  const [result, setResult] = useState<Result>({ result: null, error: false })
+  const [isValidState, setIsValidState] = useState<IsValidState>({
+    expression: validateExpression(inputState.expression),
+    objects: validateObjects(inputState.objects),
+  })
+  const [configState, setConfigState] = useState<ConfigState>()
+
+  // DEPRECATE THESE
   const [isObjectsValid, setIsObjectsValid] = useState(true)
   const [jwtToken, setJwtToken] = useState(localStorage.getItem('JWT'))
   const [strictJSONInput, setStrictJSONInput] = useState(false)
@@ -59,59 +84,33 @@ function App() {
     evaluatorSelection === 'Development' ? () => expDev : () => expPub
   )
 
-  // Evaluate output whenever input or input objects change
   useEffect(() => {
-    if (input === '') {
-      setResult('No input')
+    const { expression, objects } = inputState
+    localStorage.setItem('inputText', expression)
+    localStorage.setItem('objectText', objects)
+    const expressionValid = validateExpression(inputState.expression)
+    const objectsValid = validateObjects(inputState.objects)
+    setIsValidState({ expression: expressionValid, objects: objectsValid })
+
+    if (!expressionValid || !objectsValid) {
+      setResult({ result: 'Invalid Input', error: false })
       return
     }
-    let cleanInput
-    try {
-      cleanInput = looseJSON(input)
-    } catch {
-      cleanInput = { value: '< Invalid input >' }
-    }
+
     const headers: any = jwtToken ? { Authorization: 'Bearer ' + jwtToken } : {}
     evaluator
-      .evaluate(cleanInput, { objects, headers })
-      .then((res) => {
-        const output = typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res)
-        setResult(output)
-        setResultType(typeof res === 'object' ? 'object' : 'other')
+      .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
+      .then((result) => {
+        setResult({ result, error: false })
       })
       .catch((error) => {
-        setResult(error.message)
-        setResultType('error')
+        setResult({ result: null, error: error.message })
       })
-    localStorage.setItem('inputText', input)
   }, [debounceOutput, evaluatorSelection])
 
-  // Try and turn object(s) input string into object array
-  useEffect(() => {
-    let cleanObjectInput
-    try {
-      cleanObjectInput = looseJSON(objectsInput)
-      if (!Array.isArray(cleanObjectInput)) {
-        cleanObjectInput = looseJSON(`${objectsInput}`)
-      }
-      setObjects(cleanObjectInput)
-      setIsObjectsValid(true)
-    } catch {
-      setObjects({})
-      setIsObjectsValid(false)
-    } finally {
-      localStorage.setItem('objectText', objectsInput)
-    }
-  }, [objectsInput])
-
-  const handleInputChange = (event: any) => {
-    setInput(event.target.value)
-    setDebounceInput(event.target.value)
-  }
-
-  const handleObjectsChange = (event: any) => {
-    setObjectsInput(event.target.value)
-    setDebounceInput(event.target.value)
+  const updateInput = (text: string, type: 'expression' | 'objects') => {
+    setInputState({ ...inputState, [type]: text })
+    setDebounceInput(text)
   }
 
   const handleJWTChange = (event: any) => {
@@ -127,28 +126,17 @@ function App() {
     else setEvaluator(expPub)
   }
 
-  const prettifyInput = () => {
-    const pretty = JSONstringify(input, false, strictJSONInput)
-    if (pretty) setInput(pretty)
+  const prettifyInput = (type: 'expression' | 'objects') => {
+    const currentValue = inputState[type]
+    const pretty = JSONstringify(currentValue, false, strictJSONInput)
+    if (pretty) setInputState((currState) => ({ ...currState, [type]: pretty }))
     else alert('Invalid input')
   }
 
-  const compactInput = () => {
-    const compact = JSONstringify(input, true, strictJSONInput)
-    if (compact) setInput(compact)
-    else alert('Invalid input')
-  }
-
-  const prettifyObjects = () => {
-    let objectsInputArrayStr = objectsInput
-    const pretty = JSONstringify(objectsInputArrayStr, false, strictJSONObjInput)
-    if (pretty) setObjectsInput(pretty)
-    else alert('Invalid input')
-  }
-
-  const compactObjects = () => {
-    const compact = JSONstringify(objectsInput, true, strictJSONObjInput)
-    if (compact) setObjectsInput(compact)
+  const compactInput = (type: 'expression' | 'objects') => {
+    const currentValue = inputState[type]
+    const compact = JSONstringify(currentValue, true, strictJSONInput)
+    if (compact) setInputState((currState) => ({ ...currState, [type]: compact }))
     else alert('Invalid input')
   }
 
@@ -161,7 +149,7 @@ function App() {
           variant="contained"
           size="small"
           color="primary"
-          onClick={prettifyObjects}
+          onClick={() => prettifyInput('objects')}
         >
           Prettify
         </Button>
@@ -170,7 +158,7 @@ function App() {
           variant="contained"
           size="small"
           color="primary"
-          onClick={compactObjects}
+          onClick={() => compactInput('objects')}
         >
           Compact
         </Button>
@@ -195,9 +183,9 @@ function App() {
           fullWidth
           spellCheck="false"
           rows={21}
-          value={objectsInput}
+          value={inputState.objects}
           variant="outlined"
-          onChange={handleObjectsChange}
+          onChange={(e) => updateInput(e?.target?.value, 'objects')}
         />
         <Typography className="invalid-warning" style={{ color: 'red' }}>
           {!isObjectsValid ? 'Invalid object input' : ''}
@@ -223,7 +211,7 @@ function App() {
           variant="contained"
           size="small"
           color="primary"
-          onClick={prettifyInput}
+          onClick={() => prettifyInput('expression')}
         >
           Prettify
         </Button>
@@ -232,7 +220,7 @@ function App() {
           variant="contained"
           size="small"
           color="primary"
-          onClick={compactInput}
+          onClick={() => compactInput('expression')}
         >
           Compact
         </Button>
@@ -257,9 +245,9 @@ function App() {
           multiline
           fullWidth
           rows={30}
-          value={input}
+          value={inputState.expression}
           variant="outlined"
-          onChange={handleInputChange}
+          onChange={(e) => updateInput(e?.target?.value, 'expression')}
         />
       </Grid>
       <Grid item xs sx={{ margin: 1 }}>
@@ -274,9 +262,13 @@ function App() {
         <Card style={{ marginTop: 7 }} variant="outlined">
           <CardContent>
             <Typography variant="body1" component="p">
-              {resultType === 'object' && <pre>{result}</pre>}
-              {resultType === 'other' && <span className="result-text">{result}</span>}
-              {resultType === 'error' && <span className="error-text">{result}</span>}
+              {typeof result.result === 'object' && !result.error ? (
+                <pre>{JSON.stringify(result.result)}</pre>
+              ) : (
+                <span className="result-text">{result.result as string}</span>
+              )}
+
+              {result.error && <span className="error-text">{result.error}</span>}
             </Typography>
           </CardContent>
         </Card>
@@ -286,3 +278,24 @@ function App() {
 }
 
 export default App
+
+const validateExpression = (input: string): boolean => {
+  try {
+    looseJSON(input)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const validateObjects = (objects: string): boolean => {
+  try {
+    console.log(looseJSON(objects))
+    const cleanObjectInput = looseJSON(objects)
+    if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)
+    return true
+  } catch {
+    console.log('Invalid')
+    return false
+  }
+}
