@@ -1,3 +1,4 @@
+import { mapKeys } from 'lodash'
 import {
   EvaluatorNode,
   Operator,
@@ -151,4 +152,60 @@ export const operatorAliases: OperatorReference = {
   runFunction: 'OBJECT_FUNCTIONS',
 }
 
-const propertyAliases = {}
+const propertyAliases: { [key in Operator]: { [key: string]: string } } = {
+  AND: {},
+  OR: {},
+  EQUAL: {},
+  NOT_EQUAL: {},
+  PLUS: {},
+  CONDITIONAL: {
+    ifTrue: 'valueIfTrue',
+    ifFalse: 'valueIfFalse',
+    ifNot: 'valueIfFalse',
+  },
+  REGEX: {
+    string: 'testString',
+    value: 'testString',
+    regex: 'pattern',
+    regexp: 'pattern',
+    regExp: 'pattern',
+    re: 'pattern',
+  },
+  OBJECT_PROPERTIES: {
+    path: 'property',
+  },
+  STRING_SUBSTITUTION: {
+    replacements: 'substitutions',
+  },
+  PG_SQL: {
+    replacements: 'values',
+  },
+  GRAPHQL: {
+    endpoint: 'url',
+    outputNode: 'returnNode',
+    returnProperty: 'returnNode',
+  },
+  GET: {
+    endpoint: 'url',
+    outputProperty: 'returnProperty',
+  },
+  POST: {
+    endpoint: 'url',
+    outputProperty: 'returnProperty',
+  },
+  BUILD_OBJECT: {
+    values: 'properties',
+    keyValPairs: 'properties',
+    keyValuePairs: 'properties',
+  },
+  OBJECT_FUNCTIONS: {
+    functionsPath: 'functionPath',
+    arguments: 'args',
+    variables: 'args',
+  },
+}
+
+export const mapPropertyAliases = (operator: Operator, expression: OperatorNode): OperatorNode =>
+  mapKeys(expression, (_, key: string) =>
+    key in propertyAliases[operator] ? propertyAliases[operator][key] : key
+  ) as OperatorNode

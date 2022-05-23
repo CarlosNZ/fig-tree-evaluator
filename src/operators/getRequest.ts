@@ -4,7 +4,6 @@ import {
   assignChildNodesToQuery,
   extractAndSimplify,
   fetchAPIrequest,
-  errorMessage,
 } from '../utils/utils'
 import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 

@@ -7,7 +7,7 @@ import {
   FullOperatorNode,
   OutputType,
 } from './types'
-import { operatorAliases, operatorMethods } from './operatorReference'
+import { operatorAliases, operatorMethods, mapPropertyAliases } from './operatorReference'
 import {
   fallbackOrError,
   convertOutputMethods,
@@ -43,7 +43,9 @@ const evaluateExpression = async (
     const { parse, operate } = operatorMethods[operator]
 
     const childNodes =
-      'children' in expression ? expression.children : parse(expression as FullOperatorNode)
+      'children' in expression
+        ? expression.children
+        : parse(mapPropertyAliases(operator, expression as FullOperatorNode))
 
     if (!Array.isArray(childNodes)) {
       return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)

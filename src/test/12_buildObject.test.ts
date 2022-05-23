@@ -18,7 +18,7 @@ test('buildObject - basic', () => {
 test('buildObject - handling erroneous input', () => {
   const expression = {
     operator: 'buildObject',
-    properties: [
+    values: [
       { value: 'missing key' },
       { key: 'someKey', value: 'someValue' },
       {},
@@ -33,7 +33,7 @@ test('buildObject - handling erroneous input', () => {
 test('buildObject - with evaluated key and value', () => {
   const expression = {
     operator: 'buildObject',
-    properties: [
+    keyValPairs: [
       { key: 'someKey', value: 'someValue' },
       {
         key: {
@@ -56,7 +56,7 @@ test('buildObject - with evaluated key and value', () => {
 test('buildObject - with evaluations and nesting', () => {
   const expression = {
     operator: 'buildObject',
-    properties: [
+    keyValuePairs: [
       { key: 'someKey', value: 'someValue' },
       {
         key: { operator: 'objectProperties', children: ['key'] },
