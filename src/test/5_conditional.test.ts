@@ -43,6 +43,24 @@ test('Conditional with Logical Expression (using properties)', () => {
   })
 })
 
+test('Conditional with Logical Expression (using aliased properties)', () => {
+  const expression = {
+    operator: 'if-then',
+    condition: {
+      operator: 'and',
+      children: [
+        { operator: '=', values: [{ operator: '+', children: [7.5, 19] }, 26.5] },
+        { operator: '!=', values: ['five', 'four'] },
+      ],
+    },
+    ifTrue: 'Expression is True',
+    ifFalse: 'Expression is False',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Expression is True')
+  })
+})
+
 test('Conditional with False Logical Expression', () => {
   const expression = {
     operator: '?',

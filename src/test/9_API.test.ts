@@ -49,9 +49,9 @@ test('GET: Fetch a country with params', () => {
 test('GET: Fetch a country with params, using props', () => {
   const expression = {
     operator: 'get',
-    url: { operator: '+', values: ['https://restcountries.com/v3.1/name/', 'india'] },
+    endpoint: { operator: '+', values: ['https://restcountries.com/v3.1/name/', 'india'] },
     parameters: { fullText: true },
-    returnProperty: '[0].name.nativeName.hin',
+    outputProperty: '[0].name.nativeName.hin',
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toStrictEqual({

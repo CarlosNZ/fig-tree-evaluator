@@ -95,7 +95,7 @@ test('String substitution - parameters not ordered and too few, using props,', (
   const expression = {
     operator: 'stringSubstitution',
     string: '%2 out of every %3 people are %1',
-    substitutions: ['stupid', 'Two'],
+    replacements: ['stupid', 'Two'],
   }
   return evaluateExpression(expression).then((result: any) => {
     expect(result).toBe('Two out of every  people are stupid')
