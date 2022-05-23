@@ -1,5 +1,5 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { OperatorNode, OutputType, BasicObject } from '../types'
+import { OperatorNode, OutputType, BasicObject, EvaluatorNode } from '../types'
 import { camelCase } from 'lodash'
 
 export const fallbackOrError = (
@@ -20,6 +20,16 @@ export const convertOutputMethods: {
   array: (value: any) => (Array.isArray(value) ? value : [value]),
   boolean: (value: any) => Boolean(value),
   bool: (value: any) => Boolean(value),
+}
+
+export const parseIfJson = (input: EvaluatorNode) => {
+  if (typeof input !== 'string') return input
+  try {
+    const parsed = JSON.parse(input)
+    return parsed instanceof Object && 'operator' in parsed ? parsed : input
+  } catch (err) {
+    return input
+  }
 }
 
 export const standardiseOperatorName = (name: string) => {
