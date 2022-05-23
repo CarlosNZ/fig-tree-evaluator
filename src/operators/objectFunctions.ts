@@ -1,6 +1,7 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { allPropsOk } from './helpers'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
 
 export interface ObjFuncNode extends BaseOperatorNode {
   functionPath?: EvaluatorNode

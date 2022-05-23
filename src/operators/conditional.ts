@@ -1,5 +1,6 @@
-import { allPropsOk } from './helpers'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
 
 export interface ConditionalNode extends BaseOperatorNode {
   condition?: string

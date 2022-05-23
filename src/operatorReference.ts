@@ -3,9 +3,7 @@ import {
   EvaluatorNode,
   Operator,
   BaseOperatorNode,
-  OperatorReference,
   ValueNode,
-  OperationInput,
   OperatorNode,
   EvaluatorOptions,
 } from './types'
@@ -26,6 +24,12 @@ import {
   objectFunctions,
   buildObject,
 } from './operators'
+
+export interface OperationInput {
+  children: any[]
+  expression?: OperatorNode
+  options?: EvaluatorOptions
+}
 
 export const operatorMethods: {
   [key in Operator]: {
@@ -99,7 +103,7 @@ export const operatorMethods: {
 }
 
 // Converts from a range of allowed operator aliases into their canonical form
-export const operatorAliases: OperatorReference = {
+export const operatorAliases: { [key: string]: Operator } = {
   and: 'AND',
   '&': 'AND',
   '&&': 'AND',

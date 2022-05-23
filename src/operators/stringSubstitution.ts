@@ -1,5 +1,6 @@
-import { allPropsOk, zipArraysToObject } from './helpers'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk, zipArraysToObject } from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
 
 export interface StringSubNode extends BaseOperatorNode {
   string?: EvaluatorNode

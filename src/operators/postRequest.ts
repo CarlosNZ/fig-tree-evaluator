@@ -1,6 +1,7 @@
-import { allPropsOk, evaluateParameters } from './helpers'
+import { allPropsOk, evaluateParameters } from './_helpers'
 import { processAPIquery, APINode } from './getRequest'
-import { EvaluatorNode, ValueNode, OperationInput, EvaluatorOptions } from '../types'
+import { OperationInput } from '../operatorReference'
+import { EvaluatorNode, ValueNode, EvaluatorOptions } from '../types'
 
 const parse = async (
   expression: APINode,

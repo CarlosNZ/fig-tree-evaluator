@@ -1,4 +1,5 @@
-import { OperationInput, ValueNode } from '../types'
+import { OperationInput } from '../operatorReference'
+import { ValueNode } from '../types'
 import { parse } from './logicalAnd'
 
 const operate = ({ children, expression }: OperationInput): ValueNode => {

@@ -1,4 +1,4 @@
-import { OperationInput } from '../types'
+import { OperationInput } from '../operatorReference'
 import { parse } from './logicalAnd'
 
 const operate = ({ children }: OperationInput): boolean =>

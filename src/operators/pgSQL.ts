@@ -1,5 +1,6 @@
-import { allPropsOk } from './helpers'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput, PGConnection } from '../types'
+import { allPropsOk } from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, PGConnection } from '../types'
 
 export interface PGNode extends BaseOperatorNode {
   query?: EvaluatorNode

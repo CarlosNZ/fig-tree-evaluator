@@ -84,15 +84,4 @@ export type OperatorNode =
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 
-export interface OperatorReference {
-  [key: string]: Operator
-}
-
-// For objectReference methods
-export interface OperationInput {
-  children: any[]
-  expression?: OperatorNode
-  options?: EvaluatorOptions
-}
-
 export type EvaluatorNode = OperatorNode | ValueNode

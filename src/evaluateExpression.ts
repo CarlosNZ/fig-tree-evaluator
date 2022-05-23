@@ -14,6 +14,7 @@ import {
   standardiseOperatorName,
   errorMessage,
   parseIfJson,
+  isOperatorNode,
 } from './helpers'
 
 const evaluateExpression = async (
@@ -22,9 +23,8 @@ const evaluateExpression = async (
 ): Promise<ValueNode> => {
   const expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
-  // Base cases -- leaves get returned unmodified
-  if (!(expression instanceof Object)) return expression
-  if (!('operator' in expression)) return expression
+  // Non-operator nodes get returned unmodified
+  if (!isOperatorNode(expression)) return expression
 
   const { fallback } = expression
   const returnErrorAsString = options?.returnErrorAsString ?? false
@@ -52,7 +52,7 @@ const evaluateExpression = async (
 
     let childrenResolved: any[] = []
 
-    // Recursive case
+    // Evaluate children recursively
     childrenResolved = await Promise.all(
       childNodes.map((child: EvaluatorNode) => evaluateExpression(child, options))
     )
@@ -63,15 +63,13 @@ const evaluateExpression = async (
       options,
     })
 
-    if (!expression?.type) return result
+    const outputType = expression?.type ?? expression?.outputType
+
+    if (!outputType) return result
 
     // Type conversion
-    if (!(expression.type in convertOutputMethods))
-      return fallbackOrError(
-        fallback,
-        `Invalid output type: ${expression.type}`,
-        returnErrorAsString
-      )
+    if (!(outputType in convertOutputMethods))
+      return fallbackOrError(fallback, `Invalid output type: ${outputType}`, returnErrorAsString)
     else {
       return convertOutputMethods[expression.type as OutputType](result)
     }

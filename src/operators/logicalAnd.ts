@@ -1,5 +1,6 @@
-import { allPropsOk } from './helpers'
-import { EvaluatorNode, BaseOperatorNode, OperationInput } from '../types'
+import { allPropsOk } from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { EvaluatorNode, BaseOperatorNode } from '../types'
 export interface BasicExtendedNode extends BaseOperatorNode {
   values?: EvaluatorNode[]
 }

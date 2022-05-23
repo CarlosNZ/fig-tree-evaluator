@@ -13,26 +13,19 @@ import {
   MenuItem,
   InputLabel,
 } from '@mui/material'
-import { makeStyles } from '@mui/material'
 import evaluatorDev from './expression-evaluator/evaluateExpression'
 import evaluatorPublished from './expression-evaluator/evaluateExpression'
+// CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
+import { fetchNative, JSONstringify } from './helpers'
 import config from './config.json'
 import { PostgresInterface } from './postgresInterface'
 
 const looseJSON = require('loose-json')
 const graphQLendpoint = config.graphQLendpoint
-
 const pgInterface = new PostgresInterface()
 
-async function fetchNative(url: string, obj: any) {
-  const result = await fetch(url, obj)
-  return result
-}
-
 function App() {
-  // const classes = useStyles()
-
   const [result, setResult] = useState<string>()
   const [resultType, setResultType] = useState('string')
 
@@ -122,37 +115,6 @@ function App() {
     localStorage.setItem('evaluatorSelection', event.target.value)
     if (event.target.value === 'Development') setEvaluate(() => evaluatorDev)
     else setEvaluate(() => evaluatorPublished)
-  }
-
-  const JSONstringify = (input: string, compact = false, strict = false) => {
-    const indent = compact ? 0 : 2
-    try {
-      const backtickRe = /`[\s\S]*?`/g
-      const backtickSubstitutions = input.match(backtickRe)
-      const backtickReplacement = !compact ? input.replaceAll(backtickRe, `"@1234@"`) : input
-      const inputObject = looseJSON(backtickReplacement)
-      const stringified = strict
-        ? JSON.stringify(inputObject, null, indent)
-        : JSONstringifyLoose(inputObject, compact)
-      let output = stringified
-      if (backtickSubstitutions) {
-        backtickSubstitutions.forEach((sub) => {
-          output = output.replace(`"@1234@"`, sub)
-        })
-      }
-      return output
-    } catch {
-      return false
-    }
-  }
-
-  const JSONstringifyLoose = (inputObject: object, compact = false) => {
-    const objectString = compact
-      ? JSON.stringify(inputObject)
-      : JSON.stringify(inputObject, null, 2)
-    const regex = /(")([^"]*?)("):/gm
-    const replacementString = objectString.replaceAll(regex, '$2:')
-    return replacementString
   }
 
   const prettifyInput = () => {

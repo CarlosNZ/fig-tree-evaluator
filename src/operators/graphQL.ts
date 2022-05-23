@@ -4,12 +4,12 @@ import {
   assignChildNodesToQuery,
   extractAndSimplify,
   evaluateParameters,
-} from './helpers'
+} from './_helpers'
+import { OperationInput } from '../operatorReference'
 import {
   BaseOperatorNode,
   EvaluatorNode,
   ValueNode,
-  OperationInput,
   GraphQLConnection,
   EvaluatorOptions,
 } from '../types'

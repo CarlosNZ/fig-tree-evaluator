@@ -5,14 +5,9 @@ import {
   extractAndSimplify,
   fetchAPIrequest,
   evaluateParameters,
-} from './helpers'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  ValueNode,
-  OperationInput,
-  EvaluatorOptions,
-} from '../types'
+} from './_helpers'
+import { OperationInput } from '../operatorReference'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, EvaluatorOptions } from '../types'
 
 export interface APINode extends BaseOperatorNode {
   url?: EvaluatorNode
