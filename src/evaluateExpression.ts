@@ -13,15 +13,14 @@ import {
   convertOutputMethods,
   standardiseOperatorName,
   errorMessage,
+  parseIfJson,
 } from './utils/utils'
 
 const evaluateExpression = async (
-  expression: EvaluatorNode,
+  input: EvaluatorNode,
   options?: EvaluatorOptions
 ): Promise<ValueNode> => {
-  if (options?.allowJSONStringInput) {
-    // TO-DO Check for JSON String
-  }
+  const expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
   // Base cases -- leaves get returned unmodified
   if (!(expression instanceof Object)) return expression
