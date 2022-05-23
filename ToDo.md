@@ -7,7 +7,6 @@
 - API/GraphQL should reflect HTTP Status codes correctly (with error)
 - Tidy up API/GraphQL processing chain (helper functions)
 - Allow "outputType" as alias for "type"
-- Aliases for property names
 - Figure out how to type individual operator nodes properly
 - Logging option
 
