@@ -13,8 +13,6 @@ import {
   MenuItem,
   InputLabel,
 } from '@mui/material'
-import evaluatorDev from './expression-evaluator/evaluateExpression'
-import evaluatorPublished from './expression-evaluator/evaluateExpression'
 import EvaluatorDev from './expression-evaluator/evaluator'
 import EvaluatorPublished from './expression-evaluator/evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
@@ -36,7 +34,7 @@ const evaluatorParams = {
 }
 
 const expDev = new EvaluatorDev(evaluatorParams)
-const expPub = new EvaluatorDev(evaluatorParams)
+const expPub = new EvaluatorPublished(evaluatorParams)
 
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
