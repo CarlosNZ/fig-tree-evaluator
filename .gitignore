@@ -39,3 +39,6 @@ typings/
 
 # Duplicated source code for GUI app
 gui/src/expression-evaluator
+
+# Dev playground file
+src/dev/playground.ts
