@@ -26,20 +26,12 @@ const exp = new ExpressionEvaluator({
   },
 })
 
-const expression = {
-  operator: 'gql',
-  query: 'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
-  variables: { operator: 'buildObject', properties: [{ key: 'code', value: 'NZ' }] },
-  returnNode: 'countries',
-}
-// const expression = {
-//   operator: '+',
-//   children: [{ operator: 'buildObject', properties: [{ key: 'code', value: 'NZ' }] }],
-// }
+const expression = `{"operator":"gql","query":"query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}","endpoint":"https://countries.trevorblades.com/","variables":{"code":"NZ"},"returnNode":"countries"}`
 
 exp
   .evaluate(expression, {
-    returnErrorAsString: true,
+    allowJSONStringInput: true,
+    // returnErrorAsString: true,
   })
   .then((res) => console.log(res))
-  .then(() => pgConnect.end())
+// .then(() => pgConnect.end())
