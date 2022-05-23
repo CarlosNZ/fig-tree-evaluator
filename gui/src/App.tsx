@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import {
   Card,
@@ -15,25 +15,39 @@ import {
 } from '@mui/material'
 import evaluatorDev from './expression-evaluator/evaluateExpression'
 import evaluatorPublished from './expression-evaluator/evaluateExpression'
+import EvaluatorDev from './expression-evaluator/evaluator'
+import EvaluatorPublished from './expression-evaluator/evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
-import { fetchNative, JSONstringify } from './helpers'
+import { fetchNative, JSONstringify, JSONstringifyLoose } from './helpers'
 import config from './config.json'
+import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
+import useDebounce from './useDebounce'
 
 const looseJSON = require('loose-json')
 const graphQLendpoint = config.graphQLendpoint
 const pgInterface = new PostgresInterface()
 
+const evaluatorParams = {
+  pgConnection: pgInterface,
+  graphQLConnection: { fetch: fetchNative, endpoint: graphQLendpoint },
+  APIfetch: fetchNative,
+}
+
+const expDev = new EvaluatorDev(evaluatorParams)
+const expPub = new EvaluatorDev(evaluatorParams)
+
 function App() {
+  const [debounceOutput, setDebounceInput] = useDebounce<string>('')
   const [result, setResult] = useState<string>()
   const [resultType, setResultType] = useState('string')
 
   const [input, setInput] = useState(
-    localStorage.getItem('inputText') || '{ value: "Enter expression here"}'
+    localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression)
   )
   const [objectsInput, setObjectsInput] = useState(
-    localStorage.getItem('objectText') || `{firstName: "Carl", lastName: "Smith"}`
+    localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects)
   )
   const [objects, setObjects] = useState<object>()
   const [isObjectsValid, setIsObjectsValid] = useState(true)
@@ -43,8 +57,8 @@ function App() {
   const [evaluatorSelection, setEvaluatorSelection] = useState(
     localStorage.getItem('evaluatorSelection') || 'Development'
   )
-  const [evaluate, setEvaluate] = useState(
-    evaluatorSelection === 'Development' ? () => evaluatorDev : () => evaluatorPublished
+  const [evaluator, setEvaluator] = useState(
+    evaluatorSelection === 'Development' ? () => expDev : () => expPub
   )
 
   // Evaluate output whenever input or input objects change
@@ -60,13 +74,8 @@ function App() {
       cleanInput = { value: '< Invalid input >' }
     }
     const headers: any = jwtToken ? { Authorization: 'Bearer ' + jwtToken } : {}
-    evaluate(cleanInput, {
-      objects: objects,
-      pgConnection: pgInterface,
-      graphQLConnection: { fetch: fetchNative, endpoint: graphQLendpoint },
-      APIfetch: fetchNative,
-      headers,
-    })
+    evaluator
+      .evaluate(cleanInput, { objects, headers })
       .then((res) => {
         const output = typeof res === 'object' ? JSON.stringify(res, null, 2) : String(res)
         setResult(output)
@@ -77,7 +86,7 @@ function App() {
         setResultType('error')
       })
     localStorage.setItem('inputText', input)
-  }, [input, objectsInput, objects, evaluatorSelection, jwtToken])
+  }, [debounceOutput, evaluatorSelection])
 
   // Try and turn object(s) input string into object array
   useEffect(() => {
@@ -99,22 +108,25 @@ function App() {
 
   const handleInputChange = (event: any) => {
     setInput(event.target.value)
+    setDebounceInput(event.target.value)
   }
 
   const handleObjectsChange = (event: any) => {
     setObjectsInput(event.target.value)
+    setDebounceInput(event.target.value)
   }
 
   const handleJWTChange = (event: any) => {
     setJwtToken(event.target.value)
     localStorage.setItem('JWT', event.target.value)
+    setDebounceInput(event.target.value)
   }
 
   const handleSelect = (event: any) => {
     setEvaluatorSelection(event.target.value)
     localStorage.setItem('evaluatorSelection', event.target.value)
-    if (event.target.value === 'Development') setEvaluate(() => evaluatorDev)
-    else setEvaluate(() => evaluatorPublished)
+    if (event.target.value === 'Development') setEvaluator(expDev)
+    else setEvaluator(expPub)
   }
 
   const prettifyInput = () => {
