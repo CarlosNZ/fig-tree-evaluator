@@ -1,4 +1,4 @@
-import { BaseOperatorNode, OutputType, EvaluatorNode } from './types'
+import { OutputType, EvaluatorNode } from './types'
 import { camelCase } from 'lodash'
 
 export const fallbackOrError = (
@@ -21,11 +21,14 @@ export const convertOutputMethods: {
   bool: (value: any) => Boolean(value),
 }
 
+export const isOperatorNode = (input: EvaluatorNode) =>
+  input instanceof Object && 'operator' in input
+
 export const parseIfJson = (input: EvaluatorNode) => {
   if (typeof input !== 'string') return input
   try {
-    const parsed = JSON.parse(input)
-    return parsed instanceof Object && 'operator' in parsed ? parsed : input
+    const parsedInput = JSON.parse(input)
+    return isOperatorNode(parsedInput) ? parsedInput : input
   } catch (err) {
     return input
   }

@@ -4,8 +4,17 @@ import {
   assignChildNodesToQuery,
   extractAndSimplify,
   fetchAPIrequest,
+  evaluateParameters,
 } from './helpers'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { isOperatorNode } from '../helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  ValueNode,
+  OperationInput,
+  EvaluatorOptions,
+} from '../types'
+import evaluateExpression from '../evaluateExpression'
 
 export interface APINode extends BaseOperatorNode {
   url?: EvaluatorNode
@@ -13,11 +22,14 @@ export interface APINode extends BaseOperatorNode {
   returnProperty?: EvaluatorNode
 }
 
-const parse = async (expression: APINode): Promise<EvaluatorNode[]> => {
+const parse = async (
+  expression: APINode,
+  options: EvaluatorOptions = {}
+): Promise<EvaluatorNode[]> => {
   const { url, parameters = {}, returnProperty } = expression
   allPropsOk(['url'], expression)
-
-  const children = [url, Object.keys(parameters as object), ...Object.values(parameters as object)]
+  const evaluatedParams = await evaluateParameters(parameters, options)
+  const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
   if (returnProperty) children.push(returnProperty)
   return children
 }

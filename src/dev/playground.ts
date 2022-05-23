@@ -13,7 +13,7 @@ For testing/playing round during development. Use `yarn ts-node src/dev/playgrou
 // pgConnect.connect()
 
 const exp = new ExpressionEvaluator({
-  // APIfetch: fetch,
+  APIfetch: fetch,
   // pgConnection: pgConnect,
   // graphQLConnection: {
   //   fetch: fetch,
@@ -25,8 +25,15 @@ const exp = new ExpressionEvaluator({
 })
 
 const expression = {
-  operator: 'getProperty',
-  path: 'user.name',
+  operator: 'POST',
+  url: 'https://reqres.in/api/login',
+  parameters: {
+    operator: 'buildObject',
+    properties: [
+      { key: 'email', value: 'eve.holt@reqres.in' },
+      { key: { operator: '+', values: ['pass', 'word'] }, value: 'cityslicka' },
+    ],
+  },
 }
 
 exp

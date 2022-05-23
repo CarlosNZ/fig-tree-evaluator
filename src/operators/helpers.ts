@@ -1,5 +1,13 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { BasicObject, BaseOperatorNode } from '../types'
+import evaluateExpression from '../evaluateExpression'
+import { isOperatorNode } from '../helpers'
+import {
+  BasicObject,
+  BaseOperatorNode,
+  OperatorNode,
+  EvaluatorOptions,
+  EvaluatorNode,
+} from '../types'
 
 export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   const missingProps: string[] = []
@@ -8,6 +16,17 @@ export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   })
   if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
   else return true
+}
+
+// For edge case -- if parameters is an Operator node, we must evaluate it first
+// or else it will be split up incorrectly
+//  Only applicable if parameters is created from a "buildObject" operator
+export const evaluateParameters = async (parameters: EvaluatorNode, options: EvaluatorOptions) => {
+  const evaluatedParams = isOperatorNode(parameters)
+    ? await evaluateExpression(parameters, options)
+    : parameters
+  if (!(evaluatedParams instanceof Object)) throw new Error('Invalid parameters object')
+  return evaluatedParams
 }
 
 export const zipArraysToObject = (variableNames: string[], variableValues: any[]) => {

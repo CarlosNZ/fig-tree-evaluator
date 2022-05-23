@@ -44,7 +44,7 @@ const evaluateExpression = async (
     const childNodes =
       'children' in expression
         ? expression.children
-        : parse(mapPropertyAliases(operator, expression as OperatorNode))
+        : await parse(mapPropertyAliases(operator, expression as OperatorNode))
 
     if (!Array.isArray(childNodes)) {
       return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)
