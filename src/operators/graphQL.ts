@@ -3,13 +3,32 @@ import {
   zipArraysToObject,
   assignChildNodesToQuery,
   extractAndSimplify,
-} from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput, GraphQLConnection } from '../types'
+  evaluateParameters,
+} from './helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  ValueNode,
+  OperationInput,
+  GraphQLConnection,
+  EvaluatorOptions,
+} from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface GraphQLNode extends BaseOperatorNode {
+  query?: EvaluatorNode
+  url?: EvaluatorNode
+  variables?: EvaluatorNode
+  returnNode?: EvaluatorNode
+}
+
+const parse = async (
+  expression: GraphQLNode,
+  options: EvaluatorOptions = {}
+): Promise<EvaluatorNode[]> => {
   const { query, url = '', variables = {}, returnNode } = expression
   allPropsOk(['query'], expression)
-  const children = [query, url, Object.keys(variables), ...Object.values(variables)]
+  const evaluatedVars = await evaluateParameters(variables, options)
+  const children = [query, url, Object.keys(evaluatedVars), ...Object.values(evaluatedVars)]
   if (returnNode) children.push(returnNode)
   return children
 }

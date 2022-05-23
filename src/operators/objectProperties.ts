@@ -1,8 +1,12 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { EvaluatorNode, ValueNode, OperationInput, BaseOperatorNode } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface ObjPropNode extends BaseOperatorNode {
+  property?: string
+}
+
+const parse = (expression: ObjPropNode): EvaluatorNode[] => {
   const { property } = expression
   allPropsOk(['property'], expression)
   return [property]

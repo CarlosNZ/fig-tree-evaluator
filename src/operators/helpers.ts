@@ -1,43 +1,15 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { OperatorNode, OutputType, BasicObject, EvaluatorNode } from '../types'
-import { camelCase } from 'lodash'
+import evaluateExpression from '../evaluateExpression'
+import { isOperatorNode } from '../helpers'
+import {
+  BasicObject,
+  BaseOperatorNode,
+  OperatorNode,
+  EvaluatorOptions,
+  EvaluatorNode,
+} from '../types'
 
-export const fallbackOrError = (
-  fallback: any,
-  errorMessage: string,
-  returnErrorAsString: boolean
-) => {
-  if (fallback !== undefined) return fallback
-  if (returnErrorAsString) return errorMessage
-  else throw new Error(errorMessage)
-}
-
-export const convertOutputMethods: {
-  [key in OutputType]: <T>(val: T) => number | string | boolean | T[]
-} = {
-  number: (value: any) => (Number.isNaN(Number(value)) ? value : Number(value)),
-  string: (value: any) => String(value),
-  array: (value: any) => (Array.isArray(value) ? value : [value]),
-  boolean: (value: any) => Boolean(value),
-  bool: (value: any) => Boolean(value),
-}
-
-export const parseIfJson = (input: EvaluatorNode) => {
-  if (typeof input !== 'string') return input
-  try {
-    const parsed = JSON.parse(input)
-    return parsed instanceof Object && 'operator' in parsed ? parsed : input
-  } catch (err) {
-    return input
-  }
-}
-
-export const standardiseOperatorName = (name: string) => {
-  const camelCaseName = camelCase(name)
-  return camelCaseName ? camelCaseName : name
-}
-
-export const allPropsOk = (props: string[], expression: OperatorNode) => {
+export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   const missingProps: string[] = []
   props.forEach((prop) => {
     if (!(prop in expression)) missingProps.push(prop)
@@ -46,8 +18,16 @@ export const allPropsOk = (props: string[], expression: OperatorNode) => {
   else return true
 }
 
-// Workaround to prevent typescript errors for err.message
-export const errorMessage = (err: unknown) => (err as Error).message
+// For edge case -- if parameters is an Operator node, we must evaluate it first
+// or else it will be split up incorrectly
+//  Only applicable if parameters is created from a "buildObject" operator
+export const evaluateParameters = async (parameters: EvaluatorNode, options: EvaluatorOptions) => {
+  const evaluatedParams = isOperatorNode(parameters)
+    ? await evaluateExpression(parameters, options)
+    : parameters
+  if (!(evaluatedParams instanceof Object)) throw new Error('Invalid parameters object')
+  return evaluatedParams
+}
 
 export const zipArraysToObject = (variableNames: string[], variableValues: any[]) => {
   const createdObject: BasicObject = {}

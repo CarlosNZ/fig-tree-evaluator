@@ -1,11 +1,15 @@
-import { allPropsOk } from '../utils/utils'
-import { processAPIquery } from './getRequest'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk, evaluateParameters } from './helpers'
+import { processAPIquery, APINode } from './getRequest'
+import { EvaluatorNode, ValueNode, OperationInput, EvaluatorOptions } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+const parse = async (
+  expression: APINode,
+  options: EvaluatorOptions = {}
+): Promise<EvaluatorNode[]> => {
   const { url, parameters = {}, returnProperty } = expression
   allPropsOk(['url'], expression)
-  const children = [url, Object.keys(parameters), ...Object.values(parameters)]
+  const evaluatedParams = await evaluateParameters(parameters, options)
+  const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
   if (returnProperty) children.push(returnProperty)
   return children
 }

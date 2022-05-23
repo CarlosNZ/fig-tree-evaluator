@@ -130,6 +130,33 @@ test('GET: Fetch a country with multiple params, using props', () => {
   })
 })
 
+test('GET: Fetch a country with multiple params, with nested buildObject for parameters', () => {
+  const expression = {
+    operator: 'API',
+    url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
+    parameters: {
+      operator: 'buildObject',
+      properties: [
+        { key: 'fullText', value: true },
+        { key: 'fields', value: 'name,capital,flag' },
+      ],
+    },
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual([
+      {
+        name: {
+          common: 'Cuba',
+          official: 'Republic of Cuba',
+          nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
+        },
+        capital: ['Havana'],
+        flag: '🇨🇺',
+      },
+    ])
+  })
+})
+
 test('GET: Inspect authorization headers', () => {
   const expression = {
     operator: 'API',
@@ -180,5 +207,22 @@ test('POST: Unsuccessful login, using properties', () => {
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toStrictEqual({ error: 'Missing password' })
+  })
+})
+
+test('POST: Successful login, using parameters from (nested) buildObject', () => {
+  const expression = {
+    operator: 'POST',
+    url: 'https://reqres.in/api/login',
+    parameters: {
+      operator: 'buildObject',
+      properties: [
+        { key: 'email', value: 'eve.holt@reqres.in' },
+        { key: { operator: '+', values: ['pass', 'word'] }, value: 'cityslicka' },
+      ],
+    },
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
   })
 })

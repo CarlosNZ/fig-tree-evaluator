@@ -1,3 +1,16 @@
+import {
+  BasicExtendedNode,
+  ConditionalNode,
+  RegexNode,
+  StringSubNode,
+  ObjPropNode,
+  APINode,
+  PGNode,
+  GraphQLNode,
+  BuildObjectNode,
+  ObjFuncNode,
+} from './operators'
+
 export type Operator =
   | 'AND'
   | 'OR'
@@ -48,13 +61,26 @@ export interface EvaluatorOptions {
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
-export interface OperatorNode {
+export interface BaseOperatorNode {
   operator: Operator
   type?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
   [key: string]: any
 }
+
+export type OperatorNode =
+  | BaseOperatorNode
+  | BasicExtendedNode
+  | ConditionalNode
+  | RegexNode
+  | StringSubNode
+  | ObjPropNode
+  | APINode
+  | PGNode
+  | GraphQLNode
+  | BuildObjectNode
+  | ObjFuncNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 

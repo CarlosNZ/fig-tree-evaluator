@@ -1,7 +1,10 @@
-import { allPropsOk } from '../utils/utils'
-import { EvaluatorNode, OperatorNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { EvaluatorNode, BaseOperatorNode, OperationInput } from '../types'
+export interface BasicExtendedNode extends BaseOperatorNode {
+  values?: EvaluatorNode[]
+}
 
-export const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export const parse = (expression: BasicExtendedNode): EvaluatorNode[] => {
   const { values } = expression
   allPropsOk(['values'], expression)
   return values as EvaluatorNode[]

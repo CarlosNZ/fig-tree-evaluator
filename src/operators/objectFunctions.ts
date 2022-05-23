@@ -1,11 +1,16 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface ObjFuncNode extends BaseOperatorNode {
+  functionPath?: EvaluatorNode
+  args?: EvaluatorNode[]
+}
+
+const parse = (expression: ObjFuncNode): EvaluatorNode[] => {
   const { functionPath, args } = expression
   allPropsOk(['functionPath'], expression)
-  return [functionPath, ...args]
+  return [functionPath, ...(args as [])]
 }
 
 const operate = async ({ children, options }: OperationInput): Promise<ValueNode> => {

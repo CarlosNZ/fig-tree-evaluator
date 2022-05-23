@@ -3,6 +3,7 @@ import {
   EvaluatorNode,
   Operator,
   ValueNode,
+  BaseOperatorNode,
   OperatorNode,
   OutputType,
 } from './types'
@@ -13,7 +14,7 @@ import {
   standardiseOperatorName,
   errorMessage,
   parseIfJson,
-} from './utils/utils'
+} from './helpers'
 
 const evaluateExpression = async (
   input: EvaluatorNode,
@@ -43,7 +44,7 @@ const evaluateExpression = async (
     const childNodes =
       'children' in expression
         ? expression.children
-        : parse(mapPropertyAliases(operator, expression as OperatorNode))
+        : await parse(mapPropertyAliases(operator, expression as OperatorNode), options)
 
     if (!Array.isArray(childNodes)) {
       return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)
@@ -52,14 +53,13 @@ const evaluateExpression = async (
     let childrenResolved: any[] = []
 
     // Recursive case
-
     childrenResolved = await Promise.all(
       childNodes.map((child: EvaluatorNode) => evaluateExpression(child, options))
     )
 
     const result = await operate({
       children: childrenResolved,
-      expression: expression as OperatorNode,
+      expression: expression as BaseOperatorNode,
       options,
     })
 

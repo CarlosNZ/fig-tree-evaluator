@@ -142,7 +142,6 @@ test('GraphQL - single country lookup, default endpoint, return node', () => {
     type: 'string',
   }
   return exp.evaluate(expression).then((result: any) => {
-    // prettier-ignore
     expect(result).toBe('🇳🇿')
   })
 })
@@ -160,8 +159,35 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
     returnNode: 'countries[0].emoji',
   }
   return exp.evaluate(expression).then((result: any) => {
-    // prettier-ignore
     expect(result).toBe('🇳🇿')
+  })
+})
+
+test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
+  const expression = {
+    operator: 'graphQL',
+    query: `query getCountry($code: String!) {
+        countries(filter: {code: {eq: $code}}) {
+          name
+          emoji
+        }
+      }`,
+    variables: {
+      operator: 'buildObject',
+      values: [
+        {
+          key: 'code',
+          value: {
+            operator: 'GET',
+            children: ['https://restcountries.com/v3.1/name/india', [], '[1].cca2'],
+          },
+        },
+      ],
+    },
+    returnNode: 'countries[0].emoji',
+  }
+  return exp.evaluate(expression, { APIfetch: fetch }).then((result: any) => {
+    expect(result).toBe('🇮🇳')
   })
 })
 

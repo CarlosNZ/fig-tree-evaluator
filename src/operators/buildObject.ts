@@ -1,9 +1,13 @@
-import { allPropsOk } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface BuildObjectNode extends BaseOperatorNode {
+  properties?: EvaluatorNode
+}
+
+const parse = (expression: BuildObjectNode): EvaluatorNode[] => {
   allPropsOk(['properties'], expression)
-  const properties: { key: string; value: any }[] = expression?.properties
+  const properties = expression?.properties as { key: string; value: any }[]
   return (
     properties
       // We ignore incorrectly structured input objects rather than throw error

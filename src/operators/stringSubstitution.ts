@@ -1,7 +1,12 @@
-import { allPropsOk, zipArraysToObject } from '../utils/utils'
-import { OperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
+import { allPropsOk, zipArraysToObject } from './helpers'
+import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: OperatorNode): EvaluatorNode[] => {
+export interface StringSubNode extends BaseOperatorNode {
+  string?: EvaluatorNode
+  substitutions?: EvaluatorNode[]
+}
+
+const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { string, substitutions } = expression
   allPropsOk(['string', 'substitutions'], expression)
   return [string, ...substitutions]
