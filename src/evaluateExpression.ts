@@ -43,7 +43,7 @@ const evaluateExpression = async (
     const { parse, operate } = operatorMethods[operator]
 
     const childNodes =
-      'children' in expression ? expression.children : parse(expression as OperatorNode)
+      'children' in expression ? expression.children : parse(expression as FullOperatorNode)
 
     if (!Array.isArray(childNodes)) {
       return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)
