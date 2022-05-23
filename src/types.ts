@@ -1,4 +1,15 @@
-import { BasicExtendedNode } from './operators'
+import {
+  BasicExtendedNode,
+  ConditionalNode,
+  RegexNode,
+  StringSubNode,
+  ObjPropNode,
+  APINode,
+  PGNode,
+  GraphQLNode,
+  BuildObjectNode,
+  ObjFuncNode,
+} from './operators'
 
 export type Operator =
   | 'AND'
@@ -58,7 +69,18 @@ export interface BaseOperatorNode {
   [key: string]: any
 }
 
-export type OperatorNode = BaseOperatorNode | BasicExtendedNode
+export type OperatorNode =
+  | BaseOperatorNode
+  | BasicExtendedNode
+  | ConditionalNode
+  | RegexNode
+  | StringSubNode
+  | ObjPropNode
+  | APINode
+  | PGNode
+  | GraphQLNode
+  | BuildObjectNode
+  | ObjFuncNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 

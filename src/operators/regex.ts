@@ -1,7 +1,12 @@
 import { allPropsOk } from './helpers'
 import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
-const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
+export interface RegexNode extends BaseOperatorNode {
+  pattern?: EvaluatorNode
+  testString?: EvaluatorNode
+}
+
+const parse = (expression: RegexNode): EvaluatorNode[] => {
   const { testString, pattern } = expression
   allPropsOk(['testString', 'pattern'], expression)
   return [testString, pattern]

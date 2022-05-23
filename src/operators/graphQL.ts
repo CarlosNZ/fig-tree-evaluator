@@ -22,7 +22,7 @@ export interface GraphQLNode extends BaseOperatorNode {
 }
 
 const parse = async (
-  expression: BaseOperatorNode,
+  expression: GraphQLNode,
   options: EvaluatorOptions = {}
 ): Promise<EvaluatorNode[]> => {
   const { query, url = '', variables = {}, returnNode } = expression

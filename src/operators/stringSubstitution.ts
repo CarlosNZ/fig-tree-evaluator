@@ -1,6 +1,11 @@
 import { allPropsOk, zipArraysToObject } from './helpers'
 import { BaseOperatorNode, EvaluatorNode, ValueNode, OperationInput } from '../types'
 
+export interface StringSubNode extends BaseOperatorNode {
+  string?: EvaluatorNode
+  substitutions?: EvaluatorNode[]
+}
+
 const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
   const { string, substitutions } = expression
   allPropsOk(['string', 'substitutions'], expression)
