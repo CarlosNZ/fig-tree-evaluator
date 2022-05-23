@@ -45,8 +45,8 @@ test('Object functions - double elements in an array, using properties', () => {
 test('Object functions - create a date from a string', () => {
   const expression = {
     operator: 'function',
-    functionPath: 'functions.fDate',
-    args: [{ operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
+    functionsPath: 'functions.fDate',
+    arguments: [{ operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
   }
   return evaluateExpression(expression, {
     objects: {

@@ -42,7 +42,7 @@ test('Object properties, deeper, using properties', () => {
 test('Object properties, first level, object passed into instance', () => {
   const expression = {
     operator: 'get_obj_prop',
-    property: 'name',
+    path: 'name',
   }
   return exp.evaluate(expression, { objects: { name: 'Wanda' } }).then((result: any) => {
     expect(result).toBe('Wanda')
@@ -73,7 +73,7 @@ test('Object properties, unresolved path with Null fallback', () => {
 test('Object properties, unresolved path (first level) with fallback', () => {
   const expression = {
     operator: 'objectProperties',
-    property: 'cantFind',
+    path: 'cantFind',
     fallback: 'Sorry 🤷‍♂️',
   }
   return exp.evaluate(expression, { objects: {} }).then((result: any) => {
