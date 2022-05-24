@@ -22,7 +22,7 @@ import config from './config.json'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
-import { ValueNode } from './expression-evaluator/types'
+import { InputState, IsValidState, ConfigState, Result } from './types'
 
 const looseJSON = require('loose-json')
 const graphQLendpoint = config.graphQLendpoint
@@ -37,27 +37,6 @@ const evaluatorParams = {
 const expDev = new EvaluatorDev(evaluatorParams)
 const expPub = new EvaluatorPublished(evaluatorParams)
 
-interface InputState {
-  expression: string
-  objects: string
-}
-
-interface IsValidState {
-  expression: boolean
-  objects: boolean
-}
-
-interface ConfigState {
-  pgConnection: PostgresInterface
-  graphQLConnection: any
-  APIfetch: (url: string, obj: any) => Promise<Response>
-}
-
-interface Result {
-  result: ValueNode
-  error: string | false
-}
-
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
 
@@ -70,19 +49,11 @@ function App() {
     expression: validateExpression(inputState.expression),
     objects: validateObjects(inputState.objects),
   })
-  const [configState, setConfigState] = useState<ConfigState>()
-
-  // DEPRECATE THESE
-  const [isObjectsValid, setIsObjectsValid] = useState(true)
-  const [jwtToken, setJwtToken] = useState(localStorage.getItem('JWT'))
-  const [strictJSONInput, setStrictJSONInput] = useState(false)
-  const [strictJSONObjInput, setStrictJSONObjInput] = useState(false)
-  const [evaluatorSelection, setEvaluatorSelection] = useState(
-    localStorage.getItem('evaluatorSelection') || 'Development'
-  )
-  const [evaluator, setEvaluator] = useState(
-    evaluatorSelection === 'Development' ? () => expDev : () => expPub
-  )
+  const [configState, setConfigState] = useState<ConfigState>({
+    evaluator: localStorage.getItem('evaluatorSelection') === 'Development' ? expDev : expPub,
+    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
+    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
+  })
 
   useEffect(() => {
     const { expression, objects } = inputState
@@ -97,7 +68,9 @@ function App() {
       return
     }
 
-    const headers: any = jwtToken ? { Authorization: 'Bearer ' + jwtToken } : {}
+    const { evaluator } = configState
+
+    // const headers: any = jwtToken ? { Authorization: 'Bearer ' + jwtToken } : {}
     evaluator
       .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
       .then((result) => {
@@ -106,36 +79,39 @@ function App() {
       .catch((error) => {
         setResult({ result: null, error: error.message })
       })
-  }, [debounceOutput, evaluatorSelection])
+  }, [debounceOutput, configState]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateInput = (text: string, type: 'expression' | 'objects') => {
     setInputState({ ...inputState, [type]: text })
     setDebounceInput(text)
   }
 
-  const handleJWTChange = (event: any) => {
-    setJwtToken(event.target.value)
-    localStorage.setItem('JWT', event.target.value)
-    setDebounceInput(event.target.value)
+  const toggleCheckbox = (type: 'strictJsonObjects' | 'strictJsonExpression') => {
+    const newState = !configState[type]
+    setConfigState((prev) => ({ ...prev, [type]: newState }))
+    localStorage.setItem(type, String(newState))
   }
 
-  const handleSelect = (event: any) => {
-    setEvaluatorSelection(event.target.value)
+  const handleSelectEvaluator = (event: any) => {
     localStorage.setItem('evaluatorSelection', event.target.value)
-    if (event.target.value === 'Development') setEvaluator(expDev)
-    else setEvaluator(expPub)
+    if (event.target.value === 'Development') setConfigState({ ...configState, evaluator: expDev })
+    else setConfigState({ ...configState, evaluator: expPub })
   }
 
   const prettifyInput = (type: 'expression' | 'objects') => {
+    const strict =
+      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonObjects
     const currentValue = inputState[type]
-    const pretty = JSONstringify(currentValue, false, strictJSONInput)
+    const pretty = JSONstringify(currentValue, false, strict)
     if (pretty) setInputState((currState) => ({ ...currState, [type]: pretty }))
     else alert('Invalid input')
   }
 
   const compactInput = (type: 'expression' | 'objects') => {
+    const strict =
+      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonObjects
     const currentValue = inputState[type]
-    const compact = JSONstringify(currentValue, true, strictJSONInput)
+    const compact = JSONstringify(currentValue, true, strict)
     if (compact) setInputState((currState) => ({ ...currState, [type]: compact }))
     else alert('Invalid input')
   }
@@ -143,9 +119,9 @@ function App() {
   return (
     <Grid container>
       <Grid item xs sx={{ margin: 1 }}>
-        <h1>Local state objects</h1>
+        <Typography variant="h4">Local state objects</Typography>
         <Button
-          // className={classes.margin}
+          sx={{ margin: 1 }}
           variant="contained"
           size="small"
           color="primary"
@@ -166,10 +142,8 @@ function App() {
           control={
             <Checkbox
               color="primary"
-              checked={strictJSONObjInput}
-              onChange={() => {
-                setStrictJSONObjInput(!strictJSONObjInput)
-              }}
+              checked={configState.strictJsonObjects}
+              onChange={() => toggleCheckbox('strictJsonObjects')}
             />
           }
           label="Quoted field names"
@@ -182,30 +156,17 @@ function App() {
           multiline
           fullWidth
           spellCheck="false"
-          rows={21}
+          rows={28}
           value={inputState.objects}
           variant="outlined"
           onChange={(e) => updateInput(e?.target?.value, 'objects')}
         />
         <Typography className="invalid-warning" style={{ color: 'red' }}>
-          {!isObjectsValid ? 'Invalid object input' : ''}
+          {!isValidState.objects ? 'Invalid object input' : ''}
         </Typography>
-        <TextField
-          sx={{ margin: 1 }}
-          id="jwt-input"
-          label="JWT Token"
-          inputProps={{ sx: { fontFamily: 'monospace' } }}
-          multiline
-          fullWidth
-          spellCheck="false"
-          rows={5}
-          value={jwtToken}
-          variant="outlined"
-          onChange={handleJWTChange}
-        />
       </Grid>
       <Grid item xs sx={{ margin: 1 }}>
-        <h1>Input</h1>
+        <Typography variant="h4">Input</Typography>
         <Button
           sx={{ margin: 1 }}
           variant="contained"
@@ -228,10 +189,8 @@ function App() {
           control={
             <Checkbox
               color="primary"
-              checked={strictJSONInput}
-              onChange={() => {
-                setStrictJSONInput(!strictJSONInput)
-              }}
+              checked={configState.strictJsonExpression}
+              onChange={() => toggleCheckbox('strictJsonExpression')}
             />
           }
           label="Quoted field names"
@@ -244,18 +203,24 @@ function App() {
           inputProps={{ sx: { fontFamily: 'monospace' } }}
           multiline
           fullWidth
-          rows={30}
+          rows={28}
           value={inputState.expression}
           variant="outlined"
           onChange={(e) => updateInput(e?.target?.value, 'expression')}
         />
       </Grid>
       <Grid item xs sx={{ margin: 1 }}>
-        <h1>Output</h1>
+        <Typography variant="h4">Output</Typography>
         <InputLabel shrink id="demo-simple-select-placeholder-label-label">
           Evaluator version
         </InputLabel>
-        <Select id="evalSelect" value={evaluatorSelection} autoWidth onChange={handleSelect}>
+        <Select
+          id="evalSelect"
+          variant="standard"
+          value={configState.evaluator === expDev ? 'Development' : 'Published'}
+          autoWidth
+          onChange={handleSelectEvaluator}
+        >
           <MenuItem value={'Development'}>Development</MenuItem>
           <MenuItem value={'Published'}>Published</MenuItem>
         </Select>
@@ -290,12 +255,10 @@ const validateExpression = (input: string): boolean => {
 
 const validateObjects = (objects: string): boolean => {
   try {
-    console.log(looseJSON(objects))
     const cleanObjectInput = looseJSON(objects)
     if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)
     return true
   } catch {
-    console.log('Invalid')
     return false
   }
 }
