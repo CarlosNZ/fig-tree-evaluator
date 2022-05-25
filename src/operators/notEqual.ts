@@ -1,6 +1,23 @@
-import { OperationInput } from '../operatorReference'
-import { parse } from './logicalAnd'
+import { parseChildren, BasicExtendedNode } from './logicalAnd'
+import { evaluateArray } from './_helpers'
+import { EvaluatorOptions } from '../types'
 
-const operate = ({ children }: OperationInput): boolean => children[0] != children[1]
+const requiredProperties = ['values']
+const operatorAliases = ['!=', '!', 'ne', 'notEqual']
+const propertyAliases = {}
 
-export const notEqual = { parse, operate }
+const evaluate = async (
+  expression: BasicExtendedNode,
+  options: EvaluatorOptions
+): Promise<Boolean> => {
+  const values = (await evaluateArray(expression.values, options)) as boolean[]
+  return values[0] != values[1]
+}
+
+export const NOT_EQUAL = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

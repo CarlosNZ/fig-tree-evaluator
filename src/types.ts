@@ -3,30 +3,33 @@ import {
   ConditionalNode,
   RegexNode,
   StringSubNode,
-  ObjPropNode,
-  APINode,
-  PGNode,
-  GraphQLNode,
-  BuildObjectNode,
-  ObjFuncNode,
+  // ObjPropNode,
+  // APINode,
+  // PGNode,
+  // GraphQLNode,
+  // BuildObjectNode,
+  // ObjFuncNode,
 } from './operators'
 
-export type Operator =
-  | 'AND'
-  | 'OR'
-  | 'EQUAL'
-  | 'NOT_EQUAL'
-  | 'PLUS'
-  | 'CONDITIONAL'
-  | 'REGEX'
-  | 'OBJECT_PROPERTIES'
-  | 'STRING_SUBSTITUTION'
-  | 'GET'
-  | 'POST'
-  | 'PG_SQL'
-  | 'GRAPHQL'
-  | 'BUILD_OBJECT'
-  | 'OBJECT_FUNCTIONS'
+export const operators = [
+  'AND',
+  'OR',
+  'EQUAL',
+  'NOT_EQUAL',
+  'PLUS',
+  'CONDITIONAL',
+  'REGEX',
+  // 'OBJECT_PROPERTIES',
+  'STRING_SUBSTITUTION',
+  // 'GET',
+  // 'POST',
+  // 'PG_SQL',
+  // 'GRAPHQL',
+  // 'BUILD_OBJECT',
+  // 'OBJECT_FUNCTIONS',
+] as const
+
+export type Operator = typeof operators[number]
 
 export type BasicObject = {
   [key: string]: any
@@ -75,12 +78,12 @@ export type OperatorNode =
   | ConditionalNode
   | RegexNode
   | StringSubNode
-  | ObjPropNode
-  | APINode
-  | PGNode
-  | GraphQLNode
-  | BuildObjectNode
-  | ObjFuncNode
+// | ObjPropNode
+// | APINode
+// | PGNode
+// | GraphQLNode
+// | BuildObjectNode
+// | ObjFuncNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 

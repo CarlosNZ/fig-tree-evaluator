@@ -1,17 +1,9 @@
+import { EvaluatorOptions, EvaluatorNode, ValueNode, OutputType } from './types'
+import { operatorObjects, getOperatorName, mapPropertyAliases } from './operatorReference'
 import {
-  EvaluatorOptions,
-  EvaluatorNode,
-  Operator,
-  ValueNode,
-  BaseOperatorNode,
-  OperatorNode,
-  OutputType,
-} from './types'
-import { operatorAliases, operatorMethods, mapPropertyAliases } from './operatorReference'
-import {
+  checkRequiredNodes,
   fallbackOrError,
   convertOutputMethods,
-  standardiseOperatorName,
   errorMessage,
   parseIfJson,
   isOperatorNode,
@@ -21,16 +13,17 @@ const evaluateExpression = async (
   input: EvaluatorNode,
   options?: EvaluatorOptions
 ): Promise<ValueNode> => {
-  const expression = options?.allowJSONStringInput ? parseIfJson(input) : input
+  let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
   // Non-operator nodes get returned unmodified
   if (!isOperatorNode(expression)) return expression
 
   const { fallback } = expression
+  const outputType = expression?.type ?? expression?.outputType
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   try {
-    const operator: Operator = operatorAliases?.[standardiseOperatorName(expression.operator)]
+    const operator = getOperatorName(expression.operator)
 
     if (!operator)
       return fallbackOrError(
@@ -39,31 +32,18 @@ const evaluateExpression = async (
         returnErrorAsString
       )
 
-    const { parse, operate } = operatorMethods[operator]
+    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operatorObjects[
+      operator
+    ] as any // REMOVE ANY
 
-    const childNodes =
-      'children' in expression
-        ? expression.children
-        : await parse(mapPropertyAliases(operator, expression as OperatorNode), options)
+    expression = mapPropertyAliases(propertyAliases, expression)
 
-    if (!Array.isArray(childNodes)) {
-      return fallbackOrError(fallback, 'Invalid child nodes (children) array', returnErrorAsString)
-    }
+    const validationError = checkRequiredNodes(requiredProperties, expression)
+    if (validationError) return fallbackOrError(fallback, validationError, returnErrorAsString)
 
-    let childrenResolved: any[] = []
+    if ('children' in expression) expression = parseChildren(expression)
 
-    // Evaluate children recursively
-    childrenResolved = await Promise.all(
-      childNodes.map((child: EvaluatorNode) => evaluateExpression(child, options))
-    )
-
-    const result = await operate({
-      children: childrenResolved,
-      expression: expression as BaseOperatorNode,
-      options,
-    })
-
-    const outputType = expression?.type ?? expression?.outputType
+    const result = await evaluate(expression, options ?? {})
 
     if (!outputType) return result
 

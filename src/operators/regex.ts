@@ -1,27 +1,51 @@
-import { allPropsOk } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
+import { evaluateArray, zipArraysToObject } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  EvaluatorOptions,
+  OperatorNode,
+  ValueNode,
+} from '../types'
+
+const requiredProperties = ['testString', 'pattern']
+const operatorAliases = ['regex', 'patternMatch', 'regexp', 'matchPattern']
+const propertyAliases = {
+  string: 'testString',
+  value: 'testString',
+  regex: 'pattern',
+  regexp: 'pattern',
+  regExp: 'pattern',
+  re: 'pattern',
+}
 
 export interface RegexNode extends BaseOperatorNode {
-  pattern?: EvaluatorNode
-  testString?: EvaluatorNode
+  pattern: EvaluatorNode
+  testString: EvaluatorNode
 }
 
-const parse = (expression: RegexNode): EvaluatorNode[] => {
-  const { testString, pattern } = expression
-  allPropsOk(['testString', 'pattern'], expression)
-  return [testString, pattern]
-}
-
-const operate = ({ children }: OperationInput): ValueNode => {
+const evaluate = async (expression: RegexNode, options: EvaluatorOptions): Promise<ValueNode> => {
+  const [testString, pattern] = (await evaluateArray(
+    [expression.testString, expression.testString],
+    options
+  )) as [string, string]
   try {
-    const str: string = children[0]
-    if (typeof children[1] !== 'string') throw new Error('Invalid Regex pattern')
-    const re: RegExp = new RegExp(children[1])
-    return re.test(str)
+    if (typeof pattern !== 'string') throw new Error('Invalid Regex pattern')
+    const re: RegExp = new RegExp(pattern)
+    return re.test(testString)
   } catch (err) {
     throw err
   }
 }
 
-export const regex = { parse, operate }
+const parseChildren = (expression: OperatorNode): OperatorNode => {
+  const [testString, pattern] = expression.children as EvaluatorNode[]
+  return { ...expression, testString, pattern }
+}
+
+export const REGEX = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

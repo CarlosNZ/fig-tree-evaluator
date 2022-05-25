@@ -1,20 +1,42 @@
-import { allPropsOk } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
+import { evaluateArray } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  EvaluatorOptions,
+  OperatorNode,
+  ValueNode,
+} from '../types'
+
+const requiredProperties = ['condition', 'valueIfTrue', 'valueIfFalse']
+const operatorAliases = ['?', 'conditional', 'ifThen']
+const propertyAliases = { ifTrue: 'valueIfTrue', ifFalse: 'valueIfFalse', ifNot: 'valueIfFalse' }
 
 export interface ConditionalNode extends BaseOperatorNode {
-  condition?: string
-  valueIfTrue?: EvaluatorNode
-  valueIfFalse?: EvaluatorNode
+  condition: EvaluatorNode
+  valueIfTrue: EvaluatorNode
+  valueIfFalse: EvaluatorNode
 }
 
-const parse = (expression: ConditionalNode): EvaluatorNode[] => {
-  const { condition, valueIfTrue, valueIfFalse } = expression
-  allPropsOk(['condition', 'valueIfTrue', 'valueIfFalse'], expression)
-  return [condition, valueIfTrue, valueIfFalse]
+const evaluate = async (
+  expression: ConditionalNode,
+  options: EvaluatorOptions
+): Promise<ValueNode> => {
+  const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
+    [expression.condition, expression.valueIfTrue, expression.valueIfFalse],
+    options
+  )
+  return condition ? valueIfTrue : valueIfFalse
 }
 
-const operate = ({ children }: OperationInput): ValueNode =>
-  children[0] ? children[1] : children[2]
+const parseChildren = (expression: OperatorNode): OperatorNode => {
+  const [condition, valueIfTrue, valueIfFalse] = expression.children as EvaluatorNode[]
+  return { ...expression, condition, valueIfTrue, valueIfFalse }
+}
 
-export const conditional = { parse, operate }
+export const CONDITIONAL = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

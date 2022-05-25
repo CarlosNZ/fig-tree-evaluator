@@ -1,4 +1,4 @@
-import { allPropsOk, evaluateParameters } from './_helpers'
+import { hasRequiredProps, evaluateParameters } from './_helpers'
 import { processAPIquery, APINode } from './getRequest'
 import { OperationInput } from '../operatorReference'
 import { EvaluatorNode, ValueNode, EvaluatorOptions } from '../types'
@@ -8,7 +8,7 @@ const parse = async (
   options: EvaluatorOptions = {}
 ): Promise<EvaluatorNode[]> => {
   const { url, parameters = {}, returnProperty } = expression
-  allPropsOk(['url'], expression)
+  hasRequiredProps(['url'], expression)
   const evaluatedParams = await evaluateParameters(parameters, options)
   const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
   if (returnProperty) children.push(returnProperty)

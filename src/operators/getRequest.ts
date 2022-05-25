@@ -1,5 +1,5 @@
 import {
-  allPropsOk,
+  hasRequiredProps,
   zipArraysToObject,
   assignChildNodesToQuery,
   extractAndSimplify,
@@ -20,7 +20,7 @@ const parse = async (
   options: EvaluatorOptions = {}
 ): Promise<EvaluatorNode[]> => {
   const { url, parameters = {}, returnProperty } = expression
-  allPropsOk(['url'], expression)
+  hasRequiredProps(['url'], expression)
   const evaluatedParams = await evaluateParameters(parameters, options)
   const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
   if (returnProperty) children.push(returnProperty)

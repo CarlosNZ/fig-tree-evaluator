@@ -1,28 +1,36 @@
-import { allPropsOk, zipArraysToObject } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
+import { evaluateArray, zipArraysToObject } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  EvaluatorOptions,
+  OperatorNode,
+  ValueNode,
+} from '../types'
+
+const requiredProperties = ['string', 'substitutions']
+const operatorAliases = ['stringSubstitution', 'substitute', 'stringSub', 'replace']
+const propertyAliases = { replacements: 'substitutions' }
 
 export interface StringSubNode extends BaseOperatorNode {
-  string?: EvaluatorNode
-  substitutions?: EvaluatorNode[]
+  string: EvaluatorNode
+  substitutions: EvaluatorNode[]
 }
 
-const parse = (expression: BaseOperatorNode): EvaluatorNode[] => {
-  const { string, substitutions } = expression
-  allPropsOk(['string', 'substitutions'], expression)
-  return [string, ...substitutions]
-}
-
-const operate = ({ children }: OperationInput): ValueNode => {
-  const origString: string = children[0]
-  const replacements = children.slice(1)
+const evaluate = async (
+  expression: StringSubNode,
+  options: EvaluatorOptions
+): Promise<ValueNode> => {
+  const [string, ...substitutions] = (await evaluateArray(
+    [expression.string, ...expression.substitutions],
+    options
+  )) as [string, string[]]
   const regex = /%([\d]+)/g // To-Do: handle escaping literal values
-  const parameters = (origString.match(regex) || []).sort(
+  const parameters = (string.match(regex) || []).sort(
     (a, b) => Number(a.slice(1)) - Number(b.slice(1))
   )
   const uniqueParameters = new Set(parameters)
-  const replacementsObj = zipArraysToObject(Array.from(uniqueParameters), replacements)
-  let outputString = origString
+  const replacementsObj = zipArraysToObject(Array.from(uniqueParameters), substitutions)
+  let outputString = string
   Object.entries(replacementsObj)
     .reverse()
     .forEach(([param, replacement]) => {
@@ -31,4 +39,15 @@ const operate = ({ children }: OperationInput): ValueNode => {
   return outputString
 }
 
-export const stringSubstitution = { parse, operate }
+const parseChildren = (expression: OperatorNode): OperatorNode => {
+  const [string, ...substitutions] = expression.children as EvaluatorNode[]
+  return { ...expression, string, substitutions }
+}
+
+export const STRING_SUBSTITUTION = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

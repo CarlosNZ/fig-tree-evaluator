@@ -7,6 +7,7 @@ import {
   OperatorNode,
   EvaluatorOptions,
   EvaluatorNode,
+  ValueNode,
 } from '../types'
 
 export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
@@ -16,6 +17,18 @@ export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   })
   if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
   else return true
+}
+
+export const hasRequiredProps = (props: string[], expression: OperatorNode) => {
+  const missingProps = props.filter((prop) => !(prop in expression))
+  if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
+}
+
+export const evaluateArray = async (
+  nodes: EvaluatorNode[],
+  options: EvaluatorOptions
+): Promise<ValueNode[]> => {
+  return await Promise.all(nodes.map((node) => evaluateExpression(node, options)))
 }
 
 // For edge case -- if parameters is an Operator node, we must evaluate it first

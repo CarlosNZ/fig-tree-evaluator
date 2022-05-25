@@ -1,10 +1,22 @@
-import { OutputType, EvaluatorNode } from './types'
+import { OutputType, EvaluatorNode, OperatorNode } from './types'
 import { camelCase } from 'lodash'
+
+export const checkRequiredNodes = (
+  requiredProps: string[],
+  expression: OperatorNode
+): string | false => {
+  const missingProps = requiredProps.filter((prop) => !(prop in expression))
+  if (missingProps.length === 0) return false
+  if (!('children' in expression)) return `Missing properties: ${missingProps}`
+  if (!Array.isArray(expression.children)) {
+    return 'Invalid child nodes (children) array'
+  } else return false
+}
 
 export const fallbackOrError = (
   fallback: any,
   errorMessage: string,
-  returnErrorAsString: boolean
+  returnErrorAsString: boolean = false
 ) => {
   if (fallback !== undefined) return fallback
   if (returnErrorAsString) return errorMessage

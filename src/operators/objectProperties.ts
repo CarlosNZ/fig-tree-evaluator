@@ -1,5 +1,5 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import { allPropsOk } from './_helpers'
+import { hasRequiredProps } from './_helpers'
 import { OperationInput } from '../operatorReference'
 import { EvaluatorNode, ValueNode, BaseOperatorNode } from '../types'
 
@@ -9,7 +9,7 @@ export interface ObjPropNode extends BaseOperatorNode {
 
 const parse = (expression: ObjPropNode): EvaluatorNode[] => {
   const { property } = expression
-  allPropsOk(['property'], expression)
+  hasRequiredProps(['property'], expression)
   return [property]
 }
 

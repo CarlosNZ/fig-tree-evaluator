@@ -1,4 +1,4 @@
-import { allPropsOk } from './_helpers'
+import { hasRequiredProps } from './_helpers'
 import { OperationInput } from '../operatorReference'
 import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
 
@@ -7,7 +7,7 @@ export interface BuildObjectNode extends BaseOperatorNode {
 }
 
 const parse = (expression: BuildObjectNode): EvaluatorNode[] => {
-  allPropsOk(['properties'], expression)
+  hasRequiredProps(['properties'], expression)
   const properties = expression?.properties as { key: string; value: any }[]
   return (
     properties

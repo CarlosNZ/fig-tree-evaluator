@@ -1,4 +1,4 @@
-import { allPropsOk } from './_helpers'
+import { hasRequiredProps } from './_helpers'
 import { OperationInput } from '../operatorReference'
 import { BaseOperatorNode, EvaluatorNode, ValueNode, PGConnection } from '../types'
 
@@ -9,7 +9,7 @@ export interface PGNode extends BaseOperatorNode {
 
 const parse = (expression: PGNode): EvaluatorNode[] => {
   const { query, values = [] } = expression
-  allPropsOk(['query'], expression)
+  hasRequiredProps(['query'], expression)
   return [query, ...values]
 }
 

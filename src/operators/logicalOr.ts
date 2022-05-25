@@ -1,7 +1,17 @@
-import { parse } from './logicalAnd'
-import { OperationInput } from '../operatorReference'
+import { parseChildren, BasicExtendedNode } from './logicalAnd'
+import { evaluateArray } from './_helpers'
+import { EvaluatorOptions } from '../types'
 
-const operate = ({ children }: OperationInput): boolean =>
-  children.reduce((acc: boolean, child: boolean) => acc || child, false)
+const requiredProperties = ['values']
+const operatorAliases = ['or', '|', '||']
+const propertyAliases = {}
 
-export const logicalOr = { parse, operate }
+const evaluate = async (
+  expression: BasicExtendedNode,
+  options: EvaluatorOptions
+): Promise<Boolean> => {
+  const values = (await evaluateArray(expression.values, options)) as boolean[]
+  return values.reduce((acc: boolean, val: boolean) => acc || val, false)
+}
+
+export const OR = { requiredProperties, operatorAliases, propertyAliases, evaluate, parseChildren }
