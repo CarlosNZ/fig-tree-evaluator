@@ -3,7 +3,7 @@ import {
   ConditionalNode,
   RegexNode,
   StringSubNode,
-  // ObjPropNode,
+  ObjPropNode,
   // APINode,
   // PGNode,
   // GraphQLNode,
@@ -19,7 +19,7 @@ export const operators = [
   'PLUS',
   'CONDITIONAL',
   'REGEX',
-  // 'OBJECT_PROPERTIES',
+  'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
   // 'GET',
   // 'POST',
@@ -78,7 +78,7 @@ export type OperatorNode =
   | ConditionalNode
   | RegexNode
   | StringSubNode
-// | ObjPropNode
+  | ObjPropNode
 // | APINode
 // | PGNode
 // | GraphQLNode

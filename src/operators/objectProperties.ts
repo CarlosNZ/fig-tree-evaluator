@@ -1,23 +1,42 @@
-import extractProperty from 'object-property-extractor/build/extract'
-import { hasRequiredProps } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { EvaluatorNode, ValueNode, BaseOperatorNode } from '../types'
+import { evaluateArray } from './_helpers'
+import extractProperty from 'object-property-extractor'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  EvaluatorOptions,
+  OperatorNode,
+  ValueNode,
+} from '../types'
+
+const requiredProperties = ['property']
+const operatorAliases = ['objectProperties', 'objProps', 'getProperty', 'getObjProp']
+const propertyAliases = {
+  path: 'property',
+  propertyName: 'property',
+}
 
 export interface ObjPropNode extends BaseOperatorNode {
-  property?: string
+  property: EvaluatorNode
 }
 
-const parse = (expression: ObjPropNode): EvaluatorNode[] => {
-  const { property } = expression
-  hasRequiredProps(['property'], expression)
-  return [property]
-}
-
-const operate = ({ children, options }: OperationInput): ValueNode => {
+const evaluate = async (expression: ObjPropNode, options: EvaluatorOptions): Promise<ValueNode> => {
+  const [property, fallback] = (await evaluateArray([expression.property], options)) as [
+    string,
+    any
+  ]
   const inputObject = options?.objects ? options.objects : {}
-  const property = children[0]
-  const fallback = children?.[1]
   return extractProperty(inputObject, property, fallback)
 }
 
-export const objectProperties = { parse, operate }
+const parseChildren = (expression: OperatorNode): OperatorNode => {
+  const [property, fallback] = expression.children as EvaluatorNode[]
+  return { ...expression, property, fallback }
+}
+
+export const OBJECT_PROPERTIES = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}
