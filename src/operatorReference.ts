@@ -12,7 +12,7 @@ import {
 import { standardiseOperatorName } from './helpers'
 import * as operatorList from './operators'
 
-type OperatorObject = {
+export type OperatorObject = {
   requiredProperties: string[]
   operatorAliases: string[]
   propertyAliases: { [key: string]: string } // Can we specify "string"?
@@ -20,23 +20,20 @@ type OperatorObject = {
   parseChildren: (expression: OperatorNode) => OperatorNode
 }
 
-export const operatorObjects: { [key in Operator]: OperatorObject } = Object.fromEntries(
+export type OperatorRef = { [key in Operator]: OperatorObject }
+
+export const operatorReference: { [key in Operator]: OperatorObject } = Object.fromEntries(
   operators.map((operator) => [operator, operatorList[operator] as any]) //FIX ANY
 ) as { [key in Operator]: OperatorObject }
 
-const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObject }) => {
-  const aliases: { [key: string]: Operator } = {}
-  Object.entries(operatorObjects).forEach(([operator, { operatorAliases }]) => {
-    operatorAliases.forEach((alias) => (aliases[alias] = operator as Operator))
-  })
-  return aliases
-}
+// const operatorAliases = buildOperatorAliases(operatorReference)
 
-const operatorAliases = buildOperatorAliases(operatorObjects)
-
-export const getOperatorName = (aliasName: string): Operator | undefined => {
-  return operatorAliases?.[standardiseOperatorName(aliasName)]
-}
+// export const getOperatorName = (
+//   aliasName: string,
+//   operatorReference: OperatorRef
+// ): Operator | undefined => {
+//   return operatorAliases?.[standardiseOperatorName(aliasName)]
+// }
 
 export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },

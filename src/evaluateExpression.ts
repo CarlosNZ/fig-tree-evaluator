@@ -1,5 +1,10 @@
-import { EvaluatorOptions, EvaluatorNode, ValueNode, OutputType } from './types'
-import { operatorObjects, getOperatorName, mapPropertyAliases } from './operatorReference'
+import { EvaluatorOptions, EvaluatorNode, ValueNode, OutputType, Operator } from './types'
+import {
+  operatorReference,
+  // getOperatorName,
+  mapPropertyAliases,
+  OperatorObject,
+} from './operatorReference'
 import {
   checkRequiredNodes,
   fallbackOrError,
@@ -9,10 +14,19 @@ import {
   isOperatorNode,
 } from './helpers'
 
-const evaluateExpression = async (
-  input: EvaluatorNode,
-  options?: EvaluatorOptions
-): Promise<ValueNode> => {
+export interface EvaluatorInput {
+  expression: EvaluatorNode
+  options: EvaluatorOptions
+  operators: any // FIX
+  operatorAliases: { [key: string]: Operator }
+}
+
+const evaluateExpression = async ({
+  expression: input,
+  options,
+  operators,
+  operatorAliases,
+}: EvaluatorInput): Promise<ValueNode> => {
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
   // Non-operator nodes get returned unmodified
@@ -23,7 +37,7 @@ const evaluateExpression = async (
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   try {
-    const operator = getOperatorName(expression.operator)
+    const operator = operatorAliases[expression.operator]
 
     if (!operator)
       return fallbackOrError(
@@ -32,9 +46,7 @@ const evaluateExpression = async (
         returnErrorAsString
       )
 
-    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operatorObjects[
-      operator
-    ] as any // REMOVE ANY
+    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
 
     expression = mapPropertyAliases(propertyAliases, expression)
 
@@ -43,7 +55,7 @@ const evaluateExpression = async (
 
     if ('children' in expression) expression = parseChildren(expression)
 
-    const result = await evaluate(expression, options ?? {})
+    const result = await evaluate({ expression, options, operators, operatorAliases })
 
     if (!outputType) return result
 
