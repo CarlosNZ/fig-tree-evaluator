@@ -34,6 +34,9 @@
   "substitute": "STRING_SUBSTITUTION",
   "stringSub": "STRING_SUBSTITUTION",
   "replace": "STRING_SUBSTITUTION",
+  "get": "GET",
+  "api": "GET",
+  "post": "POST",
   "pgSql": "PG_SQL",
   "sql": "PG_SQL",
   "postgres": "PG_SQL",
@@ -41,5 +44,12 @@
   "pgDb": "PG_SQL",
   "graphQl": "GRAPHQL",
   "graphql": "GRAPHQL",
-  "gql": "GRAPHQL"
+  "gql": "GRAPHQL",
+  "buildObject": "BUILD_OBJECT",
+  "build": "BUILD_OBJECT",
+  "object": "BUILD_OBJECT",
+  "objectFunctions": "OBJECT_FUNCTIONS",
+  "function": "OBJECT_FUNCTIONS",
+  "functions": "OBJECT_FUNCTIONS",
+  "runFunction": "OBJECT_FUNCTIONS"
 }

@@ -1,5 +1,4 @@
-import { EvaluatorConfig, EvaluatorNode, ValueNode, OutputType, Operator } from './types'
-import { mapPropertyAliases, standardiseOperatorName } from './helpers'
+import { EvaluatorConfig, EvaluatorNode, ValueNode, OutputType } from './types'
 import {
   checkRequiredNodes,
   fallbackOrError,
@@ -7,6 +6,8 @@ import {
   errorMessage,
   parseIfJson,
   isOperatorNode,
+  mapPropertyAliases,
+  getOperatorName,
 } from './helpers'
 
 export const evaluatorFunction = async (
@@ -23,7 +24,7 @@ export const evaluatorFunction = async (
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   try {
-    const operator = operatorAliases[standardiseOperatorName(expression.operator)]
+    const operator = getOperatorName(expression.operator, operatorAliases)
 
     if (!operator)
       return fallbackOrError(

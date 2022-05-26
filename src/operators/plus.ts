@@ -1,8 +1,8 @@
 import { evaluateArray } from './_helpers'
-import { ValueNode, EvaluatorConfig } from '../types'
+import { ValueNode, EvaluatorConfig, OperatorObject } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
-const requiredProperties = ['values']
+const requiredProperties = ['values'] as const
 const operatorAliases = ['+', 'plus', 'add', 'concat', 'join', 'merge']
 const propertyAliases = {}
 
@@ -31,7 +31,7 @@ const evaluate = async (
   return values.reduce((acc: number, child: number) => acc + child)
 }
 
-export const PLUS = {
+export const PLUS: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

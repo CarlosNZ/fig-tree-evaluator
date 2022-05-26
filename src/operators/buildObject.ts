@@ -1,42 +1,63 @@
-import { hasRequiredProps } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
+import { evaluateArray } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  ValueNode,
+  EvaluatorConfig,
+  CombinedOperatorNode,
+  BasicObject,
+  OperatorObject,
+} from '../types'
 
-export interface BuildObjectNode extends BaseOperatorNode {
-  properties?: EvaluatorNode
+const requiredProperties = ['properties'] as const
+const operatorAliases = ['buildObject', 'build', 'object']
+const propertyAliases = {
+  values: 'properties',
+  keyValPairs: 'properties',
+  keyValuePairs: 'properties',
 }
 
-const parse = (expression: BuildObjectNode): EvaluatorNode[] => {
-  hasRequiredProps(['properties'], expression)
-  const properties = expression?.properties as { key: string; value: any }[]
-  return (
-    properties
-      // We ignore incorrectly structured input objects rather than throw error
-      .filter((obj) => obj instanceof Object && 'key' in obj && 'value' in obj)
-      .reduce((acc: any[], obj) => {
-        acc.push(obj?.key, obj?.value)
-        return acc
-      }, [])
-  )
-}
+export type BuildObjectNode = {
+  [key in typeof requiredProperties[number]]: BuildObjectElement[]
+} & BaseOperatorNode
 
-const operate = ({ children }: OperationInput): ValueNode => {
-  if (children.length % 2 !== 0)
-    throw new Error('Even number of children required to make key/value pairs')
-  const output: { [key: string]: any } = {}
-  const currPair: any[] = []
-  children.forEach((val) => {
-    if (currPair.length === 2) {
-      output[currPair[0]] = currPair[1]
-      currPair.length = 0
-    }
-    currPair.push(val)
-  })
-  if (currPair.length === 2) {
-    output[currPair[0]] = currPair[1]
-    currPair.length = 0
+type BuildObjectElement = { key: EvaluatorNode; value: EvaluatorNode }
+
+const evaluate = async (
+  expression: BuildObjectNode,
+  config: EvaluatorConfig
+): Promise<ValueNode> => {
+  const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
+    const [key, value] = (await evaluateArray(nodes, config)) as [string, ValueNode]
+    return [key, value]
   }
-  return output
+
+  const evaluated = expression.properties
+    // Remove any objects that don't have both "key" and "value" props
+    .filter(
+      (element: BasicObject) => element instanceof Object && 'key' in element && 'value' in element
+    )
+    .map(({ key, value }) => evaluatePair([key, value]))
+
+  return Object.fromEntries(await Promise.all(evaluated))
 }
 
-export const buildObject = { parse, operate }
+const parseChildren = (expression: CombinedOperatorNode): BuildObjectNode => {
+  const elements = expression.children as EvaluatorNode[]
+  if (elements.length % 2 !== 0)
+    throw new Error('Even number of children required to make key/value pairs')
+
+  const keys = elements.filter((_, index) => index % 2 === 0)
+  const values = elements.filter((_, index) => index % 2 === 1)
+
+  const properties = keys.map((key, index) => ({ key, value: values[index] }))
+  return { ...expression, properties }
+}
+
+export const BUILD_OBJECT: OperatorObject = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

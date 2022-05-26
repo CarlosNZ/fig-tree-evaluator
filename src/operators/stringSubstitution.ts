@@ -5,9 +5,10 @@ import {
   CombinedOperatorNode,
   ValueNode,
   EvaluatorConfig,
+  OperatorObject,
 } from '../types'
 
-const requiredProperties = ['string', 'substitutions']
+const requiredProperties = ['string', 'substitutions'] as const
 const operatorAliases = ['stringSubstitution', 'substitute', 'stringSub', 'replace']
 const propertyAliases = { replacements: 'substitutions' }
 
@@ -40,7 +41,7 @@ const parseChildren = (expression: CombinedOperatorNode): StringSubNode => {
   return { ...expression, string, substitutions }
 }
 
-export const STRING_SUBSTITUTION = {
+export const STRING_SUBSTITUTION: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

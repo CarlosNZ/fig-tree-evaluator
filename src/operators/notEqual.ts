@@ -1,8 +1,8 @@
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 import { evaluateArray } from './_helpers'
-import { EvaluatorConfig } from '../types'
+import { EvaluatorConfig, OperatorObject } from '../types'
 
-const requiredProperties = ['values']
+const requiredProperties = ['values'] as const
 const operatorAliases = ['!=', '!', 'ne', 'notEqual']
 const propertyAliases = {}
 
@@ -14,7 +14,7 @@ const evaluate = async (
   return values[0] != values[1]
 }
 
-export const NOT_EQUAL = {
+export const NOT_EQUAL: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

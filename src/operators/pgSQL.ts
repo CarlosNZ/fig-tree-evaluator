@@ -6,9 +6,10 @@ import {
   ValueNode,
   EvaluatorConfig,
   PGConnection,
+  OperatorObject,
 } from '../types'
 
-const requiredProperties = ['query']
+const requiredProperties = ['query'] as const
 const operatorAliases = ['pgSql', 'sql', 'postgres', 'pg', 'pgDb']
 const propertyAliases = { replacements: 'values' }
 
@@ -67,7 +68,7 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
   }
 }
 
-export const PG_SQL = {
+export const PG_SQL: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

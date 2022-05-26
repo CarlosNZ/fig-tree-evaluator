@@ -1,25 +1,42 @@
-import extractProperty from 'object-property-extractor/build/extract'
-import { hasRequiredProps } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode } from '../types'
+import extractProperty from 'object-property-extractor'
+import { evaluateArray } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  CombinedOperatorNode,
+  ValueNode,
+  EvaluatorConfig,
+  OperatorObject,
+} from '../types'
 
-export interface ObjFuncNode extends BaseOperatorNode {
-  functionPath?: EvaluatorNode
-  args?: EvaluatorNode[]
-}
+const requiredProperties = ['functionPath'] as const
+const operatorAliases = ['objectFunctions', 'function', 'functions', 'runFunction']
+const propertyAliases = { functionsPath: 'functionPath', arguments: 'args', variables: 'args' }
 
-const parse = (expression: ObjFuncNode): EvaluatorNode[] => {
-  const { functionPath, args } = expression
-  hasRequiredProps(['functionPath'], expression)
-  return [functionPath, ...(args as [])]
-}
+export type ObjFuncNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode
+} & BaseOperatorNode & { args: EvaluatorNode[] }
 
-const operate = async ({ children, options }: OperationInput): Promise<ValueNode> => {
-  const inputObject = options?.objects ? options.objects : {}
-  const funcName = children[0]
-  const args = children.slice(1)
-  const func = extractProperty(inputObject, funcName) as Function
+const evaluate = async (expression: ObjFuncNode, config: EvaluatorConfig): Promise<ValueNode> => {
+  const [functionPath, ...args] = (await evaluateArray(
+    [expression.functionPath, ...(expression.args as EvaluatorNode[])],
+    config
+  )) as [string, EvaluatorNode[]]
+
+  const inputObject = config.options?.objects ?? {}
+  const func = extractProperty(inputObject, functionPath) as Function
   return await func(...args)
 }
 
-export const objectFunctions = { parse, operate }
+const parseChildren = (expression: CombinedOperatorNode): ObjFuncNode => {
+  const [functionPath, ...args] = expression.children as EvaluatorNode[]
+  return { ...expression, functionPath, args }
+}
+
+export const OBJECT_FUNCTIONS: OperatorObject = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

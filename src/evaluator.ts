@@ -1,11 +1,11 @@
-import { EvaluatorNode, EvaluatorOptions, Operator } from './types'
+import { EvaluatorNode, EvaluatorOptions, Operator, OperatorReference } from './types'
 import { evaluatorFunction } from './evaluate'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 
 class ExpressionEvaluator {
   options: EvaluatorOptions
-  operators: any // FIX ANY
+  operators: OperatorReference
   operatorAliases: { [key: string]: Operator }
   constructor(options: EvaluatorOptions = {}) {
     this.options = options

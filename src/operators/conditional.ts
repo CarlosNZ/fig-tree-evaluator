@@ -32,7 +32,7 @@ const parseChildren = (expression: CombinedOperatorNode): ConditionalNode => {
   return { ...expression, condition, valueIfTrue, valueIfFalse }
 }
 
-export const CONDITIONAL = {
+export const CONDITIONAL: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

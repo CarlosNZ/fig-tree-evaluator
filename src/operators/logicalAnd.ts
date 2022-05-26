@@ -28,7 +28,7 @@ export const parseChildren = (expression: CombinedOperatorNode): BasicExtendedNo
   return { ...expression, values }
 }
 
-export const AND = {
+export const AND: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

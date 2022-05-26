@@ -6,9 +6,11 @@ import {
   EvaluatorConfig,
   CombinedOperatorNode,
   BasicObject,
+  EvaluatorOptions,
+  OperatorObject,
 } from '../types'
 
-const requiredProperties = ['url']
+const requiredProperties = ['url'] as const
 const operatorAliases = ['get', 'api']
 const propertyAliases = { endpoint: 'url', outputProperty: 'returnProperty' }
 
@@ -20,7 +22,7 @@ export type APINode = {
   }
 
 const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<ValueNode> => {
-  if (!config.options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
+  if (!config.options.APIfetch) throw new Error('No Fetch method provided for API query')
 
   const [urlObj, parameters, returnProperty] = (await evaluateArray(
     [expression.url, expression.parameters, expression.returnProperty],
@@ -29,12 +31,8 @@ const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<V
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  const httpHeaders = headers ?? config.options?.headers ?? config.options.graphQLConnection.headers
-  return await processGraphQL(
-    { query, url, variables, returnNode },
-    config.options.graphQLConnection,
-    gqlHeaders
-  )
+  const httpHeaders = { ...config.options?.headers, ...headers }
+  return await processAPIquery({ url, parameters, returnProperty }, config.options, httpHeaders)
 }
 
 const parseChildren = async (
@@ -45,13 +43,54 @@ const parseChildren = async (
   // TO-DO Evaluate array elements one by one
   const fieldNames = (await evaluateArray(rest[0] as [], config)) as string[]
   const values = rest.slice(1, fieldNames.length + 2)
-  const variables = zipArraysToObject(fieldNames, values)
-  const output = { ...expression, url, variables }
-  if (rest.length >= fieldNames.length + 2) output.returnNode = rest[fieldNames.length + 1]
+  const parameters = zipArraysToObject(fieldNames, values)
+  const output = { ...expression, url, parameters }
+  if (rest.length >= fieldNames.length + 2) output.returnProperty = rest[fieldNames.length + 1]
   return output
 }
 
-const operate = async (inputObject: OperationInput): Promise<ValueNode> =>
-  await processAPIquery(inputObject)
+export const parseChildrenGET = parseChildren // For name clash with logicalAnd export
 
-export const getRequest = { parse, operate }
+export const processAPIquery = async (
+  {
+    url,
+    parameters = {},
+    returnProperty,
+  }: { url: string; parameters: BasicObject; returnProperty?: string },
+  options: EvaluatorOptions,
+  headers: BasicObject,
+  isPostRequest = false
+) => {
+  const APIfetch = options.APIfetch
+  const urlWithQuery =
+    Object.keys(parameters).length > 0 && !isPostRequest
+      ? `${url}?${Object.entries(parameters)
+          .map(([key, val]) => key + '=' + val)
+          .join('&')}`
+      : url
+  const requestBody = isPostRequest ? parameters : null
+
+  let data
+  try {
+    data = isPostRequest
+      ? await fetchAPIrequest({
+          url,
+          APIfetch,
+          method: 'POST',
+          body: requestBody,
+          headers,
+        })
+      : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
+  } catch (err) {
+    throw new Error('Invalid API query: ' + err.message)
+  }
+  return extractAndSimplify(data, returnProperty)
+}
+
+export const GET: OperatorObject = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

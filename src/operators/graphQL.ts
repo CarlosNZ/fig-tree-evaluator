@@ -7,9 +7,10 @@ import {
   EvaluatorConfig,
   CombinedOperatorNode,
   BasicObject,
+  OperatorObject,
 } from '../types'
 
-const requiredProperties = ['query']
+const requiredProperties = ['query'] as const
 const operatorAliases = ['graphQl', 'graphql', 'gql']
 const propertyAliases = { endpoint: 'url', outputNode: 'returnNode', returnPropery: 'returnNode' }
 
@@ -31,7 +32,12 @@ const evaluate = async (expression: GraphQLNode, config: EvaluatorConfig): Promi
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  const gqlHeaders = headers ?? config.options?.headers ?? config.options.graphQLConnection.headers
+  const gqlHeaders = {
+    ...config.options.graphQLConnection.headers,
+    ...config.options?.headers,
+    ...headers,
+  }
+
   return await processGraphQL(
     { query, url, variables, returnNode },
     config.options.graphQLConnection,
@@ -63,9 +69,13 @@ const processGraphQL = async (
   connection: GraphQLConnection,
   gqlHeaders: BasicObject = {}
 ) => {
-  const data = await graphQLquery(url, query, variables, connection, gqlHeaders)
-  if (!data) throw new Error('GraphQL query problem')
-  return extractAndSimplify(data, returnNode)
+  try {
+    const data = await graphQLquery(url, query, variables, connection, gqlHeaders)
+    if (!data) throw new Error('GraphQL query problem -- no data retrieved')
+    return extractAndSimplify(data, returnNode)
+  } catch (err) {
+    throw new Error('GraphQL Problem: ' + err.message)
+  }
 }
 
 // Abstraction for GraphQL database query using Fetch
@@ -76,12 +86,9 @@ const graphQLquery = async (
   connection: GraphQLConnection,
   headers: { [key: string]: string }
 ) => {
-  // Get an external endpoint to use, or get the default GraphQL endpoint if received:
-  // "graphqlendpoint" (case insensitive), an empty string "" or null
-  const endpoint =
-    url !== null && url.toLowerCase() !== 'graphqlendpoint' && url !== ''
-      ? url
-      : connection.endpoint
+  // Get an external endpoint to use, or get the default GraphQL endpoint if
+  // received: "graphqlendpoint" (case insensitive), an empty string "" or null
+  const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? connection.endpoint : url
 
   const queryResult = await connection.fetch(endpoint, {
     method: 'POST',
@@ -103,7 +110,7 @@ const graphQLquery = async (
   return data.data
 }
 
-export const GRAPHQL = {
+export const GRAPHQL: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

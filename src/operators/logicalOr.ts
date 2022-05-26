@@ -2,7 +2,7 @@ import { parseChildren, BasicExtendedNode } from './logicalAnd'
 import { evaluateArray } from './_helpers'
 import { EvaluatorConfig, OperatorObject } from '../types'
 
-const requiredProperties = ['values']
+const requiredProperties = ['values'] as const
 const operatorAliases = ['or', '|', '||']
 const propertyAliases = {}
 

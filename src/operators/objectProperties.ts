@@ -1,11 +1,12 @@
-import { evaluateArray } from './_helpers'
 import extractProperty from 'object-property-extractor'
+import { evaluateArray } from './_helpers'
 import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
   ValueNode,
   EvaluatorConfig,
+  OperatorObject,
 } from '../types'
 
 const requiredProperties = ['property']
@@ -30,7 +31,7 @@ const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {
   return { ...expression, property, fallback }
 }
 
-export const OBJECT_PROPERTIES = {
+export const OBJECT_PROPERTIES: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

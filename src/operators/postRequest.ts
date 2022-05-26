@@ -1,21 +1,34 @@
-import { hasRequiredProps, evaluateParameters } from './_helpers'
-import { processAPIquery, APINode } from './getRequest'
-import { OperationInput } from '../operatorReference'
-import { EvaluatorNode, ValueNode, EvaluatorOptions } from '../types'
+import { evaluateArray } from './_helpers'
+import { ValueNode, EvaluatorConfig, BasicObject, OperatorObject } from '../types'
+import { parseChildrenGET as parseChildren, processAPIquery, APINode } from './getRequest'
 
-const parse = async (
-  expression: APINode,
-  options: EvaluatorOptions = {}
-): Promise<EvaluatorNode[]> => {
-  const { url, parameters = {}, returnProperty } = expression
-  hasRequiredProps(['url'], expression)
-  const evaluatedParams = await evaluateParameters(parameters, options)
-  const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
-  if (returnProperty) children.push(returnProperty)
-  return children
+const requiredProperties = ['url'] as const
+const operatorAliases = ['post']
+const propertyAliases = { endpoint: 'url', outputProperty: 'returnProperty' }
+
+const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<ValueNode> => {
+  if (!config.options.APIfetch) throw new Error('No Fetch method provided for API query')
+
+  const [urlObj, parameters, returnProperty] = (await evaluateArray(
+    [expression.url, expression.parameters, expression.returnProperty],
+    config
+  )) as [string | { url: string; headers: BasicObject }, BasicObject, string]
+
+  const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
+
+  const httpHeaders = { ...config.options?.headers, ...headers }
+  return await processAPIquery(
+    { url, parameters, returnProperty },
+    config.options,
+    httpHeaders,
+    true
+  )
 }
 
-const operate = async (inputObject: OperationInput): Promise<ValueNode> =>
-  await processAPIquery(inputObject, true)
-
-export const postRequest = { parse, operate }
+export const POST: OperatorObject = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

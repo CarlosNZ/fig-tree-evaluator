@@ -4,7 +4,7 @@ import { Operators, Operator, OperatorObject, OperatorReference } from '../src/t
 
 const operatorReference: OperatorReference = Object.fromEntries(
   Operators.map((operator) => [operator, operatorList[operator]])
-) as { [key in Operator]: OperatorObject }
+) as { [key in Operator] }
 
 const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObject }) => {
   const aliases: { [key: string]: Operator } = {}

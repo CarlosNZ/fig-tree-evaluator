@@ -5,9 +5,10 @@ import {
   CombinedOperatorNode,
   ValueNode,
   EvaluatorConfig,
+  OperatorObject,
 } from '../types'
 
-const requiredProperties = ['testString', 'pattern']
+const requiredProperties = ['testString', 'pattern'] as const
 const operatorAliases = ['regex', 'patternMatch', 'regexp', 'matchPattern']
 const propertyAliases = {
   string: 'testString',
@@ -24,7 +25,7 @@ export type RegexNode = {
 
 const evaluate = async (expression: RegexNode, config: EvaluatorConfig): Promise<ValueNode> => {
   const [testString, pattern] = (await evaluateArray(
-    [expression.testString, expression.testString],
+    [expression.testString, expression.pattern],
     config
   )) as [string, string]
 
@@ -33,7 +34,7 @@ const evaluate = async (expression: RegexNode, config: EvaluatorConfig): Promise
     const re: RegExp = new RegExp(pattern)
     return re.test(testString)
   } catch (err) {
-    throw err
+    throw new Error('Regex error:' + err.message)
   }
 }
 
@@ -42,7 +43,7 @@ const parseChildren = (expression: CombinedOperatorNode): RegexNode => {
   return { ...expression, testString, pattern }
 }
 
-export const REGEX = {
+export const REGEX: OperatorObject = {
   requiredProperties,
   operatorAliases,
   propertyAliases,

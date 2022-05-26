@@ -7,8 +7,8 @@ import {
   APINode,
   PGNode,
   GraphQLNode,
-  // BuildObjectNode,
-  // ObjFuncNode,
+  BuildObjectNode,
+  ObjFuncNode,
   QueryResult,
 } from './operators'
 
@@ -23,11 +23,11 @@ export const Operators = [
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
   'GET',
-  // 'POST',
+  'POST',
   'PG_SQL',
   'GRAPHQL',
-  // 'BUILD_OBJECT',
-  // 'OBJECT_FUNCTIONS',
+  'BUILD_OBJECT',
+  'OBJECT_FUNCTIONS',
 ] as const
 
 export type Operator = typeof Operators[number]
@@ -79,9 +79,9 @@ export type CombinedOperatorNode = BaseOperatorNode &
   ObjPropNode &
   APINode &
   PGNode &
-  GraphQLNode
-// & BuildObjectNode
-// & ObjFuncNode
+  GraphQLNode &
+  BuildObjectNode &
+  ObjFuncNode
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
@@ -92,17 +92,22 @@ export type OperatorNodeUnion =
   | PGNode
   | GraphQLNode
   | APINode
+  | BuildObjectNode
+  | ObjFuncNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 
 export type EvaluatorNode = CombinedOperatorNode | ValueNode
 
 export type OperatorObject = {
-  requiredProperties: string[]
+  requiredProperties: readonly string[]
   operatorAliases: string[]
   propertyAliases: { [key: string]: string }
   evaluate: (expression: CombinedOperatorNode, config: EvaluatorConfig) => Promise<ValueNode>
-  parseChildren: (expression: CombinedOperatorNode, config: EvaluatorConfig) => OperatorNodeUnion
+  parseChildren: (
+    expression: CombinedOperatorNode,
+    config: EvaluatorConfig
+  ) => OperatorNodeUnion | Promise<OperatorNodeUnion>
 }
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
