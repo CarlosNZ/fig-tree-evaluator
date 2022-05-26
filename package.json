@@ -1,9 +1,9 @@
 {
-  "name": "expression-evaluator",
-  "version": "2.0.0-alpha.1",
+  "name": "@carlosnz/expression-evaluator",
+  "version": "2.0.0-alpha.4",
   "description": "Module to evaluate JSON-structured expressions",
-  "main": "lib/evaluateExpression.js",
-  "types": "lib/evaluateExpression.d.ts",
+  "main": "build/evaluate.js",
+  "types": "build/evaluate.d.ts",
   "author": "Carl Smith",
   "license": "GPL-3.0",
   "devDependencies": {
@@ -32,6 +32,17 @@
     "object-property-extractor": "^1.0.0"
   },
   "files": [
-    "lib/**/*"
-  ]
+    "build/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CarlosNZ/expression-evaluator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CarlosNZ/expression-evaluator/issues"
+  },
+  "homepage": "https://github.com/CarlosNZ/expression-evaluator#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
 }
