@@ -62,6 +62,12 @@ export interface EvaluatorOptions {
   allowJSONStringInput?: boolean
 }
 
+export interface ExtendedOptions {
+  options: EvaluatorOptions
+  operators: any // FIX
+  operatorAliases: { [key: string]: Operator } // Define
+}
+
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
 export interface BaseOperatorNode {

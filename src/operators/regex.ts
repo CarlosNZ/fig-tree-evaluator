@@ -1,11 +1,5 @@
 import { evaluateArray } from './_helpers'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  EvaluatorOptions,
-  OperatorNode,
-  ValueNode,
-} from '../types'
+import { BaseOperatorNode, EvaluatorNode, OperatorNode, ValueNode, ExtendedOptions } from '../types'
 
 const requiredProperties = ['testString', 'pattern']
 const operatorAliases = ['regex', 'patternMatch', 'regexp', 'matchPattern']
@@ -18,12 +12,11 @@ const propertyAliases = {
   re: 'pattern',
 }
 
-export interface RegexNode extends BaseOperatorNode {
-  pattern: EvaluatorNode
-  testString: EvaluatorNode
-}
+export type RegexNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+} & BaseOperatorNode
 
-const evaluate = async (expression: RegexNode, options: EvaluatorOptions): Promise<ValueNode> => {
+const evaluate = async (expression: RegexNode, options: ExtendedOptions): Promise<ValueNode> => {
   const [testString, pattern] = (await evaluateArray(
     [expression.testString, expression.testString],
     options

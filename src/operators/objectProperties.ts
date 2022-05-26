@@ -1,12 +1,6 @@
 import { evaluateArray } from './_helpers'
 import extractProperty from 'object-property-extractor'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  EvaluatorOptions,
-  OperatorNode,
-  ValueNode,
-} from '../types'
+import { BaseOperatorNode, EvaluatorNode, OperatorNode, ValueNode, ExtendedOptions } from '../types'
 
 const requiredProperties = ['property']
 const operatorAliases = ['objectProperties', 'objProps', 'getProperty', 'getObjProp']
@@ -15,16 +9,16 @@ const propertyAliases = {
   propertyName: 'property',
 }
 
-export interface ObjPropNode extends BaseOperatorNode {
-  property: EvaluatorNode
-}
+export type ObjPropNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+} & BaseOperatorNode & { fallback: ValueNode }
 
-const evaluate = async (expression: ObjPropNode, options: EvaluatorOptions): Promise<ValueNode> => {
+const evaluate = async (expression: ObjPropNode, options: ExtendedOptions): Promise<ValueNode> => {
   const [property, fallback] = (await evaluateArray([expression.property], options)) as [
     string,
     any
   ]
-  const inputObject = options?.objects ? options.objects : {}
+  const inputObject = options.options?.objects ?? {}
   return extractProperty(inputObject, property, fallback)
 }
 

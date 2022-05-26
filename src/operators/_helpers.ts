@@ -1,13 +1,12 @@
 import extractProperty from 'object-property-extractor/build/extract'
-import evaluateExpression from '../evaluateExpression'
-import { isOperatorNode } from '../helpers'
+import { evaluatorFunction } from '../evaluate'
 import {
   BasicObject,
   BaseOperatorNode,
   OperatorNode,
-  EvaluatorOptions,
   EvaluatorNode,
   ValueNode,
+  ExtendedOptions,
 } from '../types'
 
 export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
@@ -26,20 +25,9 @@ export const hasRequiredProps = (props: string[], expression: OperatorNode) => {
 
 export const evaluateArray = async (
   nodes: EvaluatorNode[],
-  options: EvaluatorOptions
+  params: ExtendedOptions
 ): Promise<ValueNode[]> => {
-  return await Promise.all(nodes.map((node) => evaluateExpression(node, options)))
-}
-
-// For edge case -- if parameters is an Operator node, we must evaluate it first
-// or else it will be split up incorrectly
-//  Only applicable if parameters is created from a "buildObject" operator
-export const evaluateParameters = async (parameters: EvaluatorNode, options: EvaluatorOptions) => {
-  const evaluatedParams = isOperatorNode(parameters)
-    ? await evaluateExpression(parameters, options)
-    : parameters
-  if (!(evaluatedParams instanceof Object)) throw new Error('Invalid parameters object')
-  return evaluatedParams
+  return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
 
 export const zipArraysToObject = (variableNames: string[], variableValues: any[]) => {

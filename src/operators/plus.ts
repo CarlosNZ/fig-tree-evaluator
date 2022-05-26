@@ -1,11 +1,5 @@
 import { evaluateArray } from './_helpers'
-import {
-  EvaluatorNode,
-  BaseOperatorNode,
-  EvaluatorOptions,
-  OperatorNode,
-  ValueNode,
-} from '../types'
+import { ValueNode, ExtendedOptions } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
 const requiredProperties = ['values']
@@ -14,7 +8,7 @@ const propertyAliases = {}
 
 const evaluate = async (
   expression: BasicExtendedNode,
-  options: EvaluatorOptions
+  options: ExtendedOptions
 ): Promise<ValueNode> => {
   if (expression.values.length === 0) return expression.values
 

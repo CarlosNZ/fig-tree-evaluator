@@ -1,25 +1,17 @@
 import { evaluateArray } from './_helpers'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  EvaluatorOptions,
-  OperatorNode,
-  ValueNode,
-} from '../types'
+import { BaseOperatorNode, EvaluatorNode, OperatorNode, ValueNode, ExtendedOptions } from '../types'
 
 const requiredProperties = ['condition', 'valueIfTrue', 'valueIfFalse']
 const operatorAliases = ['?', 'conditional', 'ifThen']
 const propertyAliases = { ifTrue: 'valueIfTrue', ifFalse: 'valueIfFalse', ifNot: 'valueIfFalse' }
 
-export interface ConditionalNode extends BaseOperatorNode {
-  condition: EvaluatorNode
-  valueIfTrue: EvaluatorNode
-  valueIfFalse: EvaluatorNode
-}
+export type ConditionalNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+} & BaseOperatorNode
 
 const evaluate = async (
   expression: ConditionalNode,
-  options: EvaluatorOptions
+  options: ExtendedOptions
 ): Promise<ValueNode> => {
   const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
     [expression.condition, expression.valueIfTrue, expression.valueIfFalse],

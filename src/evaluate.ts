@@ -1,10 +1,5 @@
-import { EvaluatorOptions, EvaluatorNode, ValueNode, OutputType, Operator } from './types'
-import {
-  operatorReference,
-  // getOperatorName,
-  mapPropertyAliases,
-  OperatorObject,
-} from './operatorReference'
+import { ExtendedOptions, EvaluatorNode, ValueNode, OutputType, Operator } from './types'
+import { mapPropertyAliases } from './operatorReference'
 import {
   checkRequiredNodes,
   fallbackOrError,
@@ -14,19 +9,10 @@ import {
   isOperatorNode,
 } from './helpers'
 
-export interface EvaluatorInput {
-  expression: EvaluatorNode
-  options: EvaluatorOptions
-  operators: any // FIX
-  operatorAliases: { [key: string]: Operator }
-}
-
-const evaluateExpression = async ({
-  expression: input,
-  options,
-  operators,
-  operatorAliases,
-}: EvaluatorInput): Promise<ValueNode> => {
+export const evaluatorFunction = async (
+  input: EvaluatorNode,
+  { options, operators, operatorAliases }: ExtendedOptions
+): Promise<ValueNode> => {
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
   // Non-operator nodes get returned unmodified
@@ -55,7 +41,7 @@ const evaluateExpression = async ({
 
     if ('children' in expression) expression = parseChildren(expression)
 
-    const result = await evaluate({ expression, options, operators, operatorAliases })
+    const result = await evaluate(expression, { options, operators, operatorAliases })
 
     if (!outputType) return result
 
@@ -69,5 +55,3 @@ const evaluateExpression = async ({
     return fallbackOrError(fallback, errorMessage(err), returnErrorAsString)
   }
 }
-
-export default evaluateExpression

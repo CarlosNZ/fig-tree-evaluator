@@ -1,5 +1,5 @@
+import { mapKeys, camelCase } from 'lodash'
 import { OutputType, EvaluatorNode, OperatorNode } from './types'
-import { camelCase } from 'lodash'
 
 export const checkRequiredNodes = (
   requiredProps: string[],
@@ -12,6 +12,14 @@ export const checkRequiredNodes = (
     return 'Invalid child nodes (children) array'
   } else return false
 }
+
+export const mapPropertyAliases = (
+  propertyAliases: { [key: string]: string },
+  expression: OperatorNode
+): OperatorNode =>
+  mapKeys(expression, (_, key: string) =>
+    key in propertyAliases ? propertyAliases[key] : key
+  ) as OperatorNode
 
 export const fallbackOrError = (
   fallback: any,

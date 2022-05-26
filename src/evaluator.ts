@@ -1,6 +1,5 @@
 import { EvaluatorNode, EvaluatorOptions, Operator } from './types'
-import evaluateExpression from './evaluateExpression'
-import { operatorReference, OperatorObject } from './operatorReference'
+import { evaluatorFunction } from './evaluate'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 
@@ -16,8 +15,7 @@ class ExpressionEvaluator {
 
   public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
     // Update options from current instance if specified
-    return await evaluateExpression({
-      expression,
+    return await evaluatorFunction(expression, {
       options: { ...this.options, ...options },
       operators: this.operators,
       operatorAliases: this.operatorAliases,
@@ -30,3 +28,6 @@ class ExpressionEvaluator {
 }
 
 export default ExpressionEvaluator
+
+export const evaluate = (expression: EvaluatorNode, options?: EvaluatorOptions) =>
+  new ExpressionEvaluator(options).evaluate(expression)

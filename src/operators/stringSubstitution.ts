@@ -1,24 +1,17 @@
 import { evaluateArray, zipArraysToObject } from './_helpers'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  EvaluatorOptions,
-  OperatorNode,
-  ValueNode,
-} from '../types'
+import { BaseOperatorNode, EvaluatorNode, OperatorNode, ValueNode, ExtendedOptions } from '../types'
 
 const requiredProperties = ['string', 'substitutions']
 const operatorAliases = ['stringSubstitution', 'substitute', 'stringSub', 'replace']
 const propertyAliases = { replacements: 'substitutions' }
 
-export interface StringSubNode extends BaseOperatorNode {
-  string: EvaluatorNode
-  substitutions: EvaluatorNode[]
-}
+export type StringSubNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+} & BaseOperatorNode
 
 const evaluate = async (
   expression: StringSubNode,
-  options: EvaluatorOptions
+  options: ExtendedOptions
 ): Promise<ValueNode> => {
   const [string, ...substitutions] = (await evaluateArray(
     [expression.string, ...expression.substitutions],

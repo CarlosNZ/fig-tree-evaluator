@@ -1,4 +1,3 @@
-import { mapKeys } from 'lodash'
 import {
   operators,
   EvaluatorNode,
@@ -25,23 +24,6 @@ export type OperatorRef = { [key in Operator]: OperatorObject }
 export const operatorReference: { [key in Operator]: OperatorObject } = Object.fromEntries(
   operators.map((operator) => [operator, operatorList[operator] as any]) //FIX ANY
 ) as { [key in Operator]: OperatorObject }
-
-// const operatorAliases = buildOperatorAliases(operatorReference)
-
-// export const getOperatorName = (
-//   aliasName: string,
-//   operatorReference: OperatorRef
-// ): Operator | undefined => {
-//   return operatorAliases?.[standardiseOperatorName(aliasName)]
-// }
-
-export const mapPropertyAliases = (
-  propertyAliases: { [key: string]: string },
-  expression: OperatorNode
-): OperatorNode =>
-  mapKeys(expression, (_, key: string) =>
-    key in propertyAliases ? propertyAliases[key] : key
-  ) as OperatorNode
 
 // Converts from a range of allowed operator aliases into their canonical form
 // export const operatorAliases: { [key: string]: Operator } = {
