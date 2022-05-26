@@ -1073,6 +1073,12 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
+"@carlosnz/expression-evaluator@file:..":
+  version "2.0.0-alpha.5"
+  dependencies:
+    lodash "^4.17.21"
+    object-property-extractor "^1.0.0"
+
 "@csstools/normalize.css@*":
   version "12.0.0"
   resolved "https://registry.yarnpkg.com/@csstools/normalize.css/-/normalize.css-12.0.0.tgz#a9583a75c3f150667771f30b60d9f059473e62c4"
@@ -1664,11 +1670,6 @@
   dependencies:
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
-
-"@openmsupply/expression-evaluator@^1.9.5":
-  version "1.11.2"
-  resolved "https://npm.pkg.github.com/download/@openmsupply/expression-evaluator/1.11.2/f3f62ef32e97762ff6d16e8c3e98ff7b1fe2dec060088ee08e8b741126553d2c#b7cf84ba7747bad205162597ee8b2b01c6f9271a"
-  integrity sha512-S35MSJMXBJ4F103b78HXVYWnEIa25o+xXzFQOEuOGVa13V0W0bpuHD2qyYsYIqXx1j8I1RV+DF1tKzc1VaVWHw==
 
 "@pmmmwh/react-refresh-webpack-plugin@^0.5.3":
   version "0.5.6"
@@ -6468,6 +6469,11 @@ object-keys@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
+
+object-property-extractor@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.0.tgz#f0082d6862e92b33a027b711fd3ff8d25847249b"
+  integrity sha512-k1KB8ApyiYeM2GWSQKQgkkJWzMLJ9REV4OUKyCQQEWXNbjFO3qQIr3nYtitWoQkCZJBr3tz+f9cuhHJ5CmwmAA==
 
 object.assign@^4.1.0, object.assign@^4.1.2:
   version "4.1.2"

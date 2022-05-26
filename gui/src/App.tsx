@@ -14,7 +14,7 @@ import {
   InputLabel,
 } from '@mui/material'
 import EvaluatorDev from './expression-evaluator/evaluator'
-import EvaluatorPublished from './expression-evaluator/evaluator'
+import EvaluatorPublished from '@carlosnz/expression-evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
 import { fetchNative, JSONstringify, JSONstringifyLoose } from './helpers'
@@ -50,7 +50,10 @@ function App() {
     objects: validateObjects(inputState.objects),
   })
   const [configState, setConfigState] = useState<ConfigState>({
-    evaluator: localStorage.getItem('evaluatorSelection') === 'Development' ? expDev : expPub,
+    evaluator:
+      localStorage.getItem('evaluatorSelection') === 'Development'
+        ? (expDev as EvaluatorDev)
+        : (expPub as EvaluatorPublished),
     strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
     strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
   })
