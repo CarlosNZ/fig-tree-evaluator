@@ -4,9 +4,9 @@ import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 
 class ExpressionEvaluator {
-  options: EvaluatorOptions
-  operators: OperatorReference
-  operatorAliases: { [key: string]: Operator }
+  private options: EvaluatorOptions
+  private operators: OperatorReference
+  private operatorAliases: { [key: string]: Operator }
   constructor(options: EvaluatorOptions = {}) {
     this.options = options
     this.operators = operators

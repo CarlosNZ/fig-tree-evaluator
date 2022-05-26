@@ -1,9 +1,9 @@
 {
   "name": "@carlosnz/expression-evaluator",
-  "version": "2.0.0-alpha.4",
+  "version": "2.0.0-alpha.5",
   "description": "Module to evaluate JSON-structured expressions",
-  "main": "build/evaluate.js",
-  "types": "build/evaluate.d.ts",
+  "main": "build/evaluator.js",
+  "types": "build/evaluator.d.ts",
   "author": "Carl Smith",
   "license": "GPL-3.0",
   "devDependencies": {
