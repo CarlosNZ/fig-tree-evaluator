@@ -3,10 +3,10 @@ import { evaluatorFunction } from '../evaluate'
 import {
   BasicObject,
   BaseOperatorNode,
-  OperatorNode,
+  CombinedOperatorNode,
   EvaluatorNode,
   ValueNode,
-  ExtendedOptions,
+  EvaluatorConfig,
 } from '../types'
 
 export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
@@ -18,14 +18,14 @@ export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
   else return true
 }
 
-export const hasRequiredProps = (props: string[], expression: OperatorNode) => {
+export const hasRequiredProps = (props: string[], expression: CombinedOperatorNode) => {
   const missingProps = props.filter((prop) => !(prop in expression))
   if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
 }
 
 export const evaluateArray = async (
   nodes: EvaluatorNode[],
-  params: ExtendedOptions
+  params: EvaluatorConfig
 ): Promise<ValueNode[]> => {
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }

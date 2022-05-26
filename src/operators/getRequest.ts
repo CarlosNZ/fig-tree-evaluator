@@ -1,80 +1,57 @@
+import { evaluateArray, zipArraysToObject, extractAndSimplify, fetchAPIrequest } from './_helpers'
 import {
-  hasRequiredProps,
-  zipArraysToObject,
-  assignChildNodesToQuery,
-  extractAndSimplify,
-  fetchAPIrequest,
-  evaluateParameters,
-} from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, EvaluatorOptions } from '../types'
+  BaseOperatorNode,
+  EvaluatorNode,
+  ValueNode,
+  EvaluatorConfig,
+  CombinedOperatorNode,
+  BasicObject,
+} from '../types'
 
-export interface APINode extends BaseOperatorNode {
-  url?: EvaluatorNode
-  parameters?: EvaluatorNode
-  returnProperty?: EvaluatorNode
+const requiredProperties = ['url']
+const operatorAliases = ['get', 'api']
+const propertyAliases = { endpoint: 'url', outputProperty: 'returnProperty' }
+
+export type APINode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode
+} & BaseOperatorNode & {
+    parameters?: EvaluatorNode
+    returnProperty?: EvaluatorNode
+  }
+
+const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<ValueNode> => {
+  if (!config.options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
+
+  const [urlObj, parameters, returnProperty] = (await evaluateArray(
+    [expression.url, expression.parameters, expression.returnProperty],
+    config
+  )) as [string | { url: string; headers: BasicObject }, BasicObject, string]
+
+  const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
+
+  const httpHeaders = headers ?? config.options?.headers ?? config.options.graphQLConnection.headers
+  return await processGraphQL(
+    { query, url, variables, returnNode },
+    config.options.graphQLConnection,
+    gqlHeaders
+  )
 }
 
-const parse = async (
-  expression: APINode,
-  options: EvaluatorOptions = {}
-): Promise<EvaluatorNode[]> => {
-  const { url, parameters = {}, returnProperty } = expression
-  hasRequiredProps(['url'], expression)
-  const evaluatedParams = await evaluateParameters(parameters, options)
-  const children = [url, Object.keys(evaluatedParams), ...Object.values(evaluatedParams)]
-  if (returnProperty) children.push(returnProperty)
-  return children
+const parseChildren = async (
+  expression: CombinedOperatorNode,
+  config: EvaluatorConfig
+): Promise<APINode> => {
+  const [url = '', ...rest] = expression.children as EvaluatorNode[]
+  // TO-DO Evaluate array elements one by one
+  const fieldNames = (await evaluateArray(rest[0] as [], config)) as string[]
+  const values = rest.slice(1, fieldNames.length + 2)
+  const variables = zipArraysToObject(fieldNames, values)
+  const output = { ...expression, url, variables }
+  if (rest.length >= fieldNames.length + 2) output.returnNode = rest[fieldNames.length + 1]
+  return output
 }
 
 const operate = async (inputObject: OperationInput): Promise<ValueNode> =>
   await processAPIquery(inputObject)
-
-export const processAPIquery = async (
-  { children, options }: OperationInput,
-  isPostRequest = false
-) => {
-  const APIfetch = options?.APIfetch
-  if (!APIfetch) throw new Error('No Fetch method provided for API query')
-  let urlWithQuery, returnedProperty, requestBody, headers
-  try {
-    const {
-      url,
-      headers: queryHeaders,
-      fieldNames,
-      values,
-      returnProperty,
-    } = assignChildNodesToQuery([
-      '', // Extra unused field for GET/POST (query)
-      ...children,
-    ])
-    headers = queryHeaders ?? options?.headers
-    returnedProperty = returnProperty
-    urlWithQuery =
-      fieldNames.length > 0 && !isPostRequest
-        ? `${url}?${fieldNames
-            .map((field: string, index: number) => field + '=' + values[index])
-            .join('&')}`
-        : url
-    requestBody = isPostRequest ? zipArraysToObject(fieldNames, values) : null
-  } catch {
-    throw new Error('Invalid API query')
-  }
-  let data
-  try {
-    data = isPostRequest
-      ? await fetchAPIrequest({
-          url: urlWithQuery,
-          APIfetch,
-          method: 'POST',
-          body: requestBody,
-          headers,
-        })
-      : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
-  } catch (err) {
-    throw err
-  }
-  return extractAndSimplify(data, returnedProperty)
-}
 
 export const getRequest = { parse, operate }

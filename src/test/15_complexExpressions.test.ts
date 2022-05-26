@@ -1,7 +1,6 @@
 import fetch from 'node-fetch'
 import { Client } from 'pg'
-import ExpressionEvaluator from '../evaluator'
-import evaluateExpression from '../evaluateExpression'
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 import pgConfig from '../test/postgres/pgConfig.json'
 
 const pgConnect = new Client(pgConfig)

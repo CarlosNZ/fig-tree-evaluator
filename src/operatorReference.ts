@@ -8,9 +8,6 @@ import {
   EvaluatorOptions,
 } from './types'
 
-import { standardiseOperatorName } from './helpers'
-import * as operatorList from './operators'
-
 export type OperatorObject = {
   requiredProperties: string[]
   operatorAliases: string[]

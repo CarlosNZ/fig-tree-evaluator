@@ -1,25 +1,46 @@
-import { hasRequiredProps } from './_helpers'
-import { OperationInput } from '../operatorReference'
-import { BaseOperatorNode, EvaluatorNode, ValueNode, PGConnection } from '../types'
+import { evaluateArray } from './_helpers'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  CombinedOperatorNode,
+  ValueNode,
+  EvaluatorConfig,
+  PGConnection,
+} from '../types'
 
-export interface PGNode extends BaseOperatorNode {
-  query?: EvaluatorNode
-  values?: EvaluatorNode[]
-}
+const requiredProperties = ['query']
+const operatorAliases = ['pgSql', 'sql', 'postgres', 'pg', 'pgDb']
+const propertyAliases = { replacements: 'values' }
 
-const parse = (expression: PGNode): EvaluatorNode[] => {
-  const { query, values = [] } = expression
-  hasRequiredProps(['query'], expression)
-  return [query, ...values]
-}
+export type PGNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode
+} & BaseOperatorNode & { values?: EvaluatorNode[] }
 
-const operate = async ({ children, expression, options }: OperationInput): Promise<ValueNode> => {
-  if (!options?.pgConnection) throw new Error('No Postgres database connection provided')
+const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<ValueNode> => {
+  const [query, ...values] = (await evaluateArray(
+    [expression.query, ...(expression.values as EvaluatorNode[])],
+    config
+  )) as [string, (string | number)[]]
+
+  if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
   try {
-    return await processPgSQL(children, options.pgConnection, expression?.type)
+    return await processPgSQL([query, ...values], config.options.pgConnection, expression?.type)
   } catch (err) {
     throw err
   }
+}
+
+const parseChildren = (expression: CombinedOperatorNode): PGNode => {
+  const [query, ...values] = expression.children as EvaluatorNode[]
+  return { ...expression, query, values }
+}
+
+interface QueryRowResult {
+  [columns: string]: any
+}
+
+export interface QueryResult {
+  rows: QueryRowResult[]
 }
 
 const processPgSQL = async (queryArray: any[], connection: PGConnection, queryType?: string) => {
@@ -46,4 +67,10 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
   }
 }
 
-export const pgSQL = { parse, operate }
+export const PG_SQL = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}

@@ -1,5 +1,11 @@
 import { evaluateArray } from './_helpers'
-import { BaseOperatorNode, EvaluatorNode, OperatorNode, ValueNode, ExtendedOptions } from '../types'
+import {
+  BaseOperatorNode,
+  EvaluatorNode,
+  CombinedOperatorNode,
+  ValueNode,
+  EvaluatorConfig,
+} from '../types'
 
 const requiredProperties = ['testString', 'pattern']
 const operatorAliases = ['regex', 'patternMatch', 'regexp', 'matchPattern']
@@ -13,14 +19,15 @@ const propertyAliases = {
 }
 
 export type RegexNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+  [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode
 
-const evaluate = async (expression: RegexNode, options: ExtendedOptions): Promise<ValueNode> => {
+const evaluate = async (expression: RegexNode, config: EvaluatorConfig): Promise<ValueNode> => {
   const [testString, pattern] = (await evaluateArray(
     [expression.testString, expression.testString],
-    options
+    config
   )) as [string, string]
+
   try {
     if (typeof pattern !== 'string') throw new Error('Invalid Regex pattern')
     const re: RegExp = new RegExp(pattern)
@@ -30,7 +37,7 @@ const evaluate = async (expression: RegexNode, options: ExtendedOptions): Promis
   }
 }
 
-const parseChildren = (expression: OperatorNode): OperatorNode => {
+const parseChildren = (expression: CombinedOperatorNode): RegexNode => {
   const [testString, pattern] = expression.children as EvaluatorNode[]
   return { ...expression, testString, pattern }
 }

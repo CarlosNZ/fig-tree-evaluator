@@ -1,5 +1,5 @@
 import { evaluateArray } from './_helpers'
-import { ValueNode, ExtendedOptions } from '../types'
+import { ValueNode, EvaluatorConfig } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
 const requiredProperties = ['values']
@@ -8,11 +8,12 @@ const propertyAliases = {}
 
 const evaluate = async (
   expression: BasicExtendedNode,
-  options: ExtendedOptions
+  config: EvaluatorConfig
 ): Promise<ValueNode> => {
   if (expression.values.length === 0) return expression.values
 
-  const values = (await evaluateArray(expression.values, options)) as any[]
+  const values = (await evaluateArray(expression.values, config)) as any[]
+
   // Reduce based on "type" if specified
   if (expression?.type === 'string') return values.reduce((acc, child) => acc.concat(child), '')
 

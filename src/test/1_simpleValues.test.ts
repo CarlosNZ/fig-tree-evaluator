@@ -1,11 +1,10 @@
-// import evaluateExpression from '../evaluateExpression'
-import ExpressionEvaluator, { evaluate } from '../evaluator'
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 
 const exp = new ExpressionEvaluator()
 
 test('String literal', () => {
   const expression = 'Just a string'
-  return evaluate(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result: any) => {
     expect(result).toBe('Just a string')
   })
 })
@@ -19,14 +18,14 @@ test('Boolean', () => {
 
 test('Array', () => {
   const expression = ['Pharmaceutical', 'Natural Product', 'Other']
-  return evaluate(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result: any) => {
     expect(result).toStrictEqual(['Pharmaceutical', 'Natural Product', 'Other'])
   })
 })
 
 test('Number', () => {
   const expression = 666
-  return evaluate(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result: any) => {
     expect(result).toBe(666)
   })
 })
@@ -47,7 +46,7 @@ test('Object', () => {
 
 test('Null', () => {
   const expression = null
-  return evaluate(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result: any) => {
     expect(result).toBeNull()
   })
 })

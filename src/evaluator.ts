@@ -29,5 +29,5 @@ class ExpressionEvaluator {
 
 export default ExpressionEvaluator
 
-export const evaluate = (expression: EvaluatorNode, options?: EvaluatorOptions) =>
+export const evaluateExpression = (expression: EvaluatorNode, options?: EvaluatorOptions) =>
   new ExpressionEvaluator(options).evaluate(expression)

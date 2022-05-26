@@ -1,6 +1,8 @@
 - Should "Fallback" be evaluated?
 - Do we need individual "Fallback" parameters?
-- Codegen operator reference rather than compute each time
+- Passing in Array evaluates each item?
+- Build -- copy JSON file, check output, test imports
+- Runtime type checking for operator properties
 - String Sub -- shouldn't complain about missing prop if no substitutions in main string
 - Allow type coercion with no operation (with tests)
 - Not Equal should allow more than two items (and throw error if one item)
@@ -12,7 +14,6 @@
 
 - Improve look and feel
 - Refactor for typescript and better organisation, use Evaluator class
-- debounce
 - Configuration UI
 
 ### Tests

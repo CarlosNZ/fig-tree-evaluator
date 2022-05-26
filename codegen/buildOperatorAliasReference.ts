@@ -1,26 +1,9 @@
 import { writeFileSync } from 'fs'
 import * as operatorList from '../src/operators'
-import {
-  operators,
-  Operator,
-  BaseOperatorNode,
-  ValueNode,
-  OperatorNode,
-  EvaluatorOptions,
-} from '../src/types'
+import { Operators, Operator, OperatorObject, OperatorReference } from '../src/types'
 
-type OperatorObject = {
-  requiredProperties: string[]
-  operatorAliases: string[]
-  propertyAliases: { [key: string]: string } // Can we specify "string"?
-  evaluate: (expression: BaseOperatorNode, options: EvaluatorOptions) => ValueNode
-  parseChildren: (expression: OperatorNode) => OperatorNode
-}
-
-type OperatorRef = { [key in Operator]: OperatorObject }
-
-const operatorReference: { [key in Operator]: OperatorObject } = Object.fromEntries(
-  operators.map((operator) => [operator, operatorList[operator] as any]) //FIX ANY
+const operatorReference: OperatorReference = Object.fromEntries(
+  Operators.map((operator) => [operator, operatorList[operator]])
 ) as { [key in Operator]: OperatorObject }
 
 const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObject }) => {

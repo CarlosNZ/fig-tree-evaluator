@@ -1,9 +1,9 @@
 import { mapKeys, camelCase } from 'lodash'
-import { OutputType, EvaluatorNode, OperatorNode } from './types'
+import { OutputType, EvaluatorNode, CombinedOperatorNode } from './types'
 
 export const checkRequiredNodes = (
   requiredProps: string[],
-  expression: OperatorNode
+  expression: CombinedOperatorNode
 ): string | false => {
   const missingProps = requiredProps.filter((prop) => !(prop in expression))
   if (missingProps.length === 0) return false
@@ -15,11 +15,11 @@ export const checkRequiredNodes = (
 
 export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
-  expression: OperatorNode
-): OperatorNode =>
+  expression: CombinedOperatorNode
+): CombinedOperatorNode =>
   mapKeys(expression, (_, key: string) =>
     key in propertyAliases ? propertyAliases[key] : key
-  ) as OperatorNode
+  ) as CombinedOperatorNode
 
 export const fallbackOrError = (
   fallback: any,

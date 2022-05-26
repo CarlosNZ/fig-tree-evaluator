@@ -1,5 +1,4 @@
-import evaluateExpression from '../evaluateExpression'
-import ExpressionEvaluator from '../evaluator'
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 
 const exp = new ExpressionEvaluator({
   objects: {

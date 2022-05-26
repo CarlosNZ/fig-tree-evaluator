@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import ExpressionEvaluator from '../evaluator'
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 
 const exp = new ExpressionEvaluator({ APIfetch: fetch })
 

@@ -1,6 +1,6 @@
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 import { evaluateArray } from './_helpers'
-import { ExtendedOptions } from '../types'
+import { EvaluatorConfig } from '../types'
 
 const requiredProperties = ['values']
 const operatorAliases = ['!=', '!', 'ne', 'notEqual']
@@ -8,9 +8,9 @@ const propertyAliases = {}
 
 const evaluate = async (
   expression: BasicExtendedNode,
-  options: ExtendedOptions
+  config: EvaluatorConfig
 ): Promise<Boolean> => {
-  const values = (await evaluateArray(expression.values, options)) as boolean[]
+  const values = (await evaluateArray(expression.values, config)) as boolean[]
   return values[0] != values[1]
 }
 

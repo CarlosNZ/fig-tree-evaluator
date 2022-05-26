@@ -4,14 +4,15 @@ import {
   RegexNode,
   StringSubNode,
   ObjPropNode,
-  // APINode,
-  // PGNode,
-  // GraphQLNode,
+  APINode,
+  PGNode,
+  GraphQLNode,
   // BuildObjectNode,
   // ObjFuncNode,
+  QueryResult,
 } from './operators'
 
-export const operators = [
+export const Operators = [
   'AND',
   'OR',
   'EQUAL',
@@ -21,27 +22,20 @@ export const operators = [
   'REGEX',
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
-  // 'GET',
+  'GET',
   // 'POST',
-  // 'PG_SQL',
-  // 'GRAPHQL',
+  'PG_SQL',
+  'GRAPHQL',
   // 'BUILD_OBJECT',
   // 'OBJECT_FUNCTIONS',
 ] as const
 
-export type Operator = typeof operators[number]
+export type Operator = typeof Operators[number]
 
 export type BasicObject = {
   [key: string]: any
 }
 
-interface QueryRowResult {
-  [columns: string]: any
-}
-
-export interface QueryResult {
-  rows: QueryRowResult[]
-}
 export interface PGConnection {
   query: (expression: { text: string; values?: any[]; rowMode?: string }) => Promise<QueryResult>
 }
@@ -62,10 +56,10 @@ export interface EvaluatorOptions {
   allowJSONStringInput?: boolean
 }
 
-export interface ExtendedOptions {
+export interface EvaluatorConfig {
   options: EvaluatorOptions
-  operators: any // FIX
-  operatorAliases: { [key: string]: Operator } // Define
+  operators: OperatorReference
+  operatorAliases: { [key: string]: Operator }
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
@@ -75,22 +69,40 @@ export interface BaseOperatorNode {
   type?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
-  [key: string]: any
 }
 
-export type OperatorNode =
-  | BaseOperatorNode
+export type CombinedOperatorNode = BaseOperatorNode &
+  BasicExtendedNode &
+  ConditionalNode &
+  RegexNode &
+  StringSubNode &
+  ObjPropNode &
+  APINode &
+  PGNode &
+  GraphQLNode
+// & BuildObjectNode
+// & ObjFuncNode
+
+export type OperatorNodeUnion =
   | BasicExtendedNode
   | ConditionalNode
   | RegexNode
   | StringSubNode
   | ObjPropNode
-// | APINode
-// | PGNode
-// | GraphQLNode
-// | BuildObjectNode
-// | ObjFuncNode
+  | PGNode
+  | GraphQLNode
+  | APINode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 
-export type EvaluatorNode = OperatorNode | ValueNode
+export type EvaluatorNode = CombinedOperatorNode | ValueNode
+
+export type OperatorObject = {
+  requiredProperties: string[]
+  operatorAliases: string[]
+  propertyAliases: { [key: string]: string }
+  evaluate: (expression: CombinedOperatorNode, config: EvaluatorConfig) => Promise<ValueNode>
+  parseChildren: (expression: CombinedOperatorNode, config: EvaluatorConfig) => OperatorNodeUnion
+}
+
+export type OperatorReference = { [key in Operator]: OperatorObject }

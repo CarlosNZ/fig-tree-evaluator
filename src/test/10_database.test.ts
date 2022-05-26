@@ -1,6 +1,6 @@
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 import fetch from 'node-fetch'
 import { Client } from 'pg'
-import ExpressionEvaluator from '../evaluator'
 import pgConfig from './postgres/pgConfig.json'
 
 // Postgres tests require a copy of the Northwind database to be running

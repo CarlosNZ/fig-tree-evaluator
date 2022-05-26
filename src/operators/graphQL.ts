@@ -1,70 +1,71 @@
-import {
-  hasRequiredProps,
-  zipArraysToObject,
-  assignChildNodesToQuery,
-  extractAndSimplify,
-  evaluateParameters,
-} from './_helpers'
-import { OperationInput } from '../operatorReference'
+import { zipArraysToObject, extractAndSimplify, evaluateArray } from './_helpers'
 import {
   BaseOperatorNode,
   EvaluatorNode,
   ValueNode,
   GraphQLConnection,
-  EvaluatorOptions,
+  EvaluatorConfig,
+  CombinedOperatorNode,
+  BasicObject,
 } from '../types'
 
-export interface GraphQLNode extends BaseOperatorNode {
-  query?: EvaluatorNode
-  url?: EvaluatorNode
-  variables?: EvaluatorNode
-  returnNode?: EvaluatorNode
+const requiredProperties = ['query']
+const operatorAliases = ['graphQl', 'graphql', 'gql']
+const propertyAliases = { endpoint: 'url', outputNode: 'returnNode', returnPropery: 'returnNode' }
+
+export type GraphQLNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode
+} & BaseOperatorNode & {
+    url?: EvaluatorNode
+    variables?: EvaluatorNode
+    returnNode?: EvaluatorNode
+  }
+
+const evaluate = async (expression: GraphQLNode, config: EvaluatorConfig): Promise<ValueNode> => {
+  if (!config.options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
+
+  const [query, urlObj, variables, returnNode] = (await evaluateArray(
+    [expression.query, expression.url, expression.variables, expression.returnNode],
+    config
+  )) as [string, string | { url: string; headers: BasicObject }, BasicObject, string]
+
+  const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
+
+  const gqlHeaders = headers ?? config.options?.headers ?? config.options.graphQLConnection.headers
+  return await processGraphQL(
+    { query, url, variables, returnNode },
+    config.options.graphQLConnection,
+    gqlHeaders
+  )
 }
 
-const parse = async (
-  expression: GraphQLNode,
-  options: EvaluatorOptions = {}
-): Promise<EvaluatorNode[]> => {
-  const { query, url = '', variables = {}, returnNode } = expression
-  hasRequiredProps(['query'], expression)
-  const evaluatedVars = await evaluateParameters(variables, options)
-  const children = [query, url, Object.keys(evaluatedVars), ...Object.values(evaluatedVars)]
-  if (returnNode) children.push(returnNode)
-  return children
-}
-
-const operate = async ({ children, options }: OperationInput): Promise<ValueNode> => {
-  if (!options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
-  const gqlHeaders = options?.headers ?? options.graphQLConnection.headers
-  return await processGraphQL(children, options.graphQLConnection, gqlHeaders)
+const parseChildren = async (
+  expression: CombinedOperatorNode,
+  config: EvaluatorConfig
+): Promise<GraphQLNode> => {
+  const [query, url = '', ...rest] = expression.children as EvaluatorNode[]
+  // TO-DO Evaluate array elements one by one
+  const fieldNames = (await evaluateArray(rest[0] as [], config)) as string[]
+  const values = rest.slice(1, fieldNames.length + 2)
+  const variables = zipArraysToObject(fieldNames, values)
+  const output = { ...expression, query, url, variables }
+  if (rest.length >= fieldNames.length + 2) output.returnNode = rest[fieldNames.length + 1]
+  return output
 }
 
 const processGraphQL = async (
-  queryArray: any[],
+  {
+    query,
+    url,
+    variables,
+    returnNode,
+  }: { query: string; url: string; variables: BasicObject; returnNode?: string },
   connection: GraphQLConnection,
-  gqlHeaders: { [key: string]: string } = {}
+  gqlHeaders: BasicObject = {}
 ) => {
-  try {
-    const {
-      url,
-      headers: queryHeaders,
-      query,
-      fieldNames,
-      values,
-      returnProperty,
-    } = assignChildNodesToQuery(queryArray)
-    const variables = zipArraysToObject(fieldNames, values)
-    const headers = queryHeaders ?? gqlHeaders
-    const data = await graphQLquery(url, query, variables, connection, headers)
-    if (!data) throw new Error('GraphQL query problem')
-    try {
-      return extractAndSimplify(data, returnProperty)
-    } catch (err) {
-      throw err
-    }
-  } catch (err) {
-    throw err
-  }
+  const data = await graphQLquery(url, query, variables, connection, gqlHeaders)
+  if (!data) throw new Error('GraphQL query problem')
+  return extractAndSimplify(data, returnNode)
 }
 
 // Abstraction for GraphQL database query using Fetch
@@ -102,4 +103,10 @@ const graphQLquery = async (
   return data.data
 }
 
-export const graphQL = { parse, operate }
+export const GRAPHQL = {
+  requiredProperties,
+  operatorAliases,
+  propertyAliases,
+  evaluate,
+  parseChildren,
+}
