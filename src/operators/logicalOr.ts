@@ -1,5 +1,5 @@
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
-import { evaluateArray } from './_helpers'
+import { evaluateArray } from './_operatorUtils'
 import { EvaluatorConfig, OperatorObject } from '../types'
 
 const requiredProperties = ['values'] as const

@@ -1,4 +1,10 @@
-import { evaluateArray, zipArraysToObject, extractAndSimplify, fetchAPIrequest } from './_helpers'
+import {
+  evaluateArray,
+  zipArraysToObject,
+  extractAndSimplify,
+  fetchAPIrequest,
+} from './_operatorUtils'
+import { errorMessage } from '../helpers'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -82,7 +88,7 @@ export const processAPIquery = async (
         })
       : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
   } catch (err) {
-    throw new Error('Invalid API query: ' + err.message)
+    throw new Error('Invalid API query: ' + errorMessage(err))
   }
   return extractAndSimplify(data, returnProperty)
 }

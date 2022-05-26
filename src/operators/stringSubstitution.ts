@@ -1,4 +1,4 @@
-import { evaluateArray, zipArraysToObject } from './_helpers'
+import { evaluateArray, zipArraysToObject } from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,

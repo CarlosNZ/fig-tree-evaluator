@@ -1,4 +1,4 @@
-import { evaluateArray } from './_helpers'
+import { evaluateArray } from './_operatorUtils'
 import { ValueNode, EvaluatorConfig, BasicObject, OperatorObject } from '../types'
 import { parseChildrenGET as parseChildren, processAPIquery, APINode } from './getRequest'
 

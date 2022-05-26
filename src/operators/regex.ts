@@ -1,4 +1,5 @@
-import { evaluateArray } from './_helpers'
+import { evaluateArray } from './_operatorUtils'
+import { errorMessage } from '../helpers'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -34,7 +35,7 @@ const evaluate = async (expression: RegexNode, config: EvaluatorConfig): Promise
     const re: RegExp = new RegExp(pattern)
     return re.test(testString)
   } catch (err) {
-    throw new Error('Regex error:' + err.message)
+    throw new Error('Regex error:' + errorMessage(err))
   }
 }
 

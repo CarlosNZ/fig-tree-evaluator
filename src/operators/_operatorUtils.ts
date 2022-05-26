@@ -1,28 +1,8 @@
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import {
-  BasicObject,
-  BaseOperatorNode,
-  CombinedOperatorNode,
-  EvaluatorNode,
-  ValueNode,
-  EvaluatorConfig,
-} from '../types'
+import { BasicObject, EvaluatorNode, ValueNode, EvaluatorConfig } from '../types'
 
-export const allPropsOk = (props: string[], expression: BaseOperatorNode) => {
-  const missingProps: string[] = []
-  props.forEach((prop) => {
-    if (!(prop in expression)) missingProps.push(prop)
-  })
-  if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
-  else return true
-}
-
-export const hasRequiredProps = (props: string[], expression: CombinedOperatorNode) => {
-  const missingProps = props.filter((prop) => !(prop in expression))
-  if (missingProps.length > 0) throw new Error(`Missing properties: ${missingProps}`)
-}
-
+// Evaluate all child nodes simultaneously
 export const evaluateArray = async (
   nodes: EvaluatorNode[],
   params: EvaluatorConfig
@@ -36,24 +16,6 @@ export const zipArraysToObject = (variableNames: string[], variableValues: any[]
     createdObject[name] = variableValues[index]
   })
   return createdObject
-}
-
-export const assignChildNodesToQuery = (childNodes: any[]) => {
-  const skipFields = 3 // skip query, url and fieldNames
-  const query: string = childNodes[0]
-  let url: string
-  let headers: { [key: string]: string } | null = null
-  if (typeof childNodes[1] === 'object' && childNodes[1] !== null) {
-    url = childNodes[1].url
-    headers = childNodes[1].headers
-  } else url = childNodes[1]
-  const fieldNames: string[] = childNodes[2]
-
-  const lastFieldIndex = fieldNames.length + skipFields
-  const values: string[] = childNodes.slice(skipFields, lastFieldIndex)
-  const returnProperty: string = childNodes[lastFieldIndex]
-
-  return { url, headers, query, fieldNames, values, returnProperty }
 }
 
 export const simplifyObject = (item: number | string | boolean | BasicObject) => {

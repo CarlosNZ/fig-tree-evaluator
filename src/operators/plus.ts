@@ -1,4 +1,4 @@
-import { evaluateArray } from './_helpers'
+import { evaluateArray } from './_operatorUtils'
 import { ValueNode, EvaluatorConfig, OperatorObject } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 

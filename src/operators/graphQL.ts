@@ -1,4 +1,4 @@
-import { zipArraysToObject, extractAndSimplify, evaluateArray } from './_helpers'
+import { zipArraysToObject, extractAndSimplify, evaluateArray } from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -9,6 +9,7 @@ import {
   BasicObject,
   OperatorObject,
 } from '../types'
+import { errorMessage } from '../helpers'
 
 const requiredProperties = ['query'] as const
 const operatorAliases = ['graphQl', 'graphql', 'gql']
@@ -74,7 +75,7 @@ const processGraphQL = async (
     if (!data) throw new Error('GraphQL query problem -- no data retrieved')
     return extractAndSimplify(data, returnNode)
   } catch (err) {
-    throw new Error('GraphQL Problem: ' + err.message)
+    throw new Error('GraphQL Problem: ' + errorMessage(err))
   }
 }
 
