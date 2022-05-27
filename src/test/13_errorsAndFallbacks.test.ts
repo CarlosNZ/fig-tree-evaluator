@@ -209,3 +209,29 @@ test('Loose equality - null == undefined', () => {
     expect(result).toBe(true)
   })
 })
+
+// Fallback can be evaluated too!
+test('Fallback is an operator node', () => {
+  const expression = {
+    operator: 'get',
+    // Typo in URL
+    url: 'https://restcountries.com/v3.1/name/zealands',
+    returnProperty: 'name.common',
+    fallback: { operator: '+', values: [3, 5, 7] },
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(15)
+  })
+})
+
+// Object properties uses its own internal fallback
+test('ObjProps Fallback is an operator node', () => {
+  const expression = {
+    operator: 'objectProperties',
+    property: 'user.name',
+    fallback: { operator: '+', values: [3, 5, 7] },
+  }
+  return exp.evaluate(expression, { objects: { user: 'Unknown' } }).then((result: any) => {
+    expect(result).toBe(15)
+  })
+})

@@ -50,13 +50,11 @@ const parseChildren = async (
   expression: CombinedOperatorNode,
   config: EvaluatorConfig
 ): Promise<GraphQLNode> => {
-  const [query, url = '', ...rest] = expression.children as EvaluatorNode[]
-  // TO-DO Evaluate array elements one by one
-  const fieldNames = (await evaluateArray(rest[0] as [], config)) as string[]
-  const values = rest.slice(1, fieldNames.length + 2)
+  const [query, url = '', fieldNames, ...rest] = expression.children as [string, string, string[]]
+  const values = rest.slice(0, fieldNames.length)
   const variables = zipArraysToObject(fieldNames, values)
   const output = { ...expression, query, url, variables }
-  if (rest.length >= fieldNames.length + 2) output.returnNode = rest[fieldNames.length + 1]
+  if (rest.length > fieldNames.length) output.returnNode = rest.pop()
   return output
 }
 

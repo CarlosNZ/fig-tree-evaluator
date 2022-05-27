@@ -1,4 +1,5 @@
 import { EvaluatorConfig, EvaluatorNode, ValueNode, OutputType } from './types'
+import { evaluateArray } from './operators/_operatorUtils'
 import {
   checkRequiredNodes,
   fallbackOrError,
@@ -12,9 +13,16 @@ import {
 
 export const evaluatorFunction = async (
   input: EvaluatorNode,
-  { options, operators, operatorAliases }: EvaluatorConfig
+  config: EvaluatorConfig
 ): Promise<ValueNode> => {
+  const { options, operators, operatorAliases } = config
+
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
+
+  // If an array, we evaluate each item in the array
+  if (Array.isArray(expression)) {
+    expression = await evaluateArray(expression, config)
+  }
 
   // Non-operator nodes get returned unmodified
   if (!isOperatorNode(expression)) return expression
@@ -28,7 +36,7 @@ export const evaluatorFunction = async (
 
     if (!operator)
       return fallbackOrError(
-        fallback,
+        await evaluatorFunction(fallback, config),
         `Invalid operator: ${expression.operator}`,
         returnErrorAsString
       )
@@ -38,22 +46,34 @@ export const evaluatorFunction = async (
     expression = mapPropertyAliases(propertyAliases, expression)
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
-    if (validationError) return fallbackOrError(fallback, validationError, returnErrorAsString)
+    if (validationError)
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        validationError,
+        returnErrorAsString
+      )
 
-    if ('children' in expression)
-      expression = await parseChildren(expression, { options, operators, operatorAliases })
+    if ('children' in expression) expression = await parseChildren(expression, config)
 
-    const result = await evaluate(expression, { options, operators, operatorAliases })
+    const result = await evaluate(expression, config)
 
     if (!outputType) return result
 
     // Type conversion
     if (!(outputType in convertOutputMethods))
-      return fallbackOrError(fallback, `Invalid output type: ${outputType}`, returnErrorAsString)
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        `Invalid output type: ${outputType}`,
+        returnErrorAsString
+      )
     else {
       return convertOutputMethods[expression.type as OutputType](result)
     }
   } catch (err) {
-    return fallbackOrError(fallback, errorMessage(err), returnErrorAsString)
+    return fallbackOrError(
+      await evaluatorFunction(fallback, config),
+      errorMessage(err),
+      returnErrorAsString
+    )
   }
 }

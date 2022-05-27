@@ -18,12 +18,12 @@ const propertyAliases = {
 
 export type ObjPropNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { fallback: ValueNode }
+} & BaseOperatorNode
 
 const evaluate = async (expression: ObjPropNode, config: EvaluatorConfig): Promise<ValueNode> => {
-  const [property, fallback] = (await evaluateArray([expression.property], config)) as [string, any]
+  const [property] = (await evaluateArray([expression.property], config)) as [string, any]
   const inputObject = config.options?.objects ?? {}
-  return extractProperty(inputObject, property, fallback)
+  return extractProperty(inputObject, property)
 }
 
 const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {

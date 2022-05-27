@@ -25,6 +25,30 @@ const exp = new ExpressionEvaluator({
   allowJSONStringInput: true,
 })
 
+test('Input is an array -- each item will be evaluated', () => {
+  return exp
+    .evaluate(
+      [
+        {
+          operator: '+',
+          values: [6, 7, 8],
+        },
+        {
+          operator: 'objectProperties',
+          property: 'name',
+        },
+        {
+          operator: '!=',
+          children: [6, 'tree'],
+        },
+      ],
+      { objects: { name: 'Percy' } }
+    )
+    .then((result: any) => {
+      expect(result).toStrictEqual([21, 'Percy', true])
+    })
+})
+
 // Mother of all queries
 
 const expression = {

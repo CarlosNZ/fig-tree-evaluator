@@ -45,13 +45,14 @@ const parseChildren = async (
   expression: CombinedOperatorNode,
   config: EvaluatorConfig
 ): Promise<APINode> => {
-  const [url = '', ...rest] = expression.children as EvaluatorNode[]
-  // TO-DO Evaluate array elements one by one
-  const fieldNames = (await evaluateArray(rest[0] as [], config)) as string[]
-  const values = rest.slice(1, fieldNames.length + 2)
+  const [url = '', fieldNames, ...rest] = (await evaluateArray(
+    expression.children as EvaluatorNode[],
+    config
+  )) as [string, string[]]
+  const values = rest.slice(0, fieldNames.length)
   const parameters = zipArraysToObject(fieldNames, values)
   const output = { ...expression, url, parameters }
-  if (rest.length >= fieldNames.length + 2) output.returnProperty = rest[fieldNames.length + 1]
+  if (rest.length > fieldNames.length) output.returnProperty = rest.pop()
   return output
 }
 

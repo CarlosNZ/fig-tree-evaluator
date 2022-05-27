@@ -1,8 +1,4 @@
-- Should "Fallback" be evaluated?
-- Do we need individual "Fallback" parameters?
-- Passing in Array evaluates each item?
-- Build -- copy JSON file, check output, test imports
-- Runtime type checking for operator properties
+- Runtime type checking for operator properties (https://www.npmjs.com/package/type-check?)
 - String Sub -- shouldn't complain about missing prop if no substitutions in main string
 - Allow type coercion with no operation (with tests)
 - Not Equal should allow more than two items (and throw error if one item)
