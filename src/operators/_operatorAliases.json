@@ -51,5 +51,11 @@
   "objectFunctions": "OBJECT_FUNCTIONS",
   "function": "OBJECT_FUNCTIONS",
   "functions": "OBJECT_FUNCTIONS",
-  "runFunction": "OBJECT_FUNCTIONS"
+  "runFunction": "OBJECT_FUNCTIONS",
+  "_": "PASSTHRU",
+  "passThru": "PASSTHRU",
+  "pass": "PASSTHRU",
+  "ignore": "PASSTHRU",
+  "coerce": "PASSTHRU",
+  "convert": "PASSTHRU"
 }

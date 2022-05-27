@@ -233,7 +233,7 @@ function App() {
               {typeof result.result === 'object' && !result.error ? (
                 <pre>{JSON.stringify(result.result)}</pre>
               ) : (
-                <span className="result-text">{result.result as string}</span>
+                <span className="result-text">{String(result.result)}</span>
               )}
 
               {result.error && <span className="error-text">{result.error}</span>}

@@ -9,6 +9,7 @@ import {
   GraphQLNode,
   BuildObjectNode,
   ObjFuncNode,
+  PassThruNode,
   QueryResult,
 } from './operators'
 
@@ -28,6 +29,7 @@ export const Operators = [
   'GRAPHQL',
   'BUILD_OBJECT',
   'OBJECT_FUNCTIONS',
+  'PASSTHRU',
 ] as const
 
 export type Operator = typeof Operators[number]
@@ -81,7 +83,8 @@ export type CombinedOperatorNode = BaseOperatorNode &
   PGNode &
   GraphQLNode &
   BuildObjectNode &
-  ObjFuncNode
+  ObjFuncNode &
+  PassThruNode
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
@@ -94,6 +97,7 @@ export type OperatorNodeUnion =
   | APINode
   | BuildObjectNode
   | ObjFuncNode
+  | PassThruNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
 

@@ -1,5 +1,5 @@
 import { mapKeys, camelCase } from 'lodash'
-import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator } from './types'
+import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, ValueNode } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
   if (typeof input !== 'string') return input
@@ -53,13 +53,13 @@ export const checkRequiredNodes = (
 }
 
 export const convertOutputMethods: {
-  [key in OutputType]: <T>(val: T) => number | string | boolean | T[]
+  [key in OutputType]: <T>(val: T) => ValueNode | T[]
 } = {
-  number: (value: any) => (Number.isNaN(Number(value)) ? value : Number(value)),
-  string: (value: any) => String(value),
-  array: (value: any) => (Array.isArray(value) ? value : [value]),
-  boolean: (value: any) => Boolean(value),
-  bool: (value: any) => Boolean(value),
+  number: (value: ValueNode) => (Number.isNaN(Number(value)) ? value : Number(value)),
+  string: (value: ValueNode) => String(value),
+  array: (value: ValueNode) => (Array.isArray(value) ? value : [value]),
+  boolean: (value: ValueNode) => Boolean(value),
+  bool: (value: ValueNode) => Boolean(value),
 }
 
 // Workaround to prevent typescript errors for err.message
