@@ -28,7 +28,6 @@ export const evaluatorFunction = async (
   if (!isOperatorNode(expression)) return expression
 
   const { fallback } = expression
-  const outputType = expression?.type ?? expression?.outputType
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   try {
@@ -57,6 +56,7 @@ export const evaluatorFunction = async (
 
     const result = await evaluate(expression, config)
 
+    const outputType = expression?.type ?? expression?.outputType
     if (!outputType) return result
 
     // Type conversion
@@ -67,7 +67,7 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
     else {
-      return convertOutputMethods[expression.type as OutputType](result)
+      return convertOutputMethods[outputType as OutputType](result)
     }
   } catch (err) {
     return fallbackOrError(

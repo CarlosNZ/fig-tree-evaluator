@@ -87,3 +87,30 @@ test('Coerce string to boolean', () => {
     expect(result).toBe(true)
   })
 })
+
+// Passthru operator
+test('Pass through unmodified (passThru operator)', () => {
+  return evaluateExpression({ operator: 'pass', value: 999.99 }).then((result: any) => {
+    expect(result).toBe(999.99)
+  })
+})
+
+test('Pass through with evaluation, coerce to number', () => {
+  return evaluateExpression({
+    operator: 'pass',
+    children: [{ operator: '+', values: ['9', '99', '.', '99'] }],
+    outputType: 'number',
+  }).then((result: any) => {
+    expect(result).toBe(999.99)
+  })
+})
+
+test('Pass through with evaluation, coerce to string', () => {
+  return evaluateExpression({
+    operator: 'pass',
+    value: { operator: 'add', values: [900, 90, 9, 0.99] },
+    outputType: 'string',
+  }).then((result: any) => {
+    expect(result).toBe('999.99')
+  })
+})
