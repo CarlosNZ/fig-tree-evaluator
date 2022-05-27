@@ -5,6 +5,7 @@
 - API/GraphQL should reflect HTTP Status codes correctly (with error)
 - Tidy up API/GraphQL processing chain (helper functions)
 - Logging option
+- Custom operators??
 
 ### GUI
 

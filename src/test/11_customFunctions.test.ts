@@ -1,0 +1,65 @@
+import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+
+const exp = new ExpressionEvaluator({
+  functions: {
+    fDouble: (...args: any) => args.map((e: any) => e + e),
+    fDate: (dateString: string) => new Date(dateString),
+  },
+  objects: { functions: { square: (x: number) => x ** 2 } },
+})
+
+// CUSTOM FUNCTIONS
+test('Custom functions - double elements in an array', () => {
+  const expression = {
+    operator: 'customFunctions',
+    children: ['fDouble', 1, 2, 3, 'four'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
+  })
+})
+
+test('Custom functions - create a date from a string', () => {
+  const expression = {
+    operator: 'function',
+    children: ['fDate', { operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
+  })
+})
+
+test('Custom functions - double elements in an array, using properties', () => {
+  const expression = {
+    operator: 'objectFunctions',
+    functionPath: 'fDouble',
+    args: [1, 2, 3, 'four'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
+  })
+})
+
+test('Custom functions - fallback to a function on Objects not Functions option', () => {
+  const expression = {
+    operator: 'runFunction',
+    functionPath: 'functions.square',
+    args: [8],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(64)
+  })
+})
+
+test('Custom functions - create a date from a string', () => {
+  const expression = {
+    operator: 'function',
+    functionsPath: 'fDate',
+    arguments: [{ operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
+  }
+  return evaluateExpression(expression, {
+    functions: { fDate: (dateString: string) => new Date(dateString) },
+  }).then((result: any) => {
+    expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
+  })
+})

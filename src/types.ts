@@ -8,7 +8,7 @@ import {
   PGNode,
   GraphQLNode,
   BuildObjectNode,
-  ObjFuncNode,
+  FunctionNode,
   PassThruNode,
   QueryResult,
 } from './operators'
@@ -28,7 +28,7 @@ export const Operators = [
   'PG_SQL',
   'GRAPHQL',
   'BUILD_OBJECT',
-  'OBJECT_FUNCTIONS',
+  'CUSTOM_FUNCTIONS',
   'PASSTHRU',
 ] as const
 
@@ -50,6 +50,7 @@ export interface GraphQLConnection {
 
 export interface EvaluatorOptions {
   objects?: BasicObject
+  functions?: { [key: string]: Function }
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection
   APIfetch?: Function
@@ -83,7 +84,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
   PGNode &
   GraphQLNode &
   BuildObjectNode &
-  ObjFuncNode &
+  FunctionNode &
   PassThruNode
 
 export type OperatorNodeUnion =
@@ -96,7 +97,7 @@ export type OperatorNodeUnion =
   | GraphQLNode
   | APINode
   | BuildObjectNode
-  | ObjFuncNode
+  | FunctionNode
   | PassThruNode
 
 export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
