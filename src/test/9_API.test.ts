@@ -5,7 +5,7 @@ const exp = new ExpressionEvaluator({ APIfetch: fetch })
 
 // GET
 
-test('GET: Fetch a country', () => {
+test.concurrent('GET: Fetch a country', () => {
   const expression = {
     operator: 'GET',
     children: ['https://restcountries.com/v3.1/name/zealand', [], 'name.common'],
@@ -16,7 +16,7 @@ test('GET: Fetch a country', () => {
   })
 })
 
-test('GET: Fetch a country, using properties', () => {
+test.concurrent('GET: Fetch a country, using properties', () => {
   const expression = {
     operator: 'GET',
     url: 'https://restcountries.com/v3.1/name/zealand',
@@ -28,7 +28,7 @@ test('GET: Fetch a country, using properties', () => {
   })
 })
 
-test('GET: Fetch a country with params', () => {
+test.concurrent('GET: Fetch a country with params', () => {
   const expression = {
     operator: 'Get',
     children: [
@@ -46,7 +46,7 @@ test('GET: Fetch a country with params', () => {
   })
 })
 
-test('GET: Fetch a country with params, using props', () => {
+test.concurrent('GET: Fetch a country with params, using props', () => {
   const expression = {
     operator: 'get',
     endpoint: { operator: '+', values: ['https://restcountries.com/v3.1/name/', 'india'] },
@@ -61,7 +61,7 @@ test('GET: Fetch a country with params, using props', () => {
   })
 })
 
-test('GET: Return an array of titles plucked from inside array of objects', () => {
+test.concurrent('GET: Return an array of titles plucked from inside array of objects', () => {
   const expression = {
     operator: 'api',
     children: ['https://jsonplaceholder.typicode.com/albums', [], 'title'],
@@ -72,7 +72,7 @@ test('GET: Return an array of titles plucked from inside array of objects', () =
   })
 })
 
-test('GET: Fetch comments by post ID, no return prop', () => {
+test.concurrent('GET: Fetch comments by post ID, no return prop', () => {
   const expression = {
     operator: 'API',
     url: 'https://jsonplaceholder.typicode.com/comments',
@@ -84,7 +84,7 @@ test('GET: Fetch comments by post ID, no return prop', () => {
   })
 })
 
-test('GET: Fetch a country with multiple params', () => {
+test.concurrent('GET: Fetch a country with multiple params', () => {
   const expression = {
     operator: 'get',
     children: [
@@ -109,7 +109,7 @@ test('GET: Fetch a country with multiple params', () => {
   })
 })
 
-test('GET: Fetch a country with multiple params, using props', () => {
+test.concurrent('GET: Fetch a country with multiple params, using props', () => {
   const expression = {
     operator: 'API',
     url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
@@ -130,34 +130,37 @@ test('GET: Fetch a country with multiple params, using props', () => {
   })
 })
 
-test('GET: Fetch a country with multiple params, with nested buildObject for parameters', () => {
-  const expression = {
-    operator: 'API',
-    url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
-    parameters: {
-      operator: 'buildObject',
-      properties: [
-        { key: 'fullText', value: true },
-        { key: 'fields', value: 'name,capital,flag' },
-      ],
-    },
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toStrictEqual([
-      {
-        name: {
-          common: 'Cuba',
-          official: 'Republic of Cuba',
-          nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
-        },
-        capital: ['Havana'],
-        flag: '🇨🇺',
+test.concurrent(
+  'GET: Fetch a country with multiple params, with nested buildObject for parameters',
+  () => {
+    const expression = {
+      operator: 'API',
+      url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
+      parameters: {
+        operator: 'buildObject',
+        properties: [
+          { key: 'fullText', value: true },
+          { key: 'fields', value: 'name,capital,flag' },
+        ],
       },
-    ])
-  })
-})
+    }
+    return exp.evaluate(expression).then((result: any) => {
+      expect(result).toStrictEqual([
+        {
+          name: {
+            common: 'Cuba',
+            official: 'Republic of Cuba',
+            nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
+          },
+          capital: ['Havana'],
+          flag: '🇨🇺',
+        },
+      ])
+    })
+  }
+)
 
-test('GET: Inspect authorization headers', () => {
+test.concurrent('GET: Inspect authorization headers', () => {
   const expression = {
     operator: 'API',
     url: 'https://httpbin.org/get',
@@ -178,7 +181,7 @@ test('GET: Inspect authorization headers', () => {
 })
 
 // POST
-test('POST: Publish a blog post', () => {
+test.concurrent('POST: Publish a blog post', () => {
   const expression = {
     operator: 'post',
     children: [
@@ -199,7 +202,7 @@ test('POST: Publish a blog post', () => {
   })
 })
 
-test('POST: Unsuccessful login, using properties', () => {
+test.concurrent('POST: Unsuccessful login, using properties', () => {
   const expression = {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
@@ -210,7 +213,7 @@ test('POST: Unsuccessful login, using properties', () => {
   })
 })
 
-test('POST: Successful login, using parameters from (nested) buildObject', () => {
+test.concurrent('POST: Successful login, using parameters from (nested) buildObject', () => {
   const expression = {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
