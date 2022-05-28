@@ -1,6 +1,6 @@
-import { evaluateArray } from './_operatorUtils'
+import { evaluateArray, processAPIquery } from './_operatorUtils'
 import { EvaluatorOutput, EvaluatorConfig, GenericObject, OperatorObject } from '../types'
-import { parseChildrenGET as parseChildren, processAPIquery, APINode } from './getRequest'
+import { parseChildrenGET as parseChildren, APINode } from './getRequest'
 
 const requiredProperties = ['url'] as const
 const operatorAliases = ['post']

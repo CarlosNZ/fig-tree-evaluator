@@ -1,10 +1,4 @@
-import {
-  evaluateArray,
-  zipArraysToObject,
-  extractAndSimplify,
-  fetchAPIrequest,
-} from './_operatorUtils'
-import { errorMessage } from '../helpers'
+import { evaluateArray, zipArraysToObject, processAPIquery } from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -12,7 +6,6 @@ import {
   EvaluatorConfig,
   CombinedOperatorNode,
   GenericObject,
-  EvaluatorOptions,
   OperatorObject,
 } from '../types'
 
@@ -56,43 +49,8 @@ const parseChildren = async (
   return output
 }
 
-export const parseChildrenGET = parseChildren // For name clash with logicalAnd export
-
-export const processAPIquery = async (
-  {
-    url,
-    parameters = {},
-    returnProperty,
-  }: { url: string; parameters: GenericObject; returnProperty?: string },
-  options: EvaluatorOptions,
-  headers: GenericObject,
-  isPostRequest = false
-) => {
-  const APIfetch = options.APIfetch
-  const urlWithQuery =
-    Object.keys(parameters).length > 0 && !isPostRequest
-      ? `${url}?${Object.entries(parameters)
-          .map(([key, val]) => key + '=' + val)
-          .join('&')}`
-      : url
-  const requestBody = isPostRequest ? parameters : null
-
-  let data
-  try {
-    data = isPostRequest
-      ? await fetchAPIrequest({
-          url,
-          APIfetch,
-          method: 'POST',
-          body: requestBody,
-          headers,
-        })
-      : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
-  } catch (err) {
-    throw new Error('Invalid API query: ' + errorMessage(err))
-  }
-  return extractAndSimplify(data, returnProperty)
-}
+// For name clash with logicalAnd export
+export const parseChildrenGET = parseChildren
 
 export const GET: OperatorObject = {
   requiredProperties,

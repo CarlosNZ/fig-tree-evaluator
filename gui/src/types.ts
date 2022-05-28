@@ -20,6 +20,6 @@ export interface ConfigState {
 }
 
 export interface Result {
-  result: EvaluatorOutput
+  output: EvaluatorOutput
   error: string | false
 }

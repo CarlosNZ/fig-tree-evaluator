@@ -24,7 +24,7 @@ export const evaluatorFunction = async (
     expression = await evaluateArray(expression, config)
   }
 
-  // Non-operator nodes get returned unmodified
+  // Base case -- Non-operator nodes get returned unmodified
   if (!isOperatorNode(expression)) return expression
 
   const { fallback } = expression
@@ -54,12 +54,13 @@ export const evaluatorFunction = async (
 
     if ('children' in expression) expression = await parseChildren(expression, config)
 
+    // Recursively evaluate node
     const result = await evaluate(expression, config)
 
     const outputType = expression?.type ?? expression?.outputType
     if (!outputType) return result
 
-    // Type conversion
+    // Output type conversion
     if (!(outputType in convertOutputMethods))
       return fallbackOrError(
         await evaluatorFunction(fallback, config),

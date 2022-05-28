@@ -54,10 +54,7 @@ test.concurrent('GET: Fetch a country with params, using props', () => {
     outputProperty: '[0].name.nativeName.hin',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toStrictEqual({
-      official: 'भारत गणराज्य',
-      common: 'भारत',
-    })
+    expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
   })
 })
 
@@ -209,7 +206,7 @@ test.concurrent('POST: Unsuccessful login, using properties', () => {
     parameters: { email: 'eve.holt@reqres.in' },
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toStrictEqual({ error: 'Missing password' })
+    expect(result).toThrow('400 Bad Request')
   })
 })
 
@@ -227,5 +224,37 @@ test.concurrent('POST: Successful login, using parameters from (nested) buildObj
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
+  })
+})
+
+// HTTP Error codes using httpstat.us
+test.concurrent('GET: 403 error', () => {
+  const expression = {
+    operator: 'API',
+    url: 'http://httpstat.us/403',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toThrow('HTTP error: 403 Forbidden')
+  })
+})
+
+test.concurrent('POST: 404 error', () => {
+  const expression = {
+    operator: 'API',
+    url: 'http://httpstat.us/404',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toThrow('HTTP error: 404 Not found')
+  })
+})
+
+test.concurrent('GET: 429 Error with fallback', () => {
+  const expression = {
+    operator: 'API',
+    url: 'http://httpstat.us/429',
+    fallback: 'There was a problem',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('There was a problem')
   })
 })

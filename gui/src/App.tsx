@@ -44,7 +44,7 @@ function App() {
     expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
     objects: localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects),
   })
-  const [result, setResult] = useState<Result>({ result: null, error: false })
+  const [result, setResult] = useState<Result>({ output: null, error: false })
   const [isValidState, setIsValidState] = useState<IsValidState>({
     expression: validateExpression(inputState.expression),
     objects: validateObjects(inputState.objects),
@@ -67,7 +67,7 @@ function App() {
     setIsValidState({ expression: expressionValid, objects: objectsValid })
 
     if (!expressionValid || !objectsValid) {
-      setResult({ result: 'Invalid Input', error: false })
+      setResult({ output: 'Invalid Input', error: false })
       return
     }
 
@@ -77,10 +77,10 @@ function App() {
     evaluator
       .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
       .then((result) => {
-        setResult({ result, error: false })
+        setResult({ output: result, error: false })
       })
       .catch((error) => {
-        setResult({ result: null, error: error.message })
+        setResult({ output: null, error: error.message })
       })
   }, [debounceOutput, configState]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -230,12 +230,12 @@ function App() {
         <Card style={{ marginTop: 7 }} variant="outlined">
           <CardContent>
             <Typography variant="body1" component="p">
-              {typeof result.result === 'object' && !result.error ? (
-                <pre>{JSON.stringify(result.result)}</pre>
-              ) : (
-                <span className="result-text">{String(result.result)}</span>
-              )}
-
+              {!result.error &&
+                (typeof result.output === 'object' ? (
+                  <pre>{JSON.stringify(result.output)}</pre>
+                ) : (
+                  <span className="result-text">{String(result.output)}</span>
+                ))}
               {result.error && <span className="error-text">{result.error}</span>}
             </Typography>
           </CardContent>

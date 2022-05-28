@@ -15,6 +15,7 @@ import {
 } from './operators'
 
 export const Operators = [
+  // Canonical operator names
   'AND',
   'OR',
   'EQUAL',
