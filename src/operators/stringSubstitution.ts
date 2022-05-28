@@ -24,19 +24,16 @@ const evaluate = async (
     [expression.string, ...(expression.substitutions as EvaluatorNode[])],
     config
   )) as [string, string]
-  const regex = /%([\d]+)/g // To-Do: handle escaping literal values
+  const regex = /(%[\d]+)/g
   const parameters = (string.match(regex) || []).sort(
     (a, b) => Number(a.slice(1)) - Number(b.slice(1))
   )
   const uniqueParameters = new Set(parameters)
   const replacementsObj = zipArraysToObject(Array.from(uniqueParameters), substitutions)
-  let outputString = string
-  Object.entries(replacementsObj)
-    .reverse()
-    .forEach(([param, replacement]) => {
-      outputString = outputString.replace(new RegExp(`${param}`, 'g'), replacement ?? '')
-    })
-  return outputString
+  return string
+    .split(regex)
+    .map((fragment) => (fragment in replacementsObj ? replacementsObj[fragment] : fragment))
+    .join('')
 }
 
 const parseChildren = (expression: CombinedOperatorNode): StringSubNode => {
