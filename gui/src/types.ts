@@ -1,5 +1,5 @@
 import { PostgresInterface } from './postgresInterface'
-import { ValueNode } from './expression-evaluator/types'
+import { EvaluatorOutput } from './expression-evaluator/types'
 import EvaluatorDev from './expression-evaluator/evaluator'
 import EvaluatorPublished from '@carlosnz/expression-evaluator'
 
@@ -20,6 +20,6 @@ export interface ConfigState {
 }
 
 export interface Result {
-  result: ValueNode
+  result: EvaluatorOutput
   error: string | false
 }
