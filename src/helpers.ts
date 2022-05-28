@@ -1,5 +1,5 @@
 import { mapKeys, camelCase } from 'lodash'
-import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, ValueNode } from './types'
+import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, EvaluatorOutput } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
   if (typeof input !== 'string') return input
@@ -32,6 +32,10 @@ export const fallbackOrError = (
   else throw new Error(errorMessage)
 }
 
+/*
+Converts Evaluator node to one with canonical property names,
+as per each operator's property aliases
+*/
 export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
   expression: CombinedOperatorNode
@@ -40,6 +44,10 @@ export const mapPropertyAliases = (
     key in propertyAliases ? propertyAliases[key] : key
   ) as CombinedOperatorNode
 
+/*
+Checks Evaluator node for missing required properties based on operator type
+- Doesn't do type checking of properties (yet)
+*/
 export const checkRequiredNodes = (
   requiredProps: readonly string[],
   expression: CombinedOperatorNode
@@ -53,13 +61,13 @@ export const checkRequiredNodes = (
 }
 
 export const convertOutputMethods: {
-  [key in OutputType]: <T>(val: T) => ValueNode | T[]
+  [key in OutputType]: <T>(val: T) => EvaluatorOutput | T[]
 } = {
-  number: (value: ValueNode) => (Number.isNaN(Number(value)) ? value : Number(value)),
-  string: (value: ValueNode) => String(value),
-  array: (value: ValueNode) => (Array.isArray(value) ? value : [value]),
-  boolean: (value: ValueNode) => Boolean(value),
-  bool: (value: ValueNode) => Boolean(value),
+  number: (value: EvaluatorOutput) => (Number.isNaN(Number(value)) ? value : Number(value)),
+  string: (value: EvaluatorOutput) => String(value),
+  array: (value: EvaluatorOutput) => (Array.isArray(value) ? value : [value]),
+  boolean: (value: EvaluatorOutput) => Boolean(value),
+  bool: (value: EvaluatorOutput) => Boolean(value),
 }
 
 // Workaround to prevent typescript errors for err.message

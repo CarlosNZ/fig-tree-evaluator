@@ -1,4 +1,4 @@
-import { EvaluatorConfig, EvaluatorNode, ValueNode, OutputType } from './types'
+import { EvaluatorConfig, EvaluatorNode, EvaluatorOutput, OutputType } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import {
   checkRequiredNodes,
@@ -14,7 +14,7 @@ import {
 export const evaluatorFunction = async (
   input: EvaluatorNode,
   config: EvaluatorConfig
-): Promise<ValueNode> => {
+): Promise<EvaluatorOutput> => {
   const { options, operators, operatorAliases } = config
 
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input

@@ -10,7 +10,8 @@ import {
   BuildObjectNode,
   FunctionNode,
   PassThruNode,
-  QueryResult,
+  PGConnection,
+  GraphQLConnection,
 } from './operators'
 
 export const Operators = [
@@ -34,22 +35,12 @@ export const Operators = [
 
 export type Operator = typeof Operators[number]
 
-export type BasicObject = {
+export type GenericObject = {
   [key: string]: any
 }
 
-export interface PGConnection {
-  query: (expression: { text: string; values?: any[]; rowMode?: string }) => Promise<QueryResult>
-}
-
-export interface GraphQLConnection {
-  fetch: Function
-  endpoint: string
-  headers?: { [key: string]: string }
-}
-
 export interface EvaluatorOptions {
-  objects?: BasicObject
+  objects?: GenericObject
   functions?: { [key: string]: Function }
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection
@@ -100,15 +91,15 @@ export type OperatorNodeUnion =
   | FunctionNode
   | PassThruNode
 
-export type ValueNode = string | boolean | number | BasicObject | null | undefined | any[]
+export type EvaluatorOutput = string | boolean | number | GenericObject | null | undefined | any[]
 
-export type EvaluatorNode = CombinedOperatorNode | ValueNode
+export type EvaluatorNode = CombinedOperatorNode | EvaluatorOutput
 
 export type OperatorObject = {
   requiredProperties: readonly string[]
   operatorAliases: string[]
   propertyAliases: { [key: string]: string }
-  evaluate: (expression: CombinedOperatorNode, config: EvaluatorConfig) => Promise<ValueNode>
+  evaluate: (expression: CombinedOperatorNode, config: EvaluatorConfig) => Promise<EvaluatorOutput>
   parseChildren: (
     expression: CombinedOperatorNode,
     config: EvaluatorConfig

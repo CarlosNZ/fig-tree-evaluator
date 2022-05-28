@@ -4,7 +4,7 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   OperatorObject,
 } from '../types'
@@ -24,7 +24,10 @@ export type FunctionNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode & { args: EvaluatorNode[] }
 
-const evaluate = async (expression: FunctionNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (
+  expression: FunctionNode,
+  config: EvaluatorConfig
+): Promise<EvaluatorOutput> => {
   const [functionPath, ...args] = (await evaluateArray(
     [expression.functionPath, ...(expression.args as EvaluatorNode[])],
     config

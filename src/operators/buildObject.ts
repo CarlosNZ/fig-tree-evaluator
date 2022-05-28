@@ -2,10 +2,10 @@ import { evaluateArray } from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   CombinedOperatorNode,
-  BasicObject,
+  GenericObject,
   OperatorObject,
 } from '../types'
 
@@ -26,16 +26,17 @@ type BuildObjectElement = { key: EvaluatorNode; value: EvaluatorNode }
 const evaluate = async (
   expression: BuildObjectNode,
   config: EvaluatorConfig
-): Promise<ValueNode> => {
+): Promise<EvaluatorOutput> => {
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
-    const [key, value] = (await evaluateArray(nodes, config)) as [string, ValueNode]
+    const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
     return [key, value]
   }
 
   const evaluated = expression.properties
     // Remove any objects that don't have both "key" and "value" props
     .filter(
-      (element: BasicObject) => element instanceof Object && 'key' in element && 'value' in element
+      (element: GenericObject) =>
+        element instanceof Object && 'key' in element && 'value' in element
     )
     .map(({ key, value }) => evaluatePair([key, value]))
 

@@ -3,9 +3,8 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
-  PGConnection,
   OperatorObject,
 } from '../types'
 
@@ -17,7 +16,7 @@ export type PGNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode & { values?: EvaluatorNode[] }
 
-const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
   const [query, ...values] = (await evaluateArray(
     [expression.query, ...(expression.values as EvaluatorNode[])],
     config
@@ -34,6 +33,10 @@ const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<Va
 const parseChildren = (expression: CombinedOperatorNode): PGNode => {
   const [query, ...values] = expression.children as EvaluatorNode[]
   return { ...expression, query, values }
+}
+
+export interface PGConnection {
+  query: (expression: { text: string; values?: any[]; rowMode?: string }) => Promise<QueryResult>
 }
 
 interface QueryRowResult {

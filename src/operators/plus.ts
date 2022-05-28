@@ -1,5 +1,5 @@
 import { evaluateArray } from './_operatorUtils'
-import { ValueNode, EvaluatorConfig, OperatorObject } from '../types'
+import { EvaluatorOutput, EvaluatorConfig, OperatorObject } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
 const requiredProperties = ['values'] as const
@@ -9,7 +9,7 @@ const propertyAliases = {}
 const evaluate = async (
   expression: BasicExtendedNode,
   config: EvaluatorConfig
-): Promise<ValueNode> => {
+): Promise<EvaluatorOutput> => {
   if (expression.values.length === 0) return expression.values
 
   const values = (await evaluateArray(expression.values, config)) as any[]

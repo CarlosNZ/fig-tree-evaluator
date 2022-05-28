@@ -1,29 +1,40 @@
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import { BasicObject, EvaluatorNode, ValueNode, EvaluatorConfig } from '../types'
+import { GenericObject, EvaluatorNode, EvaluatorOutput, EvaluatorConfig } from '../types'
 
-// Evaluate all child nodes simultaneously
+// Evaluate all child/property nodes simultaneously
 export const evaluateArray = async (
   nodes: EvaluatorNode[],
   params: EvaluatorConfig
-): Promise<ValueNode[]> => {
+): Promise<EvaluatorOutput[]> => {
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
-
-export const zipArraysToObject = (variableNames: string[], variableValues: any[]) => {
-  const createdObject: BasicObject = {}
-  variableNames.map((name, index) => {
-    createdObject[name] = variableValues[index]
-  })
-  return createdObject
+/*
+"Zips" two arrays into an object, where the first array provides 
+the keys, and the second becomes the values
+e.g. (["one", "two"], [1, 2]) => {one: 1, two: 2}
+*/
+export const zipArraysToObject = <T>(
+  keys: string[],
+  values: T[]
+): { [K in typeof keys[number]]: T } => {
+  const pairs = keys.map((key, index) => [key, values[index]])
+  return Object.fromEntries(pairs)
 }
 
-export const simplifyObject = (item: number | string | boolean | BasicObject) => {
-  return typeof item === 'object' && Object.keys(item).length === 1 ? Object.values(item)[0] : item
+/*
+If object only has one property, just return the value of that property
+rather than the whole object
+*/
+export const simplifyObject = (item: number | string | boolean | GenericObject) => {
+  return item instanceof Object && Object.keys(item).length === 1 ? Object.values(item)[0] : item
 }
 
+/*
+Extracts a (nested) property from Object and simplifies output as above
+*/
 export const extractAndSimplify = (
-  data: BasicObject | BasicObject[],
+  data: GenericObject | GenericObject[],
   returnProperty: string | undefined,
   fallback: any = undefined
 ) => {

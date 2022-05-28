@@ -3,7 +3,7 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   OperatorObject,
 } from '../types'
@@ -19,7 +19,7 @@ export type ConditionalNode = {
 const evaluate = async (
   expression: ConditionalNode,
   options: EvaluatorConfig
-): Promise<ValueNode> => {
+): Promise<EvaluatorOutput> => {
   const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
     [expression.condition, expression.valueIfTrue, expression.valueIfFalse],
     options

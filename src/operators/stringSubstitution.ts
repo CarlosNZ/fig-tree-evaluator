@@ -3,7 +3,7 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   OperatorObject,
 } from '../types'
@@ -16,11 +16,14 @@ export type StringSubNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode
 
-const evaluate = async (expression: StringSubNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (
+  expression: StringSubNode,
+  config: EvaluatorConfig
+): Promise<EvaluatorOutput> => {
   const [string, ...substitutions] = (await evaluateArray(
     [expression.string, ...(expression.substitutions as EvaluatorNode[])],
     config
-  )) as [string, string[]]
+  )) as [string, string]
   const regex = /%([\d]+)/g // To-Do: handle escaping literal values
   const parameters = (string.match(regex) || []).sort(
     (a, b) => Number(a.slice(1)) - Number(b.slice(1))

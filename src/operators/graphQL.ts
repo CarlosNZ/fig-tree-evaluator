@@ -2,11 +2,10 @@ import { zipArraysToObject, extractAndSimplify, evaluateArray } from './_operato
 import {
   BaseOperatorNode,
   EvaluatorNode,
-  ValueNode,
-  GraphQLConnection,
+  EvaluatorOutput,
   EvaluatorConfig,
   CombinedOperatorNode,
-  BasicObject,
+  GenericObject,
   OperatorObject,
 } from '../types'
 import { errorMessage } from '../helpers'
@@ -23,13 +22,16 @@ export type GraphQLNode = {
     returnNode?: EvaluatorNode
   }
 
-const evaluate = async (expression: GraphQLNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (
+  expression: GraphQLNode,
+  config: EvaluatorConfig
+): Promise<EvaluatorOutput> => {
   if (!config.options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
 
   const [query, urlObj, variables, returnNode] = (await evaluateArray(
     [expression.query, expression.url, expression.variables, expression.returnNode],
     config
-  )) as [string, string | { url: string; headers: BasicObject }, BasicObject, string]
+  )) as [string, string | { url: string; headers: GenericObject }, GenericObject, string]
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
@@ -58,15 +60,21 @@ const parseChildren = async (
   return output
 }
 
+export interface GraphQLConnection {
+  fetch: Function
+  endpoint: string
+  headers?: { [key: string]: string }
+}
+
 const processGraphQL = async (
   {
     query,
     url,
     variables,
     returnNode,
-  }: { query: string; url: string; variables: BasicObject; returnNode?: string },
+  }: { query: string; url: string; variables: GenericObject; returnNode?: string },
   connection: GraphQLConnection,
-  gqlHeaders: BasicObject = {}
+  gqlHeaders: GenericObject = {}
 ) => {
   try {
     const data = await graphQLquery(url, query, variables, connection, gqlHeaders)

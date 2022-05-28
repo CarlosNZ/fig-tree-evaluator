@@ -4,7 +4,7 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   OperatorObject,
 } from '../types'
@@ -20,7 +20,10 @@ export type ObjPropNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode
 
-const evaluate = async (expression: ObjPropNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (
+  expression: ObjPropNode,
+  config: EvaluatorConfig
+): Promise<EvaluatorOutput> => {
   const [property] = (await evaluateArray([expression.property], config)) as [string, any]
   const inputObject = config.options?.objects ?? {}
   return extractProperty(inputObject, property)

@@ -4,7 +4,7 @@ import {
   BaseOperatorNode,
   EvaluatorNode,
   CombinedOperatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   OperatorObject,
 } from '../types'
@@ -24,7 +24,10 @@ export type RegexNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode
 
-const evaluate = async (expression: RegexNode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (
+  expression: RegexNode,
+  config: EvaluatorConfig
+): Promise<EvaluatorOutput> => {
   const [testString, pattern] = (await evaluateArray(
     [expression.testString, expression.pattern],
     config

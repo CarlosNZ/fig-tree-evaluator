@@ -8,10 +8,10 @@ import { errorMessage } from '../helpers'
 import {
   BaseOperatorNode,
   EvaluatorNode,
-  ValueNode,
+  EvaluatorOutput,
   EvaluatorConfig,
   CombinedOperatorNode,
-  BasicObject,
+  GenericObject,
   EvaluatorOptions,
   OperatorObject,
 } from '../types'
@@ -27,13 +27,13 @@ export type APINode = {
     returnProperty?: EvaluatorNode
   }
 
-const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<ValueNode> => {
+const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
   if (!config.options.APIfetch) throw new Error('No Fetch method provided for API query')
 
   const [urlObj, parameters, returnProperty] = (await evaluateArray(
     [expression.url, expression.parameters, expression.returnProperty],
     config
-  )) as [string | { url: string; headers: BasicObject }, BasicObject, string]
+  )) as [string | { url: string; headers: GenericObject }, GenericObject, string]
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
@@ -63,9 +63,9 @@ export const processAPIquery = async (
     url,
     parameters = {},
     returnProperty,
-  }: { url: string; parameters: BasicObject; returnProperty?: string },
+  }: { url: string; parameters: GenericObject; returnProperty?: string },
   options: EvaluatorOptions,
-  headers: BasicObject,
+  headers: GenericObject,
   isPostRequest = false
 ) => {
   const APIfetch = options.APIfetch
