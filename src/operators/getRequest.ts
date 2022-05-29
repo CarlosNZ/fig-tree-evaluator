@@ -3,6 +3,8 @@ import {
   zipArraysToObject,
   axiosRequest,
   extractAndSimplify,
+  isFullUrl,
+  joinUrlParts,
 } from './_operatorUtils'
 import {
   BaseOperatorNode,
@@ -33,8 +35,14 @@ const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<E
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
+  const baseUrl = config.options.baseEndpoint ?? ''
+
   const httpHeaders = { ...config.options?.headers, ...headers }
-  const response = await axiosRequest({ url, params, headers: httpHeaders })
+  const response = await axiosRequest({
+    url: isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
+    params,
+    headers: httpHeaders,
+  })
   return extractAndSimplify(response, returnProperty)
 }
 

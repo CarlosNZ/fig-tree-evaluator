@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 import { Client } from 'pg'
 import pgConfig from './postgres/pgConfig.json'
@@ -19,72 +20,72 @@ const exp = new ExpressionEvaluator({
 
 // Postgres
 
-test('Postgres - lookup single string', () => {
-  const expression = {
-    operator: 'postgres',
-    children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
-    type: 'string',
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Aria Cruz')
-  })
-})
+// test('Postgres - lookup single string', () => {
+//   const expression = {
+//     operator: 'postgres',
+//     children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
+//     type: 'string',
+//   }
+//   return exp.evaluate(expression).then((result: any) => {
+//     expect(result).toBe('Aria Cruz')
+//   })
+// })
 
-test('Postgres - get an array of Orders using var substitution', () => {
-  const expression = {
-    operator: 'pg',
-    children: [
-      'SELECT order_id, order_date, ship_city, ship_country FROM public.orders WHERE customer_id = $1 AND order_id < 10500;',
-      'FAMIA',
-    ],
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toStrictEqual([
-      {
-        order_id: 10347,
-        order_date: new Date('1996-11-05T11:00:00.000Z'),
-        ship_city: 'Sao Paulo',
-        ship_country: 'Brazil',
-      },
-      {
-        order_id: 10386,
-        order_date: new Date('1996-12-17T11:00:00.000Z'),
-        ship_city: 'Sao Paulo',
-        ship_country: 'Brazil',
-      },
-      {
-        order_id: 10414,
-        order_date: new Date('1997-01-13T11:00:00.000Z'),
-        ship_city: 'Sao Paulo',
-        ship_country: 'Brazil',
-      },
-    ])
-  })
-})
+// test('Postgres - get an array of Orders using var substitution', () => {
+//   const expression = {
+//     operator: 'pg',
+//     children: [
+//       'SELECT order_id, order_date, ship_city, ship_country FROM public.orders WHERE customer_id = $1 AND order_id < 10500;',
+//       'FAMIA',
+//     ],
+//   }
+//   return exp.evaluate(expression).then((result: any) => {
+//     expect(result).toStrictEqual([
+//       {
+//         order_id: 10347,
+//         order_date: new Date('1996-11-05T11:00:00.000Z'),
+//         ship_city: 'Sao Paulo',
+//         ship_country: 'Brazil',
+//       },
+//       {
+//         order_id: 10386,
+//         order_date: new Date('1996-12-17T11:00:00.000Z'),
+//         ship_city: 'Sao Paulo',
+//         ship_country: 'Brazil',
+//       },
+//       {
+//         order_id: 10414,
+//         order_date: new Date('1997-01-13T11:00:00.000Z'),
+//         ship_city: 'Sao Paulo',
+//         ship_country: 'Brazil',
+//       },
+//     ])
+//   })
+// })
 
-test('Postgres - count employees', () => {
-  const expression = {
-    operator: 'postgres',
-    children: ['SELECT COUNT(*) FROM employees'],
-    type: 'number',
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe(9)
-  })
-})
+// test('Postgres - count employees', () => {
+//   const expression = {
+//     operator: 'postgres',
+//     children: ['SELECT COUNT(*) FROM employees'],
+//     type: 'number',
+//   }
+//   return exp.evaluate(expression).then((result: any) => {
+//     expect(result).toBe(9)
+//   })
+// })
 
-test('Postgres - get list of (most) products, using properties', () => {
-  const expression = {
-    operator: 'pgSQL',
-    query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
-    values: [1, 16],
-    type: 'array',
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    // prettier-ignore
-    expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
-  })
-})
+// test('Postgres - get list of (most) products, using properties', () => {
+//   const expression = {
+//     operator: 'pgSQL',
+//     query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+//     values: [1, 16],
+//     type: 'array',
+//   }
+//   return exp.evaluate(expression).then((result: any) => {
+//     // prettier-ignore
+//     expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
+//   })
+// })
 
 // GraphQL
 
@@ -186,6 +187,32 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe('🇮🇳')
+  })
+})
+
+test('GraphQL - Get repo info using partial url and updated options, requires auth', () => {
+  exp.updateOptions({
+    graphQLConnection: {
+      endpoint: 'https://api.github.com/',
+      headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN },
+    },
+  })
+  const expression = {
+    operator: 'graphQL',
+    url: 'graphql',
+    query: `query($repoName:String!){
+              viewer {
+                login
+                repository(name: $repoName) {
+                  description
+                }
+              }
+            }`,
+    variables: { repoName: 'expression-evaluator' },
+    returnNode: 'viewer.repository.description',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Module to evaluate JSON-structured expression')
   })
 })
 

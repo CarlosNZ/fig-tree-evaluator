@@ -4,7 +4,8 @@
 - Not Equal should allow more than two items (and throw error if one item)
 - Logging option
 - Autogen some massive query expression
-- Custom operators??
+- Does axios need its own instance per node?
+- If specific urls is not full, append it to base url
 
 ### GUI
 

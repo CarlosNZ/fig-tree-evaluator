@@ -2,6 +2,8 @@ import {
   zipArraysToObject,
   extractAndSimplify,
   evaluateArray,
+  isFullUrl,
+  joinUrlParts,
   axiosRequest,
 } from './_operatorUtils'
 import {
@@ -37,12 +39,17 @@ const evaluate = async (
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
+  const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? '' : url
+
+  const baseEndpoint =
+    config.options.graphQLConnection?.endpoint ?? config.options.baseEndpoint ?? ''
+
+  const fullUrl = isFullUrl(endpoint) ? endpoint : joinUrlParts(baseEndpoint, endpoint)
+
   const data = { query, variables }
 
   const response = await axiosRequest({
-    url: (!url || url.toLowerCase() === 'graphqlendpoint'
-      ? config.options.graphQLConnection?.endpoint
-      : url) as string,
+    url: fullUrl,
     method: 'post',
     data,
     headers: {

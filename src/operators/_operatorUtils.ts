@@ -59,6 +59,17 @@ export const extractAndSimplify = (
   }
 }
 
+export const isFullUrl = (url: string) => /^https?:\/\/.+/.test(url)
+
+export const joinUrlParts = (...urls: string[]) => {
+  return urls.reduce((acc, curr, index) => {
+    const startSliceIndex = curr[0] === '/' ? 1 : 0
+    const endSliceIndex = curr.slice(-1) === '/' ? -1 : undefined
+    const newPart = curr.slice(startSliceIndex, endSliceIndex)
+    return acc + (index === 0 ? '' : '/') + newPart
+  }, '')
+}
+
 export const axiosRequest = async ({
   url,
   params = {},

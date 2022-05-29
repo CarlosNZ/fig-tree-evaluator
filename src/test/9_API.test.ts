@@ -267,3 +267,18 @@ test.concurrent('GET: Bad url', () => {
     expect(result).toBe('Network Error')
   })
 })
+
+// Using baseUrl
+
+test('GET: Fetch a country with params, using props', () => {
+  exp.updateOptions({ baseEndpoint: 'https://restcountries.com/' })
+  const expression = {
+    operator: 'get',
+    endpoint: { operator: '+', values: ['/v3.1/name/', 'india'] },
+    parameters: { fullText: true },
+    outputProperty: '[0].name.nativeName.hin',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
+  })
+})

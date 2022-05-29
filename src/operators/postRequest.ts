@@ -1,4 +1,10 @@
-import { evaluateArray, axiosRequest, extractAndSimplify } from './_operatorUtils'
+import {
+  evaluateArray,
+  axiosRequest,
+  extractAndSimplify,
+  isFullUrl,
+  joinUrlParts,
+} from './_operatorUtils'
 import { EvaluatorOutput, EvaluatorConfig, GenericObject, OperatorObject } from '../types'
 import { parseChildrenGET as parseChildren, APINode } from './getRequest'
 
@@ -14,8 +20,15 @@ const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<E
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
+  const baseUrl = config.options.baseEndpoint ?? ''
+
   const httpHeaders = { ...config.options?.headers, ...headers }
-  const response = await axiosRequest({ url, data, headers: httpHeaders, method: 'post' })
+  const response = await axiosRequest({
+    url: isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
+    data,
+    headers: httpHeaders,
+    method: 'post',
+  })
   return extractAndSimplify(response, returnProperty)
 }
 
