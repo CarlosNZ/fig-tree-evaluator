@@ -17,7 +17,7 @@ import EvaluatorDev from './expression-evaluator/evaluator'
 import EvaluatorPublished from '@carlosnz/expression-evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
-import { fetchNative, JSONstringify, JSONstringifyLoose } from './helpers'
+import { JSONstringify, JSONstringifyLoose } from './helpers'
 import config from './config.json'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
@@ -30,8 +30,7 @@ const pgInterface = new PostgresInterface()
 
 const evaluatorParams = {
   pgConnection: pgInterface,
-  graphQLConnection: { fetch: fetchNative, endpoint: graphQLendpoint },
-  // APIfetch: fetchNative,
+  graphQLConnection: { endpoint: graphQLendpoint },
 }
 
 const expDev = new EvaluatorDev(evaluatorParams)

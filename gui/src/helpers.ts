@@ -1,10 +1,5 @@
 const looseJSON = require('loose-json')
 
-export const fetchNative = async (url: string, obj: any) => {
-  const result = await fetch(url, obj)
-  return result
-}
-
 export const JSONstringify = (input: string, compact = false, strict = false) => {
   const indent = compact ? 0 : 2
   try {
