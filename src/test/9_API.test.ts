@@ -1,7 +1,6 @@
-import fetch from 'node-fetch'
 import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 
-const exp = new ExpressionEvaluator({ APIfetch: fetch })
+const exp = new ExpressionEvaluator({ returnErrorAsString: true })
 
 // GET
 
@@ -206,7 +205,7 @@ test.concurrent('POST: Unsuccessful login, using properties', () => {
     parameters: { email: 'eve.holt@reqres.in' },
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toThrow('400 Bad Request')
+    expect(result).toBe('Request failed with status code 400')
   })
 })
 
@@ -228,13 +227,13 @@ test.concurrent('POST: Successful login, using parameters from (nested) buildObj
 })
 
 // HTTP Error codes using httpstat.us
-test.concurrent('GET: 403 error', () => {
+test('GET: 403 error', () => {
   const expression = {
     operator: 'API',
     url: 'http://httpstat.us/403',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toThrow('HTTP error: 403 Forbidden')
+    expect(result).toBe('Request failed with status code 403')
   })
 })
 
@@ -244,7 +243,7 @@ test.concurrent('POST: 404 error', () => {
     url: 'http://httpstat.us/404',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toThrow('HTTP error: 404 Not found')
+    expect(result).toBe('Request failed with status code 404')
   })
 })
 
@@ -256,5 +255,15 @@ test.concurrent('GET: 429 Error with fallback', () => {
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe('There was a problem')
+  })
+})
+
+test.concurrent('GET: Bad url', () => {
+  const expression = {
+    operator: 'API',
+    url: 'http://there.is.no.site',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Network Error')
   })
 })

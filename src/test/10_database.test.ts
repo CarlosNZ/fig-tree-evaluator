@@ -1,5 +1,4 @@
 import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
-import fetch from 'node-fetch'
 import { Client } from 'pg'
 import pgConfig from './postgres/pgConfig.json'
 
@@ -14,7 +13,6 @@ pgConnect.connect()
 const exp = new ExpressionEvaluator({
   pgConnection: pgConnect,
   graphQLConnection: {
-    fetch: fetch,
     endpoint: 'https://countries.trevorblades.com/',
   },
 })
@@ -186,7 +184,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
     },
     returnNode: 'countries[0].emoji',
   }
-  return exp.evaluate(expression, { APIfetch: fetch }).then((result: any) => {
+  return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe('🇮🇳')
   })
 })

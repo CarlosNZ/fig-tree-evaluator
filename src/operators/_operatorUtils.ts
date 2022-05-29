@@ -1,5 +1,7 @@
+import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
+import { errorMessage } from '../helpers'
 import {
   GenericObject,
   EvaluatorNode,
@@ -57,64 +59,32 @@ export const extractAndSimplify = (
   }
 }
 
-interface APIrequestProps {
-  url: string
-  APIfetch: any
-  method?: 'GET' | 'POST'
-  body?: { [key: string]: string } | null
-  headers?: { [key: string]: string }
-}
-
-export const processAPIquery = async (
-  {
-    url,
-    parameters = {},
-    returnProperty,
-  }: { url: string; parameters: GenericObject; returnProperty?: string },
-  options: EvaluatorOptions,
-  headers: GenericObject,
-  isPostRequest = false
-) => {
-  const APIfetch = options.APIfetch
-  const urlWithQuery =
-    Object.keys(parameters).length > 0 && !isPostRequest
-      ? `${url}?${Object.entries(parameters)
-          .map(([key, val]) => key + '=' + val)
-          .join('&')}`
-      : url
-  const requestBody = isPostRequest ? parameters : null
-
-  let data
-
-  data = isPostRequest
-    ? await fetchAPIrequest({
-        url,
-        APIfetch,
-        method: 'POST',
-        body: requestBody,
-        headers,
-      })
-    : await fetchAPIrequest({ url: urlWithQuery, APIfetch, headers })
-  return extractAndSimplify(data, returnProperty)
-}
-
-// GET/POST request using fetch (node or browser variety)
-export const fetchAPIrequest = async ({
+export const axiosRequest = async ({
   url,
-  APIfetch,
-  method = 'GET',
-  body,
+  params = {},
+  data = {},
   headers = {},
-}: APIrequestProps) => {
-  const response = await APIfetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...headers,
-    },
-    body: JSON.stringify(body),
-  })
-  if (response.ok) return await response.json()
-  else throw new Error(`HTTP error: ${response.status} ${response.statusText}`)
+  method = 'get',
+}: {
+  url: string
+  params?: GenericObject
+  data?: GenericObject
+  headers?: GenericObject
+  method?: 'get' | 'post'
+}) => {
+  try {
+    const response = await axios({
+      method,
+      url,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headers },
+      params,
+      data,
+    })
+    return response.data
+  } catch (err) {
+    if (axios.isAxiosError(err)) {
+      console.log(err.message)
+    }
+    throw err
+  }
 }

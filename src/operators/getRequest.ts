@@ -1,4 +1,9 @@
-import { evaluateArray, zipArraysToObject, processAPIquery } from './_operatorUtils'
+import {
+  evaluateArray,
+  zipArraysToObject,
+  axiosRequest,
+  extractAndSimplify,
+} from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -21,17 +26,16 @@ export type APINode = {
   }
 
 const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
-  if (!config.options.APIfetch) throw new Error('No Fetch method provided for API query')
-
-  const [urlObj, parameters, returnProperty] = (await evaluateArray(
+  const [urlObj, params, returnProperty] = (await evaluateArray(
     [expression.url, expression.parameters, expression.returnProperty],
     config
-  )) as [string | { url: string; headers: GenericObject }, GenericObject, string]
+  )) as [string | { url: string; headers: GenericObject }, { [key: string]: string }, string]
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   const httpHeaders = { ...config.options?.headers, ...headers }
-  return await processAPIquery({ url, parameters, returnProperty }, config.options, httpHeaders)
+  const response = await axiosRequest({ url, params, headers: httpHeaders })
+  return extractAndSimplify(response, returnProperty)
 }
 
 const parseChildren = async (

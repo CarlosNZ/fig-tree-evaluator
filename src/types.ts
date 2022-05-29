@@ -45,7 +45,6 @@ export interface EvaluatorOptions {
   functions?: { [key: string]: Function }
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection
-  APIfetch?: Function
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
   allowJSONStringInput?: boolean

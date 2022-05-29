@@ -31,7 +31,7 @@ const pgInterface = new PostgresInterface()
 const evaluatorParams = {
   pgConnection: pgInterface,
   graphQLConnection: { fetch: fetchNative, endpoint: graphQLendpoint },
-  APIfetch: fetchNative,
+  // APIfetch: fetchNative,
 }
 
 const expDev = new EvaluatorDev(evaluatorParams)

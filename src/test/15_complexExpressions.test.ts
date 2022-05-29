@@ -1,4 +1,3 @@
-import fetch from 'node-fetch'
 import { Client } from 'pg'
 import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 import pgConfig from '../test/postgres/pgConfig.json'
@@ -7,10 +6,8 @@ const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
 const exp = new ExpressionEvaluator({
-  APIfetch: fetch,
   pgConnection: pgConnect,
   graphQLConnection: {
-    fetch: fetch,
     endpoint: 'https://countries.trevorblades.com/',
   },
   objects: {

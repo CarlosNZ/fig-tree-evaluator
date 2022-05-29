@@ -1,4 +1,9 @@
-import { zipArraysToObject, extractAndSimplify, evaluateArray } from './_operatorUtils'
+import {
+  zipArraysToObject,
+  extractAndSimplify,
+  evaluateArray,
+  axiosRequest,
+} from './_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -8,7 +13,6 @@ import {
   GenericObject,
   OperatorObject,
 } from '../types'
-import { errorMessage } from '../helpers'
 
 const requiredProperties = ['query'] as const
 const operatorAliases = ['graphQl', 'graphql', 'gql']
@@ -26,8 +30,6 @@ const evaluate = async (
   expression: GraphQLNode,
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
-  if (!config.options?.graphQLConnection) throw new Error('No GraphQL database connection provided')
-
   const [query, urlObj, variables, returnNode] = (await evaluateArray(
     [expression.query, expression.url, expression.variables, expression.returnNode],
     config
@@ -35,17 +37,22 @@ const evaluate = async (
 
   const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  const gqlHeaders = {
-    ...config.options.graphQLConnection.headers,
-    ...config.options?.headers,
-    ...headers,
-  }
+  const data = { query, variables }
 
-  return await processGraphQL(
-    { query, url, variables, returnNode },
-    config.options.graphQLConnection,
-    gqlHeaders
-  )
+  const response = await axiosRequest({
+    url: (!url || url.toLowerCase() === 'graphqlendpoint'
+      ? config.options.graphQLConnection?.endpoint
+      : url) as string,
+    method: 'post',
+    data,
+    headers: {
+      ...config.options.graphQLConnection?.headers,
+      ...config.options?.headers,
+      ...headers,
+    },
+  })
+
+  return extractAndSimplify(response.data, returnNode)
 }
 
 const parseChildren = async (
@@ -61,60 +68,8 @@ const parseChildren = async (
 }
 
 export interface GraphQLConnection {
-  fetch: Function
   endpoint: string
   headers?: { [key: string]: string }
-}
-
-const processGraphQL = async (
-  {
-    query,
-    url,
-    variables,
-    returnNode,
-  }: { query: string; url: string; variables: GenericObject; returnNode?: string },
-  connection: GraphQLConnection,
-  gqlHeaders: GenericObject = {}
-) => {
-  try {
-    const data = await graphQLquery(url, query, variables, connection, gqlHeaders)
-    if (!data) throw new Error('GraphQL query problem -- no data retrieved')
-    return extractAndSimplify(data, returnNode)
-  } catch (err) {
-    throw new Error('GraphQL Problem: ' + errorMessage(err))
-  }
-}
-
-// Abstraction for GraphQL database query using Fetch
-const graphQLquery = async (
-  url: string,
-  query: string,
-  variables: object,
-  connection: GraphQLConnection,
-  headers: { [key: string]: string }
-) => {
-  // Get an external endpoint to use, or get the default GraphQL endpoint if
-  // received: "graphqlendpoint" (case insensitive), an empty string "" or null
-  const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? connection.endpoint : url
-
-  const queryResult = await connection.fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...headers,
-    },
-    body: JSON.stringify({
-      query: query,
-      variables: variables,
-    }),
-  })
-  const data = await queryResult.json()
-  if (data?.errors) {
-    const errorMessage = data.errors[0].message
-    throw new Error(errorMessage)
-  }
-  return data.data
 }
 
 export const GRAPHQL: OperatorObject = {
