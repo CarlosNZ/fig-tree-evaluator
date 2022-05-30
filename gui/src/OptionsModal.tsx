@@ -76,17 +76,17 @@ export const OptionsModal = ({
     const headers = headersText ? JSON.parse(headersText) : {}
     const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
 
-    const newOptions: EvaluatorOptions = {
+    const newOptions: EvaluatorOptions = filterObjectRecursive({
       baseEndpoint,
       headers: { Authorization: authHeader, ...headers },
       graphQLConnection: {
         endpoint: gqlEndpoint ?? '',
         headers: { Authorization: gqlAuth, ...gqlHeaders },
       },
-    }
+    })
 
-    updateOptions(filterObjectRecursive(newOptions))
-    localStorage.setItem('options', JSON.stringify(options))
+    updateOptions(newOptions)
+    localStorage.setItem('options', JSON.stringify(newOptions))
     setModalOpen(false)
     resetFormState(options)
   }

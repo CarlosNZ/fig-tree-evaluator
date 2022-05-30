@@ -151,7 +151,7 @@ function App() {
             Compact
           </Button>
           <Checkbox
-            checked={configState.strictJsonObjects}
+            isChecked={configState.strictJsonObjects}
             onChange={() => toggleCheckbox('strictJsonObjects')}
           >
             Quoted field names
@@ -175,7 +175,7 @@ function App() {
             Compact
           </Button>
           <Checkbox
-            checked={configState.strictJsonObjects}
+            isChecked={configState.strictJsonExpression}
             onChange={() => toggleCheckbox('strictJsonExpression')}
           >
             Quoted field names
