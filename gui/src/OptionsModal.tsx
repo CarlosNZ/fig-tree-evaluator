@@ -16,58 +16,79 @@ import {
   Stack,
   Textarea,
   Text,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionIcon,
+  AccordionPanel,
 } from '@chakra-ui/react'
-import { JSONstringify } from './helpers'
-
+import { JSONstringify, filterObjectRecursive } from './helpers'
 import { EvaluatorOptions } from './expression-evaluator/types'
-import { ConfigState } from './types'
 
 const resetFormState = (options: EvaluatorOptions) => {
   const baseEndpoint = options.baseEndpoint
-  const headers = options.headers
+  const headers = { ...options.headers }
   const authHeader = headers?.Authorization
+  const gqlEndpoint = options.graphQLConnection?.endpoint
+  const gqlAuth = options.graphQLConnection?.headers?.Authorization
+  const gqlHeaders = { ...options.graphQLConnection?.headers }
   delete headers?.Authorization
+  delete gqlHeaders?.Authorization
   return {
     baseEndpoint,
     authHeader,
     headersText: JSON.stringify(headers),
     headersError: false,
+    gqlEndpoint,
+    gqlAuth,
+    gqlHeadersText: JSON.stringify(gqlHeaders),
+    gqlHeadersError: false,
   }
 }
 
 export const OptionsModal = ({
-  config: { options, setOptions },
+  options,
+  updateOptions,
   modalState: { modalOpen, setModalOpen },
 }: {
-  config: { options: EvaluatorOptions; setOptions: Dispatch<React.SetStateAction<ConfigState>> }
+  options: EvaluatorOptions
+  updateOptions: (options: EvaluatorOptions) => void
   modalState: { modalOpen: boolean; setModalOpen: Dispatch<React.SetStateAction<boolean>> }
 }) => {
-  const [headersError, setHeadersError] = useState(false)
   const [formState, setFormState] = useState(resetFormState(options))
 
-  const formatHeadersText = () => {
-    const { headersText } = formState
-    if (!headersText) return
-    const json = headersText ? JSONstringify(headersText, false, true) : ''
+  const formatHeadersText = (text: { [key in 'headersText' | 'gqlHeadersText']?: string }) => {
+    const [key, value] = Object.entries(text)[0]
+    if (!value) return
+    const json = value ? JSONstringify(value, false, true) : ''
+    const errorKey = key === 'headersText' ? 'headersError' : 'gqlHeadersError'
     if (json) {
-      setFormState((curr) => ({ ...curr, headersText: json }))
-      setHeadersError(false)
-    } else setHeadersError(true)
+      setFormState((curr) => ({ ...curr, [key]: json, [errorKey]: false }))
+    } else setFormState((curr) => ({ ...curr, [errorKey]: true }))
   }
 
   const handleSubmit = (e: any) => {
     e.preventDefault()
-    if (headersError) return
-    const { baseEndpoint, authHeader, headersText } = formState
-    const newOptions: EvaluatorOptions = { headers: {} }
-    if (baseEndpoint) newOptions.baseEndpoint = baseEndpoint
-    if (authHeader && newOptions.headers) newOptions.headers.Authorization = authHeader
-    if (headersText) newOptions.headers = { ...newOptions.headers, ...JSON.parse(headersText) }
+    if (formState.headersError || formState.gqlHeadersError) return
+    const { baseEndpoint, authHeader, headersText, gqlEndpoint, gqlAuth, gqlHeadersText } =
+      formState
 
-    console.log(options)
+    const headers = headersText ? JSON.parse(headersText) : {}
+    const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
 
-    setOptions((curr) => ({ ...curr, options: newOptions }))
+    const newOptions: EvaluatorOptions = {
+      baseEndpoint,
+      headers: { Authorization: authHeader, ...headers },
+      graphQLConnection: {
+        endpoint: gqlEndpoint ?? '',
+        headers: { Authorization: gqlAuth, ...gqlHeaders },
+      },
+    }
+
+    updateOptions(filterObjectRecursive(newOptions))
+    localStorage.setItem('options', JSON.stringify(options))
     setModalOpen(false)
+    resetFormState(options)
   }
 
   return (
@@ -92,29 +113,73 @@ export const OptionsModal = ({
                 <FormControl id="auth-token">
                   <FormLabel fontSize="sm">{'Authorization (eg Bearer <JWT>)'}:</FormLabel>
                   <Textarea
-                    fontSize="sm"
+                    fontSize="xs"
                     value={formState.authHeader}
                     onChange={(e) =>
                       setFormState((curr) => ({ ...curr, authHeader: e.target.value }))
                     }
                   />
                 </FormControl>
-                <FormControl id="headers" isInvalid={headersError}>
+                <FormControl id="headers" isInvalid={formState.headersError}>
                   <FormLabel fontSize="sm">{'Other headers (JSON object)'}:</FormLabel>
                   <Textarea
-                    fontSize="sm"
+                    fontSize="xs"
                     fontFamily="monospace"
                     value={formState.headersText}
                     onChange={(e) =>
                       setFormState((curr) => ({ ...curr, headersText: e.target.value }))
                     }
-                    onBlur={formatHeadersText}
+                    onBlur={(e) => formatHeadersText({ headersText: e.target.value })}
                   />
                   <FormErrorMessage>Invalid Input</FormErrorMessage>
                 </FormControl>
-                <Text>
-                  <strong>GraphQL (if different from above)</strong>
-                </Text>
+
+                <Accordion allowToggle>
+                  <AccordionItem>
+                    <AccordionButton>
+                      <h2>
+                        <Box flex="1" textAlign="left">
+                          <Text>GraphQL (if different from above)</Text>
+                        </Box>
+                      </h2>
+                      <AccordionIcon />
+                    </AccordionButton>
+                    <AccordionPanel>
+                      <FormControl id="gql-endpoint">
+                        <FormLabel fontSize="sm">Endpoint:</FormLabel>
+                        <Input
+                          value={formState.gqlEndpoint}
+                          onChange={(e) =>
+                            setFormState((curr) => ({ ...curr, gqlEndpoint: e.target.value }))
+                          }
+                        />
+                      </FormControl>
+                      <FormControl id="gql-auth-token">
+                        <FormLabel fontSize="sm">{'Authorization'}:</FormLabel>
+                        <Textarea
+                          fontSize="xs"
+                          value={formState.gqlAuth}
+                          onChange={(e) =>
+                            setFormState((curr) => ({ ...curr, gqlAuth: e.target.value }))
+                          }
+                        />
+                      </FormControl>
+                      <FormControl id="gql-headers" isInvalid={formState.gqlHeadersError}>
+                        <FormLabel fontSize="sm">{'Other headers (JSON object)'}:</FormLabel>
+                        <Textarea
+                          fontSize="xs"
+                          fontFamily="monospace"
+                          value={formState.gqlHeadersText}
+                          onChange={(e) =>
+                            setFormState((curr) => ({ ...curr, gqlHeadersText: e.target.value }))
+                          }
+                          onBlur={(e) => formatHeadersText({ gqlHeadersText: e.target.value })}
+                        />
+                        <FormErrorMessage>Invalid Input</FormErrorMessage>
+                      </FormControl>
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
               </Stack>
             </ModalBody>
             <ModalFooter>
@@ -125,17 +190,6 @@ export const OptionsModal = ({
           </form>
         </ModalContent>
       </Modal>
-      {/* 
-      BaseEndpoint
-      Authtoken
-      Additional Headers
-      GraphQL:
-        Endpoint
-        Auth Token
-        Additional Headers
-      Postgres connection
-      
-      */}
     </Box>
   )
 }

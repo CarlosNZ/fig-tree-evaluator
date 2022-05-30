@@ -1,4 +1,4 @@
-import { parseLocalStorage } from '../helpers'
+import { filterObjectRecursive, parseLocalStorage } from '../helpers'
 
 test('Parse storage 1', () => {
   const obj = { pgConnection: {}, graphQLConnection: { endpoint: 'http://localhost:5000/graphql' } }
@@ -43,5 +43,99 @@ test('Parse storage nested', () => {
     key4: 66,
     key5: true,
     key6: false,
+  })
+})
+
+test('Filter object basic', () => {
+  const obj = {
+    one: 'string',
+    two: 33,
+    three: [1, 2, 3],
+    four: null,
+    five: undefined,
+    six: '',
+    seven: false,
+    eight: true,
+  }
+  expect(filterObjectRecursive(obj)).toStrictEqual({
+    one: 'string',
+    two: 33,
+    three: [1, 2, 3],
+    seven: false,
+    eight: true,
+  })
+})
+
+test('Filter object nested, custom filter function', () => {
+  const obj = {
+    one: 'string',
+    two: 33,
+    three: [1, 2, 3],
+    four: null,
+    five: undefined,
+    six: '',
+    seven: false,
+    eight: true,
+    nine: {
+      one: 'string',
+      two: undefined,
+      three: [
+        {
+          one: 'string',
+          three: [1, 2, 3],
+          four: undefined,
+          five: undefined,
+          six: '',
+          seven: false,
+          eight: true,
+        },
+        {
+          one: 'string',
+          three: [1, null, undefined],
+          four: undefined,
+          five: undefined,
+          six: '',
+          seven: false,
+          eight: true,
+        },
+      ],
+      four: undefined,
+      five: undefined,
+      six: '',
+      seven: false,
+      eight: true,
+    },
+  }
+  // console.log(filterObjectRecursive(obj, (x) => x !== undefined))
+  expect(filterObjectRecursive(obj, (x) => x !== undefined)).toStrictEqual({
+    one: 'string',
+    two: 33,
+    three: [1, 2, 3],
+    four: null,
+    six: '',
+    seven: false,
+    eight: true,
+    nine: {
+      one: 'string',
+      three: [
+        {
+          one: 'string',
+          three: [1, 2, 3],
+          six: '',
+          seven: false,
+          eight: true,
+        },
+        {
+          one: 'string',
+          three: [1, null, undefined],
+          six: '',
+          seven: false,
+          eight: true,
+        },
+      ],
+      six: '',
+      seven: false,
+      eight: true,
+    },
   })
 })

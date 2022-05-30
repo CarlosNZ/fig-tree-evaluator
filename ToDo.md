@@ -4,7 +4,7 @@
 - Not Equal should allow more than two items (and throw error if one item)
 - Logging option
 - Autogen some massive query expression
-- Does axios need its own instance per node?
+- Specify node in Error output
 
 ### GUI
 

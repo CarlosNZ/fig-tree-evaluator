@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 
 export default function useDebounce<T>(
   initialValue: T,
-  delay: number = 600
+  delay: number = 300
 ): [T, React.Dispatch<T>] {
   const [debounceInput, setDebounceInput] = useState<T>(initialValue)
   const [debounceOutput, setDebounceOutput] = useState<T>(initialValue)

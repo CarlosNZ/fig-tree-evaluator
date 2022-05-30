@@ -94,8 +94,8 @@ export const axiosRequest = async ({
     return response.data
   } catch (err) {
     if (axios.isAxiosError(err)) {
-      console.log(err.message)
-      console.log(err.response?.statusText)
+      if (!err?.response) throw new Error('Network Error')
+      console.log(err.response?.data)
     }
     throw err
   }

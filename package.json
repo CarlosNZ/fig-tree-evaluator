@@ -13,6 +13,8 @@
     "@types/pg": "^8.6.5",
     "dotenv": "^16.0.1",
     "jest": "^28.1.0",
+    "@testing-library/jest-dom": "^5.14.1",
+    "@testing-library/react": "^13.0.0",
     "pg": "^8.7.3",
     "rimraf": "^3.0.2",
     "ts-jest": "^28.1.0",

@@ -10,6 +10,7 @@ import {
   Checkbox,
   Select,
   Textarea,
+  Spinner,
 } from '@chakra-ui/react'
 import EvaluatorDev from './expression-evaluator/evaluator'
 import EvaluatorPublished from 'expression-evaluator'
@@ -27,6 +28,7 @@ import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
+import { EvaluatorOptions } from './expression-evaluator/types'
 
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface()
@@ -39,6 +41,7 @@ const expPub = new EvaluatorPublished({ ...initOptions, pgConnection })
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
   const [modalOpen, setModalOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const [inputState, setInputState] = useState<InputState>({
     expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
@@ -49,33 +52,51 @@ function App() {
     expression: validateExpression(inputState.expression),
     objects: validateObjects(inputState.objects),
   })
-  const [configState, setConfigState] = useState<ConfigState>(getInitialConfig(expPub, expDev))
 
-  useEffect(() => {
-    configState.evaluator.updateOptions(configState.options)
+  const [configState, setConfigState] = useState<ConfigState>({
+    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
+    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
+  })
+
+  const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
+    localStorage.getItem('evaluatorSelection') === 'Development' ? expDev : expPub
+  )
+
+  const updateOptions = (options: EvaluatorOptions) => {
+    evaluator.updateOptions(options)
+    reEvaluate()
+  }
+
+  const reEvaluate = () => {
+    setLoading(true)
     const { expression, objects } = inputState
-    localStorage.setItem('inputText', expression)
-    localStorage.setItem('objectText', objects)
-    localStorage.setItem('options', JSON.stringify(configState.options))
     const expressionValid = validateExpression(inputState.expression)
     const objectsValid = validateObjects(inputState.objects)
     setIsValidState({ expression: expressionValid, objects: objectsValid })
 
     if (!expressionValid || !objectsValid) {
       setResult({ output: 'Invalid Input', error: false })
+      setLoading(false)
       return
     }
-
-    const { evaluator } = configState
 
     evaluator
       .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
       .then((result) => {
         setResult({ output: result, error: false })
+        setLoading(false)
       })
       .catch((error) => {
         setResult({ output: null, error: error.message })
+        setLoading(false)
       })
+  }
+
+  useEffect(() => {
+    const { expression, objects } = inputState
+    localStorage.setItem('inputText', expression)
+    localStorage.setItem('objectText', objects)
+    reEvaluate()
   }, [debounceOutput, configState]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateInput = (text: string, type: 'expression' | 'objects') => {
@@ -91,10 +112,8 @@ function App() {
 
   const handleSelectEvaluator = (event: any) => {
     localStorage.setItem('evaluatorSelection', event.target.value)
-    if (event.target.value === 'Development') setConfigState({ ...configState, evaluator: expDev })
-    else setConfigState({ ...configState, evaluator: expPub })
-    console.log('Dev options', expDev.getOptions())
-    console.log('Pub options', expPub.getOptions())
+    setEvaluator(event.target.value === 'Development' ? expDev : expPub)
+    reEvaluate()
   }
 
   const prettifyInput = (type: 'expression' | 'objects') => {
@@ -118,10 +137,8 @@ function App() {
   return (
     <Center h={'100vh'}>
       <OptionsModal
-        config={{
-          options: configState.options,
-          setOptions: setConfigState,
-        }}
+        options={evaluator.getOptions()}
+        updateOptions={updateOptions}
         modalState={{ modalOpen, setModalOpen }}
       />
       <Box w={'33%'} h={'100%'} p={2}>
@@ -179,7 +196,7 @@ function App() {
             id="evalSelect"
             variant="outline"
             w={'50%'}
-            value={configState.evaluator === expDev ? 'Development' : 'Published'}
+            value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
             onChange={handleSelectEvaluator}
           >
             <option value={'Development'}>Development</option>
@@ -193,21 +210,11 @@ function App() {
           border="1px solid"
           borderColor="lightgrey"
           borderRadius={3}
-          minH={20}
+          minHeight={20}
           mx={5}
           p={3}
         >
-          {result.error ? (
-            <Text fontSize={'xl'} color="red">
-              {result.error}
-            </Text>
-          ) : typeof result.output === 'object' ? (
-            <Text fontSize={'md'} fontFamily="monospace">
-              <pre> {JSON.stringify(result.output, null, 2)}</pre>
-            </Text>
-          ) : (
-            <Text fontSize={'xl'}>{result.output as string}</Text>
-          )}
+          {loading ? <Spinner /> : <ResultText result={result} />}
         </Box>
         <Button
           style={{ position: 'fixed', bottom: 20, right: 20 }}
@@ -223,16 +230,18 @@ function App() {
 
 export default App
 
-const getInitialConfig = (expPub: EvaluatorPublished, expDev: EvaluatorDev) => {
-  const evaluator =
-    localStorage.getItem('evaluatorSelection') === 'Development'
-      ? (expDev as EvaluatorDev)
-      : (expPub as EvaluatorPublished)
-  const { baseEndpoint, headers, graphQLConnection } = evaluator.getOptions()
-  return {
-    evaluator,
-    options: { baseEndpoint, headers, graphQLConnection },
-    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
-    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
-  }
+const ResultText = ({ result }: { result: Result }) => {
+  if (result.error)
+    return (
+      <Text fontSize={'xl'} color="red">
+        {result.error}
+      </Text>
+    )
+  if (typeof result.output === 'object')
+    return (
+      <Text fontSize={'md'} fontFamily="monospace">
+        <pre> {JSON.stringify(result.output, null, 2)}</pre>
+      </Text>
+    )
+  return <Text fontSize={'xl'}>{result.output as string}</Text>
 }

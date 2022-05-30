@@ -1,3 +1,6 @@
+import { map } from 'lodash'
+import { GenericObject } from './expression-evaluator/types'
+
 const looseJSON = require('loose-json')
 
 export const getInitOptions = () => {
@@ -29,8 +32,6 @@ export const parseLocalStorage = (key: string | object) => {
     )
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value
-    console.log('parsed', parsed)
-
     return convertTypes(parsed)
   } catch {
     return null
@@ -83,4 +84,28 @@ export const validateObjects = (objects: string): boolean => {
   } catch {
     return false
   }
+}
+
+// Given an object, returns a new object with all keys removed whose values
+// return false when passed into the 2nd parameter function. Can be use (for
+// example) to remove keys with null or undefined values (the default)
+// Eg. {one: 1, two: null, three: undefined} => {one: 1}
+type FilterFunction = (x: any) => boolean
+export const filterObjectRecursive = (
+  inputObj: GenericObject,
+  filterFunction: FilterFunction = (x) => !(x == null || x === '')
+) => {
+  const filtered: [key: string, value: any][] = Object.entries(inputObj)
+    .map(([key, value]) => {
+      if (Array.isArray(value))
+        return [
+          key,
+          value.map((e) => (e instanceof Object ? filterObjectRecursive(e, filterFunction) : e)),
+        ]
+      if (value instanceof Object && !Array.isArray(value)) {
+        return [key, filterObjectRecursive(value, filterFunction)]
+      } else return [key, value]
+    })
+    .filter(([_, value]) => filterFunction(value)) as [key: string, value: any][]
+  return Object.fromEntries(filtered)
 }
