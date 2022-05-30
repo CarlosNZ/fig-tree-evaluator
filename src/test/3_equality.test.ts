@@ -113,3 +113,59 @@ test('Inequality (boolean, nested)', () => {
     expect(result).toBe(true)
   })
 })
+
+test('Inequality (multiple, nested, all equal)', () => {
+  const expression = {
+    operator: 'not_equal',
+    children: [
+      { operator: '+', values: [5, 5] },
+      10,
+      { operator: 'substitute', string: '%1%2', replacements: ['1', '0'], type: 'number' },
+      10,
+      10,
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Inequality (multiple, all different)', () => {
+  const expression = {
+    operator: 'ne',
+    children: [1, 2, 3, 4, 5],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Inequality (multiple, only first different)', () => {
+  const expression = {
+    operator: 'ne',
+    children: ['A', 'B', 'B', 'B', 'B'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Inequality (multiple, one different)', () => {
+  const expression = {
+    operator: 'ne',
+    children: ['B', 'B', 'other', 'B', 'B'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Inequality (only one value)', () => {
+  const expression = {
+    operator: 'ne',
+    children: ['ONE'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(false)
+  })
+})

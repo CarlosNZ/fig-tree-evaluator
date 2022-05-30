@@ -11,7 +11,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<Boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
-  return values[0] != values[1]
+  return values.some((val) => val !== values[0])
 }
 
 export const NOT_EQUAL: OperatorObject = {
