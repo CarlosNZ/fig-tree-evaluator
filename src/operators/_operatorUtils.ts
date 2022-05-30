@@ -84,10 +84,6 @@ export const axiosRequest = async ({
   method?: 'get' | 'post'
 }) => {
   try {
-    console.log(url)
-    console.log(data)
-    console.log(method)
-    console.log(headers)
     const response = await axios({
       method,
       url,

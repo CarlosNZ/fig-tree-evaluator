@@ -26,18 +26,32 @@ export type GraphQLNode = {
     url?: EvaluatorNode
     variables?: EvaluatorNode
     returnNode?: EvaluatorNode
+    headers?: GenericObject
   }
 
 const evaluate = async (
   expression: GraphQLNode,
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
-  const [query, urlObj, variables, returnNode] = (await evaluateArray(
-    [expression.query, expression.url, expression.variables, expression.returnNode],
+  const [query, urlObj, variables, returnNode, headers] = (await evaluateArray(
+    [
+      expression.query,
+      expression.url,
+      expression.variables,
+      expression.returnNode,
+      expression.headers,
+    ],
     config
-  )) as [string, string | { url: string; headers: GenericObject }, GenericObject, string]
+  )) as [
+    string,
+    string | { url: string; headers: GenericObject },
+    GenericObject,
+    string,
+    GenericObject
+  ]
 
-  const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
+  const { url, headers: headersObj } =
+    urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? '' : url
 
@@ -55,6 +69,7 @@ const evaluate = async (
     headers: {
       ...config.options.graphQLConnection?.headers,
       ...config.options?.headers,
+      ...headersObj,
       ...headers,
     },
   })
