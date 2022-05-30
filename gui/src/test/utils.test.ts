@@ -139,3 +139,77 @@ test('Filter object nested, custom filter function', () => {
     },
   })
 })
+
+test('Filter object, remove empty objects', () => {
+  const obj = {
+    one: 'string',
+    empty: [],
+    emptyWithEmpty: [{}],
+    six: '',
+    seven: { one: undefined, two: null, three: undefined },
+    eight: true,
+    nine: {
+      one: 'string',
+      two: undefined,
+      three: [
+        {
+          one: 'string',
+          three: [1, 2, 3],
+          four: undefined,
+          five: undefined,
+          six: '',
+          seven: false,
+          eight: true,
+        },
+        {
+          one: null,
+          three: [],
+          four: undefined,
+          five: undefined,
+        },
+      ],
+      other: {
+        three: [],
+      },
+      four: undefined,
+      five: undefined,
+      six: '',
+      seven: false,
+      eight: true,
+    },
+  }
+  // console.log(filterObjectRecursive(obj, (x) => x !== undefined))
+  expect(filterObjectRecursive(obj)).toStrictEqual({
+    one: 'string',
+    eight: true,
+    nine: {
+      one: 'string',
+      three: [
+        {
+          one: 'string',
+          three: [1, 2, 3],
+          seven: false,
+          eight: true,
+        },
+      ],
+      seven: false,
+      eight: true,
+    },
+  })
+})
+
+test('Filter object, input is {}', () => {
+  expect(filterObjectRecursive({})).toStrictEqual({})
+})
+
+test('Filter object, input is {one:{}}', () => {
+  expect(filterObjectRecursive({ one: {} })).toStrictEqual({})
+})
+
+test('Filter object, input is {one:[]}', () => {
+  expect(filterObjectRecursive({ one: [] })).toStrictEqual({})
+})
+
+test('Filter object, collapse inner object', () => {
+  expect(filterObjectRecursive({ one: [{}] })).toStrictEqual({})
+})
