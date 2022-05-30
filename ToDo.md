@@ -5,7 +5,6 @@
 - Logging option
 - Autogen some massive query expression
 - Does axios need its own instance per node?
-- If specific urls is not full, append it to base url
 
 ### GUI
 

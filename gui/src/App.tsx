@@ -1,43 +1,44 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import {
-  Card,
-  CardContent,
-  FormControlLabel,
-  Checkbox,
+  Box,
+  Center,
+  Flex,
+  Heading,
+  Text,
   Button,
-  Grid,
-  TextField,
-  Typography,
+  Checkbox,
   Select,
-  MenuItem,
-  InputLabel,
-} from '@mui/material'
+  Textarea,
+} from '@chakra-ui/react'
 import EvaluatorDev from './expression-evaluator/evaluator'
-import EvaluatorPublished from '@carlosnz/expression-evaluator'
+import EvaluatorPublished from 'expression-evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
-import { JSONstringify, JSONstringifyLoose } from './helpers'
-import config from './config.json'
+import { OptionsModal } from './OptionsModal'
+import {
+  getInitOptions,
+  JSONstringify,
+  JSONstringifyLoose,
+  validateExpression,
+  validateObjects,
+} from './helpers'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
 
 const looseJSON = require('loose-json')
-const graphQLendpoint = config.graphQLendpoint
-const pgInterface = new PostgresInterface()
+const pgConnection = new PostgresInterface()
 
-const evaluatorParams = {
-  pgConnection: pgInterface,
-  graphQLConnection: { endpoint: graphQLendpoint },
-}
+const initOptions = getInitOptions()
 
-const expDev = new EvaluatorDev(evaluatorParams)
-const expPub = new EvaluatorPublished(evaluatorParams)
+const expDev = new EvaluatorDev({ ...initOptions, pgConnection })
+const expPub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
+  const [modalOpen, setModalOpen] = useState(false)
 
   const [inputState, setInputState] = useState<InputState>({
     expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
@@ -48,19 +49,14 @@ function App() {
     expression: validateExpression(inputState.expression),
     objects: validateObjects(inputState.objects),
   })
-  const [configState, setConfigState] = useState<ConfigState>({
-    evaluator:
-      localStorage.getItem('evaluatorSelection') === 'Development'
-        ? (expDev as EvaluatorDev)
-        : (expPub as EvaluatorPublished),
-    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
-    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
-  })
+  const [configState, setConfigState] = useState<ConfigState>(getInitialConfig(expPub, expDev))
 
   useEffect(() => {
+    configState.evaluator.updateOptions(configState.options)
     const { expression, objects } = inputState
     localStorage.setItem('inputText', expression)
     localStorage.setItem('objectText', objects)
+    localStorage.setItem('options', JSON.stringify(configState.options))
     const expressionValid = validateExpression(inputState.expression)
     const objectsValid = validateObjects(inputState.objects)
     setIsValidState({ expression: expressionValid, objects: objectsValid })
@@ -72,7 +68,6 @@ function App() {
 
     const { evaluator } = configState
 
-    // const headers: any = jwtToken ? { Authorization: 'Bearer ' + jwtToken } : {}
     evaluator
       .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
       .then((result) => {
@@ -98,6 +93,8 @@ function App() {
     localStorage.setItem('evaluatorSelection', event.target.value)
     if (event.target.value === 'Development') setConfigState({ ...configState, evaluator: expDev })
     else setConfigState({ ...configState, evaluator: expPub })
+    console.log('Dev options', expDev.getOptions())
+    console.log('Pub options', expPub.getOptions())
   }
 
   const prettifyInput = (type: 'expression' | 'objects') => {
@@ -119,148 +116,123 @@ function App() {
   }
 
   return (
-    <Grid container>
-      <Grid item xs sx={{ margin: 1 }}>
-        <Typography variant="h4">Local state objects</Typography>
-        <Button
-          sx={{ margin: 1 }}
-          variant="contained"
-          size="small"
-          color="primary"
-          onClick={() => prettifyInput('objects')}
-        >
-          Prettify
-        </Button>
-        <Button
-          sx={{ margin: 1 }}
-          variant="contained"
-          size="small"
-          color="primary"
-          onClick={() => compactInput('objects')}
-        >
-          Compact
-        </Button>
-        <FormControlLabel
-          control={
-            <Checkbox
-              color="primary"
-              checked={configState.strictJsonObjects}
-              onChange={() => toggleCheckbox('strictJsonObjects')}
-            />
-          }
-          label="Quoted field names"
-        />
-        <TextField
-          sx={{ margin: 1 }}
-          id="object-input"
-          label="Objects"
-          inputProps={{ sx: { fontFamily: 'monospace' } }}
-          multiline
-          fullWidth
-          spellCheck="false"
-          rows={28}
+    <Center h={'100vh'}>
+      <OptionsModal
+        config={{
+          options: configState.options,
+          setOptions: setConfigState,
+        }}
+        modalState={{ modalOpen, setModalOpen }}
+      />
+      <Box w={'33%'} h={'100%'} p={2}>
+        <Heading>Local state objects</Heading>
+        <Flex gap={2} justifyContent="flex-start" my={3}>
+          <Button colorScheme="blue" onClick={() => prettifyInput('objects')}>
+            Prettify
+          </Button>
+          <Button colorScheme="blue" onClick={() => compactInput('objects')}>
+            Compact
+          </Button>
+          <Checkbox
+            checked={configState.strictJsonObjects}
+            onChange={() => toggleCheckbox('strictJsonObjects')}
+          >
+            Quoted field names
+          </Checkbox>
+        </Flex>
+        <Textarea
+          h={'85%'}
+          fontFamily="monospace"
           value={inputState.objects}
-          variant="outlined"
           onChange={(e) => updateInput(e?.target?.value, 'objects')}
         />
-        <Typography className="invalid-warning" style={{ color: 'red' }}>
-          {!isValidState.objects ? 'Invalid object input' : ''}
-        </Typography>
-      </Grid>
-      <Grid item xs sx={{ margin: 1 }}>
-        <Typography variant="h4">Input</Typography>
-        <Button
-          sx={{ margin: 1 }}
-          variant="contained"
-          size="small"
-          color="primary"
-          onClick={() => prettifyInput('expression')}
-        >
-          Prettify
-        </Button>
-        <Button
-          sx={{ margin: 1 }}
-          variant="contained"
-          size="small"
-          color="primary"
-          onClick={() => compactInput('expression')}
-        >
-          Compact
-        </Button>
-        <FormControlLabel
-          control={
-            <Checkbox
-              color="primary"
-              checked={configState.strictJsonExpression}
-              onChange={() => toggleCheckbox('strictJsonExpression')}
-            />
-          }
-          label="Quoted field names"
-        />
-        <TextField
-          sx={{ margin: 1 }}
-          id="query-input"
-          label="Expression"
-          spellCheck="false"
-          inputProps={{ sx: { fontFamily: 'monospace' } }}
-          multiline
-          fullWidth
-          rows={28}
+        <Text color="red">{!isValidState.objects ? 'Invalid object input' : ''}</Text>
+      </Box>
+      <Box w={'33%'} h={'100%'} p={2}>
+        <Heading>Input</Heading>
+        <Flex gap={2} justifyContent="flex-start" my={3}>
+          <Button colorScheme="blue" onClick={() => prettifyInput('expression')}>
+            Prettify
+          </Button>
+          <Button colorScheme="blue" onClick={() => compactInput('expression')}>
+            Compact
+          </Button>
+          <Checkbox
+            checked={configState.strictJsonObjects}
+            onChange={() => toggleCheckbox('strictJsonExpression')}
+          >
+            Quoted field names
+          </Checkbox>
+        </Flex>
+        <Textarea
+          h={'85%'}
+          fontFamily="monospace"
           value={inputState.expression}
-          variant="outlined"
           onChange={(e) => updateInput(e?.target?.value, 'expression')}
         />
-      </Grid>
-      <Grid item xs sx={{ margin: 1 }}>
-        <Typography variant="h4">Output</Typography>
-        <InputLabel shrink id="demo-simple-select-placeholder-label-label">
-          Evaluator version
-        </InputLabel>
-        <Select
-          id="evalSelect"
-          variant="standard"
-          value={configState.evaluator === expDev ? 'Development' : 'Published'}
-          autoWidth
-          onChange={handleSelectEvaluator}
+      </Box>
+      <Box w={'33%'} h={'100%'} p={2}>
+        <Heading>Output</Heading>
+        <Flex gap={4} alignItems="center" mb={6}>
+          <Text>Evaluator version:</Text>
+          <Select
+            id="evalSelect"
+            variant="outline"
+            w={'50%'}
+            value={configState.evaluator === expDev ? 'Development' : 'Published'}
+            onChange={handleSelectEvaluator}
+          >
+            <option value={'Development'}>Development</option>
+            <option value={'Published'}>Published</option>
+          </Select>
+        </Flex>
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          border="1px solid"
+          borderColor="lightgrey"
+          borderRadius={3}
+          minH={20}
+          mx={5}
+          p={3}
         >
-          <MenuItem value={'Development'}>Development</MenuItem>
-          <MenuItem value={'Published'}>Published</MenuItem>
-        </Select>
-        <Card style={{ marginTop: 7 }} variant="outlined">
-          <CardContent>
-            <Typography variant="body1" component="p">
-              {!result.error &&
-                (typeof result.output === 'object' ? (
-                  <pre>{JSON.stringify(result.output)}</pre>
-                ) : (
-                  <span className="result-text">{String(result.output)}</span>
-                ))}
-              {result.error && <span className="error-text">{result.error}</span>}
-            </Typography>
-          </CardContent>
-        </Card>
-      </Grid>
-    </Grid>
+          {result.error ? (
+            <Text fontSize={'xl'} color="red">
+              {result.error}
+            </Text>
+          ) : typeof result.output === 'object' ? (
+            <Text fontSize={'md'} fontFamily="monospace">
+              <pre> {JSON.stringify(result.output, null, 2)}</pre>
+            </Text>
+          ) : (
+            <Text fontSize={'xl'}>{result.output as string}</Text>
+          )}
+        </Box>
+        <Button
+          style={{ position: 'fixed', bottom: 20, right: 20 }}
+          colorScheme="blue"
+          onClick={() => setModalOpen(true)}
+        >
+          Configuration
+        </Button>
+      </Box>
+    </Center>
   )
 }
 
 export default App
 
-const validateExpression = (input: string): boolean => {
-  try {
-    looseJSON(input)
-    return true
-  } catch {
-    return false
-  }
-}
-
-const validateObjects = (objects: string): boolean => {
-  try {
-    const cleanObjectInput = looseJSON(objects)
-    if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)
-    return true
-  } catch {
-    return false
+const getInitialConfig = (expPub: EvaluatorPublished, expDev: EvaluatorDev) => {
+  const evaluator =
+    localStorage.getItem('evaluatorSelection') === 'Development'
+      ? (expDev as EvaluatorDev)
+      : (expPub as EvaluatorPublished)
+  const { baseEndpoint, headers, graphQLConnection } = evaluator.getOptions()
+  return {
+    evaluator,
+    options: { baseEndpoint, headers, graphQLConnection },
+    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
+    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
   }
 }

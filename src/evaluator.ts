@@ -22,6 +22,10 @@ class ExpressionEvaluator {
     })
   }
 
+  public getOptions() {
+    return this.options
+  }
+
   public updateOptions(options: EvaluatorOptions) {
     this.options = { ...this.options, ...options }
   }

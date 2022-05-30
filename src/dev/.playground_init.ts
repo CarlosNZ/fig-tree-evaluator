@@ -12,10 +12,8 @@ For testing/playing round during development. Use `yarn ts-node src/dev/playgrou
 // pgConnect.connect()
 
 const exp = new ExpressionEvaluator({
-  // APIfetch: fetch,
   // pgConnection: pgConnect,
   // graphQLConnection: {
-  //   fetch: fetch,
   //   endpoint: 'https://countries.trevorblades.com/',
   // },
   objects: {

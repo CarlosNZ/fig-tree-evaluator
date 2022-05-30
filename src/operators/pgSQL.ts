@@ -18,7 +18,7 @@ export type PGNode = {
 
 const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
   const [query, ...values] = (await evaluateArray(
-    [expression.query, ...(expression.values as EvaluatorNode[])],
+    [expression.query, ...(expression.values || ([] as EvaluatorNode[]))],
     config
   )) as [string, (string | number)[]]
 

@@ -25,19 +25,26 @@ export type APINode = {
 } & BaseOperatorNode & {
     parameters?: EvaluatorNode
     returnProperty?: EvaluatorNode
+    headers?: GenericObject
   }
 
 const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
-  const [urlObj, params, returnProperty] = (await evaluateArray(
-    [expression.url, expression.parameters, expression.returnProperty],
+  const [urlObj, params, returnProperty, headers] = (await evaluateArray(
+    [expression.url, expression.parameters, expression.returnProperty, expression.headers],
     config
-  )) as [string | { url: string; headers: GenericObject }, { [key: string]: string }, string]
+  )) as [
+    string | { url: string; headers: GenericObject },
+    { [key: string]: string },
+    string,
+    GenericObject
+  ]
 
-  const { url, headers } = urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
+  const { url, headers: headersObj } =
+    urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   const baseUrl = config.options.baseEndpoint ?? ''
 
-  const httpHeaders = { ...config.options?.headers, ...headers }
+  const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }
   const response = await axiosRequest({
     url: isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
     params,
