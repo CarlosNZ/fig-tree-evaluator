@@ -18,7 +18,13 @@ const operatorAliases = [
   'functions',
   'runFunction',
 ]
-const propertyAliases = { functionsPath: 'functionPath', arguments: 'args', variables: 'args' }
+const propertyAliases = {
+  functionsPath: 'functionPath',
+  functionName: 'functionPath',
+  funcName: 'functionPath',
+  arguments: 'args',
+  variables: 'args',
+}
 
 export type FunctionNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
@@ -29,7 +35,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
   const [functionPath, ...args] = (await evaluateArray(
-    [expression.functionPath, ...(expression.args as EvaluatorNode[])],
+    [expression.functionPath, ...(expression.args || [])],
     config
   )) as [string, EvaluatorNode[]]
 

@@ -4,6 +4,7 @@ const exp = new ExpressionEvaluator({
   functions: {
     fDouble: (...args: any) => args.map((e: any) => e + e),
     fDate: (dateString: string) => new Date(dateString),
+    fNoArgs: () => 5 * 5,
   },
   objects: { functions: { square: (x: number) => x ** 2 } },
 })
@@ -61,5 +62,25 @@ test('Custom functions - create a date from a string', () => {
     functions: { fDate: (dateString: string) => new Date(dateString) },
   }).then((result: any) => {
     expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
+  })
+})
+
+test('Custom functions - no args', () => {
+  const expression = {
+    operator: 'function',
+    functionsPath: 'fNoArgs',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(25)
+  })
+})
+
+test('Custom functions - no args as children', () => {
+  const expression = {
+    operator: 'function',
+    children: ['fNoArgs'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(25)
   })
 })
