@@ -1,6 +1,8 @@
 import { Client } from 'pg'
-import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+import ExpressionEvaluator from '../evaluator'
 import pgConfig from '../test/postgres/pgConfig.json'
+import massiveQuery from './massiveQuery.json'
+import { config } from '../../codegen/queryBuilder'
 
 const pgConnect = new Client(pgConfig)
 pgConnect.connect()
@@ -47,7 +49,6 @@ test('Input is an array -- each item will be evaluated', () => {
 })
 
 // Mother of all queries
-
 const expression = {
   operator: '+',
   values: [
@@ -207,6 +208,13 @@ test('Massive nested query as JSON string', () => {
     expect(result).toBe(
       "It is a period of civil war. Rebel spaceships, striking from a hidden base, have won their first victory against the evil Galactic Empire.\n\nDuring the battle, Rebel spies managed to steal secret plans to the Empire's ultimate weapon, the DEATH STAR, an armored space station with enough power to destroy an entire planet.\n\nPursued by the Empire's sinister agents, Princess Leia races home aboard her starship, custodian of the stolen plans that can save her people and restore freedom to the galaxy...."
     )
+  })
+})
+
+// HUUUUGE auto-generated query
+test('Process an enormous auto-generated query', () => {
+  return exp.evaluate(massiveQuery, config).then((result: any) => {
+    expect(result).toBe('This sentence has too many missing words')
   })
 })
 
