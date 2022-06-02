@@ -1,3 +1,10 @@
+/*
+This automates the process of building the operatorAliases map. We could
+generate it each time at runtime, but since it's a fixed reference it makes
+sense to create it once and save the result.
+This script runs automatically before the build script runs.
+*/
+
 import { writeFileSync } from 'fs'
 import * as operatorList from '../src/operators'
 import { Operators, Operator, OperatorObject, OperatorReference } from '../src/types'

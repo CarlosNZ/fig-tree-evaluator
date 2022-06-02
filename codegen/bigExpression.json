@@ -1,0 +1,314 @@
+{
+  "operator": "stringSubstitution",
+  "string": {
+    "operator": "+",
+    "children": [
+      {
+        "operator": "objectProperties",
+        "property": "somewhere.quite.deep"
+      },
+      "%1 ",
+      {
+        "operator": "objectProperties",
+        "property": "somewhere.not.so.deep"
+      },
+      {
+        "operator": "objectProperties",
+        "property": {
+          "operator": "function",
+          "functionPath": "not",
+          "args": [
+            "[0]"
+          ]
+        }
+      },
+      {
+        "operator": "objectProperties",
+        "property": "somewhere.not.so.quiet[1]"
+      },
+      "%4 ",
+      "words"
+    ]
+  },
+  "replacements": [
+    {
+      "operator": "+",
+      "values": [
+        "sen",
+        "tence"
+      ]
+    },
+    {
+      "operator": "?",
+      "condition": {
+        "operator": "or",
+        "values": [
+          {
+            "operator": "=",
+            "values": [
+              "sen",
+              "sen",
+              "sen"
+            ]
+          },
+          {
+            "operator": "and",
+            "values": [
+              {
+                "operator": "and",
+                "values": [
+                  false,
+                  false,
+                  false
+                ]
+              },
+              {
+                "operator": "regex",
+                "testString": "%1 ",
+                "pattern": "^%d$"
+              },
+              {
+                "operator": "and",
+                "values": [
+                  false,
+                  false,
+                  false
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "valueIfTrue": {
+        "operator": "?",
+        "condition": {
+          "operator": "and",
+          "values": [
+            {
+              "operator": "or",
+              "values": [
+                true,
+                false
+              ]
+            },
+            {
+              "operator": "and",
+              "values": [
+                true,
+                true
+              ]
+            }
+          ]
+        },
+        "valueIfTrue": {
+          "operator": "?",
+          "condition": {
+            "operator": "=",
+            "values": [
+              "sen",
+              "sen",
+              "sen"
+            ]
+          },
+          "valueIfTrue": {
+            "operator": "?",
+            "condition": {
+              "operator": "and",
+              "values": [
+                true,
+                true
+              ]
+            },
+            "valueIfTrue": {
+              "operator": "?",
+              "condition": true,
+              "valueIfTrue": "too",
+              "valueIfFalse": "not"
+            },
+            "valueIfFalse": "not"
+          },
+          "valueIfFalse": "not"
+        },
+        "valueIfFalse": "not"
+      },
+      "valueIfFalse": "not"
+    },
+    {
+      "operator": "?",
+      "condition": {
+        "operator": "or",
+        "values": [
+          {
+            "operator": "and",
+            "values": [
+              {
+                "operator": "and",
+                "values": [
+                  true,
+                  true
+                ]
+              },
+              {
+                "operator": "and",
+                "values": [
+                  true,
+                  true
+                ]
+              }
+            ]
+          },
+          {
+            "operator": "regex",
+            "testString": "%1 ",
+            "pattern": "^%d$"
+          }
+        ]
+      },
+      "valueIfTrue": {
+        "operator": "?",
+        "condition": {
+          "operator": "and",
+          "values": [
+            {
+              "operator": "or",
+              "values": [
+                true,
+                false
+              ]
+            },
+            {
+              "operator": "and",
+              "values": [
+                true,
+                true
+              ]
+            }
+          ]
+        },
+        "valueIfTrue": {
+          "operator": "?",
+          "condition": {
+            "operator": "or",
+            "values": [
+              {
+                "operator": "and",
+                "values": [
+                  true,
+                  true
+                ]
+              },
+              {
+                "operator": "and",
+                "values": [
+                  true,
+                  false,
+                  false
+                ]
+              }
+            ]
+          },
+          "valueIfTrue": {
+            "operator": "?",
+            "condition": {
+              "operator": "or",
+              "values": [
+                true,
+                false
+              ]
+            },
+            "valueIfTrue": {
+              "operator": "?",
+              "condition": true,
+              "valueIfTrue": "many",
+              "valueIfFalse": "not"
+            },
+            "valueIfFalse": "not"
+          },
+          "valueIfFalse": "not"
+        },
+        "valueIfFalse": "not"
+      },
+      "valueIfFalse": "not"
+    },
+    {
+      "operator": "?",
+      "children": [
+        {
+          "operator": "ne",
+          "children": [
+            {
+              "operator": "objectProperties",
+              "property": "somewhere.quite.deep"
+            },
+            {
+              "operator": "objectProperties",
+              "property": "somewhere.quite.deep"
+            }
+          ]
+        },
+        {
+          "operator": "objectProperties",
+          "property": "somewhere.quite.deep"
+        },
+        {
+          "operator": "?",
+          "children": [
+            {
+              "operator": "ne",
+              "children": [
+                {
+                  "operator": "objectProperties",
+                  "property": "somewhere.quite.deep"
+                },
+                {
+                  "operator": "objectProperties",
+                  "property": "somewhere.quite.deep"
+                }
+              ]
+            },
+            {
+              "operator": "objectProperties",
+              "property": "somewhere.quite.deep"
+            },
+            {
+              "operator": "?",
+              "children": [
+                {
+                  "operator": "ne",
+                  "children": [
+                    {
+                      "operator": "objectProperties",
+                      "property": "somewhere.quite.deep"
+                    },
+                    {
+                      "operator": "objectProperties",
+                      "property": "somewhere.quite.deep"
+                    }
+                  ]
+                },
+                {
+                  "operator": "objectProperties",
+                  "property": "somewhere.quite.deep"
+                },
+                {
+                  "operator": "?",
+                  "children": [
+                    {
+                      "operator": "ne",
+                      "children": [
+                        "This ",
+                        "This "
+                      ]
+                    },
+                    "This ",
+                    "missing"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
