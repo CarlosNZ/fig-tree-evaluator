@@ -7,3 +7,4 @@
 ### Tests
 
 - More API/Database tests with Auth and various headers
+- Tests for Evaluated output type
