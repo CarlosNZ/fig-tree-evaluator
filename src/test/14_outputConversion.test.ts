@@ -31,6 +31,19 @@ test('Convert a string to a number', () => {
     })
 })
 
+// Number to string
+test('Convert a number to a string', () => {
+  return exp
+    .evaluate({
+      operator: '+',
+      values: [150, 150],
+      type: 'string',
+    })
+    .then((result: any) => {
+      expect(result).toBe('300')
+    })
+})
+
 // String from various (join into one)
 test('Multiple children converted to string, then joined', () => {
   return evaluateExpression({
