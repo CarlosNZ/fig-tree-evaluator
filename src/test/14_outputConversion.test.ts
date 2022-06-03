@@ -127,3 +127,17 @@ test('Pass through with evaluation, coerce to string', () => {
     expect(result).toBe('999.99')
   })
 })
+
+// Output type can be itself evaluated
+test('Coerce output to string from evaluated "type" node', () => {
+  return evaluateExpression(
+    {
+      operator: 'objectProperties',
+      path: 'find.me',
+      outputType: { operator: '+', values: ['str', 'ing'] },
+    },
+    { objects: { find: { me: 500 } } }
+  ).then((result: any) => {
+    expect(result).toBe('500')
+  })
+})
