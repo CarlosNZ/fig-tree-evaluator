@@ -17,7 +17,7 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "rimraf ./src/expression-evaluator && mkdir ./src/expression-evaluator && cp -R ../src/* ./src/expression-evaluator && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
+    "start": "rimraf ./src/expression-evaluator && mkdir ./src/expression-evaluator && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
     "serve": "node ./src/express/server",
     "build": "react-scripts build",
     "test": "react-scripts test",
