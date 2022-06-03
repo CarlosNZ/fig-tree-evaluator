@@ -37,7 +37,7 @@ test('Convert a number to a string', () => {
     .evaluate({
       operator: '+',
       values: [150, 150],
-      type: 'string',
+      outputType: 'string',
     })
     .then((result: any) => {
       expect(result).toBe('300')
