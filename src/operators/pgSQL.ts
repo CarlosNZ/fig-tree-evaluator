@@ -14,7 +14,7 @@ const propertyAliases = { replacements: 'values' }
 
 export type PGNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { values?: EvaluatorNode[] }
+} & BaseOperatorNode & { values?: EvaluatorNode[]; type?: 'string' }
 
 const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<EvaluatorOutput> => {
   const [query, ...values] = (await evaluateArray(

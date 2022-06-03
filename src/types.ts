@@ -61,7 +61,7 @@ export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
 export interface BaseOperatorNode {
   operator: Operator
-  type?: OutputType
+  outputType?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
 }
