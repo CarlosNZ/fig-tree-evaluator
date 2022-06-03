@@ -60,15 +60,17 @@ export const evaluatorFunction = async (
     const outputType = expression?.type ?? expression?.outputType
     if (!outputType) return result
 
+    const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType
+
     // Output type conversion
-    if (!(outputType in convertOutputMethods))
+    if (!(evaluatedOutputType in convertOutputMethods))
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
-        `Invalid output type: ${outputType}`,
+        `Invalid output type: ${evaluatedOutputType}`,
         returnErrorAsString
       )
     else {
-      return convertOutputMethods[outputType as OutputType](result)
+      return convertOutputMethods[evaluatedOutputType](result)
     }
   } catch (err) {
     return fallbackOrError(
