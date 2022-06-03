@@ -43,4 +43,3 @@ gui/src/expression-evaluator
 # Dev playground file
 src/dev/playground.ts
 .npmrc
-codegen/massiveQuery.json
