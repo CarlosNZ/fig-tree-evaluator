@@ -57,7 +57,7 @@ export const evaluatorFunction = async (
     // Recursively evaluate node
     const result = await evaluate(expression, config)
 
-    const outputType = expression?.type ?? expression?.outputType
+    const outputType = expression?.outputType ?? expression?.type
     if (!outputType) return result
 
     const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType

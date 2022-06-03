@@ -1,13 +1,17 @@
 import { evaluateArray } from './_operatorUtils'
-import { EvaluatorOutput, EvaluatorConfig, OperatorObject } from '../types'
+import { EvaluatorOutput, EvaluatorConfig, OperatorObject, EvaluatorNode } from '../types'
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
 const requiredProperties = ['values'] as const
 const operatorAliases = ['+', 'plus', 'add', 'concat', 'join', 'merge']
 const propertyAliases = {}
 
+export type AdditionNode = {
+  [key in typeof requiredProperties[number]]: EvaluatorNode
+} & BasicExtendedNode & { type?: 'string' }
+
 const evaluate = async (
-  expression: BasicExtendedNode,
+  expression: AdditionNode,
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
   if (expression.values.length === 0) return expression.values
