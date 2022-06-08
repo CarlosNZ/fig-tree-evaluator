@@ -26,7 +26,7 @@
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
     "build": "yarn generate && rimraf ./lib && tsc",
     "dev": "cp -n src/dev/.playground_init.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
-    "gui": "cd gui && yarn start"
+    "demo": "cd demo && yarn start"
   },
   "dependencies": {
     "axios": "^0.27.2",

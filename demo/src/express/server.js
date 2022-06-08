@@ -5,7 +5,6 @@ const config = require('../config.json')
 const port = config.postgresInterfacePort
 
 const { Client } = require('pg')
-const { text } = require('express')
 const client = new Client(config.pg_database_connection)
 
 client.connect()
@@ -19,9 +18,6 @@ app.listen(port, () => {
 app.get('/pg-query', (req, res) => {
   const { text, values, rowMode } = req.query
   const valuesArray = values ? values.split(',') : []
-  // console.log('Query', text)
-  // console.log('Values', valuesArray)
-  // console.log('RowMode', rowMode)
   client
     .query({
       text: text,
@@ -30,5 +26,9 @@ app.get('/pg-query', (req, res) => {
     })
     .then((result) => {
       res.send(result)
+    })
+    .catch((err) => {
+      console.log(err.message)
+      res.send({ error: err.message })
     })
 })

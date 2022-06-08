@@ -83,7 +83,9 @@ function App() {
     evaluator
       .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
       .then((result) => {
-        setResult({ output: result, error: false })
+        if (result instanceof Object && 'error' in result)
+          setResult({ output: null, error: result.error })
+        else setResult({ output: result, error: false })
         setLoading(false)
       })
       .catch((error) => {
