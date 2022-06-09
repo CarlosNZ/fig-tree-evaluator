@@ -8,3 +8,4 @@
 
 - More API/Database tests with Auth and various headers
 - Tests for Evaluated output type
+- More tests for errors in Postgres (and maybe API)

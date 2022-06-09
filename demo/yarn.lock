@@ -4870,7 +4870,7 @@ espree@^9.3.2:
 esprima@2.4.1:
   version "2.4.1"
   resolved "https://registry.yarnpkg.com/esprima/-/esprima-2.4.1.tgz#83059c751e9e9c41d228a41aaa1eef0ccce384ba"
-  integrity sha1-gwWcdR6enEHSKKQaqh7vDMzjhLo=
+  integrity sha512-oQ5niex1XEkpjZhmW1zsozCG515481U0s+A1n6xU9usjkLSy7ZDvfuaAR+CKAKujczvEy7sOPIiX/GO+MZPk8Q==
 
 esprima@^4.0.0, esprima@^4.0.1:
   version "4.0.1"
@@ -6853,7 +6853,7 @@ loose-envify@^1.0.0, loose-envify@^1.1.0, loose-envify@^1.4.0:
 loose-json@^1.1.2:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/loose-json/-/loose-json-1.1.2.tgz#e86186d087c7ff81bc74067febfeaa747e1384e3"
-  integrity sha1-6GGG0IfH/4G8dAZ/6/6qdH4ThOM=
+  integrity sha512-PzphlTCZdoR/cfXWN6TOKwxk9MibQmmQO6Rj4fblas+IbIWUwXhnad7E7qnWOE6ZuMZhwpmLWIUWiVy9C6UiMQ==
   dependencies:
     esprima "2.4.1"
 

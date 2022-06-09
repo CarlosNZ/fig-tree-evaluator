@@ -45,6 +45,7 @@ interface QueryRowResult {
 
 export interface QueryResult {
   rows: QueryRowResult[]
+  error?: string
 }
 
 const processPgSQL = async (queryArray: any[], connection: PGConnection, queryType?: string) => {
@@ -55,6 +56,8 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
   }
   try {
     const res = await connection.query(expression)
+    // node-postgres doesn't throw, it just returns error object
+    if (res?.error) throw new Error(res.error)
     switch (queryType) {
       case 'array':
         return res.rows.flat()
