@@ -4,7 +4,9 @@ import evaluator, { evaluateExpression } from '../evaluator'
 import pgConfig from '../test/postgres/pgConfig.json'
 
 /*
-For testing/playing round during development. Use `yarn ts-node src/dev/playground.ts` to run
+For testing/playing round during development. Use `yarn dev` to run
+Don't edit this file directly -- a copy (playground.ts) will
+be created the first time you run `yarn dev`.
 */
 
 // Uncomment if required
