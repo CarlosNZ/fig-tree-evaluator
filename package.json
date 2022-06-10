@@ -22,6 +22,7 @@
     "typescript": "^4.7.2"
   },
   "scripts": {
+    "setup": "yarn install && cd demo && yarn install",
     "test": "jest",
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
     "build": "yarn generate && rimraf ./lib && tsc",
