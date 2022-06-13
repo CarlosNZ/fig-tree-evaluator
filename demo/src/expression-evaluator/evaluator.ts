@@ -14,7 +14,7 @@ class ExpressionEvaluator {
   }
 
   public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
-    // Update options from current instance if specified
+    // Update options from current call if specified
     return await evaluatorFunction(expression, {
       options: { ...this.options, ...options },
       operators: this.operators,
