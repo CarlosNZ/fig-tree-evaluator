@@ -245,5 +245,5 @@ const ResultText = ({ result }: { result: Result }) => {
         <pre> {JSON.stringify(result.output, null, 2)}</pre>
       </Text>
     )
-  return <Text fontSize={'xl'}>{result.output as string}</Text>
+  return <Text fontSize={'xl'}>{String(result.output)}</Text>
 }
