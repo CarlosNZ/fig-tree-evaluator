@@ -55,6 +55,12 @@ export const evaluatorFunction = async (
     if ('children' in expression) {
       if (!Array.isArray(expression.children))
         expression.children = await evaluatorFunction(expression.children, config)
+      if (!Array.isArray(expression.children))
+        return fallbackOrError(
+          await evaluatorFunction(fallback, config),
+          `"children" property doesn't evaluate to array: ${expression.children}`,
+          returnErrorAsString
+        )
       expression = await parseChildren(expression, config)
     }
 
