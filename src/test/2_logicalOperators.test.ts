@@ -83,3 +83,55 @@ test('OR operator with 4 children, all false', () => {
     expect(result).toEqual(false)
   })
 })
+
+// Non-boolean operands
+
+test('OR - Non-boolean operands - OR', () => {
+  const expression = {
+    operator: 'OR',
+    values: ['this', 'that'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(true)
+  })
+})
+
+test('AND - Non-boolean operands', () => {
+  const expression = {
+    operator: 'AND',
+    values: ['this', 'that'],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(true)
+  })
+})
+
+test('OR - Non-boolean falsy operands', () => {
+  const expression = {
+    operator: 'OR',
+    values: [false, null, undefined, NaN, 0, ''],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(false)
+  })
+})
+
+test('OR - Non-boolean operands, only one truthy', () => {
+  const expression = {
+    operator: 'OR',
+    values: [false, null, 'Not falsy', undefined, NaN, 0, ''],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(true)
+  })
+})
+
+test('AND - Non-boolean falsy operands', () => {
+  const expression = {
+    operator: 'OR',
+    values: [false, null, undefined, NaN, 0, ''],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(false)
+  })
+})
