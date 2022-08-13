@@ -55,9 +55,11 @@ export const checkRequiredNodes = (
   const missingProps = requiredProps.filter((prop) => !(prop in expression))
   if (missingProps.length === 0) return false
   if (!('children' in expression)) return `Missing properties: ${missingProps}`
-  if (!Array.isArray(expression.children)) {
-    return 'Invalid child nodes (children) array'
-  } else return false
+  // if (!Array.isArray(expression.children)) {
+  //   return 'Invalid child nodes (children) array'
+  // }
+  // else
+  return false
 }
 
 export const convertOutputMethods: {

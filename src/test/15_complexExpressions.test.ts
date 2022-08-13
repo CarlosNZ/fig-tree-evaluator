@@ -48,6 +48,35 @@ test('Input is an array -- each item will be evaluated', () => {
     })
 })
 
+test('"values" is an evaluator expression, should evaluate to standard values array', () => {
+  return exp
+    .evaluate({
+      operator: 'and',
+      values: {
+        operator: '+',
+        values: [['this'], ['that']],
+      },
+    })
+    .then((result: any) => {
+      expect(result).toStrictEqual(true)
+    })
+})
+
+test('"children" is an evaluator expression, should evaluate to standard child array', () => {
+  return exp
+    .evaluate({
+      operator: 'objectProperties',
+      children: {
+        operator: '+',
+        outputType: 'array',
+        values: ['randomWords.', '[2]'],
+      },
+    })
+    .then((result: any) => {
+      expect(result).toStrictEqual('planetary')
+    })
+})
+
 // Mother of all queries
 const expression = {
   operator: '+',

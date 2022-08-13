@@ -52,7 +52,11 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
 
-    if ('children' in expression) expression = await parseChildren(expression, config)
+    if ('children' in expression) {
+      if (!Array.isArray(expression.children))
+        expression.children = await evaluatorFunction(expression.children, config)
+      expression = await parseChildren(expression, config)
+    }
 
     // Recursively evaluate node
     const result = await evaluate(expression, config)
