@@ -11,7 +11,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<Boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
-  return values.reduce((acc: boolean, val: boolean) => acc || val, false)
+  return values.reduce((acc: boolean, val: boolean) => acc || !!val, false)
 }
 
 export const OR: OperatorObject = {
