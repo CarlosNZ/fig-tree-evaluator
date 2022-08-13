@@ -43,7 +43,7 @@ test('ERROR - Invalid/Missing children error', async () => {
     children: 2,
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    'Invalid child nodes (children) array'
+    '"children" property doesn\'t evaluate to array: 2'
   )
 })
 
@@ -53,7 +53,7 @@ test('ERROR as string - Invalid/Missing children', () => {
     children: 2,
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('Invalid child nodes (children) array')
+    expect(result).toBe('"children" property doesn\'t evaluate to array: 2')
   })
 })
 

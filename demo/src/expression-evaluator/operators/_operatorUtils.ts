@@ -1,20 +1,14 @@
 import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import { errorMessage } from '../helpers'
-import {
-  GenericObject,
-  EvaluatorNode,
-  EvaluatorOutput,
-  EvaluatorConfig,
-  EvaluatorOptions,
-} from '../types'
+import { GenericObject, EvaluatorNode, EvaluatorOutput, EvaluatorConfig } from '../types'
 
 // Evaluate all child/property nodes simultaneously
 export const evaluateArray = async (
   nodes: EvaluatorNode[],
   params: EvaluatorConfig
 ): Promise<EvaluatorOutput[]> => {
+  if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorNode[]
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
 /*
