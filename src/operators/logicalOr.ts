@@ -9,7 +9,7 @@ const propertyAliases = {}
 const evaluate = async (
   expression: BasicExtendedNode,
   config: EvaluatorConfig
-): Promise<Boolean> => {
+): Promise<boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
   return values.reduce((acc: boolean, val: boolean) => acc || !!val, false)
 }
