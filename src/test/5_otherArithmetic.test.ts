@@ -110,3 +110,72 @@ test('MULTIPLY operator with non-number inputs', () => {
     expect(result).toBeNaN()
   })
 })
+
+test('DIVIDE operator simple integers', () => {
+  const expression = { operator: 'divide', values: [60, 20] }
+  return evaluateExpression(expression).then((result: any) => {
+    expect(result).toEqual(3)
+  })
+})
+
+test('DIVIDE operator simple integers with children', () => {
+  const expression = { operator: '/', children: [99, 9] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(11)
+  })
+})
+
+test('DIVIDE operator simple integer subtraction using properties', () => {
+  const expression = { operator: '/', dividend: 150, divisor: 4 }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(37.5)
+  })
+})
+
+test('DIVIDE operator, alias properties with quotient only', () => {
+  const expression = { operator: '/', divide: 145, by: 3, output: 'quotient' }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(48)
+  })
+})
+
+test('DIVIDE operator, alias properties with remainder only', () => {
+  const expression = { operator: '/', divide: 145, by: 3, output: 'remainder' }
+  return evaluateExpression(expression).then((result: any) => {
+    expect(result).toEqual(1)
+  })
+})
+
+test('DIVIDE operator with fractional result', () => {
+  const expression = { operator: '÷', values: [100, 3] }
+  return exp.evaluate(expression).then((result: any) => {
+    // binary precision issue:
+    expect(result).toEqual(33.333333333333336)
+  })
+})
+
+test('DIVIDE - division by zero', async () => {
+  const expression = {
+    operator: '/',
+    dividend: 69,
+    divisor: {
+      operator: '-',
+      values: [6, 6],
+    },
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('Division by zero!')
+})
+
+test('DIVIDE operator with one NaN operand', () => {
+  const expression = { operator: '/', values: [0.3, 'five'] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBeNaN()
+  })
+})
+
+test('DIVIDE operator with not enough values', () => {
+  const expression = { operator: '/', children: [0.3] }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toEqual('Division by zero!')
+  })
+})

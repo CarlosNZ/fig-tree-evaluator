@@ -5,7 +5,7 @@ import { evaluateExpression } from '../evaluator'
 
 const requiredProperties = [] as const
 const operatorAliases = ['/', 'divide', '÷']
-const propertyAliases = { subtractFrom: 'from' }
+const propertyAliases = { divide: 'dividend', by: 'divisor', divideBy: 'divisor' }
 
 interface DivisionNodeWithProps extends BaseOperatorNode {
   dividend: EvaluatorNode
