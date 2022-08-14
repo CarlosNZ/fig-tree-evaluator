@@ -1,5 +1,8 @@
 import {
   BasicExtendedNode,
+  SubtractionNode,
+  DivisionNode,
+  ComparatorNode,
   ConditionalNode,
   RegexNode,
   StringSubNode,
@@ -21,10 +24,16 @@ export const Operators = [
   'EQUAL',
   'NOT_EQUAL',
   'PLUS',
+  'SUBTRACT',
+  'MULTIPLY',
+  'DIVIDE',
+  'GREATER_THAN',
+  'LESS_THAN',
   'CONDITIONAL',
   'REGEX',
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
+  'COUNT',
   'GET',
   'POST',
   'PG_SQL',
@@ -68,6 +77,9 @@ export interface BaseOperatorNode {
 
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
+  SubtractionNode &
+  DivisionNode &
+  ComparatorNode &
   ConditionalNode &
   RegexNode &
   StringSubNode &
@@ -81,6 +93,9 @@ export type CombinedOperatorNode = BaseOperatorNode &
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
+  | SubtractionNode
+  | DivisionNode
+  | ComparatorNode
   | ConditionalNode
   | RegexNode
   | StringSubNode

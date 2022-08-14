@@ -1,6 +1,6 @@
 import { Client } from 'pg'
 import ExpressionEvaluator from '../evaluator'
-import pgConfig from '../test/postgres/pgConfig.json'
+import pgConfig from './postgres/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../../codegen/queryBuilder'
 

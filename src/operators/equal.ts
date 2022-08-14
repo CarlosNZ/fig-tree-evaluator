@@ -9,7 +9,7 @@ const propertyAliases = {}
 const evaluate = async (
   expression: BasicExtendedNode,
   options: EvaluatorConfig
-): Promise<Boolean> => {
+): Promise<boolean> => {
   const values = (await evaluateArray(expression.values, options)) as boolean[]
   return values.every((value) => value == values[0])
 }
