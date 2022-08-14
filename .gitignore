@@ -38,7 +38,7 @@ typings/
 .DS_Store
 
 # Duplicated source code for GUI app
-gui/src/expression-evaluator
+demo/src/expression-evaluator
 
 # Dev playground file
 src/dev/playground.ts
