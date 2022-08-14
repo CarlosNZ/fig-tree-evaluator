@@ -23,6 +23,7 @@ export const Operators = [
   'NOT_EQUAL',
   'PLUS',
   'SUBTRACT',
+  'MULTIPLY',
   'CONDITIONAL',
   'REGEX',
   'OBJECT_PROPERTIES',

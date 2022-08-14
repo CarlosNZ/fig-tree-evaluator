@@ -75,3 +75,38 @@ test('MINUS operator with missing "subtract" property', () => {
     expect(result).toBeNaN()
   })
 })
+
+test('MULTIPLY operator 2 values', () => {
+  const expression = { operator: 'Multiply', values: [2, 4] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(8)
+  })
+})
+
+test('MULTIPLY operator multiple values', () => {
+  const expression = { operator: '*', values: [7, 3, 99] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(2079)
+  })
+})
+
+test('MULTIPLY operator single value', () => {
+  const expression = { operator: 'x', values: [6.5] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(6.5)
+  })
+})
+
+test('MULTIPLY operator with children', () => {
+  const expression = { operator: 'TIMES', children: [8.5, 6, 12] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(612)
+  })
+})
+
+test('MULTIPLY operator with non-number inputs', () => {
+  const expression = { operator: 'X', values: [17, 'twelve'] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBeNaN()
+  })
+})
