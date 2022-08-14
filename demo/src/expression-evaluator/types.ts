@@ -1,5 +1,6 @@
 import {
   BasicExtendedNode,
+  SubtractionNode,
   ConditionalNode,
   RegexNode,
   StringSubNode,
@@ -21,6 +22,7 @@ export const Operators = [
   'EQUAL',
   'NOT_EQUAL',
   'PLUS',
+  'SUBTRACT',
   'CONDITIONAL',
   'REGEX',
   'OBJECT_PROPERTIES',
@@ -68,6 +70,7 @@ export interface BaseOperatorNode {
 
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
+  SubtractionNode &
   ConditionalNode &
   RegexNode &
   StringSubNode &
