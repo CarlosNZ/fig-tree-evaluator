@@ -285,3 +285,57 @@ test('Less than - missing values', () => {
     expect(result).toEqual('Not enough values provided')
   })
 })
+
+test('Count - simple array', () => {
+  const expression = { operator: 'count', values: [1, 2, 3] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(3)
+  })
+})
+
+test('Count - empty array', () => {
+  const expression = { operator: 'length', children: [] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(0)
+  })
+})
+
+test('Count - values not an array', () => {
+  const expression = { operator: 'length', values: 'Wrong' }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toEqual('"values" property not an array')
+  })
+})
+
+// Combine operators
+
+test('Combine arithmetic operators', () => {
+  const expression = {
+    operator: '+',
+    values: {
+      operator: 'join',
+      children: [
+        {
+          operator: '-',
+          subtract: { operator: 'count', values: [1, 2, 3, 4, 5, 6, 7, 8, 9] },
+          from: 10,
+          outputType: {
+            operator: '?',
+            condition: { operator: '>', values: ['Book', 'Apple'] },
+            valueIfTrue: 'array',
+            valueIfFalse: 'string',
+          },
+        },
+        {
+          operator: '*',
+          children: [0.5, { operator: '/', output: 'remainder', values: [48, 10] }, 0.5],
+          outputType: 'array',
+        },
+        { operator: '/', divide: 81, by: 9, outputType: 'array' },
+      ],
+    },
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(12)
+  })
+})

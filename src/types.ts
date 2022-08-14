@@ -33,6 +33,7 @@ export const Operators = [
   'REGEX',
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
+  'COUNT',
   'GET',
   'POST',
   'PG_SQL',
