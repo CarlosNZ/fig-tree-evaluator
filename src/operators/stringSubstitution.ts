@@ -24,6 +24,9 @@ const evaluate = async (
     [expression.string, ...(expression.substitutions as EvaluatorNode[])],
     config
   )) as [string, string]
+
+  config.typeChecker({ name: 'string', value: string, expectedType: 'string' })
+
   const regex = /(%[\d]+)/g
   const parameters = (string.match(regex) || []).sort(
     (a, b) => Number(a.slice(1)) - Number(b.slice(1))

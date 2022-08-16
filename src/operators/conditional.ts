@@ -18,11 +18,11 @@ export type ConditionalNode = {
 
 const evaluate = async (
   expression: ConditionalNode,
-  options: EvaluatorConfig
+  config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
   const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
-    [expression.condition, expression.valueIfTrue, expression.valueIfFalse],
-    options
+    [!!expression.condition, expression.valueIfTrue, expression.valueIfFalse],
+    config
   )
   return condition ? valueIfTrue : valueIfFalse
 }

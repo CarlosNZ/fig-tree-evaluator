@@ -18,6 +18,7 @@ const evaluate = async (expression: SubtractionNode, config: EvaluatorConfig): P
     expression.values ?? [expression.from, expression.subtract],
     config
   )) as number[]
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
   return values[0] - values[1]
 }
 

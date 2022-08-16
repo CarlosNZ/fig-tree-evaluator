@@ -46,7 +46,7 @@ export const mapPropertyAliases = (
 
 /*
 Checks Evaluator node for missing required properties based on operator type
-- Doesn't do type checking of properties (yet)
+- Strict type checking done AFTER evaluation of nodes within operator methods
 */
 export const checkRequiredNodes = (
   requiredProps: readonly string[],
