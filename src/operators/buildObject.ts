@@ -8,6 +8,7 @@ import {
   GenericObject,
   OperatorObject,
 } from '../types'
+import { typeCheck } from '../typeCheck'
 
 const requiredProperties = ['properties'] as const
 const operatorAliases = ['buildObject', 'build', 'object']
@@ -31,6 +32,8 @@ const evaluate = async (
     const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
     return [key, value]
   }
+
+  config.typeChecker({ name: 'properties', value: expression.properties, expectedType: 'array' })
 
   const evaluated = expression.properties
     // Remove any objects that don't have both "key" and "value" props

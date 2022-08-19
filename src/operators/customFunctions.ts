@@ -39,6 +39,8 @@ const evaluate = async (
     config
   )) as [string, EvaluatorNode[]]
 
+  config.typeChecker({ name: 'functionPath', value: functionPath, expectedType: 'string' })
+
   const { objects, functions } = config.options
   const func = (extractProperty(functions, functionPath, null) ??
     extractProperty(objects, functionPath)) as Function
