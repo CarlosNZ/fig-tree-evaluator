@@ -8,7 +8,6 @@ import {
   GenericObject,
   OperatorObject,
 } from '../types'
-import { typeCheck } from '../typeCheck'
 
 const requiredProperties = ['properties'] as const
 const operatorAliases = ['buildObject', 'build', 'object']
@@ -30,6 +29,7 @@ const evaluate = async (
 ): Promise<EvaluatorOutput> => {
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
     const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
+    config.typeChecker({ name: 'key', value: key, expectedType: 'string' })
     return [key, value]
   }
 

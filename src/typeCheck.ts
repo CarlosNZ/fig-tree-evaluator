@@ -1,6 +1,6 @@
 type ExpectedType = 'string' | 'boolean' | 'number' | 'array' | 'undefined' | 'null' | 'object'
 
-type TypeCheckInput = {
+export type TypeCheckInput = {
   value: unknown
   name?: string
   not?: boolean

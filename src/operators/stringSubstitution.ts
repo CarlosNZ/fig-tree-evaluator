@@ -26,6 +26,7 @@ const evaluate = async (
   )) as [string, string]
 
   config.typeChecker({ name: 'string', value: string, expectedType: 'string' })
+  config.typeChecker({ name: 'substitutions', value: substitutions, expectedType: 'array' })
 
   const regex = /(%[\d]+)/g
   const parameters = (string.match(regex) || []).sort(

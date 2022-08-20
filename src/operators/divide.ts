@@ -22,10 +22,6 @@ const evaluate = async (expression: DivisionNode, config: EvaluatorConfig): Prom
   )) as number[]
 
   config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
-  config.typeChecker(
-    { name: 'dividend', value: values[0], expectedType: 'number' },
-    { name: 'divisor', value: values[1], expectedType: 'number' }
-  )
 
   if (!values[1]) throw new Error('Division by zero!')
 

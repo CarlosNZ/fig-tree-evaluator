@@ -25,6 +25,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
   const [property] = (await evaluateArray([expression.property], config)) as [string, any]
+  config.typeChecker({ name: 'property', value: property, expectedType: 'string' })
   const inputObject = config.options?.objects ?? {}
   return extractProperty(inputObject, property)
 }

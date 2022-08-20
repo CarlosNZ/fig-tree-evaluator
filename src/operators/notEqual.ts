@@ -11,6 +11,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
   return values.some((val) => val !== values[0])
 }
 

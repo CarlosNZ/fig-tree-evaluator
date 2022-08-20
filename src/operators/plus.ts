@@ -18,6 +18,8 @@ const evaluate = async (
 
   const values = (await evaluateArray(expression.values, config)) as any[]
 
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
+
   // Reduce based on "type" if specified
   if (expression?.type === 'string') return values.reduce((acc, child) => acc.concat(child), '')
 

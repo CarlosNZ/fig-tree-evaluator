@@ -10,12 +10,16 @@ const propertyAliases = {}
 export type ComparatorNode = BasicExtendedNode & { strict?: boolean }
 
 const evaluate = async (expression: ComparatorNode, config: EvaluatorConfig): Promise<boolean> => {
-  if (!expression.values || expression.values.length < 2)
-    throw new Error('Not enough values provided')
-  const [first, second, strict = true] = (await evaluateArray(
-    [...expression.values, expression.strict],
+  const [values, strict] = (await evaluateArray(
+    [expression.values, expression.strict],
     config
-  )) as [string | number, string | number, boolean]
+  )) as [(string | number)[], boolean]
+
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
+
+  if (values.length < 2) throw new Error('Not enough values provided')
+
+  const [first, second] = values
 
   if (first === second && !strict) return true
 

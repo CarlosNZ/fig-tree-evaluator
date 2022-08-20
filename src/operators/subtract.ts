@@ -19,10 +19,8 @@ const evaluate = async (expression: SubtractionNode, config: EvaluatorConfig): P
     config
   )) as number[]
   config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
-  config.typeChecker(
-    { name: 'value1', value: values[0], expectedType: 'number' },
-    { name: 'value2', value: values[1], not: true, expectedType: 'undefined' }
-  )
+  if (expression.values.length < 2) throw new Error('Not enough values provided')
+
   return values[0] - values[1]
 }
 

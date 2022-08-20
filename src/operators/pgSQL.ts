@@ -22,6 +22,11 @@ const evaluate = async (expression: PGNode, config: EvaluatorConfig): Promise<Ev
     config
   )) as [string, (string | number)[]]
 
+  config.typeChecker(
+    { name: 'query', value: query, expectedType: 'string' },
+    { name: 'values', value: values, expectedType: 'array' }
+  )
+
   if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
   try {
     return await processPgSQL([query, ...values], config.options.pgConnection, expression?.type)

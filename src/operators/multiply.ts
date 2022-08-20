@@ -11,6 +11,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<number> => {
   const values = (await evaluateArray(expression.values, config)) as number[]
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
   return values.reduce((acc, number) => acc * number)
 }
 
