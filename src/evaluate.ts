@@ -48,7 +48,7 @@ export const evaluatorFunction = async (
     if (validationError)
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
-        validationError,
+        `Operator: ${operator}\n- ${validationError}`,
         returnErrorAsString
       )
 

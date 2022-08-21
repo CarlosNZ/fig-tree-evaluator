@@ -3,20 +3,20 @@ import { EvaluatorConfig, OperatorObject } from '../types'
 import { parseChildren } from './logicalAnd'
 import { ComparatorNode } from './greaterThan'
 
-const requiredProperties = [] as const
+const requiredProperties = ['values'] as const
 const operatorAliases = ['<', 'lessThan', 'lower', 'smaller']
 const aliasExtensions = [{ '<=': { strict: false } }] // To-do
 const propertyAliases = {}
 
 const evaluate = async (expression: ComparatorNode, config: EvaluatorConfig): Promise<boolean> => {
-  const [values, strict] = (await evaluateArray(
+  const [values, strict = true] = (await evaluateArray(
     [expression.values, expression.strict],
     config
   )) as [(string | number)[], boolean]
 
   config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
 
-  if (values.length < 2) throw new Error('Not enough values provided')
+  if (values.length < 2) throw new Error('- Not enough values provided')
 
   const [first, second] = values
 

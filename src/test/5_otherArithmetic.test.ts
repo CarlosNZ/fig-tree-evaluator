@@ -55,11 +55,11 @@ test('MINUS operator with one NaN operand', () => {
   })
 })
 
-test('MINUS operator with not enough values', () => {
+test('MINUS operator with not enough values', async () => {
   const expression = { operator: '-', values: [0.3] }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
-  })
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: SUBTRACT\n- Not enough values provided'
+  )
 })
 
 test('MINUS operator with missing "from" property', () => {
@@ -173,11 +173,11 @@ test('DIVIDE operator with one NaN operand', () => {
   })
 })
 
-test('DIVIDE operator with not enough values', () => {
-  const expression = { operator: '/', children: [0.3] }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toEqual('Division by zero!')
-  })
+test('DIVIDE operator with not enough values', async () => {
+  const expression = { operator: '/', children: [99] }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: DIVIDE\n- Not enough values provided'
+  )
 })
 
 test('Greater than - integer comparison', () => {
@@ -226,11 +226,11 @@ test('Greater than - equal vals, non-strict strings', () => {
   })
 })
 
-test('Greater than - not enough values', () => {
+test('Greater than - not enough values', async () => {
   const expression = { operator: '>', values: [12] }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toEqual('Not enough values provided')
-  })
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: GREATER_THAN\n- Not enough values provided'
+  )
 })
 
 test('Less than - integer comparison', () => {
@@ -279,11 +279,11 @@ test('Less than - equal vals, non-strict strings', () => {
   })
 })
 
-test('Less than - missing values', () => {
-  const expression = { operator: '>' }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toEqual('Not enough values provided')
-  })
+test('Less than - missing values', async () => {
+  const expression = { operator: '<' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: LESS_THAN\n- Missing properties: values'
+  )
 })
 
 test('Count - simple array', () => {
@@ -303,7 +303,9 @@ test('Count - empty array', () => {
 test('Count - values not an array', () => {
   const expression = { operator: 'length', values: 'Wrong' }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toEqual('"values" property not an array')
+    expect(result).toEqual(
+      'Operator: COUNT\n- Property "values" (value: "Wrong") is not of type: array'
+    )
   })
 })
 
