@@ -21,10 +21,10 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
   const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
-    [!!expression.condition, expression.valueIfTrue, expression.valueIfFalse],
+    [expression.condition, expression.valueIfTrue, expression.valueIfFalse],
     config
   )
-  return condition ? valueIfTrue : valueIfFalse
+  return !!condition ? valueIfTrue : valueIfFalse
 }
 
 const parseChildren = (expression: CombinedOperatorNode): ConditionalNode => {

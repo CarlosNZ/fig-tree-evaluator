@@ -43,7 +43,7 @@ test('ERROR - Invalid/Missing children error', async () => {
     children: 2,
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    '"children" property doesn\'t evaluate to array: 2'
+    'Operator: OR\n- Property "children" is not of type: array'
   )
 })
 
@@ -53,7 +53,7 @@ test('ERROR as string - Invalid/Missing children', () => {
     children: 2,
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('"children" property doesn\'t evaluate to array: 2')
+    expect(result).toBe('Operator: OR\n- Property "children" is not of type: array')
   })
 })
 
@@ -63,7 +63,9 @@ test('ERROR - Invalid output type', async () => {
     children: [1, 2],
     type: 'Integer',
   }
-  await expect(evaluateExpression(expression)).rejects.toThrow('Invalid output type: Integer')
+  await expect(evaluateExpression(expression)).rejects.toThrow(
+    'Operator: PLUS\n- Invalid output type: Integer'
+  )
 })
 
 // Each operator with Error then Fallback
@@ -72,7 +74,9 @@ test('OR - Error', async () => {
   const expression = {
     operator: 'OR',
   }
-  await expect(exp.evaluate(expression)).rejects.toThrow('Missing properties: values')
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: OR\n- Missing properties: values'
+  )
 })
 
 test('OR - Error as string', () => {
@@ -80,7 +84,7 @@ test('OR - Error as string', () => {
     operator: 'OR',
   }
   return evaluateExpression(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('Missing properties: values')
+    expect(result).toBe('Operator: OR\n- Missing properties: values')
   })
 })
 
@@ -98,15 +102,17 @@ test('AND - Error', async () => {
   const expression = {
     operator: 'AND',
   }
-  await expect(exp.evaluate(expression)).rejects.toThrow('Missing properties: values')
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: AND\n- Missing properties: values'
+  )
 })
 
-test('OR - Error as string', () => {
+test('AND - Error as string', () => {
   const expression = {
     operator: 'And',
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('Missing properties: values')
+    expect(result).toBe('Operator: AND\n- Missing properties: values')
   })
 })
 
@@ -126,7 +132,9 @@ test('REGEX - Error', async () => {
     pattern: { one: 1 },
     testString: 'anything',
   }
-  await expect(exp.evaluate(expression)).rejects.toThrow('Invalid Regex pattern')
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: REGEX\n- Property "pattern" (value: {"one":1}) is not of type: string'
+  )
 })
 
 test('REGEX - Fallback', () => {
@@ -141,7 +149,7 @@ test('REGEX - Fallback', () => {
   })
 })
 
-// Obj Properties errors tested in 7_objectProperties.test.ts
+// // Obj Properties errors tested in 7_objectProperties.test.ts
 
 test('API - Fallback', () => {
   const expression = {
@@ -168,7 +176,9 @@ test('ERROR - bubble up from nested', async () => {
       },
     ],
   }
-  await expect(exp.evaluate(expression)).rejects.toThrow('Invalid Regex pattern')
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: REGEX\n- Property "pattern" (value: {"one":1}) is not of type: string'
+  )
 })
 
 // Fallback bubbles up from nested
@@ -198,7 +208,7 @@ test('FALLBACK - multiple bubble up and join', () => {
   })
 })
 
-// Edge cases
+// // Edge cases
 
 test('Loose equality - null == undefined', () => {
   const expression = {
@@ -210,7 +220,7 @@ test('Loose equality - null == undefined', () => {
   })
 })
 
-// Fallback can be evaluated too!
+// // Fallback can be evaluated too!
 test('Fallback is an operator node', () => {
   const expression = {
     operator: 'get',

@@ -23,7 +23,7 @@ const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<E
 
   config.typeChecker(
     { name: 'url', value: url, expectedType: 'string' },
-    { name: 'headers', value: headersObj, expectedType: ['object', 'undefined'] },
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
     { name: 'data', value: data, expectedType: ['object', 'undefined'] },
     { name: 'returnProperty', value: returnProperty, expectedType: ['string', 'undefined'] }
   )

@@ -87,7 +87,7 @@ export const evaluatorFunction = async (
     if (!(evaluatedOutputType in convertOutputMethods))
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
-        `Invalid output type: ${evaluatedOutputType}`,
+        `Operator: ${operator}\n- Invalid output type: ${evaluatedOutputType}`,
         returnErrorAsString
       )
     else {

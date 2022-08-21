@@ -39,7 +39,6 @@ const evaluate = async (
   )
 
   try {
-    if (typeof pattern !== 'string') throw new Error('Invalid Regex pattern')
     const re: RegExp = new RegExp(pattern)
     return re.test(testString)
   } catch (err) {

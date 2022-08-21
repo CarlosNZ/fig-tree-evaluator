@@ -54,9 +54,9 @@ const evaluate = async (
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   config.typeChecker(
-    { name: 'url', value: url, expectedType: ['string', 'undefined'] },
+    { name: 'url', value: url, expectedType: ['string', 'undefined', 'null'] },
     { name: 'query', value: query, expectedType: 'string' },
-    { name: 'headers', value: headersObj, expectedType: ['object', 'undefined'] },
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
     { name: 'variables', value: variables, expectedType: ['object', 'undefined'] },
     { name: 'returnNode', value: returnNode, expectedType: ['string', 'undefined'] }
   )
