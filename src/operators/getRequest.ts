@@ -42,6 +42,14 @@ const evaluate = async (expression: APINode, config: EvaluatorConfig): Promise<E
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
+  config.typeChecker(
+    { name: 'url', value: url, expectedType: 'string' },
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
+    { name: 'headers', value: headers, expectedType: ['object', 'undefined'] },
+    { name: 'parameters', value: params, expectedType: ['object', 'undefined'] },
+    { name: 'returnProperty', value: returnProperty, expectedType: ['string', 'undefined'] }
+  )
+
   const baseUrl = config.options.baseEndpoint ?? ''
 
   const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }

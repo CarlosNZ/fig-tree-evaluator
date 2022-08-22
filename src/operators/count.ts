@@ -11,7 +11,7 @@ const evaluate = async (
   config: EvaluatorConfig
 ): Promise<number> => {
   const values = await evaluateArray(expression.values, config)
-  if (!Array.isArray(values)) throw new Error('"values" property not an array')
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
   return values.length
 }
 

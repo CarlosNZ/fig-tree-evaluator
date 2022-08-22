@@ -33,8 +33,12 @@ const evaluate = async (
     config
   )) as [string, string]
 
+  config.typeChecker(
+    { name: 'testString', value: testString, expectedType: 'string' },
+    { name: 'pattern', value: pattern, expectedType: 'string' }
+  )
+
   try {
-    if (typeof pattern !== 'string') throw new Error('Invalid Regex pattern')
     const re: RegExp = new RegExp(pattern)
     return re.test(testString)
   } catch (err) {

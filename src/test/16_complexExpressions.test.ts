@@ -88,7 +88,9 @@ test('"children" is an evaluator expression but doesn\'t return an array', () =>
       },
     })
     .then((result: any) => {
-      expect(result).toStrictEqual(`"children" property doesn't evaluate to array: randomWords.[2]`)
+      expect(result).toStrictEqual(
+        'Operator: OBJECT_PROPERTIES\n- Property "children" is not of type: array'
+      )
     })
 })
 

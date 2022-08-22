@@ -16,6 +16,7 @@ import {
   PGConnection,
   GraphQLConnection,
 } from './operators'
+import { TypeCheckInput } from './typeCheck'
 
 export const Operators = [
   // Canonical operator names
@@ -58,12 +59,14 @@ export interface EvaluatorOptions {
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
   allowJSONStringInput?: boolean
+  skipRuntimeTypeCheck?: boolean
 }
 
 export interface EvaluatorConfig {
   options: EvaluatorOptions
   operators: OperatorReference
   operatorAliases: { [key: string]: Operator }
+  typeChecker: (...input: TypeCheckInput[]) => void
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'

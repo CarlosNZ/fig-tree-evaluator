@@ -205,7 +205,7 @@ test.concurrent('POST: Unsuccessful login, using properties', () => {
     parameters: { email: 'eve.holt@reqres.in' },
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Request failed with status code 400')
+    expect(result).toBe('Operator: POST\nRequest failed with status code 400')
   })
 })
 
@@ -233,17 +233,17 @@ test('GET: 403 error', () => {
     url: 'http://httpstat.us/403',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Request failed with status code 403')
+    expect(result).toBe('Operator: GET\nRequest failed with status code 403')
   })
 })
 
-test.concurrent('POST: 404 error', () => {
+test.concurrent('GET: 404 error', () => {
   const expression = {
     operator: 'API',
     url: 'http://httpstat.us/404',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Request failed with status code 404')
+    expect(result).toBe('Operator: GET\nRequest failed with status code 404')
   })
 })
 
@@ -264,7 +264,7 @@ test.concurrent('GET: Bad url', () => {
     url: 'http://thereisnosite.com',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Network Error')
+    expect(result).toBe('Operator: GET\nNetwork Error')
   })
 })
 

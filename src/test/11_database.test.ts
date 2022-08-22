@@ -35,7 +35,7 @@ test('Postgres - get an array of Orders using var substitution', () => {
   const expression = {
     operator: 'pg',
     children: [
-      'SELECT order_id, order_date, ship_city, ship_country FROM public.orders WHERE customer_id = $1 AND order_id < 10500;',
+      "SELECT order_id, TO_CHAR(order_date :: DATE, 'Mon dd, yyyy') as order_date, ship_city, ship_country FROM public.orders WHERE customer_id = $1 AND order_id < 10500;",
       'FAMIA',
     ],
   }
@@ -43,19 +43,19 @@ test('Postgres - get an array of Orders using var substitution', () => {
     expect(result).toStrictEqual([
       {
         order_id: 10347,
-        order_date: new Date('1996-11-05T11:00:00.000Z'),
+        order_date: 'Nov 06, 1996',
         ship_city: 'Sao Paulo',
         ship_country: 'Brazil',
       },
       {
         order_id: 10386,
-        order_date: new Date('1996-12-17T11:00:00.000Z'),
+        order_date: 'Dec 18, 1996',
         ship_city: 'Sao Paulo',
         ship_country: 'Brazil',
       },
       {
         order_id: 10414,
-        order_date: new Date('1997-01-13T11:00:00.000Z'),
+        order_date: 'Jan 14, 1997',
         ship_city: 'Sao Paulo',
         ship_country: 'Brazil',
       },

@@ -21,6 +21,9 @@ const evaluate = async (expression: DivisionNode, config: EvaluatorConfig): Prom
     config
   )) as number[]
 
+  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
+
+  if (values.length < 2) throw new Error('- Not enough values provided')
   if (!values[1]) throw new Error('Division by zero!')
 
   switch (await evaluateExpression(expression.output)) {

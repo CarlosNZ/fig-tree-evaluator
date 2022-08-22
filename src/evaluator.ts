@@ -1,5 +1,12 @@
-import { EvaluatorNode, EvaluatorOptions, Operator, OperatorReference } from './types'
+import {
+  OperatorNodeUnion,
+  EvaluatorNode,
+  EvaluatorOptions,
+  Operator,
+  OperatorReference,
+} from './types'
 import { evaluatorFunction } from './evaluate'
+import { typeCheck, TypeCheckInput } from './typeCheck'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 
@@ -13,12 +20,20 @@ class ExpressionEvaluator {
     this.operatorAliases = operatorAliases as { [key: string]: Operator }
   }
 
+  private typeChecker = (...args: TypeCheckInput[]) => {
+    if (this.options.skipRuntimeTypeCheck) return
+    const result = typeCheck(...args)
+    if (result === true) return
+    throw new Error(result)
+  }
+
   public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
     // Update options from current call if specified
     return await evaluatorFunction(expression, {
       options: { ...this.options, ...options },
       operators: this.operators,
       operatorAliases: this.operatorAliases,
+      typeChecker: this.typeChecker,
     })
   }
 

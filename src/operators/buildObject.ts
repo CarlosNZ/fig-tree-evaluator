@@ -29,8 +29,11 @@ const evaluate = async (
 ): Promise<EvaluatorOutput> => {
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
     const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
+    config.typeChecker({ name: 'key', value: key, expectedType: 'string' })
     return [key, value]
   }
+
+  config.typeChecker({ name: 'properties', value: expression.properties, expectedType: 'array' })
 
   const evaluated = expression.properties
     // Remove any objects that don't have both "key" and "value" props

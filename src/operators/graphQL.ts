@@ -53,6 +53,14 @@ const evaluate = async (
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
+  config.typeChecker(
+    { name: 'url', value: url, expectedType: ['string', 'undefined', 'null'] },
+    { name: 'query', value: query, expectedType: 'string' },
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
+    { name: 'variables', value: variables, expectedType: ['object', 'undefined'] },
+    { name: 'returnNode', value: returnNode, expectedType: ['string', 'undefined'] }
+  )
+
   const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? '' : url
 
   const baseEndpoint =

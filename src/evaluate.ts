@@ -48,7 +48,7 @@ export const evaluatorFunction = async (
     if (validationError)
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
-        validationError,
+        `Operator: ${operator}\n- ${validationError}`,
         returnErrorAsString
       )
 
@@ -60,14 +60,23 @@ export const evaluatorFunction = async (
       if (!Array.isArray(expression.children))
         return fallbackOrError(
           await evaluatorFunction(fallback, config),
-          `"children" property doesn't evaluate to array: ${expression.children}`,
+          `Operator: ${operator}\n- Property "children" is not of type: array`,
           returnErrorAsString
         )
       expression = await parseChildren(expression, config)
     }
 
     // Recursively evaluate node
-    const result = await evaluate(expression, config)
+    let result
+    try {
+      result = await evaluate(expression, config)
+    } catch (err) {
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        `Operator: ${operator}\n${errorMessage(err)}`,
+        returnErrorAsString
+      )
+    }
 
     const outputType = expression?.outputType ?? expression?.type
     if (!outputType) return result
@@ -78,7 +87,7 @@ export const evaluatorFunction = async (
     if (!(evaluatedOutputType in convertOutputMethods))
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
-        `Invalid output type: ${evaluatedOutputType}`,
+        `Operator: ${operator}\n- Invalid output type: ${evaluatedOutputType}`,
         returnErrorAsString
       )
     else {
