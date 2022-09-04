@@ -8,7 +8,7 @@ const propertyAliases = {}
 
 export type AdditionNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BasicExtendedNode & { type?: 'string' }
+} & BasicExtendedNode & { type?: 'string' | 'array' }
 
 const evaluate = async (
   expression: AdditionNode,
