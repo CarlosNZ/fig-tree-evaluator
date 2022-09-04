@@ -247,7 +247,7 @@ test('ObjProps Fallback is an operator node', () => {
 })
 
 // Skip runtime type checking
-test('Skip runtime type checking', () => {
+test('Skip runtime type checking, from instance options', () => {
   const expression = {
     operator: 'objectProperties',
     property: ['not', 'a', 'string'],
@@ -260,7 +260,27 @@ test('Skip runtime type checking', () => {
     })
     .then((result: any) => {
       expect(result).toBe(
-        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":{"name":"Iron Man"}}'
+        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown"}'
+      )
+    })
+})
+
+test('Skip runtime type checking, from constructor options', () => {
+  const expression = {
+    operator: 'objectProperties',
+    property: ['not', 'a', 'string'],
+  }
+  const exp2 = new ExpressionEvaluator({
+    skipRuntimeTypeCheck: true,
+    returnErrorAsString: true,
+  })
+  return exp2
+    .evaluate(expression, {
+      objects: { user: 'Unknown' },
+    })
+    .then((result: any) => {
+      expect(result).toBe(
+        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown"}'
       )
     })
 })

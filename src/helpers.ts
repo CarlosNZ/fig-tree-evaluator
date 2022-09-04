@@ -22,14 +22,17 @@ const standardiseOperatorName = (name: string) => {
 export const getOperatorName = (operator: string, operatorAliases: { [key: string]: Operator }) =>
   operatorAliases[standardiseOperatorName(operator)]
 
+export const truncateString = (string: string, length: number = 200) =>
+  string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
+
 export const fallbackOrError = (
   fallback: any,
   errorMessage: string,
   returnErrorAsString: boolean = false
 ) => {
   if (fallback !== undefined) return fallback
-  if (returnErrorAsString) return errorMessage
-  else throw new Error(errorMessage)
+  if (returnErrorAsString) return truncateString(errorMessage)
+  else throw new Error(truncateString(errorMessage))
 }
 
 /*

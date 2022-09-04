@@ -1,3 +1,5 @@
+import { truncateString } from './helpers'
+
 type ExpectedType = 'string' | 'boolean' | 'number' | 'array' | 'undefined' | 'null' | 'object'
 
 export type TypeCheckInput = {
@@ -65,5 +67,5 @@ const stringifyValue = (value: unknown) => {
   const stringValue =
     value === undefined || Number.isNaN(value) ? String(value) : JSON.stringify(value)
 
-  return stringValue.length < 50 ? stringValue : `${stringValue.slice(0, 48).trim()}...`
+  return truncateString(stringValue, 50)
 }

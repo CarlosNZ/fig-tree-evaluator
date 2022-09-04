@@ -2056,10 +2056,10 @@ npm-run-path@^4.0.1:
   dependencies:
     path-key "^3.0.0"
 
-object-property-extractor@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.2.tgz#1e2d2f1b779fcdc6eae4b78de28072b1cc9d733b"
-  integrity sha512-k2MP6jovoeyh5HC8s22HwLtMA21v+8LoDFei1X6yN47IPHQUqRzyXUqq9ZbDSkoeGVDT5LMrcMBv9lY8krj6KQ==
+object-property-extractor@^1.0.3:
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.3.tgz#856bdcfe7c15561e20307f2dfd60eded88246dc5"
+  integrity sha512-9Ky2drRY1DIgluEzDhu209cuuM7ekDFT5o1njEWmM7iO/4MSA8RXaa4pdqUNWRKCDzY9V3YQaImg2gAuzE3S+A==
 
 once@^1.3.0:
   version "1.4.0"

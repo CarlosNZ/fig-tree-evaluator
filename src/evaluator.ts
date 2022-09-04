@@ -21,7 +21,6 @@ class ExpressionEvaluator {
   }
 
   private typeChecker = (...args: TypeCheckInput[]) => {
-    if (this.options.skipRuntimeTypeCheck) return
     const result = typeCheck(...args)
     if (result === true) return
     throw new Error(result)
@@ -29,11 +28,12 @@ class ExpressionEvaluator {
 
   public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
     // Update options from current call if specified
+    const instanceOptions = { ...this.options, ...options }
     return await evaluatorFunction(expression, {
-      options: { ...this.options, ...options },
+      options: instanceOptions,
       operators: this.operators,
       operatorAliases: this.operatorAliases,
-      typeChecker: this.typeChecker,
+      typeChecker: instanceOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
     })
   }
 

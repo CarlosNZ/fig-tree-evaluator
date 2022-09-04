@@ -21,6 +21,7 @@ import {
   AccordionButton,
   AccordionIcon,
   AccordionPanel,
+  Checkbox,
 } from '@chakra-ui/react'
 import { JSONstringify, filterObjectRecursive } from './helpers'
 import { EvaluatorOptions } from './expression-evaluator/types'
@@ -32,6 +33,7 @@ const resetFormState = (options: EvaluatorOptions) => {
   const gqlEndpoint = options.graphQLConnection?.endpoint
   const gqlAuth = options.graphQLConnection?.headers?.Authorization
   const gqlHeaders = { ...options.graphQLConnection?.headers }
+  const skipRuntimeTypeCheck = options.skipRuntimeTypeCheck ?? false
   delete headers?.Authorization
   delete gqlHeaders?.Authorization
   return {
@@ -43,6 +45,7 @@ const resetFormState = (options: EvaluatorOptions) => {
     gqlAuth,
     gqlHeadersText: JSON.stringify(gqlHeaders),
     gqlHeadersError: false,
+    skipRuntimeTypeCheck,
   }
 }
 
@@ -70,8 +73,15 @@ export const OptionsModal = ({
   const handleSubmit = (e: any) => {
     e.preventDefault()
     if (formState.headersError || formState.gqlHeadersError) return
-    const { baseEndpoint, authHeader, headersText, gqlEndpoint, gqlAuth, gqlHeadersText } =
-      formState
+    const {
+      baseEndpoint,
+      authHeader,
+      headersText,
+      gqlEndpoint,
+      gqlAuth,
+      gqlHeadersText,
+      skipRuntimeTypeCheck,
+    } = formState
 
     const headers = headersText ? JSON.parse(headersText) : {}
     const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
@@ -83,6 +93,7 @@ export const OptionsModal = ({
         endpoint: gqlEndpoint ?? '',
         headers: { Authorization: gqlAuth, ...gqlHeaders },
       },
+      skipRuntimeTypeCheck,
     })
 
     updateOptions(newOptions)
@@ -180,6 +191,22 @@ export const OptionsModal = ({
                     </AccordionPanel>
                   </AccordionItem>
                 </Accordion>
+                <Text fontSize="sm">
+                  <strong>Miscellaneous:</strong>
+                </Text>
+                <FormControl id="skip-runtime-check" mt="2 !important">
+                  <Checkbox
+                    isChecked={formState.skipRuntimeTypeCheck}
+                    onChange={(e) =>
+                      setFormState((curr) => ({
+                        ...curr,
+                        skipRuntimeTypeCheck: !formState.skipRuntimeTypeCheck,
+                      }))
+                    }
+                  >
+                    <Text fontSize="sm">Skip runtime type checking</Text>
+                  </Checkbox>
+                </FormControl>
               </Stack>
             </ModalBody>
             <ModalFooter>
