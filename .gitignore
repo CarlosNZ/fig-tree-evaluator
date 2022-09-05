@@ -43,3 +43,4 @@ demo/src/expression-evaluator
 # Dev playground file
 src/dev/playground.ts
 .npmrc
+temp.js
