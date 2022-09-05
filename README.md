@@ -4,8 +4,8 @@
 
 A typical use case would be for configuration files, where you need to store dynamic values or logic in a "templating" language without exposing executable code to users, or having to store executable code in a database. For example, a form-builder app (example) might need to allow a user to specify logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
 
+## Contents <!-- omit in toc -->
 <!-- TOC -->
-
 - [The basics](#the-basics)
 - [Install](#install)
 - [Usage](#usage)
@@ -237,6 +237,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### OR
 
 *Logical OR*
@@ -258,6 +259,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### EQUAL
 
 *Equality*
@@ -279,6 +281,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### NOT_EQUAL
 
 *Non-equality*
@@ -300,6 +303,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### PLUS
 
 *Addition, concatenation, merge*
@@ -349,6 +353,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### SUBTRACT
 
 *Subtraction*
@@ -382,6 +387,7 @@ e.g.
 
 `children` array: `[originalValue, valueToSubtract]` (same as `values`)
 
+----
 ### MULTIPLY
 
 *Multiplcation*
@@ -415,6 +421,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### DIVIDE
 
 *Division*
@@ -457,6 +464,7 @@ e.g.
 
 `children` array: `[dividend, divisor]`
 
+----
 ### GREATER_THAN
 
 *Greater than (or equal to)*
@@ -492,6 +500,7 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
+----
 ### LESS_THAN
 
 *Less than (or equal to)*
@@ -527,6 +536,7 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
+----
 ### COUNT
 
 *Count elements in array*
@@ -548,6 +558,7 @@ e.g.
 
 `children` array: `[...values]`
 
+----
 ### CONDITIONAL
 
 *Return different values depending on a condtion expression*
@@ -582,6 +593,7 @@ e.g.
 
 `children` array: `[condition, valueIfTrue, valueIfFalse]`
 
+----
 ### REGEX
 
 *Compares an input string against a [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) pattern*
@@ -607,6 +619,7 @@ e.g.
 
 `children` array: `[testString, pattern]`
 
+----
 ### OBJECT_PROPERTIES
 
 *Extracts values from objects in your application*
@@ -677,6 +690,7 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 
 `children` array: `[property]`
 
+----
 ### STRING_SUBSTITUTION
 
 *Replace values in a string using simple parameter substitution*
@@ -746,6 +760,7 @@ e.g.
 // => "I am Iron Man"
 ```
 
+----
 ### GET
 
 *Http GET request*
@@ -807,6 +822,7 @@ e.g.
 // => "🇨🇺"
 ```
 
+----
 ### POST
 
 *Http POST request*
@@ -837,6 +853,7 @@ e.g.
 
 `children` array: `[urlObject, parameterKeys, ...values, returnProperty]` (same as "GET")
 
+----
 
 ### GRAPHQL
 
@@ -912,6 +929,7 @@ e.g.
 // => "🇨🇺"
 ```
 
+----
 ### PG_SQL
 
 *Query a Postgres database*
@@ -965,6 +983,7 @@ e.g.
 (`type` is provided by the common `type`/`outputType` property)
 
 
+----
 ### BUILD_OBJECT
 
 *Return an object constructed by seperate keys and values*
@@ -1022,6 +1041,7 @@ e.g.
 // => { one: 1, two: 2, Ned: 24 }
 ```
 
+----
 ### PASSTHRU
 
 *Pass-true (does nothing)*
@@ -1043,6 +1063,8 @@ e.g.
 }
 // => ["500"]
 ```
+
+----
 
 ### CUSTOM_FUNCTIONS
 
