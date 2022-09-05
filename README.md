@@ -2,7 +2,9 @@
 
 %NAME% is a module to evaluate JSON-structured expressions. 
 
-A typical use case would be for configuration files, where you need to store dynamic values or logic in a "templating" language without exposing executable code to users, or having to store executable code in a database. For example, a form-builder app (example) might need to allow a user to specify logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
+A typical use case would be for configuration files, where you need to store dynamic values or logic without exposing executable code to users. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow configuration of logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
+
+[**Demo/Playground**](LINK)
 
 ## Contents <!-- omit in toc -->
 <!-- TOC -->
@@ -46,7 +48,7 @@ A typical use case would be for configuration files, where you need to store dyn
 
 %NAME% evaluates expressions structured in a JSON [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
 
-A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added in your implementation if you wish to extend the available functionality.
+A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added to your implementation if you wish to extend the default functionality.
 
 For example:
 
@@ -124,7 +126,7 @@ The `options` parameter is an object with the following available properties (al
 
 - `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
-- `pgConnection` -- if you wish to make calls to a Postgres database using the `pgSQL` operator, pass a [node-postres](https://node-postgres.com/) connection object here.
+- `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postres](https://node-postgres.com/) connection object here.
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
 - `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authenticatian headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
@@ -139,6 +141,8 @@ As mentioned above, `options` can be provided as part of the constructor as part
 You can also retrieve the current options state at any time with:
 
 `exp.getOptions()`
+
+EVALUATE WITHOUT CONSTRUCTOR???
 
 
 ## Operator nodes
@@ -175,18 +179,22 @@ For example, the following two representations are equivalent `conditional` oper
 }
 ```
 
-Most of the time named properties is preferable; however there are situations where the "children" array might be easier to deal with, or to generate from child nodes. 
+Most of the time named properties is preferable; however there are situations where the "children" array might be easier to deal with, or to generate from child nodes.
 
 ### Other common properties:
 
 In each operator node, as well as the operator-specific properties, the following two optional properties can be provided:
 
-- `fallback`: if the operation results in an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
-- `outputType` (or `type`): will convert the result of the given node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and 'array'. You can experiment in the demo app to see the outcome of applying different `outputType` values to various results.
+- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
+- `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and 'array'. You can experiment in the [demo app](LINK) to see the outcome of applying different `outputType` values to various results.
 
-Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties. E.g.
+Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties.
+
+e.g.
 
 ```js
+// Dynamic outputType, which uses the fallback value due to missing property
+// for the conditional '?' operator:
 {
   operator: '+',
   values: [9, 10, 11],
@@ -197,7 +205,7 @@ Remember that *all* operator node properties can themselves be operator nodes, *
       values: ['three', 'four'],
     },
     valueIfTrue: 'number',
-    fallback: 'string', // fallback used due missing property "valueIfFalse"
+    fallback: 'string',
   },
 }
 // => "30"
@@ -206,7 +214,7 @@ Remember that *all* operator node properties can themselves be operator nodes, *
 
 ### Operator & Property Aliases
 
-For maximal flexibility, all operator names are case-insensitive, and also come with a selection of "aliases" that can be used instead, based on context or preference (e.g. the `conditional` operator can also be aliased as `?` or `ifThen`). See specific operator reference for full list of aliases.
+For maximal flexibility, all operator names are case-insensitive, and also come with a selection of "aliases" that can be used instead, based on context or preference (e.g. the `conditional` operator can also be aliased as `?` or `ifThen`). See specific operator reference for all available aliases.
 
 Similarly, some property names accept aliases -- see individual operators for these.
 
@@ -251,8 +259,15 @@ Aliases: `or`, `|`, `||`
 e.g.
 ```js
 {
-  operator: '&',
-  values: [true, { operator: 'and', values: [true, false] }, true],
+  operator: 'or',
+  values: [
+    true,
+    {
+      operator: 'and',
+      values: [true, false],
+    },
+    true,
+  ],
 }
 // => true
 ```
@@ -306,14 +321,14 @@ e.g.
 ----
 ### PLUS
 
-*Addition, concatenation, merge*
+*Addition, concatenation, merging*
 
 Aliases: `+`, `add`, `concat`, `join`, `merge`
 
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements. Will be added (numbers), concatenated (strings, arrays) or merged (objects) according their type.
-- `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common `outputType` property is that `outputType` converts the result, whereas this `type` property converts each element *before* the "PLUS" operation. 
+- `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common [`outputType` property](#other-common-properties) is that `outputType` converts the result, whereas this `type` property converts each element *before* the "PLUS" operation. 
 
 e.g.
 ```js
@@ -433,7 +448,7 @@ Aliases: `/`, `divide`, `÷`
 - `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second.  (If non-numerical elements are provided, the operator will return `NaN`)
 - `dividend` (or `divide`): (number) -- the number that will be divided
 - `divisor` (or `by`): (number) -- the number to divide `dividend` by
-- `output` (`'quotient' | 'remainder'`) -- by default, the operator returns a floating point value. If `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
+- `output` (`'quotient' | 'remainder'`) -- by default, the operator returns a floating point value. However, if `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
 
 Note that the input values can be provided as *either* a `values` array *or* `dividend`/`divisor` properties. If both are provided, `values` takes precedence.
 
@@ -462,7 +477,7 @@ e.g.
 // => 2
 ```
 
-`children` array: `[dividend, divisor]`
+`children` array: `[dividend, divisor]` (same as `values`)
 
 ----
 ### GREATER_THAN
@@ -474,7 +489,7 @@ Aliases: `>`, `greaterThan`, `higher`, `larger`
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `>` operator.
-- `strict`: (boolean) -- if `true`, value 1 must be strictly greater than value 2 (i.e. `>`). Otherwise it will be compared with "greater than or equal to" (i.e. `>=`)
+- `strict`: (boolean, default `false`) -- if `true`, value 1 must be strictly greater than value 2 (i.e. `>`). Otherwise it will be compared with "greater than or equal to" (i.e. `>=`)
 
 e.g.
 ```js
@@ -510,7 +525,7 @@ Aliases: `<`, `lessThan`, `lower`, `smaller`
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `<` operator.
-- `strict`: (boolean) -- if `true`, value 1 must be strictly lower than value 2 (i.e. `<`). Otherwise it will be compared with "less than or equal to" (i.e. `<=`)
+- `strict`: (boolean, default `false`) -- if `true`, value 1 must be strictly lower than value 2 (i.e. `<`). Otherwise it will be compared with "less than or equal to" (i.e. `<=`)
 
 e.g.
 ```js
@@ -561,7 +576,7 @@ e.g.
 ----
 ### CONDITIONAL
 
-*Return different values depending on a condtion expression*
+*Return different values depending on a condition expression*
 
 Aliases: `?`, `conditional`, `ifThen`
 
@@ -603,7 +618,7 @@ Aliases: `regex`, `patternMatch`, `regexp`, `matchPattern`
 #### Properties
 
 - `testString` (or `string`, `value`)<sup>*</sup>: (string) -- the string to be compared against the regex pattern
-- `pattern` (or `regex`, `regexp`, `regExp`, `re`)<sup>*</sup>: a regex pattern to test `testString` against
+- `pattern` (or `regex`, `regexp`, `regExp`, `re`)<sup>*</sup>: (string) a regex pattern to test `testString` against
 
 Returns `true` (match found) or `false` (no match)
 
@@ -630,7 +645,7 @@ Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
 
 - `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
 
-Objects are passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, and the evaluation expression provides an externally configurable mechanism to extract (and process) application data.
+Objects are passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data.
 
 For example, consider a `user` object and an evaluator instance: 
 
@@ -674,11 +689,16 @@ Here is the result of various values of `expression:`
 }
 // => ["The Vulture", "Green Goblin"]
 ```
-Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for `"user.enemies"` followed by: `result.map((e) => e.name)`
+Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for:
+
+```js
+const result = { operator: 'getProperty', path: 'user.enemies' }
+result.map((e) => e.name)
+```
 
 The "objectProperties" operator uses [`object-property-extractor`](https://www.npmjs.com/package/object-property-extractor) internally, so please see the documentation of that package for more information.
 
-The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a `fallback` value to handle this case:
+The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a `fallback` value for the expression:
 ```js
 {
   operator: 'objectProperties',
@@ -774,7 +794,7 @@ Aliases: `get`, `api`
 - `headers`: (object) -- any additional headers (such as authentication) required for the request
 - `returnProperty` (or `outputProperty`): (string) -- an object path for which property to extract from the returned data. E.g. if the API returns `{name: {first: "Bruce", last: "Banner"}, age: 35}` and you specify `returnProperty: "name.first`, the operator will return `"Bruce"` (Uses the same logic as the [objectProperties](#object_properties) internally)
 
-As mentioned in the [options reference](#available-options) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional override `headers` can always be added to a specific evaluation, too.)
+As mentioned in the [options reference](#available-options) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional/override `headers` can always be added to a specific evaluation, too.)
 
 e.g.
 ```js
@@ -829,7 +849,7 @@ e.g.
 
 Aliases: `post`
 
-The "POST" operator is basically the same as [GET](#get), so only the differences are specified here.
+The "POST" operator is basically structurally the same as [GET](#get).
 
 #### Properties
 
@@ -873,7 +893,7 @@ This operator is essentially a special case of the "POST" operator, but structur
 
 As mentioned in the [options reference](#available-options) above, a `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation, although additional/override `headers` can always be added to a specific evaluation, too.
 
-Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor ([options](#available-options)).
+Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor [options](#available-options).
 
 The required connection object is:
 ```ts
@@ -932,7 +952,7 @@ e.g.
 ----
 ### PG_SQL
 
-*Query a Postgres database*
+*Query a Postgres database using [`node-postgres`](https://node-postgres.com/)*
 
 Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
@@ -986,7 +1006,7 @@ e.g.
 ----
 ### BUILD_OBJECT
 
-*Return an object constructed by seperate keys and values*
+*Return an object constructed by separate keys and values*
 
 Aliases: `buildObject`, `build`, `object`
 
@@ -1044,11 +1064,11 @@ e.g.
 ----
 ### PASSTHRU
 
-*Pass-true (does nothing)*
+*Pass-thru (does nothing)*
 
 Aliases: `passThru`, `_`, `pass`, `ignore`, `coerce`, `convert`
 
-This operator simply returns its input. The purpose of it is to allow an additional type conversion (using `outputType`) before passing up to a parent node.
+This operator simply returns its input. Its purpose is to allow an additional type conversion (using `outputType`) before passing up to a parent node.
 
 #### Properties
 
@@ -1068,7 +1088,7 @@ e.g.
 
 ### CUSTOM_FUNCTIONS
 
-*Extend functionality by calling custom function*
+*Extend functionality by calling custom functions*
 
 Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `function`, `runFunction`
 
