@@ -45,29 +45,8 @@ const user = {
 const exp = new ExpressionEvaluator()
 
 let expression = {
-  operator: 'objectProperties',
-  property: 'user.firstName',
-}
-
-expression = {
-  operator: 'getProperty',
-  path: 'user.friends[1]',
-}
-
-expression = {
-  operator: 'GraphQL',
-  children: [
-    `query getCountry($code: String!) {
-      countries(filter: {code: {eq: $code}}) {
-        name
-        emoji
-      }
-    }`,
-    null,
-    ['code'],
-    'NZ',
-    'countries.emoji',
-  ],
+  operator: 'postgres',
+  children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
   type: 'string',
 }
 

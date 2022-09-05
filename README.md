@@ -641,6 +641,75 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 
 `children` array: `[property]`
 
+#### STRING_SUBSTITUTION
+
+*Replace values in a string using simple parameter substitution*
+
+Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
+
+##### Properties
+
+- `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
+- `substitutions` (or `replacments`)<sup>*</sup>: (array) -- the values to be substituted into `string`
+
+The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
+
+e.g.
+```js
+{
+  operator: 'stringSubstitution',
+  string: 'My name is %1 (age %2)',
+  substitutions: [
+    'Steve Rogers',
+    {
+      operator: '-',
+      values: [2023, 1918],
+    },
+  ],
+}
+// => "My name is Steve Rogers (age 106)"
+
+{
+  operator: 'replace',
+  string: '%1 is actually %2 %3',
+  substitutions: [
+    // Using the 'user' object from above
+    {
+      operator: 'objectProperties',
+      property: 'user.alias',
+    },
+    {
+      operator: 'objectProperties',
+      property: 'user.firstName',
+    },
+    {
+      operator: 'objectProperties',
+      property: 'user.lastName',
+    },
+  ],
+}
+// => "Spiderman is actually Peter Parker"
+
+// Parameters can be repeated:
+{
+  operator: 'stringSubstitution',
+  string: 'A %1 says: "%2 %2 %2"',
+  substitutions: ['bird', 'Tweet!'],
+}
+// => 'A bird says: "Tweet! Tweet! Tweet!"'
+```
+
+`children` array: `[string, ...substitutions]`
+
+e.g.
+```js
+{
+  operator: 'replace',
+  children: ['I am %1 %2', 'Iron', 'Man'],
+}
+// => "I am Iron Man"
+```
+
 #### GET
 
 *Http GET request*
@@ -807,9 +876,66 @@ e.g.
 // => "🇨🇺"
 ```
 
-#### POSTGRES
+#### PG_SQL
 
+*Query a Postgres database*
 
+Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
+
+##### Properties
+
+- `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `%1`, `%2`, etc)
+- `values` (or `replacements`): (array) -- replacements for the `query` parameters
+- `rowMode`: (`"array"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
+> By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.
+We extend this a step further by 
+
+In order to query a postgres database, the evaluator must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
+
+```js
+import { Client } from 'pg'
+const pgConnect = new Client(pgConfig) // pgConfig = database details, see node-postgres documentation
+
+pgConnect.connect()
+
+const exp = new ExpressionEvaluator({ pgConnection: pgConnect })
+```
+
+The following examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
+
+e.g.
+```js
+{
+  operator: 'pgSql',
+  query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
+  type: 'string',
+}
+// => "Aria Cruz"
+
+```
+
+`children` array: `[urlObject, parameterKeys, ...values, returnProperty]`
+
+- `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
+- `parameterKeys`: an array of strings representing the keys of any query parameters
+- `...values`: one value for each key specified in `parameterKeys`
+- `returnProperty` (optional): as above
+
+e.g.
+```js
+{
+  operator: 'get',
+  children: [
+    'https://restcountries.com/v3.1/name/cuba', // url
+    ['fullText', 'fields'], // parameterKeys
+    'true', // parameter value 1
+    'name,capital,flag', // parameter value 2
+    'flag', // returnProperty
+  ],
+  outputType: 'string',
+}
+// => "🇨🇺"
+```
 ---
 
 Documentation pending.
