@@ -1090,3 +1090,7 @@ There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects o
 `yarn test`
 
 In order for the http-based tests to run, you'll need to be connected to the internet. For the Postgres tests, you'll need to have a postgres database running locally, with the [Northwind](https://github.com/pthom/northwind_psql) database installed.
+
+#### Help, Feedback, Suggestions
+
+Please open an issue: https://github.com/CarlosNZ/expression-evaluator/issues
