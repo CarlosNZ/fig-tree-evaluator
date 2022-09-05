@@ -2,7 +2,7 @@
 
 %NAME% is a module to evaluate JSON-structured expressions. 
 
-A typical use case would be for configuration files, where you need to store dynamic values or logic in a "templating" language without exposing executable code to users. For example, a form-builder app (example) might need to allow a user to specify logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
+A typical use case would be for configuration files, where you need to store dynamic values or logic in a "templating" language without exposing executable code to users, or having to store executable code in a database. For example, a form-builder app (example) might need to allow a user to specify logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
 
 <!-- toc -->
 
@@ -168,9 +168,11 @@ Remember that *all* operator node properties can themselves be operator nodes, *
 
 ```
 
-### Operator Aliases
+### Operator & Property Aliases
 
 For maximal flexibility, all operator names are case-insensitive, and also come with a selection of "aliases" that can be used instead, based on context or preference (e.g. the `conditional` operator can also be aliased as `?` or `ifThen`). See specific operator reference for full list of aliases.
+
+Similarly, some property names accept aliases -- see individual operators for these.
 
 ### Operator reference
 
@@ -271,7 +273,7 @@ Aliases: `+`, `add`, `concat`, `join`, `merge`
 ##### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements. Will be added (numbers), concatenated (strings, arrays) or merged (objects) according their type.
-- `type`: (`'string' | 'array'`) -- tell
+- `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common `outputType` property is that `outputType` converts the result, whereas this `type` property converts each element *before* the "PLUS" operation. 
 
 e.g.
 ```js
@@ -293,9 +295,522 @@ e.g.
 }
 // => {one: 1, two: 2, three: 3}
 
+{
+  operator: '+',
+  values: [4, 5, 6],
+  type: 'string'
+}
+// => "456"
+
+{
+  operator: '+',
+  values: [4, 5, 6],
+  type: 'array'
+}
+// => [4, 5, 6]
+
 ```
 
 `children` array: `[...values]`
+
+#### SUBTRACT
+
+*Subtraction*
+
+Aliases: `-`, `subtract`, `minus`, `takeaway`
+
+##### Properties
+
+- `values`<sup>*</sup>: (array) -- exactly 2 numerical elements; the second will be subtracted from the first. (If non-numerical elements are provided, the operator will return `NaN`)
+
+e.g.
+```js
+{
+  operator: '-',
+  values: [10, 8],
+}
+// => 2
+
+{
+  operator: 'minus',
+  values: [0, 3.5, 10], // additional elements after the first two ignored
+}
+// => -3.5
+
+{
+  operator: '-',
+  values: [4, "three"],
+}
+// => NaN
+```
+
+`children` array: `[originalValue, valueToSubtract]` (same as `values`)
+
+#### MULTIPLY
+
+*Multiplcation*
+
+Aliases: `*`, `x`, `multiply`, `times`
+
+##### Properties
+
+- `values`<sup>*</sup>: (array) -- any number of numerical elements. Returns the product of all elements.  (If non-numerical elements are provided, the operator will return `NaN`)
+
+e.g.
+```js
+{
+  operator: '*',
+  values: [5, 7],
+}
+// => 35
+
+{
+  operator: 'x',
+  values: [2, 3.5, 10], // additional elements after the first two ignored
+}
+// => 70
+
+{
+  operator: 'times',
+  values: [4, "three"],
+}
+// => NaN
+```
+
+`children` array: `[...values]`
+
+#### DIVIDE
+
+*Division*
+
+Aliases: `/`, `divide`, `÷`
+
+##### Properties
+
+- `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second.  (If non-numerical elements are provided, the operator will return `NaN`)
+- `dividend` (or `divide`): (number) -- the number that will be divided
+- `divisor` (or `by`): (number) -- the number to divide `dividend` by
+- `output` (`'quotient' | 'remainder'`) -- by default, the operator returns a floating point value. If `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
+
+Note that the input values can be provided as *either* a `values` array *or* `dividend`/`divisor` properties. If both are provided, `values` takes precedence.
+
+e.g.
+```js
+{
+  operator: '/',
+  values: [35, 7],
+}
+// => 5
+
+{
+  operator: '/',
+  divide: 20,
+  by: 3,
+  output: 'quotient' 
+}
+// => 6
+
+{
+  operator: 'divide',
+  dividend: 20,
+  divisor: 3,
+  output: 'remainder'
+}
+// => 2
+```
+
+`children` array: `[dividend, divisor]`
+
+#### GREATER_THAN
+
+*Greater than (or equal to)*
+
+Aliases: `>`, `greaterThan`, `higher`, `larger`
+
+##### Properties
+
+- `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `>` operator.
+- `strict`: (boolean) -- if `true`, value 1 must be strictly greater than value 2 (i.e. `>`). Otherwise it will be compared with "greater than or equal to" (i.e. `>=`)
+
+e.g.
+```js
+{
+  operator: '>',
+  values: [10, 8]
+}
+// => true
+
+{
+  operator: '>',
+  values: ["alpha", "beta"]
+}
+// => false
+
+{
+  operator: '>',
+  values: [4, 4],
+  strict: true
+}
+// => false
+```
+
+`children` array: `[firstValue, secondValue]` (same as `values`)
+
+#### LESS_THAN
+
+*Less than (or equal to)*
+
+Aliases: `<`, `lessThan`, `lower`, `smaller`
+
+##### Properties
+
+- `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `<` operator.
+- `strict`: (boolean) -- if `true`, value 1 must be strictly lower than value 2 (i.e. `<`). Otherwise it will be compared with "less than or equal to" (i.e. `<=`)
+
+e.g.
+```js
+{
+  operator: '<',
+  values: [10, 8]
+}
+// => false
+
+{
+  operator: '<',
+  values: ["alpha", "beta"]
+}
+// => true
+
+{
+  operator: '<',
+  values: [4, 4],
+  strict: false
+}
+// => true
+```
+
+`children` array: `[firstValue, secondValue]` (same as `values`)
+
+#### COUNT
+
+*Count elements in array*
+
+Aliases: `count`, `length`
+
+##### Properties
+
+- `values`<sup>*</sup>: (array) -- any number of elements. Returns `array.length`
+
+e.g.
+```js
+{
+  operator: 'count',
+  values: [10, 8, "three", "four"]
+}
+// => 4
+```
+
+`children` array: `[...values]`
+
+#### CONDITIONAL
+
+*Return different values depending on a condtion expression*
+
+Aliases: `?`, `conditional`, `ifThen`
+
+##### Properties
+
+- `condition`<sup>*</sup>: (boolean) -- a boolean value (presumably the result of a child expression)
+- `valueIfTrue` (or `ifTrue`)<sup>*</sup>: the value returned if `condition` is `true`
+- `valueIfFalse` (or `ifFalse`)<sup>*</sup>: the value returned if `condition` is `false`
+
+e.g.
+```js
+{
+  operator: '?',
+  condition: {
+    operator: '=',
+    values: [
+      {
+        operator: '+',
+        values: [5, 5, 10],
+      },
+      20,
+    ],
+  },
+  ifTrue: 'YES',
+  ifFalse: 'NO',
+}
+// => YES
+```
+
+`children` array: `[condition, valueIfTrue, valueIfFalse]`
+
+#### REGEX
+
+*Compares an input string against a [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) pattern*
+
+Aliases: `regex`, `patternMatch`, `regexp`, `matchPattern`
+
+##### Properties
+
+- `testString` (or `string`, `value`)<sup>*</sup>: (string) -- the string to be compared against the regex pattern
+- `pattern` (or `regex`, `regexp`, `regExp`, `re`)<sup>*</sup>: a regex pattern to test `testString` against
+
+Returns `true` (match found) or `false` (no match)
+
+e.g.
+```js
+{
+  operator: 'regex',
+  string: "home@myplace.com",
+  pattern: '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$'  // Simple Email validation
+}
+// => true
+```
+
+`children` array: `[testString, pattern]`
+
+#### OBJECT_PROPERTIES
+
+*Extracts values from objects in your application*
+
+Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
+
+##### Properties
+
+- `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
+
+Objects are passed in to the evaluator as part of the [options](LINK), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, and the evaluation expression provides an externally configurable mechanism to extract (and process) application data.
+
+For example, consider a `user` object and an evaluator instance: 
+
+```js
+const user = {
+  firstName: 'Peter',
+  lastName: 'Parker',
+  alias: 'Spider-man',
+  friends: ['Ned', 'MJ', 'Peter 2', 'Peter 3'],
+  enemies: [
+    { name: 'The Vulture', identity: 'Adrian Toomes' },
+    { name: 'Green Goblin', identity: 'Norman Osborne' },
+  ],
+}
+
+const exp = new ExpressionEvaluator()
+
+const expression = getExpressionFromConfig()
+
+exp.evaluate(expression, { objects: { user } })
+```
+
+Here is the result of various values of `expression:`
+
+```js
+{
+  operator: 'objectProperties',
+  property: 'user.firstName',
+}
+// => "Peter"
+
+{
+  operator: 'getProperty',
+  path: 'user.friends[1]',
+}
+// => "MJ"
+
+{
+  operator: 'getProperty',
+  path: 'user.enemies.name',
+}
+// => ["The Vulture", "Green Goblin"]
+```
+Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for `"user.enemies"` followed by: `result.map((e) => e.name)`
+
+The "objectProperties" operator uses [`object-property-extractor`](https://www.npmjs.com/package/object-property-extractor) internally, so please see the documentation of that package for more information.
+
+The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a `fallback` value to handle this case:
+```js
+{
+  operator: 'objectProperties',
+  property: 'user.middleName',
+  fallback: 'Not found!'
+}
+// => "Not found!"
+```
+
+`children` array: `[property]`
+
+#### GET
+
+*Http GET request*
+
+Aliases: `get`, `api`
+
+##### Properties
+
+- `url` (or `endpoint`)<sup>*</sup>: (string) -- url to be queried
+- `parameters`: (object) -- key-value pairs for any query parameters for the request
+- `headers`: (object) -- any additional headers (such as authentication) required for the request
+- `returnProperty` (or `outputProperty`): (string) -- an object path for which property to extract from the returned data. E.g. if the API returns `{name: {first: "Bruce", last: "Banner"}, age: 35}` and you specify `returnProperty: "name.first`, the operator will return `"Bruce"` (Uses the same logic as the [objectProperties](LINK) internally)
+
+As mentioned in the [options reference](LINK) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional override `headers` can always be added to a specific evaluation, too.)
+
+e.g.
+```js
+{
+  operator: 'GET',
+  url: 'https://restcountries.com/v3.1/name/zealand',
+  returnProperty: 'name.common',
+  outputType: 'string' // This extracts the string from the returned array value
+}
+// => "New Zealand"
+
+{
+  operator: 'get',
+  endpoint: {
+    operator: '+',
+    values: ['https://restcountries.com/v3.1/name/', 'india'],
+  },
+  parameters: { fullText: true },
+  outputProperty: '[0].name.nativeName.hin',
+}
+// => { "official": "भारत गणराज्य", "common": "भारत" }
+
+```
+
+`children` array: `[urlObject, parameterKeys, ...values, returnProperty]`
+
+- `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
+- `parameterKeys`: an array of strings representing the keys of any query parameters
+- `...values`: one value for each key specified in `parameterKeys`
+- `returnProperty` (optional): as above
+
+e.g.
+```js
+{
+  operator: 'get',
+  children: [
+    'https://restcountries.com/v3.1/name/cuba', // url
+    ['fullText', 'fields'], // parameterKeys
+    'true', // parameter value 1
+    'name,capital,flag', // parameter value 2
+    'flag', // returnProperty
+  ],
+  outputType: 'string',
+}
+// => "🇨🇺"
+```
+
+#### POST
+
+*Http POST request*
+
+Aliases: `post`
+
+The "POST" operator is basically the same as [GET](LINK), so only the differences are specified here.
+
+##### Properties
+
+- `url`/`endpoint`<sup>*</sup>,`parameters`, `headers`, `returnProperty`/`outputProperty` -- same as "GET" operator (although the `parameters` object will be passed to the Post request as body JSON rather than url query parameters)
+
+e.g.
+```js
+{
+  operator: "post",
+  endpoint: "https://jsonplaceholder.typicode.com/posts",
+  parameters: {
+    title: "New Blog Post",
+    body: "Just a short note...",
+    userId: 2
+  },
+  returnProperty: "id"
+}
+// => 101
+
+```
+
+`children` array: `[urlObject, parameterKeys, ...values, returnProperty]` (same as "GET")
+
+
+#### GRAPHQL
+
+*Http GraphQL request (using POST)*
+
+Aliases: `graphQl`, `graphql`, `gql`
+
+This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
+
+##### Properties
+
+- `query`<sup>*</sup>: (string) -- the GraphQL query string
+- `variables`: (object) -- key-value pairs for any variables used in the `query`
+- `url` (or `endpoint`): (string) -- url to be queried (Only required if querying a different url to that specified in the GraphQLConnection object in evaluator `options`)
+- `headers`: (object) -- any additional headers (such as authentication) required for the request
+- `returnNode` (or `returnProperty`, `outputProperty`): (string) -- an object path for which property to extract from the returned data (same as "GET" and "POST").
+
+As mentioned in the [options reference](LINK) above, a `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation, although additional/override `headers` can always be added to a specific evaluation, too.
+
+Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor ([options](LINK)).
+
+The required connection object is:
+```ts
+{
+  endpoint: string // url
+  headers?: { [key: string]: string } // key-value pairs
+}
+```
+
+The following example expression uses the GraphQL connection: `{endpoint: 'https://countries.trevorblades.com/'}`
+```js
+{
+  operator: 'graphQL',
+  query: `query getCountry($code: String!) {
+      countries(filter: {code: {eq: $code}}) {
+        name
+        emoji
+      }
+    }`,
+  variables: { code: 'NZ' },
+  returnNode: 'countries[0]',
+}
+// => { "name": "New Zealand", "emoji": "🇳🇿" }
+
+```
+
+`children` array: `[query, endpoint, variableKeys, ...variableValues, returnNode]`
+
+- `query`: the GraphQL query (string)
+- `endpoint`: url string; to use the endpoint provided in the GraphQL connection options, pass empty string `""` here
+- `variableKeys`: an array of strings representing the keys the GraphQL `variables` object
+- `...variableValues`: one value for each key specified in `variableKeys`
+- `returnNode` (optional): the return property, as per "GET" and "POST" operators
+
+e.g.
+```js
+{
+  operator: 'GraphQL',
+  children: [
+    `query getCountry($code: String!) {
+      countries(filter: {code: {eq: $code}}) {
+        name
+        emoji
+      }
+    }`,
+    "", // default endpoint
+    ['code'], // variable keys
+    'NZ', // variable value
+    'countries.emoji', // return node
+  ],
+  type: 'string',
+}
+// => "🇨🇺"
+```
+
+#### POSTGRES
+
+
+---
 
 Documentation pending.
 

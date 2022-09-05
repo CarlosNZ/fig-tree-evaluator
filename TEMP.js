@@ -31,7 +31,44 @@ x = {
   },
 }
 
-y = {
-  operator: '=',
-  values: [3, 3, 'three'],
+const user = {
+  firstName: 'Peter',
+  lastName: 'Parker',
+  alias: 'Spider-man',
+  friends: ['Ned', 'MJ', 'Peter 2', 'Peter 3'],
+  enemies: [
+    { name: 'The Vulture', identity: 'Adrian Toomes' },
+    { name: 'Green Goblin', identity: 'Norman Osborne' },
+  ],
 }
+
+const exp = new ExpressionEvaluator()
+
+let expression = {
+  operator: 'objectProperties',
+  property: 'user.firstName',
+}
+
+expression = {
+  operator: 'getProperty',
+  path: 'user.friends[1]',
+}
+
+expression = {
+  operator: 'GraphQL',
+  children: [
+    `query getCountry($code: String!) {
+      countries(filter: {code: {eq: $code}}) {
+        name
+        emoji
+      }
+    }`,
+    null,
+    ['code'],
+    'NZ',
+    'countries.emoji',
+  ],
+  type: 'string',
+}
+
+exp.evaluate(expression, { objects: { user } })

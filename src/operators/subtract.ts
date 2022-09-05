@@ -3,7 +3,7 @@ import { evaluateArray } from './_operatorUtils'
 import { EvaluatorNode, EvaluatorConfig, OperatorObject, BaseOperatorNode } from '../types'
 
 const requiredProperties = [] as const
-const operatorAliases = ['-', 'subtract', 'minus', 'takeaway', 'subtract']
+const operatorAliases = ['-', 'subtract', 'minus', 'takeaway']
 const propertyAliases = { subtractFrom: 'from' }
 
 interface SubtractionNodeWithProps extends BaseOperatorNode {
