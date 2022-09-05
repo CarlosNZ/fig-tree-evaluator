@@ -44,9 +44,9 @@ A typical use case would be for configuration files, where you need to store dyn
 <!-- /TOC -->
 ## The basics
 
-%NAME% evaluates expressions structured in a JSON [expression tree](LINK). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
+%NAME% evaluates expressions structured in a JSON [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
 
-A wide range of [operators are available](LINK), but [custom fuctions](LINK) can be added in your implementation if you wish to extend the available functionality.
+A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added in your implementation if you wish to extend the available functionality.
 
 For example:
 
@@ -120,13 +120,13 @@ const result = await exp.evaluate(expression, [options])
 
 ## Available options
 
-- `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](LINK) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
-- `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](LINK) operator.
-- `pgConnection` -- if you wish to make calls to a Postgres database using the `pgSQL` operator, pass a [node-postres](LINK) connection object here.
-- `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](link). See operator details below.
+- `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
+- `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
+- `pgConnection` -- if you wish to make calls to a Postgres database using the `pgSQL` operator, pass a [node-postres](https://node-postgres.com/) connection object here.
+- `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
 - `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authenticatian headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
-- `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](LINK) parameter below)
+- `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encoutered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 
@@ -210,9 +210,9 @@ Similarly, some property names accept aliases -- see individual operators for th
 
 ## Operator reference
 
-<sup>*</sup> denotes "required" properties
+The full list of available operators and their associated properties:
 
-The full list of available operators and their associated properties is as follows:
+<sup>*</sup> denotes "required" properties
 
 ### AND
 
@@ -615,7 +615,7 @@ Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
 
 - `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
 
-Objects are passed in to the evaluator as part of the [options](LINK), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, and the evaluation expression provides an externally configurable mechanism to extract (and process) application data.
+Objects are passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, and the evaluation expression provides an externally configurable mechanism to extract (and process) application data.
 
 For example, consider a `user` object and an evaluator instance: 
 
@@ -755,9 +755,9 @@ Aliases: `get`, `api`
 - `url` (or `endpoint`)<sup>*</sup>: (string) -- url to be queried
 - `parameters`: (object) -- key-value pairs for any query parameters for the request
 - `headers`: (object) -- any additional headers (such as authentication) required for the request
-- `returnProperty` (or `outputProperty`): (string) -- an object path for which property to extract from the returned data. E.g. if the API returns `{name: {first: "Bruce", last: "Banner"}, age: 35}` and you specify `returnProperty: "name.first`, the operator will return `"Bruce"` (Uses the same logic as the [objectProperties](LINK) internally)
+- `returnProperty` (or `outputProperty`): (string) -- an object path for which property to extract from the returned data. E.g. if the API returns `{name: {first: "Bruce", last: "Banner"}, age: 35}` and you specify `returnProperty: "name.first`, the operator will return `"Bruce"` (Uses the same logic as the [objectProperties](#object_properties) internally)
 
-As mentioned in the [options reference](LINK) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional override `headers` can always be added to a specific evaluation, too.)
+As mentioned in the [options reference](#available-options) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional override `headers` can always be added to a specific evaluation, too.)
 
 e.g.
 ```js
@@ -811,7 +811,7 @@ e.g.
 
 Aliases: `post`
 
-The "POST" operator is basically the same as [GET](LINK), so only the differences are specified here.
+The "POST" operator is basically the same as [GET](#get), so only the differences are specified here.
 
 #### Properties
 
@@ -852,9 +852,9 @@ This operator is essentially a special case of the "POST" operator, but structur
 - `headers`: (object) -- any additional headers (such as authentication) required for the request
 - `returnNode` (or `returnProperty`, `outputProperty`): (string) -- an object path for which property to extract from the returned data (same as "GET" and "POST").
 
-As mentioned in the [options reference](LINK) above, a `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation, although additional/override `headers` can always be added to a specific evaluation, too.
+As mentioned in the [options reference](#available-options) above, a `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation, although additional/override `headers` can always be added to a specific evaluation, too.
 
-Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor ([options](LINK)).
+Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor ([options](#available-options)).
 
 The required connection object is:
 ```ts
