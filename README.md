@@ -120,6 +120,8 @@ const result = await exp.evaluate(expression, [options])
 
 ## Available options
 
+The `options` parameter is an object with the following available properties (all optional):
+
 - `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
 - `pgConnection` -- if you wish to make calls to a Postgres database using the `pgSQL` operator, pass a [node-postres](https://node-postgres.com/) connection object here.
@@ -173,7 +175,7 @@ For example, the following two representations are equivalent `conditional` oper
 }
 ```
 
-Most of the time named properties is preferable; however there are situations where the "children" array might be easier to deal with.
+Most of the time named properties is preferable; however there are situations where the "children" array might be easier to deal with, or to generate from child nodes. 
 
 ### Other common properties:
 
