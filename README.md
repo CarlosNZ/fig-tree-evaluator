@@ -884,11 +884,12 @@ Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
 ##### Properties
 
-- `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `%1`, `%2`, etc)
+- `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
 - `values` (or `replacements`): (array) -- replacements for the `query` parameters
-- `rowMode`: (`"array"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
-> By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.
-We extend this a step further by 
+- `type`: (`"array" | "string" | "number"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
+  > By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.  
+
+  We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
 
 In order to query a postgres database, the evaluator must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
 
@@ -912,40 +913,180 @@ e.g.
 }
 // => "Aria Cruz"
 
+{
+  operator: 'pgSQL',
+  query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+  values: [1, 16],
+  type: 'array',
+}
+// => ["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte",
+//     "Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"]
+
 ```
 
-`children` array: `[urlObject, parameterKeys, ...values, returnProperty]`
+`children` array: `[queryString, ...substitutions]`
 
-- `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
-- `parameterKeys`: an array of strings representing the keys of any query parameters
-- `...values`: one value for each key specified in `parameterKeys`
-- `returnProperty` (optional): as above
+(`type` is provided by the common `type`/`outputType` property)
+
+
+#### BUILD_OBJECT
+
+*Return an object constructed by seperate keys and values*
+
+Aliases: `buildObject`, `build`, `object`
+
+The "buildObject" operator would primarily be used to construct an object input for another operator property (e.g. `variables` on "GraphQL") out of elements that are themselves evaluator expressions.
+
+##### Properties
+
+- `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of objects of the following shape:  
+  ```ts
+  {
+    key: string
+    value: any
+  }
+  ```
+  Each element provides one key-value pair in the output object
 
 e.g.
 ```js
 {
-  operator: 'get',
-  children: [
-    'https://restcountries.com/v3.1/name/cuba', // url
-    ['fullText', 'fields'], // parameterKeys
-    'true', // parameter value 1
-    'name,capital,flag', // parameter value 2
-    'flag', // returnProperty
+  operator: 'buildObject',
+  properties: [
+    { key: 'one', value: 1 },
+    { key: 'two', value: 2 },
+    {
+      // Using "user" object from earlier
+      key: { operator: 'objectProperties', property: 'user.friends[0]' },
+      value: {
+        operator: '+',
+        values: [7, 8, 9],
+      },
+    },
   ],
-  outputType: 'string',
 }
-// => "🇨🇺"
+// => { one: 1, two: 2, Ned: 24 }
+
 ```
----
 
-Documentation pending.
+`children` array: `[key1, value1, key2, value2, ...]`
 
-See [here](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) for V1 documentation.
+This is one of the few operators where the `children` array might actually be simpler to define than the `properties` property, depending on how deep the array elements are themselves operator nodes.
 
-### Development
+e.g.
+```js
+// This is the same as the previous expression
+{
+  operator: 'buildObject',
+  children: ['one', 1, 'two', 2,
+    { operator: 'objectProperties', property: 'user.friends[0]' },
+    { operator: '+', values: [7, 8, 9] },
+  ],
+}
+// => { one: 1, two: 2, Ned: 24 }
+```
 
-`yarn setup` -- installs required dependencies for both the main module and the demo app
+#### PASSTHRU
 
-Run `yarn demo` to load a browser-based explorer for trying out queries. (You'll need to run `yarn install` within the "demo" folder first)
+*Pass-true (does nothing)*
 
-<!-- Tests -->
+Aliases: `passThru`, `_`, `pass`, `ignore`, `coerce`, `convert`
+
+This operator simply returns its input. The purpose of it is to allow an additional type conversion (using `outputType`) before passing up to a parent node.
+
+##### Properties
+
+- `value` (or `_`, `data`)<sup>*</sup>: (any) -- the value that is returned
+
+e.g.
+```js
+{
+  operator: 'pass',
+  value: { operator: '+', values: [50, 0], type: 'string' },
+  outputType: 'array',
+}
+// => ["500"]
+```
+
+#### CUSTOM_FUNCTIONS
+
+*Extend functionality by calling custom function*
+
+Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `function`, `runFunction`
+
+##### Properties
+
+- `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>: (string) -- path to where the function resides in the `options.functions` object
+- `args` (or `arguments`, `variables`): (array) -- input arguments for the function
+
+Custom functions are stored in the evaluator `options`, in the `functions` property.
+
+For examples, consider the following evaluator instance:
+```js
+const exp = new ExpressionEvaluator({
+  functions: {
+    double: (x) => x * 2,
+    getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
+    toUpperCase: (input) => input.toUpperCase(),
+  },
+})
+```
+
+Here is the result of various expressions:
+```js
+{
+  operator: 'functions',
+  functionPath: 'double',
+  args: [50],
+}
+// => 100
+
+{
+  operator: '+',
+  values: [
+    {
+      operator: 'customFunctions',
+      functionPath: 'toUpperCase',
+      args: ['The current year is: '],
+    },
+    {
+      operator: 'customFunctions',
+      functionPath: 'getCurrentYear',
+    },
+  ],
+}
+// => "THE CURRENT YEAR IS: 2022"
+```
+
+`children` array: `[functionPath, ...args]`
+
+e.g.
+```js
+{
+  operator: 'functions',
+  children: ['double', 99],
+}
+// => 198
+```
+
+#### More examples
+
+More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/expression-evaluator).
+
+### Development environment
+
+Github repo: https://github.com/CarlosNZ/expression-evaluator
+
+After cloning:
+
+`yarn setup` -- installs required dependencies for both the main module and the demo app (runs `yarn install` within each)
+
+`yarn demo` -- launch a local version of the demo playground in your browser for building and testing expressions
+
+#### Tests
+
+There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects of the evaluator. To run all tests:
+
+`yarn test`
+
+In order for the http-based tests to run, you'll need to be connected to the internet. For the Postgres tests, you'll need to have a postgres database running locally, with the [Northwind](https://github.com/pthom/northwind_psql) database installed.

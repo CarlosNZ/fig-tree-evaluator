@@ -22,6 +22,7 @@ const propertyAliases = {
   functionsPath: 'functionPath',
   functionName: 'functionPath',
   funcName: 'functionPath',
+  path: 'functionPath',
   arguments: 'args',
   variables: 'args',
 }
