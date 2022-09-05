@@ -4,7 +4,7 @@ import { Client } from 'pg'
 import pgConfig from './postgres/pgConfig.json'
 
 // Postgres tests require a copy of the Northwind database to be running
-// locally, with configuration defined in ./postgres/pgConfig.json. Ininitalise
+// locally, with configuration defined in ./postgres/pgConfig.json. Initialise
 // the Northwind DB using the "northwind.sql" script.
 
 const pgConnect = new Client(pgConfig)

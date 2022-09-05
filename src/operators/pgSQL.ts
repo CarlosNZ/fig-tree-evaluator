@@ -63,6 +63,7 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
     const res = await connection.query(expression)
     // node-postgres doesn't throw, it just returns error object
     if (res?.error) throw new Error(res.error)
+
     switch (queryType) {
       case 'array':
         return res.rows.flat()
