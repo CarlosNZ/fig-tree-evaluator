@@ -4,8 +4,44 @@
 
 A typical use case would be for configuration files, where you need to store dynamic values or logic in a "templating" language without exposing executable code to users, or having to store executable code in a database. For example, a form-builder app (example) might need to allow a user to specify logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
 
-<!-- toc -->
+<!-- TOC -->
 
+- [The basics](#the-basics)
+- [Install](#install)
+- [Usage](#usage)
+- [Available options](#available-options)
+- [Operator nodes](#operator-nodes)
+  - [Other common properties:](#other-common-properties)
+  - [Operator & Property Aliases](#operator--property-aliases)
+- [Operator reference](#operator-reference)
+  - [AND](#and)
+  - [OR](#or)
+  - [EQUAL](#equal)
+  - [NOT_EQUAL](#not_equal)
+  - [PLUS](#plus)
+  - [SUBTRACT](#subtract)
+  - [MULTIPLY](#multiply)
+  - [DIVIDE](#divide)
+  - [GREATER_THAN](#greater_than)
+  - [LESS_THAN](#less_than)
+  - [COUNT](#count)
+  - [CONDITIONAL](#conditional)
+  - [REGEX](#regex)
+  - [OBJECT_PROPERTIES](#object_properties)
+  - [STRING_SUBSTITUTION](#string_substitution)
+  - [GET](#get)
+  - [POST](#post)
+  - [GRAPHQL](#graphql)
+  - [PG_SQL](#pg_sql)
+  - [BUILD_OBJECT](#build_object)
+  - [PASSTHRU](#passthru)
+  - [CUSTOM_FUNCTIONS](#custom_functions)
+- [More examples](#more-examples)
+- [Development environment](#development-environment)
+- [Tests](#tests)
+- [Help, Feedback, Suggestions](#help-feedback-suggestions)
+
+<!-- /TOC -->
 ## The basics
 
 %NAME% evaluates expressions structured in a JSON [expression tree](LINK). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
@@ -58,15 +94,13 @@ Which would be represented diagramatically with the following expression tree:
 
 A playground for building and testing expressions is available [here](LINK)
 
-## Implementation
-
-### Install
+## Install
 
 `npm install %NAME%`\
 or\
 `yarn add %NAME%`
 
-### Usage
+## Usage
 
 ```js
 import Evaluator from '%NAME%'
@@ -84,7 +118,7 @@ exp.evaluate(expression, [options]) // Options over-ride initial options for thi
 const result = await exp.evaluate(expression, [options])
 ```
 
-### Available options
+## Available options
 
 - `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](LINK) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](LINK) operator.
@@ -174,19 +208,19 @@ For maximal flexibility, all operator names are case-insensitive, and also come 
 
 Similarly, some property names accept aliases -- see individual operators for these.
 
-### Operator reference
+## Operator reference
 
 <sup>*</sup> denotes "required" properties
 
 The full list of available operators and their associated properties is as follows:
 
-#### AND
+### AND
 
 *Logical AND*
 
 Aliases: `and`, `&`, `&&`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `&&` operator
 
@@ -201,13 +235,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### OR
+### OR
 
 *Logical OR*
 
 Aliases: `or`, `|`, `||`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `||` operator
 
@@ -222,13 +256,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### EQUAL
+### EQUAL
 
 *Equality*
 
 Aliases: `=`, `eq`, `equal`, `equals`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `==` operator
 
@@ -243,13 +277,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### NOT_EQUAL
+### NOT_EQUAL
 
 *Non-equality*
 
 Aliases: `!=`, `!`, `ne`, `notEqual`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `!=` operator
 
@@ -264,13 +298,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### PLUS
+### PLUS
 
 *Addition, concatenation, merge*
 
 Aliases: `+`, `add`, `concat`, `join`, `merge`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements. Will be added (numbers), concatenated (strings, arrays) or merged (objects) according their type.
 - `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common `outputType` property is that `outputType` converts the result, whereas this `type` property converts each element *before* the "PLUS" operation. 
@@ -313,13 +347,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### SUBTRACT
+### SUBTRACT
 
 *Subtraction*
 
 Aliases: `-`, `subtract`, `minus`, `takeaway`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- exactly 2 numerical elements; the second will be subtracted from the first. (If non-numerical elements are provided, the operator will return `NaN`)
 
@@ -346,13 +380,13 @@ e.g.
 
 `children` array: `[originalValue, valueToSubtract]` (same as `values`)
 
-#### MULTIPLY
+### MULTIPLY
 
 *Multiplcation*
 
 Aliases: `*`, `x`, `multiply`, `times`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of numerical elements. Returns the product of all elements.  (If non-numerical elements are provided, the operator will return `NaN`)
 
@@ -379,13 +413,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### DIVIDE
+### DIVIDE
 
 *Division*
 
 Aliases: `/`, `divide`, `÷`
 
-##### Properties
+#### Properties
 
 - `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second.  (If non-numerical elements are provided, the operator will return `NaN`)
 - `dividend` (or `divide`): (number) -- the number that will be divided
@@ -421,13 +455,13 @@ e.g.
 
 `children` array: `[dividend, divisor]`
 
-#### GREATER_THAN
+### GREATER_THAN
 
 *Greater than (or equal to)*
 
 Aliases: `>`, `greaterThan`, `higher`, `larger`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `>` operator.
 - `strict`: (boolean) -- if `true`, value 1 must be strictly greater than value 2 (i.e. `>`). Otherwise it will be compared with "greater than or equal to" (i.e. `>=`)
@@ -456,13 +490,13 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
-#### LESS_THAN
+### LESS_THAN
 
 *Less than (or equal to)*
 
 Aliases: `<`, `lessThan`, `lower`, `smaller`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- exactly 2 values. Can be any type of value that can be compared with Javascript `<` operator.
 - `strict`: (boolean) -- if `true`, value 1 must be strictly lower than value 2 (i.e. `<`). Otherwise it will be compared with "less than or equal to" (i.e. `<=`)
@@ -491,13 +525,13 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
-#### COUNT
+### COUNT
 
 *Count elements in array*
 
 Aliases: `count`, `length`
 
-##### Properties
+#### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements. Returns `array.length`
 
@@ -512,13 +546,13 @@ e.g.
 
 `children` array: `[...values]`
 
-#### CONDITIONAL
+### CONDITIONAL
 
 *Return different values depending on a condtion expression*
 
 Aliases: `?`, `conditional`, `ifThen`
 
-##### Properties
+#### Properties
 
 - `condition`<sup>*</sup>: (boolean) -- a boolean value (presumably the result of a child expression)
 - `valueIfTrue` (or `ifTrue`)<sup>*</sup>: the value returned if `condition` is `true`
@@ -546,13 +580,13 @@ e.g.
 
 `children` array: `[condition, valueIfTrue, valueIfFalse]`
 
-#### REGEX
+### REGEX
 
 *Compares an input string against a [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) pattern*
 
 Aliases: `regex`, `patternMatch`, `regexp`, `matchPattern`
 
-##### Properties
+#### Properties
 
 - `testString` (or `string`, `value`)<sup>*</sup>: (string) -- the string to be compared against the regex pattern
 - `pattern` (or `regex`, `regexp`, `regExp`, `re`)<sup>*</sup>: a regex pattern to test `testString` against
@@ -571,13 +605,13 @@ e.g.
 
 `children` array: `[testString, pattern]`
 
-#### OBJECT_PROPERTIES
+### OBJECT_PROPERTIES
 
 *Extracts values from objects in your application*
 
 Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
 
-##### Properties
+#### Properties
 
 - `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
 
@@ -641,13 +675,13 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 
 `children` array: `[property]`
 
-#### STRING_SUBSTITUTION
+### STRING_SUBSTITUTION
 
 *Replace values in a string using simple parameter substitution*
 
 Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
-##### Properties
+#### Properties
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
 - `substitutions` (or `replacments`)<sup>*</sup>: (array) -- the values to be substituted into `string`
@@ -710,13 +744,13 @@ e.g.
 // => "I am Iron Man"
 ```
 
-#### GET
+### GET
 
 *Http GET request*
 
 Aliases: `get`, `api`
 
-##### Properties
+#### Properties
 
 - `url` (or `endpoint`)<sup>*</sup>: (string) -- url to be queried
 - `parameters`: (object) -- key-value pairs for any query parameters for the request
@@ -771,7 +805,7 @@ e.g.
 // => "🇨🇺"
 ```
 
-#### POST
+### POST
 
 *Http POST request*
 
@@ -779,7 +813,7 @@ Aliases: `post`
 
 The "POST" operator is basically the same as [GET](LINK), so only the differences are specified here.
 
-##### Properties
+#### Properties
 
 - `url`/`endpoint`<sup>*</sup>,`parameters`, `headers`, `returnProperty`/`outputProperty` -- same as "GET" operator (although the `parameters` object will be passed to the Post request as body JSON rather than url query parameters)
 
@@ -802,7 +836,7 @@ e.g.
 `children` array: `[urlObject, parameterKeys, ...values, returnProperty]` (same as "GET")
 
 
-#### GRAPHQL
+### GRAPHQL
 
 *Http GraphQL request (using POST)*
 
@@ -810,7 +844,7 @@ Aliases: `graphQl`, `graphql`, `gql`
 
 This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
 
-##### Properties
+#### Properties
 
 - `query`<sup>*</sup>: (string) -- the GraphQL query string
 - `variables`: (object) -- key-value pairs for any variables used in the `query`
@@ -876,13 +910,13 @@ e.g.
 // => "🇨🇺"
 ```
 
-#### PG_SQL
+### PG_SQL
 
 *Query a Postgres database*
 
 Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
-##### Properties
+#### Properties
 
 - `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
 - `values` (or `replacements`): (array) -- replacements for the `query` parameters
@@ -929,7 +963,7 @@ e.g.
 (`type` is provided by the common `type`/`outputType` property)
 
 
-#### BUILD_OBJECT
+### BUILD_OBJECT
 
 *Return an object constructed by seperate keys and values*
 
@@ -937,7 +971,7 @@ Aliases: `buildObject`, `build`, `object`
 
 The "buildObject" operator would primarily be used to construct an object input for another operator property (e.g. `variables` on "GraphQL") out of elements that are themselves evaluator expressions.
 
-##### Properties
+#### Properties
 
 - `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of objects of the following shape:  
   ```ts
@@ -986,7 +1020,7 @@ e.g.
 // => { one: 1, two: 2, Ned: 24 }
 ```
 
-#### PASSTHRU
+### PASSTHRU
 
 *Pass-true (does nothing)*
 
@@ -994,7 +1028,7 @@ Aliases: `passThru`, `_`, `pass`, `ignore`, `coerce`, `convert`
 
 This operator simply returns its input. The purpose of it is to allow an additional type conversion (using `outputType`) before passing up to a parent node.
 
-##### Properties
+#### Properties
 
 - `value` (or `_`, `data`)<sup>*</sup>: (any) -- the value that is returned
 
@@ -1008,13 +1042,13 @@ e.g.
 // => ["500"]
 ```
 
-#### CUSTOM_FUNCTIONS
+### CUSTOM_FUNCTIONS
 
 *Extend functionality by calling custom function*
 
 Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `function`, `runFunction`
 
-##### Properties
+#### Properties
 
 - `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>: (string) -- path to where the function resides in the `options.functions` object
 - `args` (or `arguments`, `variables`): (array) -- input arguments for the function
@@ -1069,11 +1103,11 @@ e.g.
 // => 198
 ```
 
-#### More examples
+## More examples
 
 More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/expression-evaluator).
 
-### Development environment
+## Development environment
 
 Github repo: https://github.com/CarlosNZ/expression-evaluator
 
@@ -1083,7 +1117,7 @@ After cloning:
 
 `yarn demo` -- launch a local version of the demo playground in your browser for building and testing expressions
 
-#### Tests
+## Tests
 
 There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects of the evaluator. To run all tests:
 
@@ -1091,6 +1125,6 @@ There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects o
 
 In order for the http-based tests to run, you'll need to be connected to the internet. For the Postgres tests, you'll need to have a postgres database running locally, with the [Northwind](https://github.com/pthom/northwind_psql) database installed.
 
-#### Help, Feedback, Suggestions
+## Help, Feedback, Suggestions
 
 Please open an issue: https://github.com/CarlosNZ/expression-evaluator/issues
