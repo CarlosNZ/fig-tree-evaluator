@@ -59,7 +59,11 @@ function App() {
   })
 
   const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
-    localStorage.getItem('evaluatorSelection') === 'Development' ? expDev : expPub
+    process.env.NODE_ENV === 'development'
+      ? localStorage.getItem('evaluatorSelection') === 'Development'
+        ? expDev
+        : expPub
+      : expPub
   )
 
   const updateOptions = (options: EvaluatorOptions) => {
@@ -75,7 +79,7 @@ function App() {
     setIsValidState({ expression: expressionValid, objects: objectsValid })
 
     if (!expressionValid || !objectsValid) {
-      setResult({ output: 'Invalid Input', error: false })
+      setResult({ output: null, error: 'Invalid Input' })
       setLoading(false)
       return
     }
@@ -192,19 +196,21 @@ function App() {
       </Box>
       <Box w={'33%'} h={'100%'} p={2}>
         <Heading>Output</Heading>
-        <Flex gap={4} alignItems="center" mb={6}>
-          <Text>Evaluator version:</Text>
-          <Select
-            id="evalSelect"
-            variant="outline"
-            w={'50%'}
-            value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
-            onChange={handleSelectEvaluator}
-          >
-            <option value={'Development'}>Development</option>
-            <option value={'Published'}>Published</option>
-          </Select>
-        </Flex>
+        {process.env.NODE_ENV === 'development' && (
+          <Flex gap={4} alignItems="center" mb={6}>
+            <Text>Evaluator version:</Text>
+            <Select
+              id="evalSelect"
+              variant="outline"
+              w={'50%'}
+              value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
+              onChange={handleSelectEvaluator}
+            >
+              <option value={'Development'}>Development</option>
+              <option value={'Published'}>Published</option>
+            </Select>
+          </Flex>
+        )}
         <Box
           display="flex"
           justifyContent="center"
@@ -245,5 +251,7 @@ const ResultText = ({ result }: { result: Result }) => {
         <pre> {JSON.stringify(result.output, null, 2)}</pre>
       </Text>
     )
+  if (typeof result.output === 'string')
+    return <Text fontSize={'xl'}>"{String(result.output)}"</Text>
   return <Text fontSize={'xl'}>{String(result.output)}</Text>
 }
