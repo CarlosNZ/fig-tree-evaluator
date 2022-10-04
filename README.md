@@ -31,6 +31,7 @@ A typical use case would be for configuration files, where you need to store dyn
   - [REGEX](#regex)
   - [OBJECT_PROPERTIES](#object_properties)
   - [STRING_SUBSTITUTION](#string_substitution)
+  - [SPLIT](#split)
   - [GET](#get)
   - [POST](#post)
   - [GRAPHQL](#graphql)
@@ -781,6 +782,42 @@ e.g.
 ```
 
 ----
+
+### SPLIT
+
+*Split strings into arrays*
+
+Aliases: `split`, `arraySplit`
+
+#### Properties
+
+- `value` (or `string`)<sup>*</sup>: (string) -- string to be split
+- `delimiter` (or `separator`): (string) -- substring to split `value` on (Default: `" "` (space)) 
+- `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of resulting substrings 
+- `excludeTrailing` (or `removeTrailing`, `excludeTrailingDelimiter`): (boolean, default `true`) -- if `false`, if the input string ends with the delimiter, the last member of the output array will be an empty string.  
+  i.e. `this, that, another,` (delimiter `","`) => `["this", "that", "another", ""]`
+
+The last two parameters (`timeWhiteSpace` and `excludeTrailing`) should rarely be needed.
+
+e.g.
+```js
+{
+  operator: 'split',
+  children: ['Alpha, Beta, Gamma, Delta', ','],
+}
+// => ['Alpha', 'Beta', 'Gamma', 'Delta']
+
+```
+
+`children` array: `[value, delimiter]`  
+(`trimWhiteSpace` and `excludeTrailing` not available, since array can only support one optional parameter)
+
+- `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
+- `parameterKeys`: an array of strings representing the keys of any query parameters
+- `...values`: one value for each key specified in `parameterKeys`
+- `returnProperty` (optional): as above
+
+---
 ### GET
 
 *Http GET request*

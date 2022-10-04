@@ -40,7 +40,7 @@ test('Complex delimiter, with some extraneous whitespace', () => {
   const expression = {
     operator: 'split',
     string: { operator: '+', values: ['One ', '  BREAK ', ' Two ', 'BREAK', 'Three  ', 'BREAK'] },
-    delimiter: { operator: 'pass', value: ['BREAK'], outputType: 'string' },
+    separator: { operator: 'pass', value: ['BREAK'], outputType: 'string' },
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toStrictEqual(['One', 'Two', 'Three'])

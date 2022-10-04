@@ -6,6 +6,7 @@ const requiredProperties = ['value'] as const
 const operatorAliases = ['split', 'arraySplit']
 const propertyAliases = {
   string: 'value',
+  separator: 'delimiter',
   trim: 'trimWhiteSpace',
   trimWhitespace: 'trimWhiteSpace',
   removeTrailing: 'excludeTrailing',
