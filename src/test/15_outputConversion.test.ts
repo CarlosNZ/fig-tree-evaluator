@@ -3,7 +3,7 @@ import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
 const exp = new ExpressionEvaluator()
 
 // Non-number unchanged by Number
-test('Try and convert NaN to number -- no can do', () => {
+test('Try and convert NaN to number -- return 0', () => {
   return exp
     .evaluate(
       {
@@ -14,7 +14,7 @@ test('Try and convert NaN to number -- no can do', () => {
       { objects: { justAString: 'Not a number' } }
     )
     .then((result: any) => {
-      expect(result).toBe('Not a number')
+      expect(result).toBe(0)
     })
 })
 
@@ -139,5 +139,82 @@ test('Coerce output to string from evaluated "type" node', () => {
     { objects: { find: { me: 500 } } }
   ).then((result: any) => {
     expect(result).toBe('500')
+  })
+})
+
+// Aggressive number extraction
+test('Extract numberic content from string', () => {
+  return evaluateExpression({
+    operator: 'pass',
+    value: 'There is a number 46 inside here!',
+    outputType: 'number',
+  }).then((result: any) => {
+    expect(result).toBe(46)
+  })
+})
+
+test('Extract decimal numeric content from string', () => {
+  return evaluateExpression(
+    {
+      operator: 'objectProperties',
+      path: 'standard.path',
+      outputType: 'number',
+    },
+    { objects: { standard: { path: "99.021 is what we're looking for" } } }
+  ).then((result: any) => {
+    expect(result).toBe(99.021)
+  })
+})
+
+test('Extract with no leading 0 from start of string', () => {
+  return evaluateExpression(
+    {
+      operator: 'objectProperties',
+      path: 'basic',
+      outputType: 'number',
+    },
+    { objects: { basic: '.001 is a very small number' } }
+  ).then((result: any) => {
+    expect(result).toBe(0.001)
+  })
+})
+
+test('Add two extracted numbers', () => {
+  return evaluateExpression(
+    {
+      operator: '+',
+      values: [
+        { operator: 'pass', value: 'The number is .995 not 0.23', outputType: 'number' },
+        {
+          operator: 'objectProperties',
+          path: 'Not.found',
+          fallback: 'We have 3 people',
+          outputType: 'number',
+        },
+      ],
+    },
+    { objects: {} }
+  ).then((result: any) => {
+    expect(result).toBe(3.995)
+  })
+})
+
+test('Handle number conversion when already a number', () => {
+  return evaluateExpression({
+    operator: '+',
+    values: [1, 2, 3, 4, 5, 6],
+    outputType: 'number',
+  }).then((result: any) => {
+    expect(result).toBe(21)
+  })
+})
+
+test('Return 0 if converting to number when string has no numeric content', () => {
+  return evaluateExpression({
+    operator: '+',
+    values: ['this', 'plus', 'this'],
+    outputType: 'number',
+  }).then((result: any) => {
+    expect(result).toBe(0)
   })
 })

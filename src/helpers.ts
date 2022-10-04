@@ -63,9 +63,9 @@ export const checkRequiredNodes = (
 }
 
 export const convertOutputMethods: {
-  [key in OutputType]: <T>(val: T) => EvaluatorOutput | T[]
+  [key in OutputType]: <T>(value: T) => EvaluatorOutput | T[]
 } = {
-  number: (value: EvaluatorOutput) => (Number.isNaN(Number(value)) ? value : Number(value)),
+  number: (value: EvaluatorOutput) => extractNumber(value),
   string: (value: EvaluatorOutput) => String(value),
   array: (value: EvaluatorOutput) => (Array.isArray(value) ? value : [value]),
   boolean: (value: EvaluatorOutput) => Boolean(value),
@@ -74,3 +74,12 @@ export const convertOutputMethods: {
 
 // Workaround to prevent typescript errors for err.message
 export const errorMessage = (err: unknown) => (err as Error).message
+
+// Extracts numeric content from a string
+const extractNumber = (input: EvaluatorOutput) => {
+  if (typeof input !== 'string') return Number.isNaN(Number(input)) ? input : Number(input)
+
+  const numberMatch = input.match(/(-?(\d+\.\d+))|(-?((?<!\.)\.\d+))|(-?\d+)/gm)
+  if (!numberMatch) return 0
+  return Number(numberMatch[0])
+}
