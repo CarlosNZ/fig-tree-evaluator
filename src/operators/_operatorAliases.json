@@ -53,6 +53,8 @@
   "substitute": "STRING_SUBSTITUTION",
   "stringSub": "STRING_SUBSTITUTION",
   "replace": "STRING_SUBSTITUTION",
+  "split": "SPLIT",
+  "arraySplit": "SPLIT",
   "count": "COUNT",
   "length": "COUNT",
   "get": "GET",
