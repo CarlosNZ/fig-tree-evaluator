@@ -85,10 +85,7 @@ const evaluate = async (
   return extractAndSimplify(response.data, returnNode)
 }
 
-const parseChildren = async (
-  expression: CombinedOperatorNode,
-  config: EvaluatorConfig
-): Promise<GraphQLNode> => {
+const parseChildren = async (expression: CombinedOperatorNode): Promise<GraphQLNode> => {
   const [query, url = '', fieldNames, ...rest] = expression.children as [string, string, string[]]
   const values = rest.slice(0, fieldNames.length)
   const variables = zipArraysToObject(fieldNames, values)
