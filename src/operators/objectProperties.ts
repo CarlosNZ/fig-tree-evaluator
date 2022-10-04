@@ -14,19 +14,29 @@ const operatorAliases = ['objectProperties', 'objProps', 'getProperty', 'getObjP
 const propertyAliases = {
   path: 'property',
   propertyName: 'property',
+  additional: 'additionalObjects',
+  objects: 'additionalObjects',
 }
 
 export type ObjPropNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode
+} & BaseOperatorNode & { additionalObjects: object }
 
 const evaluate = async (
   expression: ObjPropNode,
   config: EvaluatorConfig
 ): Promise<EvaluatorOutput> => {
-  const [property] = (await evaluateArray([expression.property], config)) as [string, any]
-  config.typeChecker({ name: 'property', value: property, expectedType: 'string' })
-  const inputObject = config.options?.objects ?? {}
+  const [property, additionalObjects] = (await evaluateArray(
+    [expression.property, expression.additionalObjects],
+    config
+  )) as [string, object]
+  config.typeChecker(
+    { name: 'property', value: property, expectedType: 'string' },
+    { name: 'additionalObjects', value: additionalObjects, expectedType: ['object', 'undefined'] }
+  )
+  const inputObject = additionalObjects
+    ? { ...(config.options?.objects ?? {}), ...additionalObjects }
+    : config.options?.objects ?? {}
   return extractProperty(inputObject, property)
 }
 

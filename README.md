@@ -645,8 +645,9 @@ Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
 #### Properties
 
 - `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
+- `additionalObjects` (or `objects`, `additional`): (object) -- any other objects whose properties can be referenced in `property` (see below)
 
-Objects are passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data.
+Objects are normamlly expected to be passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data. (However, it is possible to pass objects directly as part of the expression using the `additionalObjects` property, so (in theory) objects could be dynamically generated from other expressions.)
 
 For example, consider a `user` object and an evaluator instance: 
 
@@ -710,6 +711,23 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 ```
 
 `children` array: `[property]`
+
+
+Example using "objects" passed in dynamically as part of expression:
+
+```js
+{
+  operator: 'objectProperties',
+  property: 'user.name',
+  additionalObjects: {
+    operator: '?',
+    condition: { operator: '=', values: [{ operator: '+', values: [7, 8, 9] }, 25] },
+    valueIfTrue: { user: { name: 'Bilbo' } },
+    valueIfFalse: { user: { name: 'Frodo' } },
+  },
+}
+// => "Frodo"
+```
 
 ----
 ### STRING_SUBSTITUTION
