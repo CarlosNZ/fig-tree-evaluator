@@ -186,7 +186,7 @@ Most of the time named properties is preferable; however there are situations wh
 In each operator node, as well as the operator-specific properties, the following two optional properties can be provided:
 
 - `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
-- `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and 'array'. You can experiment in the [demo app](LINK) to see the outcome of applying different `outputType` values to various results.
+- `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](LINK) to see the outcome of applying different `outputType` values to various results.
 
 Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties.
 
