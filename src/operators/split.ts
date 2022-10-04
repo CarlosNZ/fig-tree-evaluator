@@ -1,6 +1,11 @@
 import { evaluateArray } from './_operatorUtils'
-import { EvaluatorConfig, OperatorObject, EvaluatorNode, CombinedOperatorNode } from '../types'
-import { BasicExtendedNode } from './logicalAnd'
+import {
+  EvaluatorConfig,
+  OperatorObject,
+  EvaluatorNode,
+  CombinedOperatorNode,
+  BaseOperatorNode,
+} from '../types'
 
 const requiredProperties = ['value'] as const
 const operatorAliases = ['split', 'arraySplit']
@@ -15,7 +20,7 @@ const propertyAliases = {
 
 export type SplitNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BasicExtendedNode & {
+} & BaseOperatorNode & {
     delimiter?: EvaluatorNode
     trimWhiteSpace: EvaluatorNode
     excludeTrailing: EvaluatorNode

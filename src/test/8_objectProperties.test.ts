@@ -79,3 +79,64 @@ test('Object properties, unresolved path (first level) with fallback', () => {
     expect(result).toBe('Sorry 🤷‍♂️')
   })
 })
+
+test('Object properties with additional objects', () => {
+  const expression = {
+    operator: 'objectProperties',
+    path: 'newThing.first',
+    additionalObjects: { newThing: { first: 'A New Value' } },
+  }
+  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+    expect(result).toBe('A New Value')
+  })
+})
+
+test('Object properties with more complex additional objects', () => {
+  const expression = {
+    operator: 'objectProperties',
+    path: 'vehicle.model.versions[2]',
+    additionalObjects: {
+      vehicle: {
+        make: 'Honda',
+        model: { name: 'Accord', versions: ['Type A', 'Type B', 'Type C'] },
+      },
+    },
+  }
+  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+    expect(result).toBe('Type C')
+  })
+})
+
+test('Object properties with additional objects, fallback', () => {
+  const expression = {
+    operator: 'objectProperties',
+    path: 'vehicle.model.versions[3]',
+    additional: {
+      vehicle: {
+        make: 'Honda',
+        model: { name: 'Accord', versions: ['Type A', 'Type B', 'Type C'] },
+      },
+    },
+    fallback: 'Nope',
+  }
+  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+    expect(result).toBe('Nope')
+  })
+})
+
+test('Object properties dynamically-built additionalObject', () => {
+  const expression = {
+    operator: 'objectProperties',
+    path: 'second',
+    objects: {
+      operator: 'buildObject',
+      values: [
+        { key: 'first', value: 1 },
+        { key: 'second', value: 100 },
+      ],
+    },
+  }
+  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+    expect(result).toBe(100)
+  })
+})
