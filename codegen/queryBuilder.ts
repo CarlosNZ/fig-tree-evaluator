@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs'
 import { EvaluatorNode, EvaluatorOutput, OperatorNodeUnion } from '../src/types'
-import ExpressionEvaluator from '../src/evaluator'
+import FigTreeEvaluator from '../src/FigTreeEvaluator'
 import { isOperatorNode } from '../src/helpers'
 
 const DEPTH_LIMIT = 30
@@ -23,7 +23,7 @@ const functions = {
 
 export const config = { objects, functions }
 
-const evaluator = new ExpressionEvaluator({ objects, functions })
+const evaluator = new FigTreeEvaluator({ objects, functions })
 
 const baseExpressions: EvaluatorNode[] = [
   {

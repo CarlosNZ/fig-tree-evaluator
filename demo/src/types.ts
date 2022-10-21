@@ -1,4 +1,4 @@
-import { EvaluatorOutput } from './expression-evaluator/types'
+import { EvaluatorOutput } from './fig-tree/types'
 
 export interface InputState {
   expression: string

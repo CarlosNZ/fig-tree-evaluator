@@ -24,9 +24,9 @@ import {
   Checkbox,
 } from '@chakra-ui/react'
 import { JSONstringify, filterObjectRecursive } from './helpers'
-import { EvaluatorOptions } from './expression-evaluator/types'
+import { FigTreeOptions } from './fig-tree/types'
 
-const resetFormState = (options: EvaluatorOptions) => {
+const resetFormState = (options: FigTreeOptions) => {
   const baseEndpoint = options.baseEndpoint
   const headers = { ...options.headers }
   const authHeader = headers?.Authorization
@@ -54,8 +54,8 @@ export const OptionsModal = ({
   updateOptions,
   modalState: { modalOpen, setModalOpen },
 }: {
-  options: EvaluatorOptions
-  updateOptions: (options: EvaluatorOptions) => void
+  options: FigTreeOptions
+  updateOptions: (options: FigTreeOptions) => void
   modalState: { modalOpen: boolean; setModalOpen: Dispatch<React.SetStateAction<boolean>> }
 }) => {
   const [formState, setFormState] = useState(resetFormState(options))
@@ -86,7 +86,7 @@ export const OptionsModal = ({
     const headers = headersText ? JSON.parse(headersText) : {}
     const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
 
-    const newOptions: EvaluatorOptions = filterObjectRecursive({
+    const newOptions: FigTreeOptions = filterObjectRecursive({
       baseEndpoint,
       headers: { Authorization: authHeader, ...headers },
       graphQLConnection: {

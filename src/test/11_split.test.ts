@@ -1,6 +1,6 @@
-import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+import FigTreeEvaluator, { evaluateExpression } from '../FigTreeEvaluator'
 
-const exp = new ExpressionEvaluator()
+const exp = new FigTreeEvaluator()
 
 // SPLIT
 

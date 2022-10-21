@@ -1,6 +1,6 @@
 import { Client } from 'pg'
-import ExpressionEvaluator from '../evaluator'
-import evaluator, { evaluateExpression } from '../evaluator'
+import FigTreeEvaluator from '../FigTreeEvaluator'
+import evaluator, { evaluateExpression } from '../FigTreeEvaluator'
 import pgConfig from '../test/postgres/pgConfig.json'
 
 /*
@@ -13,7 +13,7 @@ be created the first time you run `yarn dev`.
 // const pgConnect = new Client(pgConfig)
 // pgConnect.connect()
 
-const exp = new ExpressionEvaluator({
+const exp = new FigTreeEvaluator({
   // pgConnection: pgConnect,
   // graphQLConnection: {
   //   endpoint: 'https://countries.trevorblades.com/',

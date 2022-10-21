@@ -1,5 +1,5 @@
 import { Client } from 'pg'
-import ExpressionEvaluator from '../evaluator'
+import FigTreeEvaluator from '../FigTreeEvaluator'
 import pgConfig from './postgres/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../../codegen/queryBuilder'
@@ -7,7 +7,7 @@ import { config } from '../../codegen/queryBuilder'
 const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
-const exp = new ExpressionEvaluator({
+const exp = new FigTreeEvaluator({
   pgConnection: pgConnect,
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',

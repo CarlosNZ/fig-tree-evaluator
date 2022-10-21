@@ -1,5 +1,4 @@
-import { map } from 'lodash'
-import { GenericObject } from './expression-evaluator/types'
+import { GenericObject } from './fig-tree/types'
 
 const looseJSON = require('loose-json')
 

@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+import FigTreeEvaluator, { evaluateExpression } from '../FigTreeEvaluator'
 import { Client } from 'pg'
 import pgConfig from './postgres/pgConfig.json'
 
@@ -11,7 +11,7 @@ const pgConnect = new Client(pgConfig)
 
 pgConnect.connect()
 
-const exp = new ExpressionEvaluator({
+const exp = new FigTreeEvaluator({
   pgConnection: pgConnect,
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',

@@ -12,7 +12,7 @@ import {
   Textarea,
   Spinner,
 } from '@chakra-ui/react'
-import EvaluatorDev from './expression-evaluator/evaluator'
+import EvaluatorDev from './fig-tree/FigTreeEvaluator'
 import EvaluatorPublished from 'expression-evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
@@ -28,7 +28,7 @@ import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
-import { EvaluatorOptions } from './expression-evaluator/types'
+import { FigTreeOptions } from './fig-tree/types'
 
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface()
@@ -66,7 +66,7 @@ function App() {
       : expPub
   )
 
-  const updateOptions = (options: EvaluatorOptions) => {
+  const updateOptions = (options: FigTreeOptions) => {
     evaluator.updateOptions(options)
     reEvaluate()
   }

@@ -1,6 +1,6 @@
-import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+import FigTreeEvaluator, { evaluateExpression } from '../FigTreeEvaluator'
 
-const exp = new ExpressionEvaluator()
+const exp = new FigTreeEvaluator()
 
 // Non-number unchanged by Number
 test('Try and convert NaN to number -- return 0', () => {

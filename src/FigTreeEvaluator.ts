@@ -1,20 +1,14 @@
-import {
-  OperatorNodeUnion,
-  EvaluatorNode,
-  EvaluatorOptions,
-  Operator,
-  OperatorReference,
-} from './types'
+import { EvaluatorNode, FigTreeOptions, Operator, OperatorReference } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 
-class ExpressionEvaluator {
-  private options: EvaluatorOptions
+class FigTreeEvaluator {
+  private options: FigTreeOptions
   private operators: OperatorReference
   private operatorAliases: { [key: string]: Operator }
-  constructor(options: EvaluatorOptions = {}) {
+  constructor(options: FigTreeOptions = {}) {
     this.options = options
     this.operators = operators
     this.operatorAliases = operatorAliases as { [key: string]: Operator }
@@ -26,7 +20,7 @@ class ExpressionEvaluator {
     throw new Error(result)
   }
 
-  public async evaluate(expression: EvaluatorNode, options: EvaluatorOptions = {}) {
+  public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
     // Update options from current call if specified
     const instanceOptions = { ...this.options, ...options }
     return await evaluatorFunction(expression, {
@@ -41,12 +35,14 @@ class ExpressionEvaluator {
     return this.options
   }
 
-  public updateOptions(options: EvaluatorOptions) {
+  public updateOptions(options: FigTreeOptions) {
     this.options = { ...this.options, ...options }
   }
 }
 
-export default ExpressionEvaluator
+export default FigTreeEvaluator
 
-export const evaluateExpression = (expression: EvaluatorNode, options?: EvaluatorOptions) =>
-  new ExpressionEvaluator(options).evaluate(expression)
+// Stand-alone function for evaluating expressions without creating a
+// FigTreeEvaluator object instance
+export const evaluateExpression = (expression: EvaluatorNode, options?: FigTreeOptions) =>
+  new FigTreeEvaluator(options).evaluate(expression)

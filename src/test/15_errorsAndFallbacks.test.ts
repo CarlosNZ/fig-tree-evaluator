@@ -1,6 +1,6 @@
-import ExpressionEvaluator, { evaluateExpression } from '../evaluator'
+import FigTreeEvaluator, { evaluateExpression } from '../FigTreeEvaluator'
 
-const exp = new ExpressionEvaluator({
+const exp = new FigTreeEvaluator({
   objects: {
     user: {
       id: 2,
@@ -270,7 +270,7 @@ test('Skip runtime type checking, from constructor options', () => {
     operator: 'objectProperties',
     property: ['not', 'a', 'string'],
   }
-  const exp2 = new ExpressionEvaluator({
+  const exp2 = new FigTreeEvaluator({
     skipRuntimeTypeCheck: true,
     returnErrorAsString: true,
   })

@@ -1,8 +1,10 @@
-# expression-evaluator
+# fig-tree
 
-%NAME% is a module to evaluate JSON-structured expressions. 
+**Fig-tree** is a module to evaluate JSON-structured expression trees. 
 
-A typical use case would be for configuration files, where you need to store dynamic values or logic without exposing executable code to users. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow configuration of logic for form element visibility based on previous responses, or for validation logic beyond what is available in standard validation libraries.
+A typical use case would be for evaluating configuration files, where you need to store dynamic values or arbitrary logic without exposing executable code to users. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
+
+A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
 
 [**Demo/Playground**](LINK)
 
@@ -47,9 +49,9 @@ A typical use case would be for configuration files, where you need to store dyn
 <!-- /TOC -->
 ## The basics
 
-%NAME% evaluates expressions structured in a JSON [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
+Fig-tree evaluates expressions structured in a JSON/Javascript object [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
 
-A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added to your implementation if you wish to extend the default functionality.
+A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added to your implementation if you wish to extend the base functionality.
 
 For example:
 
@@ -99,17 +101,17 @@ A playground for building and testing expressions is available [here](LINK)
 
 ## Install
 
-`npm install %NAME%`\
+`npm install fig-tree`\
 or\
-`yarn add %NAME%`
+`yarn add fig-tree`
 
 ## Usage
 
 ```js
-import Evaluator from '%NAME%'
+import FigTreeEvaluator from 'fig-tree'
 
 // New evaluator instance
-const exp = new Evaluator([ options ]) // See available options below
+const exp = new FigTreeEvaluator([ options ]) // See available options below
 
 // Evaluate expressions
 exp.evaluate(expression, [options]) // Options over-ride initial options for this evaluation
@@ -135,7 +137,7 @@ The `options` parameter is an object with the following available properties (al
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encoutered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 
-As mentioned above, `options` can be provided as part of the constructor as part of each seperate evaluation. You can also change the options permanently for a given evaluator object with:
+As mentioned above, `options` can be provided as part of the constructor as part of each seperate evaluation. You can also change the options permanently for a given evaluator instance with:
 
 `exp.updateOptions(options)`
 
@@ -153,7 +155,7 @@ Each operator has a selections of input properties associated with it, some requ
 ```js
 {
     operator: "conditional", // or "?"
-    condition: <boolean>, // or evaluator expression that returns boolean
+    condition: <boolean>, // or fig-tree expression that returns boolean
     valueIfTrue: <someValue>,
     valueIfFalse: <someOtherValue>
 
@@ -649,7 +651,7 @@ Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
 
 Objects are normamlly expected to be passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data. (However, it is possible to pass objects directly as part of the expression using the `additionalObjects` property, so (in theory) objects could be dynamically generated from other expressions.)
 
-For example, consider a `user` object and an evaluator instance: 
+For example, consider a `user` object and an fig-tree evaluator instance: 
 
 ```js
 const user = {
@@ -663,7 +665,7 @@ const user = {
   ],
 }
 
-const exp = new ExpressionEvaluator()
+const exp = new FigTreeEvaluator()
 
 const expression = getExpressionFromConfig()
 
@@ -942,13 +944,13 @@ This operator is essentially a special case of the "POST" operator, but structur
 
 - `query`<sup>*</sup>: (string) -- the GraphQL query string
 - `variables`: (object) -- key-value pairs for any variables used in the `query`
-- `url` (or `endpoint`): (string) -- url to be queried (Only required if querying a different url to that specified in the GraphQLConnection object in evaluator `options`)
+- `url` (or `endpoint`): (string) -- url to be queried (Only required if querying a different url to that specified in the GraphQLConnection object in fig-tree `options`)
 - `headers`: (object) -- any additional headers (such as authentication) required for the request
 - `returnNode` (or `returnProperty`, `outputProperty`): (string) -- an object path for which property to extract from the returned data (same as "GET" and "POST").
 
 As mentioned in the [options reference](#available-options) above, a `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation, although additional/override `headers` can always be added to a specific evaluation, too.
 
-Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the Evaluator constructor [options](#available-options).
+Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the FigTreeEvaluator constructor [options](#available-options).
 
 The required connection object is:
 ```ts
@@ -1020,7 +1022,7 @@ Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
   We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
 
-In order to query a postgres database, the evaluator must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
+In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
 
 ```js
 import { Client } from 'pg'
@@ -1028,7 +1030,7 @@ const pgConnect = new Client(pgConfig) // pgConfig = database details, see node-
 
 pgConnect.connect()
 
-const exp = new ExpressionEvaluator({ pgConnection: pgConnect })
+const exp = new FigTreeEvaluator({ pgConnection: pgConnect })
 ```
 
 The following examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
@@ -1154,9 +1156,9 @@ Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `f
 
 Custom functions are stored in the evaluator `options`, in the `functions` property.
 
-For examples, consider the following evaluator instance:
+For examples, consider the following fig-tree instance:
 ```js
-const exp = new ExpressionEvaluator({
+const exp = new FigTreeEvaluator({
   functions: {
     double: (x) => x * 2,
     getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
@@ -1204,11 +1206,11 @@ e.g.
 
 ## More examples
 
-More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/expression-evaluator).
+More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/fig-tree).
 
 ## Development environment
 
-Github repo: https://github.com/CarlosNZ/expression-evaluator
+Github repo: https://github.com/CarlosNZ/fig-tree
 
 After cloning:
 
@@ -1218,12 +1220,14 @@ After cloning:
 
 ## Tests
 
-There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects of the evaluator. To run all tests:
+There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects of fig-tree. To run all tests:
 
 `yarn test`
 
 In order for the http-based tests to run, you'll need to be connected to the internet. For the Postgres tests, you'll need to have a postgres database running locally, with the [Northwind](https://github.com/pthom/northwind_psql) database installed.
 
+Individual tests can be run by string matching the argument to the test filenames. E.g. `yarn test string` will run the test from `9_stringSubstitution.test.ts`.
+
 ## Help, Feedback, Suggestions
 
-Please open an issue: https://github.com/CarlosNZ/expression-evaluator/issues
+Please open an issue: https://github.com/CarlosNZ/fig-tree/issues

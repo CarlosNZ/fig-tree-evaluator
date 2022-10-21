@@ -1,7 +1,6 @@
 {
-  "name": "expression-evaluate-gui",
-  "version": "0.1.0",
-  "private": true,
+  "name": "fig-tree-demo",
+  "version": "0.9.0",
   "dependencies": {
     "@chakra-ui/react": "^2.1.2",
     "@emotion/react": "^11",
@@ -17,7 +16,7 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "rimraf ./src/expression-evaluator && mkdir ./src/expression-evaluator && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
+    "start": "rimraf ./src/fig-tree && mkdir ./src/fig-tree && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
     "serve": "node ./src/express/server",
     "build": "react-scripts build",
     "test": "react-scripts test",
