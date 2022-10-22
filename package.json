@@ -14,7 +14,6 @@
     "@testing-library/jest-dom": "^5.14.1",
     "@testing-library/react": "^13.0.0",
     "@types/jest": "^27.5.1",
-    "@types/lodash": "^4.14.182",
     "@types/node": "^17.0.38",
     "@types/pg": "^8.6.5",
     "dotenv": "^16.0.1",
@@ -36,7 +35,6 @@
   "dependencies": {
     "axios": "^0.27.2",
     "change-case": "^4.1.2",
-    "lodash": "^4.17.21",
     "object-property-extractor": "^1.0.3"
   },
   "bugs": {
