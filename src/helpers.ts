@@ -1,4 +1,4 @@
-import { mapKeys, camelCase } from 'lodash'
+import { camelCase } from 'change-case'
 import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, EvaluatorOutput } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -14,6 +14,8 @@ export const parseIfJson = (input: EvaluatorNode) => {
 export const isOperatorNode = (input: EvaluatorNode) =>
   input instanceof Object && 'operator' in input
 
+// Convert to camelCase but *don't* remove stand-alone punctuation as they may
+// be valid operators (e.g. "+", "?")
 const standardiseOperatorName = (name: string) => {
   const camelCaseName = camelCase(name)
   return camelCaseName ? camelCaseName : name
@@ -43,9 +45,22 @@ export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
   expression: CombinedOperatorNode
 ): CombinedOperatorNode =>
-  mapKeys(expression, (_, key: string) =>
+  mapObjectKeys(expression, (key: string) =>
     key in propertyAliases ? propertyAliases[key] : key
   ) as CombinedOperatorNode
+
+/*
+Convert object to a new object with keys changed by mapFunction
+Simplified version of lodash' `mapKeys` method
+*/
+const mapObjectKeys = <T>(
+  inputObj: { [key: string]: T },
+  mapFunction: (key: string) => string
+): { [key: string]: T } => {
+  const keyVals = Object.entries(inputObj)
+  const mappedKeys = keyVals.map(([key, value]) => [mapFunction(key), value])
+  return Object.fromEntries(mappedKeys)
+}
 
 /*
 Checks Evaluator node for missing required properties based on operator type
