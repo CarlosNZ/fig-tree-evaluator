@@ -1,6 +1,8 @@
 {
   "name": "fig-tree-demo",
   "version": "0.9.0",
+  "private": true,
+  "homepage": "https://carlosnz.github.io/fig-tree-evaluator",
   "dependencies": {
     "@chakra-ui/react": "^2.1.2",
     "@emotion/react": "^11",

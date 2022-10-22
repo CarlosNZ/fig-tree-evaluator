@@ -1,6 +1,6 @@
 import { Client } from 'pg'
-import FigTreeEvaluator from '../FigTreeEvaluator'
-import evaluator, { evaluateExpression } from '../FigTreeEvaluator'
+import FigTreeEvaluator from '../'
+import evaluator, { evaluateExpression } from '../'
 import pgConfig from '../test/postgres/pgConfig.json'
 
 /*

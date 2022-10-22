@@ -44,3 +44,4 @@ demo/src/fig-tree-evaluator
 src/dev/playground.ts
 .npmrc
 temp.js
+.vscode/settings.json
