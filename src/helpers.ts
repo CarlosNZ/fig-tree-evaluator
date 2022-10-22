@@ -1,4 +1,5 @@
-import { mapKeys, camelCase } from 'lodash'
+import { camelCase } from 'change-case'
+import mapKeys from 'lodash/mapKeys'
 import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, EvaluatorOutput } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -14,6 +15,8 @@ export const parseIfJson = (input: EvaluatorNode) => {
 export const isOperatorNode = (input: EvaluatorNode) =>
   input instanceof Object && 'operator' in input
 
+// Convert to camelCase but *don't* remove stand-alone punctuation as they may
+// be valid operators (e.g. "+", "?")
 const standardiseOperatorName = (name: string) => {
   const camelCaseName = camelCase(name)
   return camelCaseName ? camelCaseName : name
