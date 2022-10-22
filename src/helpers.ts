@@ -1,5 +1,4 @@
 import { camelCase } from 'change-case'
-import mapKeys from 'lodash/mapKeys'
 import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, EvaluatorOutput } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -46,9 +45,22 @@ export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
   expression: CombinedOperatorNode
 ): CombinedOperatorNode =>
-  mapKeys(expression, (_, key: string) =>
+  mapObjectKeys(expression, (key: string) =>
     key in propertyAliases ? propertyAliases[key] : key
   ) as CombinedOperatorNode
+
+/*
+Convert object to a new object with keys changed by mapFunction
+Simplified version of lodash' `mapKeys` method
+*/
+const mapObjectKeys = <T>(
+  inputObj: { [key: string]: T },
+  mapFunction: (key: string) => string
+): { [key: string]: T } => {
+  const keyVals = Object.entries(inputObj)
+  const mappedKeys = keyVals.map(([key, value]) => [mapFunction(key), value])
+  return Object.fromEntries(mappedKeys)
+}
 
 /*
 Checks Evaluator node for missing required properties based on operator type
