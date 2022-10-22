@@ -208,11 +208,11 @@ test('GraphQL - Get repo info using partial url and updated options, requires au
                 }
               }
             }`,
-    variables: { repoName: 'expression-evaluator' },
+    variables: { repoName: 'fig-tree' },
     returnNode: 'viewer.repository.description',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('Module to evaluate JSON-structured expression')
+    expect(result).toBe('A custom expression tree evaluator')
   })
 })
 

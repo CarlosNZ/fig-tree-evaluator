@@ -11,6 +11,9 @@ import {
   Select,
   Textarea,
   Spinner,
+  HStack,
+  VStack,
+  Link,
 } from '@chakra-ui/react'
 import EvaluatorDev from './fig-tree/FigTreeEvaluator'
 import EvaluatorPublished from 'expression-evaluator'
@@ -147,91 +150,104 @@ function App() {
         updateOptions={updateOptions}
         modalState={{ modalOpen, setModalOpen }}
       />
-      <Box w={'33%'} h={'100%'} p={2}>
-        <Heading>Local state objects</Heading>
-        <Flex gap={2} justifyContent="flex-start" my={3}>
-          <Button colorScheme="blue" onClick={() => prettifyInput('objects')}>
-            Prettify
-          </Button>
-          <Button colorScheme="blue" onClick={() => compactInput('objects')}>
-            Compact
-          </Button>
-          <Checkbox
-            isChecked={configState.strictJsonObjects}
-            onChange={() => toggleCheckbox('strictJsonObjects')}
-          >
-            Quoted field names
-          </Checkbox>
-        </Flex>
-        <Textarea
-          h={'85%'}
-          fontFamily="monospace"
-          value={inputState.objects}
-          onChange={(e) => updateInput(e?.target?.value, 'objects')}
-        />
-        <Text color="red">{!isValidState.objects ? 'Invalid object input' : ''}</Text>
-      </Box>
-      <Box w={'33%'} h={'100%'} p={2}>
-        <Heading>Input</Heading>
-        <Flex gap={2} justifyContent="flex-start" my={3}>
-          <Button colorScheme="blue" onClick={() => prettifyInput('expression')}>
-            Prettify
-          </Button>
-          <Button colorScheme="blue" onClick={() => compactInput('expression')}>
-            Compact
-          </Button>
-          <Checkbox
-            isChecked={configState.strictJsonExpression}
-            onChange={() => toggleCheckbox('strictJsonExpression')}
-          >
-            Quoted field names
-          </Checkbox>
-        </Flex>
-        <Textarea
-          h={'85%'}
-          fontFamily="monospace"
-          value={inputState.expression}
-          onChange={(e) => updateInput(e?.target?.value, 'expression')}
-        />
-      </Box>
-      <Box w={'33%'} h={'100%'} p={2}>
-        <Heading>Output</Heading>
-        {process.env.NODE_ENV === 'development' && (
-          <Flex gap={4} alignItems="center" mb={6}>
-            <Text>Evaluator version:</Text>
-            <Select
-              id="evalSelect"
-              variant="outline"
-              w={'50%'}
-              value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
-              onChange={handleSelectEvaluator}
+      <VStack h="100%">
+        <HStack justifyContent="space-between" width="100%" mt={2} px={4}>
+          <Heading size="lg">fig-tree</Heading>
+          <Link href="https://github.com/CarlosNZ/fig-tree" isExternal color="#28659e">
+            https://github.com/CarlosNZ/fig-tree
+          </Link>
+        </HStack>
+        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
+          <Box h={'100%'} p={2} minW={375}>
+            <Heading size="md">Local state objects</Heading>
+            <Flex gap={2} justifyContent="flex-start" my={3}>
+              <Button colorScheme="blue" onClick={() => prettifyInput('objects')}>
+                Prettify
+              </Button>
+              <Button colorScheme="blue" onClick={() => compactInput('objects')}>
+                Compact
+              </Button>
+              <Checkbox
+                isChecked={configState.strictJsonObjects}
+                onChange={() => toggleCheckbox('strictJsonObjects')}
+              >
+                Quoted field names
+              </Checkbox>
+            </Flex>
+            <Textarea
+              h={'85%'}
+              fontFamily="monospace"
+              value={inputState.objects}
+              onChange={(e) => updateInput(e?.target?.value, 'objects')}
+            />
+            <Text color="red">{!isValidState.objects ? 'Invalid object input' : ''}</Text>
+          </Box>
+          <Box h={'100%'} p={2} minW={375}>
+            <Heading size="md">Input</Heading>
+            <Flex gap={2} justifyContent="flex-start" my={3}>
+              <Button colorScheme="blue" onClick={() => prettifyInput('expression')}>
+                Prettify
+              </Button>
+              <Button colorScheme="blue" onClick={() => compactInput('expression')}>
+                Compact
+              </Button>
+              <Checkbox
+                isChecked={configState.strictJsonExpression}
+                onChange={() => toggleCheckbox('strictJsonExpression')}
+              >
+                Quoted field names
+              </Checkbox>
+            </Flex>
+            <Textarea
+              h={'85%'}
+              fontFamily="monospace"
+              value={inputState.expression}
+              onChange={(e) => updateInput(e?.target?.value, 'expression')}
+            />
+          </Box>
+          <Box h={'100%'} p={2} minW={375} maxW="33%">
+            <Heading size="md">Output</Heading>
+            <Flex
+              gap={4}
+              alignItems="center"
+              mb={6}
+              style={{ visibility: process.env.NODE_ENV === 'development' ? 'visible' : 'hidden' }}
             >
-              <option value={'Development'}>Development</option>
-              <option value={'Published'}>Published</option>
-            </Select>
-          </Flex>
-        )}
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          border="1px solid"
-          borderColor="lightgrey"
-          borderRadius={3}
-          minHeight={20}
-          mx={5}
-          p={3}
-        >
-          {loading ? <Spinner /> : <ResultText result={result} />}
-        </Box>
-        <Button
-          style={{ position: 'fixed', bottom: 20, right: 20 }}
-          colorScheme="blue"
-          onClick={() => setModalOpen(true)}
-        >
-          Configuration
-        </Button>
-      </Box>
+              <Text>Evaluator version:</Text>
+              <Select
+                id="evalSelect"
+                variant="outline"
+                w={'50%'}
+                value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
+                onChange={handleSelectEvaluator}
+              >
+                <option value={'Development'}>Development</option>
+                <option value={'Published'}>Published</option>
+              </Select>
+            </Flex>
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              border="1px solid"
+              borderColor="lightgrey"
+              borderRadius={3}
+              minHeight={20}
+              mx={5}
+              p={3}
+            >
+              {loading ? <Spinner /> : <ResultText result={result} />}
+            </Box>
+            <Button
+              style={{ position: 'fixed', bottom: 20, right: 20 }}
+              colorScheme="blue"
+              onClick={() => setModalOpen(true)}
+            >
+              Configuration
+            </Button>
+          </Box>
+        </Flex>
+      </VStack>
     </Center>
   )
 }
