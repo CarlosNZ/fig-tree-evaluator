@@ -1,4 +1,4 @@
-import FigTreeEvaluator, { evaluateExpression } from '../FigTreeEvaluator'
+import FigTreeEvaluator, { evaluateExpression } from '../'
 
 const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 

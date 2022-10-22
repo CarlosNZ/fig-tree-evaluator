@@ -1,7 +1,7 @@
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 import { evaluateArray } from './_operatorUtils'
 import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../types'
-import { evaluateExpression } from '../FigTreeEvaluator'
+import { evaluateExpression } from '..'
 
 const requiredProperties = [] as const
 const operatorAliases = ['/', 'divide', '÷']

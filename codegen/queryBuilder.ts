@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs'
 import { EvaluatorNode, EvaluatorOutput, OperatorNodeUnion } from '../src/types'
-import FigTreeEvaluator from '../src/FigTreeEvaluator'
+import FigTreeEvaluator from '../src/'
 import { isOperatorNode } from '../src/helpers'
 
 const DEPTH_LIMIT = 30
