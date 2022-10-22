@@ -1,4 +1,4 @@
-import { GenericObject } from './fig-tree/types'
+import { GenericObject } from './fig-tree-evaluator/types'
 
 const looseJSON = require('loose-json')
 

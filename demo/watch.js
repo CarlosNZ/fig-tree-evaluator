@@ -3,5 +3,5 @@ const { execSync } = require('child_process')
 
 console.log('Relaunching...')
 
-execSync('cp -R ../src/* ./src/fig-tree')
-execSync('rimraf ./src/fig-tree/test ./src/fig-tree/dev')
+execSync('cp -R ../src/* ./src/fig-tree-evaluator')
+execSync('rimraf ./src/fig-tree-evaluator/test ./src/fig-tree-evaluator/dev')

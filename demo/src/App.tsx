@@ -15,7 +15,7 @@ import {
   VStack,
   Link,
 } from '@chakra-ui/react'
-import EvaluatorDev from './fig-tree/FigTreeEvaluator'
+import EvaluatorDev from './fig-tree-evaluator'
 import EvaluatorPublished from 'expression-evaluator'
 // CHANGE THIS AFTER FIRST PUBLISH
 // import evaluatorPublished from '@openmsupply/expression-evaluator'
@@ -31,7 +31,7 @@ import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
-import { FigTreeOptions } from './fig-tree/types'
+import { FigTreeOptions } from './fig-tree-evaluator/types'
 
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface()
@@ -152,9 +152,9 @@ function App() {
       />
       <VStack h="100%">
         <HStack justifyContent="space-between" width="100%" mt={2} px={4}>
-          <Heading size="lg">fig-tree</Heading>
-          <Link href="https://github.com/CarlosNZ/fig-tree" isExternal color="#28659e">
-            https://github.com/CarlosNZ/fig-tree
+          <Heading size="lg">fig-tree-evaluator</Heading>
+          <Link href="https://github.com/CarlosNZ/fig-tree-evaluator" isExternal color="#28659e">
+            https://github.com/CarlosNZ/fig-tree-evaluator
           </Link>
         </HStack>
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
