@@ -108,7 +108,7 @@ or\
 ## Usage
 
 ```js
-import FigTreeEvaluator from 'fig-tree'
+import FigTreeEvaluator from 'fig-tree-evaluator'
 
 // New evaluator instance
 const exp = new FigTreeEvaluator([ options ]) // See available options below
@@ -145,8 +145,15 @@ You can also retrieve the current options state at any time with:
 
 `exp.getOptions()`
 
-EVALUATE WITHOUT CONSTRUCTOR???
+It's also possible to run one-off evaluations by importing the evaluation method directly rather than using the constructor:
 
+```js
+import { evaluateExpression } from 'fig-tree-evaluator'
+
+evaluateExpression(expression, [options]).then((result) => {
+    // Do something with result
+}
+```
 
 ## Operator nodes
 
@@ -1206,11 +1213,11 @@ e.g.
 
 ## More examples
 
-More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/fig-tree).
+More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/fig-tree-evaluator).
 
 ## Development environment
 
-Github repo: https://github.com/CarlosNZ/fig-tree
+Github repo: https://github.com/CarlosNZ/fig-tree-evaluator
 
 After cloning:
 
@@ -1230,4 +1237,4 @@ Individual tests can be run by string matching the argument to the test filename
 
 ## Help, Feedback, Suggestions
 
-Please open an issue: https://github.com/CarlosNZ/fig-tree/issues
+Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
