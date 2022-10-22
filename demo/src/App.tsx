@@ -16,9 +16,7 @@ import {
   Link,
 } from '@chakra-ui/react'
 import EvaluatorDev from './fig-tree-evaluator'
-import EvaluatorPublished from 'expression-evaluator'
-// CHANGE THIS AFTER FIRST PUBLISH
-// import evaluatorPublished from '@openmsupply/expression-evaluator'
+import EvaluatorPublished from 'fig-tree-evaluator'
 import { OptionsModal } from './OptionsModal'
 import {
   getInitOptions,

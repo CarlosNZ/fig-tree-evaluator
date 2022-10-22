@@ -7,7 +7,7 @@
     "@emotion/styled": "^11",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "expression-evaluator": "file:..",
+    "fig-tree-evaluator": "^1.9.0",
     "framer-motion": "^6.3.6",
     "loose-json": "^1.1.2",
     "pg": "^8.7.3",
@@ -20,7 +20,9 @@
     "serve": "node ./src/express/server",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "predeploy": "yarn build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": [
@@ -53,6 +55,7 @@
     "@types/react": "^18.0.10",
     "@types/react-dom": "^18.0.5",
     "concurrently": "^7.2.1",
+    "gh-pages": "^4.0.0",
     "nodemon": "^2.0.16",
     "react-scripts": "5.0.1",
     "typescript": "^4.7.2"

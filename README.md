@@ -6,7 +6,7 @@ A typical use case would be for evaluating **configuration** files, where you ne
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
 
-[**Demo/Playground**](LINK)
+[**Demo/Playground**](https://carlosnz.github.io/fig-tree-evaluator/)
 
 ## Contents <!-- omit in toc -->
 <!-- TOC -->
@@ -97,7 +97,7 @@ Which would be represented diagramatically with the following expression tree:
 
 ![Example 2](/docs/img/Example_1.png)
 
-A playground for building and testing expressions is available [here](LINK)
+A playground for building and testing expressions is available [here](https://carlosnz.github.io/fig-tree-evaluator/)
 
 ## Install
 
