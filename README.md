@@ -1,8 +1,8 @@
-# fig-tree
+# fig-tree-evaluator
 
-**Fig-tree** is a module to evaluate JSON-structured expression trees. 
+**FigTree Evaluator** is a module to evaluate JSON-structured expression trees. 
 
-A typical use case would be for evaluating configuration files, where you need to store dynamic values or arbitrary logic without exposing executable code to users. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
+A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
 
