@@ -47,6 +47,8 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 - [Development environment](#development-environment)
 - [Tests](#tests)
 - [Help, Feedback, Suggestions](#help-feedback-suggestions)
+- [Changelog](#changelog)
+- [Credit](#credit)
 
 <!-- /TOC -->
 ## The basics
@@ -1227,6 +1229,8 @@ After cloning:
 
 `yarn demo` -- launch a local version of the demo playground in your browser for building and testing expressions
 
+`yarn dev` -- execute anything in `/dev/playground.ts`. Use for testing/debugging.
+
 ## Tests
 
 There is a comprehensive [Jest](https://jestjs.io/) test suite for all aspects of fig-tree. To run all tests:
@@ -1240,3 +1244,20 @@ Individual tests can be run by string matching the argument to the test filename
 ## Help, Feedback, Suggestions
 
 Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
+
+## Changelog
+
+- **v2.0.0**: Re-write as stand-alone package. Major improvements include:
+  -  more [operators](#operator-reference)
+  -  operator (and property) [aliases](#operator--property-aliases)
+  -  more appropriately-named properties associated with each operator (as opposed to a single `children` array)
+  -  class-based Evaluator instances
+  -  runtime type-checking
+  -  better error handling and error reporting
+  -  more flexible output conversion
+  -  more well-organised codebase
+- **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvments, but should be 99% backwards compatible.
+
+
+## Credit
+Icon: Tree by ka reemov from <a href="https://thenounproject.com/icon/tree-2665898/" target="_blank" title="Tree Icon">Noun Project</a>
