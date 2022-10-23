@@ -14,6 +14,7 @@ import {
   HStack,
   VStack,
   Link,
+  Image,
 } from '@chakra-ui/react'
 import EvaluatorDev from './fig-tree-evaluator'
 import EvaluatorPublished from 'fig-tree-evaluator'
@@ -30,6 +31,7 @@ import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
 import { FigTreeOptions } from './fig-tree-evaluator/types'
+import logo from './img/fig_tree_evaluator_logo_512.png'
 
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface()
@@ -149,11 +151,26 @@ function App() {
         modalState={{ modalOpen, setModalOpen }}
       />
       <VStack h="100%">
-        <HStack justifyContent="space-between" width="100%" mt={2} px={4}>
-          <Heading size="lg">fig-tree-evaluator</Heading>
-          <Link href="https://github.com/CarlosNZ/fig-tree-evaluator" isExternal color="#28659e">
-            https://github.com/CarlosNZ/fig-tree-evaluator
-          </Link>
+        <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
+          <Image src={logo} h="100%" />
+          <VStack align="flex-end">
+            <Link
+              href="https://github.com/CarlosNZ/fig-tree-evaluator"
+              isExternal
+              color="#28659e"
+              fontSize="sm"
+            >
+              https://github.com/CarlosNZ/fig-tree-evaluator
+            </Link>
+            <Link
+              href="https://www.npmjs.com/package/fig-tree-evaluator"
+              isExternal
+              color="#28659e"
+              fontSize="sm"
+            >
+              https://www.npmjs.com/package/fig-tree-evaluator
+            </Link>
+          </VStack>
         </HStack>
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
           <Box h={'100%'} p={2} minW={375}>

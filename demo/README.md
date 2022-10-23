@@ -1,3 +1,3 @@
-# expression-evaluate-gui
+# fig-tree-evaluator demo app
 
-UI for building and testing expressions for `expressionEvaluate` module
+Web UI for building and testing expressions for `fig-tree-evaluator` module
