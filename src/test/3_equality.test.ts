@@ -71,6 +71,118 @@ test('Equality (booleans, nested, not equal)', () => {
   })
 })
 
+test('Equality (objects)', () => {
+  const expression = {
+    operator: '=',
+    values: [
+      {
+        user: {
+          id: 2,
+          firstName: 'Steve',
+          lastName: 'Rogers',
+          title: 'The First Avenger',
+        },
+        organisation: { id: 1, name: 'The Avengers', category: 'Superheroes' },
+        form: { q1: 'Thor', q2: 'Asgard' },
+        form2: { q1: 'Company Registration', q2: 'XYZ Chemicals' },
+        application: {
+          questions: { q1: 'What is the answer?', q2: 'Enter your name' },
+        },
+      },
+      {
+        operator: '+',
+        values: [
+          {
+            user: {
+              id: 2,
+              firstName: 'Steve',
+              lastName: 'Rogers',
+              title: 'The First Avenger',
+            },
+          },
+          {
+            organisation: { id: 1, name: 'The Avengers', category: 'Superheroes' },
+            form: { q1: 'Thor', q2: 'Asgard' },
+            form2: { q1: 'Company Registration', q2: 'XYZ Chemicals' },
+            application: {
+              questions: { q1: 'What is the answer?', q2: 'Enter your name' },
+            },
+          },
+        ],
+      },
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Equality (objects, not matching)', () => {
+  const expression = {
+    operator: '=',
+    values: [
+      {
+        user: {
+          id: 2,
+          firstName: 'Steve',
+          lastName: 'Rogers',
+          title: 'The First Avenger',
+        },
+        organisation: { id: 1, name: 'The Avengers', category: 'Superheroes' },
+        form: { q1: 'Thor', q2: 'Asgard' },
+        form2: { q1: 'Company Registration', q2: 'XYZ Chemicals' },
+        application: {
+          questions: { q1: 'What is the answer?', q2: 'Enter your name' },
+        },
+      },
+      {
+        user: {
+          id: 2,
+          firstName: 'Steve',
+          lastName: 'Rogers',
+          title: 'The First Avenger',
+        },
+        organisation: { id: 1, name: 'The Avengers', category: 'Superheroes' },
+        form: { q1: 'Thor', q2: 'Asgard' },
+        form2: { q1: 'Company Application', q2: 'XYZ Chemicals' },
+        application: {
+          questions: { q1: 'What is the answer?', q2: 'Enter your name' },
+        },
+      },
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Equality (arrays, multiple)', () => {
+  const expression = {
+    operator: '=',
+    values: [
+      [1, 2, 3, { propOne: 'ONE' }],
+      [1, 2, 3, { propOne: 'ONE' }],
+      { operator: '+', type: 'array', children: [1, 2, 3, { propOne: 'ONE' }] },
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Equality (arrays, not matching)', () => {
+  const expression = {
+    operator: '=',
+    values: [
+      [1, 2, 3, { propOne: 'ONE' }],
+      [1, 2, 3, { propOne: 'ONE', propTwo: 'TWO' }],
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(false)
+  })
+})
+
 // NOT EQUAL
 
 test('Inequality (numbers)', () => {

@@ -60,6 +60,7 @@ export interface FigTreeOptions {
   baseEndpoint?: string
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
+  nullEqualsUndefined?: boolean
   allowJSONStringInput?: boolean
   skipRuntimeTypeCheck?: boolean
 }

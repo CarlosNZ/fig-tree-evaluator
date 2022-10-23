@@ -140,6 +140,7 @@ The `options` parameter is an object with the following available properties (al
 - `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encoutered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
+- `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
 
 As mentioned above, `options` can be provided as part of the constructor as part of each seperate evaluation. You can also change the options permanently for a given evaluator instance with:
 
@@ -297,7 +298,8 @@ Aliases: `=`, `eq`, `equal`, `equals`
 
 #### Properties
 
-- `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `==` operator
+- `values`<sup>*</sup>: (array) -- any number of elements; will be compared for strict equality. This includes simple types as well as deep equality of objects and arrays.
+- `nullEqualsUndefined`: (boolean, default `false`) -- there are times when it is convenient for `null` to be considered equal to `undefined`. If this is desiered, set this property to `true`, otherwise all equality checks will be "strict" equality. If you find that you want this setting enabled globally, then you can set it in the overall [evaluator options](#available-options) instead of having to add this additional property to every equality expression.
 
 e.g.
 ```js
@@ -319,7 +321,8 @@ Aliases: `!=`, `!`, `ne`, `notEqual`
 
 #### Properties
 
-- `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `!=` operator
+- `values`<sup>*</sup>: (array) -- any number of elements; will be compared for inequality. This includes simple types as well as deep comparison of objects and arrays.
+- `nullEqualsUndefined`: (boolean, default `false`) -- as [above](#equal)
 
 e.g.
 ```js
