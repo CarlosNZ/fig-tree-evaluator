@@ -1250,6 +1250,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+
+- **v2.0.1**: Add deep equality comparison for objects/arrayr in =/!= operators
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)

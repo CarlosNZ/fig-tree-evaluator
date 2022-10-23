@@ -9,7 +9,7 @@
     "@emotion/styled": "^11",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "fig-tree-evaluator": "^2.0.0",
+    "fig-tree-evaluator": "^2.0.1",
     "framer-motion": "^6.3.6",
     "loose-json": "^1.1.2",
     "pg": "^8.7.3",
