@@ -170,7 +170,6 @@ Each operator has a selections of input properties associated with it, some requ
     condition: <boolean>, // or fig-tree expression that returns boolean
     valueIfTrue: <someValue>,
     valueIfFalse: <someOtherValue>
-
 }
 ```
 
@@ -201,7 +200,7 @@ Most of the time named properties is preferable; however there are situations wh
 In each operator node, as well as the operator-specific properties, the following two optional properties can be provided:
 
 - `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
-- `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](LINK) to see the outcome of applying different `outputType` values to various results.
+- `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) to see the outcome of applying different `outputType` values to various results.
 
 Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties.
 
@@ -1250,6 +1249,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+
+- **v2.0.1**: Add deep equality comparison for objects/arrayr in =/!= operators
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)
