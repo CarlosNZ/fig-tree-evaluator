@@ -15,6 +15,7 @@ const exp = new FigTreeEvaluator({
       questions: { q1: 'What is the answer?', q2: 'Enter your name' },
     },
   },
+  nullEqualsUndefined: true,
 })
 
 // General errors
@@ -149,7 +150,7 @@ test('REGEX - Fallback', () => {
   })
 })
 
-// // Obj Properties errors tested in 7_objectProperties.test.ts
+// Obj Properties errors tested in 7_objectProperties.test.ts
 
 test('API - Fallback', () => {
   const expression = {
@@ -208,7 +209,7 @@ test('FALLBACK - multiple bubble up and join', () => {
   })
 })
 
-// // Edge cases
+// Edge cases
 
 test('Loose equality - null == undefined', () => {
   const expression = {
@@ -220,7 +221,18 @@ test('Loose equality - null == undefined', () => {
   })
 })
 
-// // Fallback can be evaluated too!
+test('Loose equality - null !== undefined', () => {
+  const expression = {
+    operator: '=',
+    values: [null, undefined],
+    nullEqualsUndefined: false,
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(false)
+  })
+})
+
+// Fallback can be evaluated too!
 test('Fallback is an operator node', () => {
   const expression = {
     operator: 'get',
