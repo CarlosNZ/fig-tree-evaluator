@@ -846,11 +846,6 @@ e.g.
 `children` array: `[value, delimiter]`  
 (`trimWhiteSpace` and `excludeTrailing` not available, since array can only support one optional parameter)
 
-- `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
-- `parameterKeys`: an array of strings representing the keys of any query parameters
-- `...values`: one value for each key specified in `parameterKeys`
-- `returnProperty` (optional): as above
-
 ---
 ### GET
 
