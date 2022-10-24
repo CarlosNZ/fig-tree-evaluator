@@ -3,6 +3,7 @@ import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
+import { mergeOptions } from './helpers'
 
 class FigTreeEvaluator {
   private options: FigTreeOptions
@@ -22,12 +23,13 @@ class FigTreeEvaluator {
 
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
     // Update options from current call if specified
-    const instanceOptions = { ...this.options, ...options }
+    const currentOptions = mergeOptions(this.options, options)
+
     return await evaluatorFunction(expression, {
-      options: instanceOptions,
+      options: currentOptions,
       operators: this.operators,
       operatorAliases: this.operatorAliases,
-      typeChecker: instanceOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
     })
   }
 

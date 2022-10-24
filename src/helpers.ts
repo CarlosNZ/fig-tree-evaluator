@@ -1,5 +1,12 @@
 import { camelCase } from 'change-case'
-import { OutputType, EvaluatorNode, CombinedOperatorNode, Operator, EvaluatorOutput } from './types'
+import {
+  OutputType,
+  EvaluatorNode,
+  CombinedOperatorNode,
+  Operator,
+  EvaluatorOutput,
+  FigTreeOptions,
+} from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
   if (typeof input !== 'string') return input
@@ -75,6 +82,24 @@ export const checkRequiredNodes = (
   if (missingProps.length === 0) return false
   if (!('children' in expression)) return `Missing properties: ${missingProps}`
   return false
+}
+
+export const mergeOptions = (
+  origOptions: FigTreeOptions,
+  newOptions: FigTreeOptions
+): FigTreeOptions => {
+  const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
+  // Mostly we can just merge the options objects, but for "objects",
+  // "functions", and "headers", they  might need merging seperately so we
+  // preserve deep merging.
+  if (origOptions.objects || newOptions.objects)
+    combinedOptions.objects = { ...origOptions.objects, ...newOptions.objects }
+  if (origOptions.functions || newOptions.functions)
+    combinedOptions.functions = { ...origOptions.functions, ...newOptions.functions }
+  if (origOptions.headers || newOptions.headers)
+    combinedOptions.headers = { ...origOptions.headers, ...newOptions.headers }
+
+  return combinedOptions
 }
 
 export const convertOutputMethods: {
