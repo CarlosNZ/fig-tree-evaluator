@@ -41,14 +41,26 @@ test('Custom functions - double elements in an array, using properties', () => {
   })
 })
 
+// The following two tests are just for backwards compatibility with
+// configurations created with an older version of the evaluator
 test('Custom functions - fallback to a function on Objects not Functions option', () => {
   const expression = {
     operator: 'runFunction',
     functionPath: 'functions.square',
+    args: [88],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(7744)
+  })
+})
+test('Custom functions - "functions." is in path string', () => {
+  const expression = {
+    operator: 'runFunction',
+    functionPath: 'functions.fDouble',
     args: [8],
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe(64)
+    expect(result).toStrictEqual([16])
   })
 })
 

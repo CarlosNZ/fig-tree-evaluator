@@ -44,7 +44,13 @@ const evaluate = async (
 
   const { objects, functions } = config.options
   const func = (extractProperty(functions, functionPath, null) ??
-    extractProperty(objects, functionPath)) as Function
+    // Functions should always be referenced relative to the "functions"
+    // parameter in options. However, for backwards compatibility, we also check
+    // the "objects" path and paths that include the term "functions" itself.
+    // This is not documented as we don't want to perpetuate it, it's purely to
+    // ensure backwards compatibility.
+    extractProperty(objects, functionPath, null) ??
+    extractProperty(config.options, functionPath)) as Function
   return await func(...args)
 }
 
