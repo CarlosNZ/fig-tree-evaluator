@@ -1,13 +1,13 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.0.3",
+  "version": "2.0.4",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "files": [
     "build/**/*"
   ],
-  "repository": "git+https://github.com/CarlosNZ/fig-tree.git",
+  "repository": "git+https://github.com/CarlosNZ/fig-tree-evaluator.git",
   "author": "Carl Smith <5456533+CarlosNZ@users.noreply.github.com>",
   "license": "GPL-3.0",
   "devDependencies": {
@@ -39,7 +39,7 @@
     "object-property-extractor": "^1.0.3"
   },
   "bugs": {
-    "url": "https://github.com/CarlosNZ/fig-tree/issues"
+    "url": "https://github.com/CarlosNZ/fig-tree-evaluator/issues"
   },
-  "homepage": "https://github.com/CarlosNZ/fig-tree#readme"
+  "homepage": "https://github.com/CarlosNZ/fig-tree-evaluator#readme"
 }
