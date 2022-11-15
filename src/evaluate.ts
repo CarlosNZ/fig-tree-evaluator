@@ -8,6 +8,7 @@ import {
   parseIfJson,
   isOperatorNode,
   mapPropertyAliases,
+  evaluateNodeAliases,
   getOperatorName,
 } from './helpers'
 
@@ -44,6 +45,8 @@ export const evaluatorFunction = async (
     const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
 
     expression = mapPropertyAliases(propertyAliases, expression)
+
+    expression = await evaluateNodeAliases(expression, config)
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)

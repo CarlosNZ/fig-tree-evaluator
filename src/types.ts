@@ -79,6 +79,8 @@ export interface BaseOperatorNode {
   outputType?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
+  // For NodeAliases
+  [key: string]: EvaluatorNode
 }
 
 export type CombinedOperatorNode = BaseOperatorNode &

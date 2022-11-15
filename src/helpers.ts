@@ -1,4 +1,6 @@
 import { camelCase } from 'change-case'
+import { evaluatorFunction } from './evaluate'
+import { zipArraysToObject } from './operators/_operatorUtils'
 import {
   OutputType,
   EvaluatorNode,
@@ -6,6 +8,8 @@ import {
   Operator,
   EvaluatorOutput,
   FigTreeOptions,
+  OperatorNodeUnion,
+  FigTreeConfig,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -67,6 +71,16 @@ const mapObjectKeys = <T>(
   const keyVals = Object.entries(inputObj)
   const mappedKeys = keyVals.map(([key, value]) => [mapFunction(key), value])
   return Object.fromEntries(mappedKeys)
+}
+
+export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
+  const aliasKeys = Object.keys(expression).filter((key) => /^\$.+/.test(key))
+  if (aliasKeys.length === 0) return expression
+
+  const evaluations: Promise<EvaluatorOutput>[] = []
+  aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
+
+  return { ...expression, ...zipArraysToObject(aliasKeys, await Promise.all(evaluations)) }
 }
 
 /*
