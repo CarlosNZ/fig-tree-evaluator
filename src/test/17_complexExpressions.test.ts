@@ -96,6 +96,30 @@ test('"children" is an evaluator expression but doesn\'t return an array', () =>
 
 // Mother of all expressions
 const expression = {
+  $pass: {
+    operator: 'passThru',
+    value: {
+      operator: 'split',
+      value: 'robot, ,fury',
+      delimiter: ',',
+      trimWhitespace: false,
+    },
+    type: 'number',
+  },
+  $country: {
+    operator: 'API',
+    children: [
+      {
+        operator: '+',
+        children: ['https://restcountries.com/v3.1/name/', 'cuba'],
+      },
+      { operator: 'split', value: 'fullText, fields', delimiter: ',' },
+      true,
+      'name,capital,flag',
+      'flag',
+    ],
+    type: 'string',
+  },
   operator: '+',
   values: [
     {
@@ -124,16 +148,7 @@ const expression = {
               ],
             },
             { operator: '_', _: ['civil war'], type: 'string' },
-            {
-              operator: 'passThru',
-              value: {
-                operator: 'split',
-                value: 'robot, ,fury',
-                delimiter: ',',
-                trimWhitespace: false,
-              },
-              type: 'number',
-            },
+            '$pass',
           ],
         },
         {
@@ -189,33 +204,19 @@ const expression = {
           operator: 'objectProperties',
           property: {
             operator: '+',
-            values: [
-              'longSentence.',
-              {
-                operator: 'API',
-                children: [
-                  {
-                    operator: '+',
-                    children: ['https://restcountries.com/v3.1/name/', 'cuba'],
-                  },
-                  { operator: 'split', value: 'fullText, fields', delimiter: ',' },
-                  true,
-                  'name,capital,flag',
-                  'flag',
-                ],
-                type: 'string',
-              },
-            ],
+            values: ['longSentence.', '$country'],
           },
         },
         {
+          $wordString: 'randomWords[3]',
           operator: 'objProps',
-          property: 'randomWords[3]',
+          property: '$wordString',
         },
       ],
     },
     '\n\n',
     {
+      $myFallback: 'Empire',
       operator: 'string_substitution',
       string:
         "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
@@ -239,7 +240,7 @@ const expression = {
         {
           operator: 'objProps',
           property: 'cant.find.this',
-          fallback: 'Empire',
+          fallback: '$myFallback',
         },
         { operator: 'functions', functionPath: 'functions.getPrincess', args: ['Leia'] },
       ],
