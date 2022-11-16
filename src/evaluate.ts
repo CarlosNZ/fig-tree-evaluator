@@ -10,6 +10,7 @@ import {
   mapPropertyAliases,
   evaluateNodeAliases,
   getOperatorName,
+  replaceAliasNodeValues,
 } from './helpers'
 
 // The core evaluation function used by FigTree
@@ -27,7 +28,7 @@ export const evaluatorFunction = async (
   }
 
   // Base case -- Non-operator nodes get returned unmodified
-  if (!isOperatorNode(expression)) return expression
+  if (!isOperatorNode(expression)) return replaceAliasNodeValues(expression, config)
 
   const { fallback } = expression
   const returnErrorAsString = options?.returnErrorAsString ?? false
@@ -46,7 +47,10 @@ export const evaluatorFunction = async (
 
     expression = mapPropertyAliases(propertyAliases, expression)
 
-    expression = await evaluateNodeAliases(expression, config)
+    config.resolvedAliasNodes = {
+      ...config.resolvedAliasNodes,
+      ...(await evaluateNodeAliases(expression, config)),
+    }
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)

@@ -73,14 +73,33 @@ const mapObjectKeys = <T>(
   return Object.fromEntries(mappedKeys)
 }
 
+// Returns true if value is of the form "$aliasString"
+const isAliasString = (value: string) => /^\$.+/.test(value)
+
+/*
+Identify any properties in the expression that represent "alias" nodes (i.e of
+the form `$alias`) and evaluate their values
+*/
 export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
-  const aliasKeys = Object.keys(expression).filter((key) => /^\$.+/.test(key))
+  const aliasKeys = Object.keys(expression).filter(isAliasString)
   if (aliasKeys.length === 0) return expression
 
   const evaluations: Promise<EvaluatorOutput>[] = []
   aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
 
-  return { ...expression, ...zipArraysToObject(aliasKeys, await Promise.all(evaluations)) }
+  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
+}
+
+/*
+If passed in value (probably a leaf node) is an "alias" key, then replace it
+with its resolved value.
+*/
+export const replaceAliasNodeValues = (
+  value: EvaluatorOutput,
+  { resolvedAliasNodes }: FigTreeConfig
+) => {
+  if (typeof value !== 'string' || !isAliasString(value)) return value
+  return resolvedAliasNodes?.[value] ?? value
 }
 
 /*
