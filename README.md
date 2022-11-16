@@ -43,6 +43,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [BUILD_OBJECT](#build_object)
   - [PASSTHRU](#passthru)
   - [CUSTOM_FUNCTIONS](#custom_functions)
+- [Alias Nodes](#alias-nodes)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
 - [Tests](#tests)
@@ -1212,6 +1213,77 @@ e.g.
 }
 // => 198
 ```
+
+## Alias Nodes
+
+If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference.
+
+For example, if you have the expression:
+```js
+{
+  operator: "?",
+  condition: {
+    operator: "!=",
+    values: [
+      {
+        operator: "GET",
+        children: [
+          "https://restcountries.com/v3.1/name/zealand",
+          [],
+          "name.common"
+        ],
+        type: "string"
+      },
+      null
+    ]
+  },
+  valueIfTrue: {
+    operator: "GET",
+    children: [
+      "https://restcountries.com/v3.1/name/zealand",
+      [],
+      "name.common"
+    ],
+    type: "string"
+  },
+  valueIfFalse: "Not New Zealand"
+}
+```
+
+The `GET` operation is used twice -- once to compare it for non-equality with `null`, and once again to return its value if `true`. This is particularly wasteful since it is a network request.
+
+We can create an alias for this whole node, resulting in this equivalent expression:
+```js
+{
+  $getCountry: {
+        operator: "GET",
+        children: [
+          "https://restcountries.com/v3.1/name/zealand",
+          [],
+          "name.common"
+        ],
+        type: "string"
+      },
+  operator: "?",
+  condition: {
+    operator: "!=",
+    values: [
+     "$getCountry",
+      null
+    ]
+  },
+  valueIfTrue: "$getCountry",
+  valueIfFalse: "Not New Zealand"
+}
+```
+
+Alias nodes are defined as part of the expression object, using `$` prefix to identify them as such, in this case `$getCountry`, which returns the result of the network request that was called twice in the previous expression.
+
+Alias nodes are evaluated first, then the results are substituted in whenever they are referenced elsewhere.
+
+Like all expression nodes, alias nodes can themselves contain complex expressions with their own alias nodes defined within. As long as the alias references are descendent nodes of the alias definition, they will be resolved.
+
+(If an alias reference does not having a matching definition, the reference value will just be returned as a literal string, e.g. `"$getCountry"`)
 
 ## More examples
 

@@ -96,9 +96,15 @@ test.concurrent('GET: Fetch a country with multiple params', () => {
         name: {
           common: 'Cuba',
           official: 'Republic of Cuba',
-          nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
+          nativeName: {
+            spa: {
+              official: 'República de Cuba',
+              common: 'Cuba',
+            },
+          },
         },
         capital: ['Havana'],
+        altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
         flag: '🇨🇺',
       },
     ])
@@ -117,9 +123,15 @@ test.concurrent('GET: Fetch a country with multiple params, using props', () => 
         name: {
           common: 'Cuba',
           official: 'Republic of Cuba',
-          nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
+          nativeName: {
+            spa: {
+              official: 'República de Cuba',
+              common: 'Cuba',
+            },
+          },
         },
         capital: ['Havana'],
+        altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
         flag: '🇨🇺',
       },
     ])
@@ -146,9 +158,15 @@ test.concurrent(
           name: {
             common: 'Cuba',
             official: 'Republic of Cuba',
-            nativeName: { spa: { official: 'República de Cuba', common: 'Cuba' } },
+            nativeName: {
+              spa: {
+                official: 'República de Cuba',
+                common: 'Cuba',
+              },
+            },
           },
           capital: ['Havana'],
+          altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
           flag: '🇨🇺',
         },
       ])

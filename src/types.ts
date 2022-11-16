@@ -70,6 +70,7 @@ export interface FigTreeConfig {
   operators: OperatorReference
   operatorAliases: { [key: string]: Operator }
   typeChecker: (...input: TypeCheckInput[]) => void
+  resolvedAliasNodes: { [key: string]: EvaluatorOutput }
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
@@ -79,6 +80,8 @@ export interface BaseOperatorNode {
   outputType?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
+  // For NodeAliases
+  [key: string]: EvaluatorNode
 }
 
 export type CombinedOperatorNode = BaseOperatorNode &

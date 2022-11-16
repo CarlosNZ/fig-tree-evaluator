@@ -30,6 +30,7 @@ class FigTreeEvaluator {
       operators: this.operators,
       operatorAliases: this.operatorAliases,
       typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      resolvedAliasNodes: {},
     })
   }
 

@@ -1,4 +1,6 @@
 import { camelCase } from 'change-case'
+import { evaluatorFunction } from './evaluate'
+import { zipArraysToObject } from './operators/_operatorUtils'
 import {
   OutputType,
   EvaluatorNode,
@@ -6,6 +8,8 @@ import {
   Operator,
   EvaluatorOutput,
   FigTreeOptions,
+  OperatorNodeUnion,
+  FigTreeConfig,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -67,6 +71,35 @@ const mapObjectKeys = <T>(
   const keyVals = Object.entries(inputObj)
   const mappedKeys = keyVals.map(([key, value]) => [mapFunction(key), value])
   return Object.fromEntries(mappedKeys)
+}
+
+// Returns true if value is of the form "$alias"
+const isAliasString = (value: string) => /^\$.+/.test(value)
+
+/*
+Identify any properties in the expression that represent "alias" nodes (i.e of
+the form `$alias`) and evaluate their values
+*/
+export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
+  const aliasKeys = Object.keys(expression).filter(isAliasString)
+  if (aliasKeys.length === 0) return expression
+
+  const evaluations: Promise<EvaluatorOutput>[] = []
+  aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
+
+  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
+}
+
+/*
+If passed-in value (probably a leaf node) is an "alias" key, then replace it
+with its resolved value.
+*/
+export const replaceAliasNodeValues = (
+  value: EvaluatorOutput,
+  { resolvedAliasNodes }: FigTreeConfig
+) => {
+  if (typeof value !== 'string' || !isAliasString(value)) return value
+  return resolvedAliasNodes?.[value] ?? value
 }
 
 /*
