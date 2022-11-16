@@ -73,7 +73,7 @@ const mapObjectKeys = <T>(
   return Object.fromEntries(mappedKeys)
 }
 
-// Returns true if value is of the form "$aliasString"
+// Returns true if value is of the form "$alias"
 const isAliasString = (value: string) => /^\$.+/.test(value)
 
 /*
@@ -91,7 +91,7 @@ export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config:
 }
 
 /*
-If passed in value (probably a leaf node) is an "alias" key, then replace it
+If passed-in value (probably a leaf node) is an "alias" key, then replace it
 with its resolved value.
 */
 export const replaceAliasNodeValues = (
