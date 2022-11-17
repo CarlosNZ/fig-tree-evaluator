@@ -24,7 +24,7 @@ import {
   Checkbox,
 } from '@chakra-ui/react'
 import { JSONstringify, filterObjectRecursive } from './helpers'
-import { FigTreeOptions } from './fig-tree-evaluator/types'
+import { FigTreeOptions } from './fig-tree-evaluator/src/types'
 
 const resetFormState = (options: FigTreeOptions) => {
   const baseEndpoint = options.baseEndpoint

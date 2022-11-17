@@ -18,7 +18,7 @@
     "web-vitals": "^2.1.0"
   },
   "scripts": {
-    "start": "rimraf ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
+    "start": "rimraf ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator/src && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
     "serve": "node ./src/express/server",
     "build": "react-scripts build",
     "test": "react-scripts test",
