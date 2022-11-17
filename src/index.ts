@@ -5,6 +5,10 @@ import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { mergeOptions } from './helpers'
 
+const pkg = require('../package.json')
+
+export const getVersion = () => pkg.version
+
 class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference
@@ -41,6 +45,8 @@ class FigTreeEvaluator {
   public updateOptions(options: FigTreeOptions) {
     this.options = { ...this.options, ...options }
   }
+
+  public getVersion = getVersion
 }
 
 export default FigTreeEvaluator
