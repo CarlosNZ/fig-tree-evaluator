@@ -123,7 +123,7 @@ export const mergeOptions = (
 ): FigTreeOptions => {
   const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
   // Mostly we can just merge the options objects, but for "objects",
-  // "functions", and "headers", they  might need merging seperately so we
+  // "functions", and "headers", they  might need merging separately so we
   // preserve deep merging.
   if (origOptions.objects || newOptions.objects)
     combinedOptions.objects = { ...origOptions.objects, ...newOptions.objects }
@@ -136,7 +136,7 @@ export const mergeOptions = (
 }
 
 export const convertOutputMethods: {
-  [key in OutputType]: <T>(value: T) => EvaluatorOutput | T[]
+  [key in OutputType]: (value: EvaluatorOutput) => EvaluatorOutput | EvaluatorOutput[]
 } = {
   number: (value: EvaluatorOutput) => extractNumber(value),
   string: (value: EvaluatorOutput) => String(value),
