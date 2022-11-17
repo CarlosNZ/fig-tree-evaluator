@@ -253,13 +253,14 @@ function App() {
             >
               {loading ? <Spinner /> : <ResultText result={result} />}
             </Box>
-            <Button
-              style={{ position: 'fixed', bottom: 20, right: 20 }}
-              colorScheme="blue"
-              onClick={() => setModalOpen(true)}
-            >
-              Configuration
-            </Button>
+            <Box style={{ position: 'fixed', bottom: 20, right: 20 }}>
+              <Button colorScheme="blue" onClick={() => setModalOpen(true)}>
+                Configuration
+              </Button>{' '}
+              <Text fontSize="xs" mb={1}>
+                fig-tree-evaluator v{evaluator.getVersion()}
+              </Text>
+            </Box>
           </Box>
         </Flex>
       </VStack>
