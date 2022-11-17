@@ -27,7 +27,8 @@ export const evaluatorFunction = async (
     expression = await evaluateArray(expression, config)
   }
 
-  // Base case -- Non-operator nodes get returned unmodified
+  // Base case -- Non-operator nodes get returned unmodified (or substituted if
+  // an alias reference)
   if (!isOperatorNode(expression)) return replaceAliasNodeValues(expression, config)
 
   const { fallback } = expression
@@ -47,6 +48,8 @@ export const evaluatorFunction = async (
 
     expression = mapPropertyAliases(propertyAliases, expression)
 
+    // Evaluate any alias nodes defined at this level and save them in "config"
+    // object so they get accumulated as we progress down the tree
     config.resolvedAliasNodes = {
       ...config.resolvedAliasNodes,
       ...(await evaluateNodeAliases(expression, config)),
