@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.1.1",
+  "version": "2.1.4",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -30,7 +30,8 @@
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
     "build": "yarn generate && rimraf ./lib && tsc",
     "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
-    "demo": "cd demo && yarn start"
+    "demo": "cd demo && yarn start",
+    "prepublish": "yarn build"
   },
   "dependencies": {
     "axios": "^0.27.2",
