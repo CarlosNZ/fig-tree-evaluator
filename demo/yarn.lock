@@ -5367,10 +5367,10 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.1.1:
-  version "2.1.1"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.1.1.tgz#9736381e9d5bf07ee9320986f3dc0a109339a3b8"
-  integrity sha512-QcfliXeu2k2DGQ8OgGNkvvKqGyUhKxmcQdWe4hC7leEf1PSgNIOXuIfX/3KykTOgRty+bo8VHim1y/hcnAXGIA==
+fig-tree-evaluator@^2.1.4:
+  version "2.1.4"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.1.4.tgz#d5076d0e312ea077773d6843c555788754385aca"
+  integrity sha512-nxraKJat06JHuYJQlO/z+yi/QhSXQR8POSrneoGd2o7QvLPnzd/5fA4k63pBh7cxxUotZ835zgGN0QiVAZDQDg==
   dependencies:
     axios "^0.27.2"
     change-case "^4.1.2"
@@ -5508,9 +5508,9 @@ follow-redirects@^1.0.0:
   integrity sha512-aExlJShTV4qOUOL7yF1U5tvLCB0xQuudbf6toyYA0E/acBNw71mvjFTnLaRp50aQaYocMR0a/RMMBIHeZnGyjQ==
 
 follow-redirects@^1.14.9:
-  version "1.15.1"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.1.tgz#0ca6a452306c9b276e4d3127483e29575e207ad5"
-  integrity sha512-yLAMQs+k0b2m7cVxpS1VKJVvoz7SS9Td1zss3XRwXj+ZDH00RJgnuLx7E44wx02kQLrdM3aOOy+FpzS7+8OizA==
+  version "1.15.2"
+  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.2.tgz#b460864144ba63f2681096f274c4e57026da2c13"
+  integrity sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==
 
 fork-ts-checker-webpack-plugin@^6.5.0:
   version "6.5.2"
