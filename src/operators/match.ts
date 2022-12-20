@@ -1,4 +1,5 @@
 import { evaluateArray, singleArrayToObject } from './_operatorUtils'
+import { evaluatorFunction } from '../evaluate'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -10,7 +11,7 @@ import {
 
 const requiredProperties = ['matchExpression'] as const
 const operatorAliases = ['match', 'switch']
-const propertyAliases = { arms: 'branches', match: 'matchExpression' }
+const propertyAliases = { arms: 'branches', outcomes: 'branches', match: 'matchExpression' }
 
 export type MatchNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
@@ -31,26 +32,34 @@ const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<E
     {
       name: 'branches',
       value: branches,
-      expectedType: ['object', 'array'],
+      expectedType: ['object', 'array', 'undefined'],
     }
   )
 
-  const branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches
+  const branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches ?? {}
 
-  console.log('branchObject', branchObject)
+  if (matchExpression in branchObject)
+    return await evaluatorFunction(branchObject[matchExpression], config)
 
-  if (matchExpression in branchObject) return branchObject[matchExpression]
+  // We need to handle "fallback" separately in this case, as the "branchObject"
+  // is not evaluated as a whole, but only for each branch/key as required
+  // (otherwise we'd be evaluating a lot of nodes that are never used)
+  if ('fallback' in branchObject) return await evaluatorFunction(branchObject.fallback, config)
 
-  if (matchExpression in expression) return expression[matchExpression]
+  if (matchExpression in expression)
+    return await evaluatorFunction(expression[matchExpression], config)
 
   throw new Error(`No match found for ${matchExpression}`)
 }
 
-const parseChildren = (expression: CombinedOperatorNode): MatchNode => {
-  const [match, ...elements] = expression.children as EvaluatorNode[]
-  const branches = singleArrayToObject(elements)
+const parseChildren = async (
+  expression: CombinedOperatorNode,
+  config: FigTreeConfig
+): Promise<MatchNode> => {
+  const [matchExpression, ...elements] = expression.children as EvaluatorNode[]
+  const branches = singleArrayToObject(await evaluateArray(elements, config))
 
-  return { ...expression, match, branches }
+  return { ...expression, matchExpression, branches }
 }
 
 export const MATCH: OperatorObject = {

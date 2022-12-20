@@ -12,6 +12,7 @@ export const evaluateArray = async (
   if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorNode[]
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
+
 /*
 "Zips" two arrays into an object, where the first array provides 
 the keys, and the second becomes the values
