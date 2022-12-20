@@ -1,6 +1,13 @@
 import { truncateString } from './helpers'
 
-type ExpectedType = 'string' | 'boolean' | 'number' | 'array' | 'undefined' | 'null' | 'object'
+export type ExpectedType =
+  | 'string'
+  | 'boolean'
+  | 'number'
+  | 'array'
+  | 'undefined'
+  | 'null'
+  | 'object'
 
 export type TypeCheckInput = {
   value: unknown

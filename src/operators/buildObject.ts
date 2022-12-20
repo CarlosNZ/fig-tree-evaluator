@@ -29,7 +29,7 @@ const evaluate = async (
 ): Promise<EvaluatorOutput> => {
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
     const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
-    config.typeChecker({ name: 'key', value: key, expectedType: 'string' })
+    config.typeChecker({ name: 'key', value: key, expectedType: ['string', 'number', 'boolean'] })
     return [key, value]
   }
 
