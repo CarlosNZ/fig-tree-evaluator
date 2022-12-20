@@ -59,7 +59,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 
 Fig-tree evaluates expressions structured in a JSON/Javascript object [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
 
-A wide range of [operators are available](#operator-reference), but [custom fuctions](#custom_functions) can be added to your implementation if you wish to extend the base functionality.
+A wide range of [operators are available](#operator-reference), but [custom functions](#custom_functions) can be added to your implementation if you wish to extend the base functionality.
 
 For example:
 
@@ -1255,6 +1255,8 @@ Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `f
 - `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>: (string) -- path to where the function resides in the `options.functions` object
 - `args` (or `arguments`, `variables`): (array) -- input arguments for the function
 
+Custom functions provide a mechanism to extend the functionality of the FigTree evaluator to suit almost any requirements.
+
 Custom functions are stored in the evaluator `options`, in the `functions` property.
 
 For examples, consider the following fig-tree instance:
@@ -1307,7 +1309,7 @@ e.g.
 
 ## Alias Nodes
 
-If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference.
+If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference. This allows for a simpler expression (reduces duplication) as well as a performance improvement, since the aliased node is only evaluated once, providing a simple [memoization](https://en.wikipedia.org/wiki/Memoization) mechanism.
 
 For example, if you have the expression:
 ```js
