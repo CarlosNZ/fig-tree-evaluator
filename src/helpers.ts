@@ -152,9 +152,9 @@ export const errorMessage = (err: unknown) => (err as Error).message
 const extractNumber = (input: EvaluatorOutput) => {
   if (typeof input !== 'string') return Number.isNaN(Number(input)) ? input : Number(input)
 
-  // Optional negative sign, optional digit, optional decimal point, then 1 or
-  // more digits
-  const pattern = new RegExp(/-?\d?\.?\d+/gm)
+  // Optional negative sign, optional digit(s), optional decimal point, then 1
+  // or more digits
+  const pattern = new RegExp(/-?\d*\.?\d+/gm)
 
   const numberMatch = input.match(pattern)
   if (!numberMatch) return 0
