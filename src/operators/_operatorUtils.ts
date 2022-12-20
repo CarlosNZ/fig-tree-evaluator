@@ -30,7 +30,7 @@ export const zipArraysToObject = <T>(
 Interleaves a single array into an object, where items 0, 2, 4... become the
 keys and items 1, 3, 5... become the values.
 E.g. [ "one", 100, "two": "a value", "three", true ]
-  => { one: 100, two, "a value", 3: true }
+  => { one: 100, two: "a value", 3: true }
 */
 export const singleArrayToObject = (elements: any[]) => {
   if (elements.length % 2 !== 0)

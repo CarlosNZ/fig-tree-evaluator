@@ -1139,7 +1139,7 @@ e.g.
 
 Aliases: `match`, `switch`
 
-The "match" operator is equivalent to a "switch"/"case" in Javascript. It is similar to the ["conditional"](#conditional) operator, but can handle matching to any number of values, not just `true`/`false`. This provides a way to construct [**decision trees**](https://en.wikipedia.org/wiki/Decision_tree).
+The "match" operator is equivalent to a "switch"/"case" in Javascript. It is similar to the ["conditional"](#conditional) operator, but can handle matching to any number of values, not just `true`/`false`. This provides a way to construct elaborate [**decision trees**](https://en.wikipedia.org/wiki/Decision_tree).
 
 #### Properties
 
@@ -1217,7 +1217,7 @@ This expression could also be written as (with branch/case keys at the root leve
 The pairs of `key`/`value`s are constructed into the `branches` object, the same way the objects are built using `children` in the ["buildObject"](#build_object) operator.
 
 
-For an example of a complex decision tree implementation, which includes [aliases](#alias-nodes), fallbacks and a range of operators, see the "match" test case file (`20_match.test.ts`).
+For an example of a complex decision tree implementation, which includes [aliases](#alias-nodes), [fallbacks](#other-common-properties) and a range of operators, see the "match" test case file (`20_match.test.ts`).
 
 ----
 ### PASSTHRU
