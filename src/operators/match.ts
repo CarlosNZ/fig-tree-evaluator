@@ -11,7 +11,7 @@ import {
 
 const requiredProperties = ['matchExpression'] as const
 const operatorAliases = ['match', 'switch']
-const propertyAliases = { arms: 'branches', outcomes: 'branches', match: 'matchExpression' }
+const propertyAliases = { arms: 'branches', cases: 'branches', match: 'matchExpression' }
 
 export type MatchNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
