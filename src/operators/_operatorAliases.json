@@ -71,6 +71,8 @@
   "buildObject": "BUILD_OBJECT",
   "build": "BUILD_OBJECT",
   "object": "BUILD_OBJECT",
+  "match": "MATCH",
+  "switch": "MATCH",
   "customFunctions": "CUSTOM_FUNCTIONS",
   "customFunction": "CUSTOM_FUNCTIONS",
   "objectFunctions": "CUSTOM_FUNCTIONS",

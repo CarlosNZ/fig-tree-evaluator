@@ -6,6 +6,8 @@
 
 A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
 
+Another example would be to configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic.
+
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
 
 [**Demo/Playground**](https://carlosnz.github.io/fig-tree-evaluator/)
@@ -18,31 +20,32 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 - [Available options](#available-options)
 - [Operator nodes](#operator-nodes)
   - [Other common properties:](#other-common-properties)
-  - [Operator & Property Aliases](#operator--property-aliases)
+  - [Operator \& Property Aliases](#operator--property-aliases)
 - [Operator reference](#operator-reference)
   - [AND](#and)
   - [OR](#or)
   - [EQUAL](#equal)
-  - [NOT_EQUAL](#not_equal)
+  - [NOT\_EQUAL](#not_equal)
   - [PLUS](#plus)
   - [SUBTRACT](#subtract)
   - [MULTIPLY](#multiply)
   - [DIVIDE](#divide)
-  - [GREATER_THAN](#greater_than)
-  - [LESS_THAN](#less_than)
+  - [GREATER\_THAN](#greater_than)
+  - [LESS\_THAN](#less_than)
   - [COUNT](#count)
   - [CONDITIONAL](#conditional)
   - [REGEX](#regex)
-  - [OBJECT_PROPERTIES](#object_properties)
-  - [STRING_SUBSTITUTION](#string_substitution)
+  - [OBJECT\_PROPERTIES](#object_properties)
+  - [STRING\_SUBSTITUTION](#string_substitution)
   - [SPLIT](#split)
   - [GET](#get)
   - [POST](#post)
   - [GRAPHQL](#graphql)
-  - [PG_SQL](#pg_sql)
-  - [BUILD_OBJECT](#build_object)
+  - [PG\_SQL](#pg_sql)
+  - [BUILD\_OBJECT](#build_object)
+  - [MATCH](#match)
   - [PASSTHRU](#passthru)
-  - [CUSTOM_FUNCTIONS](#custom_functions)
+  - [CUSTOM\_FUNCTIONS](#custom_functions)
 - [Alias Nodes](#alias-nodes)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
@@ -1127,6 +1130,94 @@ e.g.
 }
 // => { one: 1, two: 2, Ned: 24 }
 ```
+
+----
+
+### MATCH
+
+*Return different values depending on a matching expression*
+
+Aliases: `match`, `switch`
+
+The "match" operator is equivalent to a "switch"/"case" in Javascript. It is similar to the ["conditional"](#conditional) operator, but can handle matching to any number of values, not just `true`/`false`. This provides a way to construct elaborate [**decision trees**](https://en.wikipedia.org/wiki/Decision_tree).
+
+#### Properties
+
+- `matchExpression` (or `match`)<sup>*</sup>: (string | number | boolean) -- a node that returns a value to be compared against possible cases.
+- `branches` (or `arms` or `cases`): (object) -- an object whose *keys* are compared against the `matchExpression`. The *value* of the matching key is returned.
+- `...branches` -- as an alternative to the `branches` object, matching key/values can be placed at the root of the node (see example)
+
+e.g.
+```js
+// Simple decision tree
+{
+  operator: 'match',
+  matchExpression: {
+    operator: 'objectProperties',
+    property: 'weather',
+  },
+  branches: {
+    sunny: {
+      operator: 'match',
+      match: {
+        operator: 'objectProperties',
+        property: 'humidity',
+      },
+      cases: { high: 'NO', normal: 'YES' },
+    },
+    cloudy: 'YES',
+  },
+  rainy: {
+    operator: 'match',
+    match: {
+      operator: 'objectProperties',
+      property: 'wind',
+    },
+    branches: { strong: 'NO', weak: 'YES' },
+  },
+}
+// With:
+// objects = { weather: "sunny", humidity: "high" } => "NO"
+// objects = { weather: "rainy", wind: "weak" } => "YES"
+
+```
+
+This expression could also be written as (with branch/case keys at the root level)"
+```js
+{
+  operator: 'match',
+  matchExpression: {
+    operator: 'objectProperties',
+    property: 'weather',
+  },
+  sunny: {
+    operator: 'match',
+    match: {
+      operator: 'objectProperties',
+      property: 'humidity',
+    },
+    high: 'NO',
+    normal: 'YES',
+  },
+  cloudy: 'YES',
+  rainy: {
+    operator: 'match',
+    match: {
+      operator: 'objectProperties',
+      property: 'wind',
+    },
+    strong: 'NO',
+    weak: 'YES',
+  },
+}
+```
+
+`children` array: `[matchExpression, key1, value1, key2, value2, ...]`
+
+The pairs of `key`/`value`s are constructed into the `branches` object, the same way the objects are built using `children` in the ["buildObject"](#build_object) operator.
+
+
+For an example of a complex decision tree implementation, which includes [aliases](#alias-nodes), [fallbacks](#other-common-properties) and a range of operators, see the "match" test case file (`20_match.test.ts`).
 
 ----
 ### PASSTHRU

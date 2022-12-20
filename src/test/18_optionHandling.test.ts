@@ -6,7 +6,7 @@ const exp = new FigTreeEvaluator({
 })
 
 // We need to make sure that options are merged correctly. This means that
-// "objects" ,"functions", and "headers" must be merged seperately at a deeper
+// "objects" ,"functions", and "headers" must be merged separately at a deeper
 // level than the main "options" object
 
 test('Check options objects get merged correctly', () => {

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
+import { typeCheck, ExpectedType } from '../typeCheck'
 import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig } from '../types'
 
 // Evaluate all child/property nodes simultaneously
@@ -11,6 +12,7 @@ export const evaluateArray = async (
   if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorNode[]
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
+
 /*
 "Zips" two arrays into an object, where the first array provides 
 the keys, and the second becomes the values
@@ -22,6 +24,35 @@ export const zipArraysToObject = <T>(
 ): { [K in typeof keys[number]]: T } => {
   const pairs = keys.map((key, index) => [key, values[index]])
   return Object.fromEntries(pairs)
+}
+
+/*
+Interleaves a single array into an object, where items 0, 2, 4... become the
+keys and items 1, 3, 5... become the values.
+E.g. [ "one", 100, "two": "a value", "three", true ]
+  => { one: 100, two: "a value", 3: true }
+*/
+export const singleArrayToObject = (elements: any[]) => {
+  if (elements.length % 2 !== 0)
+    throw new Error('Even number of children required to make key/value pairs')
+
+  const keys = elements.filter((_, index) => index % 2 === 0)
+  const result = typeCheck(
+    ...keys.map((key) => ({
+      value: key,
+      expectedType: ['string', 'number', 'boolean'] as ExpectedType[],
+    }))
+  )
+  if (result !== true) throw new Error(result)
+
+  const values = elements.filter((_, index) => index % 2 === 1)
+
+  const output: any = {}
+  keys.forEach((key, index) => {
+    output[key] = values[index]
+  })
+
+  return output
 }
 
 /*
