@@ -28,7 +28,7 @@
     "setup": "yarn install && cd demo && yarn install",
     "test": "jest",
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
-    "build": "yarn generate && rimraf ./lib && tsc",
+    "build": "yarn generate && rimraf ./build && tsc",
     "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
     "demo": "cd demo && yarn start",
     "prepublish": "yarn build"
