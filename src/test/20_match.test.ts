@@ -35,6 +35,23 @@ test('Switch with "branches" object', () => {
   })
 })
 
+test('Match with "branches" object built using buildObject', () => {
+  const expression = {
+    operator: 'match',
+    match: { operator: 'objectProperties', property: 'weather' },
+    branches: {
+      operator: 'buildObject',
+      properties: [
+        { key: 'sunny', value: { operator: '+', values: [2, 3, 4] } },
+        { key: 'rainy', value: { operator: '+', values: [9, 9, 9] } },
+      ],
+    },
+  }
+  return exp.evaluate(expression, { objects: state }).then((result: any) => {
+    expect(result).toBe(27)
+  })
+})
+
 test('Match with children, nested', () => {
   const expression = {
     operator: 'match',

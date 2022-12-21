@@ -18,7 +18,7 @@ import {
 
 const requiredProperties = ['query'] as const
 const operatorAliases = ['graphQl', 'graphql', 'gql']
-const propertyAliases = { endpoint: 'url', outputNode: 'returnNode', returnPropery: 'returnNode' }
+const propertyAliases = { endpoint: 'url', outputNode: 'returnNode', returnProperty: 'returnNode' }
 
 export type GraphQLNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
