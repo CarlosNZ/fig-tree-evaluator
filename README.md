@@ -4,7 +4,7 @@
 
 **FigTree Evaluator** is a module to evaluate JSON-structured expression trees. 
 
-A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code. For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
+A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
 
 Another example would be to configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic.
 
@@ -1410,8 +1410,15 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+- **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
+- **v2.2.0**:
+  - New "[Match](#match) operator (#61)
+  - Fix for regex incompatibility with Safari (#60)
+- **v2.1.5**: Demo updates (no changes to core evaluator)
+- **v2.1.4**: Upgrade dependencies
+- **v2.1.0**: [Alias nodes](#alias-nodes) (#57)
 - **v2.0.4**: Backwards compatibility for customFunctions (#53)
-- **v2.0.1**: Add deep equality comparison for objects/arrayr in =/!= operators
+- **v2.0.1**: Add deep equality comparison for objects/arrays in `=`/`!=` operators
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)
@@ -1421,7 +1428,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
   -  better error handling and error reporting
   -  more flexible output conversion
   -  more well-organised codebase
-- **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvments, but should be 99% backwards compatible.
+- **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvements, but should be 99% backwards compatible.
 
 
 ## Credit
