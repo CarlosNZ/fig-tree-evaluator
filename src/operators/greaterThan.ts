@@ -4,7 +4,7 @@ import { parseChildren, BasicExtendedNode } from './logicalAnd'
 
 const requiredProperties = ['values'] as const
 const operatorAliases = ['>', 'greaterThan', 'higher', 'larger']
-const aliasExtensions = [{ '>=': { strict: false } }] // To-do
+const aliasExtensions = [{ '>=': { strict: false } }] // To-do - Issue #22
 const propertyAliases = {}
 
 export type ComparatorNode = BasicExtendedNode & { strict?: boolean }

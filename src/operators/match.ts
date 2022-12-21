@@ -8,6 +8,7 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../types'
+import { isOperatorNode } from '../helpers'
 
 const requiredProperties = ['matchExpression'] as const
 const operatorAliases = ['match', 'switch']
@@ -18,10 +19,11 @@ export type MatchNode = {
 } & BaseOperatorNode
 
 const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
-  const [matchExpression, branches] = (await evaluateArray(
-    [expression.matchExpression, expression.branches],
-    config
-  )) as [string, any[] | { [key: string]: any }]
+  const matchExpression = (await evaluatorFunction(expression.matchExpression, config)) as
+    | string
+    | number
+
+  const branches = expression.branches
 
   config.typeChecker(
     {
@@ -36,14 +38,18 @@ const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<E
     }
   )
 
-  const branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches ?? {}
+  let branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches ?? {}
 
+  if (isOperatorNode(branchObject)) branchObject = await evaluatorFunction(branchObject, config)
+
+  // Unlike most operators, where we evaluate the entire node at once, in this
+  // one we only evaluate the *matching* branch to avoid unnecessary computation
+  // of unused branches
   if (matchExpression in branchObject)
     return await evaluatorFunction(branchObject[matchExpression], config)
 
-  // We need to handle "fallback" separately in this case, as the "branchObject"
-  // is not evaluated as a whole, but only for each branch/key as required
-  // (otherwise we'd be evaluating a lot of nodes that are never used)
+  // We need to handle "fallback" separately in this case, as the entire
+  // "branches" object won't be evaluated (as per previous comment)
   if ('fallback' in branchObject) return await evaluatorFunction(branchObject.fallback, config)
 
   if (matchExpression in expression)

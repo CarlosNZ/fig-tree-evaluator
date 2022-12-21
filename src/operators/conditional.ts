@@ -1,4 +1,4 @@
-import { evaluateArray } from './_operatorUtils'
+import { evaluatorFunction } from '../evaluate'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -20,11 +20,13 @@ const evaluate = async (
   expression: ConditionalNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  const [condition, valueIfTrue, valueIfFalse] = await evaluateArray(
-    [expression.condition, expression.valueIfTrue, expression.valueIfFalse],
-    config
-  )
-  return !!condition ? valueIfTrue : valueIfFalse
+  const condition = await evaluatorFunction(expression.condition, config)
+
+  // Only evaluate the valueIfTrue/valueIfFalse branches if required to avoid
+  // unnecessary computation
+  return !!condition
+    ? await evaluatorFunction(expression.valueIfTrue, config)
+    : await evaluatorFunction(expression.valueIfFalse, config)
 }
 
 const parseChildren = (expression: CombinedOperatorNode): ConditionalNode => {

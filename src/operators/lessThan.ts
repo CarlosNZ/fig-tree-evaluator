@@ -5,7 +5,7 @@ import { ComparatorNode } from './greaterThan'
 
 const requiredProperties = ['values'] as const
 const operatorAliases = ['<', 'lessThan', 'lower', 'smaller']
-const aliasExtensions = [{ '<=': { strict: false } }] // To-do
+const aliasExtensions = [{ '<=': { strict: false } }] // To-do - Issue #22
 const propertyAliases = {}
 
 const evaluate = async (expression: ComparatorNode, config: FigTreeConfig): Promise<boolean> => {
