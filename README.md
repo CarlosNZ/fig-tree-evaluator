@@ -1411,6 +1411,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+- **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
 - **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
 - **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
 - **v2.2.0**:
