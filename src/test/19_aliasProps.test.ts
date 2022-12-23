@@ -131,5 +131,3 @@ test('Alias Nodes: Use same alias reference in inner node, should be redefined',
     )
   })
 })
-
-// Re-define alias on inner node
