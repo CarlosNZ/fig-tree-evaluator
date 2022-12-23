@@ -55,7 +55,8 @@ export type GenericObject = {
 }
 
 export interface FigTreeOptions {
-  objects?: GenericObject
+  data?: GenericObject
+  objects?: GenericObject // same as "data" -- deprecated
   functions?: { [key: string]: Function }
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection

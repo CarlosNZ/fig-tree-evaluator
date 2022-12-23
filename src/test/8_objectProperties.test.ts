@@ -1,7 +1,7 @@
 import FigTreeEvaluator, { evaluateExpression } from '../'
 
 const exp = new FigTreeEvaluator({
-  objects: {
+  data: {
     user: {
       id: 2,
       firstName: 'Steve',
@@ -43,7 +43,7 @@ test('Object properties, first level, object passed into instance', () => {
     operator: 'get_obj_prop',
     path: 'name',
   }
-  return exp.evaluate(expression, { objects: { name: 'Wanda' } }).then((result: any) => {
+  return exp.evaluate(expression, { data: { name: 'Wanda' } }).then((result: any) => {
     expect(result).toBe('Wanda')
   })
 })
@@ -75,7 +75,7 @@ test('Object properties, unresolved path (first level) with fallback', () => {
     path: 'cantFind',
     fallback: 'Sorry 🤷‍♂️',
   }
-  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result: any) => {
     expect(result).toBe('Sorry 🤷‍♂️')
   })
 })
@@ -86,7 +86,7 @@ test('Object properties with additional objects', () => {
     path: 'newThing.first',
     additionalObjects: { newThing: { first: 'A New Value' } },
   }
-  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result: any) => {
     expect(result).toBe('A New Value')
   })
 })
@@ -95,14 +95,14 @@ test('Object properties with more complex additional objects', () => {
   const expression = {
     operator: 'objectProperties',
     path: 'vehicle.model.versions[2]',
-    additionalObjects: {
+    additionalData: {
       vehicle: {
         make: 'Honda',
         model: { name: 'Accord', versions: ['Type A', 'Type B', 'Type C'] },
       },
     },
   }
-  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result: any) => {
     expect(result).toBe('Type C')
   })
 })
@@ -119,7 +119,7 @@ test('Object properties with additional objects, fallback', () => {
     },
     fallback: 'Nope',
   }
-  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result: any) => {
     expect(result).toBe('Nope')
   })
 })
@@ -136,7 +136,7 @@ test('Object properties dynamically-built additionalObject', () => {
       ],
     },
   }
-  return exp.evaluate(expression, { objects: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result: any) => {
     expect(result).toBe(100)
   })
 })

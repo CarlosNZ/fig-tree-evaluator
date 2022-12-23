@@ -24,7 +24,7 @@ import {
   JSONstringify,
   JSONstringifyLoose,
   validateExpression,
-  validateObjects,
+  validateData,
 } from './helpers'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
@@ -48,17 +48,17 @@ function App() {
 
   const [inputState, setInputState] = useState<InputState>({
     expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
-    objects: localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects),
+    data: localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects),
   })
   const [result, setResult] = useState<Result>({ output: null, error: false })
   const [isValidState, setIsValidState] = useState<IsValidState>({
     expression: validateExpression(inputState.expression),
-    objects: validateObjects(inputState.objects),
+    data: validateData(inputState.data),
   })
 
   const [configState, setConfigState] = useState<ConfigState>({
     strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
-    strictJsonObjects: localStorage.getItem('strictJsonObjects') === 'true' ?? false,
+    strictJsonData: localStorage.getItem('strictJsonData') === 'true' ?? false,
   })
 
   const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
@@ -76,19 +76,19 @@ function App() {
 
   const reEvaluate = () => {
     setLoading(true)
-    const { expression, objects } = inputState
+    const { expression, data } = inputState
     const expressionValid = validateExpression(inputState.expression)
-    const objectsValid = validateObjects(inputState.objects)
-    setIsValidState({ expression: expressionValid, objects: objectsValid })
+    const dataValid = validateData(inputState.data)
+    setIsValidState({ expression: expressionValid, data: dataValid })
 
-    if (!expressionValid || !objectsValid) {
+    if (!expressionValid || !dataValid) {
       setResult({ output: null, error: 'Invalid Input' })
       setLoading(false)
       return
     }
 
     evaluator
-      .evaluate(looseJSON(expression), { objects: looseJSON(objects) })
+      .evaluate(looseJSON(expression), { objects: looseJSON(data) })
       .then((result) => {
         if (result instanceof Object && 'error' in result)
           setResult({ output: null, error: result.error })
@@ -102,18 +102,18 @@ function App() {
   }
 
   useEffect(() => {
-    const { expression, objects } = inputState
+    const { expression, data } = inputState
     localStorage.setItem('inputText', expression)
-    localStorage.setItem('objectText', objects)
+    localStorage.setItem('objectText', data)
     reEvaluate()
   }, [debounceOutput, configState]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateInput = (text: string, type: 'expression' | 'objects') => {
+  const updateInput = (text: string, type: 'expression' | 'data') => {
     setInputState({ ...inputState, [type]: text })
     setDebounceInput(text)
   }
 
-  const toggleCheckbox = (type: 'strictJsonObjects' | 'strictJsonExpression') => {
+  const toggleCheckbox = (type: 'strictJsonData' | 'strictJsonExpression') => {
     const newState = !configState[type]
     setConfigState((prev) => ({ ...prev, [type]: newState }))
     localStorage.setItem(type, String(newState))
@@ -125,18 +125,18 @@ function App() {
     reEvaluate()
   }
 
-  const prettifyInput = (type: 'expression' | 'objects') => {
+  const prettifyInput = (type: 'expression' | 'data') => {
     const strict =
-      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonObjects
+      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonData
     const currentValue = inputState[type]
     const pretty = JSONstringify(currentValue, false, strict)
     if (pretty) setInputState((currState) => ({ ...currState, [type]: pretty }))
     else alert('Invalid input')
   }
 
-  const compactInput = (type: 'expression' | 'objects') => {
+  const compactInput = (type: 'expression' | 'data') => {
     const strict =
-      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonObjects
+      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonData
     const currentValue = inputState[type]
     const compact = JSONstringify(currentValue, true, strict)
     if (compact) setInputState((currState) => ({ ...currState, [type]: compact }))
@@ -174,17 +174,17 @@ function App() {
         </HStack>
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
           <Box h={'100%'} p={2} minW={375}>
-            <Heading size="md">Local state objects</Heading>
+            <Heading size="md">Local data state</Heading>
             <Flex gap={2} justifyContent="flex-start" my={3}>
-              <Button colorScheme="blue" onClick={() => prettifyInput('objects')}>
+              <Button colorScheme="blue" onClick={() => prettifyInput('data')}>
                 Prettify
               </Button>
-              <Button colorScheme="blue" onClick={() => compactInput('objects')}>
+              <Button colorScheme="blue" onClick={() => compactInput('data')}>
                 Compact
               </Button>
               <Checkbox
-                isChecked={configState.strictJsonObjects}
-                onChange={() => toggleCheckbox('strictJsonObjects')}
+                isChecked={configState.strictJsonData}
+                onChange={() => toggleCheckbox('strictJsonData')}
               >
                 Quoted field names
               </Checkbox>
@@ -192,10 +192,10 @@ function App() {
             <Textarea
               h={'85%'}
               fontFamily="monospace"
-              value={inputState.objects}
-              onChange={(e) => updateInput(e?.target?.value, 'objects')}
+              value={inputState.data}
+              onChange={(e) => updateInput(e?.target?.value, 'data')}
             />
-            <Text color="red">{!isValidState.objects ? 'Invalid object input' : ''}</Text>
+            <Text color="red">{!isValidState.data ? 'Invalid object input' : ''}</Text>
           </Box>
           <Box h={'100%'} p={2} minW={375}>
             <Heading size="md">Input</Heading>

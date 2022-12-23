@@ -5,7 +5,7 @@ import { isOperatorNode } from '../src/helpers'
 
 const DEPTH_LIMIT = 30
 
-const objects = {
+const data = {
   somewhere: { quite: { deep: 'This ' }, not: { so: { deep: 'has ', quiet: ['%2 ', '%3 '] } } },
   tence: '[0]',
   number: [0, 500],
@@ -21,9 +21,9 @@ const functions = {
   '666': (val: any) => (val === 'words' ? '^%d$' : '%4 '),
 }
 
-export const config = { objects, functions }
+export const config = { data, functions }
 
-const evaluator = new FigTreeEvaluator({ objects, functions })
+const evaluator = new FigTreeEvaluator({ data, functions })
 
 const baseExpressions: EvaluatorNode[] = [
   {
