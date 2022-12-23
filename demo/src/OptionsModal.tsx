@@ -34,6 +34,7 @@ const resetFormState = (options: FigTreeOptions) => {
   const gqlAuth = options.graphQLConnection?.headers?.Authorization
   const gqlHeaders = { ...options.graphQLConnection?.headers }
   const skipRuntimeTypeCheck = options.skipRuntimeTypeCheck ?? false
+  const evaluateFullObject = options.evaluateFullObject ?? false
   delete headers?.Authorization
   delete gqlHeaders?.Authorization
   return {
@@ -46,6 +47,7 @@ const resetFormState = (options: FigTreeOptions) => {
     gqlHeadersText: JSON.stringify(gqlHeaders),
     gqlHeadersError: false,
     skipRuntimeTypeCheck,
+    evaluateFullObject,
   }
 }
 
@@ -81,6 +83,7 @@ export const OptionsModal = ({
       gqlAuth,
       gqlHeadersText,
       skipRuntimeTypeCheck,
+      evaluateFullObject,
     } = formState
 
     const headers = headersText ? JSON.parse(headersText) : {}
@@ -94,6 +97,7 @@ export const OptionsModal = ({
         headers: { Authorization: gqlAuth, ...gqlHeaders },
       },
       skipRuntimeTypeCheck,
+      evaluateFullObject,
     })
 
     updateOptions(newOptions)
@@ -205,6 +209,19 @@ export const OptionsModal = ({
                     }
                   >
                     <Text fontSize="sm">Skip runtime type checking</Text>
+                  </Checkbox>
+                </FormControl>
+                <FormControl id="evaluate-object" mt="2 !important">
+                  <Checkbox
+                    isChecked={formState.evaluateFullObject}
+                    onChange={(e) =>
+                      setFormState((curr) => ({
+                        ...curr,
+                        evaluateFullObject: !formState.evaluateFullObject,
+                      }))
+                    }
+                  >
+                    <Text fontSize="sm">Evaluate full object input</Text>
                   </Checkbox>
                 </FormControl>
               </Stack>

@@ -65,6 +65,7 @@ export interface FigTreeOptions {
   nullEqualsUndefined?: boolean
   allowJSONStringInput?: boolean
   skipRuntimeTypeCheck?: boolean
+  evaluateFullObject?: boolean
 }
 
 export interface FigTreeConfig {
