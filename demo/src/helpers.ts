@@ -79,7 +79,7 @@ export const validateExpression = (input: string): boolean => {
   }
 }
 
-export const validateObjects = (objects: string): boolean => {
+export const validateData = (objects: string): boolean => {
   try {
     const cleanObjectInput = looseJSON(objects)
     if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)

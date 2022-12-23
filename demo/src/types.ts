@@ -2,17 +2,17 @@ import { EvaluatorOutput } from './fig-tree-evaluator/src/types'
 
 export interface InputState {
   expression: string
-  objects: string
+  data: string
 }
 
 export interface IsValidState {
   expression: boolean
-  objects: boolean
+  data: boolean
 }
 
 export interface ConfigState {
   strictJsonExpression: boolean
-  strictJsonObjects: boolean
+  strictJsonData: boolean
 }
 
 export interface Result {

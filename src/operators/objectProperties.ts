@@ -10,33 +10,43 @@ import {
 } from '../types'
 
 const requiredProperties = ['property']
-const operatorAliases = ['objectProperties', 'objProps', 'getProperty', 'getObjProp']
+const operatorAliases = [
+  'dataProperties',
+  'data',
+  'getData',
+  'objectProperties',
+  'objProps',
+  'getProperty',
+  'getObjProp',
+]
 const propertyAliases = {
   path: 'property',
   propertyName: 'property',
-  additional: 'additionalObjects',
-  objects: 'additionalObjects',
+  additional: 'additionalData',
+  objects: 'additionalData',
+  data: 'additionalData',
+  additionalObjects: 'additionalData',
 }
 
 export type ObjPropNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { additionalObjects: object }
+} & BaseOperatorNode & { additionalData: object }
 
 const evaluate = async (
   expression: ObjPropNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  const [property, additionalObjects] = (await evaluateArray(
-    [expression.property, expression.additionalObjects],
+  const [property, additionalData] = (await evaluateArray(
+    [expression.property, expression.additionalData],
     config
   )) as [string, object]
   config.typeChecker(
     { name: 'property', value: property, expectedType: 'string' },
-    { name: 'additionalObjects', value: additionalObjects, expectedType: ['object', 'undefined'] }
+    { name: 'additionalData', value: additionalData, expectedType: ['object', 'undefined'] }
   )
-  const inputObject = additionalObjects
-    ? { ...(config.options?.objects ?? {}), ...additionalObjects }
-    : config.options?.objects ?? {}
+  const inputObject = additionalData
+    ? { ...(config.options?.data ?? {}), ...additionalData }
+    : config.options?.data ?? {}
   return extractProperty(inputObject, property)
 }
 

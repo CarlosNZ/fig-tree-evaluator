@@ -135,7 +135,7 @@ const result = await exp.evaluate(expression, [options])
 
 The `options` parameter is an object with the following available properties (all optional):
 
-- `objects` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
+- `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
 - `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postres](https://node-postgres.com/) connection object here.
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
@@ -659,16 +659,16 @@ e.g.
 ----
 ### OBJECT_PROPERTIES
 
-*Extracts values from objects in your application*
+*Extracts values from data objects in your application*
 
-Aliases: `objectProperties`, `objProps`, `getProperty`, `getObjProp`
+Aliases: `objectProperties`, `dataProperties`,`data`, `getData`, `objProps`, `getProperty`, `getObjProp`
 
 #### Properties
 
 - `property` (or `path`, `propertyName`)<sup>*</sup>: (string) -- the path to the required property in the object
-- `additionalObjects` (or `objects`, `additional`): (object) -- any other objects whose properties can be referenced in `property` (see below)
+- `additionalData` (or `additionalObjects`, `additional`, `data`): (object) -- any other objects whose properties can be referenced in `property` (see below)
 
-Objects are normamlly expected to be passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. The reason for this is that the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data. (However, it is possible to pass objects directly as part of the expression using the `additionalObjects` property, so (in theory) objects could be dynamically generated from other expressions.)
+Data objects are normally expected to be passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. This is because the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data. (However, it is possible to pass data objects directly as part of the expression using the `additionalObjects` property, so (in theory) data objects could be dynamically generated from other expressions.)
 
 For example, consider a `user` object and an fig-tree evaluator instance: 
 
@@ -688,7 +688,7 @@ const exp = new FigTreeEvaluator()
 
 const expression = getExpressionFromConfig()
 
-exp.evaluate(expression, { objects: { user } })
+exp.evaluate(expression, { data: { user } })
 ```
 
 Here is the result of various values of `expression:`
@@ -701,7 +701,7 @@ Here is the result of various values of `expression:`
 // => "Peter"
 
 {
-  operator: 'getProperty',
+  operator: 'getData',
   path: 'user.friends[1]',
 }
 // => "MJ"
@@ -721,7 +721,7 @@ result.map((e) => e.name)
 
 The "objectProperties" operator uses [`object-property-extractor`](https://www.npmjs.com/package/object-property-extractor) internally, so please see the documentation of that package for more information.
 
-The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a `fallback` value for the expression:
+The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a [`fallback`](#other-common-properties) value for the expression:
 ```js
 {
   operator: 'objectProperties',
@@ -734,13 +734,13 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 `children` array: `[property]`
 
 
-Example using "objects" passed in dynamically as part of expression:
+Example using "data" passed in dynamically as part of expression:
 
 ```js
 {
   operator: 'objectProperties',
   property: 'user.name',
-  additionalObjects: {
+  additionalData: {
     operator: '?',
     condition: { operator: '=', values: [{ operator: '+', values: [7, 8, 9] }, 25] },
     valueIfTrue: { user: { name: 'Bilbo' } },
@@ -1178,8 +1178,8 @@ e.g.
   },
 }
 // With:
-// objects = { weather: "sunny", humidity: "high" } => "NO"
-// objects = { weather: "rainy", wind: "weak" } => "YES"
+// data = { weather: "sunny", humidity: "high" } => "NO"
+// data = { weather: "rainy", wind: "weak" } => "YES"
 
 ```
 

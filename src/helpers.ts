@@ -122,11 +122,11 @@ export const mergeOptions = (
   newOptions: FigTreeOptions
 ): FigTreeOptions => {
   const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
-  // Mostly we can just merge the options objects, but for "objects",
+  // Mostly we can just merge the options objects, but for "data",
   // "functions", and "headers", they  might need merging separately so we
   // preserve deep merging.
-  if (origOptions.objects || newOptions.objects)
-    combinedOptions.objects = { ...origOptions.objects, ...newOptions.objects }
+  if (origOptions.data || newOptions.data)
+    combinedOptions.data = { ...origOptions.data, ...newOptions.data }
   if (origOptions.functions || newOptions.functions)
     combinedOptions.functions = { ...origOptions.functions, ...newOptions.functions }
   if (origOptions.headers || newOptions.headers)
