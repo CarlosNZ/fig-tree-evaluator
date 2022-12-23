@@ -1411,6 +1411,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+- **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
 - **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
 - **v2.2.0**:
   - New "[Match](#match) operator (#61)
