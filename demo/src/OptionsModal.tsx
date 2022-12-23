@@ -100,8 +100,6 @@ export const OptionsModal = ({
       evaluateFullObject,
     })
 
-    console.log('newOptions', newOptions)
-
     updateOptions(newOptions)
     localStorage.setItem('options', JSON.stringify(newOptions))
     setModalOpen(false)

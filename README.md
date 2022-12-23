@@ -145,8 +145,9 @@ The `options` parameter is an object with the following available properties (al
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encoutered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 - `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
+- `evaluateFullObject` -- By default, FigTree expects the root of an input expression to be an Operator Node, and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them in place.
 
-As mentioned above, `options` can be provided as part of the constructor as part of each seperate evaluation. You can also change the options permanently for a given evaluator instance with:
+As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
 
 `exp.updateOptions(options)`
 
