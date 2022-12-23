@@ -1,6 +1,6 @@
 import { camelCase } from 'change-case'
 import { evaluatorFunction } from './evaluate'
-import { zipArraysToObject } from './operators/_operatorUtils'
+import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUtils'
 import {
   OutputType,
   EvaluatorNode,
@@ -159,4 +159,32 @@ const extractNumber = (input: EvaluatorOutput) => {
   const numberMatch = input.match(pattern)
   if (!numberMatch) return 0
   return Number(numberMatch[0])
+}
+
+/*
+Returns `true` if input is an object ({}) (but not an array)
+*/
+const isObject = (input: unknown) =>
+  typeof input === 'object' && input !== null && !Array.isArray(input)
+
+/*
+Check if an object has any "Operator Nodes" as values and evaluate them if so.
+Doesn't need to be recursive or handle arrays, as the main "evaluatorFunction"
+will handle that.
+*/
+export const evaluateObject = async (
+  input: EvaluatorNode,
+  config: FigTreeConfig
+): Promise<EvaluatorOutput> => {
+  if (!isObject(input)) return input
+
+  const newObjectEntries: unknown[] = []
+
+  Object.entries(input as Object).forEach(([key, value]) =>
+    newObjectEntries.push(key, evaluatorFunction(value, config))
+  )
+
+  const result = await Promise.all(newObjectEntries)
+
+  return singleArrayToObject(result)
 }

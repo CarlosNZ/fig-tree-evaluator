@@ -7,10 +7,14 @@ export const getInitOptions = () => {
   const graphQLConnection = savedOptions.graphQLConnection ?? undefined
   const baseEndpoint = savedOptions.baseEndpoint ?? undefined
   const headers = savedOptions.headers ?? undefined
+  const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
+  const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
   return {
     graphQLConnection,
     baseEndpoint,
     headers,
+    skipRuntimeTypeCheck,
+    evaluateFullObject,
   }
 }
 

@@ -11,6 +11,7 @@ import {
   evaluateNodeAliases,
   getOperatorName,
   replaceAliasNodeValues,
+  evaluateObject,
 } from './helpers'
 
 // The core evaluation function used by FigTree
@@ -26,6 +27,11 @@ export const evaluatorFunction = async (
   if (Array.isArray(expression)) {
     expression = await evaluateArray(expression, config)
   }
+
+  // If "evaluateFullObject" option is on, dive deep into objects to find
+  // Operator Nodes
+  if (options.evaluateFullObject && !isOperatorNode(expression))
+    return await evaluateObject(expression, config)
 
   // Base case -- Non-operator nodes get returned unmodified (or substituted if
   // an alias reference)
