@@ -1,3 +1,4 @@
+import FigTreeCache from './cache'
 import {
   BasicExtendedNode,
   SubtractionNode,
@@ -67,6 +68,8 @@ export interface FigTreeOptions {
   allowJSONStringInput?: boolean
   skipRuntimeTypeCheck?: boolean
   evaluateFullObject?: boolean
+  useCache?: boolean
+  maxCacheSize?: number
 }
 
 export interface FigTreeConfig {
@@ -75,6 +78,7 @@ export interface FigTreeConfig {
   operatorAliases: { [key: string]: Operator }
   typeChecker: (...input: TypeCheckInput[]) => void
   resolvedAliasNodes: { [key: string]: EvaluatorOutput }
+  cache: FigTreeCache
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
@@ -84,6 +88,7 @@ export interface BaseOperatorNode {
   outputType?: OutputType
   children?: Array<EvaluatorNode>
   fallback?: any
+  useCache?: boolean
   // For NodeAliases
   [key: string]: EvaluatorNode
 }

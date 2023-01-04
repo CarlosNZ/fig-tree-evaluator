@@ -4,6 +4,7 @@ import { typeCheck, TypeCheckInput } from './typeCheck'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { mergeOptions } from './helpers'
+import FigTreeCache from './cache'
 
 const pkg = require('../package.json')
 
@@ -11,10 +12,12 @@ class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference
   private operatorAliases: { [key: string]: Operator }
+  private cache: FigTreeCache
   constructor(options: FigTreeOptions = {}) {
     this.options = standardiseOptionNames(options)
     this.operators = operators
     this.operatorAliases = operatorAliases as { [key: string]: Operator }
+    this.cache = new FigTreeCache(options.maxCacheSize)
   }
 
   private typeChecker = (...args: TypeCheckInput[]) => {
@@ -27,12 +30,17 @@ class FigTreeEvaluator {
     // Update options from current call if specified
     const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
 
+    // Update cache max size
+    if (currentOptions.maxCacheSize && currentOptions.maxCacheSize !== this.cache.getMax())
+      this.cache.setMax(currentOptions.maxCacheSize)
+
     return await evaluatorFunction(expression, {
       options: currentOptions,
       operators: this.operators,
       operatorAliases: this.operatorAliases,
       typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
       resolvedAliasNodes: {},
+      cache: this.cache,
     })
   }
 
