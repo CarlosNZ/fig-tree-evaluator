@@ -1,3 +1,10 @@
+/*
+Simple run-time type-checking.
+
+Used by each operator to ensure input is valid before evaluating, and reports
+type errors in a structured fashion.
+*/
+
 import { truncateString } from './helpers'
 
 export type ExpectedType =

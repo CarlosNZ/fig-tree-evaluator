@@ -1,3 +1,13 @@
+/*
+Cache store used by main FigTreeEvaluator instance.
+
+Previous evaluation results are stored in `store` object, using a stringified
+concatenation of the input parameters as keys.
+
+A `queue` (of the keys) is maintained in order to determine recency. (Oldest
+items are dropped from the queue/store when `maxSize` is reached)
+*/
+
 import { EvaluatorOutput } from './types'
 
 const MAX_CACHED_ITEMS = 50 // Default if not specified

@@ -1,3 +1,7 @@
+/*
+Functions used specifically by various operators
+*/
+
 import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'

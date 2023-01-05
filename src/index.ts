@@ -1,3 +1,7 @@
+/*
+Core FigTreeEvaluator class
+*/
+
 import { EvaluatorNode, FigTreeOptions, GenericObject, Operator, OperatorReference } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'

@@ -1,3 +1,7 @@
+/*
+Functions used by the main "evaluatorFunction" (evaluate.ts)
+*/
+
 import { camelCase } from 'change-case'
 import { evaluatorFunction } from './evaluate'
 import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUtils'
@@ -35,9 +39,18 @@ const standardiseOperatorName = (name: string) => {
 export const getOperatorName = (operator: string, operatorAliases: { [key: string]: Operator }) =>
   operatorAliases[standardiseOperatorName(operator)]
 
+/*
+If `string` exceeds `length` (default: 200 chars), will return a truncated
+version of the string, ending in "..."
+*/
 export const truncateString = (string: string, length: number = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
 
+/*
+Will throw an error (with `errorMessage`) if no `fallback` is provided. If
+`returnErrorAsString` is enabled, then it won't throw, but instead return a
+string containing the error message. 
+*/
 export const fallbackOrError = (
   fallback: any,
   errorMessage: string,
@@ -105,7 +118,7 @@ export const replaceAliasNodeValues = (
 /*
 Checks Evaluator node for missing required properties based on operator type
 - Strict type checking done AFTER evaluation of child nodes within operator
-  methods
+  methods (typeCheck.ts)
 */
 export const checkRequiredNodes = (
   requiredProps: readonly string[],
@@ -117,14 +130,16 @@ export const checkRequiredNodes = (
   return false
 }
 
+/*
+Mostly we can just merge the options objects, but for "data", "functions", and
+"headers", they might need merging separately so we preserve proper deep
+merging.
+*/
 export const mergeOptions = (
   origOptions: FigTreeOptions,
   newOptions: FigTreeOptions
 ): FigTreeOptions => {
   const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
-  // Mostly we can just merge the options objects, but for "data",
-  // "functions", and "headers", they  might need merging separately so we
-  // preserve deep merging.
   if (origOptions.data || newOptions.data)
     combinedOptions.data = { ...origOptions.data, ...newOptions.data }
   if (origOptions.functions || newOptions.functions)

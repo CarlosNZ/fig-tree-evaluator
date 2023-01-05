@@ -1,3 +1,7 @@
+/*
+The core evaluation function used by FigTreeEvaluator
+*/
+
 import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import {
@@ -14,7 +18,6 @@ import {
   evaluateObject,
 } from './helpers'
 
-// The core evaluation function used by FigTree
 export const evaluatorFunction = async (
   input: EvaluatorNode,
   config: FigTreeConfig
@@ -33,8 +36,8 @@ export const evaluatorFunction = async (
   if (options.evaluateFullObject && !isOperatorNode(expression))
     return replaceAliasNodeValues(await evaluateObject(expression, config), config)
 
-  // Base case -- Non-operator nodes get returned unmodified (or substituted if
-  // an alias reference)
+  // Base case -- Non-operator (leaf) nodes get returned unmodified (or
+  // substituted if an alias reference)
   if (!isOperatorNode(expression)) return replaceAliasNodeValues(expression, config)
 
   const { fallback } = expression
