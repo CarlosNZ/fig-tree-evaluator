@@ -20,7 +20,7 @@ class FigTreeCache {
       // Move key to end of queue
       this.queue = this.queue.filter((val) => val !== key)
       this.queue.unshift(key)
-      console.log('Using cached result:', this.store[key])
+      // console.log('Using cached result:', this.store[key])
       return this.store[key]
     }
 

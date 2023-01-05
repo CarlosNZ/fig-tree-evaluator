@@ -1314,7 +1314,7 @@ e.g.
 
 ## Alias Nodes
 
-If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference. This allows for a simpler expression (reduces duplication) as well as a performance improvement, since the aliased node is only evaluated once, providing a simple [memoization](https://en.wikipedia.org/wiki/Memoization) mechanism.
+If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference. This allows for a simpler expression (reduces code duplication) as well as a performance improvement, since the aliased node is only evaluated once, providing a simple [memoization](https://en.wikipedia.org/wiki/Memoization) mechanism. (See also [Caching/Memoization](#caching-memoization))
 
 For example, if you have the expression:
 ```js
@@ -1385,7 +1385,7 @@ Like all expression nodes, alias nodes can themselves contain complex expression
 
 ## Caching (Memoization)
 
-FigTree Evaluator has basic memoization functionality for certain nodes to speed up re-evaluation of previously evaluated nodes. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization)  functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
 
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
@@ -1394,6 +1394,10 @@ Currently, caching is only implemented for the following operators, since they p
 - PG_SQL (`useCache` default: `true`)
 - GRAPH_QL (`useCache` default: `true`)
 - CUSTOM_FUNCTIONS (`useCache` default: `false`)
+
+This is different to the memoization provided by [Alias Nodes](#alias-nodes):
+- Alias nodes are still evaluated once for every evaluation -- they're more for re-use *within* a complex expression.
+- Cached nodes will persist *between* different evaluations as long as the input values are the same as a previously evaluated node.
 
 ## More examples
 
@@ -1427,7 +1431,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
-- **v2.3.1**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
+- **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
 - **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
 - **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
 - **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
