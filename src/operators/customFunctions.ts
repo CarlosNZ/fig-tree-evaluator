@@ -51,7 +51,19 @@ const evaluate = async (
     // ensure backwards compatibility.
     extractProperty(data, functionPath, null) ??
     extractProperty(config.options, functionPath)) as Function
-  return await func(...args)
+
+  const shouldUseCache = expression.useCache ?? config.options.useCache ?? false
+
+  const result = await config.cache.useCache(
+    shouldUseCache,
+    async (_: string, ...args: unknown[]) => {
+      return await func(...args)
+    },
+    functionPath,
+    ...args
+  )
+
+  return result
 }
 
 const parseChildren = (expression: CombinedOperatorNode): FunctionNode => {

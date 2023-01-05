@@ -47,6 +47,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [PASSTHRU](#passthru)
   - [CUSTOM\_FUNCTIONS](#custom_functions)
 - [Alias Nodes](#alias-nodes)
+- [Caching (Memoization)](#caching-memoization)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
 - [Tests](#tests)
@@ -146,6 +147,8 @@ The `options` parameter is an object with the following available properties (al
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 - `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
 - `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them in place.
+- `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
+- `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
 
 As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
 
@@ -207,6 +210,7 @@ In each operator node, as well as the operator-specific properties, the followin
 
 - `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
 - `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) to see the outcome of applying different `outputType` values to various results.
+- `useCache`: Overrides the global `useCache` value (from [options](#available-options)) for this node only. See [Caching/Memoization](#caching-memoization) below for more info.
 
 Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties.
 
@@ -304,7 +308,7 @@ Aliases: `=`, `eq`, `equal`, `equals`
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared for strict equality. This includes simple types as well as deep equality of objects and arrays.
-- `nullEqualsUndefined`: (boolean, default `false`) -- there are times when it is convenient for `null` to be considered equal to `undefined`. If this is desiered, set this property to `true`, otherwise all equality checks will be "strict" equality. If you find that you want this setting enabled globally, then you can set it in the overall [evaluator options](#available-options) instead of having to add this additional property to every equality expression.
+- `nullEqualsUndefined`: (boolean, default `false`) -- there are times when it is convenient for `null` to be considered equal to `undefined`. If this is desired, set this property to `true`, otherwise all equality checks will be "strict" equality. If you find that you want this setting enabled globally, then you can set it in the overall [evaluator options](#available-options) instead of having to add this additional property to every equality expression.
 
 e.g.
 ```js
@@ -760,7 +764,7 @@ Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 #### Properties
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
-- `substitutions` (or `replacments`)<sup>*</sup>: (array) -- the values to be substituted into `string`
+- `substitutions` (or `replacements`)<sup>*</sup>: (array) -- the values to be substituted into `string`
 
 The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
 
@@ -783,7 +787,7 @@ e.g.
   operator: 'replace',
   string: '%1 is actually %2 %3',
   substitutions: [
-    // Using the 'user' object from above
+    // Using the 'user' object from above (OBJECT_PROPERTIES operator)
     {
       operator: 'objectProperties',
       property: 'user.alias',
@@ -798,7 +802,7 @@ e.g.
     },
   ],
 }
-// => "Spiderman is actually Peter Parker"
+// => "Spider-man is actually Peter Parker"
 
 // Parameters can be repeated:
 {
@@ -1378,6 +1382,18 @@ Alias nodes are evaluated first, then the results are substituted in whenever th
 Like all expression nodes, alias nodes can themselves contain complex expressions with their own alias nodes defined within. As long as the alias references are descendent nodes of the alias definition, they will be resolved.
 
 (If an alias reference does not having a matching definition, the reference value will just be returned as a literal string, e.g. `"$getCountry"`)
+
+## Caching (Memoization)
+
+FigTree Evaluator has basic memoization functionality for certain nodes to speed up re-evaluation of expressions using previously evaluated parameters. There is a single cache per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+
+Currently, caching is only implemented for the following operators, since they perform network requests which are inherently slow:
+
+- GET (`useCache` default: `true`)
+- POST (`useCache` default: `true`)
+- PG_SQL (`useCache` default: `true`)
+- GRAPH_QL (`useCache` default: `true`)
+- CUSTOM_FUNCTIONS (`useCache` default: `false`)
 
 ## More examples
 
