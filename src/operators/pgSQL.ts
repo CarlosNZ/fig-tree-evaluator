@@ -28,8 +28,24 @@ const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<Eval
   )
 
   if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
+
+  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+
   try {
-    return await processPgSQL([query, ...values], config.options.pgConnection, expression?.type)
+    const result = config.cache.useCache(
+      shouldUseCache,
+      async (query: string, ...values: (string | number)[]) => {
+        return await processPgSQL(
+          [query, ...values],
+          config.options.pgConnection as PGConnection,
+          expression?.type
+        )
+      },
+      query,
+      ...values
+    )
+
+    return result
   } catch (err) {
     throw err
   }
@@ -59,6 +75,7 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
     values: queryArray.slice(1),
     rowMode: queryType ? 'array' : '',
   }
+
   try {
     const res = await connection.query(expression)
     // node-postgres doesn't throw, it just returns error object

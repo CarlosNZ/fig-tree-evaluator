@@ -26,6 +26,7 @@ import {
   validateExpression,
   validateData,
 } from './helpers'
+import functions from './customFunctions'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
@@ -36,7 +37,8 @@ import logo from './img/fig_tree_evaluator_logo_512.png'
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface()
 
-const initOptions = getInitOptions()
+const initOptions: FigTreeOptions = getInitOptions()
+initOptions.functions = functions
 
 const expDev = new EvaluatorDev({ ...initOptions, pgConnection })
 const expPub = new EvaluatorPublished({ ...initOptions, pgConnection })

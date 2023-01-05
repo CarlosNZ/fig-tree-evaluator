@@ -31,13 +31,32 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
   const baseUrl = config.options.baseEndpoint ?? ''
 
   const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }
-  const response = await axiosRequest({
-    url: isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
+
+  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+
+  const result = await config.cache.useCache(
+    shouldUseCache,
+    async (
+      url: string,
+      data: object,
+      headers: { [key: string]: string },
+      returnProperty: string
+    ) => {
+      const response = await axiosRequest({
+        url,
+        data,
+        headers,
+        method: 'post',
+      })
+      return extractAndSimplify(response, returnProperty)
+    },
+    isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
     data,
-    headers: httpHeaders,
-    method: 'post',
-  })
-  return extractAndSimplify(response, returnProperty)
+    httpHeaders,
+    returnProperty
+  )
+
+  return result
 }
 
 export const POST: OperatorObject = {

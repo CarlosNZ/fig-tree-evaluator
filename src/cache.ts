@@ -1,3 +1,4 @@
+import { truncateString } from './helpers'
 import { EvaluatorOutput } from './types'
 
 const MAX_CACHED_ITEMS = 50 // Default if not specified
@@ -19,7 +20,7 @@ class FigTreeCache {
     if (key in this.store) {
       this.queue = this.queue.filter((val) => val !== key)
       this.queue.unshift(key)
-      console.log('Queue', this.queue)
+      console.log('Using cached result:', this.store[key])
       return this.store[key]
     }
 
@@ -27,7 +28,6 @@ class FigTreeCache {
     this.store[key] = result
     if (this.queue.length >= this.maxSize) this.queue = this.queue.slice(0, this.maxSize - 1)
     this.queue.unshift(key)
-    console.log('Queue', this.queue)
     return result
   }
 

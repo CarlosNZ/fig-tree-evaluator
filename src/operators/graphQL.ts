@@ -70,19 +70,26 @@ const evaluate = async (
 
   const data = { query, variables }
 
-  const response = await axiosRequest({
-    url: fullUrl,
-    method: 'post',
+  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+
+  const result = await config.cache.useCache(
+    shouldUseCache,
+    async (url: string, data: object, headers: object, returnNode: string) => {
+      const response = await axiosRequest({ url, method: 'post', data, headers })
+      return extractAndSimplify(response.data, returnNode)
+    },
+    fullUrl,
     data,
-    headers: {
+    {
       ...config.options.graphQLConnection?.headers,
       ...config.options?.headers,
       ...headersObj,
       ...headers,
     },
-  })
+    returnNode
+  )
 
-  return extractAndSimplify(response.data, returnNode)
+  return result
 }
 
 const parseChildren = async (expression: CombinedOperatorNode): Promise<GraphQLNode> => {
