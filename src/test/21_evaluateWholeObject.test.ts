@@ -71,15 +71,16 @@ test("Don't evaluate whole object", () => {
   })
 })
 
-test('Multiple levels of deep operator nodes', () => {
+test('Multiple levels of deep operator nodes, with alias node', () => {
   const expression = {
     outer: {
       operator: '+',
       values: [
-        { six: { operator: '+', values: [1, 2, 3] } },
+        { six: '$six' },
         { two: { notOperator: 'OK', isOperator: { operator: '+', values: [1, 2, 3] } } },
         { three: 3 },
       ],
+      $six: { operator: '+', values: [1, 2, 3] },
     },
   }
   return exp.evaluate(expression).then((result: any) => {
