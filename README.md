@@ -1385,9 +1385,9 @@ Like all expression nodes, alias nodes can themselves contain complex expression
 
 ## Caching (Memoization)
 
-FigTree Evaluator has basic memoization functionality for certain nodes to speed up re-evaluation of expressions using previously evaluated parameters. There is a single cache per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+FigTree Evaluator has basic memoization functionality for certain nodes to speed up re-evaluation of previously evaluated nodes. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
 
-Currently, caching is only implemented for the following operators, since they perform network requests which are inherently slow:
+Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
 - GET (`useCache` default: `true`)
 - POST (`useCache` default: `true`)
@@ -1427,6 +1427,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+- **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
 - **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
 - **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
 - **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
