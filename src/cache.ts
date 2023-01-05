@@ -1,4 +1,3 @@
-import { truncateString } from './helpers'
 import { EvaluatorOutput } from './types'
 
 const MAX_CACHED_ITEMS = 50 // Default if not specified
@@ -28,7 +27,11 @@ class FigTreeCache {
     // Otherwise create a new cache entry
     const result = await action(...args)
     this.store[key] = result
-    if (this.queue.length >= this.maxSize) this.queue = this.queue.slice(0, this.maxSize - 1)
+    if (this.queue.length >= this.maxSize) {
+      const keysToRemove = this.queue.slice(this.maxSize - 1)
+      keysToRemove.forEach((key) => delete this.store[key])
+      this.queue = this.queue.slice(0, this.maxSize - 1)
+    }
     this.queue.unshift(key)
     return result
   }
