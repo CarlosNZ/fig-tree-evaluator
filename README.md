@@ -4,9 +4,11 @@
 
 **FigTree Evaluator** is a module to evaluate JSON-structured expression trees. 
 
-A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). For example, a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
+A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Use cases could include: 
 
-Another example would be to configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic.
+- a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
+- configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic. (See examples in `20_match.test.ts`)
+- extend [JSON Forms](https://jsonforms.io) with more complex logic and dynamic lookups: https://github.com/CarlosNZ/jsonforms-with-figtree-demo
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
 
