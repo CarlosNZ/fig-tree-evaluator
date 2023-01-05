@@ -65,7 +65,7 @@ test('Alias Nodes: Multiple aliases', () => {
   })
 })
 
-test('Alias Nodes: Nested aliases', () => {
+test('Alias Nodes: Nested aliases, `evaluateFullObject: true`', () => {
   const expression = {
     $flag: {
       $emoji: { operator: '+', values: ['countries.', 'emoji'] },
@@ -87,7 +87,7 @@ test('Alias Nodes: Nested aliases', () => {
     operator: 'stringSubstitution',
     children: ['The flag of New Zealand is %1. Here it is again: %2', '$flag', '$flag'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression, { evaluateFullObject: true }).then((result: any) => {
     expect(result).toBe('The flag of New Zealand is 🇳🇿. Here it is again: 🇳🇿')
   })
 })

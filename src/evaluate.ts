@@ -31,7 +31,7 @@ export const evaluatorFunction = async (
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
   if (options.evaluateFullObject && !isOperatorNode(expression))
-    return await evaluateObject(expression, config)
+    return replaceAliasNodeValues(await evaluateObject(expression, config), config)
 
   // Base case -- Non-operator nodes get returned unmodified (or substituted if
   // an alias reference)
