@@ -167,7 +167,7 @@ import { evaluateExpression } from 'fig-tree-evaluator'
 
 evaluateExpression(expression, [options]).then((result) => {
     // Do something with result
-}
+})
 ```
 
 ## Operator nodes
@@ -204,13 +204,13 @@ For example, the following two representations are equivalent `conditional` oper
 }
 ```
 
-Most of the time named properties is preferable; however there are situations where the "children" array might be easier to deal with, or to generate from child nodes.
+Most of the time named properties would be preferable; however there are occasional cases where the "children" array might be easier to deal with, or to build up from child nodes.
 
 ### Other common properties:
 
-In each operator node, as well as the operator-specific properties, the following two optional properties can be provided:
+In each operator node, as well as the operator-specific properties, the following three optional properties can be provided:
 
-- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes.
+- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes. *Fallbacks are strongly recommended if there is any chance of an error (e.g. a network "GET" request that doesn't yet have its parameters defined).*
 - `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) to see the outcome of applying different `outputType` values to various results.
 - `useCache`: Overrides the global `useCache` value (from [options](#available-options)) for this node only. See [Caching/Memoization](#caching-memoization) below for more info.
 
@@ -433,7 +433,7 @@ e.g.
 ----
 ### MULTIPLY
 
-*Multiplcation*
+*Multiplication*
 
 Aliases: `*`, `x`, `multiply`, `times`
 
@@ -636,6 +636,8 @@ e.g.
 
 `children` array: `[condition, valueIfTrue, valueIfFalse]`
 
+**Note**: *For more complex branching logic, the ["match" operator](#match) can be used (it matches more than just a boolean condition)*
+
 ----
 ### REGEX
 
@@ -721,8 +723,10 @@ Here is the result of various values of `expression:`
 Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for:
 
 ```js
-const result = { operator: 'getProperty', path: 'user.enemies' }
-result.map((e) => e.name)
+exp.evaluate(
+    { operator: 'getProperty', path: 'user.enemies' },
+    { data: { user } }
+  ).map((e) => e.name)
 ```
 
 The "objectProperties" operator uses [`object-property-extractor`](https://www.npmjs.com/package/object-property-extractor) internally, so please see the documentation of that package for more information.
@@ -842,7 +846,7 @@ Aliases: `split`, `arraySplit`
 - `excludeTrailing` (or `removeTrailing`, `excludeTrailingDelimiter`): (boolean, default `true`) -- if `false`, if the input string ends with the delimiter, the last member of the output array will be an empty string.  
   i.e. `this, that, another,` (delimiter `","`) => `["this", "that", "another", ""]`
 
-The last two parameters (`timeWhiteSpace` and `excludeTrailing`) should rarely be needed.
+The last two parameters (`timeWhiteSpace` and `excludeTrailing`) should *rarely* be needed to be changed from their default values.
 
 e.g.
 ```js
@@ -980,7 +984,7 @@ The required connection object is:
 }
 ```
 
-The following example expression uses the GraphQL connection: `{endpoint: 'https://countries.trevorblades.com/'}`
+The following example expression uses the GraphQL connection (specified in constructor options): `{endpoint: 'https://countries.trevorblades.com/'}`
 ```js
 {
   operator: 'graphQL',
@@ -1123,7 +1127,7 @@ e.g.
 
 `children` array: `[key1, value1, key2, value2, ...]`
 
-This is one of the few operators where the `children` array might actually be simpler to define than the `properties` property, depending on how deep the array elements are themselves operator nodes.
+This is one of the few cases where the `children` array might actually be simpler to define than the `properties` property, depending on how deep the array elements are themselves operator nodes.
 
 e.g.
 ```js
@@ -1223,7 +1227,6 @@ This expression could also be written as (with branch/case keys at the root leve
 
 The pairs of `key`/`value`s are constructed into the `branches` object, the same way the objects are built using `children` in the ["buildObject"](#build_object) operator.
 
-
 For an example of a complex decision tree implementation, which includes [aliases](#alias-nodes), [fallbacks](#other-common-properties) and a range of operators, see the "match" test case file (`20_match.test.ts`).
 
 ----
@@ -1300,7 +1303,7 @@ Here is the result of various expressions:
     },
   ],
 }
-// => "THE CURRENT YEAR IS: 2022"
+// => "THE CURRENT YEAR IS: 2023"
 ```
 
 `children` array: `[functionPath, ...args]`
@@ -1387,7 +1390,7 @@ Like all expression nodes, alias nodes can themselves contain complex expression
 
 ## Caching (Memoization)
 
-FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization)  functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization) functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
 
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 

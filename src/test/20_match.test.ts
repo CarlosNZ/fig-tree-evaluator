@@ -218,7 +218,7 @@ const decisionTree = {
 test('Card Game Decision Tree - single player 7+', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 1,
         ageOfYoungestPlayer: 12,
         preferredDifficulty: 'easy',
@@ -232,7 +232,7 @@ test('Card Game Decision Tree - single player 7+', () => {
 test('Card Game Decision Tree - single player under 7', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 1,
         ageOfYoungestPlayer: 5,
         preferredDifficulty: 'easy',
@@ -246,7 +246,7 @@ test('Card Game Decision Tree - single player under 7', () => {
 test('Card Game Decision Tree - multiple players, some under 5', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 3,
         ageOfYoungestPlayer: 4,
         preferredDifficulty: 'easy',
@@ -260,7 +260,7 @@ test('Card Game Decision Tree - multiple players, some under 5', () => {
 test('Card Game Decision Tree - multiple players, 5-8', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 2,
         ageOfYoungestPlayer: 5,
         preferredDifficulty: 'easy',
@@ -274,7 +274,7 @@ test('Card Game Decision Tree - multiple players, 5-8', () => {
 test('Card Game Decision Tree - multiple players, 8-12, challenging game', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 2,
         ageOfYoungestPlayer: 9,
         preferredDifficulty: 'challenging',
@@ -288,7 +288,7 @@ test('Card Game Decision Tree - multiple players, 8-12, challenging game', () =>
 test('Card Game Decision Tree - multiple players, 12-16, easy game', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 4,
         ageOfYoungestPlayer: 12,
         preferredDifficulty: 'easy',
@@ -302,7 +302,7 @@ test('Card Game Decision Tree - multiple players, 12-16, easy game', () => {
 test('Card Game Decision Tree - 3 players, 16+, challenging game', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 3,
         ageOfYoungestPlayer: 18,
         preferredDifficulty: 'challenging',
@@ -316,7 +316,7 @@ test('Card Game Decision Tree - 3 players, 16+, challenging game', () => {
 test('Card Game Decision Tree - 4 players, 16+, challenging game', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 4,
         ageOfYoungestPlayer: 16,
         preferredDifficulty: 'challenging',
@@ -330,7 +330,7 @@ test('Card Game Decision Tree - 4 players, 16+, challenging game', () => {
 test('Card Game Decision Tree - 4 players, 16+, hard game', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 4,
         ageOfYoungestPlayer: 16,
         preferredDifficulty: 'hard',
@@ -344,7 +344,7 @@ test('Card Game Decision Tree - 4 players, 16+, hard game', () => {
 test('Card Game Decision Tree - No match error', () => {
   return exp
     .evaluate(decisionTree, {
-      objects: {
+      data: {
         numberOfPlayers: 4,
         ageOfYoungestPlayer: 16,
         preferredDifficulty: 'other',
