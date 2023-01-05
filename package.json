@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.2.3",
+  "version": "2.3.0",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.js",
   "types": "build/index.d.ts",
