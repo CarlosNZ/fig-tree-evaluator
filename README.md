@@ -1427,6 +1427,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+- **v2.3.1**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
 - **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
 - **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
 - **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
