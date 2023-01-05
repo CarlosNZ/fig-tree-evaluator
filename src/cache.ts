@@ -13,17 +13,19 @@ class FigTreeCache {
     this.maxSize = maxSize ?? MAX_CACHED_ITEMS
   }
 
-  public useCache = async (shouldUseCache: boolean, action: Function, ...args: any[]) => {
+  public useCache = async (shouldUseCache: boolean, action: Function, ...args: unknown[]) => {
     if (!shouldUseCache) return await action(...args)
 
     const key = stringifyInput(args)
     if (key in this.store) {
+      // Move key to end of queue
       this.queue = this.queue.filter((val) => val !== key)
       this.queue.unshift(key)
       console.log('Using cached result:', this.store[key])
       return this.store[key]
     }
 
+    // Otherwise create a new cache entry
     const result = await action(...args)
     this.store[key] = result
     if (this.queue.length >= this.maxSize) this.queue = this.queue.slice(0, this.maxSize - 1)

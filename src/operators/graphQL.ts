@@ -74,7 +74,7 @@ const evaluate = async (
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (url: string, data: object, headers: object, returnNode: string) => {
+    async (url: string, data: GenericObject, headers: GenericObject, returnNode?: string) => {
       const response = await axiosRequest({ url, method: 'post', data, headers })
       return extractAndSimplify(response.data, returnNode)
     },

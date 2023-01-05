@@ -58,7 +58,12 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (url: string, params: any, headers: any, returnProperty: string) => {
+    async (
+      url: string,
+      params: { [key: string]: string },
+      headers: GenericObject,
+      returnProperty?: string
+    ) => {
       const response = await axiosRequest({
         url,
         params,
