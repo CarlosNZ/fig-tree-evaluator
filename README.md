@@ -1436,6 +1436,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
+*Trivial upgrades (e.g. documentation only) not included*
+
 - **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
 - **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
 - **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
@@ -1459,7 +1461,6 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
   -  more flexible output conversion
   -  more well-organised codebase
 - **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvements, but should be 99% backwards compatible.
-
 
 ## Credit
 Icon: Tree by ka reemov from <a href="https://thenounproject.com/icon/tree-2665898/" target="_blank" title="Tree Icon">Noun Project</a>
