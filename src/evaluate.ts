@@ -53,7 +53,10 @@ export const evaluatorFunction = async (
 
   // Replace any fragments with their full expressions
   if (isFragmentNode(expression)) {
-    const { fragment, parameters } = expression
+    const [fragment, parameters] = (await evaluateArray(
+      [expression.fragment, expression.parameters],
+      config
+    )) as [string, { [key: string]: EvaluatorNode }]
     const fragmentReplacement = options?.fragments?.[fragment]
     if (!fragmentReplacement)
       return fallbackOrError(

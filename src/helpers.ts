@@ -134,9 +134,9 @@ export const checkRequiredNodes = (
 }
 
 /*
-Mostly we can just merge the options objects, but for "data", "functions", and
-"headers", they might need merging separately so we preserve proper deep
-merging.
+Mostly we can just merge the options objects, but for "data", "functions",
+"fragments" and "headers", they might need merging separately so we preserve
+proper deep merging.
 */
 export const mergeOptions = (
   origOptions: FigTreeOptions,
@@ -147,6 +147,8 @@ export const mergeOptions = (
     combinedOptions.data = { ...origOptions.data, ...newOptions.data }
   if (origOptions.functions || newOptions.functions)
     combinedOptions.functions = { ...origOptions.functions, ...newOptions.functions }
+  if (origOptions.fragments || newOptions.fragments)
+    combinedOptions.fragments = { ...origOptions.fragments, ...newOptions.fragments }
   if (origOptions.headers || newOptions.headers)
     combinedOptions.headers = { ...origOptions.headers, ...newOptions.headers }
 
