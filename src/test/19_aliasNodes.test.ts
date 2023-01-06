@@ -1,4 +1,4 @@
-import FigTreeEvaluator from '../'
+import FigTreeEvaluator from '..'
 
 const exp = new FigTreeEvaluator({
   graphQLConnection: {
