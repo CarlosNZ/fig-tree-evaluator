@@ -49,6 +49,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [PASSTHRU](#passthru)
   - [CUSTOM\_FUNCTIONS](#custom_functions)
 - [Alias Nodes](#alias-nodes)
+- [Fragments](#fragments)
 - [Caching (Memoization)](#caching-memoization)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
@@ -140,6 +141,7 @@ The `options` parameter is an object with the following available properties (al
 
 - `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
+- `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
 - `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postres](https://node-postgres.com/) connection object here.
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
@@ -1387,6 +1389,67 @@ Alias nodes are evaluated first, then the results are substituted in whenever th
 Like all expression nodes, alias nodes can themselves contain complex expressions with their own alias nodes defined within. As long as the alias references are descendent nodes of the alias definition, they will be resolved.
 
 (If an alias reference does not having a matching definition, the reference value will just be returned as a literal string, e.g. `"$getCountry"`)
+
+## Fragments
+
+You may find that the expressions you are building for your configuration files often use very similar sub-expressions, but with only some input values that differ. For example, due to the nature of your app, your expressions might be regularly looking up a "countries" database and fetching the capital city, such as:
+```js
+{
+  operator: 'GET',
+  url: {
+    operator: 'stringSubstitution',
+    string: 'https://restcountries.com/v3.1/name/%1',
+    replacements: ['New Zealand'],
+  },
+  returnProperty: '[0].capital',
+  outputType: 'string',
+}
+// => "Wellington"
+```
+
+In this case, you can pre-define the main part of the expression as part of an expression "fragment" in the evaluator [options](#available-options).
+
+The syntax is similar to [Alias Nodes](#alias-nodes), in that any string values prefixed with `$` will be treated as "parameters" that will be replaced during evaluation. In the above example, you would define the fragment when instantiating the evaluator like so:
+
+```js
+const exp = new FigTreeEvaluator({
+  fragments: {
+    getCapital: {
+      operator: 'GET',
+      url: {
+        operator: 'stringSubstitution',
+        string: 'https://restcountries.com/v3.1/name/%1',
+        replacements: [ "$country" ],
+      },
+      returnProperty: '[0].capital',
+      outputType: 'string',
+    },
+  },
+})
+```
+
+Then any subsequent expressions can use this fragment by specifying a special "Fragment Node", which contains the `fragment` and (optionally) `parameters` fields:
+```js
+{
+  fragment: "getCapital",
+  parameters: {
+    $country: { operator: "getData", property: "path.to.country.name" }
+  }
+}
+```
+
+Like the `branches` field in the ["Match" operator](#match), the properties of the `parameters` field can be specified at the root level as well -- it just depends on whichever is most appropriate for your use case. So the following is equivalent to the previous fragment node:
+```js
+{
+  fragment: "getCapital",
+  $country: { operator: "getData", property: "path.to.country.name" }
+}
+```
+
+
+
+
+
 
 ## Caching (Memoization)
 
