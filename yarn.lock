@@ -2362,10 +2362,10 @@ object-keys@^1.1.1:
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
 
-object-property-extractor@^1.0.3:
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.3.tgz#856bdcfe7c15561e20307f2dfd60eded88246dc5"
-  integrity sha512-9Ky2drRY1DIgluEzDhu209cuuM7ekDFT5o1njEWmM7iO/4MSA8RXaa4pdqUNWRKCDzY9V3YQaImg2gAuzE3S+A==
+object-property-extractor@^1.0.6:
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.6.tgz#823dabe27e646fd6922db5874191a4bd9962f886"
+  integrity sha512-75926oo0hL87mquCqKHLgWTBW2fOEXIZy3CuHl3hgpruBRJvCMUMGuowm+ipOiDNHV+85pcR7xpOrTutNe4G5Q==
 
 object.assign@^4.1.4:
   version "4.1.4"
