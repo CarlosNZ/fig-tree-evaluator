@@ -1407,7 +1407,7 @@ You may find that the expressions you are building for your configuration files 
 // => "Wellington"
 ```
 
-In this case, you can pre-define the main part of the expression as part of an expression "fragment" in the evaluator [options](#available-options).
+In this case, you can pre-define the main part of the expression as part of an expression "**fragment**" in the evaluator [options](#available-options).
 
 The syntax is similar to [Alias Nodes](#alias-nodes), in that any string values prefixed with `$` will be treated as "parameters" that will be replaced during evaluation. In the above example, you would define the fragment when instantiating the evaluator like so:
 
@@ -1446,10 +1446,9 @@ Like the `branches` field in the ["Match" operator](#match), the properties of t
 }
 ```
 
+See `22_fragments.test.ts` for more complex examples.
 
-
-
-
+Unlike Alias Nodes, which are evaluated *once* and then the result re-used whenever the alias is referenced, Fragments are evaluated every time, as the input parameters may differ.
 
 ## Caching (Memoization)
 
