@@ -212,7 +212,7 @@ test('GraphQL - Get repo info using partial url and updated options, requires au
     returnNode: 'viewer.repository.description',
   }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBe('A custom expression tree evaluator')
+    expect(result).toBe('A highly configurable custom expression tree evaluator')
   })
 })
 

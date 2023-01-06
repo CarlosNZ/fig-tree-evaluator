@@ -2,7 +2,11 @@
 This automates the process of building the operatorAliases map. We could
 generate it each time at runtime, but since it's a fixed reference it makes
 sense to create it once and save the result.
-This script runs automatically before the build script runs.
+
+This script runs automatically before the build script runs (or run manually
+with `yarn generate`).
+
+Result is saved to `src/operators/_operatorAliases.json`
 */
 
 import { writeFileSync } from 'fs'
