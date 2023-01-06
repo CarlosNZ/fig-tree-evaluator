@@ -15,6 +15,21 @@ export const getInitOptions = () => {
     headers,
     skipRuntimeTypeCheck,
     evaluateFullObject,
+    fragments: {
+      getCountry: {
+        operator: 'GET',
+        children: [
+          {
+            operator: 'stringSubstitution',
+            string: 'https://restcountries.com/v3.1/name/%1',
+            replacements: ['$country'],
+          },
+          [],
+          'flag',
+        ],
+        outputType: 'string',
+      },
+    },
   }
 }
 

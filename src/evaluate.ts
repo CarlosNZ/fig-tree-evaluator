@@ -2,7 +2,13 @@
 The core evaluation function used by FigTreeEvaluator
 */
 
-import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType } from './types'
+import {
+  FigTreeConfig,
+  EvaluatorNode,
+  EvaluatorOutput,
+  OutputType,
+  CombinedOperatorNode,
+} from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import {
   checkRequiredNodes,
@@ -16,6 +22,7 @@ import {
   getOperatorName,
   replaceAliasNodeValues,
   evaluateObject,
+  isFragmentNode,
 } from './helpers'
 
 export const evaluatorFunction = async (
@@ -33,15 +40,31 @@ export const evaluatorFunction = async (
 
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
-  if (options.evaluateFullObject && !isOperatorNode(expression))
+  if (options.evaluateFullObject && !isOperatorNode(expression) && !isFragmentNode(expression))
     return replaceAliasNodeValues(await evaluateObject(expression, config), config)
 
   // Base case -- Non-operator (leaf) nodes get returned unmodified (or
   // substituted if an alias reference)
-  if (!isOperatorNode(expression)) return replaceAliasNodeValues(expression, config)
+  if (!isOperatorNode(expression) && !isFragmentNode(expression))
+    return replaceAliasNodeValues(expression, config)
 
   const { fallback } = expression
   const returnErrorAsString = options?.returnErrorAsString ?? false
+
+  // Replace any fragments with their full expressions
+  if (isFragmentNode(expression)) {
+    const { fragment, parameters } = expression
+    const fragmentReplacement = options?.fragments?.[fragment]
+    if (!fragmentReplacement)
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        `Fragment not defined: ${fragment}`,
+        returnErrorAsString
+      )
+    if (!isOperatorNode(fragmentReplacement)) return fragmentReplacement
+    expression = { ...expression, ...(fragmentReplacement as CombinedOperatorNode), ...parameters }
+    delete expression.fragment
+  }
 
   try {
     const operator = getOperatorName(expression.operator, operatorAliases)

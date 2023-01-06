@@ -29,6 +29,9 @@ export const parseIfJson = (input: EvaluatorNode) => {
 export const isOperatorNode = (input: EvaluatorNode) =>
   input instanceof Object && 'operator' in input
 
+export const isFragmentNode = (input: EvaluatorNode) =>
+  input instanceof Object && 'fragment' in input
+
 // Convert to camelCase but *don't* remove stand-alone punctuation as they may
 // be valid operators (e.g. "+", "?")
 const standardiseOperatorName = (name: string) => {
