@@ -67,6 +67,7 @@ export const evaluatorFunction = async (
     if (!isOperatorNode(fragmentReplacement)) return fragmentReplacement
     expression = { ...expression, ...(fragmentReplacement as CombinedOperatorNode), ...parameters }
     delete expression.fragment
+    delete expression.parameters
   }
 
   try {

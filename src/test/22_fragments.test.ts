@@ -53,7 +53,7 @@ test('Join two fragments together, one simple, one using a single "parameter")',
   })
 })
 
-test('Fragment used multiple times in an expression (with different parameters (nested)', () => {
+test('Fragment used multiple times in an expression (with different parameters (nested))', () => {
   const expression = {
     operator: '+',
     values: [
@@ -114,7 +114,7 @@ const countryDataExpression = {
   ],
 }
 
-test('Multiple fragments after new one is subsequently added to options', () => {
+test('Use old and new fragments', () => {
   return exp
     .evaluate(countryDataExpression, {
       objects: {
@@ -168,6 +168,7 @@ test('Missing fragment with fallback', () => {
   })
 })
 
+// Add decision tree to fragments
 exp.updateOptions({
   fragments: {
     weatherMatcher: {
@@ -232,7 +233,7 @@ exp.updateOptions({
     addAndDouble: { operator: 'x', values: [{ fragment: 'adder', $values: '$numbers' }, 2] },
   },
 })
-test('Fragment references another fragment', () => {
+test('Fragment references another fragment 🙄', () => {
   const expression = { fragment: 'addAndDouble', $numbers: [3, 4, 5] }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe(24)
