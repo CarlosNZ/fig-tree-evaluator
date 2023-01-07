@@ -1502,6 +1502,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation only) not included*
 
+- **v2.4.1**: Small bug fix for Fragments edge case
 - **v2.4.0**: Implement [Fragments](#fragments) (#74)
 - **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
 - **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
