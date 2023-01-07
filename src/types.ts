@@ -59,6 +59,7 @@ export interface FigTreeOptions {
   data?: GenericObject
   objects?: GenericObject // same as "data" -- deprecated
   functions?: { [key: string]: Function }
+  fragments?: { [key: string]: EvaluatorNode }
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
@@ -89,7 +90,14 @@ export interface BaseOperatorNode {
   children?: Array<EvaluatorNode>
   fallback?: any
   useCache?: boolean
-  // For NodeAliases
+  // For Alias Node references
+  [key: string]: EvaluatorNode
+}
+
+export interface FragmentNode {
+  fragment: string
+  parameters?: { [key: string]: EvaluatorNode }
+  // For parameters at the root level
   [key: string]: EvaluatorNode
 }
 
@@ -131,7 +139,7 @@ export type OperatorNodeUnion =
 
 export type EvaluatorOutput = string | boolean | number | GenericObject | null | undefined | any[]
 
-export type EvaluatorNode = CombinedOperatorNode | EvaluatorOutput
+export type EvaluatorNode = CombinedOperatorNode | FragmentNode | EvaluatorOutput
 
 export type OperatorObject = {
   requiredProperties: readonly string[]

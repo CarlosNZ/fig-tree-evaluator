@@ -53,7 +53,7 @@ class FigTreeEvaluator {
   }
 
   public updateOptions(options: FigTreeOptions) {
-    this.options = { ...this.options, ...standardiseOptionNames(options) }
+    this.options = mergeOptions(this.options, standardiseOptionNames(options))
   }
 
   public getVersion = () => pkg.version

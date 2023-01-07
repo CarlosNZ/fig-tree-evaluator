@@ -15,6 +15,7 @@ export const getInitOptions = () => {
     headers,
     skipRuntimeTypeCheck,
     evaluateFullObject,
+    // TO-DO: Add fragment editor
   }
 }
 
