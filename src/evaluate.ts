@@ -58,7 +58,7 @@ export const evaluatorFunction = async (
       config
     )) as [string, { [key: string]: EvaluatorNode }]
     const fragmentReplacement = options?.fragments?.[fragment]
-    if (!fragmentReplacement)
+    if (fragmentReplacement === undefined)
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
         `Fragment not defined: ${fragment}`,
