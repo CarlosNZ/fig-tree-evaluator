@@ -243,16 +243,17 @@ test('Fragment references another fragment 🙄', () => {
 // Edge cases (not useful IRL) -- fragment values are falsy
 
 exp.updateOptions({
-  fragments: { falsy: false, falsy2: null, falsy3: '', truthy: true },
+  fragments: { falsy: false, falsy2: null, falsy3: '', falsy4: 0, truthy: true },
 })
 test('Fragment values are falsy', () => {
   const expression = [
     { fragment: 'falsy' },
     { fragment: 'falsy2' },
     { fragment: 'falsy3' },
+    { fragment: 'falsy4' },
     { fragment: 'truthy' },
   ]
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toStrictEqual([false, null, '', true])
+    expect(result).toStrictEqual([false, null, '', 0, true])
   })
 })
