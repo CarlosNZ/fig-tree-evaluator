@@ -1,4 +1,5 @@
 import { GenericObject } from './fig-tree-evaluator/src/types'
+import initData from './data.json'
 
 const looseJSON = require('loose-json')
 
@@ -9,7 +10,7 @@ export const getInitOptions = () => {
   const headers = savedOptions.headers ?? undefined
   const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
   const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
-  const fragments = savedOptions.fragments ?? undefined
+  const fragments = savedOptions.fragments ?? initData.fragments
   return {
     graphQLConnection,
     baseEndpoint,

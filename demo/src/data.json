@@ -33,5 +33,17 @@
       " ",
       { "operator": "objectProperties", "property": "user.lastName" }
     ]
+  },
+  "fragments": {
+    "getCapital": {
+      "operator": "GET",
+      "url": {
+        "operator": "stringSubstitution",
+        "string": "https://restcountries.com/v3.1/name/%1",
+        "replacements": ["$country"]
+      },
+      "returnProperty": "[0].capital",
+      "outputType": "string"
+    }
   }
 }
