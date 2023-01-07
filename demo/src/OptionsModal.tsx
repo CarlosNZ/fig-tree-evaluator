@@ -35,6 +35,7 @@ const resetFormState = (options: FigTreeOptions) => {
   const gqlHeaders = { ...options.graphQLConnection?.headers }
   const skipRuntimeTypeCheck = options.skipRuntimeTypeCheck ?? false
   const evaluateFullObject = options.evaluateFullObject ?? false
+  const fragments = options.fragments ?? undefined
   delete headers?.Authorization
   delete gqlHeaders?.Authorization
   return {
@@ -48,6 +49,8 @@ const resetFormState = (options: FigTreeOptions) => {
     gqlHeadersError: false,
     skipRuntimeTypeCheck,
     evaluateFullObject,
+    fragmentsText: JSON.stringify(fragments, null, 2),
+    fragmentsError: false,
   }
 }
 
@@ -62,11 +65,18 @@ export const OptionsModal = ({
 }) => {
   const [formState, setFormState] = useState(resetFormState(options))
 
-  const formatHeadersText = (text: { [key in 'headersText' | 'gqlHeadersText']?: string }) => {
+  const formatHeadersText = (text: {
+    [key in 'headersText' | 'gqlHeadersText' | 'fragmentsText']?: string
+  }) => {
     const [key, value] = Object.entries(text)[0]
     if (!value) return
     const json = value ? JSONstringify(value, false, true) : ''
-    const errorKey = key === 'headersText' ? 'headersError' : 'gqlHeadersError'
+    const errorKey =
+      key === 'headersText'
+        ? 'headersError'
+        : key === 'gqlHeadersText'
+        ? 'gqlHeadersError'
+        : 'fragmentsError'
     if (json) {
       setFormState((curr) => ({ ...curr, [key]: json, [errorKey]: false }))
     } else setFormState((curr) => ({ ...curr, [errorKey]: true }))
@@ -84,21 +94,26 @@ export const OptionsModal = ({
       gqlHeadersText,
       skipRuntimeTypeCheck,
       evaluateFullObject,
+      fragmentsText,
     } = formState
 
     const headers = headersText ? JSON.parse(headersText) : {}
     const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
+    const fragments = fragmentsText ? JSON.parse(fragmentsText) : {}
 
-    const newOptions: FigTreeOptions = filterObjectRecursive({
-      baseEndpoint,
-      headers: { Authorization: authHeader, ...headers },
-      graphQLConnection: {
-        endpoint: gqlEndpoint ?? '',
-        headers: { Authorization: gqlAuth, ...gqlHeaders },
-      },
-      skipRuntimeTypeCheck,
-      evaluateFullObject,
-    })
+    const newOptions: FigTreeOptions = {
+      ...filterObjectRecursive({
+        baseEndpoint,
+        headers: { Authorization: authHeader, ...headers },
+        graphQLConnection: {
+          endpoint: gqlEndpoint ?? '',
+          headers: { Authorization: gqlAuth, ...gqlHeaders },
+        },
+        skipRuntimeTypeCheck,
+        evaluateFullObject,
+      }),
+      fragments,
+    }
 
     updateOptions(newOptions)
     localStorage.setItem('options', JSON.stringify(newOptions))
@@ -189,6 +204,33 @@ export const OptionsModal = ({
                             setFormState((curr) => ({ ...curr, gqlHeadersText: e.target.value }))
                           }
                           onBlur={(e) => formatHeadersText({ gqlHeadersText: e.target.value })}
+                        />
+                        <FormErrorMessage>Invalid Input</FormErrorMessage>
+                      </FormControl>
+                    </AccordionPanel>
+                  </AccordionItem>
+                </Accordion>
+                <Accordion allowToggle>
+                  <AccordionItem>
+                    <AccordionButton>
+                      <h2>
+                        <Box flex="1" textAlign="left">
+                          <Text>Fragments (JSON)</Text>
+                        </Box>
+                      </h2>
+                      <AccordionIcon />
+                    </AccordionButton>
+                    <AccordionPanel>
+                      <FormControl id="fragments" isInvalid={formState.fragmentsError}>
+                        <Textarea
+                          fontSize="xs"
+                          fontFamily="monospace"
+                          rows={12}
+                          value={formState.fragmentsText}
+                          onChange={(e) =>
+                            setFormState((curr) => ({ ...curr, fragmentsText: e.target.value }))
+                          }
+                          onBlur={(e) => formatHeadersText({ fragmentsText: e.target.value })}
                         />
                         <FormErrorMessage>Invalid Input</FormErrorMessage>
                       </FormControl>

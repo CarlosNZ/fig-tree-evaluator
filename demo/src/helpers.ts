@@ -9,13 +9,14 @@ export const getInitOptions = () => {
   const headers = savedOptions.headers ?? undefined
   const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
   const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
+  const fragments = savedOptions.fragments ?? undefined
   return {
     graphQLConnection,
     baseEndpoint,
     headers,
     skipRuntimeTypeCheck,
     evaluateFullObject,
-    // TO-DO: Add fragment editor
+    fragments,
   }
 }
 
@@ -30,13 +31,13 @@ export const parseLocalStorage = (key: string | object) => {
         if (val === 'false') return [key, false]
         if (val === 'null') return [key, null]
         if (val === 'undefined') return [key, undefined]
-        if (val instanceof Object) return [key, convertTypes(val)]
+        if (val instanceof Object && !Array.isArray(val)) return [key, convertTypes(val)]
         return [key, val]
       })
     )
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value
-    return convertTypes(parsed)
+    return key === 'options' ? parsed : convertTypes(parsed)
   } catch {
     return null
   }
