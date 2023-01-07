@@ -1392,7 +1392,7 @@ Like all expression nodes, alias nodes can themselves contain complex expression
 
 ## Fragments
 
-You may find that the expressions you are building for your configuration files often use very similar sub-expressions, but with only some input values that differ. For example, due to the nature of your app, your expressions might be regularly looking up a "countries" database and fetching the capital city, such as:
+You may find that the expressions you are building for your configuration files often use very similar sub-expressions (but perhaps with only some input values that differ). For example, your expressions might be regularly looking up a "countries" database and fetching the capital city, such as:
 ```js
 {
   operator: 'GET',
@@ -1408,6 +1408,8 @@ You may find that the expressions you are building for your configuration files 
 ```
 
 In this case, you can pre-define the main part of the expression as part of an expression "**fragment**" in the evaluator [options](#available-options).
+
+The idea is that you can "hard-code" some common expressions into your app, so that external configuration expressions can be simpler when using these common elements.
 
 The syntax is similar to [Alias Nodes](#alias-nodes), in that any string values prefixed with `$` will be treated as "parameters" that will be replaced during evaluation. In the above example, you would define the fragment when instantiating the evaluator like so:
 

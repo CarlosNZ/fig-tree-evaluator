@@ -90,13 +90,14 @@ export interface BaseOperatorNode {
   children?: Array<EvaluatorNode>
   fallback?: any
   useCache?: boolean
-  // For NodeAliases
+  // For Alias Node references
   [key: string]: EvaluatorNode
 }
 
 export interface FragmentNode {
   fragment: string
-  parameters: { [key: string]: EvaluatorNode }
+  parameters?: { [key: string]: EvaluatorNode }
+  // For parameters at the root level
   [key: string]: EvaluatorNode
 }
 
