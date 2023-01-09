@@ -14,6 +14,8 @@ import {
   FigTreeOptions,
   OperatorNodeUnion,
   FigTreeConfig,
+  OperatorReference,
+  Operators,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -41,6 +43,32 @@ const standardiseOperatorName = (name: string) => {
 
 export const getOperatorName = (operator: string, operatorAliases: { [key: string]: Operator }) =>
   operatorAliases[standardiseOperatorName(operator)]
+
+/*
+Filter available operators based on include/exclude lists in constructor options
+*/
+export const filterOperators = (
+  operators: OperatorReference,
+  operatorAliases: { [key: string]: Operator },
+  includeList: string[],
+  excludeList: string[]
+) => {
+  const filteredOperators = { ...operators }
+
+  const includeListCanonical = (
+    includeList.length === 0
+      ? Operators
+      : includeList.map((op) => getOperatorName(op, operatorAliases))
+  ) as Operator[]
+  const excludeListCanonical = excludeList.map((op) => getOperatorName(op, operatorAliases))
+
+  const finalList = includeListCanonical.filter((op) => !excludeListCanonical.includes(op))
+
+  const operatorsToRemove = Operators.filter((op) => !finalList.includes(op))
+
+  operatorsToRemove.forEach((operator) => (filteredOperators[operator] = null))
+  return filteredOperators
+}
 
 /*
 If `string` exceeds `length` (default: 200 chars), will return a truncated

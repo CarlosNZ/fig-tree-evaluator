@@ -7,7 +7,7 @@ import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import operatorAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
-import { mergeOptions } from './helpers'
+import { mergeOptions, filterOperators } from './helpers'
 import FigTreeCache from './cache'
 
 const pkg = require('../package.json')
@@ -19,9 +19,15 @@ class FigTreeEvaluator {
   private cache: FigTreeCache
   constructor(options: FigTreeOptions = {}) {
     this.options = standardiseOptionNames(options)
-    this.operators = operators
+    this.operators = filterOperators(
+      operators,
+      operatorAliases as { [key: string]: Operator },
+      options.operatorsInclude ?? [],
+      options.operatorsExclude ?? []
+    )
     this.operatorAliases = operatorAliases as { [key: string]: Operator }
     this.cache = new FigTreeCache(options.maxCacheSize)
+    console.log(this.operators)
   }
 
   private typeChecker = (...args: TypeCheckInput[]) => {

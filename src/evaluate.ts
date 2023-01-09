@@ -8,6 +8,8 @@ import {
   EvaluatorOutput,
   OutputType,
   CombinedOperatorNode,
+  OperatorReference,
+  OperatorObject,
 } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import {
@@ -80,7 +82,16 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
 
-    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
+    if (operators[operator] === null)
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        `Disabled operator: ${expression.operator}`,
+        returnErrorAsString
+      )
+
+    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[
+      operator
+    ] as OperatorObject
 
     expression = mapPropertyAliases(propertyAliases, expression)
 

@@ -19,6 +19,7 @@ import {
   PGConnection,
   GraphQLConnection,
 } from './operators'
+import operatorAliases from './operators/_operatorAliases.json'
 import { TypeCheckInput } from './typeCheck'
 
 export const Operators = [
@@ -71,6 +72,8 @@ export interface FigTreeOptions {
   evaluateFullObject?: boolean
   useCache?: boolean
   maxCacheSize?: number
+  operatorsInclude?: (keyof typeof operatorAliases)[]
+  operatorsExclude?: (keyof typeof operatorAliases)[]
 }
 
 export interface FigTreeConfig {
@@ -152,4 +155,4 @@ export type OperatorObject = {
   ) => OperatorNodeUnion | Promise<OperatorNodeUnion>
 }
 
-export type OperatorReference = { [key in Operator]: OperatorObject }
+export type OperatorReference = { [key in Operator]: OperatorObject | null }
