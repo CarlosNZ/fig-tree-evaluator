@@ -1500,7 +1500,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
-*Trivial upgrades (e.g. documentation only) not included*
+*Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
 - **v2.4.1**: Small bug fix for Fragments edge case
 - **v2.4.0**: Implement [Fragments](#fragments) (#74)

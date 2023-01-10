@@ -1,7 +1,6 @@
 import { parseChildren, BasicExtendedNode } from './logicalAnd'
 import { evaluateArray } from './_operatorUtils'
 import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../types'
-import { evaluateExpression } from '..'
 
 const requiredProperties = [] as const
 const operatorAliases = ['/', 'divide', '÷']
@@ -12,21 +11,25 @@ interface DivisionNodeWithProps extends BaseOperatorNode {
   divisor: EvaluatorNode
 }
 
-export type DivisionNode = BasicExtendedNode &
-  DivisionNodeWithProps & { output?: 'quotient' | 'remainder' }
+type DivisionOutput = 'quotient' | 'remainder'
+
+export type DivisionNode = BasicExtendedNode & DivisionNodeWithProps & { output?: DivisionOutput }
 
 const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promise<number> => {
-  const values = (await evaluateArray(
-    expression.values ?? [expression.dividend, expression.divisor],
+  const [values, output] = (await evaluateArray(
+    [expression.values ?? [expression.dividend, expression.divisor], expression.output],
     config
-  )) as number[]
+  )) as [number[], DivisionOutput]
 
-  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
+  config.typeChecker(
+    { name: 'values', value: values, expectedType: 'array' },
+    { name: 'output', value: output, expectedType: ['string', 'undefined'] }
+  )
 
   if (values.length < 2) throw new Error('- Not enough values provided')
   if (!values[1]) throw new Error('Division by zero!')
 
-  switch (await evaluateExpression(expression.output)) {
+  switch (output) {
     case 'quotient':
       return Math.floor(values[0] / values[1])
     case 'remainder':

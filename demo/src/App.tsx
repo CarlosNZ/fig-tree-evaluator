@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@chakra-ui/react'
-import EvaluatorDev from './fig-tree-evaluator/src'
+import EvaluatorDev, { FigTreeOptions } from './fig-tree-evaluator/src'
 import EvaluatorPublished from 'fig-tree-evaluator'
 import { OptionsModal } from './OptionsModal'
 import {
@@ -31,7 +31,6 @@ import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
-import { FigTreeOptions } from './fig-tree-evaluator/src/types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 
 const looseJSON = require('loose-json')
