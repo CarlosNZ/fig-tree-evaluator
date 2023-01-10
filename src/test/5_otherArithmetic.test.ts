@@ -180,6 +180,19 @@ test('DIVIDE operator with not enough values', async () => {
   )
 })
 
+test('DIVIDE operator with Evaluator node values', () => {
+  const expression = {
+    operator: '÷',
+    values: [
+      { operator: '+', values: [70, 20] },
+      { operator: '+', values: [1, 1, 1] },
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toEqual(30)
+  })
+})
+
 test('Greater than - integer comparison', () => {
   const expression = { operator: 'greaterThan', values: [5, 3] }
   return exp.evaluate(expression).then((result: any) => {
