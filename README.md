@@ -105,7 +105,7 @@ Or, with a deeper structure that results in the same final output:
 // -> 6
 ```
 
-Which would be represented diagramatically with the following expression tree:
+Which would be represented diagrammatically with the following expression tree:
 
 ![Example 2](/docs/img/Example_1.png)
 
@@ -135,6 +135,12 @@ exp.evaluate(expression, [options]) // Options over-ride initial options for thi
 const result = await exp.evaluate(expression, [options])
 ```
 
+FigTreeEvaluator is written in **Typescript**, and the following types are available to import from the package:
+- `FigTreeOptions`: `options` object, as per [options](#available-options) below
+- `Operator`: string literal canonical [Operator](#operator-nodes) names (`AND`, `OR`, `EQUAL`, etc.)
+- `EvaluatorNode`: Evaluator input
+- `EvaluatorOutput`
+
 ## Available options
 
 The `options` parameter is an object with the following available properties (all optional):
@@ -142,10 +148,10 @@ The `options` parameter is an object with the following available properties (al
 - `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
 - `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
-- `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postres](https://node-postgres.com/) connection object here.
+- `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postgres](https://node-postgres.com/) connection object here.
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
-- `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authenticatian headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
+- `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
 - `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
@@ -1467,6 +1473,8 @@ Currently, caching is only implemented for the following operators, since they p
 This is different to the memoization provided by [Alias Nodes](#alias-nodes):
 - Alias nodes are still evaluated once for every evaluation -- they're more for re-use *within* a complex expression.
 - Cached nodes will persist *between* different evaluations as long as the input values are the same as a previously evaluated node.
+
+Caching is enabled by default for most of the above operators, but this can be overridden by setting `useCache: false` in [options](#available-options), either globally or per expression. If you're querying a database or API that is likely to have a different result for the same request (i.e. data has changed), then you probably want to turn the cache off.
 
 ## More examples
 
