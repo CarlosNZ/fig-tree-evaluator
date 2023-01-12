@@ -5410,10 +5410,10 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.4.5:
-  version "2.4.5"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.4.5.tgz#cbce0f62a4912154462022aa31f4ad0d3511f1b1"
-  integrity sha512-CShau0LrXWW1OLQ7R5+VhBKmKixnDcUeR6qfIIVp+DG2O19sjG7rB8BxfPuXDxESwNnmmBsrX+GaLSZ8nehAbA==
+fig-tree-evaluator@^2.4.6:
+  version "2.4.6"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.4.6.tgz#a33c2ccde3a1161147d471497b55905a30a6b24d"
+  integrity sha512-oIE+dEn5FU+shs5P9CYDAA4Bwf+fkpl9Jf1XPfk59Hd+gREYvOKAyNhVyXn1N8haOm8+yUvTv5WviSt3DVRkpw==
   dependencies:
     axios "^0.27.2"
     change-case "^4.1.2"
