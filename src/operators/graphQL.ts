@@ -15,6 +15,7 @@ import {
   GenericObject,
   OperatorObject,
 } from '../types'
+import { config } from 'process'
 
 const requiredProperties = ['query'] as const
 const operatorAliases = ['graphQl', 'graphql', 'gql']
@@ -92,8 +93,14 @@ const evaluate = async (
   return result
 }
 
-const parseChildren = async (expression: CombinedOperatorNode): Promise<GraphQLNode> => {
-  const [query, url = '', fieldNames, ...rest] = expression.children as [string, string, string[]]
+const parseChildren = async (
+  expression: CombinedOperatorNode,
+  config: FigTreeConfig
+): Promise<GraphQLNode> => {
+  const [query, url = '', fieldNames, ...rest] = (await evaluateArray(
+    expression.children as EvaluatorNode[],
+    config
+  )) as [string, string, string[]]
   const values = rest.slice(0, fieldNames.length)
   const variables = zipArraysToObject(fieldNames, values)
   const output = { ...expression, query, url, variables }
