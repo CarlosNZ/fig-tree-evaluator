@@ -24,6 +24,7 @@ import {
   evaluateObject,
   isFragmentNode,
 } from './helpers'
+import exp from 'constants'
 
 export const evaluatorFunction = async (
   input: EvaluatorNode,
@@ -38,21 +39,26 @@ export const evaluatorFunction = async (
     expression = await evaluateArray(expression, config)
   }
 
+  const isOperator = isOperatorNode(expression)
+  const isFragment = isFragmentNode(expression)
+
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
-  if (options.evaluateFullObject && !isOperatorNode(expression) && !isFragmentNode(expression))
+  if (options.evaluateFullObject && !isOperator && !isFragment)
     return replaceAliasNodeValues(await evaluateObject(expression, config), config)
 
   // Base case -- Non-operator (leaf) nodes get returned unmodified (or
   // substituted if an alias reference)
-  if (!isOperatorNode(expression) && !isFragmentNode(expression))
-    return replaceAliasNodeValues(expression, config)
+  if (!isOperator && !isFragment) return replaceAliasNodeValues(expression, config)
 
   const { fallback } = expression
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
+  // Return deprecated (< v1) "value" nodes
+  // if ('value' in expression) return expression.value
+
   // Replace any fragments with their full expressions
-  if (isFragmentNode(expression)) {
+  if (isFragment) {
     const [fragment, parameters] = (await evaluateArray(
       [expression.fragment, expression.parameters],
       config
