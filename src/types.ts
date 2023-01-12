@@ -71,6 +71,8 @@ export interface FigTreeOptions {
   evaluateFullObject?: boolean
   useCache?: boolean
   maxCacheSize?: number
+  // Undocumented -- only for < v1 compatibility
+  supportDeprecatedValueNodes?: boolean
 }
 
 export interface FigTreeConfig {

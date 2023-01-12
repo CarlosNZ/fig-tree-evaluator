@@ -51,7 +51,8 @@ export const evaluatorFunction = async (
   // substituted if an alias reference)
   if (!isOperator && !isFragment) {
     // Return deprecated (< v1) "value" nodes
-    if (isObject(expression) && 'value' in expression) return expression.value
+    if (options.supportDeprecatedValueNodes && isObject(expression) && 'value' in expression)
+      return expression.value
 
     return replaceAliasNodeValues(expression, config)
   }
