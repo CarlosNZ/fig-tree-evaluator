@@ -95,6 +95,7 @@ export const joinUrlParts = (...urls: string[]) => {
     const startSliceIndex = curr[0] === '/' ? 1 : 0
     const endSliceIndex = curr.slice(-1) === '/' ? -1 : undefined
     const newPart = curr.slice(startSliceIndex, endSliceIndex)
+    if (newPart === '') return acc
     return acc + (index === 0 ? '' : '/') + newPart
   }, '')
 }

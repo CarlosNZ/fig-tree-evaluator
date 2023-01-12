@@ -82,21 +82,6 @@ test('Fragment used multiple times in an expression (with different parameters (
   })
 })
 
-// Add a new fragment to options
-exp.updateOptions({
-  fragments: {
-    getCountryData: {
-      operator: 'GET',
-      url: {
-        operator: 'stringSubstitution',
-        string: 'https://restcountries.com/v3.1/name/%1',
-        replacements: ['$country'],
-      },
-      returnProperty: { operator: '+', values: ['[0].', '$field'] },
-    },
-  },
-})
-
 const countryDataExpression = {
   fragment: 'adder',
   $values: [
@@ -115,6 +100,20 @@ const countryDataExpression = {
 }
 
 test('Use old and new fragments', () => {
+  // Add a new fragment to options
+  exp.updateOptions({
+    fragments: {
+      getCountryData: {
+        operator: 'GET',
+        url: {
+          operator: 'stringSubstitution',
+          string: 'https://restcountries.com/v3.1/name/%1',
+          replacements: ['$country'],
+        },
+        returnProperty: { operator: '+', values: ['[0].', '$field'] },
+      },
+    },
+  })
   return exp
     .evaluate(countryDataExpression, {
       objects: {

@@ -45,3 +45,4 @@ src/dev/playground.ts
 .npmrc
 temp.js
 .vscode/settings.json
+src/test/testSecrets.json
