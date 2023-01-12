@@ -1510,7 +1510,9 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-- **v2.4.6**: More backwards compatibility for very old (pre-v1) syntax (undocumented)
+- **v2.5.0**:
+  - Bug fixes for edge cases (mainly related to backwards compatibility)
+  - More backwards compatibility for very old (pre-v1) syntax (undocumented)
 - **v2.4.1**: Small bug fix for Fragments edge case
 - **v2.4.0**: Implement [Fragments](#fragments) (#74)
 - **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
