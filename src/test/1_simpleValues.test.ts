@@ -1,6 +1,6 @@
 import FigTreeEvaluator, { evaluateExpression } from '../'
 
-const exp = new FigTreeEvaluator()
+const exp = new FigTreeEvaluator({ supportDeprecatedValueNodes: true })
 
 test('String literal', () => {
   const expression = 'Just a string'
