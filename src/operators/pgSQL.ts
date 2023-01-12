@@ -10,21 +10,22 @@ import {
 
 const requiredProperties = ['query'] as const
 const operatorAliases = ['pgSql', 'sql', 'postgres', 'pg', 'pgDb']
-const propertyAliases = { replacements: 'values' }
+const propertyAliases = { replacements: 'values', queryType: 'type' }
 
 export type PGNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode & { values?: EvaluatorNode[]; type?: 'string' }
 
 const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
-  const [query, ...values] = (await evaluateArray(
-    [expression.query, ...(expression.values || ([] as EvaluatorNode[]))],
+  const [query, type, ...values] = (await evaluateArray(
+    [expression.query, expression.type, ...(expression.values || ([] as EvaluatorNode[]))],
     config
-  )) as [string, (string | number)[]]
+  )) as [string, string, (string | number)[]]
 
   config.typeChecker(
     { name: 'query', value: query, expectedType: 'string' },
-    { name: 'values', value: values, expectedType: 'array' }
+    { name: 'values', value: values, expectedType: 'array' },
+    { name: 'type', value: type, expectedType: ['string', 'undefined'] }
   )
 
   if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
@@ -34,14 +35,15 @@ const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<Eval
   try {
     const result = config.cache.useCache(
       shouldUseCache,
-      async (query: string, ...values: (string | number)[]) => {
+      async (query: string, type: string | undefined, ...values: (string | number)[]) => {
         return await processPgSQL(
           [query, ...values],
           config.options.pgConnection as PGConnection,
-          expression?.type
+          type
         )
       },
       query,
+      type,
       ...values
     )
 

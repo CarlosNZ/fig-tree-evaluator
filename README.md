@@ -1049,7 +1049,7 @@ Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
 - `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
 - `values` (or `replacements`): (array) -- replacements for the `query` parameters
-- `type`: (`"array" | "string" | "number"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
+- `type` (or `queryType`): (`"array" | "string" | "number"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
   > By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.  
 
   We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
