@@ -57,3 +57,38 @@ test('Undefined', () => {
     expect(result).toBeUndefined()
   })
 })
+
+// Deprecated expression syntax, but we'll still support it for now.
+test('Testing basic string literal', () => {
+  return exp
+    .evaluate({
+      type: 'string',
+      value: 'First Name',
+    })
+    .then((result: any) => {
+      expect(result).toBe('First Name')
+    })
+})
+
+test('Testing basic string literal - no type', () => {
+  return exp.evaluate({ value: 'First Name' }).then((result: any) => {
+    expect(result).toBe('First Name')
+  })
+})
+
+test('Testing basic boolean', () => {
+  return exp.evaluate({ value: true }).then((result: any) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Testing basic Array', () => {
+  return exp
+    .evaluate({
+      type: 'array',
+      value: ['Pharmaceutical', 'Natural Product', 'Other'],
+    })
+    .then((result: any) => {
+      expect(result).toEqual(['Pharmaceutical', 'Natural Product', 'Other'])
+    })
+})

@@ -23,8 +23,8 @@ import {
   replaceAliasNodeValues,
   evaluateObject,
   isFragmentNode,
+  isObject,
 } from './helpers'
-import exp from 'constants'
 
 export const evaluatorFunction = async (
   input: EvaluatorNode,
@@ -49,13 +49,15 @@ export const evaluatorFunction = async (
 
   // Base case -- Non-operator (leaf) nodes get returned unmodified (or
   // substituted if an alias reference)
-  if (!isOperator && !isFragment) return replaceAliasNodeValues(expression, config)
+  if (!isOperator && !isFragment) {
+    // Return deprecated (< v1) "value" nodes
+    if (isObject(expression) && 'value' in expression) return expression.value
+
+    return replaceAliasNodeValues(expression, config)
+  }
 
   const { fallback } = expression
   const returnErrorAsString = options?.returnErrorAsString ?? false
-
-  // Return deprecated (< v1) "value" nodes
-  // if ('value' in expression) return expression.value
 
   // Replace any fragments with their full expressions
   if (isFragment) {

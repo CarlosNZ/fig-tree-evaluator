@@ -184,7 +184,7 @@ const extractNumber = (input: EvaluatorOutput) => {
 /*
 Returns `true` if input is an object ({}) (but not an array)
 */
-const isObject = (input: unknown) =>
+export const isObject = (input: unknown) =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
 
 /*
