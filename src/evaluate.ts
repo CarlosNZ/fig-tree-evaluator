@@ -128,7 +128,7 @@ export const evaluatorFunction = async (
       result = await evaluate(expression, config)
     } catch (err) {
       result = fallbackOrError(
-        await evaluatorFunction(fallback, config),
+        await evaluatorFunction(expression.fallback, config),
         `Operator: ${operator}\n${errorMessage(err)}`,
         returnErrorAsString
       )

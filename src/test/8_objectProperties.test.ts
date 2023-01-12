@@ -69,6 +69,16 @@ test('Object properties, unresolved path with Null fallback', () => {
   })
 })
 
+test('Object properties, unresolved path with Null fallback (using children)', () => {
+  const expression = {
+    operator: 'objectProperties',
+    children: ['application.querstions.q2.go.even.deeper', null],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBeNull()
+  })
+})
+
 test('Object properties, unresolved path (first level) with fallback', () => {
   const expression = {
     operator: 'objectProperties',
