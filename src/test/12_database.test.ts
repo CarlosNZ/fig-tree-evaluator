@@ -191,51 +191,51 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
 })
 
 // Localhost tests, needs specific local setup
-test('GraphQL -- use localhost endpoint', () => {
-  const auth = require('./testSecrets.json')
-  const expression = {
-    operator: 'GraphQL',
-    query: `query App {
-      application(id: 22) {
-        name
-      }
-    }`,
-    endpoint: 'http://localhost:5000/graphql',
-    returnNode: 'application.name',
-    headers: auth,
-  }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toEqual('Company Registration - S-ECL-0011')
-  })
-})
+// test('GraphQL -- use localhost endpoint', () => {
+//   const auth = require('./testSecrets.json')
+//   const expression = {
+//     operator: 'GraphQL',
+//     query: `query App {
+//       application(id: 22) {
+//         name
+//       }
+//     }`,
+//     endpoint: 'http://localhost:5000/graphql',
+//     returnNode: 'application.name',
+//     headers: auth,
+//   }
+//   return exp.evaluate(expression).then((result: any) => {
+//     expect(result).toEqual('Company Registration - S-ECL-0011')
+//   })
+// })
 
-test('Test GraphQL -- get single application name', () => {
-  const auth = require('./testSecrets.json')
-  exp.updateOptions({ graphQLConnection: { endpoint: 'http://localhost:5000/graphql' } })
-  return exp
-    .evaluate(
-      {
-        operator: 'graphQL',
-        children: [
-          `query App($appId:Int!) {
-          application(id: $appId) {
-            name
-          }
-        }`,
-          'graphQLEndpoint',
-          ['appId'],
-          22,
-          'application.name',
-        ],
-      },
-      {
-        headers: auth,
-      }
-    )
-    .then((result: any) => {
-      expect(result).toEqual('Company Registration - S-ECL-0011')
-    })
-})
+// test('Test GraphQL -- get single application name', () => {
+//   const auth = require('./testSecrets.json')
+//   exp.updateOptions({ graphQLConnection: { endpoint: 'http://localhost:5000/graphql' } })
+//   return exp
+//     .evaluate(
+//       {
+//         operator: 'graphQL',
+//         children: [
+//           `query App($appId:Int!) {
+//           application(id: $appId) {
+//             name
+//           }
+//         }`,
+//           'graphQLEndpoint',
+//           ['appId'],
+//           22,
+//           'application.name',
+//         ],
+//       },
+//       {
+//         headers: auth,
+//       }
+//     )
+//     .then((result: any) => {
+//       expect(result).toEqual('Company Registration - S-ECL-0011')
+//     })
+// })
 
 // Authentication
 
