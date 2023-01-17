@@ -4,10 +4,10 @@
 
 **FigTree Evaluator** is a module to evaluate JSON-structured expression trees. 
 
-A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Use cases could include: 
+A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Examples could include: 
 
 - a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
-- configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic. (See examples in `20_match.test.ts`)
+- configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic. (See implementation in `20_match.test.ts`)
 - extend [JSON Forms](https://jsonforms.io) with more complex logic and dynamic lookups: https://github.com/CarlosNZ/jsonforms-with-figtree-demo
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
@@ -156,7 +156,7 @@ The `options` parameter is an object with the following available properties (al
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 - `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
-- `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them in place.
+- `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them within the object tree.
 - `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
 - `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
 
@@ -199,7 +199,7 @@ For example, the following two representations are equivalent `conditional` oper
 ```js
 {
     operator: "?", // conditional (alias)
-    condition: 1 + 1 ==== 2
+    condition: 1 + 1 ==== 2,
     valueIfTrue: "True output",
     valueIfFalse: "False output"
 }
@@ -1521,7 +1521,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 - **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
 - **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
 - **v2.2.0**:
-  - New "[Match](#match) operator (#61)
+  - New "[Match](#match)" operator (#61)
   - Fix for regex incompatibility with Safari (#60)
 - **v2.1.5**: Demo updates (no changes to core evaluator)
 - **v2.1.4**: Upgrade dependencies
