@@ -21,14 +21,18 @@
     "pg": "^8.7.3",
     "rimraf": "^3.0.2",
     "ts-jest": "^28.0.3",
+    "ts-loader": "^9.4.2",
     "ts-node": "^10.8.0",
-    "typescript": "^4.7.2"
+    "typescript": "^4.7.2",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
+    "webpack-node-externals": "^3.0.0"
   },
   "scripts": {
     "setup": "yarn install && cd demo && yarn install",
     "test": "jest",
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
-    "build": "yarn generate && rimraf ./build && tsc",
+    "build": "yarn generate && rimraf ./build && webpack --mode production",
     "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
     "demo": "cd demo && yarn start",
     "prepublish": "yarn build"
