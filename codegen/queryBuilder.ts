@@ -149,6 +149,6 @@ const getOutputMapIndex = (input: any) => {
 export const generateMassiveQuery = async () => {
   await generateOutputMap()
   const massiveQuery = replaceNodeValues(baseExpressions[0] as OperatorNodeUnion)
-  writeFileSync('src/test/massiveQuery.json', JSON.stringify(massiveQuery, null, 2))
+  writeFileSync('test/massiveQuery.json', JSON.stringify(massiveQuery, null, 2))
   return massiveQuery
 }
