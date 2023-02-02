@@ -18,12 +18,12 @@ import {
   parseIfJson,
   isOperatorNode,
   mapPropertyAliases,
-  evaluateNodeAliases,
   getOperatorName,
   replaceAliasNodeValues,
   evaluateObject,
   isFragmentNode,
   isObject,
+  addAliasNodes,
 } from './helpers'
 
 export const evaluatorFunction = async (
@@ -45,7 +45,7 @@ export const evaluatorFunction = async (
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
   if (options.evaluateFullObject && !isOperator && !isFragment)
-    return replaceAliasNodeValues(await evaluateObject(expression, config), config)
+    return await replaceAliasNodeValues(await evaluateObject(expression, config), config)
 
   // Base case -- Non-operator (leaf) nodes get returned unmodified (or
   // substituted if an alias reference)
@@ -54,7 +54,7 @@ export const evaluatorFunction = async (
     if (options.supportDeprecatedValueNodes && isObject(expression) && 'value' in expression)
       return expression.value
 
-    return replaceAliasNodeValues(expression, config)
+    return await replaceAliasNodeValues(expression, config)
   }
 
   const { fallback } = expression
@@ -93,12 +93,8 @@ export const evaluatorFunction = async (
 
     expression = mapPropertyAliases(propertyAliases, expression)
 
-    // Evaluate any alias nodes defined at this level and save them in "config"
-    // object so they get accumulated as we progress down the tree
-    config.resolvedAliasNodes = {
-      ...config.resolvedAliasNodes,
-      ...(await evaluateNodeAliases(expression, config)),
-    }
+    // Accumulate alias nodes so that they can be evaluated as required
+    addAliasNodes(expression, config)
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)

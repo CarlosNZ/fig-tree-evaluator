@@ -80,6 +80,7 @@ export interface FigTreeConfig {
   operators: OperatorReference
   operatorAliases: { [key: string]: Operator }
   typeChecker: (...input: TypeCheckInput[]) => void
+  aliasNodes: { [key: string]: EvaluatorOutput }
   resolvedAliasNodes: { [key: string]: EvaluatorOutput }
   cache: FigTreeCache
 }
