@@ -23,7 +23,7 @@ import {
   evaluateObject,
   isFragmentNode,
   isObject,
-  addAliasNodes,
+  evaluateAliasNodes,
 } from './helpers'
 
 export const evaluatorFunction = async (
@@ -94,7 +94,7 @@ export const evaluatorFunction = async (
     expression = mapPropertyAliases(propertyAliases, expression)
 
     // Accumulate alias nodes so that they can be evaluated as required
-    addAliasNodes(expression, config)
+    evaluateAliasNodes(expression, config)
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)
@@ -125,7 +125,7 @@ export const evaluatorFunction = async (
     } catch (err) {
       result = fallbackOrError(
         await evaluatorFunction(expression.fallback, config),
-        `Operator: ${operator}\n${errorMessage(err)}`,
+        `Operator: ${operator}:\n${errorMessage(err)}`,
         returnErrorAsString
       )
     }

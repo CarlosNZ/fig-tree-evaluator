@@ -96,30 +96,41 @@ const isAliasString = (value: string) => /^\$.+/.test(value)
 Identify any properties in the expression that represent "alias" nodes (i.e of
 the form `$alias`) and accumulate them in the config object
 */
-export const addAliasNodes = (expression: OperatorNodeUnion, config: FigTreeConfig) => {
+export const evaluateAliasNodes = (expression: OperatorNodeUnion, config: FigTreeConfig) => {
   const aliasKeys = Object.keys(expression).filter(isAliasString)
-  aliasKeys.forEach((key) => (config.aliasNodes[key] = expression[key]))
+  aliasKeys.forEach((key) => {
+    config.aliasNodes[key] = expression[key]
+  })
 }
 
 /*
 If passed-in value (probably a leaf node) is an "alias" key, then replace it
 with its resolved value.
 */
-export const replaceAliasNodeValues = async (value: EvaluatorOutput, config: FigTreeConfig) => {
+export const replaceAliasNodeValues = async (
+  testAliasKey: EvaluatorOutput,
+  config: FigTreeConfig
+) => {
   const { aliasNodes, resolvedAliasNodes } = config
-  if (typeof value !== 'string' || !isAliasString(value)) return value
+  if (typeof testAliasKey !== 'string' || !isAliasString(testAliasKey)) return testAliasKey
 
   // Check if alias already resolved (evaluated)
-  if (value in resolvedAliasNodes) return resolvedAliasNodes[value]
+  if (testAliasKey in resolvedAliasNodes) return resolvedAliasNodes[testAliasKey]
 
   // Otherwise evaluate it then store it in "resolved"
-  if (value in aliasNodes) {
-    resolvedAliasNodes[value] = await evaluatorFunction(aliasNodes[value], config)
-    return resolvedAliasNodes[value]
+  if (testAliasKey in aliasNodes) {
+    // We use the "visited" property as a way to detect circular references between aliases and prevent an infinite loop
+
+    // const { value, visited } = aliasNodes[testAliasKey]
+    // if (visited) throw new Error(`Circular reference detected in alias "${testAliasKey}"`)
+    // aliasNodes[testAliasKey].visited = true
+
+    resolvedAliasNodes[testAliasKey] = await evaluatorFunction(aliasNodes[testAliasKey], config)
+    return resolvedAliasNodes[testAliasKey]
   }
 
   // Return alias string unmodified if no definition exists
-  return value
+  return testAliasKey
 }
 
 /*

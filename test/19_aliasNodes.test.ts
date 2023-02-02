@@ -147,3 +147,20 @@ test('Alias Nodes: Reference other aliases at the same level', () => {
     expect(result).toBe(30)
   })
 })
+
+test('Alias Nodes: Detect circular references', () => {
+  const expression = {
+    $alias1: {
+      operator: '+',
+      values: [10, '$alias2'],
+    },
+    $alias2: '$alias1',
+    operator: 'pass',
+    value: '$alias2',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(
+      'Operator: PASSTHRU:\nOperator: PLUS:\nCircular reference detected in alias "$alias2"'
+    )
+  })
+})
