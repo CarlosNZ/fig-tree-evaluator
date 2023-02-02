@@ -98,7 +98,7 @@ the form `$alias`) and evaluate their values
 */
 export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
   const aliasKeys = Object.keys(expression).filter(isAliasString)
-  if (aliasKeys.length === 0) return expression
+  if (aliasKeys.length === 0) return {}
 
   const evaluations: Promise<EvaluatorOutput>[] = []
   aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
