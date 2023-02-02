@@ -131,3 +131,19 @@ test('Alias Nodes: Use same alias reference in inner node, should be redefined',
     )
   })
 })
+
+test('Alias Nodes: Reference other aliases at the same level', () => {
+  const expression = {
+    $alias1: 10,
+    $alias2: 20,
+    $aliasTotal: {
+      operator: '+',
+      values: ['$alias1', '$alias2'],
+    },
+    operator: 'pass',
+    value: '$aliasTotal',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(30)
+  })
+})
