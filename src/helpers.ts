@@ -100,6 +100,8 @@ export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config:
   const aliasKeys = Object.keys(expression).filter(isAliasString)
   if (aliasKeys.length === 0) return {}
 
+  aliasKeys.forEach((alias) => (config.unresolvedAliasNodes[alias] = expression[alias]))
+
   const evaluations: Promise<EvaluatorOutput>[] = []
   aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
 
