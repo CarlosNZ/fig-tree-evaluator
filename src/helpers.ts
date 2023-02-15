@@ -201,6 +201,7 @@ export const evaluateObject = async (
   const newObjectEntries: unknown[] = []
   const newAliases: unknown[] = []
 
+  // First evaluate any Alias nodes we find and add them to config
   Object.entries(input as Object).forEach(([key, value]) => {
     if (isAliasString(key)) {
       newAliases.push(key, evaluatorFunction(value, config))
@@ -210,11 +211,12 @@ export const evaluateObject = async (
   const aliasArray = await Promise.all(newAliases)
   config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
 
+  // Then evaluate the rest
   Object.entries(input as Object).forEach(([key, value]) => {
     newObjectEntries.push(key, evaluatorFunction(value, config))
   })
 
-  const result = await Promise.all(newObjectEntries)
+  const results = await Promise.all(newObjectEntries)
 
-  return replaceAliasNodeValues(singleArrayToObject(result), config)
+  return replaceAliasNodeValues(singleArrayToObject(results), config)
 }
