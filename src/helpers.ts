@@ -199,12 +199,22 @@ export const evaluateObject = async (
   if (!isObject(input)) return input
 
   const newObjectEntries: unknown[] = []
+  const newAliases: unknown[] = []
 
-  Object.entries(input as Object).forEach(([key, value]) =>
+  Object.entries(input as Object).forEach(([key, value]) => {
+    if (isAliasString(key)) {
+      newAliases.push(key, evaluatorFunction(value, config))
+      delete (input as Record<string, any>)[key]
+    }
+  })
+  const aliasArray = await Promise.all(newAliases)
+  config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
+
+  Object.entries(input as Object).forEach(([key, value]) => {
     newObjectEntries.push(key, evaluatorFunction(value, config))
-  )
+  })
 
   const result = await Promise.all(newObjectEntries)
 
-  return singleArrayToObject(result)
+  return replaceAliasNodeValues(singleArrayToObject(result), config)
 }
