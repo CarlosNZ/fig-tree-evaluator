@@ -89,3 +89,17 @@ test('Multiple levels of deep operator nodes, with alias node', () => {
     })
   })
 })
+
+test('Evaluate alias nodes even if not within operator node', () => {
+  const expression = {
+    $testAlias: {
+      operator: 'getData',
+      property: 'user.title',
+    },
+    type: 'Control',
+    text: '$testAlias',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual({ type: 'Control', text: 'The First Avenger' })
+  })
+})
