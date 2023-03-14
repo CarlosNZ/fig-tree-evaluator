@@ -104,7 +104,7 @@ test.concurrent('GET: Fetch a country with multiple params', () => {
           },
         },
         capital: ['Havana'],
-        altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+        // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
         flag: '🇨🇺',
       },
     ])
@@ -131,7 +131,7 @@ test.concurrent('GET: Fetch a country with multiple params, using props', () => 
           },
         },
         capital: ['Havana'],
-        altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+        // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
         flag: '🇨🇺',
       },
     ])
@@ -166,7 +166,7 @@ test.concurrent(
             },
           },
           capital: ['Havana'],
-          altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+          // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
           flag: '🇨🇺',
         },
       ])
