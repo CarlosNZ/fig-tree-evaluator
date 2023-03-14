@@ -2,25 +2,37 @@
 Core FigTreeEvaluator class
 */
 
-import { EvaluatorNode, FigTreeOptions, GenericObject, Operator, OperatorReference } from './types'
+import {
+  EvaluatorNode,
+  FigTreeOptions,
+  GenericObject,
+  OperatorAliases,
+  OperatorReference,
+} from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
-import operatorAliases from './operators/_operatorAliases.json'
+import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
-import { mergeOptions } from './helpers'
+import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache from './cache'
 
 const pkg = require('../package.json')
 
+const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
+
 class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference
-  private operatorAliases: { [key: string]: Operator }
+  private operatorAliases: OperatorAliases
   private cache: FigTreeCache
   constructor(options: FigTreeOptions = {}) {
     this.options = standardiseOptionNames(options)
-    this.operators = operators
-    this.operatorAliases = operatorAliases as { [key: string]: Operator }
+    this.operators = filterOperators(
+      operators,
+      this.options?.excludeOperators ?? [],
+      operatorAliases
+    )
+    this.operatorAliases = operatorAliases
     this.cache = new FigTreeCache(options.maxCacheSize)
   }
 
@@ -40,7 +52,9 @@ class FigTreeEvaluator {
 
     return await evaluatorFunction(expression, {
       options: currentOptions,
-      operators: this.operators,
+      operators: options.excludeOperators
+        ? filterOperators(operators, options.excludeOperators, operatorAliases)
+        : this.operators,
       operatorAliases: this.operatorAliases,
       typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
       resolvedAliasNodes: {},
@@ -54,6 +68,8 @@ class FigTreeEvaluator {
 
   public updateOptions(options: FigTreeOptions) {
     this.options = mergeOptions(this.options, standardiseOptionNames(options))
+    if (this.options.excludeOperators)
+      this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }
 
   public getVersion = () => pkg.version

@@ -9,11 +9,13 @@ import {
   OutputType,
   EvaluatorNode,
   CombinedOperatorNode,
-  Operator,
   EvaluatorOutput,
   FigTreeOptions,
   OperatorNodeUnion,
   FigTreeConfig,
+  OperatorReference,
+  OperatorAliases,
+  OperatorAlias,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -39,8 +41,22 @@ const standardiseOperatorName = (name: string) => {
   return camelCaseName ? camelCaseName : name
 }
 
-export const getOperatorName = (operator: string, operatorAliases: { [key: string]: Operator }) =>
-  operatorAliases[standardiseOperatorName(operator)]
+export const getOperatorName = (operator: string, operatorAliases: OperatorAliases) =>
+  operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
+
+export const filterOperators = (
+  operators: OperatorReference,
+  exclusions: string[],
+  operatorAliases: OperatorAliases
+) => {
+  const filteredOperators = { ...operators }
+  exclusions.forEach((exclusion) => {
+    const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
+    if (!operator) console.warn(`Invalid operator exclusion: ${exclusion}`)
+    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]]
+  })
+  return filteredOperators
+}
 
 /*
 If `string` exceeds `length` (default: 200 chars), will return a truncated

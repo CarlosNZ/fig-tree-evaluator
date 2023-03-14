@@ -89,6 +89,13 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
 
+    if (!config.operators[operator])
+      return fallbackOrError(
+        await evaluatorFunction(fallback, config),
+        `Excluded operator: ${expression.operator}`,
+        returnErrorAsString
+      )
+
     const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
 
     expression = mapPropertyAliases(propertyAliases, expression)
