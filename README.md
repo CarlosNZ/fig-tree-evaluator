@@ -1511,6 +1511,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.7.0**: Add `excludeOperators` option to allow certain operators to be prohibited (e.g. database lookups) (#54)
 - **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
 - **v2.5.0**:
   - Bug fixes for edge cases (mainly related to backwards compatibility)
