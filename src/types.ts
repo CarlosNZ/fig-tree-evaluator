@@ -19,6 +19,7 @@ import {
   PGConnection,
   GraphQLConnection,
 } from './operators'
+import operatorAliases from './operators/_operatorAliases.json'
 import { TypeCheckInput } from './typeCheck'
 
 export const Operators = [
@@ -55,6 +56,10 @@ export type GenericObject = {
   [key: string]: any
 }
 
+export type OperatorAlias = keyof typeof operatorAliases
+
+export type OperatorAliases = Record<OperatorAlias, Operator>
+
 export interface FigTreeOptions {
   data?: GenericObject
   objects?: GenericObject // same as "data" -- deprecated
@@ -69,6 +74,7 @@ export interface FigTreeOptions {
   allowJSONStringInput?: boolean
   skipRuntimeTypeCheck?: boolean
   evaluateFullObject?: boolean
+  excludeOperators?: string[]
   useCache?: boolean
   maxCacheSize?: number
   // Undocumented -- only for < v1 compatibility
@@ -78,7 +84,7 @@ export interface FigTreeOptions {
 export interface FigTreeConfig {
   options: FigTreeOptions
   operators: OperatorReference
-  operatorAliases: { [key: string]: Operator }
+  operatorAliases: OperatorAliases
   typeChecker: (...input: TypeCheckInput[]) => void
   resolvedAliasNodes: { [key: string]: EvaluatorOutput }
   cache: FigTreeCache
