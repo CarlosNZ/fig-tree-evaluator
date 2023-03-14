@@ -30,7 +30,7 @@ const exp = new FigTreeEvaluator({
 test('Fragments, single parameter at root', () => {
   const expression = {
     fragment: 'getFlag',
-    $country: 'New Zealand',
+    country: 'New Zealand',
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe('🇳🇿')
@@ -44,7 +44,7 @@ test('Join two fragments together, one simple, one using a single "parameter")',
       { fragment: 'simpleFragment' },
       {
         fragment: 'getFlag',
-        parameters: { $country: { operator: 'getData', property: 'myCountry' } },
+        parameters: { country: { operator: 'getData', property: 'myCountry' } },
       },
     ],
   }

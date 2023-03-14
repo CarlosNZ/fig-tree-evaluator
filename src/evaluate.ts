@@ -10,6 +10,7 @@ import {
   CombinedOperatorNode,
 } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
+import { preProcessShorthand } from './shorthandSyntax'
 import {
   checkRequiredNodes,
   fallbackOrError,
@@ -33,6 +34,11 @@ export const evaluatorFunction = async (
   const { options, operators, operatorAliases } = config
 
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
+
+  // Convert any shorthand syntax into standard expression structure
+  expression = !options.noShorthand
+    ? preProcessShorthand(expression, config.options?.fragments)
+    : expression
 
   // If an array, we evaluate each item in the array
   if (Array.isArray(expression)) {
