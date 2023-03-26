@@ -75,13 +75,11 @@ test('Shorthand - nested object expression', () => {
     operator: 'PLUS',
     children: [
       {
-        operator: 'OBJECT_PROPERTIES',
-        children: ['user.firstName'],
+        $getData: 'user.firstName',
       },
       ' ',
       {
-        operator: 'OBJECT_PROPERTIES',
-        children: ['user.lastName'],
+        $getData: 'user.lastName',
       },
     ],
   })
@@ -91,7 +89,9 @@ test('Shorthand - fragment 1', () => {
   const expression = { $getFlag: { $country: '$getData(myCountry)' } }
   expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
     fragment: 'getFlag',
-    parameters: { $country: { operator: 'OBJECT_PROPERTIES', children: ['myCountry'] } },
+    parameters: {
+      $country: '$getData(myCountry)',
+    },
   })
 })
 
@@ -144,6 +144,22 @@ test('Shorthand - custom function as string', () => {
   const expression = '$function(getPrincess, Diana)'
   return fig.evaluate(expression).then((result: any) => {
     expect(result).toBe('Princess Diana')
+  })
+})
+
+test('Shorthand - with alias fallback', () => {
+  const expression = {
+    $plus: [
+      {
+        operator: 'objProps',
+        property: 'cant.find.this',
+        fallback: '$myFallback',
+      },
+    ],
+    $myFallback: 'EMPIRE',
+  }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('EMPIRE')
   })
 })
 
