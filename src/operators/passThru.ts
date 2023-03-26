@@ -9,7 +9,7 @@ import {
 } from '../types'
 
 const requiredProperties = ['value'] as const
-const operatorAliases = ['_', 'passThru', 'pass', 'ignore', 'coerce', 'convert']
+const operatorAliases = ['_', 'passThru', 'passthru', 'pass', 'ignore', 'coerce', 'convert']
 const propertyAliases = { _: 'value', data: 'value' }
 
 export type PassThruNode = {

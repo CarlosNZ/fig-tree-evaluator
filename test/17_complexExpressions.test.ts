@@ -390,33 +390,38 @@ const shorthandExpression = {
     '\n\n',
     {
       $myFallback: 'Empire',
-      operator: 'string_substitution',
-      string:
-        "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
-      substitutions: [
-        {
-          operator: 'objProps',
-          property: {
-            operator: 'substitute',
-            string: 'Oceania.NZ.%1',
-            substitutions: [
-              {
-                operator: 'gql',
-                query:
-                  'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
-                variables: { operator: 'buildObject', properties: [{ key: 'code', value: 'NZ' }] },
-                returnNode: 'countries',
-              },
-            ],
+      $stringSubstitution: {
+        string:
+          "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
+        replacements: [
+          {
+            operator: 'objProps',
+            property: {
+              operator: 'substitute',
+              string: 'Oceania.NZ.%1',
+              substitutions: [
+                {
+                  operator: 'gql',
+                  query:
+                    'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
+                  variables: {
+                    operator: 'buildObject',
+                    properties: [{ key: 'code', value: 'NZ' }],
+                  },
+                  returnNode: 'countries',
+                },
+              ],
+            },
           },
-        },
-        {
-          operator: 'objProps',
-          property: 'cant.find.this',
-          fallback: '$myFallback',
-        },
-        { $functions: ['functions.getPrincess', 'Leia'] },
-      ],
+          // { $getData: 'cant.find.this', fallback: '$myFallback' },
+          {
+            operator: 'objProps',
+            property: 'cant.find.this',
+            fallback: '$myFallback',
+          },
+          { $functions: ['functions.getPrincess', 'Leia'] },
+        ],
+      },
     },
   ],
 }
