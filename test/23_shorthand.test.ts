@@ -12,6 +12,7 @@ const fig = new FigTreeEvaluator({
     deep: { p: 12 },
     user: { firstName: 'Bruce', lastName: 'Banner' },
   },
+  functions: { getPrincess: (name: string) => `Princess ${name}` },
   fragments: {
     getFlag: {
       operator: 'GET',
@@ -129,6 +130,20 @@ test('Shorthand - evaluate fragment', () => {
   const expression = { $getFlag: { $country: '$getData(myCountry)' } }
   return fig.evaluate(expression).then((result: any) => {
     expect(result).toBe('🇧🇷')
+  })
+})
+
+test('Shorthand - custom function', () => {
+  const expression = { $function: ['getPrincess', 'Leia'] }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Princess Leia')
+  })
+})
+
+test('Shorthand - custom function as string', () => {
+  const expression = '$function(getPrincess, Diana)'
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Princess Diana')
   })
 })
 

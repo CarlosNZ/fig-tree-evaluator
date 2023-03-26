@@ -267,6 +267,168 @@ test('Massive nested query as JSON string', () => {
   })
 })
 
+// Same expression but utilising some shorthand expressions
+const shorthandExpression = {
+  $pass: {
+    operator: 'passThru',
+    value: {
+      operator: 'split',
+      value: 'robot, ,fury',
+      delimiter: ',',
+      trimWhitespace: false,
+    },
+    type: 'number',
+  },
+  $country: {
+    operator: 'API',
+    children: [
+      {
+        operator: '+',
+        children: ['https://restcountries.com/v3.1/name/', 'cuba'],
+      },
+      { operator: 'split', value: 'fullText, fields', delimiter: ',' },
+      true,
+      'name,capital,flag',
+      'flag',
+    ],
+    type: 'string',
+  },
+  operator: '+',
+  values: [
+    {
+      operator: 'stringSubstitution',
+      children: [
+        'It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.',
+        {
+          operator: '?',
+          children: [
+            {
+              operator: '=',
+              values: [
+                {
+                  operator: 'pg',
+                  query: 'SELECT country FROM customers WHERE postal_code = $1',
+                  values: [
+                    {
+                      operator: 'pgSQL',
+                      children: ['(SELECT MAX(postal_code) from customers)'],
+                      type: 'string',
+                    },
+                  ],
+                  type: 'string',
+                },
+                'UK',
+              ],
+            },
+            { operator: '_', _: ['civil war'], type: 'string' },
+            '$pass',
+          ],
+        },
+        {
+          operator: 'getProperty',
+          property: {
+            operator: 'substitute',
+            children: [
+              'randomWords[%99]',
+              {
+                operator: 'And',
+                values: [
+                  {
+                    operator: 'REGEX',
+                    pattern: 'A.+roa',
+                    testString: {
+                      operator: 'get',
+                      url: 'https://restcountries.com/v3.1/alpha',
+                      parameters: {
+                        codes: 'nz,au',
+                      },
+                      returnProperty: '[0].name.nativeName.mri.official',
+                    },
+                  },
+                  {
+                    operator: 'ne',
+                    values: [
+                      {
+                        operator: '+',
+                        values: [6.66, 3.33],
+                      },
+                      10,
+                    ],
+                  },
+                ],
+                type: 'number',
+              },
+            ],
+          },
+        },
+        {
+          operator: 'objectProperties',
+          children: ['organisation'],
+        },
+      ],
+    },
+    '\n\n',
+    {
+      operator: 'SUBSTITUTE',
+      string:
+        'During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.',
+      substitutions: [
+        {
+          operator: 'objectProperties',
+          property: {
+            operator: '+',
+            values: ['longSentence.', '$country'],
+          },
+        },
+        {
+          $wordString: 'randomWords[3]',
+          operator: 'objProps',
+          property: '$wordString',
+        },
+      ],
+    },
+    '\n\n',
+    {
+      $myFallback: 'Empire',
+      operator: 'string_substitution',
+      string:
+        "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
+      substitutions: [
+        {
+          operator: 'objProps',
+          property: {
+            operator: 'substitute',
+            string: 'Oceania.NZ.%1',
+            substitutions: [
+              {
+                operator: 'gql',
+                query:
+                  'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
+                variables: { operator: 'buildObject', properties: [{ key: 'code', value: 'NZ' }] },
+                returnNode: 'countries',
+              },
+            ],
+          },
+        },
+        {
+          operator: 'objProps',
+          property: 'cant.find.this',
+          fallback: '$myFallback',
+        },
+        { $functions: ['functions.getPrincess', 'Leia'] },
+      ],
+    },
+  ],
+}
+
+test('Massive nested query in shorthand', () => {
+  return exp.evaluate(shorthandExpression).then((result: any) => {
+    expect(result).toBe(
+      "It is a period of civil war. Rebel spaceships, striking from a hidden base, have won their first victory against the evil Galactic Empire.\n\nDuring the battle, Rebel spies managed to steal secret plans to the Empire's ultimate weapon, the DEATH STAR, an armored space station with enough power to destroy an entire planet.\n\nPursued by the Empire's sinister agents, Princess Leia races home aboard her starship, custodian of the stolen plans that can save her people and restore freedom to the galaxy...."
+    )
+  })
+})
+
 // HUUUUGE auto-generated query
 test('Process an enormous auto-generated query', () => {
   return exp.evaluate(massiveQuery, config).then((result: any) => {
