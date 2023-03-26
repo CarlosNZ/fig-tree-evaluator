@@ -1,23 +1,20 @@
-import { FigTreeOptions, EvaluatorNode, OperatorAliases, Fragments } from './types'
-import { getOperatorName, isFragmentNode, isOperatorNode, isObject } from './helpers'
+import { EvaluatorNode, OperatorAliases, Fragments, FragmentNode } from './types'
+import { getOperatorName, isFragmentNode, isOperatorNode, isObject, isAliasString } from './helpers'
 import opAliases from './operators/_operatorAliases.json'
-import * as operators from './operators'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
 const functionStringRegex = /\$([^\(\)]+)\((.*)\)/
 
-export const preProcessShorthand = (expression: object | string, fragments: Fragments = {}) => {
-  switch (typeof expression) {
-    case 'string':
-      return processString(expression, fragments)
+export const preProcessShorthand = (
+  expression: object | string,
+  fragments: Fragments = {}
+): EvaluatorNode | FragmentNode => {
+  if (typeof expression === 'string') return processString(expression, fragments)
 
-    case 'object':
-      return processObject(expression, fragments)
+  if (isObject(expression)) return processObject(expression, fragments)
 
-    default:
-      return expression
-  }
+  return expression
 }
 
 const processString = (expString: string, fragments: Fragments): EvaluatorNode => {
@@ -38,7 +35,15 @@ const processObject = (expObject: object, fragments: Fragments) => {
 
   const [alias, params] = keyVals[0]
 
-  return buildEvaluatorNode(alias.slice(1), params, fragments)
+  if (!isAliasString(alias)) return expObject
+
+  const processedParams: object = Array.isArray(params)
+    ? params.map((p) => preProcessShorthand(p))
+    : isObject(params)
+    ? processParameterObject(params)
+    : params
+
+  return buildEvaluatorNode(alias.slice(1), processedParams, fragments)
 }
 
 const buildEvaluatorNode = (alias: string, params: any[] | object, fragments: Fragments) => {
@@ -50,10 +55,18 @@ const buildEvaluatorNode = (alias: string, params: any[] | object, fragments: Fr
     return { operator, children: [params] }
   }
 
-  console.log('Alias', alias)
-  console.log('params', params)
-
   if (alias in fragments) {
     return { fragment: alias, ...params }
   }
+}
+
+const processParameterObject = (params: object) => {
+  const keyVals = Object.entries(params)
+  const processed: Record<string, any> = {}
+
+  keyVals.forEach(([key, value]) => {
+    processed[key] = preProcessShorthand(value)
+  })
+
+  return processed
 }

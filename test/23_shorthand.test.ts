@@ -60,3 +60,31 @@ test('Shorthand - simple object expression', () => {
     children: [1, 2, 3],
   })
 })
+
+test('Shorthand - nested object expression', () => {
+  const expression = {
+    $plus: [{ $getData: 'user.firstName' }, ' ', { $getData: 'user.lastName' }],
+  }
+  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+    operator: 'PLUS',
+    children: [
+      {
+        operator: 'OBJECT_PROPERTIES',
+        children: ['user.firstName'],
+      },
+      ' ',
+      {
+        operator: 'OBJECT_PROPERTIES',
+        children: ['user.lastName'],
+      },
+    ],
+  })
+})
+
+test('Shorthand - fragment 1', () => {
+  const expression = { $getFlag: { country: '$getData(myCountry)' } }
+  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+    fragment: 'getFlag',
+    parameters: { $country: { operator: 'OBJECT_PROPERTIES', children: ['myCountry'] } },
+  })
+})

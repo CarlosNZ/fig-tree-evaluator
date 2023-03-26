@@ -106,7 +106,7 @@ const mapObjectKeys = <T>(
 }
 
 // Returns true if value is of the form "$alias"
-const isAliasString = (value: string) => /^\$.+/.test(value)
+export const isAliasString = (value: string) => /^\$.+/.test(value)
 
 /*
 Identify any properties in the expression that represent "alias" nodes (i.e of
