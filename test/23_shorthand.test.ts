@@ -163,6 +163,24 @@ test('Shorthand - with alias fallback', () => {
   })
 })
 
+test('Shorthand - with node as direct parameter', () => {
+  const expression = {
+    $objProps: {
+      $plus: ['user.', 'lastName'],
+    },
+  }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Banner')
+  })
+})
+
+test('Shorthand - with operator and named parameter', () => {
+  const expression = { $getData: { property: 'user.firstName' } }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Bruce')
+  })
+})
+
 // More complex cases
 test('Shorthand - nested fragments', () => {
   const expression = {
