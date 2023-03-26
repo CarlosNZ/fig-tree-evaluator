@@ -31,11 +31,14 @@ const processObject = (expObject: object, fragments: Fragments) => {
   if (isOperatorNode(expObject) || isFragmentNode(expObject)) return expObject
 
   const keyVals = Object.entries(expObject)
-  if (keyVals.length !== 1) return expObject
+  const aliasParams = keyVals.filter(([key]) => isAliasString(key))
+  if (aliasParams.length !== 1) return expObject
 
-  const [alias, params] = keyVals[0]
+  const otherParams = keyVals.filter(([key]) => !isAliasString(key))
 
-  if (!isAliasString(alias)) return expObject
+  const [alias, params] = aliasParams[0]
+
+  if (isOperatorNode(params) || isFragmentNode(params)) return expObject
 
   const processedParams: object = Array.isArray(params)
     ? params.map((p) => preProcessShorthand(p))
@@ -43,7 +46,10 @@ const processObject = (expObject: object, fragments: Fragments) => {
     ? processParameterObject(params)
     : params
 
-  return buildEvaluatorNode(alias, processedParams, fragments)
+  return {
+    ...buildEvaluatorNode(alias, processedParams, fragments),
+    ...Object.fromEntries(otherParams),
+  }
 }
 
 const buildEvaluatorNode = (alias: string, params: any[] | object, fragments: Fragments) => {
@@ -59,6 +65,8 @@ const buildEvaluatorNode = (alias: string, params: any[] | object, fragments: Fr
   if (aliasName in fragments) {
     return { fragment: aliasName, parameters: { ...params } }
   }
+
+  return { [alias]: params }
 }
 
 const processParameterObject = (params: object) => {
