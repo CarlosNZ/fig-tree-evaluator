@@ -82,9 +82,11 @@ test('Shorthand - nested object expression', () => {
 })
 
 test('Shorthand - fragment 1', () => {
-  const expression = { $getFlag: { country: '$getData(myCountry)' } }
+  const expression = { $getFlag: { $country: '$getData(myCountry)' } }
   expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
     fragment: 'getFlag',
     parameters: { $country: { operator: 'OBJECT_PROPERTIES', children: ['myCountry'] } },
   })
 })
+
+// Don't forget to prevent re-evaluation of
