@@ -160,3 +160,46 @@ test('Shorthand - nested fragments', () => {
     expect(result).toStrictEqual([24, '🇳🇿🇧🇷'])
   })
 })
+
+test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
+  const expression = {
+    $adder: {
+      $values: [
+        {
+          fragment: 'getCountryData',
+          $country: '$getData(variables.country)',
+          $field: { $getData: 'variables.field' },
+        },
+        ', ',
+        {
+          $getCountryData: {
+            $country: '$getData( variables.country )',
+            $field: { $getData: { property: 'variables.otherField' } },
+          },
+        },
+      ],
+    },
+  }
+  fig.updateOptions({
+    fragments: {
+      getCountryData: {
+        operator: 'GET',
+        url: {
+          operator: 'stringSubstitution',
+          string: 'https://restcountries.com/v3.1/name/%1',
+          replacements: ['$country'],
+        },
+        returnProperty: { operator: '+', values: ['[0].', '$field'] },
+      },
+    },
+  })
+  return fig
+    .evaluate(expression, {
+      objects: {
+        variables: { country: 'New Zealand', field: 'capital[0]', otherField: 'name.common' },
+      },
+    })
+    .then((result: any) => {
+      expect(result).toStrictEqual('Wellington, New Zealand')
+    })
+})
