@@ -41,6 +41,10 @@
   "?": "CONDITIONAL",
   "conditional": "CONDITIONAL",
   "ifThen": "CONDITIONAL",
+  "regex": "REGEX",
+  "patternMatch": "REGEX",
+  "regexp": "REGEX",
+  "matchPattern": "REGEX",
   "get": "GET",
   "api": "GET"
 }
