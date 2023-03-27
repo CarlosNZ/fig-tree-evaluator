@@ -1,15 +1,12 @@
-import { evaluateArray } from './_operatorUtils'
+import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import {
   EvaluatorNode,
   BaseOperatorNode,
   CombinedOperatorNode,
   FigTreeConfig,
   OperatorObject,
-} from '../types'
-
-const requiredProperties = ['values'] as const
-const operatorAliases = ['and', '&', '&&']
-const propertyAliases = {}
+} from '../../types'
+import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type BasicExtendedNode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode[]
@@ -17,19 +14,19 @@ export type BasicExtendedNode = {
 
 const evaluate = async (expression: BasicExtendedNode, config: FigTreeConfig): Promise<boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
-  config.typeChecker({ name: 'values', value: values, expectedType: 'array' })
+  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values }))
   return values.reduce((acc: boolean, val: boolean) => acc && !!val, true)
 }
 
 export const parseChildren = (expression: CombinedOperatorNode): BasicExtendedNode => {
   const values = expression.children as EvaluatorNode[]
-  return { ...expression, values }
+  return { ...expression, values } as any
 }
 
 export const AND: OperatorObject = {
   requiredProperties,
-  operatorAliases,
   propertyAliases,
+  operatorData,
   evaluate,
   parseChildren,
 }

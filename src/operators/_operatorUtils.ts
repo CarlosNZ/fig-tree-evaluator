@@ -5,8 +5,31 @@ Functions used specifically by various operators
 import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import { typeCheck, ExpectedType } from '../typeCheck'
-import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig } from '../types'
+import { typeCheck, ExpectedType, TypeCheckInput } from '../typeCheck'
+import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
+
+// Generate property data for each operator from "operatorData.parameters"
+export const getRequiredProperties = (parameters: Parameter[]): string[] =>
+  parameters.filter((p) => p.required).map((p) => p.name)
+
+export const getPropertyAliases = (parameters: Parameter[]): Record<string, string> => {
+  const propertyAliases: Record<string, string> = {}
+  parameters.forEach((param) => {
+    param.aliases.forEach((alias) => (propertyAliases[alias] = param.name))
+  })
+  return propertyAliases
+}
+
+export const getTypeCheckInput = (
+  parameterDefinitions: Parameter[],
+  params: Record<string, unknown>
+) =>
+  parameterDefinitions.map(({ name, required, type }) => {
+    const allTypes = Array.isArray(type) ? type : [type]
+    if (!required) allTypes.push('undefined')
+    const expectedType = allTypes.length === 1 ? allTypes[0] : allTypes
+    return { name, value: params[name], expectedType }
+  })
 
 // Evaluate all child/property nodes simultaneously
 export const evaluateArray = async (

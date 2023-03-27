@@ -1,53 +1,53 @@
 import FigTreeCache from './cache'
 import {
   BasicExtendedNode,
-  SubtractionNode,
-  DivisionNode,
-  ComparatorNode,
-  ConditionalNode,
-  RegexNode,
-  StringSubNode,
-  SplitNode,
-  ObjPropNode,
+  // SubtractionNode,
+  // DivisionNode,
+  // ComparatorNode,
+  // ConditionalNode,
+  // RegexNode,
+  // StringSubNode,
+  // SplitNode,
+  // ObjPropNode,
   APINode,
-  PGNode,
-  GraphQLNode,
-  BuildObjectNode,
-  MatchNode,
-  FunctionNode,
-  PassThruNode,
-  PGConnection,
-  GraphQLConnection,
+  // PGNode,
+  // GraphQLNode,
+  // BuildObjectNode,
+  // MatchNode,
+  // FunctionNode,
+  // PassThruNode,
+  // PGConnection,
+  // GraphQLConnection,
 } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
-import { TypeCheckInput } from './typeCheck'
+import { ExpectedType, TypeCheckInput } from './typeCheck'
 
 export const Operators = [
   // Canonical operator names
   'AND',
   'OR',
-  'EQUAL',
-  'NOT_EQUAL',
-  'PLUS',
-  'SUBTRACT',
-  'MULTIPLY',
-  'DIVIDE',
-  'GREATER_THAN',
-  'LESS_THAN',
-  'CONDITIONAL',
-  'REGEX',
-  'OBJECT_PROPERTIES',
-  'STRING_SUBSTITUTION',
-  'SPLIT',
-  'COUNT',
+  // 'EQUAL',
+  // 'NOT_EQUAL',
+  // 'PLUS',
+  // 'SUBTRACT',
+  // 'MULTIPLY',
+  // 'DIVIDE',
+  // 'GREATER_THAN',
+  // 'LESS_THAN',
+  // 'CONDITIONAL',
+  // 'REGEX',
+  // 'OBJECT_PROPERTIES',
+  // 'STRING_SUBSTITUTION',
+  // 'SPLIT',
+  // 'COUNT',
   'GET',
-  'POST',
-  'PG_SQL',
-  'GRAPHQL',
-  'BUILD_OBJECT',
-  'MATCH',
-  'CUSTOM_FUNCTIONS',
-  'PASSTHRU',
+  // 'POST',
+  // 'PG_SQL',
+  // 'GRAPHQL',
+  // 'BUILD_OBJECT',
+  // 'MATCH',
+  // 'CUSTOM_FUNCTIONS',
+  // 'PASSTHRU',
 ] as const
 
 export type Operator = typeof Operators[number]
@@ -69,8 +69,8 @@ export interface FigTreeOptions {
   objects?: GenericObject // same as "data" -- deprecated
   functions?: Functions
   fragments?: Fragments
-  pgConnection?: PGConnection
-  graphQLConnection?: GraphQLConnection
+  // pgConnection?: PGConnection
+  // graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
@@ -116,39 +116,40 @@ export interface FragmentNode {
 
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
-  SubtractionNode &
-  DivisionNode &
-  ComparatorNode &
-  ConditionalNode &
-  RegexNode &
-  StringSubNode &
-  SplitNode &
-  ObjPropNode &
-  APINode &
-  PGNode &
-  GraphQLNode &
-  BuildObjectNode &
-  MatchNode &
-  FunctionNode &
-  PassThruNode
+  // SubtractionNode &
+  // DivisionNode &
+  // ComparatorNode &
+  // ConditionalNode &
+  // RegexNode &
+  // StringSubNode &
+  // SplitNode &
+  // ObjPropNode &
+  APINode
+// PGNode &
+// GraphQLNode &
+// BuildObjectNode &
+// MatchNode &
+// FunctionNode &
+// PassThruNode
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
-  | SubtractionNode
-  | DivisionNode
-  | ComparatorNode
-  | ConditionalNode
-  | RegexNode
-  | StringSubNode
-  | SplitNode
-  | ObjPropNode
-  | PGNode
-  | GraphQLNode
+  // | SubtractionNode
+  // | DivisionNode
+  // | ComparatorNode
+  // | ConditionalNode
+  // | RegexNode
+  // | StringSubNode
+  // | SplitNode
+  // | ObjPropNode
   | APINode
-  | BuildObjectNode
-  | MatchNode
-  | FunctionNode
-  | PassThruNode
+// | PGNode
+// | GraphQLNode
+//  APINode
+// | BuildObjectNode
+// | MatchNode
+// | FunctionNode
+// | PassThruNode
 
 export type EvaluatorOutput = string | boolean | number | GenericObject | null | undefined | any[]
 
@@ -156,8 +157,8 @@ export type EvaluatorNode = CombinedOperatorNode | FragmentNode | EvaluatorOutpu
 
 export type OperatorObject = {
   requiredProperties: readonly string[]
-  operatorAliases: string[]
-  propertyAliases: { [key: string]: string }
+  propertyAliases: Record<string, string>
+  operatorData: OperatorData
   evaluate: (expression: CombinedOperatorNode, config: FigTreeConfig) => Promise<EvaluatorOutput>
   parseChildren: (
     expression: CombinedOperatorNode,
@@ -166,3 +167,18 @@ export type OperatorObject = {
 }
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
+
+// Operator Data
+export type Parameter = {
+  name: string
+  description: string
+  aliases: string[]
+  required: boolean
+  type: ExpectedType | ExpectedType[]
+}
+
+export interface OperatorData {
+  description: string
+  aliases: string[]
+  parameters: Parameter[]
+}

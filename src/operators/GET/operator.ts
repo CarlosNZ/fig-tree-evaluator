@@ -5,7 +5,8 @@ import {
   extractAndSimplify,
   isFullUrl,
   joinUrlParts,
-} from './_operatorUtils'
+  getTypeCheckInput,
+} from '../_operatorUtils'
 import {
   BaseOperatorNode,
   EvaluatorNode,
@@ -14,11 +15,8 @@ import {
   CombinedOperatorNode,
   GenericObject,
   OperatorObject,
-} from '../types'
-
-const requiredProperties = ['url'] as const
-const operatorAliases = ['get', 'api']
-const propertyAliases = { endpoint: 'url', outputProperty: 'returnProperty' }
+} from '../../types'
+import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type APINode = {
   [key in typeof requiredProperties[number]]: EvaluatorNode
@@ -29,25 +27,39 @@ export type APINode = {
   }
 
 const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
-  const [urlObj, params, returnProperty, headers] = (await evaluateArray(
-    [expression.url, expression.parameters, expression.returnProperty, expression.headers],
+  const [urlObj, parameters, returnProperty, headers, useCache] = (await evaluateArray(
+    [
+      expression.url,
+      expression.parameters,
+      expression.returnProperty,
+      expression.headers,
+      expression.useCache,
+    ],
     config
   )) as [
     string | { url: string; headers: GenericObject },
     { [key: string]: string },
     string,
-    GenericObject
+    GenericObject,
+    boolean
   ]
 
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   config.typeChecker(
-    { name: 'url', value: url, expectedType: 'string' },
-    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
-    { name: 'headers', value: headers, expectedType: ['object', 'undefined'] },
-    { name: 'parameters', value: params, expectedType: ['object', 'undefined'] },
-    { name: 'returnProperty', value: returnProperty, expectedType: ['string', 'undefined'] }
+    ...getTypeCheckInput(operatorData.parameters, {
+      url,
+      returnProperty,
+      headers,
+      parameters,
+      useCache,
+    }),
+    {
+      name: 'headers',
+      value: headersObj,
+      expectedType: ['object', 'null'],
+    }
   )
 
   const baseUrl = config.options.baseEndpoint ?? ''
@@ -72,7 +84,7 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
       return extractAndSimplify(response, returnProperty)
     },
     isFullUrl(url) ? url : joinUrlParts(baseUrl, url),
-    params,
+    parameters,
     httpHeaders,
     returnProperty
   )
@@ -101,8 +113,8 @@ export const parseChildrenGET = parseChildren
 
 export const GET: OperatorObject = {
   requiredProperties,
-  operatorAliases,
   propertyAliases,
+  operatorData,
   evaluate,
   parseChildren,
 }
