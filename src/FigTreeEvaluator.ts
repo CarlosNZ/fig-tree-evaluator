@@ -72,6 +72,16 @@ class FigTreeEvaluator {
       this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }
 
+  public getOperators() {
+    const validOperators = this.options.excludeOperators
+      ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
+      : this.operators
+    return Object.entries(validOperators).map(([key, value]) => ({
+      operator: key,
+      ...value.operatorData,
+    }))
+  }
+
   public getVersion = () => pkg.version
 }
 

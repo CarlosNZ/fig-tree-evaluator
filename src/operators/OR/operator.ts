@@ -1,4 +1,4 @@
-import { parseChildren, BasicExtendedNode } from '..'
+import { parseChildren, BasicExtendedNode } from '../'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { FigTreeConfig, OperatorObject } from '../../types'
 

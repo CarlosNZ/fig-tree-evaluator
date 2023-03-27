@@ -5,6 +5,14 @@
   "or": "OR",
   "|": "OR",
   "||": "OR",
+  "=": "EQUAL",
+  "eq": "EQUAL",
+  "equal": "EQUAL",
+  "equals": "EQUAL",
+  "!=": "NOT_EQUAL",
+  "!": "NOT_EQUAL",
+  "ne": "NOT_EQUAL",
+  "notEqual": "NOT_EQUAL",
   "get": "GET",
   "api": "GET"
 }

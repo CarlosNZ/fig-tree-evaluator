@@ -26,8 +26,8 @@ export const Operators = [
   // Canonical operator names
   'AND',
   'OR',
-  // 'EQUAL',
-  // 'NOT_EQUAL',
+  'EQUAL',
+  'NOT_EQUAL',
   // 'PLUS',
   // 'SUBTRACT',
   // 'MULTIPLY',
