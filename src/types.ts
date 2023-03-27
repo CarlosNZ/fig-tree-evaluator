@@ -30,7 +30,7 @@ export const Operators = [
   'NOT_EQUAL',
   'PLUS',
   'SUBTRACT',
-  // 'MULTIPLY',
+  'MULTIPLY',
   // 'DIVIDE',
   // 'GREATER_THAN',
   // 'LESS_THAN',
