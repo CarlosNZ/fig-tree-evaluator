@@ -79,7 +79,8 @@ export const evaluatorFunction = async (
         `Fragment not defined: ${fragment}`,
         returnErrorAsString
       )
-    if (!isOperatorNode(fragmentReplacement)) return fragmentReplacement
+    if (!isOperatorNode(fragmentReplacement))
+      return replaceAliasNodeValues(fragmentReplacement, config)
     expression = { ...expression, ...(fragmentReplacement as CombinedOperatorNode), ...parameters }
     delete expression.fragment
     delete expression.parameters
@@ -109,17 +110,26 @@ export const evaluatorFunction = async (
     // Evaluate any alias nodes defined at this level and save them in "config"
     // object so they get accumulated as we progress down the tree.
     const newAliasNodes = await evaluateNodeAliases(expression, config)
-    // It is important to mutate this object in place rather than create a
-    // shallow copy, or else we can end up with different versions at different
-    // places in the tree as we evaluate
-    Object.entries(newAliasNodes).forEach(
-      ([alias, result]) => (config.resolvedAliasNodes[alias] = result)
-    )
+    if (!isFragment)
+      // It is important to mutate this object in place rather than create a
+      // shallow copy, or else we can end up with different versions replacing
+      // each other due to parallel evaluation
+      Object.entries(newAliasNodes).forEach(
+        ([alias, result]) => (config.resolvedAliasNodes[alias] = result)
+      )
+
+    // For fragments, we create a new instance of the config object with
+    // different resolved aliases -- this is because there may be more than one
+    // use of the same fragment at different places in the evaluation, and they
+    // each need their own unique instance of their resolved parameter alias.
+    const childConfig: FigTreeConfig = isFragment
+      ? { ...config, resolvedAliasNodes: { ...config.resolvedAliasNodes, ...newAliasNodes } }
+      : config
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)
       return fallbackOrError(
-        await evaluatorFunction(fallback, config),
+        await evaluatorFunction(fallback, childConfig),
         `Operator: ${operator}\n- ${validationError}`,
         returnErrorAsString
       )
@@ -128,20 +138,20 @@ export const evaluatorFunction = async (
     // properties
     if ('children' in expression) {
       if (!Array.isArray(expression.children))
-        expression.children = await evaluatorFunction(expression.children, config)
+        expression.children = await evaluatorFunction(expression.children, childConfig)
       if (!Array.isArray(expression.children))
         return fallbackOrError(
           await evaluatorFunction(fallback, config),
           `Operator: ${operator}\n- Property "children" is not of type: array`,
           returnErrorAsString
         )
-      expression = await parseChildren(expression, config)
+      expression = await parseChildren(expression, childConfig)
     }
 
     // Recursively evaluate node
     let result
     try {
-      result = await evaluate(expression, config)
+      result = await evaluate(expression, childConfig)
     } catch (err) {
       result = fallbackOrError(
         await evaluatorFunction(expression.fallback, config),
