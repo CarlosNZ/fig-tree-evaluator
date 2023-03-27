@@ -51,7 +51,7 @@ const buildNodeElements = (alias: string, params: any[] | object, fragments: Fra
 
   if (operator) {
     if (Array.isArray(params)) return { operator, children: params }
-    if (isObject(params)) return { operator, ...params }
+    if (isObject(params) && !anyAliasProps(params)) return { operator, ...params }
     return { operator, children: [params] }
   }
 
@@ -60,4 +60,8 @@ const buildNodeElements = (alias: string, params: any[] | object, fragments: Fra
   }
 
   return { [alias]: params }
+}
+
+const anyAliasProps = (node: object) => {
+  return Object.keys(node).some((key) => isAliasString(key))
 }
