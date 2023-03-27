@@ -15,6 +15,7 @@ export type ExpectedType =
   | 'undefined'
   | 'null'
   | 'object'
+  | 'any'
 
 export type TypeCheckInput = {
   value: unknown
@@ -62,6 +63,7 @@ const typeCheckMap = {
   undefined: (value: unknown) => value === undefined,
   null: (value: unknown) => value === null,
   object: (value: unknown) => typeof value === 'object' && !Array.isArray(value) && value !== null,
+  any: (value: unknown) => value !== undefined,
 }
 
 const makeErrorString = (

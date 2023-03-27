@@ -38,6 +38,9 @@
   "lessThan": "LESS_THAN",
   "lower": "LESS_THAN",
   "smaller": "LESS_THAN",
+  "?": "CONDITIONAL",
+  "conditional": "CONDITIONAL",
+  "ifThen": "CONDITIONAL",
   "get": "GET",
   "api": "GET"
 }
