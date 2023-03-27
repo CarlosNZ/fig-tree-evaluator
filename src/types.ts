@@ -7,7 +7,7 @@ import {
   ConditionalNode,
   RegexNode,
   StringSubNode,
-  // SplitNode,
+  SplitNode,
   ObjPropNode,
   APINode,
   // PGNode,
@@ -38,7 +38,7 @@ export const Operators = [
   'REGEX',
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
-  // 'SPLIT',
+  'SPLIT',
   'COUNT',
   'GET',
   // 'POST',
@@ -122,7 +122,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
   ConditionalNode &
   RegexNode &
   StringSubNode &
-  // SplitNode &
+  SplitNode &
   ObjPropNode &
   APINode
 // PGNode &
@@ -140,7 +140,7 @@ export type OperatorNodeUnion =
   | ConditionalNode
   | RegexNode
   | StringSubNode
-  // | SplitNode
+  | SplitNode
   | ObjPropNode
   | APINode
 // | PGNode
