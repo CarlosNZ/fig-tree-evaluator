@@ -96,7 +96,7 @@ test('"children" is an evaluator expression but doesn\'t return an array', () =>
 
 // Mother of all expressions
 const expression = {
-  $pass: {
+  $bypass: {
     operator: 'passThru',
     value: {
       operator: 'split',
@@ -148,7 +148,7 @@ const expression = {
               ],
             },
             { operator: '_', _: ['civil war'], type: 'string' },
-            '$pass',
+            '$bypass',
           ],
         },
         {
@@ -269,59 +269,48 @@ test('Massive nested query as JSON string', () => {
 
 // Same expression but utilising some shorthand expressions
 const shorthandExpression = {
-  $pass: {
+  $bypass: {
     operator: 'passThru',
     value: {
-      operator: 'split',
-      value: 'robot, ,fury',
-      delimiter: ',',
-      trimWhitespace: false,
+      $split: { value: 'robot, ,fury', delimiter: ',', trimWhitespace: false },
     },
     type: 'number',
   },
   $country: {
-    operator: 'API',
-    children: [
-      {
-        operator: '+',
-        children: ['https://restcountries.com/v3.1/name/', 'cuba'],
-      },
-      { operator: 'split', value: 'fullText, fields', delimiter: ',' },
+    $API: [
+      '$plus(https://restcountries.com/v3.1/name/, cuba)',
+      { $split: { value: 'fullText, fields', delimiter: ',' } },
       true,
       'name,capital,flag',
       'flag',
     ],
     type: 'string',
   },
-  operator: '+',
-  values: [
+  $plus: [
     {
-      operator: 'stringSubstitution',
-      children: [
+      $stringSubstitution: [
         'It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.',
         {
-          operator: '?',
-          children: [
+          $conditional: [
             {
-              operator: '=',
-              values: [
+              $eq: [
                 {
-                  operator: 'pg',
-                  query: 'SELECT country FROM customers WHERE postal_code = $1',
-                  values: [
-                    {
-                      operator: 'pgSQL',
-                      children: ['(SELECT MAX(postal_code) from customers)'],
-                      type: 'string',
-                    },
-                  ],
+                  $pg: {
+                    query: 'SELECT country FROM customers WHERE postal_code = $1',
+                    values: [
+                      {
+                        $pgSQL: ['(SELECT MAX(postal_code) from customers)'],
+                        type: 'string',
+                      },
+                    ],
+                  },
                   type: 'string',
                 },
                 'UK',
               ],
             },
             { $_: ['civil war'], type: 'string' },
-            '$pass',
+            '$bypass',
           ],
         },
         {
