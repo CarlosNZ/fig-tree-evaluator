@@ -8,7 +8,7 @@ import {
   RegexNode,
   // StringSubNode,
   // SplitNode,
-  // ObjPropNode,
+  ObjPropNode,
   APINode,
   // PGNode,
   // GraphQLNode,
@@ -36,7 +36,7 @@ export const Operators = [
   'LESS_THAN',
   'CONDITIONAL',
   'REGEX',
-  // 'OBJECT_PROPERTIES',
+  'OBJECT_PROPERTIES',
   // 'STRING_SUBSTITUTION',
   // 'SPLIT',
   // 'COUNT',
@@ -123,7 +123,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
   RegexNode &
   // StringSubNode &
   // SplitNode &
-  // ObjPropNode &
+  ObjPropNode &
   APINode
 // PGNode &
 // GraphQLNode &
@@ -141,7 +141,7 @@ export type OperatorNodeUnion =
   | RegexNode
   // | StringSubNode
   // | SplitNode
-  // | ObjPropNode
+  | ObjPropNode
   | APINode
 // | PGNode
 // | GraphQLNode
