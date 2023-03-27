@@ -52,6 +52,10 @@
   "objProps": "OBJECT_PROPERTIES",
   "getProperty": "OBJECT_PROPERTIES",
   "getObjProp": "OBJECT_PROPERTIES",
+  "stringSubstitution": "STRING_SUBSTITUTION",
+  "substitute": "STRING_SUBSTITUTION",
+  "stringSub": "STRING_SUBSTITUTION",
+  "replace": "STRING_SUBSTITUTION",
   "get": "GET",
   "api": "GET"
 }

@@ -6,7 +6,7 @@ import {
   ComparatorNode,
   ConditionalNode,
   RegexNode,
-  // StringSubNode,
+  StringSubNode,
   // SplitNode,
   ObjPropNode,
   APINode,
@@ -37,7 +37,7 @@ export const Operators = [
   'CONDITIONAL',
   'REGEX',
   'OBJECT_PROPERTIES',
-  // 'STRING_SUBSTITUTION',
+  'STRING_SUBSTITUTION',
   // 'SPLIT',
   // 'COUNT',
   'GET',
@@ -121,7 +121,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
   ComparatorNode &
   ConditionalNode &
   RegexNode &
-  // StringSubNode &
+  StringSubNode &
   // SplitNode &
   ObjPropNode &
   APINode
@@ -139,7 +139,7 @@ export type OperatorNodeUnion =
   | ComparatorNode
   | ConditionalNode
   | RegexNode
-  // | StringSubNode
+  | StringSubNode
   // | SplitNode
   | ObjPropNode
   | APINode
