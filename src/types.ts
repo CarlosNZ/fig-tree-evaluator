@@ -39,7 +39,7 @@ export const Operators = [
   'OBJECT_PROPERTIES',
   'STRING_SUBSTITUTION',
   // 'SPLIT',
-  // 'COUNT',
+  'COUNT',
   'GET',
   // 'POST',
   // 'PG_SQL',
