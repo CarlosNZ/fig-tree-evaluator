@@ -3,7 +3,7 @@ import {
   BasicExtendedNode,
   SubtractionNode,
   DivisionNode,
-  // ComparatorNode,
+  ComparatorNode,
   // ConditionalNode,
   // RegexNode,
   // StringSubNode,
@@ -32,8 +32,8 @@ export const Operators = [
   'SUBTRACT',
   'MULTIPLY',
   'DIVIDE',
-  // 'GREATER_THAN',
-  // 'LESS_THAN',
+  'GREATER_THAN',
+  'LESS_THAN',
   // 'CONDITIONAL',
   // 'REGEX',
   // 'OBJECT_PROPERTIES',
@@ -118,7 +118,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
   SubtractionNode &
   DivisionNode &
-  // ComparatorNode &
+  ComparatorNode &
   // ConditionalNode &
   // RegexNode &
   // StringSubNode &
@@ -136,7 +136,7 @@ export type OperatorNodeUnion =
   | BasicExtendedNode
   | SubtractionNode
   | DivisionNode
-  // | ComparatorNode
+  | ComparatorNode
   // | ConditionalNode
   // | RegexNode
   // | StringSubNode
