@@ -334,26 +334,21 @@ const shorthandExpression = {
                 operator: 'And',
                 values: [
                   {
-                    operator: 'REGEX',
-                    pattern: 'A.+roa',
-                    testString: {
-                      operator: 'get',
-                      url: 'https://restcountries.com/v3.1/alpha',
-                      parameters: {
-                        codes: 'nz,au',
+                    $regex: {
+                      pattern: 'A.+roa',
+                      testString: {
+                        $get: [
+                          'https://restcountries.com/v3.1/alpha',
+                          'codes',
+                          'nz,au',
+                          '[0].name.nativeName.mri.official',
+                        ],
                       },
-                      returnProperty: '[0].name.nativeName.mri.official',
                     },
                   },
+
                   {
-                    operator: 'ne',
-                    values: [
-                      {
-                        operator: '+',
-                        values: [6.66, 3.33],
-                      },
-                      10,
-                    ],
+                    $ne: [{ $plus: [6.66, 3.33] }, 10],
                   },
                 ],
                 type: 'number',
@@ -369,22 +364,11 @@ const shorthandExpression = {
     },
     '\n\n',
     {
-      operator: 'SUBSTITUTE',
-      string:
+      $substitute: [
         'During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.',
-      substitutions: [
-        {
-          operator: 'objectProperties',
-          property: {
-            operator: '+',
-            values: ['longSentence.', '$country'],
-          },
-        },
-        {
-          $wordString: 'randomWords[3]',
-          operator: 'objProps',
-          property: '$wordString',
-        },
+        { $getData: { $plus: ['longSentence.', '$country'] } },
+        { $getData: '$wordString', $wordString: 'randomWords[3]' },
+        ,
       ],
     },
     '\n\n',
@@ -396,20 +380,18 @@ const shorthandExpression = {
         replacements: [
           {
             $objProps: {
-              property: {
-                $substitute: {
-                  string: 'Oceania.NZ.%1',
-                  substitutions: [
-                    {
-                      $gql: {
-                        query:
-                          'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
-                        variables: '$buildObject(code, NZ)',
-                        returnNode: 'countries',
-                      },
+              $substitute: {
+                string: 'Oceania.NZ.%1',
+                substitutions: [
+                  {
+                    $gql: {
+                      query:
+                        'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
+                      variables: '$buildObject(code, NZ)',
+                      returnNode: 'countries',
                     },
-                  ],
-                },
+                  },
+                ],
               },
             },
           },

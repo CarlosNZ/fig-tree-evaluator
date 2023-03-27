@@ -107,11 +107,14 @@ export const evaluatorFunction = async (
     expression = mapPropertyAliases(propertyAliases, expression)
 
     // Evaluate any alias nodes defined at this level and save them in "config"
-    // object so they get accumulated as we progress down the tree
-    config.resolvedAliasNodes = {
-      ...config.resolvedAliasNodes,
-      ...(await evaluateNodeAliases(expression, config)),
-    }
+    // object so they get accumulated as we progress down the tree.
+    const newAliasNodes = await evaluateNodeAliases(expression, config)
+    // It is important to mutate this object in place rather than create a
+    // shallow copy, or else we can end up with different versions at different
+    // places in the tree as we evaluate
+    Object.entries(newAliasNodes).forEach(
+      ([alias, result]) => (config.resolvedAliasNodes[alias] = result)
+    )
 
     const validationError = checkRequiredNodes(requiredProperties, expression)
     if (validationError)
