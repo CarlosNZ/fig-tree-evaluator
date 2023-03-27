@@ -108,6 +108,20 @@ test('Pass through unmodified (passThru operator)', () => {
   })
 })
 
+test('Pass through unmodified using children', () => {
+  return evaluateExpression({ operator: 'pass', children: [999.99] }).then((result: any) => {
+    expect(result).toBe(999.99)
+  })
+})
+
+test('Pass through unmodified using children -- multiple values', () => {
+  return evaluateExpression({ operator: 'pass', children: [999.99, 'three'] }).then(
+    (result: any) => {
+      expect(result).toEqual([999.99, 'three'])
+    }
+  )
+})
+
 test('Pass through with evaluation, coerce to number', () => {
   return evaluateExpression({
     operator: 'pass',
