@@ -320,19 +320,16 @@ const shorthandExpression = {
                 'UK',
               ],
             },
-            { operator: '_', _: ['civil war'], type: 'string' },
+            { $_: ['civil war'], type: 'string' },
             '$pass',
           ],
         },
         {
-          operator: 'getProperty',
-          property: {
-            operator: 'substitute',
-            children: [
+          $getProperty: {
+            $substitute: [
               'randomWords[%99]',
               {
-                operator: 'And',
-                values: [
+                $And: [
                   {
                     $regex: {
                       pattern: 'A.+roa',
@@ -346,7 +343,6 @@ const shorthandExpression = {
                       },
                     },
                   },
-
                   {
                     $ne: [{ $plus: [6.66, 3.33] }, 10],
                   },
@@ -356,10 +352,7 @@ const shorthandExpression = {
             ],
           },
         },
-        {
-          operator: 'objectProperties',
-          children: ['organisation'],
-        },
+        '$getData(organisation)',
       ],
     },
     '\n\n',
