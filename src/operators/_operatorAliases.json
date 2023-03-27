@@ -61,5 +61,10 @@
   "count": "COUNT",
   "length": "COUNT",
   "get": "GET",
-  "api": "GET"
+  "api": "GET",
+  "pgSql": "PG_SQL",
+  "sql": "PG_SQL",
+  "postgres": "PG_SQL",
+  "pg": "PG_SQL",
+  "pgDb": "PG_SQL"
 }

@@ -43,7 +43,6 @@ const parameters: Parameter[] = [
 
 export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
-// export const parameterTypes = getParameterTypes(parameters)
 
 const operatorData: OperatorData = {
   description,
