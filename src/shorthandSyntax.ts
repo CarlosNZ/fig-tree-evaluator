@@ -45,13 +45,18 @@ const processObject = (expObject: object, fragments: Fragments) => {
   }
 }
 
-const buildNodeElements = (alias: string, params: any[] | object, fragments: Fragments) => {
+const buildNodeElements = (
+  alias: string,
+  params: EvaluatorNode[] | object,
+  fragments: Fragments
+) => {
   const aliasName = alias.slice(1)
   const operator = getOperatorName(aliasName, operatorAliases)
 
   if (operator) {
     if (Array.isArray(params)) return { operator, children: params }
-    if (isObject(params) && !anyAliasProps(params)) return { operator, ...params }
+    if (isObject(params) && !Object.keys(params).some((key) => isAliasString(key)))
+      return { operator, ...params }
     return { operator, children: [params] }
   }
 
@@ -60,8 +65,4 @@ const buildNodeElements = (alias: string, params: any[] | object, fragments: Fra
   }
 
   return { [alias]: params }
-}
-
-const anyAliasProps = (node: object) => {
-  return Object.keys(node).some((key) => isAliasString(key))
 }

@@ -185,19 +185,14 @@ test('Shorthand - with operator and named parameter', () => {
 test('Shorthand - nested fragments', () => {
   const expression = {
     $plus: [
-      { fragment: 'adder', $values: [7, 8, 9] },
+      { $adder: { $values: [7, 8, 9] } },
       {
-        fragment: 'adder',
-        parameters: {
-          operator: 'buildObject',
-          children: [
+        $adder: {
+          $buildObject: [
             '$values',
             [
-              { fragment: 'getFlag', $country: 'New Zealand' },
-              {
-                fragment: 'getFlag',
-                parameters: { $country: { operator: 'getData', property: 'myCountry' } },
-              },
+              { $getFlag: { $country: 'New Zealand' } },
+              { $getFlag: { $country: { operator: 'getData', property: 'myCountry' } } },
             ],
           ],
         },
