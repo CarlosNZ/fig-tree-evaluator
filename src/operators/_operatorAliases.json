@@ -13,6 +13,16 @@
   "!": "NOT_EQUAL",
   "ne": "NOT_EQUAL",
   "notEqual": "NOT_EQUAL",
+  "+": "PLUS",
+  "plus": "PLUS",
+  "add": "PLUS",
+  "concat": "PLUS",
+  "join": "PLUS",
+  "merge": "PLUS",
+  "-": "SUBTRACT",
+  "subtract": "SUBTRACT",
+  "minus": "SUBTRACT",
+  "takeaway": "SUBTRACT",
   "get": "GET",
   "api": "GET"
 }

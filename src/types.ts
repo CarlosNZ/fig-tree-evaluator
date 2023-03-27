@@ -1,7 +1,7 @@
 import FigTreeCache from './cache'
 import {
   BasicExtendedNode,
-  // SubtractionNode,
+  SubtractionNode,
   // DivisionNode,
   // ComparatorNode,
   // ConditionalNode,
@@ -28,8 +28,8 @@ export const Operators = [
   'OR',
   'EQUAL',
   'NOT_EQUAL',
-  // 'PLUS',
-  // 'SUBTRACT',
+  'PLUS',
+  'SUBTRACT',
   // 'MULTIPLY',
   // 'DIVIDE',
   // 'GREATER_THAN',
@@ -116,7 +116,7 @@ export interface FragmentNode {
 
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
-  // SubtractionNode &
+  SubtractionNode &
   // DivisionNode &
   // ComparatorNode &
   // ConditionalNode &
@@ -134,7 +134,7 @@ export type CombinedOperatorNode = BaseOperatorNode &
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
-  // | SubtractionNode
+  | SubtractionNode
   // | DivisionNode
   // | ComparatorNode
   // | ConditionalNode
