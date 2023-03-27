@@ -27,6 +27,9 @@
   "x": "MULTIPLY",
   "multiply": "MULTIPLY",
   "times": "MULTIPLY",
+  "/": "DIVIDE",
+  "divide": "DIVIDE",
+  "÷": "DIVIDE",
   "get": "GET",
   "api": "GET"
 }
