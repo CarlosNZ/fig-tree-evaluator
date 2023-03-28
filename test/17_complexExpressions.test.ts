@@ -267,11 +267,13 @@ test('Massive nested query as JSON string', () => {
   })
 })
 
-// Same expression but utilising shorthand syntax
+// Same expression but utilising some shorthand expressions
 const shorthandExpression = {
   $bypass: {
     operator: 'passThru',
-    value: { $split: { value: 'robot, ,fury', delimiter: ',', trimWhitespace: false } },
+    value: {
+      $split: { value: 'robot, ,fury', delimiter: ',', trimWhitespace: false },
+    },
     type: 'number',
   },
   $country: {

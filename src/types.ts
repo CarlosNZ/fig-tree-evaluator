@@ -20,7 +20,7 @@ import {
   GraphQLConnection,
 } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
-import { TypeCheckInput } from './typeCheck'
+import { ExpectedType, TypeCheckInput } from './typeCheck'
 
 export const Operators = [
   // Canonical operator names
@@ -60,7 +60,7 @@ export type OperatorAlias = keyof typeof operatorAliases
 
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
-export type Fragments = Record<string, EvaluatorNode>
+export type Fragments = Record<string, Fragment>
 
 export type Functions = Record<string, Function>
 
@@ -114,6 +114,15 @@ export interface FragmentNode {
   [key: string]: EvaluatorNode
 }
 
+export type Fragment =
+  | (EvaluatorNode & {
+      metadata?: {
+        description?: string
+        parameters?: Record<string, { type: string | string[]; required: boolean }>
+      }
+    })
+  | null
+
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
   SubtractionNode &
@@ -142,9 +151,9 @@ export type OperatorNodeUnion =
   | StringSubNode
   | SplitNode
   | ObjPropNode
+  | APINode
   | PGNode
   | GraphQLNode
-  | APINode
   | BuildObjectNode
   | MatchNode
   | FunctionNode
@@ -156,8 +165,8 @@ export type EvaluatorNode = CombinedOperatorNode | FragmentNode | EvaluatorOutpu
 
 export type OperatorObject = {
   requiredProperties: readonly string[]
-  operatorAliases: string[]
-  propertyAliases: { [key: string]: string }
+  propertyAliases: Record<string, string>
+  operatorData: OperatorData
   evaluate: (expression: CombinedOperatorNode, config: FigTreeConfig) => Promise<EvaluatorOutput>
   parseChildren: (
     expression: CombinedOperatorNode,
@@ -166,3 +175,18 @@ export type OperatorObject = {
 }
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
+
+// Operator Data
+export type Parameter = {
+  name: string
+  description: string
+  aliases: string[]
+  required: boolean
+  type: ExpectedType | ExpectedType[]
+}
+
+export interface OperatorData {
+  description: string
+  aliases: string[]
+  parameters: Parameter[]
+}

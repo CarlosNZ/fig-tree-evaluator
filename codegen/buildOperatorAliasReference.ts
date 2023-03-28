@@ -18,11 +18,18 @@ const operatorReference: OperatorReference = Object.fromEntries(
 ) as { [key in Operator]: OperatorObject }
 
 const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObject }) => {
-  const aliases: { [key: string]: Operator } = {}
-  Object.entries(operatorObjects).forEach(([operator, { operatorAliases }]) => {
-    operatorAliases.forEach((alias) => (aliases[alias] = operator as Operator))
-  })
-  return aliases
+  const operatorAliases: { [key: string]: Operator } = {}
+  Object.entries(operatorObjects).forEach(
+    ([
+      operator,
+      {
+        operatorData: { aliases },
+      },
+    ]) => {
+      aliases.forEach((alias) => (operatorAliases[alias] = operator as Operator))
+    }
+  )
+  return operatorAliases
 }
 
 console.log('Building Operator aliases...\n')

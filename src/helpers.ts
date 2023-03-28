@@ -1,7 +1,6 @@
 /*
 Functions used by the main "evaluatorFunction" (evaluate.ts)
 */
-
 import { camelCase } from 'change-case'
 import { evaluatorFunction } from './evaluate'
 import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUtils'

@@ -1510,8 +1510,8 @@ It's possible to express FigTree expressions in a more compact syntax, as follow
   Multiple parameters are interpreted positionally, as above. These string-functions *can* be nested, although it is generally recommended to limit them to "leaf" nodes for readability.
 
   Fragments can also be represented in this "string-function" syntax, but only if they have no parameters, for example:
-  ```
-  $myFragment()
+  ```js
+  "$myFragment()"
   ```
   would be replaced with the fragment `myFragment`.
 

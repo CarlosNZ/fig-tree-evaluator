@@ -125,7 +125,7 @@ test('DIVIDE operator simple integers with children', () => {
   })
 })
 
-test('DIVIDE operator simple integer subtraction using properties', () => {
+test('DIVIDE operator simple integer division using properties', () => {
   const expression = { operator: '/', dividend: 150, divisor: 4 }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toEqual(37.5)
