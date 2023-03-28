@@ -1,7 +1,6 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../../types'
-
 import operatorData, { requiredProperties, propertyAliases } from './data'
 
 interface SubtractionNodeWithProps extends BaseOperatorNode {

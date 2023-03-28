@@ -1,7 +1,6 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { EvaluatorOutput, FigTreeConfig, OperatorObject, EvaluatorNode } from '../../types'
-
 import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type AdditionNode = {

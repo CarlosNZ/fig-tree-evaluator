@@ -6,7 +6,6 @@ import {
   CombinedOperatorNode,
   BaseOperatorNode,
 } from '../../types'
-
 import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type SplitNode = {

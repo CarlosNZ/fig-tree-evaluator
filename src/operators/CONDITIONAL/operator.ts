@@ -7,7 +7,6 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-
 import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type ConditionalNode = {
