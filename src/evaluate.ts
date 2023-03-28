@@ -146,7 +146,7 @@ export const evaluatorFunction = async (
     try {
       result = await evaluate(expression, childConfig)
     } catch (err) {
-      result = fallbackOrError(
+      return fallbackOrError(
         await evaluatorFunction(expression.fallback, config),
         `Operator: ${operator}\n${errorMessage(err)}`,
         returnErrorAsString

@@ -16,7 +16,7 @@ const evaluate = async (
   const values = (await evaluateArray(expression.values, config)) as any[]
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, {
+    getTypeCheckInput(operatorData.parameters, {
       values,
       type: expression.type,
     })

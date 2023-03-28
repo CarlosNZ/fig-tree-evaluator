@@ -138,11 +138,11 @@ test('Multiple checks -- one missing, one wrong (in array)', () => {
   const obj: any = { one: 2, two: 'two' }
   const { one, two, three } = obj
   expect(
-    typeCheck([
+    typeCheck(
       { name: 'one', value: one, expectedType: ['number', 'string'] },
       { name: 'two', value: two, expectedType: 'null' },
-      { name: 'three', value: three, expectedType: 'array' },
-    ])
+      { name: 'three', value: three, expectedType: 'array' }
+    )
   ).toBe(
     '- Property "two" (value: "two") is not of type: null\n- Missing required property "three" (type: array)'
   )

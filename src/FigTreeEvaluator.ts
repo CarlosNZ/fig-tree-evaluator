@@ -36,8 +36,11 @@ class FigTreeEvaluator {
     this.cache = new FigTreeCache(options.maxCacheSize)
   }
 
-  private typeChecker = (...args: TypeCheckInput[]) => {
-    const result = typeCheck(...args)
+  private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
+    // Can accept args as either an array, or multiple parameters
+    const inputArgs =
+      args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
+    const result = typeCheck(...inputArgs)
     if (result === true) return
     throw new Error(result)
   }

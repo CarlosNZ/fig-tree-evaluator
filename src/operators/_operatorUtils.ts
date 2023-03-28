@@ -26,7 +26,7 @@ export const getTypeCheckInput = (
 ) =>
   parameterDefinitions.map(({ name, required, type }) => {
     if (isLiteralType(type)) {
-      const { literal } = type as LiteralType
+      const literal = [...type.literal]
       if (!required) literal.push(undefined)
       return { name, value: params[name], expectedType: { literal } }
     }

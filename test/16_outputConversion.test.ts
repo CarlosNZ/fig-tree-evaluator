@@ -202,8 +202,7 @@ test('Add two extracted numbers', () => {
         {
           operator: 'objectProperties',
           path: 'Not.found',
-          fallback: 'We have 3 people',
-          outputType: 'number',
+          fallback: { $pass: 'We have 3 people', outputType: 'number' },
         },
       ],
     },

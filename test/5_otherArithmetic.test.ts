@@ -295,7 +295,7 @@ test('Less than - equal vals, non-strict strings', () => {
 test('Less than - missing values', async () => {
   const expression = { operator: '<' }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: LESS_THAN\n- Missing properties: values'
+    'Operator: LESS_THAN\n- Missing required property "values" (type: array)'
   )
 })
 

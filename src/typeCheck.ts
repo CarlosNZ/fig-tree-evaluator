@@ -27,13 +27,13 @@ export type TypeCheckInput = {
   expectedType: ExpectedType
 }
 
-export const isLiteralType = (typeDefinition: ExpectedType) =>
+export const isLiteralType = (typeDefinition: ExpectedType): typeDefinition is LiteralType =>
   isObject(typeDefinition) && 'literal' in (typeDefinition as LiteralType)
 
 const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | string => {
   // Literals
   if (isLiteralType(expectedType)) {
-    const { literal } = expectedType as LiteralType
+    const { literal } = expectedType
     return literal.includes(value as string | undefined)
       ? true
       : makeErrorString(
@@ -53,15 +53,13 @@ const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | st
   }
 
   // Single basic type
-  const checker = typeCheckMap[expectedType as BasicType]
-  return checker(value) ? true : makeErrorString(name, value, expectedType as BasicType)
+  const checker = typeCheckMap[expectedType]
+  return checker(value) ? true : makeErrorString(name, value, expectedType)
 }
 
-export const typeCheck = (...args: TypeCheckInput[] | [TypeCheckInput[]]): true | string => {
-  const inputs = args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
+export const typeCheck = (...args: TypeCheckInput[]): true | string => {
   const errorStrings: string[] = []
-
-  inputs.forEach((item) => {
+  args.forEach((item) => {
     // @ts-ignore
     const result = typeCheckItem(item)
     if (result !== true) errorStrings.push(result)

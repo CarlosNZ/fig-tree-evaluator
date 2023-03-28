@@ -65,7 +65,7 @@ test('ERROR - Invalid output type', async () => {
     type: 'Integer',
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    'Operator: PLUS\n- Invalid output type: Integer'
+    'Operator: PLUS\n- Property "type" (value: "Integer") is not of type: Literal("string", "array", "number", "boolean", "bool", undefined)'
   )
 })
 
@@ -76,7 +76,7 @@ test('OR - Error', async () => {
     operator: 'OR',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: OR\n- Missing properties: values'
+    'Operator: OR\n- Missing required property "values" (type: array)'
   )
 })
 
@@ -85,7 +85,7 @@ test('OR - Error as string', () => {
     operator: 'OR',
   }
   return evaluateExpression(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('Operator: OR\n- Missing properties: values')
+    expect(result).toBe('Operator: OR\n- Missing required property "values" (type: array)')
   })
 })
 
@@ -104,7 +104,7 @@ test('AND - Error', async () => {
     operator: 'AND',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: AND\n- Missing properties: values'
+    'Operator: AND\n- Missing required property "values" (type: array)'
   )
 })
 
@@ -113,7 +113,7 @@ test('AND - Error as string', () => {
     operator: 'And',
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
-    expect(result).toBe('Operator: AND\n- Missing properties: values')
+    expect(result).toBe('Operator: AND\n- Missing required property "values" (type: array)')
   })
 })
 
