@@ -13,7 +13,7 @@ import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
-import { filterOperators, getFragmentData, mergeOptions } from './helpers'
+import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache from './cache'
 
 const pkg = require('../package.json')
@@ -83,11 +83,17 @@ class FigTreeEvaluator {
   }
 
   public getFragments() {
-    return getFragmentData(this.options.fragments ?? {})
+    return Object.entries(this.options.fragments ?? {}).map(([key, value]) => ({
+      name: key,
+      ...value?.metadata,
+    }))
   }
 
   public getCustomFunctions() {
-    return []
+    return Object.entries(this.options.functions ?? {}).map(([name, value]) => ({
+      name,
+      numRequiredArgs: value.length,
+    }))
   }
 
   public getVersion = () => pkg.version
