@@ -13,9 +13,9 @@ import {
   PGNode,
   GraphQLNode,
   BuildObjectNode,
-  // MatchNode,
-  // FunctionNode,
-  // PassThruNode,
+  MatchNode,
+  FunctionNode,
+  PassThruNode,
   PGConnection,
   GraphQLConnection,
 } from './operators'
@@ -45,9 +45,9 @@ export const Operators = [
   'PG_SQL',
   'GRAPHQL',
   'BUILD_OBJECT',
-  // 'MATCH',
-  // 'CUSTOM_FUNCTIONS',
-  // 'PASSTHRU',
+  'MATCH',
+  'CUSTOM_FUNCTIONS',
+  'PASSTHRU',
 ] as const
 
 export type Operator = typeof Operators[number]
@@ -127,10 +127,10 @@ export type CombinedOperatorNode = BaseOperatorNode &
   APINode &
   PGNode &
   GraphQLNode &
-  BuildObjectNode
-// MatchNode &
-// FunctionNode &
-// PassThruNode
+  BuildObjectNode &
+  MatchNode &
+  FunctionNode &
+  PassThruNode
 
 export type OperatorNodeUnion =
   | BasicExtendedNode
@@ -146,9 +146,9 @@ export type OperatorNodeUnion =
   | PGNode
   | GraphQLNode
   | BuildObjectNode
-// | MatchNode
-// | FunctionNode
-// | PassThruNode
+  | MatchNode
+  | FunctionNode
+  | PassThruNode
 
 export type EvaluatorOutput = string | boolean | number | GenericObject | null | undefined | any[]
 

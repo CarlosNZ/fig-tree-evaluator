@@ -73,5 +73,20 @@
   "gql": "GRAPHQL",
   "buildObject": "BUILD_OBJECT",
   "build": "BUILD_OBJECT",
-  "object": "BUILD_OBJECT"
+  "object": "BUILD_OBJECT",
+  "match": "MATCH",
+  "switch": "MATCH",
+  "customFunctions": "CUSTOM_FUNCTIONS",
+  "customFunction": "CUSTOM_FUNCTIONS",
+  "objectFunctions": "CUSTOM_FUNCTIONS",
+  "function": "CUSTOM_FUNCTIONS",
+  "functions": "CUSTOM_FUNCTIONS",
+  "runFunction": "CUSTOM_FUNCTIONS",
+  "_": "PASSTHRU",
+  "passThru": "PASSTHRU",
+  "passthru": "PASSTHRU",
+  "pass": "PASSTHRU",
+  "ignore": "PASSTHRU",
+  "coerce": "PASSTHRU",
+  "convert": "PASSTHRU"
 }
