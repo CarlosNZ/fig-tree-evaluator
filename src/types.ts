@@ -12,7 +12,7 @@ import {
   APINode,
   PGNode,
   GraphQLNode,
-  // BuildObjectNode,
+  BuildObjectNode,
   // MatchNode,
   // FunctionNode,
   // PassThruNode,
@@ -44,7 +44,7 @@ export const Operators = [
   'POST',
   'PG_SQL',
   'GRAPHQL',
-  // 'BUILD_OBJECT',
+  'BUILD_OBJECT',
   // 'MATCH',
   // 'CUSTOM_FUNCTIONS',
   // 'PASSTHRU',
@@ -126,8 +126,8 @@ export type CombinedOperatorNode = BaseOperatorNode &
   ObjPropNode &
   APINode &
   PGNode &
-  GraphQLNode
-// BuildObjectNode &
+  GraphQLNode &
+  BuildObjectNode
 // MatchNode &
 // FunctionNode &
 // PassThruNode
@@ -145,8 +145,7 @@ export type OperatorNodeUnion =
   | APINode
   | PGNode
   | GraphQLNode
-//  APINode
-// | BuildObjectNode
+  | BuildObjectNode
 // | MatchNode
 // | FunctionNode
 // | PassThruNode

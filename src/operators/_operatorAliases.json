@@ -70,5 +70,8 @@
   "pgDb": "PG_SQL",
   "graphQl": "GRAPHQL",
   "graphql": "GRAPHQL",
-  "gql": "GRAPHQL"
+  "gql": "GRAPHQL",
+  "buildObject": "BUILD_OBJECT",
+  "build": "BUILD_OBJECT",
+  "object": "BUILD_OBJECT"
 }
