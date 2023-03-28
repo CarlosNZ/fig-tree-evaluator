@@ -5,7 +5,7 @@ Functions used specifically by various operators
 import axios from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import { typeCheck, ExpectedType, TypeCheckInput } from '../typeCheck'
+import { typeCheck, TypeCheckInput, BasicType, isLiteralType, LiteralType } from '../typeCheck'
 import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
@@ -25,10 +25,16 @@ export const getTypeCheckInput = (
   params: Record<string, unknown>
 ) =>
   parameterDefinitions.map(({ name, required, type }) => {
+    if (isLiteralType(type)) {
+      const { literal } = type as LiteralType
+      if (!required) literal.push(undefined)
+      return { name, value: params[name], expectedType: { literal } }
+    }
+
     const allTypes = Array.isArray(type) ? type : [type]
     if (!required) allTypes.push('undefined')
     const expectedType = allTypes.length === 1 ? allTypes[0] : allTypes
-    return { name, value: params[name], expectedType }
+    return { name, value: params[name], expectedType } as TypeCheckInput
   })
 
 // Evaluate all child/property nodes simultaneously
@@ -67,7 +73,7 @@ export const singleArrayToObject = (elements: any[]) => {
   const result = typeCheck(
     ...keys.map((key) => ({
       value: key,
-      expectedType: ['string', 'number', 'boolean'] as ExpectedType[],
+      expectedType: ['string', 'number', 'boolean'] as BasicType[],
     }))
   )
   if (result !== true) throw new Error(result)

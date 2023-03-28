@@ -5,7 +5,7 @@ Used by each operator to ensure input is valid before evaluating, and reports
 type errors in a structured fashion.
 */
 
-import { truncateString } from './helpers'
+import { isObject, truncateString } from './helpers'
 
 export type BasicType =
   | 'any' // Anything except undefined
@@ -17,25 +17,31 @@ export type BasicType =
   | 'null'
   | 'undefined'
 
-type LiteralType = { literal: string[] }
+export type LiteralType = { literal: (string | undefined)[] }
 
 export type ExpectedType = BasicType | LiteralType | BasicType[]
 
 export type TypeCheckInput = {
-  value: unknown
   name?: string
+  value: unknown
   expectedType: ExpectedType
 }
 
+export const isLiteralType = (typeDefinition: ExpectedType) =>
+  isObject(typeDefinition) && 'literal' in (typeDefinition as LiteralType)
+
 const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | string => {
   // Literals
-  if (typeof expectedType === 'object' && 'literal' in expectedType) {
-    return typeof value === 'string' && expectedType.literal.includes(value)
+  if (isLiteralType(expectedType)) {
+    const { literal } = expectedType as LiteralType
+    return literal.includes(value as string | undefined)
       ? true
       : makeErrorString(
           name,
           value,
-          `Literal(${expectedType.literal.map((val) => `"${val}"`).join(', ')})`
+          `Literal(${literal
+            .map((val) => (val === undefined ? `undefined` : `"${val}"`))
+            .join(', ')})`
         )
   }
 
@@ -47,8 +53,8 @@ const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | st
   }
 
   // Single basic type
-  const checker = typeCheckMap[expectedType]
-  return checker(value) ? true : makeErrorString(name, value, expectedType)
+  const checker = typeCheckMap[expectedType as BasicType]
+  return checker(value) ? true : makeErrorString(name, value, expectedType as BasicType)
 }
 
 export const typeCheck = (...args: TypeCheckInput[] | [TypeCheckInput[]]): true | string => {
@@ -70,7 +76,7 @@ const typeCheckMap = {
   boolean: (value: unknown) => typeof value === 'boolean',
   array: (value: unknown) => Array.isArray(value),
   null: (value: unknown) => value === null,
-  object: (value: unknown) => typeof value === 'object' && !Array.isArray(value) && value !== null,
+  object: (value: unknown) => isObject(value),
   undefined: (value: unknown) => value === undefined,
 }
 

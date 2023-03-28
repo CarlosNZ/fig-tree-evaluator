@@ -147,3 +147,13 @@ test('Multiple checks -- one missing, one wrong (in array)', () => {
     '- Property "two" (value: "two") is not of type: null\n- Missing required property "three" (type: array)'
   )
 })
+
+test('String literals -- not required, wrong type', () => {
+  expect(
+    typeCheck({
+      name: 'p1',
+      value: 'wrong',
+      expectedType: { literal: ['right', 'other'] },
+    })
+  ).toBe('- Property "p1" (value: "wrong") is not of type: Literal("right", "other")')
+})
