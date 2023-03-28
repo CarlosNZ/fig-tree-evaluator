@@ -12,7 +12,6 @@ import {
 import { evaluateArray } from './operators/_operatorUtils'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
-  checkRequiredNodes,
   fallbackOrError,
   convertOutputMethods,
   errorMessage,
@@ -127,14 +126,6 @@ export const evaluatorFunction = async (
     const childConfig: FigTreeConfig = isFragment
       ? { ...config, resolvedAliasNodes: { ...config.resolvedAliasNodes, ...newAliasNodes } }
       : config
-
-    const validationError = checkRequiredNodes(requiredProperties, expression)
-    if (validationError)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, childConfig),
-        `Operator: ${operator}\n- ${validationError}`,
-        returnErrorAsString
-      )
 
     // If using "children" property, convert children array to expected
     // properties

@@ -134,21 +134,6 @@ export const replaceAliasNodeValues = (
 }
 
 /*
-Checks Evaluator node for missing required properties based on operator type
-- Strict type checking done AFTER evaluation of child nodes within operator
-  methods (typeCheck.ts)
-*/
-export const checkRequiredNodes = (
-  requiredProps: readonly string[],
-  expression: CombinedOperatorNode
-): string | false => {
-  const missingProps = requiredProps.filter((prop) => !(prop in expression))
-  if (missingProps.length === 0) return false
-  if (!('children' in expression)) return `Missing properties: ${missingProps}`
-  return false
-}
-
-/*
 Mostly we can just merge the options objects, but for "data", "functions",
 "fragments" and "headers", they might need merging separately so we preserve
 proper deep merging.
