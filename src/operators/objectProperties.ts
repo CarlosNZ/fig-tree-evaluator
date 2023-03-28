@@ -52,7 +52,9 @@ const evaluate = async (
 
 const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {
   const [property, fallback] = expression.children as EvaluatorNode[]
-  return { ...expression, property, fallback }
+  const returnValue = { ...expression, property }
+  if (fallback !== undefined) returnValue.fallback = fallback
+  return returnValue
 }
 
 export const OBJECT_PROPERTIES: OperatorObject = {

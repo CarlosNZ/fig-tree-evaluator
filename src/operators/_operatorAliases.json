@@ -84,6 +84,7 @@
   "runFunction": "CUSTOM_FUNCTIONS",
   "_": "PASSTHRU",
   "passThru": "PASSTHRU",
+  "passthru": "PASSTHRU",
   "pass": "PASSTHRU",
   "ignore": "PASSTHRU",
   "coerce": "PASSTHRU",

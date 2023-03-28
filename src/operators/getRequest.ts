@@ -88,10 +88,11 @@ const parseChildren = async (
     expression.children as EvaluatorNode[],
     config
   )) as [string, string[]]
-  const values = rest.slice(0, fieldNames.length)
-  const parameters = zipArraysToObject(fieldNames, values)
+  const fieldKeys = Array.isArray(fieldNames) ? fieldNames : [fieldNames]
+  const values = rest.slice(0, fieldKeys.length)
+  const parameters = zipArraysToObject(fieldKeys, values)
   const output = { ...expression, url, parameters }
-  if (rest.length > fieldNames.length) output.returnProperty = rest.pop()
+  if (rest.length > fieldKeys.length) output.returnProperty = rest.pop()
   return output
 }
 

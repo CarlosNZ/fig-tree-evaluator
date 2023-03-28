@@ -60,11 +60,15 @@ export type OperatorAlias = keyof typeof operatorAliases
 
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
+export type Fragments = Record<string, EvaluatorNode>
+
+export type Functions = Record<string, Function>
+
 export interface FigTreeOptions {
   data?: GenericObject
   objects?: GenericObject // same as "data" -- deprecated
-  functions?: { [key: string]: Function }
-  fragments?: { [key: string]: EvaluatorNode }
+  functions?: Functions
+  fragments?: Fragments
   pgConnection?: PGConnection
   graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
@@ -72,6 +76,7 @@ export interface FigTreeOptions {
   returnErrorAsString?: boolean
   nullEqualsUndefined?: boolean
   allowJSONStringInput?: boolean
+  noShorthand?: boolean
   skipRuntimeTypeCheck?: boolean
   evaluateFullObject?: boolean
   excludeOperators?: string[]

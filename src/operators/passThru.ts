@@ -9,11 +9,11 @@ import {
 } from '../types'
 
 const requiredProperties = ['value'] as const
-const operatorAliases = ['_', 'passThru', 'pass', 'ignore', 'coerce', 'convert']
+const operatorAliases = ['_', 'passThru', 'passthru', 'pass', 'ignore', 'coerce', 'convert']
 const propertyAliases = { _: 'value', data: 'value' }
 
 export type PassThruNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+  [key in typeof requiredProperties[number]]: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (
@@ -25,7 +25,8 @@ const evaluate = async (
 
 const parseChildren = (expression: CombinedOperatorNode): PassThruNode => {
   const [...children] = expression.children as EvaluatorNode[]
-  return { ...expression, value: children }
+  const value = children?.length === 1 ? children[0] : children
+  return { ...expression, value }
 }
 
 export const PASSTHRU: OperatorObject = {
