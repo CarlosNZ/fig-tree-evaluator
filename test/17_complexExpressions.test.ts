@@ -18,9 +18,10 @@ const exp = new FigTreeEvaluator({
     longSentence: {
       '🇨🇺': "Rebel spies managed to steal secret plans to the Empire's ultimate weapon",
     },
-    functions: { getPrincess: (name: string) => `Princess ${name}` },
     Oceania: { NZ: { Wellington: 'stolen plans that can save her people' } },
   },
+  functions: { getPrincess: (name: string) => `Princess ${name}` },
+  fragments: { doubleLineBreak: { $plus: ['\n', '\n'] } },
   returnErrorAsString: true,
   allowJSONStringInput: true,
 })
@@ -194,7 +195,7 @@ const expression = {
         },
       ],
     },
-    '\n\n',
+    { fragment: 'doubleLineBreak' },
     {
       operator: 'SUBSTITUTE',
       string:
@@ -214,7 +215,7 @@ const expression = {
         },
       ],
     },
-    '\n\n',
+    { fragment: 'doubleLineBreak' },
     {
       $myFallback: 'Empire',
       operator: 'string_substitution',
@@ -242,7 +243,7 @@ const expression = {
           property: 'cant.find.this',
           fallback: '$myFallback',
         },
-        { operator: 'functions', functionPath: 'functions.getPrincess', args: ['Leia'] },
+        { operator: 'functions', functionPath: 'getPrincess', args: ['Leia'] },
       ],
     },
   ],
@@ -256,8 +257,7 @@ test('Massive nested query!', () => {
   })
 })
 
-const jsonExpression =
-  '{"operator":"+","values":[{"operator":"stringSubstitution","children":["It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.",{"operator":"?","children":[{"operator":"=","values":[{"operator":"pg","query":"SELECT country FROM customers WHERE postal_code = $1","values":[{"operator":"pgSQL","children":["(SELECT MAX(postal_code) from customers)"],"type":"string"}],"type":"string"},"UK"]},{"operator":"_","_":["civil war"],"type":"string"},{"operator":"passThru","value":{"operator":"split","value":"robot, ,fury","delimiter":",","trimWhitespace":false},"type":"number"}]},{"operator":"getProperty","property":{"operator":"substitute","children":["randomWords[%99]",{"operator":"And","values":[{"operator":"REGEX","pattern":"A.+roa","testString":{"operator":"get","url":"https://restcountries.com/v3.1/alpha","parameters":{"codes":"nz,au"},"returnProperty":"[0].name.nativeName.mri.official"}},{"operator":"ne","values":[{"operator":"+","values":[6.66,3.33]},10]}],"type":"number"}]}},{"operator":"objectProperties","children":["organisation"]}]},"\\n\\n",{"operator":"SUBSTITUTE","string":"During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.","substitutions":[{"operator":"objectProperties","property":{"operator":"+","values":["longSentence.",{"operator":"API","children":[{"operator":"+","children":["https://restcountries.com/v3.1/name/","cuba"]},{"operator":"split","value":"fullText, fields","delimiter":","},true,"name,capital,flag","flag"],"type":"string"}]}},{"operator":"objProps","property":"randomWords[3]"}]},"\\n\\n",{"operator":"string_substitution","string":"Pursued by the %2\'s sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....","substitutions":[{"operator":"objProps","property":{"operator":"substitute","string":"Oceania.NZ.%1","substitutions":[{"operator":"gql","query":"query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}","variables":{"operator":"buildObject","properties":[{"key":"code","value":"NZ"}]},"returnNode":"countries"}]}},{"operator":"objProps","property":"cant.find.this","fallback":"Empire"},{"operator":"functions","functionPath":"functions.getPrincess","args":["Leia"]}]}]}'
+const jsonExpression = `{"$bypass":{"operator":"passThru","value":{"operator":"split","value":"robot, ,fury","delimiter":",","trimWhitespace":false},"type":"number"},"$country":{"operator":"API","children":[{"operator":"+","children":["https://restcountries.com/v3.1/name/","cuba"]},{"operator":"split","value":"fullText, fields","delimiter":","},true,"name,capital,flag","flag"],"type":"string"},"operator":"+","values":[{"operator":"stringSubstitution","children":["It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.",{"operator":"?","children":[{"operator":"=","values":[{"operator":"pg","query":"SELECT country FROM customers WHERE postal_code = $1","values":[{"operator":"pgSQL","children":["(SELECT MAX(postal_code) from customers)"],"type":"string"}],"type":"string"},"UK"]},{"operator":"_","_":["civil war"],"type":"string"},"$bypass"]},{"operator":"getProperty","property":{"operator":"substitute","children":["randomWords[%99]",{"operator":"And","values":[{"operator":"REGEX","pattern":"A.+roa","testString":{"operator":"get","url":"https://restcountries.com/v3.1/alpha","parameters":{"codes":"nz,au"},"returnProperty":"[0].name.nativeName.mri.official"}},{"operator":"ne","values":[{"operator":"+","values":[6.66,3.33]},10]}],"type":"number"}]}},{"operator":"objectProperties","children":["organisation"]}]},{"fragment":"doubleLineBreak"},{"operator":"SUBSTITUTE","string":"During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.","substitutions":[{"operator":"objectProperties","property":{"operator":"+","values":["longSentence.","$country"]}},{"$wordString":"randomWords[3]","operator":"objProps","property":"$wordString"}]},{"fragment":"doubleLineBreak"},{"$myFallback":"Empire","operator":"string_substitution","string":"Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....","substitutions":[{"operator":"objProps","property":{"operator":"substitute","string":"Oceania.NZ.%1","substitutions":[{"operator":"gql","query":"query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}","variables":{"operator":"buildObject","properties":[{"key":"code","value":"NZ"}]},"returnNode":"countries"}]}},{"operator":"objProps","property":"cant.find.this","fallback":"$myFallback"},{"operator":"functions","functionPath":"getPrincess","args":["Leia"]}]}]}`
 
 test('Massive nested query as JSON string', () => {
   return exp.evaluate(jsonExpression).then((result: any) => {
@@ -267,13 +267,11 @@ test('Massive nested query as JSON string', () => {
   })
 })
 
-// Same expression but utilising some shorthand expressions
+// Same expression but utilising shorthand syntax
 const shorthandExpression = {
   $bypass: {
     operator: 'passThru',
-    value: {
-      $split: { value: 'robot, ,fury', delimiter: ',', trimWhitespace: false },
-    },
+    value: { $split: { value: 'robot, ,fury', delimiter: ',', trimWhitespace: false } },
     type: 'number',
   },
   $country: {
@@ -298,10 +296,7 @@ const shorthandExpression = {
                   $pg: {
                     query: 'SELECT country FROM customers WHERE postal_code = $1',
                     values: [
-                      {
-                        $pgSQL: ['(SELECT MAX(postal_code) from customers)'],
-                        type: 'string',
-                      },
+                      { $pgSQL: ['(SELECT MAX(postal_code) from customers)'], type: 'string' },
                     ],
                   },
                   type: 'string',
@@ -332,9 +327,7 @@ const shorthandExpression = {
                       },
                     },
                   },
-                  {
-                    $ne: [{ $plus: [6.66, 3.33] }, 10],
-                  },
+                  { $ne: [{ $plus: [6.66, 3.33] }, 10] },
                 ],
                 type: 'number',
               },
@@ -344,16 +337,16 @@ const shorthandExpression = {
         '$getData(organisation)',
       ],
     },
-    '\n\n',
+    { $doubleLineBreak: {} },
     {
       $substitute: [
         'During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.',
         { $getData: { $plus: ['longSentence.', '$country'] } },
         { $getData: '$wordString', $wordString: 'randomWords[3]' },
-        ,
+        null,
       ],
     },
-    '\n\n',
+    '$doubleLineBreak()',
     {
       $myFallback: 'Empire',
       $stringSubstitution: {
@@ -378,7 +371,7 @@ const shorthandExpression = {
             },
           },
           { $objProps: 'cant.find.this', fallback: '$myFallback' },
-          { $functions: ['functions.getPrincess', 'Leia'] },
+          { $functions: ['getPrincess', 'Leia'] },
         ],
       },
     },

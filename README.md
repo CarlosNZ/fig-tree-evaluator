@@ -914,7 +914,7 @@ e.g.
 `children` array: `[urlObject, parameterKeys, ...values, returnProperty]`
 
 - `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
-- `parameterKeys`: an array of strings representing the keys of any query parameters
+- `parameterKeys`: an array of strings representing the keys of any query parameters (or just a single string if only one)
 - `...values`: one value for each key specified in `parameterKeys`
 - `returnProperty` (optional): as above
 
@@ -1508,6 +1508,12 @@ It's possible to express FigTree expressions in a more compact syntax, as follow
   "$getData(user.firstName)"
   ```  
   Multiple parameters are interpreted positionally, as above. These string-functions *can* be nested, although it is generally recommended to limit them to "leaf" nodes for readability.
+
+  Fragments can also be represented in this "string-function" syntax, but only if they have no parameters, for example:
+  ```
+  $myFragment()
+  ```
+  would be replaced with the fragment `myFragment`.
 
 For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) app.
 
