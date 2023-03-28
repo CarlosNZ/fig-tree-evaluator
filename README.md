@@ -161,7 +161,7 @@ The `options` parameter is an object with the following available properties (al
 - `excludeOperators` -- an array of operator names (or [aliases](#operator--property-aliases)) to prohibit from being used in expressions. You may wish to restrict (for example) database access via FigTree configurations, in which case these exclusions can be defined when instantiating the FigTree instance (or updated on the fly).
 - `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
 - `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
-- `noShorthand` -- there is a [shorthand syntax](#shorthand-syntax) available for writing expressions. Internally, this is pre-processed into the standard expression before evaluation. If you have no use for this and you'd rather all expressions were written with full verbosity, set `noShorthand: true` to save a small amount in performance by skipping internal pre-processing.
+- `noShorthand` -- there is a [shorthand syntax](#shorthand-syntax) available for writing expressions. Internally, this is pre-processed into the standard expression form before evaluation. If you have no use for this and you'd rather all expressions were written with full verbosity, set `noShorthand: true` to save a small amount in performance by skipping internal pre-processing.
 
 As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
 
@@ -914,7 +914,7 @@ e.g.
 `children` array: `[urlObject, parameterKeys, ...values, returnProperty]`
 
 - `urlObject`: either a url string, or an object structured as `{url: <string>, headers: <object>}` (if additional headers are required)
-- `parameterKeys`: an array of strings representing the keys of any query parameters
+- `parameterKeys`: an array of strings representing the keys of any query parameters (or just a single string if only one)
 - `...values`: one value for each key specified in `parameterKeys`
 - `returnProperty` (optional): as above
 
@@ -1463,7 +1463,7 @@ Unlike Alias Nodes, which are evaluated *once* and then the result re-used whene
 
 ## Shorthand syntax
 
-It's possible to express FigTree expressions in a more compact (and possibly readable) syntax, as follows:
+It's possible to express FigTree expressions in a more compact syntax, as follows:
 
 - Fragment and Operator nodes can be represented by putting the name of the fragment or operator as a property name (prefixed by `$`), then putting the parameters in an object as the property value. For example:  
   ```js
@@ -1473,7 +1473,7 @@ It's possible to express FigTree expressions in a more compact (and possibly rea
     pattern: '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$' 
   }
   ```
-  can be shortened to:
+  can be written as:
   ```js
   {
     $regex:
@@ -1484,14 +1484,14 @@ It's possible to express FigTree expressions in a more compact (and possibly rea
   }
   ```
 
-- For operators (not fragments, as they always require named parameters), parameters can be represented positionally (equivalent to the `children` property in normal operator nodes) in an array. The above example could also be expressed as:  
+- For operator nodes (not fragments, as they always require named parameters), parameters can be represented positionally (equivalent to the `children` property in normal operator nodes) in an array. The above example could also be expressed as:  
   ```js
   {
     $regex: [ 'home@myplace.com', '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$' ]
   }
   ```
 
-- Operators with a single parameter can just be placed directly as the single property value. For example:  
+- Operator nodes with a single parameter can just be placed directly as the single property value. For example:  
   ```js
   {
     operator: "getData",
@@ -1503,11 +1503,17 @@ It's possible to express FigTree expressions in a more compact (and possibly rea
   { $getData: "user.firstName" }
   ```
 
-- Operators can even be represented as strings, written to resemble functions. The above example can be reduced further to just:  
+- Operator nodes can even be represented as strings, written to resemble functions. The above example can be reduced further to just:  
   ```js
   "$getData(user.firstName)"
   ```  
   Multiple parameters are interpreted positionally, as above. These string-functions *can* be nested, although it is generally recommended to limit them to "leaf" nodes for readability.
+
+  Fragments can also be represented in this "string-function" syntax, but only if they have no parameters, for example:
+  ```js
+  "$myFragment()"
+  ```
+  would be replaced with the fragment `myFragment`.
 
 For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) app.
 
