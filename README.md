@@ -52,6 +52,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 - [Fragments](#fragments)
 - [Shorthand syntax](#shorthand-syntax)
 - [Caching (Memoization)](#caching-memoization)
+- [Metadata](#metadata)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
 - [Tests](#tests)
@@ -124,16 +125,16 @@ or\
 import FigTreeEvaluator from 'fig-tree-evaluator'
 
 // New evaluator instance
-const exp = new FigTreeEvaluator([ options ]) // See available options below
+const fig = new FigTreeEvaluator([ options ]) // See available options below
 
 // Evaluate expressions
-exp.evaluate(expression, [options]) // Options over-ride initial options for this evaluation
+fig.evaluate(expression, [options]) // Options over-ride initial options for this evaluation
     .then((result) => { // "evaluate" is async method
         // Do something with result
     })
 
 // Or within async function:
-const result = await exp.evaluate(expression, [options])
+const result = await fig.evaluate(expression, [options])
 ```
 
 FigTreeEvaluator is written in **Typescript**, and the following types are available to import from the package:
@@ -165,11 +166,11 @@ The `options` parameter is an object with the following available properties (al
 
 As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
 
-`exp.updateOptions(options)`
+`fig.updateOptions(options)`
 
 You can also retrieve the current options state at any time with:
 
-`exp.getOptions()`
+`fig.getOptions()`
 
 It's also possible to run one-off evaluations by importing the evaluation method directly rather than using the constructor:
 
@@ -703,11 +704,11 @@ const user = {
   ],
 }
 
-const exp = new FigTreeEvaluator()
+const fig = new FigTreeEvaluator()
 
 const expression = getExpressionFromConfig()
 
-exp.evaluate(expression, { data: { user } })
+fig.evaluate(expression, { data: { user } })
 ```
 
 Here is the result of various values of `expression:`
@@ -734,7 +735,7 @@ Here is the result of various values of `expression:`
 Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for:
 
 ```js
-exp.evaluate(
+fig.evaluate(
     { operator: 'getProperty', path: 'user.enemies' },
     { data: { user } }
   ).map((e) => e.name)
@@ -1065,7 +1066,7 @@ const pgConnect = new Client(pgConfig) // pgConfig = database details, see node-
 
 pgConnect.connect()
 
-const exp = new FigTreeEvaluator({ pgConnection: pgConnect })
+const fig = new FigTreeEvaluator({ pgConnection: pgConnect })
 ```
 
 The following examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
@@ -1282,7 +1283,7 @@ Custom functions are stored in the evaluator `options`, in the `functions` prope
 
 For examples, consider the following fig-tree instance:
 ```js
-const exp = new FigTreeEvaluator({
+const fig = new FigTreeEvaluator({
   functions: {
     double: (x) => x * 2,
     getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
@@ -1423,7 +1424,7 @@ The idea is that you can "hard-code" some common expressions into your app, so t
 The syntax is similar to [Alias Nodes](#alias-nodes), in that any string values prefixed with `$` will be treated as "parameters" that will be replaced during evaluation. In the above example, you would define the fragment when instantiating the evaluator like so:
 
 ```js
-const exp = new FigTreeEvaluator({
+const fig = new FigTreeEvaluator({
   fragments: {
     getCapital: {
       operator: 'GET',
@@ -1434,6 +1435,11 @@ const exp = new FigTreeEvaluator({
       },
       returnProperty: '[0].capital',
       outputType: 'string',
+      metadata: {
+        // Not required, but useful for external consumers -- see Metadata below
+        description: "Fetches the capital city of a country",
+        parameters: { $country: { type: 'string', required: true } },
+      }
     },
   },
 })
@@ -1536,6 +1542,120 @@ This is different to the memoization provided by [Alias Nodes](#alias-nodes):
 
 Caching is enabled by default for most of the above operators, but this can be overridden by setting `useCache: false` in [options](#available-options), either globally or per expression. If you're querying a database or API that is likely to have a different result for the same request (i.e. data has changed), then you probably want to turn the cache off.
 
+## Metadata
+
+Evaluator expression can be configured by hand, with [aliases](#alias-nodes), [fragments](#fragments) and [shorthand](#shorthand-syntax) available to make the job easier.
+
+However, you may wish to build an external UI for building FigTree expression. To this end, the FigTree instance provides three methods that could be useful for populating your configuration UI:
+
+#### New FigTree instance
+
+Containing fragments and [custom functions](#custom_functions).
+
+```js
+const fig = new FigTreeEvaluator({
+  fragments: {
+    getCapital: {
+      operator: 'GET',
+      url: {
+        operator: 'stringSubstitution',
+        string: 'https://restcountries.com/v3.1/name/%1',
+        replacements: [ "$country" ],
+      },
+      returnProperty: '[0].capital',
+      outputType: 'string',
+      // Metadata used by getFragments() (below)
+      metadata: {
+        description: "Fetches the capital city of a country",
+        parameters: { $country: { type: 'string', required: true } },
+      }
+    },
+    ... // More fragments
+  },
+  functions: {
+    doubleArray: (...args) => args.map((e) => e + e),
+    getDate: (dateString) => new Date(dateString),
+    ... // More functions
+  }
+  ... // More options
+})
+```
+
+#### Retrieve Operator info
+
+```js
+fig.getOperators()
+```
+
+This will return an array of operators with detailed info about their [aliases](#operator--property-aliases), and parameter requirements:
+
+```js
+[
+  ...
+  {
+    operator: 'PLUS',
+    description: 'Add, concatenate or merge multiple values',
+    aliases: ['+', 'plus', 'add', 'concat', 'join', 'merge'],
+    parameters: [
+      {
+        name: 'values',
+        description: 'Array of values to check to add together',
+        aliases: [],
+        required: true,
+        type: 'array',
+      },
+      {
+        name: 'type',
+        description: 'Data type to coerce input values to before addition',
+        aliases: [],
+        required: false,
+        type: 'string',
+      },
+    ],
+  },
+  ... // More operators
+]
+```
+
+#### Retrieve Fragment info
+
+Because Fragments are defined within the FigTree instance, optional metadata can be provided to make working with these fragments easier in a configuration UI:
+
+```js
+fig.getOperators()
+```
+
+This will return something like:
+
+```js
+[
+  {
+    name: 'getCapital',
+    description: 'Fetches the capital city of a country',
+    parameters: { $country: { type: 'string', required: true } },
+  },
+  { name: 'simpleFragment' }, // No metadata provided
+  ... // More fragments
+]
+```
+
+#### Retrieve customFunction info
+
+Similarly, we can fetch basic info about custom functions in the current FigTree instance, although with more limited detail:
+```js
+fig.getCustomFunctions()
+```
+
+Returns:
+
+```js
+[
+  { name: 'doubleArray', numRequiredArgs: 0 },
+  { name: 'getDate', numRequiredArgs: 1 },
+  ... // More functions
+]
+```
+
 ## More examples
 
 More examples, included large, complex expressions can be found within the test suites in the [repository](https://github.com/CarlosNZ/fig-tree-evaluator).
@@ -1570,6 +1690,9 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.8.0**:
+  - [Shorthand syntax](#shorthand-syntax) (#80)
+  - Methods to retrieve [metadata](#metadata) about operators, fragments and functions (#82)
 - **v2.7.0**: Add `excludeOperators` option to allow certain operators to be prohibited (e.g. database lookups) (#54)
 - **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
 - **v2.5.0**:
