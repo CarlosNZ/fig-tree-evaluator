@@ -114,12 +114,14 @@ export interface FragmentNode {
   [key: string]: EvaluatorNode
 }
 
-export type Fragment = EvaluatorNode & {
-  metadata?: {
-    description?: string
-    parameters?: Record<string, { type: string | string[]; required: boolean }>
-  }
-}
+export type Fragment =
+  | (EvaluatorNode & {
+      metadata?: {
+        description?: string
+        parameters?: Record<string, { type: string | string[]; required: boolean }>
+      }
+    })
+  | null
 
 export type CombinedOperatorNode = BaseOperatorNode &
   BasicExtendedNode &
