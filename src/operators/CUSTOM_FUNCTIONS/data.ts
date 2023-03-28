@@ -14,7 +14,7 @@ const parameters: Parameter[] = [
   {
     name: 'functionPath',
     description: 'Path (in options.functions) to the required function',
-    aliases: ['functionsPath', 'functionName', 'funcName', 'path'],
+    aliases: ['functionsPath', 'functionName', 'funcName', 'path', 'name'],
     required: true,
     type: 'string',
   },

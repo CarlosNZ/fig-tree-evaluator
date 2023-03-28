@@ -29,6 +29,7 @@ const fig = new FigTreeEvaluator({
     },
     simpleFragment: 'The flag of Brazil is: ',
     adder: { operator: '+', values: '$values' },
+    shorthandFragment: { $stringSubstitution: ['My name is %1', '$name'] },
   },
 })
 
