@@ -1,8 +1,8 @@
 import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
-const description = 'HTTP GET Request'
-const aliases = ['get', 'api']
+const description = 'HTTP POST Request'
+const aliases = ['post']
 const parameters: Parameter[] = [
   {
     name: 'url',
@@ -13,7 +13,7 @@ const parameters: Parameter[] = [
   },
   {
     name: 'returnProperty',
-    description: 'Property from request result',
+    description: 'Property path from request result',
     aliases: ['outputProperty'],
     required: false,
     type: 'string',
@@ -26,8 +26,8 @@ const parameters: Parameter[] = [
     type: 'object',
   },
   {
-    name: 'parameters',
-    description: 'Query parameters (key-value)',
+    name: 'data',
+    description: 'JSON Body parameters (key-value)',
     aliases: [],
     required: false,
     type: 'object',

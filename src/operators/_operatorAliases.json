@@ -62,6 +62,7 @@
   "length": "COUNT",
   "get": "GET",
   "api": "GET",
+  "post": "POST",
   "pgSql": "PG_SQL",
   "sql": "PG_SQL",
   "postgres": "PG_SQL",

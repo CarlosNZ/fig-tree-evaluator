@@ -41,7 +41,7 @@ export const Operators = [
   'SPLIT',
   'COUNT',
   'GET',
-  // 'POST',
+  'POST',
   'PG_SQL',
   'GRAPHQL',
   // 'BUILD_OBJECT',
