@@ -16,7 +16,7 @@ const parameters: Parameter[] = [
     description: 'Data type to coerce input values to before addition',
     aliases: [],
     required: false,
-    type: 'string',
+    type: { literal: ['string', 'array'] },
   },
 ]
 

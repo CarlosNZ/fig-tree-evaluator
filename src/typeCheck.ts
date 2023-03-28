@@ -7,48 +7,56 @@ type errors in a structured fashion.
 
 import { truncateString } from './helpers'
 
-export type ExpectedType =
+export type BasicType =
+  | 'any' // Anything except undefined
   | 'string'
   | 'boolean'
   | 'number'
   | 'array'
-  | 'undefined'
-  | 'null'
   | 'object'
-  | 'any'
+  | 'null'
+  | 'undefined'
+
+type LiteralType = { literal: string[] }
+
+export type ExpectedType = BasicType | LiteralType | BasicType[]
 
 export type TypeCheckInput = {
   value: unknown
   name?: string
-  not?: boolean
-  expectedType: ExpectedType | ExpectedType[]
+  expectedType: ExpectedType
 }
 
-const typeCheckItem = ({
-  value,
-  name,
-  not = false,
-  expectedType,
-}: TypeCheckInput): true | string => {
-  let result
-  if (Array.isArray(expectedType)) {
-    result = expectedType.some(
-      (type) => typeCheckItem({ value, name, expectedType: type }) === true
-    )
-    if (not) result = !result
-    return result ? true : makeErrorString(name, value, expectedType.join('|'), not)
-  } else {
-    const checker = typeCheckMap[expectedType]
-    result = checker(value)
-    if (not) result = !result
-    return result ? true : makeErrorString(name, value, expectedType, not)
+const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | string => {
+  // Literals
+  if (typeof expectedType === 'object' && 'literal' in expectedType) {
+    return typeof value === 'string' && expectedType.literal.includes(value)
+      ? true
+      : makeErrorString(
+          name,
+          value,
+          `Literal(${expectedType.literal.map((val) => `"${val}"`).join(', ')})`
+        )
   }
+
+  // Multiple types
+  if (Array.isArray(expectedType)) {
+    return expectedType.some((type) => typeCheckItem({ value, name, expectedType: type }) === true)
+      ? true
+      : makeErrorString(name, value, expectedType.join('|'))
+  }
+
+  // Single basic type
+  const checker = typeCheckMap[expectedType]
+  return checker(value) ? true : makeErrorString(name, value, expectedType)
 }
 
-export const typeCheck = (...args: TypeCheckInput[]): true | string => {
+export const typeCheck = (...args: TypeCheckInput[] | [TypeCheckInput[]]): true | string => {
+  const inputs = args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
   const errorStrings: string[] = []
 
-  args.forEach((item) => {
+  inputs.forEach((item) => {
+    // @ts-ignore
     const result = typeCheckItem(item)
     if (result !== true) errorStrings.push(result)
   })
@@ -56,27 +64,21 @@ export const typeCheck = (...args: TypeCheckInput[]): true | string => {
 }
 
 const typeCheckMap = {
+  any: (value: unknown) => value !== undefined,
   string: (value: unknown) => typeof value === 'string',
   number: (value: unknown) => typeof value === 'number',
   boolean: (value: unknown) => typeof value === 'boolean',
   array: (value: unknown) => Array.isArray(value),
-  undefined: (value: unknown) => value === undefined,
   null: (value: unknown) => value === null,
   object: (value: unknown) => typeof value === 'object' && !Array.isArray(value) && value !== null,
-  any: (value: unknown) => value !== undefined,
+  undefined: (value: unknown) => value === undefined,
 }
 
-const makeErrorString = (
-  name: string | undefined,
-  value: unknown,
-  type: string,
-  not: boolean
-): string => {
+const makeErrorString = (name: string | undefined, value: unknown, type: string): string => {
+  if (value === undefined && !!name) return `- Missing required property "${name}" (type: ${type})`
   if (name !== undefined)
-    return `- Property "${name}" (value: ${stringifyValue(value)}) is not of type: ${
-      not ? `!(${type})` : type
-    }`
-  return `- ${stringifyValue(value)} is not of type: ${not ? `!(${type})` : type}`
+    return `- Property "${name}" (value: ${stringifyValue(value)}) is not of type: ${type}`
+  return `- ${stringifyValue(value)} is not of type: ${type}`
 }
 
 const stringifyValue = (value: unknown) => {

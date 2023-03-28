@@ -182,7 +182,7 @@ export type Parameter = {
   description: string
   aliases: string[]
   required: boolean
-  type: ExpectedType | ExpectedType[]
+  type: ExpectedType
 }
 
 export interface OperatorData {
