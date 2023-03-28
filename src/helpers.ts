@@ -53,7 +53,7 @@ export const filterOperators = (
   exclusions.forEach((exclusion) => {
     const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
     if (!operator) console.warn(`Invalid operator exclusion: ${exclusion}`)
-    // delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]]
+    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]]
   })
   return filteredOperators
 }
