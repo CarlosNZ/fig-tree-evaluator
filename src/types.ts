@@ -60,7 +60,7 @@ export type OperatorAlias = keyof typeof operatorAliases
 
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
-export type Fragments = Record<string, EvaluatorNode>
+export type Fragments = Record<string, Fragment>
 
 export type Functions = Record<string, Function>
 
@@ -112,6 +112,13 @@ export interface FragmentNode {
   parameters?: { [key: string]: EvaluatorNode }
   // For parameters at the root level
   [key: string]: EvaluatorNode
+}
+
+export type Fragment = EvaluatorNode & {
+  metadata?: {
+    description?: string
+    parameters?: Record<string, { type: string | string[]; required: boolean }>
+  }
 }
 
 export type CombinedOperatorNode = BaseOperatorNode &

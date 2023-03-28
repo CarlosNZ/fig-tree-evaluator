@@ -16,6 +16,7 @@ import {
   OperatorReference,
   OperatorAliases,
   OperatorAlias,
+  Fragments,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -57,6 +58,9 @@ export const filterOperators = (
   })
   return filteredOperators
 }
+
+export const getFragmentData = (fragments: Fragments) =>
+  Object.entries(fragments).map(([key, value]) => ({ name: key, ...value?.metadata }))
 
 /*
 If `string` exceeds `length` (default: 200 chars), will return a truncated
