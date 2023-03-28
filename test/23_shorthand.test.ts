@@ -248,3 +248,17 @@ test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
       expect(result).toStrictEqual('Wellington, New Zealand')
     })
 })
+
+test('Shorthand - fragment is in shorthand syntax', () => {
+  const expression = { fragment: 'shorthandFragment', $name: 'Slim Shady' }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('My name is Slim Shady')
+  })
+})
+
+test('Shorthand - shorthand fragment with shorthand expression', () => {
+  const expression = { $shorthandFragment: { $name: 'Slim Shady' } }
+  return fig.evaluate(expression).then((result: any) => {
+    expect(result).toBe('My name is Slim Shady')
+  })
+})
