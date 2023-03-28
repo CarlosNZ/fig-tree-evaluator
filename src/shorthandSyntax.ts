@@ -7,12 +7,14 @@ const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 const functionStringRegex = /(\$[^\(\)]+)\((.*)\)/
 
 export const preProcessShorthand = (
-  expression: object | string,
-  fragments: Fragments = {}
+  expression: EvaluatorNode,
+  fragments: Fragments = {},
+  useShorthand: boolean = true
 ): EvaluatorNode | FragmentNode => {
-  if (typeof expression === 'string') return processString(expression, fragments)
+  if (!useShorthand) return expression
 
-  if (isObject(expression)) return processObject(expression, fragments)
+  if (typeof expression === 'string') return processString(expression, fragments)
+  if (isObject(expression)) return processObject(expression as object, fragments)
 
   return expression
 }
@@ -22,7 +24,7 @@ const processString = (expString: string, fragments: Fragments): EvaluatorNode =
   if (!match) return expString
 
   const method = match[1].trim()
-  const params = match[2].split(',').map((p) => preProcessShorthand(p.trim()))
+  const params = match[2].split(',').map((p) => preProcessShorthand(p.trim(), fragments))
 
   return buildNodeElements(method, params, fragments)
 }

@@ -36,9 +36,11 @@ export const evaluatorFunction = async (
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
   // Convert any shorthand syntax into standard expression structure
-  expression = !options.noShorthand
-    ? preProcessShorthand(expression, config.options?.fragments)
-    : expression
+  expression = preProcessShorthand(
+    expression,
+    config.options?.fragments ?? {},
+    !options.noShorthand
+  )
 
   // If an array, we evaluate each item in the array
   if (Array.isArray(expression)) {
@@ -72,7 +74,11 @@ export const evaluatorFunction = async (
       [expression.fragment, expression.parameters],
       config
     )) as [string, { [key: string]: EvaluatorNode }]
-    const fragmentReplacement = options?.fragments?.[fragment]
+    const fragmentReplacement = preProcessShorthand(
+      options?.fragments?.[fragment],
+      options.fragments ?? {},
+      !options.noShorthand
+    )
     if (fragmentReplacement === undefined)
       return fallbackOrError(
         await evaluatorFunction(fallback, config),
