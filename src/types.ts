@@ -11,13 +11,13 @@ import {
   ObjPropNode,
   APINode,
   PGNode,
-  // GraphQLNode,
+  GraphQLNode,
   // BuildObjectNode,
   // MatchNode,
   // FunctionNode,
   // PassThruNode,
   PGConnection,
-  // GraphQLConnection,
+  GraphQLConnection,
 } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
@@ -43,7 +43,7 @@ export const Operators = [
   'GET',
   // 'POST',
   'PG_SQL',
-  // 'GRAPHQL',
+  'GRAPHQL',
   // 'BUILD_OBJECT',
   // 'MATCH',
   // 'CUSTOM_FUNCTIONS',
@@ -70,7 +70,7 @@ export interface FigTreeOptions {
   functions?: Functions
   fragments?: Fragments
   pgConnection?: PGConnection
-  // graphQLConnection?: GraphQLConnection
+  graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
@@ -125,8 +125,8 @@ export type CombinedOperatorNode = BaseOperatorNode &
   SplitNode &
   ObjPropNode &
   APINode &
-  PGNode
-// GraphQLNode &
+  PGNode &
+  GraphQLNode
 // BuildObjectNode &
 // MatchNode &
 // FunctionNode &
@@ -144,7 +144,7 @@ export type OperatorNodeUnion =
   | ObjPropNode
   | APINode
   | PGNode
-// | GraphQLNode
+  | GraphQLNode
 //  APINode
 // | BuildObjectNode
 // | MatchNode
