@@ -34,7 +34,7 @@ export const getTypeCheckInput = (
     const allTypes = Array.isArray(type) ? type : [type]
     if (!required) allTypes.push('undefined')
     const expectedType = allTypes.length === 1 ? allTypes[0] : allTypes
-    return { name, value: params[name], expectedType } as TypeCheckInput
+    return { name, value: params[name], expectedType }
   })
 
 // Evaluate all child/property nodes simultaneously
@@ -71,10 +71,12 @@ export const singleArrayToObject = (elements: any[]) => {
 
   const keys = elements.filter((_, index) => index % 2 === 0)
   const result = typeCheck(
-    ...keys.map((key) => ({
-      value: key,
-      expectedType: ['string', 'number', 'boolean'] as BasicType[],
-    }))
+    ...keys.map(
+      (key): TypeCheckInput => ({
+        value: key,
+        expectedType: ['string', 'number', 'boolean'],
+      })
+    )
   )
   if (result !== true) throw new Error(result)
 

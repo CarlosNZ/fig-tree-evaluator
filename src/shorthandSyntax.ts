@@ -14,7 +14,7 @@ export const preProcessShorthand = (
   if (!useShorthand) return expression
 
   if (typeof expression === 'string') return processString(expression, fragments)
-  if (isObject(expression)) return processObject(expression as object, fragments)
+  if (isObject(expression)) return processObject(expression, fragments)
 
   return expression
 }
@@ -29,7 +29,7 @@ const processString = (expString: string, fragments: Fragments): EvaluatorNode =
   return buildNodeElements(method, params, fragments)
 }
 
-const processObject = (expObject: object, fragments: Fragments) => {
+const processObject = (expObject: Object, fragments: Fragments) => {
   if (isOperatorNode(expObject) || isFragmentNode(expObject)) return expObject
 
   const keyVals = Object.entries(expObject)

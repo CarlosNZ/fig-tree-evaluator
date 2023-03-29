@@ -15,6 +15,8 @@ import {
   OperatorReference,
   OperatorAliases,
   OperatorAlias,
+  Operator,
+  FragmentNode,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -30,7 +32,7 @@ export const parseIfJson = (input: EvaluatorNode) => {
 export const isOperatorNode = (input: EvaluatorNode) =>
   input instanceof Object && 'operator' in input
 
-export const isFragmentNode = (input: EvaluatorNode) =>
+export const isFragmentNode = (input: EvaluatorNode): input is FragmentNode =>
   input instanceof Object && 'fragment' in input
 
 // Convert to camelCase but *don't* remove stand-alone punctuation as they may
@@ -40,8 +42,10 @@ const standardiseOperatorName = (name: string) => {
   return camelCaseName ? camelCaseName : name
 }
 
-export const getOperatorName = (operator: string, operatorAliases: OperatorAliases) =>
-  operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
+export const getOperatorName = (
+  operator: string,
+  operatorAliases: OperatorAliases
+): Operator | undefined => operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
 
 export const filterOperators = (
   operators: OperatorReference,
@@ -184,7 +188,7 @@ const extractNumber = (input: EvaluatorOutput) => {
 /*
 Returns `true` if input is an object ({}) (but not an array)
 */
-export const isObject = (input: unknown) =>
+export const isObject = (input: unknown): input is Object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
 
 /*
@@ -202,7 +206,7 @@ export const evaluateObject = async (
   const newAliases: unknown[] = []
 
   // First evaluate any Alias nodes we find and add them to config
-  Object.entries(input as Object).forEach(([key, value]) => {
+  Object.entries(input).forEach(([key, value]) => {
     if (isAliasString(key)) {
       newAliases.push(key, evaluatorFunction(value, config))
       delete (input as Record<string, any>)[key]
@@ -212,7 +216,7 @@ export const evaluateObject = async (
   config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
 
   // Then evaluate the rest
-  Object.entries(input as Object).forEach(([key, value]) => {
+  Object.entries(input).forEach(([key, value]) => {
     newObjectEntries.push(key, evaluatorFunction(value, config))
   })
 
