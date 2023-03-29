@@ -7,10 +7,10 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type PGNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  query: EvaluatorNode
 } & BaseOperatorNode & { values?: EvaluatorNode[]; type?: 'string' }
 
 const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
@@ -93,7 +93,6 @@ const processPgSQL = async (queryArray: any[], connection: PGConnection, queryTy
 }
 
 export const PG_SQL: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -8,10 +8,12 @@ import {
   OperatorObject,
 } from '../../types'
 import { getTypeCheckInput } from '../_operatorUtils'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type ConditionalNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  condition: EvaluatorNode
+  valueIfTrue: EvaluatorNode
+  valueIfFalse: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (
@@ -43,7 +45,6 @@ const parseChildren = (expression: CombinedOperatorNode): ConditionalNode => {
 }
 
 export const CONDITIONAL: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

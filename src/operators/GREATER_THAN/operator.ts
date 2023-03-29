@@ -1,7 +1,7 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { FigTreeConfig, OperatorObject } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 // const aliasExtensions = [{ '>=': { strict: false } }] // To-do - Issue #22
 
@@ -25,7 +25,6 @@ const evaluate = async (expression: ComparatorNode, config: FigTreeConfig): Prom
 }
 
 export const GREATER_THAN: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

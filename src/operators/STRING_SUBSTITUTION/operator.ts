@@ -7,10 +7,11 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type StringSubNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  string: EvaluatorNode
+  substitutions: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (
@@ -42,7 +43,6 @@ const parseChildren = (expression: CombinedOperatorNode): StringSubNode => {
 }
 
 export const STRING_SUBSTITUTION: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

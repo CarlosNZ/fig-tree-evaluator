@@ -8,11 +8,9 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
-export type FunctionNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { args: EvaluatorNode[] }
+export type FunctionNode = BaseOperatorNode & { functionPath: EvaluatorNode; args: EvaluatorNode[] }
 
 const evaluate = async (
   expression: FunctionNode,
@@ -58,7 +56,6 @@ const parseChildren = (expression: CombinedOperatorNode): FunctionNode => {
 }
 
 export const CUSTOM_FUNCTIONS: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -104,7 +104,7 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
 
-    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
+    const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
     expression = mapPropertyAliases(propertyAliases, expression)
 

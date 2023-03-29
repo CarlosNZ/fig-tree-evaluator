@@ -1,7 +1,7 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 interface SubtractionNodeWithProps extends BaseOperatorNode {
   subtract: EvaluatorNode
@@ -26,7 +26,6 @@ const evaluate = async (expression: SubtractionNode, config: FigTreeConfig): Pro
 }
 
 export const SUBTRACT: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

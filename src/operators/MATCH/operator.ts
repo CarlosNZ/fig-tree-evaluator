@@ -9,10 +9,10 @@ import {
   OperatorObject,
 } from '../../types'
 import { isOperatorNode } from '../../helpers'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type MatchNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  matchExpression: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
@@ -55,7 +55,6 @@ const parseChildren = async (
 }
 
 export const MATCH: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

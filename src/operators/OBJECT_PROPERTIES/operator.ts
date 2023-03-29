@@ -8,10 +8,10 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type ObjPropNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  property: EvaluatorNode
 } & BaseOperatorNode & { additionalData: object }
 
 const evaluate = async (
@@ -39,7 +39,6 @@ const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {
 }
 
 export const OBJECT_PROPERTIES: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

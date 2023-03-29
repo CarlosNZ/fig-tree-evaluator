@@ -16,16 +16,15 @@ import {
   GenericObject,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
-export type GraphQLNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & {
-    url?: EvaluatorNode
-    variables?: EvaluatorNode
-    returnNode?: EvaluatorNode
-    headers?: GenericObject
-  }
+export type GraphQLNode = BaseOperatorNode & {
+  query: EvaluatorNode
+  url?: EvaluatorNode
+  variables?: EvaluatorNode
+  returnNode?: EvaluatorNode
+  headers?: GenericObject
+}
 
 const evaluate = async (
   expression: GraphQLNode,
@@ -108,7 +107,6 @@ export interface GraphQLConnection {
 }
 
 export const GRAPHQL: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

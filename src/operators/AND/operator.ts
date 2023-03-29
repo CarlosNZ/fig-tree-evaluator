@@ -6,10 +6,10 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type BasicExtendedNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode[]
+  values: EvaluatorNode[]
 } & BaseOperatorNode
 
 const evaluate = async (expression: BasicExtendedNode, config: FigTreeConfig): Promise<boolean> => {
@@ -24,7 +24,6 @@ export const parseChildren = (expression: CombinedOperatorNode): BasicExtendedNo
 }
 
 export const AND: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

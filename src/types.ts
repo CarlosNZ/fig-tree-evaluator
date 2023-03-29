@@ -166,7 +166,6 @@ export type EvaluatorOutput = string | boolean | number | GenericObject | null |
 export type EvaluatorNode = CombinedOperatorNode | FragmentNode | EvaluatorOutput
 
 export type OperatorObject = {
-  requiredProperties: readonly string[]
   propertyAliases: Record<string, string>
   operatorData: OperatorData
   evaluate: (expression: CombinedOperatorNode, config: FigTreeConfig) => Promise<EvaluatorOutput>

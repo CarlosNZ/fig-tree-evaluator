@@ -7,10 +7,10 @@ import {
   EvaluatorNode,
   BaseOperatorNode,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type PassThruNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  value: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (
@@ -27,7 +27,6 @@ const parseChildren = (expression: CombinedOperatorNode): PassThruNode => {
 }
 
 export const PASSTHRU: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

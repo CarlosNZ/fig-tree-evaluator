@@ -1,11 +1,9 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { EvaluatorOutput, FigTreeConfig, OperatorObject, EvaluatorNode } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
-export type AdditionNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BasicExtendedNode & { type?: 'string' | 'array' }
+export type AdditionNode = BasicExtendedNode & { type?: 'string' | 'array' }
 
 const evaluate = async (
   expression: AdditionNode,
@@ -40,7 +38,6 @@ const evaluate = async (
 }
 
 export const PLUS: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

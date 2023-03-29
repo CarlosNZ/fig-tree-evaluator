@@ -8,7 +8,7 @@ import {
 } from '../_operatorUtils'
 import { EvaluatorOutput, FigTreeConfig, GenericObject, OperatorObject } from '../../types'
 import { parseChildrenGET as parseChildren, APINode } from '../GET/operator'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
   const [urlObj, data, returnProperty, headers] = (await evaluateArray(
@@ -51,7 +51,6 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
 }
 
 export const POST: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

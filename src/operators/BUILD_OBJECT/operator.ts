@@ -8,7 +8,7 @@ import {
   GenericObject,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type BuildObjectNode = {
   properties: BuildObjectElement[]
@@ -54,7 +54,6 @@ const parseChildren = (expression: CombinedOperatorNode): BuildObjectNode => {
 }
 
 export const BUILD_OBJECT: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

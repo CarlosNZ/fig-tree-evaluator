@@ -9,9 +9,6 @@ import { typeCheck, TypeCheckInput, BasicType, isLiteralType, LiteralType } from
 import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
-export const getRequiredProperties = (parameters: Parameter[]): string[] =>
-  parameters.filter((p) => p.required).map((p) => p.name)
-
 export const getPropertyAliases = (parameters: Parameter[]): Record<string, string> => {
   const propertyAliases: Record<string, string> = {}
   parameters.forEach((param) => {

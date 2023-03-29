@@ -16,15 +16,14 @@ import {
   GenericObject,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
-export type APINode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & {
-    parameters?: EvaluatorNode
-    returnProperty?: EvaluatorNode
-    headers?: GenericObject
-  }
+export type APINode = BaseOperatorNode & {
+  query: EvaluatorNode
+  parameters?: EvaluatorNode
+  returnProperty?: EvaluatorNode
+  headers?: GenericObject
+}
 
 const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
   const [urlObj, parameters, returnProperty, headers, useCache] = (await evaluateArray(
@@ -112,7 +111,6 @@ const parseChildren = async (
 export const parseChildrenGET = parseChildren
 
 export const GET: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -6,12 +6,12 @@ import {
   CombinedOperatorNode,
   BaseOperatorNode,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type SplitNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  value: EvaluatorNode
 } & BaseOperatorNode & {
-    delimiter?: EvaluatorNode
+    delimiter: EvaluatorNode
     trimWhiteSpace: EvaluatorNode
     excludeTrailing: EvaluatorNode
   }
@@ -50,7 +50,6 @@ const parseChildren = (expression: CombinedOperatorNode): SplitNode => {
 }
 
 export const SPLIT: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

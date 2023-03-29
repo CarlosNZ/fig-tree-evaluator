@@ -1,7 +1,7 @@
 import { parseChildren, BasicExtendedNode } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 interface DivisionNodeWithProps extends BaseOperatorNode {
   dividend: EvaluatorNode
@@ -39,7 +39,6 @@ const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promis
 }
 
 export const DIVIDE: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

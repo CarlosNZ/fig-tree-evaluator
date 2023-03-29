@@ -8,10 +8,11 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
 export type RegexNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
+  testString: EvaluatorNode
+  pattern: EvaluatorNode
 } & BaseOperatorNode
 
 const evaluate = async (expression: RegexNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
@@ -36,7 +37,6 @@ const parseChildren = (expression: CombinedOperatorNode): RegexNode => {
 }
 
 export const REGEX: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,
