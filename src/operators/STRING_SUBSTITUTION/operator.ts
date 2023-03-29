@@ -17,10 +17,10 @@ const evaluate = async (
   expression: StringSubNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  const [string, ...substitutions] = (await evaluateArray(
-    [expression.string, ...(expression.substitutions as EvaluatorNode[])],
+  const [string, substitutions] = (await evaluateArray(
+    [expression.string, expression.substitutions],
     config
-  )) as [string, string]
+  )) as [string, string[]]
 
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { string, substitutions }))
 

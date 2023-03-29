@@ -6,7 +6,7 @@ const exp = new FigTreeEvaluator({
     fDate: (dateString: string) => new Date(dateString),
     fNoArgs: () => 5 * 5,
   },
-  objects: { functions: { square: (x: number) => x ** 2 } },
+  objects: { functions: { square: (x: number) => x ** 2, notAFunction: 'sorry' } },
 })
 
 // CUSTOM FUNCTIONS
@@ -94,5 +94,25 @@ test('Custom functions - no args as children', () => {
   }
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe(25)
+  })
+})
+
+test('Custom functions - invalid function path', () => {
+  const expression = {
+    operator: 'function',
+    functionPath: 'invalid.path',
+  }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: CUSTOM_FUNCTIONS\n- No function found: "invalid.path"')
+  })
+})
+
+test('Custom functions - path is not a function', () => {
+  const expression = {
+    operator: 'function',
+    functionPath: 'functions.notAFunction',
+  }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: CUSTOM_FUNCTIONS\n- No function found: "functions.notAFunction"')
   })
 })

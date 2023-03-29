@@ -1,6 +1,6 @@
 import FigTreeEvaluator, { evaluateExpression } from '../src'
 
-const exp = new FigTreeEvaluator()
+const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 
 // PLUS
 
@@ -112,5 +112,19 @@ test('Merge 3 objects', () => {
       1: null,
       2: 'TRUE',
     })
+  })
+})
+
+test('Missing values', () => {
+  const expression = { operator: '+' }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('Operator: PLUS\n- Missing required property "values" (type: array)')
+  })
+})
+
+test('Empty values array', () => {
+  const expression = { operator: '+', values: [] }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toStrictEqual([])
   })
 })

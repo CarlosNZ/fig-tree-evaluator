@@ -22,10 +22,11 @@ const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promis
     getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
   )
 
-  const vals = values ?? [dividend, divisor]
+  const vals = values ?? [dividend, divisor].filter((e) => e !== undefined)
 
   if (vals.length < 2) throw new Error('- Not enough values provided')
-  if (!vals[1]) throw new Error('Division by zero!')
+  if (vals.some((e) => typeof e !== 'number')) throw new Error('- Not all values are numbers')
+  if (vals[1] === 0) throw new Error('Division by zero!')
 
   switch (output) {
     case 'quotient':

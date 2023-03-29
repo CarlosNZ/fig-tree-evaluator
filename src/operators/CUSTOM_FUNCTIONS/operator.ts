@@ -18,8 +18,8 @@ const evaluate = async (
   expression: FunctionNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  const [functionPath, ...args] = (await evaluateArray(
-    [expression.functionPath, ...(expression.args || [])],
+  const [functionPath, args = []] = (await evaluateArray(
+    [expression.functionPath, expression.args],
     config
   )) as [string, EvaluatorNode[]]
 
@@ -34,7 +34,9 @@ const evaluate = async (
     // This is not documented as we don't want to perpetuate it, it's purely to
     // ensure backwards compatibility.
     extractProperty(data, functionPath, null) ??
-    extractProperty(config.options, functionPath)
+    extractProperty(config.options, functionPath, null)
+
+  if (!func || typeof func !== 'function') throw new Error(`- No function found: "${functionPath}"`)
 
   const shouldUseCache = expression.useCache ?? config.options.useCache ?? false
 

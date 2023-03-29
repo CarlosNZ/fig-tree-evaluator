@@ -183,6 +183,13 @@ test('Equality (arrays, not matching)', () => {
   })
 })
 
+test('Equality -- missing values', async () => {
+  const expression = { operator: '=' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: EQUAL\n- Missing required property "values" (type: array)'
+  )
+})
+
 // NOT EQUAL
 
 test('Inequality (numbers)', () => {
@@ -280,4 +287,11 @@ test('Inequality (only one value)', () => {
   return exp.evaluate(expression).then((result: any) => {
     expect(result).toBe(false)
   })
+})
+
+test('Inequality -- missing values', async () => {
+  const expression = { operator: '!=' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: NOT_EQUAL\n- Missing required property "values" (type: array)'
+  )
 })

@@ -22,7 +22,9 @@ const evaluate = async (
     [expression.property, expression.additionalData],
     config
   )) as [string, object]
+
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { property, additionalData }))
+
   const inputObject = additionalData
     ? { ...(config.options?.data ?? {}), ...additionalData }
     : config.options?.data ?? {}

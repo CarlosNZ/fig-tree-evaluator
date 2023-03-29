@@ -159,3 +159,51 @@ test('String substitution - repeated parameterss', () => {
     expect(result).toBe('THIS is the same as THIS but not THAT')
   })
 })
+
+test('String substitution - parameters contain further expressions', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: { $plus: ['May the %1', ' be with %2'] },
+    substitutions: [
+      {
+        '$?': { condition: { $eq: [{ $plus: [50, 50] }, 100] }, ifTrue: 'Force', ifFalse: 'Forks' },
+      },
+      { $plus: ['y', 'o', 'u'] },
+    ],
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('May the Force be with you')
+  })
+})
+
+test('String substitution - parameters contain further expressions', () => {
+  const expression = {
+    operator: 'stringSub',
+    string: '%1 %2 %3 %4',
+    substitutions: {
+      $plus: [
+        ['One', 'Two'],
+        ['Three', 'Four'],
+      ],
+    },
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe('One Two Three Four')
+  })
+})
+
+test('String substitution -- missing parameters', async () => {
+  const expression = { operator: 'replace', irrelevant: 'value' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)\n- Missing required property "substitutions" (type: array)'
+  )
+})
+
+test('String substitution - missing replacements parameter', () => {
+  const expression = { $replace: { string: 'This is the %1' } }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe(
+      'Operator: STRING_SUBSTITUTION\n- Missing required property "substitutions" (type: array)'
+    )
+  })
+})

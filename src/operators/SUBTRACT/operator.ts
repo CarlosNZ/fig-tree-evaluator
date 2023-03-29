@@ -17,9 +17,10 @@ const evaluate = async (expression: SubtractionNode, config: FigTreeConfig): Pro
   )) as [[number, number], number, number]
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { values, from, subtract }))
 
-  const vals = values ?? [from, subtract]
+  const vals = values ?? [from, subtract].filter((e) => e !== undefined)
 
   if (vals.length < 2) throw new Error('- Not enough values provided')
+  if (vals.some((e) => typeof e !== 'number')) throw new Error('- Not all values are numbers')
 
   return vals[0] - vals[1]
 }

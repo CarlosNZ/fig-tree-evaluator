@@ -50,8 +50,8 @@ test('MINUS operator subtract floats with negative result', () => {
 
 test('MINUS operator with one NaN operand', () => {
   const expression = { operator: '-', values: [0.3, 'five'] }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: SUBTRACT\n- Not all values are numbers')
   })
 })
 
@@ -64,15 +64,15 @@ test('MINUS operator with not enough values', async () => {
 
 test('MINUS operator with missing "from" property', () => {
   const expression = { operator: '-', subtract: 0.3 }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: SUBTRACT\n- Not enough values provided')
   })
 })
 
 test('MINUS operator with missing "subtract" property', () => {
   const expression = { operator: '-', from: 10 }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: SUBTRACT\n- Not enough values provided')
   })
 })
 
@@ -106,8 +106,22 @@ test('MULTIPLY operator with children', () => {
 
 test('MULTIPLY operator with non-number inputs', () => {
   const expression = { operator: 'X', values: [17, 'twelve'] }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: MULTIPLY\n- Not all values are numbers')
+  })
+})
+
+test('MULTIPLY - Missing values', () => {
+  const expression = { operator: '*' }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: MULTIPLY\n- Missing required property "values" (type: array)')
+  })
+})
+
+test('MULTIPLY - Empty values array', () => {
+  const expression = { operator: '*', values: [] }
   return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
+    expect(result).toBe(0)
   })
 })
 
@@ -168,8 +182,8 @@ test('DIVIDE - division by zero', async () => {
 
 test('DIVIDE operator with one NaN operand', () => {
   const expression = { operator: '/', values: [0.3, 'five'] }
-  return exp.evaluate(expression).then((result: any) => {
-    expect(result).toBeNaN()
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: DIVIDE\n- Not all values are numbers')
   })
 })
 
@@ -239,6 +253,13 @@ test('Greater than - equal vals, non-strict strings', () => {
   })
 })
 
+test('Greater than - missing values', async () => {
+  const expression = { operator: '>' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: GREATER_THAN\n- Missing required property "values" (type: array)'
+  )
+})
+
 test('Greater than - not enough values', async () => {
   const expression = { operator: '>', values: [12] }
   await expect(exp.evaluate(expression)).rejects.toThrow(
@@ -299,6 +320,13 @@ test('Less than - missing values', async () => {
   )
 })
 
+test('Less than - Empty values array', () => {
+  const expression = { operator: '<', values: [] }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: LESS_THAN\n- Not enough values provided')
+  })
+})
+
 test('Count - simple array', () => {
   const expression = { operator: 'count', values: [1, 2, 3] }
   return exp.evaluate(expression).then((result: any) => {
@@ -319,6 +347,13 @@ test('Count - values not an array', () => {
     expect(result).toEqual(
       'Operator: COUNT\n- Property "values" (value: "Wrong") is not of type: array'
     )
+  })
+})
+
+test('Count - missing values', () => {
+  const expression = { operator: 'Count' }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+    expect(result).toBe('Operator: COUNT\n- Missing required property "values" (type: array)')
   })
 })
 
