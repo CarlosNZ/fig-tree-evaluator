@@ -23,7 +23,7 @@ const evaluate = async (
     config
   )) as [string, EvaluatorNode[]]
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { functionPath, args }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { functionPath, args }))
 
   const { data, functions } = config.options
   const func =

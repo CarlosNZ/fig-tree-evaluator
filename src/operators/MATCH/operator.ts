@@ -22,7 +22,7 @@ const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<E
 
   const branches = expression.branches
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { matchExpression, branches }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { matchExpression, branches }))
 
   let branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches ?? {}
 

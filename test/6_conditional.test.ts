@@ -1,6 +1,6 @@
 import FigTreeEvaluator, { evaluateExpression } from '../src'
 
-const exp = new FigTreeEvaluator()
+const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 
 // CONDITIONAL
 test('Basic conditional', () => {
@@ -77,5 +77,27 @@ test('Conditional with False Logical Expression', () => {
   }
   return evaluateExpression(expression).then((result: any) => {
     expect(result).toBe('Expression is False')
+  })
+})
+
+test('Conditional -- missing parameters', async () => {
+  const expression = {
+    operator: '?',
+  }
+  await expect(evaluateExpression(expression)).rejects.toThrow(
+    'Operator: CONDITIONAL\n- Missing required property "condition" (type: any)\n- Missing required property "valueIfTrue" (type: any)\n- Missing required property "valueIfFalse" (type: any)'
+  )
+})
+
+test('Conditional -- 1 missing parameter (error as string)', () => {
+  const expression = {
+    operator: '?',
+    condition: 'YES',
+    valueIfFalse: 'NO',
+  }
+  return exp.evaluate(expression).then((result: any) => {
+    expect(result).toBe(
+      'Operator: CONDITIONAL\n- Missing required property "valueIfTrue" (type: any)'
+    )
   })
 })

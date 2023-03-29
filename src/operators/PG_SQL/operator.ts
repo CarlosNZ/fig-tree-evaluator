@@ -19,7 +19,7 @@ const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<Eval
     config
   )) as [string, string, (string | number)[]]
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { query, type, values }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { query, type, values }))
 
   if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
 

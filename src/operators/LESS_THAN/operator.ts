@@ -12,7 +12,7 @@ const evaluate = async (expression: ComparatorNode, config: FigTreeConfig): Prom
     config
   )) as [(string | number)[], boolean]
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values, strict }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { values, strict }))
 
   if (values.length < 2) throw new Error('- Not enough values provided')
 

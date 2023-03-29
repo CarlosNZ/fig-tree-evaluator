@@ -15,7 +15,7 @@ const evaluate = async (expression: SubtractionNode, config: FigTreeConfig): Pro
     [expression.values, expression.from, expression.subtract],
     config
   )) as [[number, number], number, number]
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values, from, subtract }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { values, from, subtract }))
 
   const vals = values ?? [from, subtract]
 

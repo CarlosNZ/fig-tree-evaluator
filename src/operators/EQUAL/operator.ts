@@ -14,7 +14,7 @@ const evaluate = async (
   )) as [boolean[], boolean]
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, { values, nullEqualsUndefined: nullMatch })
+    getTypeCheckInput(operatorData.parameters, { values, nullEqualsUndefined: nullMatch })
   )
 
   const nullEqualsUndefined =

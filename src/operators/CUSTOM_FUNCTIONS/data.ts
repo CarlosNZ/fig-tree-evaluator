@@ -23,7 +23,7 @@ const parameters: Parameter[] = [
     description: 'Arguments for the function',
     aliases: ['arguments', 'variables'],
     required: false,
-    type: ['array'],
+    type: 'array',
   },
 ]
 

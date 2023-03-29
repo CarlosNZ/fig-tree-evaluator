@@ -19,7 +19,7 @@ const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promis
   )) as [[number, number], number, number, DivisionOutput]
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
+    getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
   )
 
   const vals = values ?? [dividend, divisor]

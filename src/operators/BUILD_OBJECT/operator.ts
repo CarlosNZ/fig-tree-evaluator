@@ -27,7 +27,7 @@ const evaluate = async (
   }
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, { properties: expression.properties })
+    getTypeCheckInput(operatorData.parameters, { properties: expression.properties })
   )
 
   const evaluated = expression.properties

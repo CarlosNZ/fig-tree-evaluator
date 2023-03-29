@@ -11,8 +11,6 @@ const evaluate = async (
   expression: AdditionNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  if (expression.values.length === 0) return expression.values
-
   const values = (await evaluateArray(expression.values, config)) as any[]
 
   config.typeChecker(
@@ -21,6 +19,8 @@ const evaluate = async (
       type: expression.type,
     })
   )
+
+  if (values.length === 0) return values // To prevent reduce of empty array error
 
   // Reduce based on "type" if specified
   if (expression?.type === 'string') return values.reduce((acc, child) => acc.concat(child), '')

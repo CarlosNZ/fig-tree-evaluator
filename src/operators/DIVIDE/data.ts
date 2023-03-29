@@ -30,7 +30,7 @@ const parameters: Parameter[] = [
     description: 'Whether to output a quotient, remainder or decimal',
     aliases: [],
     required: false,
-    type: 'string',
+    type: { literal: ['quotient', 'remainder'] },
   },
 ]
 

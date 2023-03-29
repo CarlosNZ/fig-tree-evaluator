@@ -30,7 +30,7 @@ const evaluate = async (expression: SplitNode, config: FigTreeConfig): Promise<s
   )) as [string, string, boolean, boolean]
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, {
+    getTypeCheckInput(operatorData.parameters, {
       value,
       delimiter,
       trimWhiteSpace,

@@ -5,7 +5,7 @@ import operatorData, { requiredProperties, propertyAliases } from './data'
 
 const evaluate = async (expression: BasicExtendedNode, config: FigTreeConfig): Promise<number> => {
   const values = await evaluateArray(expression.values, config)
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { values }))
   return values.length
 }
 

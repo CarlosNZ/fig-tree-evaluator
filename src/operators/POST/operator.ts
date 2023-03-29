@@ -19,10 +19,10 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  config.typeChecker(
+  config.typeChecker([
     ...getTypeCheckInput(operatorData.parameters, { url, headers, data, returnProperty }),
-    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] }
-  )
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
+  ])
 
   const baseUrl = config.options.baseEndpoint ?? ''
 

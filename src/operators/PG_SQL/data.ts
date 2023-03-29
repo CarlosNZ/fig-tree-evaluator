@@ -23,7 +23,7 @@ const parameters: Parameter[] = [
     description: 'Determines the shape of the resulting data (see documentation)',
     aliases: ['queryType'],
     required: false,
-    type: 'string',
+    type: { literal: ['array', 'string', 'number'] },
   },
 ]
 

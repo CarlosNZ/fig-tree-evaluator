@@ -51,10 +51,10 @@ const evaluate = async (
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  config.typeChecker(
+  config.typeChecker([
     ...getTypeCheckInput(operatorData.parameters, { url, query, variables, returnNode, headers }),
-    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] }
-  )
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
+  ])
 
   const endpoint = !url || url.toLowerCase() === 'graphqlendpoint' ? '' : url
 

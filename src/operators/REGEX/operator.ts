@@ -20,7 +20,7 @@ const evaluate = async (expression: RegexNode, config: FigTreeConfig): Promise<E
     config
   )) as [string, string]
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { testString, pattern }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { testString, pattern }))
 
   try {
     const re: RegExp = new RegExp(pattern)

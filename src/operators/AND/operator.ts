@@ -14,7 +14,7 @@ export type BasicExtendedNode = {
 
 const evaluate = async (expression: BasicExtendedNode, config: FigTreeConfig): Promise<boolean> => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { values }))
   return values.reduce((acc: boolean, val: boolean) => acc && !!val, true)
 }
 

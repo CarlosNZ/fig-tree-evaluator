@@ -7,6 +7,7 @@ import {
   FigTreeConfig,
   OperatorObject,
 } from '../../types'
+import { getTypeCheckInput } from '../_operatorUtils'
 import operatorData, { requiredProperties, propertyAliases } from './data'
 
 export type ConditionalNode = {
@@ -17,6 +18,16 @@ const evaluate = async (
   expression: ConditionalNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
+  // Since these can be any type, we check types first just to establish
+  // existence.
+  config.typeChecker(
+    getTypeCheckInput(operatorData.parameters, {
+      condition: expression.condition,
+      valueIfTrue: expression.valueIfTrue,
+      valueIfFalse: expression.valueIfFalse,
+    })
+  )
+
   const condition = await evaluatorFunction(expression.condition, config)
 
   // Only evaluate the valueIfTrue/valueIfFalse branches if required to avoid
