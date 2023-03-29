@@ -6,8 +6,6 @@ import {
   EvaluatorNode,
   FigTreeOptions,
   GenericObject,
-  Operator,
-  OperatorObject,
   OperatorAliases,
   OperatorMetadata,
   OperatorReference,
