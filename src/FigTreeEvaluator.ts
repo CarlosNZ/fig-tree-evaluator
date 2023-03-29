@@ -6,8 +6,12 @@ import {
   EvaluatorNode,
   FigTreeOptions,
   GenericObject,
+  Operator,
+  OperatorObject,
   OperatorAliases,
+  OperatorMetadata,
   OperatorReference,
+  FragmentMetadata,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
@@ -82,21 +86,21 @@ class FigTreeEvaluator {
     return Object.entries(validOperators).map(([key, value]) => ({
       operator: key,
       ...value.operatorData,
-    }))
+    })) as readonly OperatorMetadata[]
   }
 
   public getFragments() {
     return Object.entries(this.options.fragments ?? {}).map(([key, value]) => ({
       name: key,
       ...value?.metadata,
-    }))
+    })) as readonly (FragmentMetadata & { name: string })[]
   }
 
   public getCustomFunctions() {
     return Object.entries(this.options.functions ?? {}).map(([name, value]) => ({
       name,
       numRequiredArgs: value.length,
-    }))
+    })) as readonly { name: string; numRequiredArgs: number }[]
   }
 
   public getVersion = () => pkg.version

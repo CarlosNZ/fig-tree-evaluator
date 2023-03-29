@@ -51,7 +51,7 @@ export const filterOperators = (
   operators: OperatorReference,
   exclusions: string[],
   operatorAliases: OperatorAliases
-) => {
+): OperatorReference => {
   const filteredOperators = { ...operators }
   exclusions.forEach((exclusion) => {
     const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
