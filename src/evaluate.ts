@@ -2,13 +2,7 @@
 The core evaluation function used by FigTreeEvaluator
 */
 
-import {
-  FigTreeConfig,
-  EvaluatorNode,
-  EvaluatorOutput,
-  OutputType,
-  CombinedOperatorNode,
-} from './types'
+import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
@@ -55,7 +49,7 @@ export const evaluatorFunction = async (
   if (!isOperator && !isFragment) {
     // Return deprecated (< v1) "value" nodes
     if (options.supportDeprecatedValueNodes && isObject(expression) && 'value' in expression)
-      return expression.value
+      return expression.value as EvaluatorOutput
 
     return replaceAliasNodeValues(expression, config)
   }
@@ -82,7 +76,7 @@ export const evaluatorFunction = async (
       )
     if (!isOperatorNode(fragmentReplacement))
       return replaceAliasNodeValues(fragmentReplacement, config)
-    expression = { ...expression, ...(fragmentReplacement as CombinedOperatorNode), ...parameters }
+    expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
     delete expression.fragment
     delete expression.parameters
   }
@@ -139,6 +133,7 @@ export const evaluatorFunction = async (
           returnErrorAsString
         )
       expression = await parseChildren(expression, childConfig)
+      delete expression.children
     }
 
     // Recursively evaluate node

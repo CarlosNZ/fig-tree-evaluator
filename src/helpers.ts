@@ -7,16 +7,15 @@ import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUti
 import {
   OutputType,
   EvaluatorNode,
-  CombinedOperatorNode,
   EvaluatorOutput,
   FigTreeOptions,
-  OperatorNodeUnion,
   FigTreeConfig,
   OperatorReference,
   OperatorAliases,
   OperatorAlias,
   Operator,
   FragmentNode,
+  OperatorNode,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -65,7 +64,7 @@ export const filterOperators = (
 If `string` exceeds `length` (default: 200 chars), will return a truncated
 version of the string, ending in "..."
 */
-export const truncateString = (string: string, length: number = 200) =>
+export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
 
 /*
@@ -74,9 +73,9 @@ Will throw an error (with `errorMessage`) if no `fallback` is provided. If
 string containing the error message. 
 */
 export const fallbackOrError = (
-  fallback: any,
+  fallback: EvaluatorOutput,
   errorMessage: string,
-  returnErrorAsString: boolean = false
+  returnErrorAsString = false
 ) => {
   if (fallback !== undefined) return fallback
   if (returnErrorAsString) return truncateString(errorMessage)
@@ -89,11 +88,11 @@ as per each operator's property aliases
 */
 export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
-  expression: CombinedOperatorNode
-): CombinedOperatorNode =>
+  expression: OperatorNode
+) =>
   mapObjectKeys(expression, (key: string) =>
     key in propertyAliases ? propertyAliases[key] : key
-  ) as CombinedOperatorNode
+  ) as OperatorNode
 
 /*
 Convert object to a new object with keys changed by mapFunction
@@ -115,7 +114,7 @@ export const isAliasString = (value: string) => /^\$.+/.test(value)
 Identify any properties in the expression that represent "alias" nodes (i.e of
 the form `$alias`) and evaluate their values
 */
-export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
+export const evaluateNodeAliases = async (expression: OperatorNode, config: FigTreeConfig) => {
   const aliasKeys = Object.keys(expression).filter(isAliasString)
   if (aliasKeys.length === 0) return {}
 
@@ -188,7 +187,7 @@ const extractNumber = (input: EvaluatorOutput) => {
 /*
 Returns `true` if input is an object ({}) (but not an array)
 */
-export const isObject = (input: unknown): input is Object =>
+export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
 
 /*
@@ -209,7 +208,7 @@ export const evaluateObject = async (
   Object.entries(input).forEach(([key, value]) => {
     if (isAliasString(key)) {
       newAliases.push(key, evaluatorFunction(value, config))
-      delete (input as Record<string, any>)[key]
+      delete (input as Record<string, unknown>)[key]
     }
   })
   const aliasArray = await Promise.all(newAliases)

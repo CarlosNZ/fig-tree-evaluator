@@ -5,7 +5,7 @@ const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 // CONDITIONAL
 test('Basic conditional', () => {
   const expression = { operator: '?', children: [true, 'A', 'B'] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('A')
   })
 })
@@ -19,7 +19,7 @@ test('Conditional with Addition', () => {
       'Wrong',
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Correct')
   })
 })
@@ -37,7 +37,7 @@ test('Conditional with Logical Expression (using properties)', () => {
     valueIfTrue: 'Expression is True',
     valueIfFalse: 'Expression is False',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Expression is True')
   })
 })
@@ -55,7 +55,7 @@ test('Conditional with Logical Expression (using aliased properties)', () => {
     ifTrue: 'Expression is True',
     ifFalse: 'Expression is False',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Expression is True')
   })
 })
@@ -75,7 +75,7 @@ test('Conditional with False Logical Expression', () => {
       'Expression is False',
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('Expression is False')
   })
 })
@@ -95,9 +95,33 @@ test('Conditional -- 1 missing parameter (error as string)', () => {
     condition: 'YES',
     valueIfFalse: 'NO',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(
       'Operator: CONDITIONAL\n- Missing required property "valueIfTrue" (type: any)'
     )
+  })
+})
+
+test('Conditional -- condition is Truthy', () => {
+  const expression = {
+    operator: '?',
+    condition: 'YES',
+    valueIfTrue: 'YES',
+    valueIfFalse: 'NO',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('YES')
+  })
+})
+
+test('Conditional -- condition is Falsy', () => {
+  const expression = {
+    operator: '?',
+    condition: 0,
+    valueIfTrue: 'YES',
+    valueIfFalse: 'NO',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('NO')
   })
 })

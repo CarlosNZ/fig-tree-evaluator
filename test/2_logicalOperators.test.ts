@@ -6,14 +6,14 @@ const exp = new FigTreeEvaluator()
 
 test('AND operator with 2 children', () => {
   const expression = { operator: 'and', children: [true, true] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
 
 test('AND operator with 2 children, one false', () => {
   const expression = { operator: 'AND', values: [true, false] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(false)
   })
 })
@@ -23,7 +23,7 @@ test('AND operator with 4 children, 1 nested', () => {
     operator: '__AND__',
     values: [true, true, true, { operator: 'AND', children: [true, true] }],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -33,7 +33,7 @@ test('AND operator with 4 children, 1 false, 2 nested', () => {
     operator: 'and_',
     children: [true, true, true, { operator: 'AND', values: [false, true] }],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(false)
   })
 })
@@ -42,14 +42,14 @@ test('AND operator with 4 children, 1 false, 2 nested', () => {
 
 test('OR operator with 2 children', () => {
   const expression = { operator: 'Or', children: [true, true] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
 
 test('OR operator with 2 children, one false', () => {
   const expression = { operator: 'OR', values: [true, false] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -64,7 +64,7 @@ test('OR operator with 4 children, 2 nested', () => {
       false,
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -79,7 +79,7 @@ test('OR operator with 4 children, all false', () => {
       false,
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(false)
   })
 })
@@ -91,7 +91,7 @@ test('OR - Non-boolean operands - OR', () => {
     operator: 'OR',
     values: ['this', 'that'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -101,7 +101,7 @@ test('AND - Non-boolean operands', () => {
     operator: 'AND',
     values: ['this', 'that'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -111,7 +111,7 @@ test('OR - Non-boolean falsy operands', () => {
     operator: 'OR',
     values: [false, null, undefined, NaN, 0, ''],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(false)
   })
 })
@@ -121,7 +121,7 @@ test('OR - Non-boolean operands, only one truthy', () => {
     operator: 'OR',
     values: [false, null, 'Not falsy', undefined, NaN, 0, ''],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(true)
   })
 })
@@ -131,7 +131,7 @@ test('AND - Non-boolean falsy operands', () => {
     operator: 'OR',
     values: [false, null, undefined, NaN, 0, ''],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(false)
   })
 })

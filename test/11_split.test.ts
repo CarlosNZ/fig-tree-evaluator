@@ -9,7 +9,7 @@ test('Split string by comma', () => {
     operator: 'split',
     children: ['Alpha, Beta, Gamma, Delta', ','],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toStrictEqual(['Alpha', 'Beta', 'Gamma', 'Delta'])
   })
 })
@@ -19,7 +19,7 @@ test('Default delimiter (space) with trailing space', () => {
     operator: 'arraySplit',
     children: ['no need to specify delimiter '],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual(['no', 'need', 'to', 'specify', 'delimiter'])
   })
 })
@@ -31,7 +31,7 @@ test("Don't trim whitespace", () => {
     delimiter: ',',
     trimWhiteSpace: false,
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual(['A simple', ' comma-seperated', ' list'])
   })
 })
@@ -42,7 +42,7 @@ test('Complex delimiter, with some extraneous whitespace', () => {
     string: { operator: '+', values: ['One ', '  BREAK ', ' Two ', 'BREAK', 'Three  ', 'BREAK'] },
     separator: { operator: 'pass', value: ['BREAK'], outputType: 'string' },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual(['One', 'Two', 'Three'])
   })
 })

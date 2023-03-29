@@ -1,1 +1,1 @@
-export { AND, type BasicExtendedNode } from './operator'
+export { AND } from './operator'

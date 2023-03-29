@@ -1,26 +1,15 @@
 import { evaluatorFunction } from '../../evaluate'
-import {
-  EvaluatorOutput,
-  FigTreeConfig,
-  OperatorObject,
-  CombinedOperatorNode,
-  EvaluatorNode,
-  BaseOperatorNode,
-} from '../../types'
+import { OperatorObject, EvaluatorNode, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import { getTypeCheckInput } from '../_operatorUtils'
 import operatorData, { propertyAliases } from './data'
 
-export type PassThruNode = {
-  value: EvaluatorNode
-} & BaseOperatorNode
+const evaluate: EvaluateMethod = async (expression, config) => {
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { value: expression.value }))
 
-const evaluate = async (
-  expression: PassThruNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
   return await evaluatorFunction(expression.value, config)
 }
 
-const parseChildren = (expression: CombinedOperatorNode): PassThruNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [...children] = expression.children as EvaluatorNode[]
   const value = children?.length === 1 ? children[0] : children
   return { ...expression, value }

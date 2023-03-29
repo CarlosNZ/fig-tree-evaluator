@@ -25,6 +25,13 @@ const parameters: Parameter[] = [
     required: false,
     type: 'array',
   },
+  {
+    name: 'useCache',
+    description: 'Whether or not the FigTree cache is used',
+    aliases: [],
+    required: false,
+    type: 'boolean',
+  },
 ]
 
 export const propertyAliases = getPropertyAliases(parameters)

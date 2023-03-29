@@ -8,7 +8,7 @@ With a depth_limit of 30, the resulting expression tree has over 20,000 nodes
 */
 
 import { writeFileSync } from 'fs'
-import { EvaluatorNode, EvaluatorOutput, OperatorNodeUnion } from '../src/types'
+import { EvaluatorNode, EvaluatorOutput, OperatorNode } from '../src/types'
 import FigTreeEvaluator from '../src/'
 import { isOperatorNode } from '../src/helpers'
 
@@ -27,7 +27,7 @@ const functions = {
   tence: () => 'somewhere.not.so.deep',
   not: (str: string) => 'somewhere.not.so.quiet' + str,
   too: (str: string) => 'somewhere.not.so.quiet' + str,
-  '666': (val: any) => (val === 'words' ? '^%d$' : '%4 '),
+  '666': (val: string) => (val === 'words' ? '^%d$' : '%4 '),
 }
 
 export const config = { data, functions }
@@ -99,20 +99,19 @@ const baseExpressions: EvaluatorNode[] = [
   { operator: 'CONDITIONAL', children: [true, 165, '%4 '] },
 ]
 
-const outputMap: Map<EvaluatorOutput, any[]> = new Map()
+const outputMap: Map<EvaluatorOutput, number[]> = new Map()
 
-const replaceNodeValues = (input: any, depth = 1): any => {
+const replaceNodeValues = (input: EvaluatorNode, depth = 1): EvaluatorNode => {
   if (isOperatorNode(input)) {
     // Iterate over keys and replace values (returning new object)
     return Object.fromEntries(
-      Object.entries(input).map(([key, val]) => {
+      Object.entries(input as OperatorNode).map(([key, val]) => {
         if (key === 'operator') return [key, val]
         else return [key, replaceNodeValues(val, depth + 1)]
       })
     )
   }
   if (input instanceof Array) return input.map((elem) => replaceNodeValues(elem, depth + 1))
-  //@ts-ignore
   if (outputMap.has(input)) {
     const baseExpression = baseExpressions[getOutputMapIndex(input)]
     return depth < DEPTH_LIMIT ? replaceNodeValues(baseExpression, depth + 1) : baseExpression
@@ -132,23 +131,22 @@ const generateOutputMap = async () => {
   })
   results.forEach((res, index) => {
     const key = res instanceof Object ? JSON.stringify(res) : res
-    //@ts-ignore
-    if (outputMap.has(key)) outputMap.get(key).push(index)
+    const vals = outputMap.get(key)
+    if (vals) vals.push(index)
     else outputMap.set(key, [index])
   })
   console.log(outputMap)
 }
 
-const getOutputMapIndex = (input: any) => {
+const getOutputMapIndex = (input: EvaluatorNode) => {
   const key = input instanceof Object ? JSON.stringify(input) : input
-  const indexArray = outputMap.get(key)
-  // @ts-ignore
+  const indexArray = outputMap.get(key) ?? []
   return indexArray[Math.floor(Math.random() * indexArray.length)]
 }
 
 export const generateMassiveQuery = async () => {
   await generateOutputMap()
-  const massiveQuery = replaceNodeValues(baseExpressions[0] as OperatorNodeUnion)
+  const massiveQuery = replaceNodeValues(baseExpressions[0] as OperatorNode)
   writeFileSync('test/massiveQuery.json', JSON.stringify(massiveQuery, null, 2))
   return massiveQuery
 }

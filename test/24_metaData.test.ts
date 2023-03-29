@@ -3,7 +3,7 @@ import FigTreeEvaluator from '../src'
 const fig = new FigTreeEvaluator({
   functions: {
     getPrincess: (name: string) => `Princess ${name}`,
-    fDouble: (...args: any) => args.map((e: any) => e + e),
+    fDouble: (...args: number[]) => args.map((e) => e + e),
     fDate: (dateString: string) => new Date(dateString),
     addTwo: (n1: number, n2: number) => n1 + n2,
     fNoArgs: () => 5 * 5,
@@ -429,6 +429,13 @@ test('Metadata -- get operator info', () => {
           required: false,
           type: { literal: ['array', 'string', 'number'] },
         },
+        {
+          name: 'useCache',
+          description: 'Whether or not the FigTree cache is used',
+          aliases: [],
+          required: false,
+          type: 'boolean',
+        },
       ],
     },
     {
@@ -625,6 +632,13 @@ test('Metadata -- get operator info', () => {
           aliases: ['arguments', 'variables'],
           required: false,
           type: 'array',
+        },
+        {
+          name: 'useCache',
+          description: 'Whether or not the FigTree cache is used',
+          aliases: [],
+          required: false,
+          type: 'boolean',
         },
       ],
     },

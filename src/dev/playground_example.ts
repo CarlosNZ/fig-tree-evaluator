@@ -1,7 +1,7 @@
 import { Client } from 'pg'
 import FigTreeEvaluator from '../'
 import evaluator, { evaluateExpression } from '../'
-import pgConfig from '../test/postgres/pgConfig.json'
+import pgConfig from '../../test/postgres/pgConfig.json'
 
 /*
 For testing/playing round during development. Use `yarn dev` to run

@@ -1,1 +1,1 @@
-export { GET, type APINode } from './operator'
+export { GET } from './operator'

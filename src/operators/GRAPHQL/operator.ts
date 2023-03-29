@@ -8,50 +8,47 @@ import {
   getTypeCheckInput,
 } from '../_operatorUtils'
 import {
-  BaseOperatorNode,
+  OperatorNode,
   EvaluatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  CombinedOperatorNode,
-  GenericObject,
   OperatorObject,
+  EvaluateMethod,
+  ParseChildrenMethod,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
+import { AxiosRequestHeaders } from 'axios'
 
-export type GraphQLNode = BaseOperatorNode & {
-  query: EvaluatorNode
-  url?: EvaluatorNode
-  variables?: EvaluatorNode
-  returnNode?: EvaluatorNode
-  headers?: GenericObject
-}
-
-const evaluate = async (
-  expression: GraphQLNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
-  const [query, urlObj, variables, returnNode, headers] = (await evaluateArray(
+const evaluate: EvaluateMethod = async (expression, config) => {
+  const [query, urlObj, variables, returnNode, headers, useCache] = (await evaluateArray(
     [
       expression.query,
       expression.url,
       expression.variables,
       expression.returnNode,
       expression.headers,
+      expression.useCache,
     ],
     config
   )) as [
     string,
-    string | { url: string; headers: GenericObject },
-    GenericObject,
+    string | { url: string; headers: AxiosRequestHeaders },
+    object,
     string,
-    GenericObject
+    AxiosRequestHeaders,
+    boolean
   ]
 
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
   config.typeChecker([
-    ...getTypeCheckInput(operatorData.parameters, { url, query, variables, returnNode, headers }),
+    ...getTypeCheckInput(operatorData.parameters, {
+      url,
+      query,
+      variables,
+      returnNode,
+      headers,
+      useCache,
+    }),
     { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
   ])
 
@@ -64,11 +61,11 @@ const evaluate = async (
 
   const data = { query, variables }
 
-  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+  const shouldUseCache = useCache ?? config.options.useCache ?? true
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (url: string, data: GenericObject, headers: GenericObject, returnNode?: string) => {
+    async (url: string, data: object, headers: AxiosRequestHeaders, returnNode?: string) => {
       const response = await axiosRequest({ url, method: 'post', data, headers })
       return extractAndSimplify(response.data, returnNode)
     },
@@ -86,18 +83,16 @@ const evaluate = async (
   return result
 }
 
-const parseChildren = async (
-  expression: CombinedOperatorNode,
-  config: FigTreeConfig
-): Promise<GraphQLNode> => {
+const parseChildren: ParseChildrenMethod = async (expression, config) => {
   const [query, url = '', fieldNames, ...rest] = (await evaluateArray(
     expression.children as EvaluatorNode[],
     config
   )) as [string, string, string[]]
-  const values = rest.slice(0, fieldNames.length)
-  const variables = zipArraysToObject(fieldNames, values)
-  const output = { ...expression, query, url, variables }
-  if (rest.length > fieldNames.length) output.returnNode = rest.pop()
+  const fieldKeys = Array.isArray(fieldNames) ? fieldNames : [fieldNames]
+  const values = rest.slice(0, fieldKeys.length)
+  const variables = zipArraysToObject(fieldKeys, values)
+  const output: OperatorNode = { ...expression, query, url, variables }
+  if (rest.length > fieldKeys.length) output.returnNode = rest.pop()
   return output
 }
 

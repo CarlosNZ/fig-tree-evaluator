@@ -1,24 +1,10 @@
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import {
-  FigTreeConfig,
-  OperatorObject,
-  EvaluatorNode,
-  CombinedOperatorNode,
-  BaseOperatorNode,
-} from '../../types'
+import { OperatorObject, EvaluatorNode, EvaluateMethod, ParseChildrenMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
-
-export type SplitNode = {
-  value: EvaluatorNode
-} & BaseOperatorNode & {
-    delimiter: EvaluatorNode
-    trimWhiteSpace: EvaluatorNode
-    excludeTrailing: EvaluatorNode
-  }
 
 const DEFAULT_DELIMITER = ' '
 
-const evaluate = async (expression: SplitNode, config: FigTreeConfig): Promise<string[]> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [value, delimiter, trimWhiteSpace, excludeTrailing] = (await evaluateArray(
     [
       expression.value,
@@ -41,10 +27,11 @@ const evaluate = async (expression: SplitNode, config: FigTreeConfig): Promise<s
   let splitValues = value.split(delimiter)
   if (trimWhiteSpace) splitValues = splitValues.map((val) => val.trim())
   if (excludeTrailing && splitValues[splitValues.length - 1] === '') splitValues.pop()
+
   return splitValues
 }
 
-const parseChildren = (expression: CombinedOperatorNode): SplitNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [value, delimiter = DEFAULT_DELIMITER] = expression.children as EvaluatorNode[]
   return { ...expression, value, delimiter }
 }

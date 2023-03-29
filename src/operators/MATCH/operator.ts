@@ -1,32 +1,29 @@
-import { evaluateArray, singleArrayToObject, getTypeCheckInput } from '../_operatorUtils'
+import { evaluateArray, singleArrayToObject } from '../_operatorUtils'
 import { evaluatorFunction } from '../../evaluate'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  CombinedOperatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  OperatorObject,
-} from '../../types'
-import { isOperatorNode } from '../../helpers'
+import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import { isObject, isOperatorNode } from '../../helpers'
 import operatorData, { propertyAliases } from './data'
 
-export type MatchNode = {
-  matchExpression: EvaluatorNode
-} & BaseOperatorNode
-
-const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const matchExpression = (await evaluatorFunction(expression.matchExpression, config)) as
     | string
     | number
 
-  const branches = expression.branches
+  config.typeChecker({
+    name: 'matchExpression',
+    value: matchExpression,
+    expectedType: ['string', 'number', 'boolean'],
+  })
 
-  config.typeChecker(getTypeCheckInput(operatorData.parameters, { matchExpression, branches }))
+  const branches = Array.isArray(expression.branches)
+    ? singleArrayToObject(expression.branches)
+    : expression.branches ?? {}
 
-  let branchObject = Array.isArray(branches) ? singleArrayToObject(branches) : branches ?? {}
+  const branchObject = (
+    isOperatorNode(branches) ? await evaluatorFunction(branches, config) : branches
+  ) as Record<string, EvaluatorNode>
 
-  if (isOperatorNode(branchObject)) branchObject = await evaluatorFunction(branchObject, config)
+  if (!isObject(branchObject)) throw new Error("Branches don't evaluate to an object")
 
   // Unlike most operators, where we evaluate the entire node at once, in this
   // one we only evaluate the *matching* branch to avoid unnecessary computation
@@ -44,10 +41,7 @@ const evaluate = async (expression: MatchNode, config: FigTreeConfig): Promise<E
   throw new Error(`No match found for ${matchExpression}`)
 }
 
-const parseChildren = async (
-  expression: CombinedOperatorNode,
-  config: FigTreeConfig
-): Promise<MatchNode> => {
+const parseChildren: ParseChildrenMethod = async (expression, config) => {
   const [matchExpression, ...elements] = expression.children as EvaluatorNode[]
   const branches = singleArrayToObject(await evaluateArray(elements, config))
 

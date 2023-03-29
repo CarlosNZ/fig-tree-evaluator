@@ -33,7 +33,7 @@ test('FALLBACK - Invalid operator', () => {
     children: [1, 2],
     fallback: 'Safe',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Safe')
   })
 })
@@ -53,7 +53,7 @@ test('ERROR as string - Invalid/Missing children', () => {
     operator: 'OR',
     children: 2,
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: OR\n- Property "children" is not of type: array')
   })
 })
@@ -84,7 +84,7 @@ test('OR - Error as string', () => {
   const expression = {
     operator: 'OR',
   }
-  return evaluateExpression(expression, { returnErrorAsString: true }).then((result: any) => {
+  return evaluateExpression(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: OR\n- Missing required property "values" (type: array)')
   })
 })
@@ -94,7 +94,7 @@ test('OR - Fallback', () => {
     operator: 'OR',
     fallback: 'All good',
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('All good')
   })
 })
@@ -112,7 +112,7 @@ test('AND - Error as string', () => {
   const expression = {
     operator: 'And',
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: AND\n- Missing required property "values" (type: array)')
   })
 })
@@ -122,7 +122,7 @@ test('OR - Fallback', () => {
     operator: 'and',
     fallback: 'All good',
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('All good')
   })
 })
@@ -145,7 +145,7 @@ test('REGEX - Fallback', () => {
     testString: 'anything',
     fallback: 'Saved from error',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Saved from error')
   })
 })
@@ -160,7 +160,7 @@ test('API - Fallback', () => {
     returnProperty: 'name.common',
     fallback: null,
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBeNull()
   })
 })
@@ -204,7 +204,7 @@ test('FALLBACK - multiple bubble up and join', () => {
       },
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('First Error / Second Error')
   })
 })
@@ -216,7 +216,7 @@ test('Loose equality - null == undefined', () => {
     operator: '=',
     values: [null, undefined],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -227,7 +227,7 @@ test('Loose equality - null !== undefined', () => {
     values: [null, undefined],
     nullEqualsUndefined: false,
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
@@ -241,7 +241,7 @@ test('Fallback is an operator node', () => {
     returnProperty: 'name.common',
     fallback: { operator: '+', values: [3, 5, 7] },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(15)
   })
 })
@@ -253,7 +253,7 @@ test('ObjProps Fallback is an operator node', () => {
     property: 'user.name',
     fallback: { operator: '+', values: [3, 5, 7] },
   }
-  return exp.evaluate(expression, { objects: { user: 'Unknown' } }).then((result: any) => {
+  return exp.evaluate(expression, { objects: { user: 'Unknown' } }).then((result) => {
     expect(result).toBe(15)
   })
 })
@@ -270,7 +270,7 @@ test('Skip runtime type checking, from current options', () => {
       skipRuntimeTypeCheck: true,
       returnErrorAsString: true,
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe(
         'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown","organisation":{"id":1,"name":"The Avengers","category":"Superheroes"},"form":{"q...'
       )
@@ -290,7 +290,7 @@ test('Skip runtime type checking, from constructor options', () => {
     .evaluate(expression, {
       objects: { user: 'Unknown' },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe(
         'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown"}'
       )

@@ -1,25 +1,13 @@
 import extractProperty from 'object-property-extractor'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  CombinedOperatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  OperatorObject,
-} from '../../types'
+import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
-export type FunctionNode = BaseOperatorNode & { functionPath: EvaluatorNode; args: EvaluatorNode[] }
-
-const evaluate = async (
-  expression: FunctionNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
-  const [functionPath, args = []] = (await evaluateArray(
-    [expression.functionPath, expression.args],
+const evaluate: EvaluateMethod = async (expression, config) => {
+  const [functionPath, args = [], useCache] = (await evaluateArray(
+    [expression.functionPath, expression.args, expression.useCache],
     config
-  )) as [string, EvaluatorNode[]]
+  )) as [string, EvaluatorNode[], boolean]
 
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { functionPath, args }))
 
@@ -36,7 +24,7 @@ const evaluate = async (
 
   if (!func || typeof func !== 'function') throw new Error(`- No function found: "${functionPath}"`)
 
-  const shouldUseCache = expression.useCache ?? config.options.useCache ?? false
+  const shouldUseCache = useCache ?? config.options.useCache ?? false
 
   const result = await config.cache.useCache(
     shouldUseCache,
@@ -50,7 +38,7 @@ const evaluate = async (
   return result
 }
 
-const parseChildren = (expression: CombinedOperatorNode): FunctionNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [functionPath, ...args] = expression.children as EvaluatorNode[]
   return { ...expression, functionPath, args }
 }

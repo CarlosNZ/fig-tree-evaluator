@@ -5,7 +5,6 @@ Core FigTreeEvaluator class
 import {
   EvaluatorNode,
   FigTreeOptions,
-  GenericObject,
   OperatorAliases,
   OperatorMetadata,
   OperatorReference,
@@ -17,8 +16,7 @@ import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache from './cache'
-
-const pkg = require('../package.json')
+import { version } from './version'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
@@ -61,7 +59,11 @@ class FigTreeEvaluator {
         ? filterOperators(operators, options.excludeOperators, operatorAliases)
         : this.operators,
       operatorAliases: this.operatorAliases,
-      typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      typeChecker: currentOptions.skipRuntimeTypeCheck
+        ? () => {
+            // Do nothing
+          }
+        : this.typeChecker,
       resolvedAliasNodes: {},
       cache: this.cache,
     })
@@ -101,7 +103,7 @@ class FigTreeEvaluator {
     })) as readonly { name: string; numRequiredArgs: number }[]
   }
 
-  public getVersion = () => pkg.version
+  public getVersion = () => version
 }
 
 export default FigTreeEvaluator
@@ -113,7 +115,7 @@ export const evaluateExpression = (expression: EvaluatorNode, options?: FigTreeO
 
 // Some option names may change over time, or we allow aliases. This function
 // ensures backwards compatibility and keeps option names standardised.
-const standardiseOptionNames = (options: FigTreeOptions & { objects?: GenericObject }) => {
+const standardiseOptionNames = (options: FigTreeOptions & { objects?: object }) => {
   if ('objects' in options) {
     options.data = options.objects
     delete options.objects

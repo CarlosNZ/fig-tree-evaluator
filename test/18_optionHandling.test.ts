@@ -1,10 +1,11 @@
 import FigTreeEvaluator from '../src'
+import { OperatorAlias } from '../src/types'
 
 console.warn = jest.fn() // Don't show console warning in tests
 
 const exp = new FigTreeEvaluator({
   objects: { first: 1, second: 2 },
-  functions: { f1: (a: any) => 2 * a },
+  functions: { f1: (a: number) => 2 * a },
 })
 
 // We need to make sure that options are merged correctly. This means that
@@ -23,7 +24,7 @@ test('Check options objects get merged correctly', () => {
       },
       { objects: { third: { number: 10, word: 'other' } } }
     )
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe(11)
     })
 })
@@ -38,9 +39,9 @@ test('Check functions objects get merged correctly', () => {
           { operator: 'functions', path: 'f2', variables: [7] },
         ],
       },
-      { functions: { f2: (a: any) => a + 7 } }
+      { functions: { f2: (a: number) => a + 7 } }
     )
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe(34)
     })
 })
@@ -57,12 +58,12 @@ test('Operator exclusion: error when using excluded operator', async () => {
 })
 
 test('Operator exclusion: ignore invalid exclusion value', async () => {
-  const figTree = new FigTreeEvaluator({ excludeOperators: ['XYZ'] })
+  const figTree = new FigTreeEvaluator({ excludeOperators: ['XYZ' as OperatorAlias] })
   const expression = {
     operator: '+',
     values: [1, 16],
   }
-  return figTree.evaluate(expression).then((result: any) => {
+  return figTree.evaluate(expression).then((result) => {
     expect(result).toEqual(17)
   })
 })
@@ -88,7 +89,7 @@ test('Operator exclusion: update options later -- previous exclusions are restor
     values: [8, 9, 10],
   }
   figTree.updateOptions({ excludeOperators: ['-'] })
-  return figTree.evaluate(expression).then((result: any) => {
+  return figTree.evaluate(expression).then((result) => {
     expect(result).toEqual(27)
   })
 })
@@ -111,7 +112,7 @@ test('Operator exclusion: exclude in evaluation call -- check only excluded for 
     values: [{ operator: 'subtract', values: [10, 3] }, 10],
   }
   figTree.evaluate({ operator: '+', values: [1, 2, 3] }, { excludeOperators: ['*'] })
-  return figTree.evaluate(expression).then((result: any) => {
+  return figTree.evaluate(expression).then((result) => {
     expect(result).toEqual(70)
   })
 })

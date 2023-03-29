@@ -1,14 +1,10 @@
-import { parseChildren, BasicExtendedNode } from '../AND/operator'
+import { parseChildren } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import { EvaluatorOutput, FigTreeConfig, OperatorObject, EvaluatorNode } from '../../types'
+import { OperatorObject, EvaluateMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
+import { isObject } from '../../helpers'
 
-export type AdditionNode = BasicExtendedNode & { type?: 'string' | 'array' }
-
-const evaluate = async (
-  expression: AdditionNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const values = (await evaluateArray(expression.values, config)) as any[]
 
   config.typeChecker(
@@ -30,7 +26,7 @@ const evaluate = async (
     return values.reduce((acc, child) => acc.concat(child))
 
   // Merge objects
-  if (values.every((child) => child instanceof Object && !Array.isArray(child)))
+  if (values.every((child) => isObject(child)))
     return values.reduce((acc, child) => ({ ...acc, ...child }), {})
 
   // Or just try to add any other types

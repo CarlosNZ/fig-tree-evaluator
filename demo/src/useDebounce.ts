@@ -17,7 +17,7 @@ export default function useDebounce<T>(
     return () => {
       clearTimeout(debounce)
     }
-  }, [debounceInput])
+  }, [debounceInput, delay])
 
   return [debounceOutput, setDebounceInput]
 }

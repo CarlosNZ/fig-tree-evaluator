@@ -26,7 +26,7 @@ test('Postgres - lookup single string', () => {
     children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
     type: 'string',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Aria Cruz')
   })
 })
@@ -39,7 +39,7 @@ test('Postgres - get an array of Orders using var substitution', () => {
       'FAMIA',
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([
       {
         order_id: 10347,
@@ -69,7 +69,7 @@ test('Postgres - count employees', () => {
     children: ['SELECT COUNT(*) FROM employees'],
     type: 'number',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(9)
   })
 })
@@ -81,7 +81,7 @@ test('Postgres - get list of (most) products, using properties', () => {
     values: [1, 16],
     type: 'array',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     // prettier-ignore
     expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
   })
@@ -102,7 +102,7 @@ test('GraphQL - get list of countries', () => {
       [],
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     // prettier-ignore
     expect(result).toStrictEqual({"countries":[{"name":"American Samoa"},{"name":"Australia"},{"name":"Cook Islands"},{"name":"Fiji"},{"name":"Micronesia"},{"name":"Guam"},{"name":"Kiribati"},{"name":"Marshall Islands"},{"name":"Northern Mariana Islands"},{"name":"New Caledonia"},{"name":"Norfolk Island"},{"name":"Nauru"},{"name":"Niue"},{"name":"New Zealand"},{"name":"French Polynesia"},{"name":"Papua New Guinea"},{"name":"Pitcairn Islands"},{"name":"Palau"},{"name":"Solomon Islands"},{"name":"Tokelau"},{"name":"East Timor"},{"name":"Tonga"},{"name":"Tuvalu"},{"name":"U.S. Minor Outlying Islands"},{"name":"Vanuatu"},{"name":"Wallis and Futuna"},{"name":"Samoa"}]})
   })
@@ -117,7 +117,7 @@ test('GraphQL - get list of countries, using properties, use default endpoint', 
         }
       }`,
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     // prettier-ignore
     expect(result).toStrictEqual({"countries":[{"name":"American Samoa"},{"name":"Australia"},{"name":"Cook Islands"},{"name":"Fiji"},{"name":"Micronesia"},{"name":"Guam"},{"name":"Kiribati"},{"name":"Marshall Islands"},{"name":"Northern Mariana Islands"},{"name":"New Caledonia"},{"name":"Norfolk Island"},{"name":"Nauru"},{"name":"Niue"},{"name":"New Zealand"},{"name":"French Polynesia"},{"name":"Papua New Guinea"},{"name":"Pitcairn Islands"},{"name":"Palau"},{"name":"Solomon Islands"},{"name":"Tokelau"},{"name":"East Timor"},{"name":"Tonga"},{"name":"Tuvalu"},{"name":"U.S. Minor Outlying Islands"},{"name":"Vanuatu"},{"name":"Wallis and Futuna"},{"name":"Samoa"}]})
   })
@@ -140,7 +140,7 @@ test('GraphQL - single country lookup, default endpoint, return node', () => {
     ],
     type: 'string',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('🇳🇿')
   })
 })
@@ -157,7 +157,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
     variables: { code: 'NZ' },
     returnNode: 'countries[0].emoji',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('🇳🇿')
   })
 })
@@ -185,7 +185,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
     },
     returnNode: 'countries[0].emoji',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('🇮🇳')
   })
 })
@@ -204,7 +204,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
 //     returnNode: 'application.name',
 //     headers: auth,
 //   }
-//   return exp.evaluate(expression).then((result: any) => {
+//   return exp.evaluate(expression).then((result) => {
 //     expect(result).toEqual('Company Registration - S-ECL-0011')
 //   })
 // })
@@ -232,7 +232,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
 //         headers: auth,
 //       }
 //     )
-//     .then((result: any) => {
+//     .then((result) => {
 //       expect(result).toEqual('Company Registration - S-ECL-0011')
 //     })
 // })
@@ -260,7 +260,7 @@ test('GraphQL - Get repo info using partial url and updated options, requires au
     variables: { repoName: 'fig-tree' },
     returnNode: 'viewer.repository.description',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('A highly configurable custom expression tree evaluator')
   })
 })

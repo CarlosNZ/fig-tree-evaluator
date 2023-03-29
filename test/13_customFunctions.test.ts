@@ -2,7 +2,7 @@ import FigTreeEvaluator, { evaluateExpression } from '../src'
 
 const exp = new FigTreeEvaluator({
   functions: {
-    fDouble: (...args: any) => args.map((e: any) => e + e),
+    fDouble: (...args: number[]) => args.map((e) => e + e),
     fDate: (dateString: string) => new Date(dateString),
     fNoArgs: () => 5 * 5,
   },
@@ -15,7 +15,7 @@ test('Custom functions - double elements in an array', () => {
     operator: 'customFunctions',
     children: ['fDouble', 1, 2, 3, 'four'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
   })
 })
@@ -25,7 +25,7 @@ test('Custom functions - create a date from a string', () => {
     operator: 'function',
     children: ['fDate', { operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
   })
 })
@@ -36,7 +36,7 @@ test('Custom functions - double elements in an array, using properties', () => {
     functionPath: 'fDouble',
     args: [1, 2, 3, 'four'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
   })
 })
@@ -49,7 +49,7 @@ test('Custom functions - fallback to a function on Objects not Functions option'
     functionPath: 'functions.square',
     args: [88],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(7744)
   })
 })
@@ -59,7 +59,7 @@ test('Custom functions - "functions." is in path string', () => {
     functionPath: 'functions.fDouble',
     args: [8],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([16])
   })
 })
@@ -72,7 +72,7 @@ test('Custom functions - create a date from a string', () => {
   }
   return evaluateExpression(expression, {
     functions: { fDate: (dateString: string) => new Date(dateString) },
-  }).then((result: any) => {
+  }).then((result) => {
     expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
   })
 })
@@ -82,7 +82,7 @@ test('Custom functions - no args', () => {
     operator: 'function',
     functionsPath: 'fNoArgs',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(25)
   })
 })
@@ -92,7 +92,7 @@ test('Custom functions - no args as children', () => {
     operator: 'function',
     children: ['fNoArgs'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(25)
   })
 })
@@ -102,7 +102,7 @@ test('Custom functions - invalid function path', () => {
     operator: 'function',
     functionPath: 'invalid.path',
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: CUSTOM_FUNCTIONS\n- No function found: "invalid.path"')
   })
 })
@@ -112,7 +112,7 @@ test('Custom functions - path is not a function', () => {
     operator: 'function',
     functionPath: 'functions.notAFunction',
   }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result: any) => {
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: CUSTOM_FUNCTIONS\n- No function found: "functions.notAFunction"')
   })
 })

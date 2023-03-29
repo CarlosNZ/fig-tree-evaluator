@@ -2,11 +2,12 @@
 Functions used specifically by various operators
 */
 
-import axios from 'axios'
+import axios, { AxiosRequestConfig } from 'axios'
 import extractProperty from 'object-property-extractor/build/extract'
 import { evaluatorFunction } from '../evaluate'
-import { typeCheck, TypeCheckInput, BasicType, isLiteralType, LiteralType } from '../typeCheck'
-import { GenericObject, EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
+import { isObject } from '../helpers'
+import { typeCheck, TypeCheckInput, isLiteralType } from '../typeCheck'
+import { EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
 export const getPropertyAliases = (parameters: Parameter[]): Record<string, string> => {
@@ -36,10 +37,10 @@ export const getTypeCheckInput = (
 
 // Evaluate all child/property nodes simultaneously
 export const evaluateArray = async (
-  nodes: EvaluatorNode[],
+  nodes: EvaluatorNode[] | EvaluatorNode,
   params: FigTreeConfig
 ): Promise<EvaluatorOutput[]> => {
-  if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorNode[]
+  if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorOutput[]
   return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
 }
 
@@ -62,7 +63,7 @@ keys and items 1, 3, 5... become the values.
 E.g. [ "one", 100, "two": "a value", "three", true ]
   => { one: 100, two: "a value", 3: true }
 */
-export const singleArrayToObject = (elements: any[]) => {
+export const singleArrayToObject = <T>(elements: (unknown | T)[]) => {
   if (elements.length % 2 !== 0)
     throw new Error('Even number of children required to make key/value pairs')
 
@@ -79,9 +80,9 @@ export const singleArrayToObject = (elements: any[]) => {
 
   const values = elements.filter((_, index) => index % 2 === 1)
 
-  const output: any = {}
+  const output: Record<string, T> = {}
   keys.forEach((key, index) => {
-    output[key] = values[index]
+    output[key as string] = values[index] as T
   })
 
   return output
@@ -91,29 +92,25 @@ export const singleArrayToObject = (elements: any[]) => {
 If object only has one property, just return the value of that property
 rather than the whole object
 */
-export const simplifyObject = (item: number | string | boolean | GenericObject) => {
-  return item instanceof Object && Object.keys(item).length === 1 ? Object.values(item)[0] : item
+export const simplifyObject = (item: unknown) => {
+  return isObject(item) && Object.keys(item).length === 1 ? Object.values(item)[0] : item
 }
 
 /*
 Extracts a (nested) property from Object and simplifies output as above
 */
 export const extractAndSimplify = (
-  data: GenericObject | GenericObject[],
+  data: object | object[],
   returnProperty: string | undefined,
-  fallback: any = undefined
+  fallback: unknown = undefined
 ) => {
-  try {
-    const selectedProperty = returnProperty ? extractProperty(data, returnProperty, fallback) : data
-    if (Array.isArray(selectedProperty)) return selectedProperty.map((item) => simplifyObject(item))
-    if (returnProperty) {
-      if (selectedProperty === null) return null // GraphQL field can return null as valid result
-      return simplifyObject(selectedProperty)
-    }
-    return selectedProperty
-  } catch (err) {
-    throw err
+  const selectedProperty = returnProperty ? extractProperty(data, returnProperty, fallback) : data
+  if (Array.isArray(selectedProperty)) return selectedProperty.map((item) => simplifyObject(item))
+  if (returnProperty) {
+    if (selectedProperty === null) return null // GraphQL field can return null as valid result
+    return simplifyObject(selectedProperty)
   }
+  return selectedProperty
 }
 
 export const isFullUrl = (url: string) => /^https?:\/\/.+/.test(url)
@@ -134,13 +131,7 @@ export const axiosRequest = async ({
   data = {},
   headers = {},
   method = 'get',
-}: {
-  url: string
-  params?: GenericObject
-  data?: GenericObject
-  headers?: GenericObject
-  method?: 'get' | 'post'
-}) => {
+}: AxiosRequestConfig) => {
   try {
     const response = await axios({
       method,

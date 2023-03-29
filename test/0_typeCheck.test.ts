@@ -68,7 +68,7 @@ test('Boolean false', () => {
 })
 
 test('Undefined true', () => {
-  const { value } = { noValue: 1 } as any
+  const { value } = { noValue: 1 } as { noValue: number; value?: string }
   expect(typeCheck({ value, expectedType: 'undefined' })).toBe(true)
 })
 
@@ -123,7 +123,7 @@ test('Multiple checks -- all correct', () => {
 })
 
 test('Multiple checks -- one required missing', () => {
-  const obj: any = { one: 2, two: 'two' }
+  const obj = { one: 2, two: 'two' } as { one: number; two: string; three?: string }
   const { one, two, three } = obj
   expect(
     typeCheck(
@@ -135,7 +135,7 @@ test('Multiple checks -- one required missing', () => {
 })
 
 test('Multiple checks -- one missing, one wrong (in array)', () => {
-  const obj: any = { one: 2, two: 'two' }
+  const obj = { one: 2, two: 'two' } as { one: number; two: string; three?: string }
   const { one, two, three } = obj
   expect(
     typeCheck(

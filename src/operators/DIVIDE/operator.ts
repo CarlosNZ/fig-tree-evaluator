@@ -1,22 +1,13 @@
-import { parseChildren, BasicExtendedNode } from '../AND/operator'
+import { parseChildren } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../../types'
+import { OperatorObject, EvaluateMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
-interface DivisionNodeWithProps extends BaseOperatorNode {
-  dividend: EvaluatorNode
-  divisor: EvaluatorNode
-}
-
-type DivisionOutput = 'quotient' | 'remainder'
-
-export type DivisionNode = BasicExtendedNode & DivisionNodeWithProps & { output?: DivisionOutput }
-
-const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promise<number> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [values, dividend, divisor, output] = (await evaluateArray(
     [expression.values, expression.dividend, expression.divisor, expression.output],
     config
-  )) as [[number, number], number, number, DivisionOutput]
+  )) as [[number, number], number, number, 'quotient' | 'remainder']
 
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })

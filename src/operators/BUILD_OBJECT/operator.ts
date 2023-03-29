@@ -1,25 +1,14 @@
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
 import {
-  BaseOperatorNode,
   EvaluatorNode,
   EvaluatorOutput,
-  FigTreeConfig,
-  CombinedOperatorNode,
-  GenericObject,
   OperatorObject,
+  EvaluateMethod,
+  ParseChildrenMethod,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
-export type BuildObjectNode = {
-  properties: BuildObjectElement[]
-} & BaseOperatorNode
-
-type BuildObjectElement = { key: EvaluatorNode; value: EvaluatorNode }
-
-const evaluate = async (
-  expression: BuildObjectNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {
     const [key, value] = (await evaluateArray(nodes, config)) as [string, EvaluatorOutput]
     config.typeChecker({ name: 'key', value: key, expectedType: ['string', 'number', 'boolean'] })
@@ -30,18 +19,15 @@ const evaluate = async (
     getTypeCheckInput(operatorData.parameters, { properties: expression.properties })
   )
 
-  const evaluated = expression.properties
+  const evaluated = (expression.properties as { key: EvaluatorNode; value: EvaluatorNode }[])
     // Remove any objects that don't have both "key" and "value" props
-    .filter(
-      (element: GenericObject) =>
-        element instanceof Object && 'key' in element && 'value' in element
-    )
+    .filter((element) => element instanceof Object && 'key' in element && 'value' in element)
     .map(({ key, value }) => evaluatePair([key, value]))
 
   return Object.fromEntries(await Promise.all(evaluated))
 }
 
-const parseChildren = (expression: CombinedOperatorNode): BuildObjectNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const elements = expression.children as EvaluatorNode[]
   if (elements.length % 2 !== 0)
     throw new Error('Even number of children required to make key/value pairs')

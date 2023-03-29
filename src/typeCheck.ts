@@ -60,7 +60,6 @@ const typeCheckItem = ({ value, name, expectedType }: TypeCheckInput): true | st
 export const typeCheck = (...args: TypeCheckInput[]): true | string => {
   const errorStrings: string[] = []
   args.forEach((item) => {
-    // @ts-ignore
     const result = typeCheckItem(item)
     if (result !== true) errorStrings.push(result)
   })

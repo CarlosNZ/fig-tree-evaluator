@@ -99,21 +99,21 @@ test('Shorthand - fragment 1', () => {
 // Same as above expressions, but checking the actual evaluation result
 test('Shorthand - evaluate simple string expression', () => {
   const expression = '$getData(deep.p)'
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe(12)
   })
 })
 
 test('Shorthand - evaluate nested string expression', () => {
   const expression = '$plus( $getData ( myCountry), $getData(otherCountry))'
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('BrazilFrance')
   })
 })
 
 test('Shorthand - evaluate simple object expression', () => {
   const expression = { $plus: [1, 2, 3] }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe(6)
   })
 })
@@ -122,28 +122,28 @@ test('Shorthand - evaluate nested object expression', () => {
   const expression = {
     $plus: [{ $getData: 'user.firstName' }, ' ', { $getData: 'user.lastName' }],
   }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Bruce Banner')
   })
 })
 
 test('Shorthand - evaluate fragment', () => {
   const expression = { $getFlag: { $country: '$getData(myCountry)' } }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('🇧🇷')
   })
 })
 
 test('Shorthand - custom function', () => {
   const expression = { $function: ['getPrincess', 'Leia'] }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Princess Leia')
   })
 })
 
 test('Shorthand - custom function as string', () => {
   const expression = '$function(getPrincess, Diana)'
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Princess Diana')
   })
 })
@@ -159,7 +159,7 @@ test('Shorthand - with alias fallback', () => {
     ],
     $myFallback: 'EMPIRE',
   }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('EMPIRE')
   })
 })
@@ -170,14 +170,14 @@ test('Shorthand - with node as direct parameter', () => {
       $plus: ['user.', 'lastName'],
     },
   }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Banner')
   })
 })
 
 test('Shorthand - with operator and named parameter', () => {
   const expression = { $getData: { property: 'user.firstName' } }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Bruce')
   })
 })
@@ -201,7 +201,7 @@ test('Shorthand - nested fragments', () => {
     ],
     type: 'array',
   }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([24, '🇳🇿🇧🇷'])
   })
 })
@@ -244,21 +244,21 @@ test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
         variables: { country: 'New Zealand', field: 'capital[0]', otherField: 'name.common' },
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toStrictEqual('Wellington, New Zealand')
     })
 })
 
 test('Shorthand - fragment is in shorthand syntax', () => {
   const expression = { fragment: 'shorthandFragment', $name: 'Slim Shady' }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('My name is Slim Shady')
   })
 })
 
 test('Shorthand - shorthand fragment with shorthand expression', () => {
   const expression = { $shorthandFragment: { $name: 'Slim Shady' } }
-  return fig.evaluate(expression).then((result: any) => {
+  return fig.evaluate(expression).then((result) => {
     expect(result).toBe('My name is Slim Shady')
   })
 })

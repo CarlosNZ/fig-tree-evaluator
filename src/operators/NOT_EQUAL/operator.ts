@@ -1,18 +1,15 @@
-import { parseChildren, BasicExtendedNode } from '../AND/operator'
+import { parseChildren } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import { FigTreeConfig, OperatorObject } from '../../types'
+import { EvaluateMethod, OperatorObject } from '../../types'
 import { dequal } from 'dequal/lite'
 
 import operatorData, { propertyAliases } from './data'
 
-const evaluate = async (
-  expression: BasicExtendedNode & { nullEqualsUndefined?: boolean },
-  config: FigTreeConfig
-): Promise<boolean> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [values, nullMatch] = (await evaluateArray(
     [expression.values, expression.nullEqualsUndefined],
     config
-  )) as [boolean[], boolean]
+  )) as [unknown[], boolean]
 
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, { values, nullEqualsUndefined: nullMatch })
