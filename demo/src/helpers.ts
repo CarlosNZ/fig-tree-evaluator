@@ -98,7 +98,7 @@ export const validateData = (objects: string): boolean => {
 // Filters recursively, and any objects or arrays which end up empty have their key removed too.
 type FilterFunction = (x: any) => boolean
 export const filterObjectRecursive = (
-  inputObj: UnknownObject,
+  inputObj: object,
   filterFunction: FilterFunction = (x) =>
     !(x == null || x === '' || (x instanceof Object && Object.keys(x).length === 0))
 ) => {
