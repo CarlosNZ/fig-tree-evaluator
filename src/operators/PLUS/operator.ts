@@ -5,6 +5,7 @@ import operatorData, { propertyAliases } from './data'
 import { isObject } from '../../helpers'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
+  // eslint-disable-next-line -- any is fine for the following cases
   const values = (await evaluateArray(expression.values, config)) as any[]
 
   config.typeChecker(

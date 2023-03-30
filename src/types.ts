@@ -37,6 +37,7 @@ export type OperatorAlias = keyof typeof operatorAliases
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
 export type Fragments = Record<string, Fragment>
+// eslint-disable-next-line
 export type UnknownFunction = (...args: any[]) => EvaluatorOutput
 
 export interface FigTreeOptions {
