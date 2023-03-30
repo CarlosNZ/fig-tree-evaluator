@@ -37,7 +37,6 @@ export type OperatorAlias = keyof typeof operatorAliases
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
 export type Fragments = Record<string, Fragment>
-// eslint-disable-next-line
 export type UnknownFunction = (...args: any[]) => EvaluatorOutput
 
 export interface FigTreeOptions {
@@ -74,12 +73,12 @@ export interface FigTreeConfig {
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
 export interface OperatorNode {
-  operator: Operator
+  operator: OperatorAlias
   outputType?: OutputType
   children?: EvaluatorNode[]
   fallback?: EvaluatorNode
   useCache?: boolean
-  // For Alias Node references
+  // Additional parameters and Alias nodes
   [key: string]: EvaluatorNode
 }
 
