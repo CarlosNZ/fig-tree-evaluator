@@ -1691,7 +1691,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-- **v2.8.3**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
+- **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
 - **v2.8.0**:
   - [Shorthand syntax](#shorthand-syntax) (#80)
   - Methods to retrieve [metadata](#metadata) about operators, fragments and functions (#82)
