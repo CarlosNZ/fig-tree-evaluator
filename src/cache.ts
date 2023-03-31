@@ -30,23 +30,19 @@ class FigTreeCache {
     if (!shouldUseCache) return await action(...args)
 
     const key = stringifyInput(args)
+
     if (key in this.store) {
       // Move key to end of queue
       this.queue = this.queue.filter((val) => val !== key)
       this.queue.unshift(key)
-      // console.log('Using cached result:', this.store[key])
       return this.store[key]
     }
 
     // Otherwise create a new cache entry
     const result = await action(...args)
     this.store[key] = result
-    if (this.queue.length >= this.maxSize) {
-      const keysToRemove = this.queue.slice(this.maxSize - 1)
-      keysToRemove.forEach((key) => delete this.store[key])
-      this.queue = this.queue.slice(0, this.maxSize - 1)
-    }
     this.queue.unshift(key)
+    this.resizeCache()
     return result
   }
 
@@ -54,6 +50,15 @@ class FigTreeCache {
 
   public setMax = (size: number) => {
     this.maxSize = size
+    this.resizeCache()
+  }
+
+  private resizeCache = () => {
+    if (this.queue.length > this.maxSize) {
+      const keysToRemove = this.queue.slice(this.maxSize)
+      keysToRemove.forEach((key) => delete this.store[key])
+      this.queue = this.queue.slice(0, this.maxSize)
+    }
   }
 }
 
