@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react'
 import EvaluatorDev, { FigTreeOptions } from './fig-tree-evaluator/src'
 import EvaluatorPublished from 'fig-tree-evaluator'
-// Enable instead temporarily when Dev had incompatible changes from Published
+// Enable instead temporarily when Dev has incompatible changes from Published
 // import EvaluatorPublished from './fig-tree-evaluator/src'
 import { OptionsModal } from './OptionsModal'
 import {
