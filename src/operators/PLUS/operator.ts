@@ -1,26 +1,21 @@
-import { parseChildren, BasicExtendedNode } from '../AND/operator'
+import { parseChildren } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import { EvaluatorOutput, FigTreeConfig, OperatorObject, EvaluatorNode } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { OperatorObject, EvaluateMethod } from '../../types'
+import operatorData, { propertyAliases } from './data'
+import { isObject } from '../../helpers'
 
-export type AdditionNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BasicExtendedNode & { type?: 'string' | 'array' }
-
-const evaluate = async (
-  expression: AdditionNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
-  if (expression.values.length === 0) return expression.values
-
+const evaluate: EvaluateMethod = async (expression, config) => {
+  // eslint-disable-next-line -- any is fine for the following cases
   const values = (await evaluateArray(expression.values, config)) as any[]
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, {
+    getTypeCheckInput(operatorData.parameters, {
       values,
       type: expression.type,
     })
   )
+
+  if (values.length === 0) return values // To prevent reduce of empty array error
 
   // Reduce based on "type" if specified
   if (expression?.type === 'string') return values.reduce((acc, child) => acc.concat(child), '')
@@ -32,7 +27,7 @@ const evaluate = async (
     return values.reduce((acc, child) => acc.concat(child))
 
   // Merge objects
-  if (values.every((child) => child instanceof Object && !Array.isArray(child)))
+  if (values.every((child) => isObject(child)))
     return values.reduce((acc, child) => ({ ...acc, ...child }), {})
 
   // Or just try to add any other types
@@ -40,7 +35,6 @@ const evaluate = async (
 }
 
 export const PLUS: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -1,24 +1,6 @@
 import FigTreeCache from './cache'
-import {
-  BasicExtendedNode,
-  SubtractionNode,
-  DivisionNode,
-  ComparatorNode,
-  ConditionalNode,
-  RegexNode,
-  StringSubNode,
-  SplitNode,
-  ObjPropNode,
-  APINode,
-  PGNode,
-  GraphQLNode,
-  BuildObjectNode,
-  MatchNode,
-  FunctionNode,
-  PassThruNode,
-  PGConnection,
-  GraphQLConnection,
-} from './operators'
+import { Client } from 'pg'
+import { GraphQLConnection } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
 
@@ -51,25 +33,19 @@ export const Operators = [
 ] as const
 
 export type Operator = typeof Operators[number]
-
-export type GenericObject = {
-  [key: string]: any
-}
-
 export type OperatorAlias = keyof typeof operatorAliases
-
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
 export type Fragments = Record<string, Fragment>
-
-export type Functions = Record<string, Function>
+// eslint-disable-next-line
+export type UnknownFunction = (...args: any[]) => EvaluatorOutput
 
 export interface FigTreeOptions {
-  data?: GenericObject
-  objects?: GenericObject // same as "data" -- deprecated
-  functions?: Functions
+  data?: object
+  objects?: object // same as "data" -- deprecated
+  functions?: Record<string, UnknownFunction>
   fragments?: Fragments
-  pgConnection?: PGConnection
+  pgConnection?: Client
   graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
   headers?: { [key: string]: string }
@@ -79,7 +55,7 @@ export interface FigTreeOptions {
   noShorthand?: boolean
   skipRuntimeTypeCheck?: boolean
   evaluateFullObject?: boolean
-  excludeOperators?: string[]
+  excludeOperators?: OperatorAlias[]
   useCache?: boolean
   maxCacheSize?: number
   // Undocumented -- only for < v1 compatibility
@@ -90,18 +66,18 @@ export interface FigTreeConfig {
   options: FigTreeOptions
   operators: OperatorReference
   operatorAliases: OperatorAliases
-  typeChecker: (...input: TypeCheckInput[]) => void
+  typeChecker: (...args: TypeCheckInput[] | [TypeCheckInput[]]) => void
   resolvedAliasNodes: { [key: string]: EvaluatorOutput }
   cache: FigTreeCache
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'
 
-export interface BaseOperatorNode {
+export interface OperatorNode {
   operator: Operator
   outputType?: OutputType
-  children?: Array<EvaluatorNode>
-  fallback?: any
+  children?: EvaluatorNode[]
+  fallback?: EvaluatorNode
   useCache?: boolean
   // For Alias Node references
   [key: string]: EvaluatorNode
@@ -109,70 +85,49 @@ export interface BaseOperatorNode {
 
 export interface FragmentNode {
   fragment: string
-  parameters?: { [key: string]: EvaluatorNode }
+  parameters?: Record<string, EvaluatorNode>
   // For parameters at the root level
   [key: string]: EvaluatorNode
 }
 
+export interface FragmentMetadata {
+  description?: string
+  parameters?: Record<string, { type: string | string[]; required: boolean }>
+}
+
 export type Fragment =
   | (EvaluatorNode & {
-      metadata?: {
-        description?: string
-        parameters?: Record<string, { type: string | string[]; required: boolean }>
-      }
+      metadata?: FragmentMetadata
     })
   | null
 
-export type CombinedOperatorNode = BaseOperatorNode &
-  BasicExtendedNode &
-  SubtractionNode &
-  DivisionNode &
-  ComparatorNode &
-  ConditionalNode &
-  RegexNode &
-  StringSubNode &
-  SplitNode &
-  ObjPropNode &
-  APINode &
-  PGNode &
-  GraphQLNode &
-  BuildObjectNode &
-  MatchNode &
-  FunctionNode &
-  PassThruNode
+export type EvaluatorOutput =
+  | string
+  | boolean
+  | number
+  | object
+  | null
+  | undefined
+  | Array<EvaluatorOutput>
 
-export type OperatorNodeUnion =
-  | BasicExtendedNode
-  | SubtractionNode
-  | DivisionNode
-  | ComparatorNode
-  | ConditionalNode
-  | RegexNode
-  | StringSubNode
-  | SplitNode
-  | ObjPropNode
-  | APINode
-  | PGNode
-  | GraphQLNode
-  | BuildObjectNode
-  | MatchNode
-  | FunctionNode
-  | PassThruNode
-
-export type EvaluatorOutput = string | boolean | number | GenericObject | null | undefined | any[]
-
-export type EvaluatorNode = CombinedOperatorNode | FragmentNode | EvaluatorOutput
+export type EvaluatorNode = OperatorNode | FragmentNode | EvaluatorOutput
 
 export type OperatorObject = {
-  requiredProperties: readonly string[]
   propertyAliases: Record<string, string>
   operatorData: OperatorData
-  evaluate: (expression: CombinedOperatorNode, config: FigTreeConfig) => Promise<EvaluatorOutput>
-  parseChildren: (
-    expression: CombinedOperatorNode,
-    config: FigTreeConfig
-  ) => OperatorNodeUnion | Promise<OperatorNodeUnion>
+  evaluate: EvaluateMethod
+  parseChildren: ParseChildrenMethod
 }
+
+export type EvaluateMethod = (
+  expression: OperatorNode,
+  config: FigTreeConfig
+) => Promise<EvaluatorOutput>
+
+export type ParseChildrenMethod = (
+  expression: OperatorNode,
+  config: FigTreeConfig
+) => OperatorNode | Promise<OperatorNode>
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
 
@@ -182,11 +137,15 @@ export type Parameter = {
   description: string
   aliases: string[]
   required: boolean
-  type: ExpectedType | ExpectedType[]
+  type: ExpectedType
 }
 
 export interface OperatorData {
   description: string
   aliases: string[]
   parameters: Parameter[]
+}
+
+export interface OperatorMetadata extends OperatorData {
+  operator: Operator
 }

@@ -1,4 +1,4 @@
-import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Divide one numerical value by another'
@@ -30,11 +30,10 @@ const parameters: Parameter[] = [
     description: 'Whether to output a quotient, remainder or decimal',
     aliases: [],
     required: false,
-    type: 'string',
+    type: { literal: ['quotient', 'remainder'] },
   },
 ]
 
-export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
 
 const operatorData: OperatorData = {

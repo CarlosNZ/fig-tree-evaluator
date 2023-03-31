@@ -5,42 +5,42 @@ const exp = new FigTreeEvaluator()
 // EQUAL
 test('Equality (numbers)', () => {
   const expression = { operator: '=', children: [100, 100] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
 
 test('Equality (numbers, different)', () => {
   const expression = { operator: 'eq', values: [5, -5] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
 
 test('Equality (strings)', () => {
   const expression = { operator: 'Equal', values: ['Monday', 'Monday'] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
 
 test("Equality (strings) -- don't match", () => {
   const expression = { operator: 'Equal', children: ['Monday', 'Tuesday'] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
 
 test('Equality (numbers, many)', () => {
   const expression = { operator: 'EQUAL', children: [99, 99, 99, 99, 99] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
 
 test('Equality (string, single child)', () => {
   const expression = { operator: '=', values: ['All by myself'] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -53,7 +53,7 @@ test('Equality (booleans, nested)', () => {
       { operator: 'OR', children: [false, false] },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -66,7 +66,7 @@ test('Equality (booleans, nested, not equal)', () => {
       { operator: 'OR', children: [false, true] },
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
@@ -112,7 +112,7 @@ test('Equality (objects)', () => {
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -151,7 +151,7 @@ test('Equality (objects, not matching)', () => {
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
@@ -165,7 +165,7 @@ test('Equality (arrays, multiple)', () => {
       { operator: '+', type: 'array', children: [1, 2, 3, { propOne: 'ONE' }] },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -178,37 +178,44 @@ test('Equality (arrays, not matching)', () => {
       [1, 2, 3, { propOne: 'ONE', propTwo: 'TWO' }],
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
+})
+
+test('Equality -- missing values', async () => {
+  const expression = { operator: '=' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: EQUAL\n- Missing required property "values" (type: array)'
+  )
 })
 
 // NOT EQUAL
 
 test('Inequality (numbers)', () => {
   const expression = { operator: '!=', children: [3.14, Math.PI] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
 
 test('Inequality (numbers) -- false', () => {
   const expression = { operator: '!', children: [666, 600 + 66] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
 
 test('Inequality (strings)', () => {
   const expression = { operator: 'ne', values: ['this', 'is not that'] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
 
 test('Inequality (strings, false) -- false', () => {
   const expression = { operator: 'NOT_EQUAL', children: ['Matching', 'Matching'] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
@@ -221,7 +228,7 @@ test('Inequality (boolean, nested)', () => {
       { operator: 'or', children: [false, { operator: 'AND', values: [true, true] }] },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -237,7 +244,7 @@ test('Inequality (multiple, nested, all equal)', () => {
       10,
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })
@@ -247,7 +254,7 @@ test('Inequality (multiple, all different)', () => {
     operator: 'ne',
     children: [1, 2, 3, 4, 5],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -257,7 +264,7 @@ test('Inequality (multiple, only first different)', () => {
     operator: 'ne',
     children: ['A', 'B', 'B', 'B', 'B'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -267,7 +274,7 @@ test('Inequality (multiple, one different)', () => {
     operator: 'ne',
     children: ['B', 'B', 'other', 'B', 'B'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -277,7 +284,14 @@ test('Inequality (only one value)', () => {
     operator: 'ne',
     children: ['ONE'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
+})
+
+test('Inequality -- missing values', async () => {
+  const expression = { operator: '!=' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: NOT_EQUAL\n- Missing required property "values" (type: array)'
+  )
 })

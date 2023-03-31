@@ -38,7 +38,7 @@ test('Alias Nodes: Do only one network lookup', () => {
     valueIfTrue: '$getNZ',
     valueIfFalse: 'Not New Zealand',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('New Zealand')
   })
 })
@@ -60,7 +60,7 @@ test('Alias Nodes: Multiple aliases', () => {
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('SuperheroesSuperheroesSuperheroes, Superheroes, Superheroes')
   })
 })
@@ -87,7 +87,7 @@ test('Alias Nodes: Nested aliases, `evaluateFullObject: true`', () => {
     operator: 'stringSubstitution',
     children: ['The flag of New Zealand is %1. Here it is again: %2', '$flag', '$flag'],
   }
-  return exp.evaluate(expression, { evaluateFullObject: true }).then((result: any) => {
+  return exp.evaluate(expression, { evaluateFullObject: true }).then((result) => {
     expect(result).toBe('The flag of New Zealand is 🇳🇿. Here it is again: 🇳🇿')
   })
 })
@@ -97,7 +97,7 @@ test('Alias Nodes: Alias definition missing, return literal string', () => {
     operator: 'stringSubstitution',
     children: ['The flag of New Zealand is %1. Here it is again: %2', '$flag', '$flag'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('The flag of New Zealand is $flag. Here it is again: $flag')
   })
 })
@@ -125,7 +125,7 @@ test('Alias Nodes: Use same alias reference in inner node, should be redefined',
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(
       'SuperheroesSuperheroesThe First Avenger, The First Avenger, The First Avenger'
     )

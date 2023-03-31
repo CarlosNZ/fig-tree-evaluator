@@ -1,19 +1,19 @@
 import FigTreeEvaluator, { evaluateExpression } from '../src'
 
-const exp = new FigTreeEvaluator()
+const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 
 // PLUS
 
 test('Adding 2 numbers', () => {
   const expression = { operator: '+', children: [6, 6] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(12)
   })
 })
 
 test('Adding 4 numbers', () => {
   const expression = { operator: 'Plus', children: [7.5, 25, -0.1, 6] }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(38.4)
   })
 })
@@ -26,7 +26,7 @@ test('Concatenate 2 Arrays', () => {
       ['Four', 'Five', 'Six'],
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([1, 2, 3, 'Four', 'Five', 'Six'])
   })
 })
@@ -41,7 +41,7 @@ test('Concatenate 4 Arrays, including nested', () => {
       [['Four', 'Five', 'Six'], 'The', 'End'],
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([
       1,
       2,
@@ -64,7 +64,7 @@ test('Concatenate 3 Strings', () => {
     operator: 'CONCAT',
     children: ['Tony', ' ', 'Stark'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Tony Stark')
   })
 })
@@ -75,7 +75,7 @@ test('Concatenate Strings, output as Array', () => {
     type: 'array',
     values: ['One', 'Two', 'Three'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual(['One', 'Two', 'Three'])
   })
 })
@@ -88,7 +88,7 @@ test('Merge 2 objects', () => {
       { four: [1, 2, 3], five: true },
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toStrictEqual({ one: 1, two: '2', three: false, four: [1, 2, 3], five: true })
   })
 })
@@ -102,7 +102,7 @@ test('Merge 3 objects', () => {
       { 1: null, 2: 'TRUE' },
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toStrictEqual({
       one: 1,
       two: '2',
@@ -112,5 +112,19 @@ test('Merge 3 objects', () => {
       1: null,
       2: 'TRUE',
     })
+  })
+})
+
+test('Missing values', () => {
+  const expression = { operator: '+' }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('Operator: PLUS\n- Missing required property "values" (type: array)')
+  })
+})
+
+test('Empty values array', () => {
+  const expression = { operator: '+', values: [] }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([])
   })
 })

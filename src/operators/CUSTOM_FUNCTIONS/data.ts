@@ -1,4 +1,4 @@
-import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Call a custom function (defined in options)'
@@ -23,11 +23,17 @@ const parameters: Parameter[] = [
     description: 'Arguments for the function',
     aliases: ['arguments', 'variables'],
     required: false,
-    type: ['array'],
+    type: 'array',
+  },
+  {
+    name: 'useCache',
+    description: 'Whether or not the FigTree cache is used',
+    aliases: [],
+    required: false,
+    type: 'boolean',
   },
 ]
 
-export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
 
 const operatorData: OperatorData = {

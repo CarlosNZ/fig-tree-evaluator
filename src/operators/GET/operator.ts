@@ -1,3 +1,4 @@
+import { AxiosRequestHeaders } from 'axios'
 import {
   evaluateArray,
   zipArraysToObject,
@@ -8,25 +9,15 @@ import {
   getTypeCheckInput,
 } from '../_operatorUtils'
 import {
-  BaseOperatorNode,
+  OperatorNode,
   EvaluatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  CombinedOperatorNode,
-  GenericObject,
   OperatorObject,
+  EvaluateMethod,
+  ParseChildrenMethod,
 } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import operatorData, { propertyAliases } from './data'
 
-export type APINode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & {
-    parameters?: EvaluatorNode
-    returnProperty?: EvaluatorNode
-    headers?: GenericObject
-  }
-
-const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [urlObj, parameters, returnProperty, headers, useCache] = (await evaluateArray(
     [
       expression.url,
@@ -37,17 +28,17 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
     ],
     config
   )) as [
-    string | { url: string; headers: GenericObject },
+    string | { url: string; headers: AxiosRequestHeaders },
     { [key: string]: string },
     string,
-    GenericObject,
+    AxiosRequestHeaders,
     boolean
   ]
 
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  config.typeChecker(
+  config.typeChecker([
     ...getTypeCheckInput(operatorData.parameters, {
       url,
       returnProperty,
@@ -59,21 +50,21 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
       name: 'headers',
       value: headersObj,
       expectedType: ['object', 'null'],
-    }
-  )
+    },
+  ])
 
   const baseUrl = config.options.baseEndpoint ?? ''
 
   const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }
 
-  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+  const shouldUseCache = useCache ?? config.options.useCache ?? true
 
   const result = await config.cache.useCache(
     shouldUseCache,
     async (
       url: string,
       params: { [key: string]: string },
-      headers: GenericObject,
+      headers: AxiosRequestHeaders,
       returnProperty?: string
     ) => {
       const response = await axiosRequest({
@@ -92,10 +83,7 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
   return result
 }
 
-const parseChildren = async (
-  expression: CombinedOperatorNode,
-  config: FigTreeConfig
-): Promise<APINode> => {
+const parseChildren: ParseChildrenMethod = async (expression, config) => {
   const [url = '', fieldNames, ...rest] = (await evaluateArray(
     expression.children as EvaluatorNode[],
     config
@@ -103,7 +91,7 @@ const parseChildren = async (
   const fieldKeys = Array.isArray(fieldNames) ? fieldNames : [fieldNames]
   const values = rest.slice(0, fieldKeys.length)
   const parameters = zipArraysToObject(fieldKeys, values)
-  const output = { ...expression, url, parameters }
+  const output: OperatorNode = { ...expression, url, parameters }
   if (rest.length > fieldKeys.length) output.returnProperty = rest.pop()
   return output
 }
@@ -112,7 +100,6 @@ const parseChildren = async (
 export const parseChildrenGET = parseChildren
 
 export const GET: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -1,30 +1,21 @@
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import {
-  EvaluatorNode,
-  BaseOperatorNode,
-  CombinedOperatorNode,
-  FigTreeConfig,
-  OperatorObject,
-} from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { OperatorObject, ParseChildrenMethod, EvaluateMethod } from '../../types'
+import operatorData, { propertyAliases } from './data'
 
-export type BasicExtendedNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode[]
-} & BaseOperatorNode
-
-const evaluate = async (expression: BasicExtendedNode, config: FigTreeConfig): Promise<boolean> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const values = (await evaluateArray(expression.values, config)) as boolean[]
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { values }))
+
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { values }))
+
   return values.reduce((acc: boolean, val: boolean) => acc && !!val, true)
 }
 
-export const parseChildren = (expression: CombinedOperatorNode): BasicExtendedNode => {
-  const values = expression.children as EvaluatorNode[]
-  return { ...expression, values } as any
+export const parseChildren: ParseChildrenMethod = (expression) => {
+  const values = expression.children
+  return { ...expression, values }
 }
 
 export const AND: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

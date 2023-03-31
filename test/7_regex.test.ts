@@ -8,7 +8,7 @@ test('Testing Regex - Email validation', () => {
     operator: 'REGEX',
     children: ['info@somwhere.net', '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(true)
   })
 })
@@ -19,7 +19,7 @@ test('Testing Regex - Email validation false, using properties', () => {
     pattern: '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$',
     testString: 'info@wherever$net',
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(false)
   })
 })

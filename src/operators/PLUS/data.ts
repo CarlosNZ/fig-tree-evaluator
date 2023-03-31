@@ -1,4 +1,4 @@
-import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Add, concatenate or merge multiple values'
@@ -16,11 +16,10 @@ const parameters: Parameter[] = [
     description: 'Data type to coerce input values to before addition',
     aliases: [],
     required: false,
-    type: 'string',
+    type: { literal: ['string', 'array', 'number', 'boolean', 'bool'] },
   },
 ]
 
-export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
 
 const operatorData: OperatorData = {

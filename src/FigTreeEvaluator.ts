@@ -5,9 +5,10 @@ Core FigTreeEvaluator class
 import {
   EvaluatorNode,
   FigTreeOptions,
-  GenericObject,
   OperatorAliases,
+  OperatorMetadata,
   OperatorReference,
+  FragmentMetadata,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
@@ -15,8 +16,7 @@ import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache from './cache'
-
-const pkg = require('../package.json')
+import { version } from './version'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
@@ -36,8 +36,11 @@ class FigTreeEvaluator {
     this.cache = new FigTreeCache(options.maxCacheSize)
   }
 
-  private typeChecker = (...args: TypeCheckInput[]) => {
-    const result = typeCheck(...args)
+  private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
+    // Can accept args as either an array, or multiple parameters
+    const inputArgs =
+      args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
+    const result = typeCheck(...inputArgs)
     if (result === true) return
     throw new Error(result)
   }
@@ -56,7 +59,11 @@ class FigTreeEvaluator {
         ? filterOperators(operators, options.excludeOperators, operatorAliases)
         : this.operators,
       operatorAliases: this.operatorAliases,
-      typeChecker: currentOptions.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      typeChecker: currentOptions.skipRuntimeTypeCheck
+        ? () => {
+            // Do nothing
+          }
+        : this.typeChecker,
       resolvedAliasNodes: {},
       cache: this.cache,
     })
@@ -79,24 +86,24 @@ class FigTreeEvaluator {
     return Object.entries(validOperators).map(([key, value]) => ({
       operator: key,
       ...value.operatorData,
-    }))
+    })) as readonly OperatorMetadata[]
   }
 
   public getFragments() {
     return Object.entries(this.options.fragments ?? {}).map(([key, value]) => ({
       name: key,
       ...value?.metadata,
-    }))
+    })) as readonly (FragmentMetadata & { name: string })[]
   }
 
   public getCustomFunctions() {
     return Object.entries(this.options.functions ?? {}).map(([name, value]) => ({
       name,
       numRequiredArgs: value.length,
-    }))
+    })) as readonly { name: string; numRequiredArgs: number }[]
   }
 
-  public getVersion = () => pkg.version
+  public getVersion = () => version
 }
 
 export default FigTreeEvaluator
@@ -108,7 +115,7 @@ export const evaluateExpression = (expression: EvaluatorNode, options?: FigTreeO
 
 // Some option names may change over time, or we allow aliases. This function
 // ensures backwards compatibility and keeps option names standardised.
-const standardiseOptionNames = (options: FigTreeOptions & { objects?: GenericObject }) => {
+const standardiseOptionNames = (options: FigTreeOptions & { objects?: object }) => {
   if ('objects' in options) {
     options.data = options.objects
     delete options.objects

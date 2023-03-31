@@ -1,99 +1,71 @@
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  CombinedOperatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  OperatorObject,
-} from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import operatorData, { propertyAliases } from './data'
+import { Client, QueryResult } from 'pg'
 
-export type PGNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { values?: EvaluatorNode[]; type?: 'string' }
-
-const evaluate = async (expression: PGNode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
-  const [query, type, ...values] = (await evaluateArray(
-    [expression.query, expression.type, ...(expression.values || ([] as EvaluatorNode[]))],
+const evaluate: EvaluateMethod = async (expression, config) => {
+  const [query, type, values, useCache] = (await evaluateArray(
+    [expression.query, expression.type, expression.values || [], expression.useCache],
     config
-  )) as [string, string, (string | number)[]]
+  )) as [string, string, (string | number)[], boolean]
 
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { query, type, values }))
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { query, type, values, useCache }))
 
   if (!config.options?.pgConnection) throw new Error('No Postgres database connection provided')
 
   const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
 
-  try {
+  {
     const result = config.cache.useCache(
       shouldUseCache,
-      async (query: string, type: string | undefined, ...values: (string | number)[]) => {
-        return await processPgSQL(
-          [query, ...values],
-          config.options.pgConnection as PGConnection,
-          type
-        )
+      async (query: string, type: string | undefined, values: (string | number)[]) => {
+        return await processPgSQL(query, values, config.options.pgConnection as Client, type)
       },
       query,
       type,
-      ...values
+      values
     )
 
     return result
-  } catch (err) {
-    throw err
   }
 }
 
-const parseChildren = (expression: CombinedOperatorNode): PGNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [query, ...values] = expression.children as EvaluatorNode[]
   return { ...expression, query, values }
 }
 
-export interface PGConnection {
-  query: (expression: { text: string; values?: any[]; rowMode?: string }) => Promise<QueryResult>
-}
-
-interface QueryRowResult {
-  [columns: string]: any
-}
-
-export interface QueryResult {
-  rows: QueryRowResult[]
-  error?: string
-}
-
-const processPgSQL = async (queryArray: any[], connection: PGConnection, queryType?: string) => {
+const processPgSQL = async (
+  query: string,
+  values: (string | number)[],
+  connection: Client,
+  queryType?: string
+) => {
   const expression = {
-    text: queryArray[0],
-    values: queryArray.slice(1),
+    text: query,
+    values: values,
     rowMode: queryType ? 'array' : '',
   }
 
-  try {
-    const res = await connection.query(expression)
-    // node-postgres doesn't throw, it just returns error object
-    if (res?.error) throw new Error(res.error)
+  const res: QueryResult & { error?: string } = await connection.query(expression)
+  // node-postgres doesn't throw, it just returns error object
+  if (res?.error) throw new Error(res.error)
 
-    switch (queryType) {
-      case 'array':
-        return res.rows.flat()
-      case 'string':
-        return res.rows.flat().join(' ')
-      case 'number':
-        const result = res.rows.flat()
-        return Number.isNaN(Number(result)) ? result : Number(result)
-      default:
-        return res.rows
+  switch (queryType) {
+    case 'array':
+      return res.rows.flat()
+    case 'string':
+      return res.rows.flat().join(' ')
+    case 'number': {
+      const result = res.rows.flat()
+      return Number.isNaN(Number(result)) ? result : Number(result)
     }
-  } catch (err) {
-    throw err
+    default:
+      return res.rows
   }
 }
 
 export const PG_SQL: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

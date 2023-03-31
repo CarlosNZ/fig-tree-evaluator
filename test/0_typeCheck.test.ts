@@ -10,16 +10,6 @@ test('String - incorrect', () => {
   )
 })
 
-test('Not String', () => {
-  expect(typeCheck({ value: 10, not: true, expectedType: 'string' })).toBe(true)
-})
-
-test('Not String - false', () => {
-  expect(
-    typeCheck({ name: 'Test', value: 'Actually a string', not: true, expectedType: 'string' })
-  ).toBe('- Property "Test" (value: "Actually a string") is not of type: !(string)')
-})
-
 test('Multiple type options', () => {
   expect(typeCheck({ value: 39.5, expectedType: ['string', 'number'] })).toBe(true)
 })
@@ -73,21 +63,17 @@ test('Boolean true', () => {
 
 test('Boolean false', () => {
   expect(typeCheck({ name: 'Undefined value', value: undefined, expectedType: 'boolean' })).toBe(
-    '- Property "Undefined value" (value: undefined) is not of type: boolean'
+    '- Missing required property "Undefined value" (type: boolean)'
   )
 })
 
 test('Undefined true', () => {
-  const { value } = { noValue: 1 } as any
+  const { value } = { noValue: 1 } as { noValue: number; value?: string }
   expect(typeCheck({ value, expectedType: 'undefined' })).toBe(true)
 })
 
 test('Undefined false', () => {
   expect(typeCheck({ value: null, expectedType: 'boolean' })).toBe('- null is not of type: boolean')
-})
-
-test('Not undefined', () => {
-  expect(typeCheck({ value: 'Anything else', not: true, expectedType: 'undefined' })).toBe(true)
 })
 
 test('Null true', () => {
@@ -108,12 +94,66 @@ test('Null false, truncated output', () => {
   ).toBe('- {"one":"long string","two":"even longer string",... is not of type: null')
 })
 
-test('Neither array or object -- true', () => {
-  expect(typeCheck({ value: false, not: true, expectedType: ['array', 'object'] })).toBe(true)
+test('String literals - correct', () => {
+  expect(
+    typeCheck({ name: 'prop1', value: 'one', expectedType: { literal: ['one', 'two', 'three'] } })
+  ).toBe(true)
 })
 
-test('Neither array or object -- false', () => {
+test('String literals - correct, different order', () => {
   expect(
-    typeCheck({ value: ['three', 'two', 'one'], not: true, expectedType: ['array', 'object'] })
-  ).toBe('- ["three","two","one"] is not of type: !(array|object)')
+    typeCheck({ name: 'prop1', value: 'three', expectedType: { literal: ['one', 'two', 'three'] } })
+  ).toBe(true)
+})
+
+test('String literals - incorrect', () => {
+  expect(
+    typeCheck({ name: 'prop1', value: 'four', expectedType: { literal: ['one', 'two', 'three'] } })
+  ).toBe('- Property "prop1" (value: "four") is not of type: Literal("one", "two", "three")')
+})
+
+test('Multiple checks -- all correct', () => {
+  expect(
+    typeCheck(
+      { name: 'prop1', value: 'three', expectedType: { literal: ['one', 'two', 'three'] } },
+      { value: 5 < 6, expectedType: 'boolean' },
+      { name: 'prop1', value: 'MyValue', expectedType: 'string' }
+    )
+  ).toBe(true)
+})
+
+test('Multiple checks -- one required missing', () => {
+  const obj = { one: 2, two: 'two' } as { one: number; two: string; three?: string }
+  const { one, two, three } = obj
+  expect(
+    typeCheck(
+      { name: 'one', value: one, expectedType: 'number' },
+      { name: 'two', value: two, expectedType: 'string' },
+      { name: 'three', value: three, expectedType: 'boolean' }
+    )
+  ).toBe('- Missing required property "three" (type: boolean)')
+})
+
+test('Multiple checks -- one missing, one wrong (in array)', () => {
+  const obj = { one: 2, two: 'two' } as { one: number; two: string; three?: string }
+  const { one, two, three } = obj
+  expect(
+    typeCheck(
+      { name: 'one', value: one, expectedType: ['number', 'string'] },
+      { name: 'two', value: two, expectedType: 'null' },
+      { name: 'three', value: three, expectedType: 'array' }
+    )
+  ).toBe(
+    '- Property "two" (value: "two") is not of type: null\n- Missing required property "three" (type: array)'
+  )
+})
+
+test('String literals -- not required, wrong type', () => {
+  expect(
+    typeCheck({
+      name: 'p1',
+      value: 'wrong',
+      expectedType: { literal: ['right', 'other'] },
+    })
+  ).toBe('- Property "p1" (value: "wrong") is not of type: Literal("right", "other")')
 })

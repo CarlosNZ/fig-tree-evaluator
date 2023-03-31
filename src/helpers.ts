@@ -7,14 +7,15 @@ import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUti
 import {
   OutputType,
   EvaluatorNode,
-  CombinedOperatorNode,
   EvaluatorOutput,
   FigTreeOptions,
-  OperatorNodeUnion,
   FigTreeConfig,
   OperatorReference,
   OperatorAliases,
   OperatorAlias,
+  Operator,
+  FragmentNode,
+  OperatorNode,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -30,7 +31,7 @@ export const parseIfJson = (input: EvaluatorNode) => {
 export const isOperatorNode = (input: EvaluatorNode) =>
   input instanceof Object && 'operator' in input
 
-export const isFragmentNode = (input: EvaluatorNode) =>
+export const isFragmentNode = (input: EvaluatorNode): input is FragmentNode =>
   input instanceof Object && 'fragment' in input
 
 // Convert to camelCase but *don't* remove stand-alone punctuation as they may
@@ -40,14 +41,16 @@ const standardiseOperatorName = (name: string) => {
   return camelCaseName ? camelCaseName : name
 }
 
-export const getOperatorName = (operator: string, operatorAliases: OperatorAliases) =>
-  operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
+export const getOperatorName = (
+  operator: string,
+  operatorAliases: OperatorAliases
+): Operator | undefined => operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
 
 export const filterOperators = (
   operators: OperatorReference,
   exclusions: string[],
   operatorAliases: OperatorAliases
-) => {
+): OperatorReference => {
   const filteredOperators = { ...operators }
   exclusions.forEach((exclusion) => {
     const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
@@ -61,7 +64,7 @@ export const filterOperators = (
 If `string` exceeds `length` (default: 200 chars), will return a truncated
 version of the string, ending in "..."
 */
-export const truncateString = (string: string, length: number = 200) =>
+export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
 
 /*
@@ -70,9 +73,9 @@ Will throw an error (with `errorMessage`) if no `fallback` is provided. If
 string containing the error message. 
 */
 export const fallbackOrError = (
-  fallback: any,
+  fallback: EvaluatorOutput,
   errorMessage: string,
-  returnErrorAsString: boolean = false
+  returnErrorAsString = false
 ) => {
   if (fallback !== undefined) return fallback
   if (returnErrorAsString) return truncateString(errorMessage)
@@ -85,11 +88,11 @@ as per each operator's property aliases
 */
 export const mapPropertyAliases = (
   propertyAliases: { [key: string]: string },
-  expression: CombinedOperatorNode
-): CombinedOperatorNode =>
+  expression: OperatorNode
+) =>
   mapObjectKeys(expression, (key: string) =>
     key in propertyAliases ? propertyAliases[key] : key
-  ) as CombinedOperatorNode
+  ) as OperatorNode
 
 /*
 Convert object to a new object with keys changed by mapFunction
@@ -111,7 +114,7 @@ export const isAliasString = (value: string) => /^\$.+/.test(value)
 Identify any properties in the expression that represent "alias" nodes (i.e of
 the form `$alias`) and evaluate their values
 */
-export const evaluateNodeAliases = async (expression: OperatorNodeUnion, config: FigTreeConfig) => {
+export const evaluateNodeAliases = async (expression: OperatorNode, config: FigTreeConfig) => {
   const aliasKeys = Object.keys(expression).filter(isAliasString)
   if (aliasKeys.length === 0) return {}
 
@@ -131,21 +134,6 @@ export const replaceAliasNodeValues = (
 ) => {
   if (typeof value !== 'string' || !isAliasString(value)) return value
   return resolvedAliasNodes?.[value] ?? value
-}
-
-/*
-Checks Evaluator node for missing required properties based on operator type
-- Strict type checking done AFTER evaluation of child nodes within operator
-  methods (typeCheck.ts)
-*/
-export const checkRequiredNodes = (
-  requiredProps: readonly string[],
-  expression: CombinedOperatorNode
-): string | false => {
-  const missingProps = requiredProps.filter((prop) => !(prop in expression))
-  if (missingProps.length === 0) return false
-  if (!('children' in expression)) return `Missing properties: ${missingProps}`
-  return false
 }
 
 /*
@@ -199,7 +187,7 @@ const extractNumber = (input: EvaluatorOutput) => {
 /*
 Returns `true` if input is an object ({}) (but not an array)
 */
-export const isObject = (input: unknown) =>
+export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
 
 /*
@@ -217,17 +205,17 @@ export const evaluateObject = async (
   const newAliases: unknown[] = []
 
   // First evaluate any Alias nodes we find and add them to config
-  Object.entries(input as Object).forEach(([key, value]) => {
+  Object.entries(input).forEach(([key, value]) => {
     if (isAliasString(key)) {
       newAliases.push(key, evaluatorFunction(value, config))
-      delete (input as Record<string, any>)[key]
+      delete (input as Record<string, unknown>)[key]
     }
   })
   const aliasArray = await Promise.all(newAliases)
   config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
 
   // Then evaluate the rest
-  Object.entries(input as Object).forEach(([key, value]) => {
+  Object.entries(input).forEach(([key, value]) => {
     newObjectEntries.push(key, evaluatorFunction(value, config))
   })
 

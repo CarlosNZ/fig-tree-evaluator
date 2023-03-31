@@ -4,17 +4,17 @@ import opAliases from './operators/_operatorAliases.json'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
-const functionStringRegex = /(\$[^\(\)]+)\((.*)\)/
+const functionStringRegex = /(\$[^()]+)\((.*)\)/
 
 export const preProcessShorthand = (
   expression: EvaluatorNode,
   fragments: Fragments = {},
-  useShorthand: boolean = true
+  useShorthand = true
 ): EvaluatorNode | FragmentNode => {
   if (!useShorthand) return expression
 
   if (typeof expression === 'string') return processString(expression, fragments)
-  if (isObject(expression)) return processObject(expression as object, fragments)
+  if (isObject(expression)) return processObject(expression, fragments)
 
   return expression
 }
@@ -36,7 +36,7 @@ const processObject = (expObject: object, fragments: Fragments) => {
   const aliasParams = keyVals.filter(([key]) => isAliasString(key))
   const otherParams = keyVals.filter(([key]) => !isAliasString(key))
 
-  const newKeyVals = aliasParams.reduce((accObj: Record<string, any>, [alias, params]) => {
+  const newKeyVals = aliasParams.reduce((accObj: Record<string, unknown>, [alias, params]) => {
     accObj = { ...accObj, ...buildNodeElements(alias, params, fragments) }
     return accObj
   }, {})

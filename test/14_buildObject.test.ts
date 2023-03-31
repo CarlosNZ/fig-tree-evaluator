@@ -9,7 +9,7 @@ test('buildObject - basic', () => {
     operator: 'buildObject',
     properties: [{ key: 'someKey', value: 'someValue' }],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toStrictEqual({ someKey: 'someValue' })
   })
 })
@@ -24,7 +24,7 @@ test('buildObject - handling erroneous input', () => {
       { key: 'missing value' },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({ someKey: 'someValue' })
   })
 })
@@ -47,7 +47,7 @@ test('buildObject - with evaluated key and value', () => {
     ],
   }
 
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({ someKey: 'someValue', keyFromObjects: 'valueFromObjects' })
   })
 })
@@ -71,10 +71,31 @@ test('buildObject - with evaluations and nesting', () => {
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({
       someKey: 'someValue',
       keyFromObjects: { concatArray: ['one', 2] },
     })
+  })
+})
+
+test('buildObject - missing properties', () => {
+  const expression = { operator: 'buildObject' }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
+    expect(result).toBe(
+      'Operator: BUILD_OBJECT\n- Missing required property "properties" (type: array)'
+    )
+  })
+})
+
+test('buildObject - invalid key type', () => {
+  const expression = {
+    operator: 'buildObject',
+    properties: [{ key: [1, 2], value: 3 }, { missingKey: 2 }],
+  }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
+    expect(result).toBe(
+      'Operator: BUILD_OBJECT\n- Property "key" (value: [1,2]) is not of type: string|number|boolean'
+    )
   })
 })

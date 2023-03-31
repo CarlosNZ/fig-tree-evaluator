@@ -32,7 +32,7 @@ test('Evaluate whole object', () => {
       },
     },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({
       outerObject: {
         one: 1,
@@ -57,7 +57,7 @@ test("Don't evaluate whole object", () => {
       },
     },
   }
-  return exp.evaluate(expression, { evaluateFullObject: false }).then((result: any) => {
+  return exp.evaluate(expression, { evaluateFullObject: false }).then((result) => {
     expect(result).toStrictEqual({
       outerObject: {
         one: 1,
@@ -83,7 +83,7 @@ test('Multiple levels of deep operator nodes, with alias node', () => {
       $six: { operator: '+', values: [1, 2, 3] },
     },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({
       outer: { six: 6, two: { notOperator: 'OK', isOperator: 6 }, three: 3 },
     })
@@ -99,7 +99,7 @@ test('Evaluate alias nodes even if not within operator node', () => {
     type: 'Control',
     text: '$testAlias',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual({ type: 'Control', text: 'The First Avenger' })
   })
 })

@@ -1,31 +1,23 @@
-import { parseChildren, BasicExtendedNode } from '../AND/operator'
+import { parseChildren } from '../AND/operator'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import { EvaluatorNode, FigTreeConfig, OperatorObject, BaseOperatorNode } from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { OperatorObject, EvaluateMethod } from '../../types'
+import operatorData, { propertyAliases } from './data'
 
-interface DivisionNodeWithProps extends BaseOperatorNode {
-  dividend: EvaluatorNode
-  divisor: EvaluatorNode
-}
-
-type DivisionOutput = 'quotient' | 'remainder'
-
-export type DivisionNode = BasicExtendedNode & DivisionNodeWithProps & { output?: DivisionOutput }
-
-const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promise<number> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [values, dividend, divisor, output] = (await evaluateArray(
     [expression.values, expression.dividend, expression.divisor, expression.output],
     config
-  )) as [[number, number], number, number, DivisionOutput]
+  )) as [[number, number], number, number, 'quotient' | 'remainder']
 
   config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
+    getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
   )
 
-  const vals = values ?? [dividend, divisor]
+  const vals = values ?? [dividend, divisor].filter((e) => e !== undefined)
 
   if (vals.length < 2) throw new Error('- Not enough values provided')
-  if (!vals[1]) throw new Error('Division by zero!')
+  if (vals.some((e) => typeof e !== 'number')) throw new Error('- Not all values are numbers')
+  if (vals[1] === 0) throw new Error('Division by zero!')
 
   switch (output) {
     case 'quotient':
@@ -38,7 +30,6 @@ const evaluate = async (expression: DivisionNode, config: FigTreeConfig): Promis
 }
 
 export const DIVIDE: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

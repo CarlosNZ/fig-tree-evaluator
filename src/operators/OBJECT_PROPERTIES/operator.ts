@@ -1,35 +1,23 @@
 import extractProperty from 'object-property-extractor'
 import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
-import {
-  BaseOperatorNode,
-  EvaluatorNode,
-  CombinedOperatorNode,
-  EvaluatorOutput,
-  FigTreeConfig,
-  OperatorObject,
-} from '../../types'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import operatorData, { propertyAliases } from './data'
 
-export type ObjPropNode = {
-  [key in typeof requiredProperties[number]]: EvaluatorNode
-} & BaseOperatorNode & { additionalData: object }
-
-const evaluate = async (
-  expression: ObjPropNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
+const evaluate: EvaluateMethod = async (expression, config) => {
   const [property, additionalData] = (await evaluateArray(
     [expression.property, expression.additionalData],
     config
   )) as [string, object]
-  config.typeChecker(...getTypeCheckInput(operatorData.parameters, { property, additionalData }))
+
+  config.typeChecker(getTypeCheckInput(operatorData.parameters, { property, additionalData }))
+
   const inputObject = additionalData
     ? { ...(config.options?.data ?? {}), ...additionalData }
     : config.options?.data ?? {}
   return extractProperty(inputObject, property)
 }
 
-const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [property, fallback] = expression.children as EvaluatorNode[]
   const returnValue = { ...expression, property }
   if (fallback !== undefined) returnValue.fallback = fallback
@@ -37,7 +25,6 @@ const parseChildren = (expression: CombinedOperatorNode): ObjPropNode => {
 }
 
 export const OBJECT_PROPERTIES: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

@@ -18,6 +18,8 @@ import {
 } from '@chakra-ui/react'
 import EvaluatorDev, { FigTreeOptions } from './fig-tree-evaluator/src'
 import EvaluatorPublished from 'fig-tree-evaluator'
+// Enable instead temporarily when Dev had incompatible changes from Published
+// import EvaluatorPublished from './fig-tree-evaluator/src'
 import { OptionsModal } from './OptionsModal'
 import {
   getInitOptions,
@@ -32,15 +34,16 @@ import { PostgresInterface } from './postgresInterface'
 import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
+import { Client } from 'pg'
 
 const looseJSON = require('loose-json')
-const pgConnection = new PostgresInterface()
+const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
-const expDev = new EvaluatorDev({ ...initOptions, pgConnection })
-const expPub = new EvaluatorPublished({ ...initOptions, pgConnection })
+const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
+const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
@@ -65,9 +68,9 @@ function App() {
   const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
     process.env.NODE_ENV === 'development'
       ? localStorage.getItem('evaluatorSelection') === 'Development'
-        ? expDev
-        : expPub
-      : expPub
+        ? figTreeDev
+        : figTreePub
+      : figTreePub
   )
 
   const updateOptions = (options: FigTreeOptions) => {
@@ -92,6 +95,7 @@ function App() {
       .evaluate(looseJSON(expression), { objects: looseJSON(data) })
       .then((result) => {
         if (result instanceof Object && 'error' in result)
+          // @ts-ignore
           setResult({ output: null, error: result.error })
         else setResult({ output: result, error: false })
         setLoading(false)
@@ -122,7 +126,7 @@ function App() {
 
   const handleSelectEvaluator = (event: any) => {
     localStorage.setItem('evaluatorSelection', event.target.value)
-    setEvaluator(event.target.value === 'Development' ? expDev : expPub)
+    setEvaluator(event.target.value === 'Development' ? figTreeDev : figTreePub)
     reEvaluate()
   }
 

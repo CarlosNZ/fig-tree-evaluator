@@ -2,17 +2,10 @@
 The core evaluation function used by FigTreeEvaluator
 */
 
-import {
-  FigTreeConfig,
-  EvaluatorNode,
-  EvaluatorOutput,
-  OutputType,
-  CombinedOperatorNode,
-} from './types'
+import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
 import { evaluateArray } from './operators/_operatorUtils'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
-  checkRequiredNodes,
   fallbackOrError,
   convertOutputMethods,
   errorMessage,
@@ -56,7 +49,7 @@ export const evaluatorFunction = async (
   if (!isOperator && !isFragment) {
     // Return deprecated (< v1) "value" nodes
     if (options.supportDeprecatedValueNodes && isObject(expression) && 'value' in expression)
-      return expression.value
+      return expression.value as EvaluatorOutput
 
     return replaceAliasNodeValues(expression, config)
   }
@@ -83,7 +76,7 @@ export const evaluatorFunction = async (
       )
     if (!isOperatorNode(fragmentReplacement))
       return replaceAliasNodeValues(fragmentReplacement, config)
-    expression = { ...expression, ...(fragmentReplacement as CombinedOperatorNode), ...parameters }
+    expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
     delete expression.fragment
     delete expression.parameters
   }
@@ -105,7 +98,7 @@ export const evaluatorFunction = async (
         returnErrorAsString
       )
 
-    const { requiredProperties, propertyAliases, evaluate, parseChildren } = operators[operator]
+    const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
     expression = mapPropertyAliases(propertyAliases, expression)
 
@@ -128,14 +121,6 @@ export const evaluatorFunction = async (
       ? { ...config, resolvedAliasNodes: { ...config.resolvedAliasNodes, ...newAliasNodes } }
       : config
 
-    const validationError = checkRequiredNodes(requiredProperties, expression)
-    if (validationError)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, childConfig),
-        `Operator: ${operator}\n- ${validationError}`,
-        returnErrorAsString
-      )
-
     // If using "children" property, convert children array to expected
     // properties
     if ('children' in expression) {
@@ -148,6 +133,7 @@ export const evaluatorFunction = async (
           returnErrorAsString
         )
       expression = await parseChildren(expression, childConfig)
+      delete expression.children
     }
 
     // Recursively evaluate node
@@ -155,7 +141,7 @@ export const evaluatorFunction = async (
     try {
       result = await evaluate(expression, childConfig)
     } catch (err) {
-      result = fallbackOrError(
+      return fallbackOrError(
         await evaluatorFunction(expression.fallback, config),
         `Operator: ${operator}\n${errorMessage(err)}`,
         returnErrorAsString

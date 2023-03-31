@@ -32,7 +32,7 @@ test('Fragments, single parameter at root', () => {
     fragment: 'getFlag',
     $country: 'New Zealand',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('🇳🇿')
   })
 })
@@ -48,7 +48,7 @@ test('Join two fragments together, one simple, one using a single "parameter")',
       },
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('The flag of Brazil is: 🇧🇷')
   })
 })
@@ -77,7 +77,7 @@ test('Fragment used multiple times in an expression (with different parameters (
     ],
     type: 'array',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([24, '🇳🇿🇧🇷'])
   })
 })
@@ -120,7 +120,7 @@ test('Use old and new fragments', () => {
         variables: { country: 'New Zealand', field: 'capital[0]', otherField: 'name.common' },
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Wellington, New Zealand')
     })
 })
@@ -132,7 +132,7 @@ test('Same thing but with different data object', () => {
         variables: { country: 'Australia', field: 'tld[0]', otherField: 'region' },
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('.au, Oceania')
     })
 })
@@ -142,7 +142,7 @@ test('Add a new fragment to current evaluation options', () => {
     fragment: 'adder',
     parameters: { $values: [{ fragment: 'basic' }, { fragment: 'basic' }] },
   }
-  return exp.evaluate(expression, { fragments: { basic: 'SimpleText' } }).then((result: any) => {
+  return exp.evaluate(expression, { fragments: { basic: 'SimpleText' } }).then((result) => {
     expect(result).toBe('SimpleTextSimpleText')
   })
 })
@@ -152,7 +152,7 @@ test('Missing fragment', () => {
     fragment: 'newFragment',
     parameters: { $temp: "Doesn't matter" },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Fragment not defined: newFragment')
   })
 })
@@ -162,7 +162,7 @@ test('Missing fragment with fallback', () => {
     fragment: 'newFragment',
     fallback: { fragment: 'adder', $values: ['This appears', ' ', 'instead'] },
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('This appears instead')
   })
 })
@@ -206,7 +206,7 @@ test('Using a decision tree as a fragment', () => {
     .evaluate(expression, {
       data: { weather: 'rainy', humidity: 'high', wind: 'strong' },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('NO')
     })
 })
@@ -222,7 +222,7 @@ test('Using a fragment as an alias node', () => {
     valueIfTrue: '$getNZ',
     valueIfFalse: 'Not New Zealand',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('New Zealand')
   })
 })
@@ -234,7 +234,7 @@ exp.updateOptions({
 })
 test('Fragment references another fragment 🙄', () => {
   const expression = { fragment: 'addAndDouble', $numbers: [3, 4, 5] }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(24)
   })
 })
@@ -252,7 +252,7 @@ test('Fragment values are falsy', () => {
     { fragment: 'falsy4' },
     { fragment: 'truthy' },
   ]
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([false, null, '', 0, true])
   })
 })

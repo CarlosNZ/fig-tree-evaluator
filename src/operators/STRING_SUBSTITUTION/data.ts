@@ -1,4 +1,4 @@
-import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Replace values in a string using simple parameter substitution'
@@ -20,7 +20,6 @@ const parameters: Parameter[] = [
   },
 ]
 
-export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
 
 const operatorData: OperatorData = {

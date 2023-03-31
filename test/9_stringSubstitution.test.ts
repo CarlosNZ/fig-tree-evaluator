@@ -9,7 +9,7 @@ test('Simple string substitution', () => {
     operator: 'stringSubstitution',
     children: ['Hello, %1, welcome to our site.', 'friend'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('Hello, friend, welcome to our site.')
   })
 })
@@ -24,7 +24,7 @@ test('Simple string substitution - multiple replacements', () => {
       "don't",
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe(
       "There are 10 kinds of people in the world:\nthose who understand binary and those who don't"
     )
@@ -42,7 +42,7 @@ test('String substitution - non-string replacements', () => {
       ['Boba', 'Mando'],
     ],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('We have 2 people listed with an average value of 4.53: Boba,Mando')
   })
 })
@@ -54,7 +54,7 @@ test('String substitution - non-string replacements, using properties', () => {
     string: 'We have %1 %2 listed with an average value of %3: %4',
     substitutions: [2, 'people', 4.53, ['Boba', 'Mando']],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('We have 2 people listed with an average value of 4.53: Boba,Mando')
   })
 })
@@ -64,7 +64,7 @@ test('String substitution - too many replacements', () => {
     operator: 'stringSubstitution',
     children: ['The price of milk is %1 per %2', '$2.30', 'liter', 'gallon', '$5.00'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('The price of milk is $2.30 per liter')
   })
 })
@@ -74,7 +74,7 @@ test('String substitution - too few replacements,', () => {
     operator: 'stringSubstitution',
     children: ["The applicant's name is %1 %2 %3.", 'Wanda', 'Maximoff'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe("The applicant's name is Wanda Maximoff .")
   })
 })
@@ -85,7 +85,7 @@ test('String substitution - parameters not ordered, using properties,', () => {
     string: '%2 out of every %3 people are %1',
     substitutions: ['stupid', 'Two', 3],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('Two out of every 3 people are stupid')
   })
 })
@@ -96,7 +96,7 @@ test('String substitution - parameters not ordered and too few, using props,', (
     string: '%2 out of every %3 people are %1',
     replacements: ['stupid', 'Two'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('Two out of every  people are stupid')
   })
 })
@@ -112,7 +112,7 @@ test('String substitution - parameters not sequential,', () => {
       'numbers',
     ],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe("It shouldn't matter if there are big gaps between parameter numbers")
   })
 })
@@ -123,7 +123,7 @@ test('String substitution - no parameters', () => {
     string: 'This sentence has no replacements.',
     substitutions: ['nothing', 'will', 'happen'],
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe('This sentence has no replacements.')
   })
 })
@@ -133,7 +133,7 @@ test('String substitution - no replacements supplied', () => {
     operator: 'stringSubstitution',
     children: ['Your name is %2 %1 but we have nothing to replace them with'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Your name is   but we have nothing to replace them with')
   })
 })
@@ -144,7 +144,7 @@ test('String substitution - some parameters empty strings', () => {
     string: 'You like: %1%2%3',
     substitutions: ['', '\\n-Cake', '\\n-Candy'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('You like: \\n-Cake\\n-Candy')
   })
 })
@@ -155,7 +155,55 @@ test('String substitution - repeated parameterss', () => {
     string: '%1 is the same as %1 but not %2',
     substitutions: ['THIS', 'THAT'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('THIS is the same as THIS but not THAT')
+  })
+})
+
+test('String substitution - parameters contain further expressions', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: { $plus: ['May the %1', ' be with %2'] },
+    substitutions: [
+      {
+        '$?': { condition: { $eq: [{ $plus: [50, 50] }, 100] }, ifTrue: 'Force', ifFalse: 'Forks' },
+      },
+      { $plus: ['y', 'o', 'u'] },
+    ],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('May the Force be with you')
+  })
+})
+
+test('String substitution - parameters contain further expressions', () => {
+  const expression = {
+    operator: 'stringSub',
+    string: '%1 %2 %3 %4',
+    substitutions: {
+      $plus: [
+        ['One', 'Two'],
+        ['Three', 'Four'],
+      ],
+    },
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('One Two Three Four')
+  })
+})
+
+test('String substitution -- missing parameters', async () => {
+  const expression = { operator: 'replace', irrelevant: 'value' }
+  await expect(exp.evaluate(expression)).rejects.toThrow(
+    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)\n- Missing required property "substitutions" (type: array)'
+  )
+})
+
+test('String substitution - missing replacements parameter', () => {
+  const expression = { $replace: { string: 'This is the %1' } }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
+    expect(result).toBe(
+      'Operator: STRING_SUBSTITUTION\n- Missing required property "substitutions" (type: array)'
+    )
   })
 })

@@ -1,4 +1,4 @@
-import FigTreeEvaluator, { evaluateExpression } from '../src'
+import FigTreeEvaluator from '../src'
 
 const exp = new FigTreeEvaluator({
   data: {
@@ -23,7 +23,7 @@ test('Object properties - single property', () => {
     operator: 'objectProperties',
     children: ['user.firstName'],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Steve')
   })
 })
@@ -33,7 +33,7 @@ test('Object properties, deeper, using properties', () => {
     operator: 'getProperty',
     property: 'application.questions.q2',
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Enter your name')
   })
 })
@@ -43,7 +43,7 @@ test('Object properties, first level, object passed into instance', () => {
     operator: 'get_obj_prop',
     path: 'name',
   }
-  return exp.evaluate(expression, { data: { name: 'Wanda' } }).then((result: any) => {
+  return exp.evaluate(expression, { data: { name: 'Wanda' } }).then((result) => {
     expect(result).toBe('Wanda')
   })
 })
@@ -64,7 +64,7 @@ test('Object properties, unresolved path with Null fallback', () => {
     property: 'application.querstions.q2.go.even.deeper',
     fallback: null,
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBeNull()
   })
 })
@@ -74,7 +74,7 @@ test('Object properties, unresolved path with Null fallback (using children)', (
     operator: 'objectProperties',
     children: ['application.querstions.q2.go.even.deeper', null],
   }
-  return exp.evaluate(expression).then((result: any) => {
+  return exp.evaluate(expression).then((result) => {
     expect(result).toBeNull()
   })
 })
@@ -85,7 +85,7 @@ test('Object properties, unresolved path (first level) with fallback', () => {
     path: 'cantFind',
     fallback: 'Sorry 🤷‍♂️',
   }
-  return exp.evaluate(expression, { data: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result) => {
     expect(result).toBe('Sorry 🤷‍♂️')
   })
 })
@@ -96,7 +96,7 @@ test('Object properties with additional objects', () => {
     path: 'newThing.first',
     additionalObjects: { newThing: { first: 'A New Value' } },
   }
-  return exp.evaluate(expression, { data: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result) => {
     expect(result).toBe('A New Value')
   })
 })
@@ -112,7 +112,7 @@ test('Object properties with more complex additional objects', () => {
       },
     },
   }
-  return exp.evaluate(expression, { data: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result) => {
     expect(result).toBe('Type C')
   })
 })
@@ -129,7 +129,7 @@ test('Object properties with additional objects, fallback', () => {
     },
     fallback: 'Nope',
   }
-  return exp.evaluate(expression, { data: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result) => {
     expect(result).toBe('Nope')
   })
 })
@@ -146,7 +146,7 @@ test('Object properties dynamically-built additionalObject', () => {
       ],
     },
   }
-  return exp.evaluate(expression, { data: {} }).then((result: any) => {
+  return exp.evaluate(expression, { data: {} }).then((result) => {
     expect(result).toBe(100)
   })
 })

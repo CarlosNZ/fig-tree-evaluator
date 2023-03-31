@@ -8,7 +8,7 @@ A `queue` (of the keys) is maintained in order to determine recency. (Oldest
 items are dropped from the queue/store when `maxSize` is reached)
 */
 
-import { EvaluatorOutput } from './types'
+import { EvaluatorOutput, UnknownFunction } from './types'
 
 const MAX_CACHED_ITEMS = 50 // Default if not specified
 
@@ -22,7 +22,11 @@ class FigTreeCache {
     this.maxSize = maxSize ?? MAX_CACHED_ITEMS
   }
 
-  public useCache = async (shouldUseCache: boolean, action: Function, ...args: unknown[]) => {
+  public useCache = async (
+    shouldUseCache: boolean,
+    action: UnknownFunction,
+    ...args: unknown[]
+  ) => {
     if (!shouldUseCache) return await action(...args)
 
     const key = stringifyInput(args)
@@ -55,9 +59,5 @@ class FigTreeCache {
 
 export default FigTreeCache
 
-const stringifyInput = (args: any[]) => {
-  return args.reduce((outputString, arg, index) => {
-    const part = typeof arg === 'object' ? JSON.stringify(arg) : arg
-    return index === 0 ? `${part}` : `${outputString}_${part}`
-  }, '')
-}
+const stringifyInput = (args: unknown[]) =>
+  args.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : arg)).join('_')

@@ -1,3 +1,4 @@
+import { AxiosRequestHeaders } from 'axios'
 import {
   evaluateArray,
   axiosRequest,
@@ -6,33 +7,45 @@ import {
   joinUrlParts,
   getTypeCheckInput,
 } from '../_operatorUtils'
-import { EvaluatorOutput, FigTreeConfig, GenericObject, OperatorObject } from '../../types'
-import { parseChildrenGET as parseChildren, APINode } from '../GET/operator'
-import operatorData, { requiredProperties, propertyAliases } from './data'
+import { EvaluateMethod, OperatorObject } from '../../types'
+import { parseChildrenGET as parseChildren } from '../GET/operator'
+import operatorData, { propertyAliases } from './data'
 
-const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<EvaluatorOutput> => {
-  const [urlObj, data, returnProperty, headers] = (await evaluateArray(
-    [expression.url, expression.parameters, expression.returnProperty, expression.headers],
+const evaluate: EvaluateMethod = async (expression, config) => {
+  const [urlObj, data, returnProperty, headers, useCache] = (await evaluateArray(
+    [
+      expression.url,
+      expression.parameters,
+      expression.returnProperty,
+      expression.headers,
+      expression.useCache,
+    ],
     config
-  )) as [string | { url: string; headers: GenericObject }, GenericObject, string, GenericObject]
+  )) as [
+    string | { url: string; headers: AxiosRequestHeaders },
+    object,
+    string,
+    AxiosRequestHeaders,
+    boolean
+  ]
 
   const { url, headers: headersObj } =
     urlObj instanceof Object ? urlObj : { url: urlObj, headers: null }
 
-  config.typeChecker(
-    ...getTypeCheckInput(operatorData.parameters, { url, headers, data, returnProperty }),
-    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] }
-  )
+  config.typeChecker([
+    ...getTypeCheckInput(operatorData.parameters, { url, headers, data, returnProperty, useCache }),
+    { name: 'headers', value: headersObj, expectedType: ['object', 'null'] },
+  ])
 
   const baseUrl = config.options.baseEndpoint ?? ''
 
   const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }
 
-  const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
+  const shouldUseCache = useCache ?? config.options.useCache ?? true
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (url: string, data: GenericObject, headers: GenericObject, returnProperty?: string) => {
+    async () => {
       const response = await axiosRequest({
         url,
         data,
@@ -51,7 +64,6 @@ const evaluate = async (expression: APINode, config: FigTreeConfig): Promise<Eva
 }
 
 export const POST: OperatorObject = {
-  requiredProperties,
   propertyAliases,
   operatorData,
   evaluate,

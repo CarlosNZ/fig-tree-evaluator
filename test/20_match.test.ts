@@ -10,7 +10,7 @@ test('Basic match', () => {
     'another value': 100,
     'simple value': 99,
   }
-  return evaluateExpression(expression).then((result: any) => {
+  return evaluateExpression(expression).then((result) => {
     expect(result).toBe(99)
   })
 })
@@ -30,7 +30,7 @@ test('Switch with "branches" object', () => {
       rainy: { operator: '+', values: [9, 9, 9] },
     },
   }
-  return exp.evaluate(expression, { objects: state }).then((result: any) => {
+  return exp.evaluate(expression, { objects: state }).then((result) => {
     expect(result).toBe(27)
   })
 })
@@ -47,7 +47,7 @@ test('Match with "branches" object built using buildObject', () => {
       ],
     },
   }
-  return exp.evaluate(expression, { objects: state }).then((result: any) => {
+  return exp.evaluate(expression, { objects: state }).then((result) => {
     expect(result).toBe(27)
   })
 })
@@ -80,7 +80,7 @@ test('Match with children, nested', () => {
       },
     ],
   }
-  return exp.evaluate(expression, { objects: state }).then((result: any) => {
+  return exp.evaluate(expression, { objects: state }).then((result) => {
     expect(result).toBe('NO')
   })
 })
@@ -91,22 +91,13 @@ test('Match with children, nested', () => {
 // https://user-images.githubusercontent.com/5456533/208660132-39f42ecf-894f-4e7a-891d-ce3a2d184d02.png
 const decisionTree = {
   operator: 'match',
-  matchExpression: {
-    operator: 'objProps',
-    property: 'numberOfPlayers',
-  },
+  matchExpression: { operator: 'objProps', property: 'numberOfPlayers' },
   branches: {
-    1: {
+    '1': {
       operator: '?',
       condition: {
         operator: '>',
-        values: [
-          {
-            operator: 'objProps',
-            property: 'ageOfYoungestPlayer',
-          },
-          7,
-        ],
+        values: [{ operator: 'objProps', property: 'ageOfYoungestPlayer' }, 7],
         strict: false,
       },
       ifTrue: 'Solitaire',
@@ -116,75 +107,42 @@ const decisionTree = {
       operator: '?',
       condition: {
         operator: '>',
-        values: [
-          {
-            operator: 'objProps',
-            property: 'ageOfYoungestPlayer',
-          },
-          5,
-        ],
+        values: [{ operator: 'objProps', property: 'ageOfYoungestPlayer' }, 5],
         strict: false,
       },
       ifTrue: {
         operator: '?',
         condition: {
           operator: '<',
-          values: [
-            {
-              operator: 'objProps',
-              property: 'ageOfYoungestPlayer',
-            },
-            8,
-          ],
+          values: [{ operator: 'objProps', property: 'ageOfYoungestPlayer' }, 8],
         },
         ifTrue: 'Go Fish',
         ifFalse: {
           operator: '?',
           condition: {
             operator: '<',
-            values: [
-              {
-                operator: 'objProps',
-                property: 'ageOfYoungestPlayer',
-              },
-              12,
-            ],
+            values: [{ operator: 'objProps', property: 'ageOfYoungestPlayer' }, 12],
           },
           ifTrue: '$difficultyYounger',
           ifFalse: {
             operator: '?',
             condition: {
               operator: '<',
-              values: [
-                {
-                  operator: 'objProps',
-                  property: 'ageOfYoungestPlayer',
-                },
-                16,
-              ],
+              values: [{ operator: 'objProps', property: 'ageOfYoungestPlayer' }, 16],
             },
             ifTrue: '$difficultyOlder',
             ifFalse: {
-              operator: 'match',
-              match: {
-                operator: 'objProps',
-                property: 'numberOfPlayers',
-              },
-              4: {
+              '4': {
                 operator: '?',
                 condition: {
                   operator: '=',
-                  values: [
-                    {
-                      operator: 'objProps',
-                      property: 'preferredDifficulty',
-                    },
-                    'hard',
-                  ],
+                  values: [{ operator: 'objProps', property: 'preferredDifficulty' }, 'hard'],
                 },
                 ifTrue: 'Bridge',
                 ifFalse: '$difficultyOlder',
               },
+              operator: 'match',
+              match: { operator: 'objProps', property: 'numberOfPlayers' },
               fallback: '$difficultyOlder',
             },
           },
@@ -195,20 +153,14 @@ const decisionTree = {
   },
   $difficultyYounger: {
     operator: 'switch',
-    matchExpression: {
-      operator: 'objProps',
-      property: 'preferredDifficulty',
-    },
+    matchExpression: { operator: 'objProps', property: 'preferredDifficulty' },
     easy: 'Go Fish',
     challenging: 'Rummy',
     hard: 'Rummy',
   },
   $difficultyOlder: {
     operator: 'match',
-    matchExpression: {
-      operator: 'objProps',
-      property: 'preferredDifficulty',
-    },
+    matchExpression: { operator: 'objProps', property: 'preferredDifficulty' },
     easy: 'Rummy',
     challenging: '500',
     hard: '500',
@@ -224,7 +176,7 @@ test('Card Game Decision Tree - single player 7+', () => {
         preferredDifficulty: 'easy',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Solitaire')
     })
 })
@@ -238,7 +190,7 @@ test('Card Game Decision Tree - single player under 7', () => {
         preferredDifficulty: 'easy',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('No recommendations 😔')
     })
 })
@@ -252,7 +204,7 @@ test('Card Game Decision Tree - multiple players, some under 5', () => {
         preferredDifficulty: 'easy',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Snap')
     })
 })
@@ -266,7 +218,7 @@ test('Card Game Decision Tree - multiple players, 5-8', () => {
         preferredDifficulty: 'easy',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Go Fish')
     })
 })
@@ -280,7 +232,7 @@ test('Card Game Decision Tree - multiple players, 8-12, challenging game', () =>
         preferredDifficulty: 'challenging',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Rummy')
     })
 })
@@ -294,7 +246,7 @@ test('Card Game Decision Tree - multiple players, 12-16, easy game', () => {
         preferredDifficulty: 'easy',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Rummy')
     })
 })
@@ -308,7 +260,7 @@ test('Card Game Decision Tree - 3 players, 16+, challenging game', () => {
         preferredDifficulty: 'challenging',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('500')
     })
 })
@@ -322,7 +274,7 @@ test('Card Game Decision Tree - 4 players, 16+, challenging game', () => {
         preferredDifficulty: 'challenging',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('500')
     })
 })
@@ -336,7 +288,7 @@ test('Card Game Decision Tree - 4 players, 16+, hard game', () => {
         preferredDifficulty: 'hard',
       },
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Bridge')
     })
 })
@@ -351,7 +303,14 @@ test('Card Game Decision Tree - No match error', () => {
       },
       returnErrorAsString: true,
     })
-    .then((result: any) => {
+    .then((result) => {
       expect(result).toBe('Operator: MATCH\nNo match found for other')
     })
+})
+
+test('Match - invalid branches', () => {
+  const expression = { $match: { match: 'three', branches: 'not an object or array' } }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
+    expect(result).toBe("Operator: MATCH\nBranches don't evaluate to an object")
+  })
 })

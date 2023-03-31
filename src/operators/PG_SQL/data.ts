@@ -1,4 +1,4 @@
-import { getRequiredProperties, getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../_operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Query a Postgres database using node-postgres'
@@ -23,11 +23,17 @@ const parameters: Parameter[] = [
     description: 'Determines the shape of the resulting data (see documentation)',
     aliases: ['queryType'],
     required: false,
-    type: 'string',
+    type: { literal: ['array', 'string', 'number'] },
+  },
+  {
+    name: 'useCache',
+    description: 'Whether or not the FigTree cache is used',
+    aliases: [],
+    required: false,
+    type: 'boolean',
   },
 ]
 
-export const requiredProperties = getRequiredProperties(parameters)
 export const propertyAliases = getPropertyAliases(parameters)
 
 const operatorData: OperatorData = {
