@@ -883,7 +883,7 @@ Aliases: `get`, `api`
 #### Properties
 
 - `url` (or `endpoint`)<sup>*</sup>: (string) -- url to be queried
-- `parameters`: (object) -- key-value pairs for any query parameters for the request
+- `parameters` (or `queryParams`, `queryParameters`, `urlQueries`): (object) -- key-value pairs for any query parameters for the request
 - `headers`: (object) -- any additional headers (such as authentication) required for the request
 - `returnProperty` (or `outputProperty`): (string) -- an object path for which property to extract from the returned data. E.g. if the API returns `{name: {first: "Bruce", last: "Banner"}, age: 35}` and you specify `returnProperty: "name.first`, the operator will return `"Bruce"` (Uses the same logic as the [objectProperties](#object_properties) internally)
 
@@ -946,7 +946,8 @@ The "POST" operator is basically structurally the same as [GET](#get).
 
 #### Properties
 
-- `url`/`endpoint`<sup>*</sup>,`parameters`, `headers`, `returnProperty`/`outputProperty` -- same as "GET" operator (although the `parameters` object will be passed to the Post request as body JSON rather than url query parameters)
+- `url`/`endpoint`<sup>*</sup>, `headers`, `returnProperty`/`outputProperty` -- same as "GET" operator.
+- `parameters` (or `bodyJson`, `data`) -- passed to the Post request as body JSON rather than url query parameters (hence the different aliases)
 
 e.g.
 ```js

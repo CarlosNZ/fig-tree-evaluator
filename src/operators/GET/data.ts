@@ -28,7 +28,7 @@ const parameters: Parameter[] = [
   {
     name: 'parameters',
     description: 'Query parameters (key-value)',
-    aliases: [],
+    aliases: ['queryParams', 'queryParameters', 'urlQueries'],
     required: false,
     type: 'object',
   },

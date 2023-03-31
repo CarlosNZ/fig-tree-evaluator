@@ -516,7 +516,7 @@ test('Metadata -- get operator info', () => {
         {
           name: 'parameters',
           description: 'Query parameters (key-value)',
-          aliases: [],
+          aliases: ['queryParams', 'queryParameters', 'urlQueries'],
           required: false,
           type: 'object',
         },
@@ -556,9 +556,9 @@ test('Metadata -- get operator info', () => {
           type: 'object',
         },
         {
-          name: 'data',
+          name: 'parameters',
           description: 'JSON Body parameters (key-value)',
-          aliases: [],
+          aliases: ['bodyJson', 'data'],
           required: false,
           type: 'object',
         },

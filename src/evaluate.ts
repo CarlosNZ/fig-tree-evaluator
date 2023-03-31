@@ -78,7 +78,6 @@ export const evaluatorFunction = async (
       return replaceAliasNodeValues(fragmentReplacement, config)
     expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
     delete expression.fragment
-    delete expression.parameters
   }
 
   try {
