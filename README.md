@@ -1691,30 +1691,30 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.8.5**: Small bug fix in [COUNT](#count) operator
 - **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
 - **v2.8.0**:
-  - [Shorthand syntax](#shorthand-syntax) (#80)
-  - Methods to retrieve [metadata](#metadata) about operators, fragments and functions (#82)
-- **v2.7.0**: Add `excludeOperators` option to allow certain operators to be prohibited (e.g. database lookups) (#54)
+  - **[Shorthand syntax](#shorthand-syntax)** (#80)
+  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and functions (#82)
+- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be prohibited (e.g. database lookups) (#54)
 - **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
 - **v2.5.0**:
   - Bug fixes for edge cases (mainly related to backwards compatibility)
   - More backwards compatibility for very old (pre-v1) syntax (undocumented)
 - **v2.4.1**: Small bug fix for Fragments edge case
-- **v2.4.0**: Implement [Fragments](#fragments) (#74)
+- **v2.4.0**: **Implement [Fragments](#fragments)** (#74)
 - **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
-- **v2.3.0**: Implement [caching/memoization](#caching-memoization) (#68)
+- **v2.3.0**: **Implement [caching/memoization](#caching-memoization)** (#68)
 - **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
-- **v2.2.2**: Option to evaluate whole object if operator nodes are deep within it (#64)
+- **v2.2.2**: **Option to evaluate whole object** if operator nodes are deep within it (#64)
 - **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
 - **v2.2.0**:
-  - New "[Match](#match)" operator (#61)
+  - **New "[Match](#match)" operator** (#61)
   - Fix for regex incompatibility with Safari (#60)
-- **v2.1.5**: Demo updates (no changes to core evaluator)
 - **v2.1.4**: Upgrade dependencies
-- **v2.1.0**: [Alias nodes](#alias-nodes) (#57)
+- **v2.1.0**: **[Alias nodes](#alias-nodes)** (#57)
 - **v2.0.4**: Backwards compatibility for customFunctions (#53)
-- **v2.0.1**: Add deep equality comparison for objects/arrays in `=`/`!=` operators
+- **v2.0.1**: **Add deep equality comparison** for objects/arrays in `=`/`!=` operators
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)

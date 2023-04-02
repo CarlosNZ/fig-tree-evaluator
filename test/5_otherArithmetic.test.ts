@@ -334,8 +334,22 @@ test('Count - simple array', () => {
   })
 })
 
+test('Count - simple array using children', () => {
+  const expression = { operator: 'count', children: [['a', 'b', { $plus: [1, 2, 3] }]] }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(3)
+  })
+})
+
+test('Count - simple array using children, with operator node that returns an array', () => {
+  const expression = { operator: 'count', children: [{ $pass: [1, 2, 3] }] }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(3)
+  })
+})
+
 test('Count - empty array', () => {
-  const expression = { operator: 'length', children: [] }
+  const expression = { operator: 'length', children: [[]] }
   return exp.evaluate(expression).then((result) => {
     expect(result).toEqual(0)
   })
