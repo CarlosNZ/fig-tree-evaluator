@@ -117,8 +117,7 @@ export const evaluateExpression = (expression: EvaluatorNode, options?: FigTreeO
 // ensures backwards compatibility and keeps option names standardised.
 const standardiseOptionNames = (options: FigTreeOptions & { objects?: object }) => {
   if ('objects' in options) {
-    options.data = options.objects
-    delete options.objects
+    return { ...options, data: options.objects }
   }
   return options
 }
