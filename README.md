@@ -1691,6 +1691,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.8.6**: Small bug fix where `options` object would be mutated instead of replaced
 - **v2.8.5**: Small bug fix in [COUNT](#count) operator
 - **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
 - **v2.8.0**:
