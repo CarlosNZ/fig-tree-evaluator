@@ -5,7 +5,7 @@ import {
   isFullUrl,
   joinUrlParts,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
 import { EvaluateMethod, OperatorObject } from '../../types'
 import { parseChildrenGET as parseChildren } from '../GET/operator'

@@ -1,4 +1,4 @@
-import { getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Pass through a value unchanged (or change its type)'

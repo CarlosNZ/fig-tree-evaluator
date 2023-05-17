@@ -1,4 +1,4 @@
-import { singleArrayToObject } from '../_operatorUtils'
+import { singleArrayToObject } from '../operatorUtils'
 import { evaluatorFunction } from '../../evaluate'
 import { evaluateArray } from '../../evaluate'
 import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'

@@ -6,7 +6,7 @@ import {
   joinUrlParts,
   axiosRequest,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
 import {
   OperatorNode,
   EvaluatorNode,

@@ -1,5 +1,5 @@
 import { parseChildren } from '../AND/operator'
-import { getTypeCheckInput } from '../_operatorUtils'
+import { getTypeCheckInput } from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
 import { EvaluateMethod, OperatorObject } from '../../types'
 import { dequal } from 'dequal/lite'

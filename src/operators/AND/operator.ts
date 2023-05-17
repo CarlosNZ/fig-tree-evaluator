@@ -1,4 +1,4 @@
-import { getTypeCheckInput } from '../_operatorUtils'
+import { getTypeCheckInput } from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
 import { OperatorObject, ParseChildrenMethod, EvaluateMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'

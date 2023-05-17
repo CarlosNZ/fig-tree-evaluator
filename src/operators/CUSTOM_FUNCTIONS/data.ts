@@ -1,4 +1,4 @@
-import { getPropertyAliases } from '../_operatorUtils'
+import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Call a custom function (defined in options)'

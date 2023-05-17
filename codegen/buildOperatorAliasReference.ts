@@ -1,15 +1,17 @@
 /*
 This automates the process of building the operatorAliases map. We could
 generate it each time at runtime, but since it's a fixed reference it makes
-sense to create it once and save the result.
+sense to save it as a static list.
 
 This script runs automatically before the build script runs (or run manually
 with `yarn generate`).
 
-Result is saved to `src/operators/_operatorAliases.json`
+Result is saved to `src/operators/operatorAliases.ts`
 */
 
 import { writeFileSync } from 'fs'
+import prettier, { RequiredOptions } from 'prettier'
+import prettierConfig from '../.prettierrc'
 import * as operatorList from '../src/operators'
 import { Operators, Operator, OperatorObject, OperatorReference } from '../src/types'
 
@@ -35,4 +37,11 @@ const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObje
 console.log('Building Operator aliases...\n')
 const operatorAliases = buildOperatorAliases(operatorReference)
 
-writeFileSync('src/operators/_operatorAliases.json', JSON.stringify(operatorAliases, null, 2))
+writeFileSync(
+  'src/operators/operatorAliases.ts',
+  prettier.format(
+    "import { OperatorAliases } from '../types'\n\nexport const operatorAliases: OperatorAliases = " +
+      JSON.stringify(operatorAliases, null, 2),
+    { parser: 'babel', ...prettierConfig } as Partial<RequiredOptions>
+  )
+)

@@ -7,7 +7,7 @@ import {
   isFullUrl,
   joinUrlParts,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
 import {
   OperatorNode,
   EvaluatorNode,

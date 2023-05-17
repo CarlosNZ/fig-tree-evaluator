@@ -10,7 +10,6 @@ import {
   FigTreeConfig,
   OperatorReference,
   OperatorAliases,
-  OperatorAlias,
   Operator,
   FragmentNode,
   OperatorNode,
@@ -42,7 +41,7 @@ const standardiseOperatorName = (name: string) => {
 export const getOperatorName = (
   operator: string,
   operatorAliases: OperatorAliases
-): Operator | undefined => operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
+): Operator | undefined => operatorAliases[standardiseOperatorName(operator)]
 
 export const filterOperators = (
   operators: OperatorReference,
@@ -51,9 +50,9 @@ export const filterOperators = (
 ): OperatorReference => {
   const filteredOperators = { ...operators }
   exclusions.forEach((exclusion) => {
-    const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
+    const operator = operatorAliases[standardiseOperatorName(exclusion)]
     if (!operator) console.warn(`Invalid operator exclusion: ${exclusion}`)
-    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]]
+    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion)]]
   })
   return filteredOperators
 }

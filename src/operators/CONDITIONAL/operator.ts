@@ -1,6 +1,6 @@
 import { evaluatorFunction } from '../../evaluate'
 import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
-import { getTypeCheckInput } from '../_operatorUtils'
+import { getTypeCheckInput } from '../operatorUtils'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {

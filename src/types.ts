@@ -1,7 +1,7 @@
 import FigTreeCache from './cache'
 import { Client } from 'pg'
 import { GraphQLConnection } from './operators'
-import operatorAliases from './operators/_operatorAliases.json'
+import { operatorAliases } from './operators/operatorAliases'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
 
 export const Operators = [
@@ -34,7 +34,7 @@ export const Operators = [
 
 export type Operator = (typeof Operators)[number]
 export type OperatorAlias = keyof typeof operatorAliases
-export type OperatorAliases = Record<OperatorAlias, Operator>
+export type OperatorAliases = Record<string, Operator>
 
 export type Fragments = Record<string, Fragment>
 export type UnknownFunction = (...args: any[]) => EvaluatorOutput
