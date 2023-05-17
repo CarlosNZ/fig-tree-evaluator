@@ -1,4 +1,4 @@
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 import { OperatorAlias } from '../src/types'
 
 console.warn = jest.fn() // Don't show console warning in tests

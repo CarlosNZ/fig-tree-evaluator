@@ -1,4 +1,4 @@
-import FigTreeEvaluator, { evaluateExpression } from '../src'
+import { FigTreeEvaluator, evaluateExpression } from '../src'
 
 const exp = new FigTreeEvaluator({ supportDeprecatedValueNodes: true })
 

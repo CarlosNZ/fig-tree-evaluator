@@ -10,4 +10,5 @@ export default {
     format: 'cjs',
   },
   plugins: [commonjs(), typescript({ module: 'ESNext' }), json(), resolve()],
+  external: [/node_modules/],
 }

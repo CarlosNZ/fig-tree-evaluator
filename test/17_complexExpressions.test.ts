@@ -1,5 +1,5 @@
 import { Client } from 'pg'
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 import pgConfig from './postgres/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../codegen/queryBuilder'

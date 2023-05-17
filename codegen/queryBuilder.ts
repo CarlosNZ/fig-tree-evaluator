@@ -9,7 +9,7 @@ With a depth_limit of 30, the resulting expression tree has over 20,000 nodes
 
 import { writeFileSync } from 'fs'
 import { EvaluatorNode, EvaluatorOutput, OperatorNode } from '../src/types'
-import FigTreeEvaluator from '../src/'
+import { FigTreeEvaluator } from '../src/'
 import { isOperatorNode } from '../src/helpers'
 
 const DEPTH_LIMIT = 30
