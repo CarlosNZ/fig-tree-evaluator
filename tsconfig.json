@@ -11,6 +11,8 @@
     // "checkJs": true,                       /* Report errors in .js files. */
     // "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
     "declaration": true /* Generates corresponding '.d.ts' file. */,
+    "emitDeclarationOnly": false,
+    // "declarationDir": "build/dts",
     // "declarationMap": true,                /* Generates a sourcemap for each corresponding '.d.ts' file. */
     // "sourceMap": true,                     /* Generates corresponding '.map' file. */
     // "outFile": "build/index.js",                       /* Concatenate and emit output to single file. */
@@ -68,5 +70,6 @@
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
   },
   // "exclude": ["jest.config.js", "*.test.*"]
-  "files": ["src/index.ts"]
+  "files": ["src/index.ts"],
+  "include": ["src/types.ts"]
 }

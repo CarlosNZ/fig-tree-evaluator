@@ -9,7 +9,6 @@ import {
   OperatorMetadata,
   OperatorReference,
   FragmentMetadata,
-  hello,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
@@ -47,7 +46,6 @@ class FigTreeEvaluator {
   }
 
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
-    hello()
     // Update options from current call if specified
     const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
 

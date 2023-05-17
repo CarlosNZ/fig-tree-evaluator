@@ -4,7 +4,6 @@ import { GraphQLConnection } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
 
-export const hello = () => console.log('Hello')
 export const Operators = [
   // Canonical operator names
   'AND',
