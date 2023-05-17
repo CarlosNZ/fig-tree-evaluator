@@ -16,7 +16,7 @@ export default [
   },
   {
     // path to your declaration files root
-    input: './build/index.d.ts',
+    input: './build/dts/index.d.ts',
     output: [{ file: 'build/index.d.ts', format: 'es' }],
     plugins: [dts(), json()],
   },
