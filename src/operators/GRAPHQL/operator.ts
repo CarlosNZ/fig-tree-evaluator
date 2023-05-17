@@ -1,7 +1,7 @@
+import { evaluateArray } from '../../evaluate'
 import {
   zipArraysToObject,
   extractAndSimplify,
-  evaluateArray,
   isFullUrl,
   joinUrlParts,
   axiosRequest,

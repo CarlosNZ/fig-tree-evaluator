@@ -1,6 +1,6 @@
 import { AxiosRequestHeaders } from 'axios'
+import { evaluateArray } from '../../evaluate'
 import {
-  evaluateArray,
   zipArraysToObject,
   axiosRequest,
   extractAndSimplify,

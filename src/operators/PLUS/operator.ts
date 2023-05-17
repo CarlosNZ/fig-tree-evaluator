@@ -1,5 +1,6 @@
 import { parseChildren } from '../AND/operator'
-import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
+import { getTypeCheckInput } from '../_operatorUtils'
+import { evaluateArray } from '../../evaluate'
 import { OperatorObject, EvaluateMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
 import { isObject } from '../../helpers'

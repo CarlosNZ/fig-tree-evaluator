@@ -3,10 +3,9 @@ import { Operator, FigTreeOptions, EvaluatorNode, EvaluatorOutput } from './type
 
 export {
   evaluateExpression,
+  FigTreeEvaluator,
   type Operator,
   type FigTreeOptions,
   type EvaluatorNode,
   type EvaluatorOutput,
 }
-
-export default FigTreeEvaluator
