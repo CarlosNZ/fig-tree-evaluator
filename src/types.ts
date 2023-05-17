@@ -4,6 +4,7 @@ import { GraphQLConnection } from './operators'
 import operatorAliases from './operators/_operatorAliases.json'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
 
+export const hello = () => console.log('Hello')
 export const Operators = [
   // Canonical operator names
   'AND',
@@ -32,7 +33,7 @@ export const Operators = [
   'PASSTHRU',
 ] as const
 
-export type Operator = typeof Operators[number]
+export type Operator = (typeof Operators)[number]
 export type OperatorAlias = keyof typeof operatorAliases
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
