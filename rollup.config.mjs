@@ -8,8 +8,17 @@ export default [
   {
     input: 'src/index.ts',
     output: {
-      dir: 'build',
+      file: 'build/index.cjs.js',
       format: 'cjs',
+    },
+    plugins: [typescript({ module: 'ESNext' }), json()],
+    // external: [/node_modules/],
+  },
+  {
+    input: 'src/index.ts',
+    output: {
+      file: 'build/index.esm.js',
+      format: 'esm',
     },
     plugins: [typescript({ module: 'ESNext' }), json()],
     // external: [/node_modules/],

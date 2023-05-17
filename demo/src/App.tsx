@@ -16,7 +16,7 @@ import {
   Link,
   Image,
 } from '@chakra-ui/react'
-import { FigTreeEvaluator as EvaluatorDev, FigTreeOptions } from './fig-tree-evaluator/src'
+import { FigTreeEvaluator as EvaluatorDev, FigTreeOptions } from 'fig-tree-evaluator'
 // import EvaluatorPublished from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
 import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'

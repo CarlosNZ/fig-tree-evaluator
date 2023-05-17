@@ -2,7 +2,7 @@
   "name": "fig-tree-evaluator",
   "version": "2.8.6",
   "description": "Module to evaluate JSON-structured expression trees",
-  "main": "build/index.js",
+  "main": "build/index.esm.js",
   "types": "build/index.d.ts",
   "files": [
     "build/**/*"
