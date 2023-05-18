@@ -178,7 +178,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
           key: 'code',
           value: {
             operator: 'GET',
-            children: ['https://restcountries.com/v3.1/name/india', [], '[1].cca2'],
+            children: ['https://restcountries.com/v3.1/name/nepal', [], '[0].cca2'],
           },
         },
       ],
@@ -186,7 +186,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
     returnNode: 'countries[0].emoji',
   }
   return exp.evaluate(expression).then((result) => {
-    expect(result).toBe('🇮🇳')
+    expect(result).toBe('🇳🇵')
   })
 })
 
