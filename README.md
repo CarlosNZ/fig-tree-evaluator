@@ -115,9 +115,9 @@ A playground for building and testing expressions is available [here](https://ca
 
 ## Install
 
-`npm install fig-tree`\
+`npm install fig-tree-evaluator`\
 or\
-`yarn add fig-tree`
+`yarn add fig-tree-evaluator`
 
 ## Usage
 
