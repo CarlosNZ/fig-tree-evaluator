@@ -35,6 +35,7 @@ import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 import { Client } from 'pg'
+import { JsonEditor } from 'json-edit-react'
 
 const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface() as Client
@@ -200,6 +201,7 @@ function App() {
               value={inputState.data}
               onChange={(e) => updateInput(e?.target?.value, 'data')}
             />
+            <JsonEditor data={JSON.parse(inputState.data)} />
             <Text color="red">{!isValidState.data ? 'Invalid object input' : ''}</Text>
           </Box>
           <Box h={'100%'} p={2} minW={375}>
