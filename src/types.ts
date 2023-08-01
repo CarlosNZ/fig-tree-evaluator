@@ -32,7 +32,7 @@ export const Operators = [
   'PASSTHRU',
 ] as const
 
-export type Operator = typeof Operators[number]
+export type Operator = (typeof Operators)[number]
 export type OperatorAlias = keyof typeof operatorAliases
 export type OperatorAliases = Record<OperatorAlias, Operator>
 
@@ -57,6 +57,7 @@ export interface FigTreeOptions {
   excludeOperators?: OperatorAlias[]
   useCache?: boolean
   maxCacheSize?: number
+  maxCacheTime?: number // seconds
   // Undocumented -- only for < v1 compatibility
   supportDeprecatedValueNodes?: boolean
 }

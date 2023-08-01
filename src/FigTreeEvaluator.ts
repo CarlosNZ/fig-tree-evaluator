@@ -33,7 +33,7 @@ class FigTreeEvaluator {
       operatorAliases
     )
     this.operatorAliases = operatorAliases
-    this.cache = new FigTreeCache(options.maxCacheSize)
+    this.cache = new FigTreeCache({ maxSize: options.maxCacheSize, maxTime: options.maxCacheTime })
   }
 
   private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
@@ -49,9 +49,11 @@ class FigTreeEvaluator {
     // Update options from current call if specified
     const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
 
-    // Update cache max size
+    // Update cache options
     if (currentOptions.maxCacheSize && currentOptions.maxCacheSize !== this.cache.getMax())
       this.cache.setMax(currentOptions.maxCacheSize)
+    if (currentOptions.maxCacheTime && currentOptions.maxCacheTime !== this.cache.getMaxTime())
+      this.cache.setMaxTime(currentOptions.maxCacheTime)
 
     return await evaluatorFunction(expression, {
       options: currentOptions,

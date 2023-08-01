@@ -162,6 +162,7 @@ The `options` parameter is an object with the following available properties (al
 - `excludeOperators` -- an array of operator names (or [aliases](#operator--property-aliases)) to prohibit from being used in expressions. You may wish to restrict (for example) database access via FigTree configurations, in which case these exclusions can be defined when instantiating the FigTree instance (or updated on the fly).
 - `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
 - `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
+- `maxCacheTime` -- the maximum time (in seconds) that a result will be cached since last access (default: `1800` (30 minutes))
 - `noShorthand` -- there is a [shorthand syntax](#shorthand-syntax) available for writing expressions. Internally, this is pre-processed into the standard expression form before evaluation. If you have no use for this and you'd rather all expressions were written with full verbosity, set `noShorthand: true` to save a small amount in performance by skipping internal pre-processing.
 
 As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
