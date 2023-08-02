@@ -279,7 +279,7 @@ test.concurrent('GET: 429 Error with fallback', () => {
 test.concurrent('GET: Bad url', () => {
   const expression = {
     operator: 'API',
-    url: 'http://thereisnosite.com',
+    url: 'http://there-is-no-f-ing-site.com',
   }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Operator: GET\nNetwork Error')

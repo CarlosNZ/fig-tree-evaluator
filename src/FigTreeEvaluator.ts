@@ -15,7 +15,7 @@ import { typeCheck, TypeCheckInput } from './typeCheck'
 import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
-import FigTreeCache from './cache'
+import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
@@ -33,7 +33,7 @@ class FigTreeEvaluator {
       operatorAliases
     )
     this.operatorAliases = operatorAliases
-    this.cache = new FigTreeCache(options.maxCacheSize)
+    this.cache = new FigTreeCache({ maxSize: options.maxCacheSize, maxTime: options.maxCacheTime })
   }
 
   private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
@@ -49,9 +49,11 @@ class FigTreeEvaluator {
     // Update options from current call if specified
     const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
 
-    // Update cache max size
+    // Update cache options
     if (currentOptions.maxCacheSize && currentOptions.maxCacheSize !== this.cache.getMax())
       this.cache.setMax(currentOptions.maxCacheSize)
+    if (currentOptions.maxCacheTime && currentOptions.maxCacheTime !== this.cache.getMaxTime())
+      this.cache.setMaxTime(currentOptions.maxCacheTime)
 
     return await evaluatorFunction(expression, {
       options: currentOptions,
@@ -78,6 +80,10 @@ class FigTreeEvaluator {
     if (this.options.excludeOperators)
       this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }
+
+  public getCache = () => this.cache.getCache()
+
+  public setCache = (cache: Store) => this.cache.setCache(cache)
 
   public getOperators() {
     const validOperators = this.options.excludeOperators
