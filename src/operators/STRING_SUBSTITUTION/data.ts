@@ -14,9 +14,9 @@ const parameters: Parameter[] = [
   {
     name: 'substitutions',
     description: 'An array of substitution values for the parameterised string',
-    aliases: ['replacements'],
+    aliases: ['replacements', 'values'],
     required: true,
-    type: 'array',
+    type: ['array', 'object'],
   },
   {
     name: 'trimWhiteSpace',
@@ -33,6 +33,13 @@ const parameters: Parameter[] = [
     aliases: ['subCharacter', 'subChar'],
     required: false,
     type: 'string',
+  },
+  {
+    name: 'numberMapping',
+    description: 'Rules for mapping number values to text strings, such as pluralisation.',
+    aliases: ['numMap', 'numberMap', 'pluralisation', 'pluralization', 'plurals'],
+    required: false,
+    type: 'object',
   },
 ]
 

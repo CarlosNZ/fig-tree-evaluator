@@ -3,16 +3,22 @@ import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } fr
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [string, substitutions, trimWhiteSpace = true, substitutionCharacter = '%'] =
-    (await evaluateArray(
-      [
-        expression.string,
-        expression.substitutions,
-        expression.trimWhiteSpace,
-        expression.substitutionCharacter,
-      ],
-      config
-    )) as [string, string[], boolean, '%' | '$']
+  const [
+    string,
+    substitutions,
+    trimWhiteSpace = true,
+    substitutionCharacter = '%',
+    numberMapping = {},
+  ] = (await evaluateArray(
+    [
+      expression.string,
+      expression.substitutions,
+      expression.trimWhiteSpace,
+      expression.substitutionCharacter,
+      expression.numberMapping,
+    ],
+    config
+  )) as [string, string[], boolean, '%' | '$', NumberMap]
 
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, {
@@ -20,31 +26,47 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       substitutions,
       trimWhiteSpace,
       substitutionCharacter,
+      numberMapping,
     })
   )
 
-  const subChar = substitutionCharacter === '$' ? '$' : '%'
+  if (Array.isArray(substitutions)) {
+    // Positional (%1, %2) replacements
+    const subChar = substitutionCharacter === '$' ? '$' : '%'
 
-  // Escaped chars are double-escaped
-  const patternString = `(?<!\\\\)(${subChar === '%' ? '%' : '\\$'}[\\d]+)`
-  const parameterPattern = new RegExp(patternString, 'g')
+    // Escaped chars are double-escaped
+    const patternString = `(?<!\\\\)(${subChar === '%' ? '%' : '\\$'}[\\d]+)`
+    const parameterPattern = new RegExp(patternString, 'g')
 
-  const parameters = (string.match(parameterPattern) || []).sort(
-    (a, b) => Number(a.slice(1)) - Number(b.slice(1))
-  )
-  const uniqueParameters = new Set(parameters)
-  const replacementsObj = zipArraysToObject(
-    Array.from(uniqueParameters),
-    substitutions.map((sub) => (trimWhiteSpace ? String(sub).trim() : sub))
-  )
-  return (
-    string
-      .split(parameterPattern)
-      .map((fragment) => (fragment in replacementsObj ? replacementsObj[fragment] : fragment))
-      .join('')
-      // Remove escape character
-      .replace(`\\${subChar}`, subChar)
-  )
+    const parameters = (string.match(parameterPattern) || []).sort(
+      (a, b) => Number(a.slice(1)) - Number(b.slice(1))
+    )
+    const uniqueParameters = new Set(parameters)
+    const replacementsObj = zipArraysToObject(
+      Array.from(uniqueParameters),
+      substitutions.map((sub) => (trimWhiteSpace ? String(sub).trim() : sub))
+    )
+    return (
+      string
+        .split(parameterPattern)
+        .map((fragment) => (fragment in replacementsObj ? replacementsObj[fragment] : fragment))
+        .join('')
+        // Remove escape character
+        .replace(`\\${subChar}`, subChar)
+    )
+  }
+
+  // {{Named}} replacements
+  const parameterPattern = /(?<!\\)({{[A-z0-9_]+}})/g
+
+  return string
+    .split(parameterPattern)
+    .map((fragment) => {
+      if (!/(?<!\\){{(.+)}}/.exec(fragment)) return fragment.replace('\\{{', '{{')
+      const replacement = getReplacement(fragment, substitutions, numberMapping)
+      return trimWhiteSpace ? String(replacement).trim() : replacement
+    })
+    .join('')
 }
 
 const parseChildren: ParseChildrenMethod = (expression) => {
@@ -57,4 +79,40 @@ export const STRING_SUBSTITUTION: OperatorObject = {
   operatorData,
   evaluate,
   parseChildren,
+}
+
+interface NumberMap {
+  [key: string]: { [key: string]: string }
+}
+
+const getReplacement = (
+  fragment: string,
+  replacements: { [key: string]: unknown },
+  numberMaps: NumberMap
+) => {
+  const key = fragment.replace(/{{(.+)}}/, '$1')
+  const value = replacements?.[key] ?? ''
+  if (typeof value !== 'number') return replacements?.[key] ?? ''
+
+  // Value is a number, so check number mappings
+  if (!(key in numberMaps)) return value
+
+  const numMap = numberMaps[key]
+  if (value in numMap) return numMap[value].replace('{}', String(value))
+
+  // Check for greater/less than keys
+  const numberKeys = Object.keys(numberMaps[key])
+  const greaterThanKey = numberKeys.find((key) => key.startsWith('>'))
+  if (greaterThanKey) {
+    const num = Number(greaterThanKey.slice(1))
+    if (value > num) return numMap?.[greaterThanKey]
+  }
+
+  const lessThanKey = numberKeys.find((key) => key.startsWith('<'))
+  if (lessThanKey) {
+    const num = Number(lessThanKey.slice(1))
+    if (value < num) return numMap?.[lessThanKey]
+  }
+
+  return numMap.other ? numMap.other.replace('{}', String(value)) : value
 }

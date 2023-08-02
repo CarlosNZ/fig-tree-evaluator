@@ -776,15 +776,21 @@ Example using "data" passed in dynamically as part of expression:
 ----
 ### STRING_SUBSTITUTION
 
-*Replace values in a string using simple parameter substitution*
+*Replace values in a string using simple parameter (positional or named properties) substitution*
 
 Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
 #### Properties
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
-- `substitutions` (or `replacements`)<sup>*</sup>: (array) -- the values to be substituted into `string`
+- `substitutions` (or `replacements`, `values`)<sup>*</sup>: (array | object) -- the values to be substituted into `string`. Will be either an array or object depending on whether you're using positional replacements or named properties (see below).
 - `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of the substitution values
+- `substitutionCharacter` (or `subCharacter`, `subChar`): (`"%"` or `"$"`) -- by default, when using positional replacement, it looks for the `%` token (i.e `%1, %2, etc`), but this can be changed to `$` (i.e. `$1, $2, $3, etc`) by setting this property to `$`.
+- `numberMapping` (or `numMap`, `numberMap`, `pluralisation`, `pluralization`, `plurals`): (object) -- when replacing with named properties and you have replacement values that are numbers, it's possible to map values or ranges to specific string outputs. This can be used to produce correct pluralisation, for example. See below for more details.
+
+Substitution can be done using either **positional** replacement, or with **named properties**
+
+#### Positional replacement
 
 The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
 
@@ -805,7 +811,9 @@ e.g.
 
 {
   operator: 'replace',
-  string: '%1 is actually %2 %3',
+  // Using $1, $2 instead of %1, %2 this time:
+  string: '$1 is actually $2 $3',
+  substitutionCharacter: "$",
   substitutions: [
     // Using the 'user' object from above (OBJECT_PROPERTIES operator)
     {
@@ -831,6 +839,15 @@ e.g.
   substitutions: ['bird', 'Tweet!'],
 }
 // => 'A bird says: "Tweet! Tweet! Tweet!"'
+
+// Replacement tokens can be escaped using the standard "\" escape character:
+{
+  operator: 'stringSubstitution',
+  string: 'The price of $1 is \$5',
+  subChar: '$',
+  substitutions: [ 'a coffee' ],
+}
+// => The price of a coffee is $5
 ```
 
 `children` array: `[string, ...substitutions]`
@@ -843,6 +860,75 @@ e.g.
 }
 // => "I am Iron Man"
 ```
+
+#### Named property replacement
+
+Replacement tokens can be indicated in the main string with a named value, using `{{<name>}}` syntax, e.g. `"Your name is {{firstName}} {{lastName}}"`. Then the `substitutions` property must be an object with those property names:
+
+```js
+{
+  operator: 'stringSubstitution',
+  string: 'Your name is {{firstName}} {{lastName}}',
+  substitutions: {
+    firstName: 'Steve',
+    lastName: "Rogers"
+  }
+}
+// => "Your name is Steve Rogers"
+```
+
+If the replacement values are numbers, we can extend this functionality with a special `numberMapping` object, which allows for different replacements depending on the value, which is handy for pluralisation, for example.
+
+The syntax for the `numberMapping` property is:
+```js
+  {
+    propertyName1: {
+      1: "Output if value is {}",
+      2: "Output if value is 2",
+      ">5": "Output if value is greater than 5",
+      "<0": "Output if value is less than 0"
+      "other": "Fallback output if none of the others match: {} count"
+      // {} is a replacement for the numerical value itself
+    },
+    propertyName2: { ...etc }
+  }
+```
+The number map can have as few or as many match options as desired -- if no match is found (or if no `numberMapping` property at all), the number will be returned as-is.
+
+e.g.
+```js
+{
+  operator: 'stringSubstitution',
+  string: 'Hi {{name}}, we have {{count}} attending this event.',
+  values: {
+    name: "Tatiana",
+    count: {operator: "getData", property: "numOfPeople" }
+  },
+  numberMap: {
+    count: {
+      0: "no one",
+      1: "just one person",
+      ">10": "too many people",
+      "other": "{} people"
+    }
+  }
+}
+// Output with varying values for "numOfPeople" passed into evaluation
+// "data" object:
+
+// { numOfPeople: 5 }
+// => "Hi Tatiana, we have 5 people attending this event."
+
+// { numOfPeople: 0 }
+// => "Hi Tatiana, we have no one attending this event."
+
+// { numOfPeople: 100 }
+// => "Hi Tatiana, we have too many people attending this event."
+
+// { numOfPeople: 1 }
+// => "Hi Tatiana, we have just one person attending this event.
+```
+
 
 ----
 
