@@ -1793,14 +1793,18 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.10.0**: Extended stringSubstitution functionality to included named
+  property substitution, trim whitespace option, and pluralisation (#97)
 - **v2.9.0**: Added ability to invalidate cache by time (#94)
 - **v2.8.6**: Small bug fix where `options` object would be mutated instead of replaced
 - **v2.8.5**: Small bug fix in [COUNT](#count) operator
 - **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
 - **v2.8.0**:
   - **[Shorthand syntax](#shorthand-syntax)** (#80)
-  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and functions (#82)
-- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be prohibited (e.g. database lookups) (#54)
+  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and
+    functions (#82)
+- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be
+  prohibited (e.g. database lookups) (#54)
 - **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
 - **v2.5.0**:
   - Bug fixes for edge cases (mainly related to backwards compatibility)
@@ -1822,7 +1826,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)
-  -  more appropriately-named properties associated with each operator (as opposed to a single `children` array)
+  -  more appropriately-named properties associated with each operator (as
+     opposed to a single `children` array)
   -  class-based Evaluator instances
   -  runtime type-checking
   -  better error handling and error reporting
