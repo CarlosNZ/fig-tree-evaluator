@@ -19,8 +19,12 @@ interface CacheOptions {
   maxTime?: number
 }
 
+export interface Store {
+  [key: string]: { result: EvaluatorOutput; timestamp: number }
+}
+
 class FigTreeCache {
-  private store: { [key: string]: { result: EvaluatorOutput; timestamp: number } }
+  private store: Store
   private queue: string[]
   private maxSize: number
   private maxTime: number
@@ -79,6 +83,8 @@ class FigTreeCache {
   }
 
   public getCache = () => this.store
+
+  public setCache = (cache: Store) => (this.store = cache)
 
   private resizeCache = () => {
     if (this.queue.length > this.maxSize) {

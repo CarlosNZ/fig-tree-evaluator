@@ -15,7 +15,7 @@ import { typeCheck, TypeCheckInput } from './typeCheck'
 import opAliases from './operators/_operatorAliases.json'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
-import FigTreeCache from './cache'
+import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
@@ -80,6 +80,10 @@ class FigTreeEvaluator {
     if (this.options.excludeOperators)
       this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }
+
+  public getCache = () => this.cache.getCache()
+
+  public setCache = (cache: Store) => this.cache.setCache(cache)
 
   public getOperators() {
     const validOperators = this.options.excludeOperators

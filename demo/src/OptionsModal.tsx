@@ -22,6 +22,8 @@ import {
   AccordionIcon,
   AccordionPanel,
   Checkbox,
+  HStack,
+  VStack,
 } from '@chakra-ui/react'
 import { JSONstringify, filterObjectRecursive } from './helpers'
 import { FigTreeOptions } from './fig-tree-evaluator/src'
@@ -51,6 +53,9 @@ const resetFormState = (options: FigTreeOptions) => {
     evaluateFullObject,
     fragmentsText: JSON.stringify(fragments, null, 2),
     fragmentsError: false,
+    useCache: options.useCache ?? true,
+    maxCacheSize: options.maxCacheSize,
+    maxCacheTime: options.maxCacheTime,
   }
 }
 
@@ -95,6 +100,9 @@ export const OptionsModal = ({
       skipRuntimeTypeCheck,
       evaluateFullObject,
       fragmentsText,
+      useCache,
+      maxCacheSize,
+      maxCacheTime,
     } = formState
 
     const headers = headersText ? JSON.parse(headersText) : {}
@@ -111,6 +119,9 @@ export const OptionsModal = ({
         },
         skipRuntimeTypeCheck,
         evaluateFullObject,
+        useCache,
+        maxCacheSize,
+        maxCacheTime,
       }),
       fragments,
     }
@@ -237,7 +248,53 @@ export const OptionsModal = ({
                     </AccordionPanel>
                   </AccordionItem>
                 </Accordion>
-                <Text fontSize="sm">
+                <VStack align="flex-start">
+                  <Text fontSize="md">
+                    <strong>Cache:</strong>
+                  </Text>
+                  <FormControl id="evaluate-object" mt="2 !important">
+                    <Checkbox
+                      isChecked={formState.useCache}
+                      onChange={(_) =>
+                        setFormState((curr) => ({
+                          ...curr,
+                          useCache: !formState.useCache,
+                        }))
+                      }
+                    >
+                      <Text fontSize="sm">Use cache?</Text>
+                    </Checkbox>
+                  </FormControl>
+                  <HStack>
+                    <FormControl id="cache-size">
+                      <FormLabel fontSize="smaller">Size</FormLabel>
+                      <Input
+                        size="sm"
+                        value={formState.maxCacheSize}
+                        onChange={(e) =>
+                          setFormState((curr) => ({
+                            ...curr,
+                            maxCacheSize: Number(e.target.value),
+                          }))
+                        }
+                      />
+                    </FormControl>
+                    <FormControl id="cache-time">
+                      <FormLabel fontSize="smaller">Max time (seconds)</FormLabel>
+                      <Input
+                        size="sm"
+                        value={formState.maxCacheTime}
+                        onChange={(e) =>
+                          setFormState((curr) => ({
+                            ...curr,
+                            maxCacheTime: Number(e.target.value),
+                          }))
+                        }
+                      />
+                    </FormControl>
+                  </HStack>
+                </VStack>
+                <Text fontSize="md">
                   <strong>Miscellaneous:</strong>
                 </Text>
                 <FormControl id="skip-runtime-check" mt="2 !important">

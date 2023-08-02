@@ -17,9 +17,9 @@ import {
   Image,
 } from '@chakra-ui/react'
 import EvaluatorDev, { FigTreeOptions } from './fig-tree-evaluator/src'
-import EvaluatorPublished from 'fig-tree-evaluator'
+// import EvaluatorPublished from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
-// import EvaluatorPublished from './fig-tree-evaluator/src'
+import EvaluatorPublished from './fig-tree-evaluator/src'
 import { OptionsModal } from './OptionsModal'
 import {
   getInitOptions,
@@ -27,6 +27,7 @@ import {
   JSONstringifyLoose,
   validateExpression,
   validateData,
+  getInitCache,
 } from './helpers'
 import functions from './customFunctions'
 import initData from './data.json'
@@ -44,6 +45,12 @@ initOptions.functions = functions
 
 const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
+
+const savedCache = getInitCache()
+if (savedCache) {
+  figTreeDev.setCache(savedCache)
+  figTreePub.setCache(savedCache)
+}
 
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
@@ -99,6 +106,8 @@ function App() {
           setResult({ output: null, error: result.error })
         else setResult({ output: result, error: false })
         setLoading(false)
+        if (evaluator.getOptions().useCache)
+          localStorage.setItem('cache', JSON.stringify(evaluator.getCache()))
       })
       .catch((error) => {
         setResult({ output: null, error: error.message })

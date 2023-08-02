@@ -1528,7 +1528,7 @@ For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app
 
 ## Caching (Memoization)
 
-FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization) functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization) functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results with each result being valid for half and hour, but these values can be modified using the `maxCacheSize` and `maxCacheTime` [options](#available-options).
 
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
@@ -1543,6 +1543,17 @@ This is different to the memoization provided by [Alias Nodes](#alias-nodes):
 - Cached nodes will persist *between* different evaluations as long as the input values are the same as a previously evaluated node.
 
 Caching is enabled by default for most of the above operators, but this can be overridden by setting `useCache: false` in [options](#available-options), either globally or per expression. If you're querying a database or API that is likely to have a different result for the same request (i.e. data has changed), then you probably want to turn the cache off.
+
+It's possible to manually set/get the cache store, which can be used (for example) to save the cache in local storage to persist it between page reloads or new FigTree instances.
+
+Use the methods:
+
+```js
+fig.getCache() // returns key-value store
+
+fig.setCache(cache) // where "cache" is the object retrieved by .getCache()
+```
+
 
 ## Metadata
 
@@ -1692,6 +1703,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.9.0**: Added ability to invalidate cache by time (#94)
 - **v2.8.6**: Small bug fix where `options` object would be mutated instead of replaced
 - **v2.8.5**: Small bug fix in [COUNT](#count) operator
 - **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
