@@ -26,6 +26,14 @@ const parameters: Parameter[] = [
     required: false,
     type: 'boolean',
   },
+  {
+    name: 'substitutionCharacter',
+    description:
+      'Which character to search for in original string for replacement -- can be "%" or "$" (default: "%")',
+    aliases: ['subCharacter', 'subChar'],
+    required: false,
+    type: 'string',
+  },
 ]
 
 export const propertyAliases = getPropertyAliases(parameters)
