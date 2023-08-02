@@ -783,12 +783,12 @@ Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 #### Properties
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
-- `substitutions` (or `replacements`, `values`)<sup>*</sup>: (array | object) -- the values to be substituted into `string`. Will be either an array or object depending on whether you're using positional replacements or named properties (see below).
+- `substitutions` (or `replacements`, `values`)<sup>*</sup>: (array | object) -- the values to be substituted into `string`. Will be either an array or object depending on whether you're using positional replacements or named properties (see [below](#positional-replacement)).
 - `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of the substitution values
 - `substitutionCharacter` (or `subCharacter`, `subChar`): (`"%"` or `"$"`) -- by default, when using positional replacement, it looks for the `%` token (i.e `%1, %2, etc`), but this can be changed to `$` (i.e. `$1, $2, $3, etc`) by setting this property to `$`.
-- `numberMapping` (or `numMap`, `numberMap`, `pluralisation`, `pluralization`, `plurals`): (object) -- when replacing with named properties and you have replacement values that are numbers, it's possible to map values or ranges to specific string outputs. This can be used to produce correct pluralisation, for example. See below for more details.
+- `numberMapping` (or `numMap`, `numberMap`, `pluralisation`, `pluralization`, `plurals`): (object) -- when replacing with named properties and you have replacement values that are numbers, it's possible to map values or ranges to specific string outputs. This can be used to produce correct pluralisation, for example. [See below](#named-property-replacement) for more details.
 
-Substitution can be done using either **positional** replacement, or with **named properties**
+Substitution can be done using either **positional** replacement, or with **named properties**:
 
 #### Positional replacement
 
@@ -845,12 +845,13 @@ e.g.
   operator: 'stringSubstitution',
   string: 'The price of $1 is \$5',
   subChar: '$',
-  substitutions: [ 'a coffee' ],
+  substitutions: [ 'a coffee', 'not used' ],
 }
 // => The price of a coffee is $5
 ```
 
-`children` array: `[string, ...substitutions]`
+`children` array: `[string, ...substitutions]`  
+(`trimWhiteSpace` and `substitutionCharacter` not available, since `substitutions` can be an arbitrary number of items)
 
 e.g.
 ```js
@@ -928,6 +929,8 @@ e.g.
 // { numOfPeople: 1 }
 // => "Hi Tatiana, we have just one person attending this event.
 ```
+
+**Note**: `children` array not available for named properties
 
 
 ----
