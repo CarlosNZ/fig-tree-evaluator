@@ -220,9 +220,10 @@ const expression = {
       $myFallback: 'Empire',
       operator: 'string_substitution',
       string:
-        "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
-      substitutions: [
-        {
+        "Pursued by the {{enemy}}'s sinister agents, {{who}} races home aboard her starship, custodian of the {{what}} and restore freedom to the galaxy....",
+      substitutions: {
+        who: { operator: 'functions', functionPath: 'getPrincess', args: ['Leia'] },
+        what: {
           operator: 'objProps',
           property: {
             operator: 'substitute',
@@ -238,18 +239,18 @@ const expression = {
             ],
           },
         },
-        {
+        enemy: {
           operator: 'objProps',
           property: 'cant.find.this',
           fallback: '$myFallback',
         },
-        { operator: 'functions', functionPath: 'getPrincess', args: ['Leia'] },
-      ],
+      },
     },
   ],
 }
 
 test('Massive nested query!', () => {
+  exp.updateOptions({ evaluateFullObject: true })
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe(
       "It is a period of civil war. Rebel spaceships, striking from a hidden base, have won their first victory against the evil Galactic Empire.\n\nDuring the battle, Rebel spies managed to steal secret plans to the Empire's ultimate weapon, the DEATH STAR, an armored space station with enough power to destroy an entire planet.\n\nPursued by the Empire's sinister agents, Princess Leia races home aboard her starship, custodian of the stolen plans that can save her people and restore freedom to the galaxy...."
@@ -257,7 +258,7 @@ test('Massive nested query!', () => {
   })
 })
 
-const jsonExpression = `{"$bypass":{"operator":"passThru","value":{"operator":"split","value":"robot, ,fury","delimiter":",","trimWhitespace":false},"type":"number"},"$country":{"operator":"API","children":[{"operator":"+","children":["https://restcountries.com/v3.1/name/","cuba"]},{"operator":"split","value":"fullText, fields","delimiter":","},true,"name,capital,flag","flag"],"type":"string"},"operator":"+","values":[{"operator":"stringSubstitution","children":["It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.",{"operator":"?","children":[{"operator":"=","values":[{"operator":"pg","query":"SELECT country FROM customers WHERE postal_code = $1","values":[{"operator":"pgSQL","children":["(SELECT MAX(postal_code) from customers)"],"type":"string"}],"type":"string"},"UK"]},{"operator":"_","_":["civil war"],"type":"string"},"$bypass"]},{"operator":"getProperty","property":{"operator":"substitute","children":["randomWords[%99]",{"operator":"And","values":[{"operator":"REGEX","pattern":"A.+roa","testString":{"operator":"get","url":"https://restcountries.com/v3.1/alpha","parameters":{"codes":"nz,au"},"returnProperty":"[1].name.nativeName.mri.official"}},{"operator":"ne","values":[{"operator":"+","values":[6.66,3.33]},10]}],"type":"number"}]}},{"operator":"objectProperties","children":["organisation"]}]},{"fragment":"doubleLineBreak"},{"operator":"SUBSTITUTE","string":"During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.","substitutions":[{"operator":"objectProperties","property":{"operator":"+","values":["longSentence.","$country"]}},{"$wordString":"randomWords[3]","operator":"objProps","property":"$wordString"}]},{"fragment":"doubleLineBreak"},{"$myFallback":"Empire","operator":"string_substitution","string":"Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....","substitutions":[{"operator":"objProps","property":{"operator":"substitute","string":"Oceania.NZ.%1","substitutions":[{"operator":"gql","query":"query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}","variables":{"operator":"buildObject","properties":[{"key":"code","value":"NZ"}]},"returnNode":"countries"}]}},{"operator":"objProps","property":"cant.find.this","fallback":"$myFallback"},{"operator":"functions","functionPath":"getPrincess","args":["Leia"]}]}]}`
+const jsonExpression = `{"$bypass":{"operator":"passThru","value":{"operator":"split","value":"robot, ,fury","delimiter":",","trimWhitespace":false},"type":"number"},"$country":{"operator":"API","children":[{"operator":"+","children":["https://restcountries.com/v3.1/name/","cuba"]},{"operator":"split","value":"fullText, fields","delimiter":","},true,"name,capital,flag","flag"],"type":"string"},"operator":"+","values":[{"operator":"stringSubstitution","children":["It is a period of %1. Rebel %2, striking from a hidden base, have won their first victory against the evil %3.",{"operator":"?","children":[{"operator":"=","values":[{"operator":"pg","query":"SELECT country FROM customers WHERE postal_code = $1","values":[{"operator":"pgSQL","children":["(SELECT MAX(postal_code) from customers)"],"type":"string"}],"type":"string"},"UK"]},{"operator":"_","_":["civil war"],"type":"string"},"$bypass"]},{"operator":"getProperty","property":{"operator":"substitute","children":["randomWords[%99]",{"operator":"And","values":[{"operator":"REGEX","pattern":"A.+roa","testString":{"operator":"get","url":"https://restcountries.com/v3.1/alpha","parameters":{"codes":"nz,au"},"returnProperty":"[1].name.nativeName.mri.official"}},{"operator":"ne","values":[{"operator":"+","values":[6.66,3.33]},10]}],"type":"number"}]}},{"operator":"objectProperties","children":["organisation"]}]},{"fragment":"doubleLineBreak"},{"operator":"SUBSTITUTE","string":"During the battle, %1, the %2, an armored space station with enough power to destroy an entire planet.","substitutions":[{"operator":"objectProperties","property":{"operator":"+","values":["longSentence.","$country"]}},{"$wordString":"randomWords[3]","operator":"objProps","property":"$wordString"}]},{"fragment":"doubleLineBreak"},{"$myFallback":"Empire","operator":"string_substitution","string":"Pursued by the {{enemy}}'s sinister agents, {{who}} races home aboard her starship, custodian of the {{what}} and restore freedom to the galaxy....","substitutions":{"who":{"operator":"functions","functionPath":"getPrincess","args":["Leia"]},"what":{"operator":"objProps","property":{"operator":"substitute","string":"Oceania.NZ.%1","substitutions":[{"operator":"gql","query":"query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}","variables":{"operator":"buildObject","properties":[{"key":"code","value":"NZ"}]},"returnNode":"countries"}]}},"enemy":{"operator":"objProps","property":"cant.find.this","fallback":"$myFallback"}}}]}`
 
 test('Massive nested query as JSON string', () => {
   return exp.evaluate(jsonExpression).then((result) => {
@@ -353,9 +354,10 @@ const shorthandExpression = {
       $myFallback: 'Empire',
       $stringSubstitution: {
         string:
-          "Pursued by the %2's sinister agents, %3 races home aboard her starship, custodian of the %1 and restore freedom to the galaxy....",
-        replacements: [
-          {
+          "Pursued by the {{enemy}}'s sinister agents, {{who}} races home aboard her starship, custodian of the {{what}} and restore freedom to the galaxy....",
+        replacements: {
+          who: { $functions: ['getPrincess', 'Leia'] },
+          what: {
             $objProps: {
               $substitute: {
                 string: 'Oceania.NZ.%1',
@@ -372,9 +374,8 @@ const shorthandExpression = {
               },
             },
           },
-          { $objProps: 'cant.find.this', fallback: '$myFallback' },
-          { $functions: ['getPrincess', 'Leia'] },
-        ],
+          enemy: { $objProps: 'cant.find.this', fallback: '$myFallback' },
+        },
       },
     },
   ],
