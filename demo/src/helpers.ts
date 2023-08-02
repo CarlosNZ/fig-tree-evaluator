@@ -10,6 +10,9 @@ export const getInitOptions = () => {
   const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
   const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
   const fragments = savedOptions.fragments ?? initData.fragments
+  const useCache = savedOptions.useCache ?? true
+  const maxCacheSize = savedOptions.maxCacheSize ?? 50
+  const maxCacheTime = savedOptions.maxCacheTime ?? 1800
   return {
     graphQLConnection,
     baseEndpoint,
@@ -17,8 +20,13 @@ export const getInitOptions = () => {
     skipRuntimeTypeCheck,
     evaluateFullObject,
     fragments,
+    useCache,
+    maxCacheSize,
+    maxCacheTime,
   }
 }
+
+export const getInitCache = () => parseLocalStorage('cache') ?? null
 
 export const parseLocalStorage = (key: string | object) => {
   const value = typeof key === 'string' ? localStorage.getItem(key) : key

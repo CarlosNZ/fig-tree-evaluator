@@ -1,6 +1,8 @@
 import { FigTreeEvaluator } from '../src'
 import FigTreeCache from '../src/cache'
 
+jest.useFakeTimers()
+
 const figTreeOptions = {
   functions: {
     random: () => Math.random(),
@@ -20,36 +22,36 @@ const figTreeOptions = {
 // Test Cache directly
 
 test('Cache - fill cache beyond size limit', async () => {
-  const cache = new FigTreeCache(5)
+  const cache = new FigTreeCache({ maxSize: 5 })
   for (let i = 5; i <= 40; i += 5) {
     await cache.useCache(true, (a: number, b: number) => a + b, i, i + 5)
   }
-  await expect(cache['store']).toStrictEqual({
-    '20_25': 45,
-    '25_30': 55,
-    '30_35': 65,
-    '35_40': 75,
-    '40_45': 85,
+  await expect(cache.getCache()).toStrictEqual({
+    '20_25': { result: 45, timestamp: expect.any(Number) },
+    '25_30': { result: 55, timestamp: expect.any(Number) },
+    '30_35': { result: 65, timestamp: expect.any(Number) },
+    '35_40': { result: 75, timestamp: expect.any(Number) },
+    '40_45': { result: 85, timestamp: expect.any(Number) },
   })
   await expect(cache['queue']).toStrictEqual(['40_45', '35_40', '30_35', '25_30', '20_25'])
 })
 
 test('Cache - fill cache to exactly size limit', async () => {
-  const cache = new FigTreeCache(10)
+  const cache = new FigTreeCache({ maxSize: 10 })
   for (let i = 5; i <= 50; i += 5) {
     await cache.useCache(true, (a: number, b: number) => a + b, i, i + 5)
   }
-  await expect(cache['store']).toStrictEqual({
-    '5_10': 15,
-    '10_15': 25,
-    '15_20': 35,
-    '20_25': 45,
-    '25_30': 55,
-    '30_35': 65,
-    '35_40': 75,
-    '40_45': 85,
-    '45_50': 95,
-    '50_55': 105,
+  await expect(cache.getCache()).toStrictEqual({
+    '5_10': { result: 15, timestamp: expect.any(Number) },
+    '10_15': { result: 25, timestamp: expect.any(Number) },
+    '15_20': { result: 35, timestamp: expect.any(Number) },
+    '20_25': { result: 45, timestamp: expect.any(Number) },
+    '25_30': { result: 55, timestamp: expect.any(Number) },
+    '30_35': { result: 65, timestamp: expect.any(Number) },
+    '35_40': { result: 75, timestamp: expect.any(Number) },
+    '40_45': { result: 85, timestamp: expect.any(Number) },
+    '45_50': { result: 95, timestamp: expect.any(Number) },
+    '50_55': { result: 105, timestamp: expect.any(Number) },
   })
   await expect(cache['queue']).toStrictEqual([
     '50_55',
@@ -66,7 +68,7 @@ test('Cache - fill cache to exactly size limit', async () => {
 })
 
 test('Cache - check items get removed in correct order', async () => {
-  const cache = new FigTreeCache(5)
+  const cache = new FigTreeCache({ maxSize: 5 })
   const func = (a: object, b: object) => ({ ...a, ...b })
   await cache.useCache(true, func, { one: 1, two: 2 }, { three: 3 })
   await cache.useCache(true, func, {}, { three: 3 })
@@ -75,12 +77,15 @@ test('Cache - check items get removed in correct order', async () => {
   await cache.useCache(true, func, { one: 1, two: 2 }, { three: 3 })
   await cache.useCache(true, func, {}, { e: 'e' })
   await cache.useCache(true, func, { c: 'c' }, {})
-  await expect(cache['store']).toStrictEqual({
-    '{"one":1,"two":2}_{"three":3}': { one: 1, two: 2, three: 3 },
-    '{"a":"a"}_{"b":"b"}': { a: 'a', b: 'b' },
-    '{"c":"c"}_{"d":"d"}': { c: 'c', d: 'd' },
-    '{}_{"e":"e"}': { e: 'e' },
-    '{"c":"c"}_{}': { c: 'c' },
+  await expect(cache.getCache()).toStrictEqual({
+    '{"one":1,"two":2}_{"three":3}': {
+      result: { one: 1, two: 2, three: 3 },
+      timestamp: expect.any(Number),
+    },
+    '{"a":"a"}_{"b":"b"}': { result: { a: 'a', b: 'b' }, timestamp: expect.any(Number) },
+    '{"c":"c"}_{"d":"d"}': { result: { c: 'c', d: 'd' }, timestamp: expect.any(Number) },
+    '{}_{"e":"e"}': { result: { e: 'e' }, timestamp: expect.any(Number) },
+    '{"c":"c"}_{}': { result: { c: 'c' }, timestamp: expect.any(Number) },
   })
   await expect(cache['queue']).toStrictEqual([
     '{"c":"c"}_{}',
@@ -109,12 +114,12 @@ test('Cache - Reduce size limit below current contents', async () => {
     await cache.useCache(true, func, wd)
   }
   cache.setMax(5)
-  await expect(cache['store']).toStrictEqual({
-    six: 'SIX',
-    seven: 'SEVEN',
-    eight: 'EIGHT',
-    nine: 'NINE',
-    ten: 'TEN',
+  await expect(cache.getCache()).toStrictEqual({
+    six: { result: 'SIX', timestamp: expect.any(Number) },
+    seven: { result: 'SEVEN', timestamp: expect.any(Number) },
+    eight: { result: 'EIGHT', timestamp: expect.any(Number) },
+    nine: { result: 'NINE', timestamp: expect.any(Number) },
+    ten: { result: 'TEN', timestamp: expect.any(Number) },
   })
   await expect(cache['queue']).toStrictEqual(['ten', 'nine', 'eight', 'seven', 'six'])
 })
@@ -183,4 +188,17 @@ test('Cache - result not dropped as it has been used again before being dropped'
   }
   const result3 = await fig.evaluate('$getRandom()')
   await expect(result3).toEqual(result1)
+})
+
+test('Cache - expire cached result after 2 minutes', async () => {
+  const fig = new FigTreeEvaluator({ ...figTreeOptions })
+  fig.updateOptions({ useCache: true, maxCacheTime: 120 })
+
+  const result1 = await fig.evaluate('$getRandom()')
+  const result2 = await fig.evaluate('$getRandom()')
+  await expect(result1).toEqual(result2)
+
+  jest.advanceTimersByTime(125_000)
+  const result3 = await fig.evaluate('$getRandom()')
+  await expect(result3).not.toEqual(result1)
 })

@@ -3903,9 +3903,9 @@ caniuse-api@^3.0.0:
     lodash.uniq "^4.5.0"
 
 caniuse-lite@^1.0.0, caniuse-lite@^1.0.30001332, caniuse-lite@^1.0.30001335:
-  version "1.0.30001439"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001439.tgz"
-  integrity sha512-1MgUzEkoMO6gKfXflStpYgZDlFM7M/ck/bgfVCACO5vnAf0fXoNVHdWtqGU+MYca+4bL9Z5bpOVmR33cWW9G2A==
+  version "1.0.30001518"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001518.tgz"
+  integrity sha512-rup09/e3I0BKjncL+FesTayKtPrdwKhUufQFd3riFw1hHg8JmIFoInYfB102cFcY/pPgGmdyl/iy+jgiDi2vdA==
 
 capital-case@^1.0.4:
   version "1.0.4"
@@ -5368,10 +5368,10 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.9.0-1:
-  version "2.9.0-1"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.9.0-1.tgz#a0e21bac7f6887b411630cb80384c7ff1944fb55"
-  integrity sha512-Z9+Ibx71VivYo2H0ol2qRkmzirQVg9yiULJa6dEjmCtC74mYWw2g3xKeJm6hLxEOMeGMSsuu+g9LDMXn4LzV6w==
+fig-tree-evaluator@^2.10.0:
+  version "2.10.0"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.10.0.tgz#c2c4d492d35cd8d2f0588ea286f3a70f1bc474c1"
+  integrity sha512-kErSb7N8Em6jqZV7KPL+3MXFQkdhVkaSbWwCY3QPjTlAk/8EFXHLPfL8j78KQFXFoZuUmbxqJga7IhAdOEaEpA==
   dependencies:
     axios "^0.27.2"
     change-case "^4.1.2"

@@ -57,6 +57,7 @@ export interface FigTreeOptions {
   excludeOperators?: OperatorAlias[]
   useCache?: boolean
   maxCacheSize?: number
+  maxCacheTime?: number // seconds
   // Undocumented -- only for < v1 compatibility
   supportDeprecatedValueNodes?: boolean
 }

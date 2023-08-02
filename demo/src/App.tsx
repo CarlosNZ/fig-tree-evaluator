@@ -27,6 +27,7 @@ import {
   JSONstringifyLoose,
   validateExpression,
   validateData,
+  getInitCache,
 } from './helpers'
 import functions from './customFunctions'
 import initData from './data.json'
@@ -45,6 +46,12 @@ initOptions.functions = functions
 const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
 // @ts-ignore
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
+
+const savedCache = getInitCache()
+if (savedCache) {
+  figTreeDev.setCache(savedCache)
+  figTreePub.setCache(savedCache)
+}
 
 function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
@@ -100,6 +107,8 @@ function App() {
           setResult({ output: null, error: result.error })
         else setResult({ output: result, error: false })
         setLoading(false)
+        if (evaluator.getOptions().useCache)
+          localStorage.setItem('cache', JSON.stringify(evaluator.getCache()))
       })
       .catch((error) => {
         setResult({ output: null, error: error.message })

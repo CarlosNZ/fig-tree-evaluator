@@ -115,9 +115,9 @@ A playground for building and testing expressions is available [here](https://ca
 
 ## Install
 
-`npm install fig-tree`\
+`npm install fig-tree-evaluator`\
 or\
-`yarn add fig-tree`
+`yarn add fig-tree-evaluator`
 
 ## Usage
 
@@ -162,6 +162,7 @@ The `options` parameter is an object with the following available properties (al
 - `excludeOperators` -- an array of operator names (or [aliases](#operator--property-aliases)) to prohibit from being used in expressions. You may wish to restrict (for example) database access via FigTree configurations, in which case these exclusions can be defined when instantiating the FigTree instance (or updated on the fly).
 - `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
 - `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
+- `maxCacheTime` -- the maximum time (in seconds) that a result will be cached since last access (default: `1800` (30 minutes))
 - `noShorthand` -- there is a [shorthand syntax](#shorthand-syntax) available for writing expressions. Internally, this is pre-processed into the standard expression form before evaluation. If you have no use for this and you'd rather all expressions were written with full verbosity, set `noShorthand: true` to save a small amount in performance by skipping internal pre-processing.
 
 As mentioned above, `options` can be provided as part of the constructor as part of each separate evaluation. You can also change the options permanently for a given evaluator instance with:
@@ -775,14 +776,21 @@ Example using "data" passed in dynamically as part of expression:
 ----
 ### STRING_SUBSTITUTION
 
-*Replace values in a string using simple parameter substitution*
+*Replace values in a string using simple parameter (positional or named properties) substitution*
 
 Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
 #### Properties
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
-- `substitutions` (or `replacements`)<sup>*</sup>: (array) -- the values to be substituted into `string`
+- `substitutions` (or `replacements`, `values`)<sup>*</sup>: (array | object) -- the values to be substituted into `string`. Will be either an array or object depending on whether you're using positional replacements or named properties (see [below](#positional-replacement)).
+- `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of the substitution values
+- `substitutionCharacter` (or `subCharacter`, `subChar`): (`"%"` or `"$"`) -- by default, when using positional replacement, it looks for the `%` token (i.e `%1, %2, etc`), but this can be changed to `$` (i.e. `$1, $2, $3, etc`) by setting this property to `$`.
+- `numberMapping` (or `numMap`, `numberMap`, `pluralisation`, `pluralization`, `plurals`): (object) -- when replacing with named properties and you have replacement values that are numbers, it's possible to map values or ranges to specific string outputs. This can be used to produce correct pluralisation, for example. [See below](#named-property-replacement) for more details.
+
+Substitution can be done using either **positional** replacement, or with **named properties**:
+
+#### Positional replacement
 
 The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
 
@@ -803,7 +811,9 @@ e.g.
 
 {
   operator: 'replace',
-  string: '%1 is actually %2 %3',
+  // Using $1, $2 instead of %1, %2 this time:
+  string: '$1 is actually $2 $3',
+  substitutionCharacter: "$",
   substitutions: [
     // Using the 'user' object from above (OBJECT_PROPERTIES operator)
     {
@@ -829,9 +839,19 @@ e.g.
   substitutions: ['bird', 'Tweet!'],
 }
 // => 'A bird says: "Tweet! Tweet! Tweet!"'
+
+// Replacement tokens can be escaped using the standard "\" escape character:
+{
+  operator: 'stringSubstitution',
+  string: 'The price of $1 is \$5',
+  subChar: '$',
+  substitutions: [ 'a coffee', 'not used' ],
+}
+// => The price of a coffee is $5
 ```
 
-`children` array: `[string, ...substitutions]`
+`children` array: `[string, ...substitutions]`  
+(`trimWhiteSpace` and `substitutionCharacter` not available, since `substitutions` can be an arbitrary number of items)
 
 e.g.
 ```js
@@ -841,6 +861,77 @@ e.g.
 }
 // => "I am Iron Man"
 ```
+
+#### Named property replacement
+
+Replacement tokens can be indicated in the main string with a named value, using `{{<name>}}` syntax, e.g. `"Your name is {{firstName}} {{lastName}}"`. Then the `substitutions` property must be an object with those property names:
+
+```js
+{
+  operator: 'stringSubstitution',
+  string: 'Your name is {{firstName}} {{lastName}}',
+  substitutions: {
+    firstName: 'Steve',
+    lastName: "Rogers"
+  }
+}
+// => "Your name is Steve Rogers"
+```
+
+If the replacement values are numbers, we can extend this functionality with a special `numberMapping` object, which allows for different replacements depending on the value, which is handy for pluralisation, for example.
+
+The syntax for the `numberMapping` property is:
+```js
+  {
+    propertyName1: {
+      1: "Output if value is {}",
+      2: "Output if value is 2",
+      ">5": "Output if value is greater than 5",
+      "<0": "Output if value is less than 0"
+      "other": "Fallback output if none of the others match: {} count"
+      // {} is a replacement for the numerical value itself
+    },
+    propertyName2: { ...etc }
+  }
+```
+The number map can have as few or as many match options as desired -- if no match is found (or if no `numberMapping` property at all), the number will be returned as-is.
+
+e.g.
+```js
+{
+  operator: 'stringSubstitution',
+  string: 'Hi {{name}}, we have {{count}} attending this event.',
+  values: {
+    name: "Tatiana",
+    count: {operator: "getData", property: "numOfPeople" }
+  },
+  numberMap: {
+    count: {
+      0: "no one",
+      1: "just one person",
+      ">10": "too many people",
+      "other": "{} people"
+    }
+  }
+}
+// Output with varying values for "numOfPeople" passed into evaluation
+// "data" object:
+
+// { numOfPeople: 5 }
+// => "Hi Tatiana, we have 5 people attending this event."
+
+// { numOfPeople: 0 }
+// => "Hi Tatiana, we have no one attending this event."
+
+// { numOfPeople: 100 }
+// => "Hi Tatiana, we have too many people attending this event."
+
+// { numOfPeople: 1 }
+// => "Hi Tatiana, we have just one person attending this event.
+```
+
+**Note**: `children` array not available for named properties
+
 
 ----
 
@@ -1527,7 +1618,7 @@ For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app
 
 ## Caching (Memoization)
 
-FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization) functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results, but this can be modified using the `maxCacheSize` option.
+FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoization) functionality for certain nodes to speed up re-evaluation when the input parameters haven't changed. There is a single cache store per FigTree instance which persists for the lifetime of the instance. By default, it remembers the last 50 results with each result being valid for half and hour, but these values can be modified using the `maxCacheSize` and `maxCacheTime` [options](#available-options).
 
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
@@ -1542,6 +1633,17 @@ This is different to the memoization provided by [Alias Nodes](#alias-nodes):
 - Cached nodes will persist *between* different evaluations as long as the input values are the same as a previously evaluated node.
 
 Caching is enabled by default for most of the above operators, but this can be overridden by setting `useCache: false` in [options](#available-options), either globally or per expression. If you're querying a database or API that is likely to have a different result for the same request (i.e. data has changed), then you probably want to turn the cache off.
+
+It's possible to manually set/get the cache store, which can be used (for example) to save the cache in local storage to persist it between page reloads or new FigTree instances.
+
+Use the methods:
+
+```js
+fig.getCache() // returns key-value store
+
+fig.setCache(cache) // where "cache" is the object retrieved by .getCache()
+```
+
 
 ## Metadata
 
@@ -1691,14 +1793,19 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-- **v2.9.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
+- **v2.11.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
+- **v2.10.0**: Extended stringSubstitution functionality to included named
+  property substitution, trim whitespace option, and pluralisation (#97)
+- **v2.9.0**: Added ability to invalidate cache by time (#94)
 - **v2.8.6**: Small bug fix where `options` object would be mutated instead of replaced
 - **v2.8.5**: Small bug fix in [COUNT](#count) operator
 - **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
 - **v2.8.0**:
   - **[Shorthand syntax](#shorthand-syntax)** (#80)
-  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and functions (#82)
-- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be prohibited (e.g. database lookups) (#54)
+  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and
+    functions (#82)
+- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be
+  prohibited (e.g. database lookups) (#54)
 - **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
 - **v2.5.0**:
   - Bug fixes for edge cases (mainly related to backwards compatibility)
@@ -1720,7 +1827,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
   -  more [operators](#operator-reference)
   -  operator (and property) [aliases](#operator--property-aliases)
-  -  more appropriately-named properties associated with each operator (as opposed to a single `children` array)
+  -  more appropriately-named properties associated with each operator (as
+     opposed to a single `children` array)
   -  class-based Evaluator instances
   -  runtime type-checking
   -  better error handling and error reporting
