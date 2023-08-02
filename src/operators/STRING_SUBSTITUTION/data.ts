@@ -18,6 +18,14 @@ const parameters: Parameter[] = [
     required: true,
     type: 'array',
   },
+  {
+    name: 'trimWhiteSpace',
+    description:
+      'Whether or not to trim white space from either end of the substituted strings (default: true)',
+    aliases: ['trim', 'trimWhitespace'],
+    required: false,
+    type: 'boolean',
+  },
 ]
 
 export const propertyAliases = getPropertyAliases(parameters)

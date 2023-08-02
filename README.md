@@ -784,6 +784,7 @@ Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
 - `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
 - `substitutions` (or `replacements`)<sup>*</sup>: (array) -- the values to be substituted into `string`
+- `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of the substitution values
 
 The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
 

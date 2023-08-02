@@ -72,10 +72,10 @@ test('String substitution - too many replacements', () => {
 test('String substitution - too few replacements,', () => {
   const expression = {
     operator: 'stringSubstitution',
-    children: ["The applicant's name is %1 %2 %3.", 'Wanda', 'Maximoff'],
+    children: ["The applicant's name is _%1_ %2 %3.", 'Wanda', 'Maximoff'],
   }
   return evaluateExpression(expression).then((result) => {
-    expect(result).toBe("The applicant's name is Wanda Maximoff .")
+    expect(result).toBe("The applicant's name is _Wanda_ Maximoff .")
   })
 })
 
@@ -205,5 +205,28 @@ test('String substitution - missing replacements parameter', () => {
     expect(result).toBe(
       'Operator: STRING_SUBSTITUTION\n- Missing required property "substitutions" (type: array)'
     )
+  })
+})
+
+test('String substitution with white space trimming', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'This is the *%1* entry and this is the %2',
+    substitutions: [' first  ', '   second '],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('This is the *first* entry and this is the second')
+  })
+})
+
+test('String substitution with NO white space trimming', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'This is the *%1* entry and this is the %2',
+    substitutions: [' first  ', '   second '],
+    trim: false,
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('This is the * first  * entry and this is the    second ')
   })
 })
