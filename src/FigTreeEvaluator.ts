@@ -18,8 +18,6 @@ import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 
-// const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
-
 class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference

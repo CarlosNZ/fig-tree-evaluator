@@ -170,7 +170,7 @@ const expression = {
                       parameters: {
                         codes: 'nz',
                       },
-                      returnProperty: '[1].name.nativeName.mri.official',
+                      returnProperty: '[0].name.nativeName.mri.official',
                     },
                   },
                   {

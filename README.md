@@ -1647,7 +1647,7 @@ fig.setCache(cache) // where "cache" is the object retrieved by .getCache()
 
 ## Metadata
 
-Evaluator expression can be configured by hand, with [aliases](#alias-nodes), [fragments](#fragments) and [shorthand](#shorthand-syntax) available to make the job easier.
+Evaluator expressions can be configured by hand, with [aliases](#alias-nodes), [fragments](#fragments) and [shorthand](#shorthand-syntax) available to make the job easier.
 
 However, you may wish to build an external UI for building FigTree expression. To this end, the FigTree instance provides three methods that could be useful for populating your configuration UI:
 
