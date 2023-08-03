@@ -37,11 +37,10 @@ const buildOperatorAliases = (operatorObjects: { [key in Operator]: OperatorObje
 console.log('Building Operator aliases...\n')
 const operatorAliases = buildOperatorAliases(operatorReference)
 
-writeFileSync(
-  'src/operators/operatorAliases.ts',
-  prettier.format(
+prettier
+  .format(
     "import { OperatorAliases } from '../types'\n\nexport const operatorAliases: OperatorAliases = " +
       JSON.stringify(operatorAliases, null, 2),
-    { parser: 'babel', ...prettierConfig } as Partial<RequiredOptions>
+    { parser: 'babel-ts', ...prettierConfig } as Partial<RequiredOptions>
   )
-)
+  .then((data) => writeFileSync('src/operators/operatorAliases.ts', data))
