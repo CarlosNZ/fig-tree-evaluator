@@ -1,13 +1,13 @@
 import { AxiosRequestHeaders } from 'axios'
+import { evaluateArray } from '../../evaluate'
 import {
-  evaluateArray,
   zipArraysToObject,
   axiosRequest,
   extractAndSimplify,
   isFullUrl,
   joinUrlParts,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
 import {
   OperatorNode,
   EvaluatorNode,

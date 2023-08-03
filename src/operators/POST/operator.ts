@@ -1,12 +1,12 @@
 import { AxiosRequestHeaders } from 'axios'
 import {
-  evaluateArray,
   axiosRequest,
   extractAndSimplify,
   isFullUrl,
   joinUrlParts,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
+import { evaluateArray } from '../../evaluate'
 import { EvaluateMethod, OperatorObject } from '../../types'
 import { parseChildrenGET as parseChildren } from '../GET/operator'
 import operatorData, { propertyAliases } from './data'

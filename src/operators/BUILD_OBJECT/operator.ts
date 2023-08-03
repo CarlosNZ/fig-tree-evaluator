@@ -1,4 +1,5 @@
-import { evaluateArray, getTypeCheckInput } from '../_operatorUtils'
+import { getTypeCheckInput } from '../operatorUtils'
+import { evaluateArray } from '../../evaluate'
 import {
   EvaluatorNode,
   EvaluatorOutput,

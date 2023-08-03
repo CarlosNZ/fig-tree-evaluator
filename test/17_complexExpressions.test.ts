@@ -1,5 +1,5 @@
 import { Client } from 'pg'
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 import pgConfig from './postgres/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../codegen/queryBuilder'
@@ -168,7 +168,7 @@ const expression = {
                       operator: 'get',
                       url: 'https://restcountries.com/v3.1/alpha',
                       parameters: {
-                        codes: 'nz,au',
+                        codes: 'nz',
                       },
                       returnProperty: '[1].name.nativeName.mri.official',
                     },

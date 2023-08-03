@@ -1,6 +1,6 @@
 import { EvaluatorNode, OperatorAliases, Fragments, FragmentNode } from './types'
 import { getOperatorName, isFragmentNode, isOperatorNode, isObject, isAliasString } from './helpers'
-import opAliases from './operators/_operatorAliases.json'
+import { operatorAliases as opAliases } from './operators/operatorAliases'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 

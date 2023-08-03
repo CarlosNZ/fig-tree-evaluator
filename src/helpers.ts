@@ -2,8 +2,6 @@
 Functions used by the main "evaluatorFunction" (evaluate.ts)
 */
 import { camelCase } from 'change-case'
-import { evaluatorFunction } from './evaluate'
-import { singleArrayToObject, zipArraysToObject } from './operators/_operatorUtils'
 import {
   OutputType,
   EvaluatorNode,
@@ -12,7 +10,6 @@ import {
   FigTreeConfig,
   OperatorReference,
   OperatorAliases,
-  OperatorAlias,
   Operator,
   FragmentNode,
   OperatorNode,
@@ -44,7 +41,7 @@ const standardiseOperatorName = (name: string) => {
 export const getOperatorName = (
   operator: string,
   operatorAliases: OperatorAliases
-): Operator | undefined => operatorAliases[standardiseOperatorName(operator) as OperatorAlias]
+): Operator | undefined => operatorAliases[standardiseOperatorName(operator)]
 
 export const filterOperators = (
   operators: OperatorReference,
@@ -53,9 +50,9 @@ export const filterOperators = (
 ): OperatorReference => {
   const filteredOperators = { ...operators }
   exclusions.forEach((exclusion) => {
-    const operator = operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]
+    const operator = operatorAliases[standardiseOperatorName(exclusion)]
     if (!operator) console.warn(`Invalid operator exclusion: ${exclusion}`)
-    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion) as OperatorAlias]]
+    delete filteredOperators[operatorAliases[standardiseOperatorName(exclusion)]]
   })
   return filteredOperators
 }
@@ -109,20 +106,6 @@ const mapObjectKeys = <T>(
 
 // Returns true if value is of the form "$alias"
 export const isAliasString = (value: string) => /^\$.+/.test(value)
-
-/*
-Identify any properties in the expression that represent "alias" nodes (i.e of
-the form `$alias`) and evaluate their values
-*/
-export const evaluateNodeAliases = async (expression: OperatorNode, config: FigTreeConfig) => {
-  const aliasKeys = Object.keys(expression).filter(isAliasString)
-  if (aliasKeys.length === 0) return {}
-
-  const evaluations: Promise<EvaluatorOutput>[] = []
-  aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
-
-  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
-}
 
 /*
 If passed-in value (probably a leaf node) is an "alias" key, then replace it
@@ -189,37 +172,3 @@ Returns `true` if input is an object ({}) (but not an array)
 */
 export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
-
-/*
-Check if an object has any "Operator Nodes" as values and evaluate them if so.
-Doesn't need to be recursive or handle arrays, as the main "evaluatorFunction"
-will handle that.
-*/
-export const evaluateObject = async (
-  input: EvaluatorNode,
-  config: FigTreeConfig
-): Promise<EvaluatorOutput> => {
-  if (!isObject(input)) return input
-
-  const newObjectEntries: unknown[] = []
-  const newAliases: unknown[] = []
-
-  // First evaluate any Alias nodes we find and add them to config
-  Object.entries(input).forEach(([key, value]) => {
-    if (isAliasString(key)) {
-      newAliases.push(key, evaluatorFunction(value, config))
-      delete (input as Record<string, unknown>)[key]
-    }
-  })
-  const aliasArray = await Promise.all(newAliases)
-  config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
-
-  // Then evaluate the rest
-  Object.entries(input).forEach(([key, value]) => {
-    newObjectEntries.push(key, evaluatorFunction(value, config))
-  })
-
-  const results = await Promise.all(newObjectEntries)
-
-  return replaceAliasNodeValues(singleArrayToObject(results), config)
-}

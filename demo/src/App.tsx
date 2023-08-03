@@ -16,10 +16,10 @@ import {
   Link,
   Image,
 } from '@chakra-ui/react'
-import EvaluatorDev, { FigTreeOptions } from './fig-tree-evaluator/src'
-import EvaluatorPublished from 'fig-tree-evaluator'
+import { FigTreeEvaluator as EvaluatorDev, FigTreeOptions } from './fig-tree-evaluator/src'
+import { FigTreeEvaluator as EvaluatorPublished } from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
-// import EvaluatorPublished from './fig-tree-evaluator/src'
+// import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
 import { OptionsModal } from './OptionsModal'
 import {
   getInitOptions,
@@ -44,6 +44,7 @@ const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
 const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
+// @ts-ignore
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()

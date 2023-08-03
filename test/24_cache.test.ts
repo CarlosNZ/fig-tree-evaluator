@@ -1,4 +1,4 @@
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 import FigTreeCache from '../src/cache'
 
 jest.useFakeTimers()

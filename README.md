@@ -122,7 +122,7 @@ or\
 ## Usage
 
 ```js
-import FigTreeEvaluator from 'fig-tree-evaluator'
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
 
 // New evaluator instance
 const fig = new FigTreeEvaluator([ options ]) // See available options below
@@ -1793,6 +1793,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.11.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
 - **v2.10.0**: Extended stringSubstitution functionality to included named
   property substitution, trim whitespace option, and pluralisation (#97)
 - **v2.9.0**: Added ability to invalidate cache by time (#94)

@@ -1,4 +1,4 @@
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 import { preProcessShorthand } from '../src/shorthandSyntax'
 
 const fig = new FigTreeEvaluator({

@@ -3,11 +3,10 @@ Functions used specifically by various operators
 */
 
 import axios, { AxiosRequestConfig } from 'axios'
-import extractProperty from 'object-property-extractor/build/extract'
-import { evaluatorFunction } from '../evaluate'
+import extractProperty from 'object-property-extractor'
 import { isObject } from '../helpers'
 import { typeCheck, TypeCheckInput, isLiteralType } from '../typeCheck'
-import { EvaluatorNode, EvaluatorOutput, FigTreeConfig, Parameter } from '../types'
+import { Parameter } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
 export const getPropertyAliases = (parameters: Parameter[]): Record<string, string> => {
@@ -35,15 +34,6 @@ export const getTypeCheckInput = (
     return { name, value: params[name], expectedType }
   })
 
-// Evaluate all child/property nodes simultaneously
-export const evaluateArray = async (
-  nodes: EvaluatorNode[] | EvaluatorNode,
-  params: FigTreeConfig
-): Promise<EvaluatorOutput[]> => {
-  if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorOutput[]
-  return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
-}
-
 /*
 "Zips" two arrays into an object, where the first array provides 
 the keys, and the second becomes the values
@@ -52,7 +42,7 @@ e.g. (["one", "two"], [1, 2]) => {one: 1, two: 2}
 export const zipArraysToObject = <T>(
   keys: string[],
   values: T[]
-): { [K in typeof keys[number]]: T } => {
+): { [K in (typeof keys)[number]]: T } => {
   const pairs = keys.map((key, index) => [key, values[index]])
   return Object.fromEntries(pairs)
 }

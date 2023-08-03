@@ -3,7 +3,6 @@ The core evaluation function used by FigTreeEvaluator
 */
 
 import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
-import { evaluateArray } from './operators/_operatorUtils'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
   fallbackOrError,
@@ -12,13 +11,14 @@ import {
   parseIfJson,
   isOperatorNode,
   mapPropertyAliases,
-  evaluateNodeAliases,
   getOperatorName,
   replaceAliasNodeValues,
-  evaluateObject,
   isFragmentNode,
   isObject,
+  isAliasString,
 } from './helpers'
+import { zipArraysToObject, singleArrayToObject } from './operators/operatorUtils'
+// import { evaluateObject, evaluateArray, evaluateNodeAliases } from './evaluateCollections'
 
 export const evaluatorFunction = async (
   input: EvaluatorNode,
@@ -169,4 +169,62 @@ export const evaluatorFunction = async (
       returnErrorAsString
     )
   }
+}
+
+// Evaluate all child/property nodes simultaneously
+export const evaluateArray = async (
+  nodes: EvaluatorNode[] | EvaluatorNode,
+  params: FigTreeConfig
+): Promise<EvaluatorOutput[]> => {
+  if (!Array.isArray(nodes)) return (await evaluatorFunction(nodes, params)) as EvaluatorOutput[]
+  return await Promise.all(nodes.map((node) => evaluatorFunction(node, params)))
+}
+
+/*
+Identify any properties in the expression that represent "alias" nodes (i.e of
+the form `$alias`) and evaluate their values
+*/
+export const evaluateNodeAliases = async (expression: OperatorNode, config: FigTreeConfig) => {
+  const aliasKeys = Object.keys(expression).filter(isAliasString)
+  if (aliasKeys.length === 0) return {}
+
+  const evaluations: Promise<EvaluatorOutput>[] = []
+  aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
+
+  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
+}
+
+/*
+Check if an object has any "Operator Nodes" as values and evaluate them if so.
+Doesn't need to be recursive or handle arrays, as the main "evaluatorFunction"
+will handle that.
+*/
+
+export const evaluateObject = async (
+  input: EvaluatorNode,
+  config: FigTreeConfig
+): Promise<EvaluatorOutput> => {
+  if (!isObject(input)) return input
+
+  const newObjectEntries: unknown[] = []
+  const newAliases: unknown[] = []
+
+  // First evaluate any Alias nodes we find and add them to config
+  Object.entries(input).forEach(([key, value]) => {
+    if (isAliasString(key)) {
+      newAliases.push(key, evaluatorFunction(value, config))
+      delete (input as Record<string, unknown>)[key]
+    }
+  })
+  const aliasArray = await Promise.all(newAliases)
+  config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
+
+  // Then evaluate the rest
+  Object.entries(input).forEach(([key, value]) => {
+    newObjectEntries.push(key, evaluatorFunction(value, config))
+  })
+
+  const results = await Promise.all(newObjectEntries)
+
+  return replaceAliasNodeValues(singleArrayToObject(results), config)
 }

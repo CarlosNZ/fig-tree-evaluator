@@ -1,4 +1,4 @@
-import FigTreeEvaluator from '../src'
+import { FigTreeEvaluator } from '../src'
 
 const exp = new FigTreeEvaluator({
   graphQLConnection: {

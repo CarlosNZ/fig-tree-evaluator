@@ -1,12 +1,12 @@
+import { evaluateArray } from '../../evaluate'
 import {
   zipArraysToObject,
   extractAndSimplify,
-  evaluateArray,
   isFullUrl,
   joinUrlParts,
   axiosRequest,
   getTypeCheckInput,
-} from '../_operatorUtils'
+} from '../operatorUtils'
 import {
   OperatorNode,
   EvaluatorNode,

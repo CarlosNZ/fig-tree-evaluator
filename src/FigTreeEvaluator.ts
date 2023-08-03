@@ -12,13 +12,13 @@ import {
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
-import opAliases from './operators/_operatorAliases.json'
+import { operatorAliases } from './operators/operatorAliases'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 
-const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
+// const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
 class FigTreeEvaluator {
   private options: FigTreeOptions
