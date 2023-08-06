@@ -44,7 +44,6 @@ const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
 const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
-// @ts-ignore
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()

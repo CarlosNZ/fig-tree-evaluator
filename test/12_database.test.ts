@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { FigTreeEvaluator } from '../src'
+import { FigTreeEvaluator } from './evaluator'
 import { Client } from 'pg'
 import pgConfig from './postgres/pgConfig.json'
 

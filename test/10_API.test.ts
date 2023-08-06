@@ -1,4 +1,4 @@
-import { FigTreeEvaluator } from '../src'
+import { FigTreeEvaluator } from './evaluator'
 
 const exp = new FigTreeEvaluator({ returnErrorAsString: true })
 

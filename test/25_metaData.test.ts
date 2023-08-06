@@ -1,4 +1,4 @@
-import { FigTreeEvaluator } from '../src'
+import { FigTreeEvaluator } from './evaluator'
 
 const fig = new FigTreeEvaluator({
   functions: {
