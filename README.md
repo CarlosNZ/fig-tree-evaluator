@@ -1150,7 +1150,7 @@ Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
   We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
 
-In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
+In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/apis/client#new-client) `Client` "Config" object:
 
 ```js
 import { Client } from 'pg'
