@@ -2,6 +2,7 @@ import FigTreeCache from './cache'
 import { GraphQLConnection } from './operators'
 import { operatorAliases } from './operators/operatorAliases'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
+import { Client } from 'pg'
 
 export const Operators = [
   // Canonical operator names
@@ -43,7 +44,7 @@ export interface FigTreeOptions {
   objects?: object // same as "data" -- deprecated
   functions?: Record<string, UnknownFunction>
   fragments?: Fragments
-  pgConnection?: PostgresConfig
+  pgConnection?: Client
   graphQLConnection?: GraphQLConnection
   baseEndpoint?: string
   headers?: { [key: string]: string }
@@ -147,21 +148,4 @@ export interface OperatorData {
 
 export interface OperatorMetadata extends OperatorData {
   operator: Operator
-}
-
-// From: https://node-postgres.com/apis/client#new-client
-type PostgresConfig = {
-  user?: string
-  password?: string
-  host?: string
-  database?: string
-  port?: number
-  connectionString?: string
-  ssl?: any
-  types?: any
-  statement_timeout?: number
-  query_timeout?: number
-  application_name?: string
-  connectionTimeoutMillis?: number
-  idle_in_transaction_session_timeout?: number
 }

@@ -1150,7 +1150,7 @@ Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
 
   We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
 
-In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/apis/client#new-client) `Client` "Config" object:
+In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
 
 ```js
 import { Client } from 'pg'
@@ -1793,6 +1793,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.11.4**: Bundle target ES6
 - **v2.11.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
 - **v2.10.0**: Extended stringSubstitution functionality to included named
   property substitution, trim whitespace option, and pluralisation (#97)

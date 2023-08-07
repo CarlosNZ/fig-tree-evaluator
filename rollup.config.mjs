@@ -16,7 +16,7 @@ export default [
         format: 'esm',
       },
     ],
-    plugins: [typescript({ module: 'ESNext' }), sizes(), terser()],
+    plugins: [typescript({ module: 'ESNext', target: 'es6' }), sizes(), terser()],
     external: ['change-case', 'axios', 'object-property-extractor', 'dequal/lite'],
   },
   {
