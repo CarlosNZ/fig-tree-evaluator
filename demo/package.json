@@ -4,18 +4,18 @@
   "private": true,
   "homepage": "https://carlosnz.github.io/fig-tree-evaluator",
   "dependencies": {
-    "@chakra-ui/react": "^2.5.1",
-    "@emotion/react": "^11.10.6",
-    "@emotion/styled": "^11.10.6",
+    "@chakra-ui/react": "^2.8.0",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
     "fig-tree-evaluator": "^2.11.4",
-    "framer-motion": "^10.2.5",
+    "framer-motion": "^10.15.1",
     "loose-json": "^1.1.2",
-    "pg": "^8.10.0",
+    "pg": "^8.11.2",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
-    "web-vitals": "^3.3.0"
+    "web-vitals": "^3.4.0"
   },
   "scripts": {
     "start": "rimraf ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator/src && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
@@ -52,14 +52,14 @@
     ]
   },
   "devDependencies": {
-    "@types/node": "^18.15.3",
-    "@types/pg": "^8.6.5",
-    "@types/react": "^18.0.28",
-    "@types/react-dom": "^18.0.11",
-    "concurrently": "^7.2.1",
+    "@types/node": "^20.4.9",
+    "@types/pg": "^8.10.2",
+    "@types/react": "^18.2.19",
+    "@types/react-dom": "^18.2.7",
+    "concurrently": "^8.2.0",
     "gh-pages": "^5.0.0",
-    "nodemon": "^2.0.21",
+    "nodemon": "^3.0.1",
     "react-scripts": "5.0.1",
-    "typescript": "^4.9.5"
+    "typescript": "^5.1.6"
   }
 }
