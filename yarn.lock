@@ -1198,14 +1198,6 @@ available-typed-arrays@^1.0.5:
   resolved "https://registry.yarnpkg.com/available-typed-arrays/-/available-typed-arrays-1.0.5.tgz#92f95616501069d07d10edb2fc37d3e1c65123b7"
   integrity sha512-DMD0KiN46eipeziST1LPP/STfDU0sufISXmjSgvVsoU2tqxctQeASejWcfNtxYKqETM1UxQ8sp2OrSBWpHY6sw==
 
-axios@^0.27.2:
-  version "0.27.2"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
-  integrity sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==
-  dependencies:
-    follow-redirects "^1.14.9"
-    form-data "^4.0.0"
-
 axios@^1.4.0:
   version "1.4.0"
   resolved "https://registry.yarnpkg.com/axios/-/axios-1.4.0.tgz#38a7bf1224cd308de271146038b551d725f0be1f"
@@ -1898,12 +1890,12 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.11.4:
-  version "2.11.4"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.11.4.tgz#55cbb516652e5795ae88233244ddff6b0ab1b652"
-  integrity sha512-hfyZ+MrYFmbITD1J1mBk3eX7d5GEixWVNbqal3jVxV9qIkDgFMtKsW8S/kkLmuEA3ZUnRCRH8JLE22Bh5eRS7w==
+fig-tree-evaluator@^2.11.5:
+  version "2.11.5"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.11.5.tgz#4697a9be3c83f41ff15c0174bb3b599c4239831d"
+  integrity sha512-xcf8yRi4ChMZL2y8MN1b4DCSLm9LhbjaiG1nXy8h7hYJLSuceRb/QXSOWGEYrBnZ2AwOVVyp7NP+MWpZslgccQ==
   dependencies:
-    axios "^0.27.2"
+    axios "^1.4.0"
     change-case "^4.1.2"
     dequal "^2.0.3"
     object-property-extractor "^1.0.7"
@@ -1955,11 +1947,6 @@ flatted@^3.1.0:
   version "3.2.7"
   resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.2.7.tgz#609f39207cb614b89d0765b477cb2d437fbf9787"
   integrity sha512-5nqDSxl8nn5BSNxyR3n4I6eDmbolI6WT+QqR547RwxQapgjQBmtktdP+HTBb/a/zLsbzERTONyUB5pefh5TtjQ==
-
-follow-redirects@^1.14.9:
-  version "1.15.1"
-  resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.15.1.tgz#0ca6a452306c9b276e4d3127483e29575e207ad5"
-  integrity sha512-yLAMQs+k0b2m7cVxpS1VKJVvoz7SS9Td1zss3XRwXj+ZDH00RJgnuLx7E44wx02kQLrdM3aOOy+FpzS7+8OizA==
 
 follow-redirects@^1.15.0:
   version "1.15.2"
