@@ -18,7 +18,6 @@ import {
   isAliasString,
 } from './helpers'
 import { zipArraysToObject, singleArrayToObject } from './operators/operatorUtils'
-// import { evaluateObject, evaluateArray, evaluateNodeAliases } from './evaluateCollections'
 
 export const evaluatorFunction = async (
   input: EvaluatorNode,
