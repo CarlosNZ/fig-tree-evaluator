@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/fig-tree-evaluator/static/css/main.29996e56.css",
-    "main.js": "/fig-tree-evaluator/static/js/main.bf4c511a.js",
-    "static/js/496.cd33e17d.chunk.js": "/fig-tree-evaluator/static/js/496.cd33e17d.chunk.js",
+    "main.js": "/fig-tree-evaluator/static/js/main.5f6bb1ee.js",
+    "static/js/496.70551b3e.chunk.js": "/fig-tree-evaluator/static/js/496.70551b3e.chunk.js",
     "static/media/fig_tree_evaluator_logo_512.png": "/fig-tree-evaluator/static/media/fig_tree_evaluator_logo_512.b16e0b00671455f88386.png",
     "index.html": "/fig-tree-evaluator/index.html",
     "main.29996e56.css.map": "/fig-tree-evaluator/static/css/main.29996e56.css.map",
-    "main.bf4c511a.js.map": "/fig-tree-evaluator/static/js/main.bf4c511a.js.map",
-    "496.cd33e17d.chunk.js.map": "/fig-tree-evaluator/static/js/496.cd33e17d.chunk.js.map"
+    "main.5f6bb1ee.js.map": "/fig-tree-evaluator/static/js/main.5f6bb1ee.js.map",
+    "496.70551b3e.chunk.js.map": "/fig-tree-evaluator/static/js/496.70551b3e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.29996e56.css",
-    "static/js/main.bf4c511a.js"
+    "static/js/main.5f6bb1ee.js"
   ]
 }
