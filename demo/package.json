@@ -18,7 +18,7 @@
     "web-vitals": "^3.4.0"
   },
   "scripts": {
-    "start": "rimraf ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator/src && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
+    "start": "rimraf ./src/fig-tree-evaluator && rimraf ./src/expression-builder && mkdir ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator/src && mkdir ./src/expression-builder && mkdir ./src/expression-builder/src && concurrently --kill-others-on-fail \"yarn serve\" \"PORT=3005 react-scripts start\" \"nodemon watch.js\"",
     "serve": "node ./src/express/server",
     "build": "react-scripts build",
     "test": "react-scripts test",
@@ -34,9 +34,10 @@
   },
   "nodemonConfig": {
     "watch": [
-      "../src"
+      "../src",
+      "../expression-builder/src"
     ],
-    "ext": "js, json, ts, txt",
+    "ext": "js, json, ts, tsx, txt",
     "delay": 200
   },
   "browserslist": {

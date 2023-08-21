@@ -1,0 +1,24 @@
+{
+  "name": "fig-tree-expression-builder",
+  "version": "1.0.0",
+  "description": "React UI for constructing FigTree Evaluator expressions",
+  "main": "index.js",
+  "author": "Carl Smith",
+  "license": "MIT",
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "dependencies": {
+    "json-edit-react": "^0.9.6",
+    "object-property-assigner": "^1.0.1",
+    "object-property-extractor": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.1",
+    "@types/react": "^18.2.20",
+    "ts-node": "^10.9.1",
+    "tslib": "^2.6.2",
+    "typescript": "^5.1.6"
+  }
+}
