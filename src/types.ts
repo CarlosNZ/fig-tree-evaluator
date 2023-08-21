@@ -90,14 +90,14 @@ export interface FragmentNode {
   [key: string]: EvaluatorNode
 }
 
-export interface FragmentMetadata {
+export interface FragmentData {
   description?: string
   parameters?: Record<string, { type: string | string[]; required: boolean }>
 }
 
 export type Fragment =
   | (EvaluatorNode & {
-      metadata?: FragmentMetadata
+      metadata?: FragmentData
     })
   | null
 
@@ -146,6 +146,10 @@ export interface OperatorData {
   parameters: Parameter[]
 }
 
-export interface OperatorMetadata extends OperatorData {
+export type OperatorMetadata = OperatorData & {
   operator: Operator
 }
+
+export type FragmentMetadata = FragmentData & { name: string }
+
+export type CustomFunctionMetadata = { name: string; numRequiredArgs: number }

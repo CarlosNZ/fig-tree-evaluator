@@ -8,6 +8,8 @@ import {
   OperatorAliases,
   OperatorMetadata,
   OperatorReference,
+  FragmentData,
+  CustomFunctionMetadata,
   FragmentMetadata,
 } from './types'
 import { evaluatorFunction } from './evaluate'
@@ -97,14 +99,14 @@ class FigTreeEvaluator {
     return Object.entries(this.options.fragments ?? {}).map(([key, value]) => ({
       name: key,
       ...value?.metadata,
-    })) as readonly (FragmentMetadata & { name: string })[]
+    })) as readonly FragmentMetadata[]
   }
 
   public getCustomFunctions() {
     return Object.entries(this.options.functions ?? {}).map(([name, value]) => ({
       name,
       numRequiredArgs: value.length,
-    })) as readonly { name: string; numRequiredArgs: number }[]
+    })) as readonly CustomFunctionMetadata[]
   }
 
   public getVersion = () => version
