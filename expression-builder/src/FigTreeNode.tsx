@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { DropdownOption, useFigTreeContext } from './FigTreeContext'
 import { EvaluatorNode, FigTreeEvaluator, Operator, OperatorMetadata } from 'fig-tree-evaluator'
+import { isAliasString } from './helpers'
 
 type NodeType = 'operator' | 'fragment' | 'value'
 
@@ -10,22 +11,23 @@ const nodeTypeOptions = [
   { key: 'value', text: 'Value', value: 'value' },
 ]
 
-// const operators = figTree.getOperators()
-// const fragments = figTree.getFragments()
-// const functions = figTree.getCustomFunctions()
-
-// const operatorOptions = operators.map((op) => ({
-//   key: op.operator,
-//   text: `${op.operator}: ${op.description}`,
-//   value: op.operator,
-// }))
-
 export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
-  const { figTree, expression, update, evaluate } = useFigTreeContext()
-  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(expression))
+  const { getNode, evaluate } = useFigTreeContext()
+  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(getNode(path)))
+
+  const pathArray = path.split('.')
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 20 * pathArray.length }}>
+      {nodeType !== 'value' && (
+        <button
+          onClick={() => {
+            evaluate(path).then((result) => console.log(result))
+          }}
+        >
+          Evaluate
+        </button>
+      )}
       <select value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
         {nodeTypeOptions.map(({ key, text, value }) => (
           <option key={key} value={value}>
@@ -34,6 +36,8 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
         ))}
       </select>
       {nodeType === 'operator' && <OperatorNode path={path} />}
+      {nodeType === 'fragment' && <p>FRAGMENT</p>}
+      {nodeType === 'value' && JSON.stringify(getNode(path))}
     </div>
   )
 }
@@ -51,43 +55,99 @@ interface OperatorProps {
 }
 
 export const OperatorNode: React.FC<OperatorProps> = ({ path }) => {
-  const { figTree, getNode, update, evaluate, operators } = useFigTreeContext()
+  const { getNode, update, operatorOptions, operators } = useFigTreeContext()
 
   const thisNode = getNode(path) as object
 
-  console.log('thisNode', thisNode)
-
   const current = getCurrentOperator(thisNode, operators)
   const operator = current?.operator
-  const metadata = current?.metadata
+  const alias = current?.alias
 
   console.log('currentOperator', operator)
-  console.log('metadata', metadata)
+
+  const { props, aliases, fallback, outputType, useCache } = operator
+    ? buildOperatorProps(thisNode, operator)
+    : { props: [], aliases: [] }
+
+  console.log('props', props)
 
   return (
-    <select
-      value={operator}
-      onChange={(e) => update(`${path}`, { ...thisNode, operator: e.target.value })}
-    >
-      {operators.map(({ key, text, value }) => (
-        <option key={key} value={value}>
-          {text}
-        </option>
+    <div>
+      <select
+        value={alias}
+        onChange={(e) => update(`${path}`, { ...thisNode, operator: e.target.value })}
+      >
+        {operatorOptions.map(({ key, text, value }) => (
+          <option key={key} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
+      {props.map((prop) => (
+        <>
+          <p>{path === '' ? prop.name : `${path}.${prop.name}`}</p>
+          <FigTreeNode path={path === '' ? prop.name : `${path}.${prop.name}`} />
+        </>
       ))}
-    </select>
+    </div>
   )
 }
 
-const getCurrentOperator = (node: EvaluatorNode, operators: DropdownOption[]) => {
+const getCurrentOperator = (node: EvaluatorNode, operators: readonly OperatorMetadata[]) => {
   if (typeof node !== 'object' || node === null || !('operator' in node)) return undefined
 
   const operatorName = node?.operator as string
-
-  console.log('operatorName', operatorName)
-
-  const operator = operators.find((op) => op.value === operatorName)
-
+  const operator = operators.find(
+    (op) => op.operator === operatorName || op.aliases.includes(operatorName)
+  )
   if (!operator) return undefined
+  return { operator, alias: operatorName }
+}
 
-  return { operator: operatorName, metadata: operator }
+interface AliasNodeProperty {
+  name: string
+  value: EvaluatorNode
+}
+
+type OperatorNodeProperty = AliasNodeProperty & {
+  description: string
+  required?: boolean
+  valid?: boolean
+}
+
+const buildOperatorProps = (node: object, operator: OperatorMetadata) => {
+  const props: OperatorNodeProperty[] = []
+  const aliases: AliasNodeProperty[] = []
+  let fallback
+  let outputType
+  let useCache
+  for (const property in node) {
+    if (property === 'operator') continue
+    if (isAliasString(property)) {
+      aliases.push({ name: property, value: node[property] })
+      continue
+    }
+    if (property === 'fallback') {
+      fallback = node[property]
+      continue
+    }
+    if (property === 'outputType') {
+      outputType = node[property]
+      continue
+    }
+    if (property === 'useCache') {
+      useCache = node[property]
+      continue
+    }
+    const propertyData = operator.parameters.find((param) => param.name === property)
+
+    props.push({
+      name: property,
+      value: node[property],
+      description: propertyData?.description ?? '',
+      required: propertyData?.required ?? false,
+      valid: true, // TODO -- check type
+    })
+  }
+  return { props, aliases, fallback, outputType, useCache }
 }

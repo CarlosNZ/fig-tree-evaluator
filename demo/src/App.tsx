@@ -168,7 +168,7 @@ function App() {
       <VStack h="100%">
         <FigTreeEditor
           figTree={evaluator as FigTreeEvaluator}
-          expression={{ operator: 'PLUS', values: [1, 2, 4] }}
+          expression={{ operator: '?', condition: true, valueIfTrue: 1, valueIfFalse: 'Blue' }}
         />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />

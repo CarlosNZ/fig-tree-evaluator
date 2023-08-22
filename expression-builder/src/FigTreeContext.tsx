@@ -21,8 +21,9 @@ interface FigTreeState {
   expression: EvaluatorNode
   getNode: (path: string) => EvaluatorNode
   update: (path: string, value: EvaluatorNode) => void
-  evaluate: (path: string) => EvaluatorOutput
-  operators: DropdownOption[]
+  evaluate: (path: string) => Promise<EvaluatorOutput>
+  operatorOptions: DropdownOption[]
+  operators: readonly OperatorMetadata[]
   fragments: readonly FragmentMetadata[]
   customFunctions: readonly CustomFunctionMetadata[]
 }
@@ -32,7 +33,8 @@ const initialState = {
   expression: {},
   getNode: () => ({}),
   update: () => {},
-  evaluate: () => 'temp',
+  evaluate: async () => 'temp',
+  operatorOptions: [],
   operators: [],
   fragments: [],
   customFunctions: [],
@@ -64,11 +66,12 @@ export const FigTreeProvider = ({
   }
 
   const evaluate = async (path: string) => {
-    return 'TEST'
+    const subNode = extract(expression, path)
+    return await figTree.evaluate(subNode)
   }
 
-  console.log('Operators', figTree.getOperators())
-  const operators = useMemo(() => getOperatorOptions(figTree.getOperators()), [])
+  const operators = figTree.getOperators()
+  const operatorOptions = useMemo(() => getOperatorOptions(operators), [])
   const fragments = figTree.getFragments()
   const customFunctions = figTree.getCustomFunctions()
 
@@ -80,6 +83,7 @@ export const FigTreeProvider = ({
         getNode,
         update,
         evaluate,
+        operatorOptions,
         operators,
         fragments,
         customFunctions,
@@ -95,12 +99,11 @@ export const useFigTreeContext = () => useContext(FigTreeContext)
 const getOperatorOptions = (operators: readonly OperatorMetadata[]) => {
   const options: DropdownOption[] = []
   for (const op of operators) {
-    const option = {
+    options.push({
       key: op.operator,
       value: op.operator,
       text: `${op.operator} - ${op.description}`,
-    }
-    options.push(option)
+    })
     op.aliases.forEach((alias) => options.push({ key: alias, value: alias, text: ` - ${alias}` }))
   }
 
