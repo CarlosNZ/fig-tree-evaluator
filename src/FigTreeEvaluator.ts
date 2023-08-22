@@ -8,9 +8,9 @@ import {
   OperatorAliases,
   OperatorMetadata,
   OperatorReference,
-  FragmentData,
   CustomFunctionMetadata,
   FragmentMetadata,
+  Operator,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
@@ -89,10 +89,17 @@ class FigTreeEvaluator {
     const validOperators = this.options.excludeOperators
       ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
       : this.operators
-    return Object.entries(validOperators).map(([key, value]) => ({
+    const operatorList = Object.entries(validOperators).map(([key, value]) => ({
       operator: key,
       ...value.operatorData,
-    })) as readonly OperatorMetadata[]
+    }))
+    // Ensures we return operators in the order listed in "operatorAliases",
+    // otherwise they're just ordered by the "import" order in
+    // operators/index.ts, which is not stable through compilation
+    const orderedOperators = [...new Set(Object.values(operatorAliases))] as string[]
+    return operatorList.sort(
+      (a, b) => orderedOperators.indexOf(a.operator) - orderedOperators.indexOf(b.operator)
+    ) as readonly OperatorMetadata[]
   }
 
   public getFragments() {
