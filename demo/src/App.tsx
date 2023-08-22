@@ -166,8 +166,11 @@ function App() {
         modalState={{ modalOpen, setModalOpen }}
       />
       <VStack h="100%">
-        <FigTreeEditor figTree={evaluator as FigTreeEvaluator} />
-        <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
+        <FigTreeEditor
+          figTree={evaluator as FigTreeEvaluator}
+          expression={{ operator: 'PLUS', values: [1, 2, 4] }}
+        />
+        {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />
           <VStack align="flex-end">
             <Link
@@ -187,8 +190,8 @@ function App() {
               https://www.npmjs.com/package/fig-tree-evaluator
             </Link>
           </VStack>
-        </HStack>
-        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
+        </HStack> */}
+        {/* <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
           <Box h={'100%'} p={2} minW={375}>
             <Heading size="md">Local data state</Heading>
             <Flex gap={2} justifyContent="flex-start" my={3}>
@@ -278,7 +281,7 @@ function App() {
               </Text>
             </Box>
           </Box>
-        </Flex>
+        </Flex> */}
       </VStack>
     </Center>
   )

@@ -1,12 +1,15 @@
 import React from 'react'
 import { FigTreeNode } from './FigTreeNode'
 import { FigTreeProvider } from './FigTreeContext'
-import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { EvaluatorNode, FigTreeEvaluator } from 'fig-tree-evaluator'
 
-const FigTreeEditor: React.FC<{ figTree: FigTreeEvaluator }> = ({ figTree }) => {
+const FigTreeEditor: React.FC<{ figTree: FigTreeEvaluator; expression?: EvaluatorNode }> = ({
+  figTree,
+  expression,
+}) => {
   return (
-    <FigTreeProvider figTree={figTree}>
-      <FigTreeNode path="" />
+    <FigTreeProvider figTree={figTree} expression={expression}>
+      <FigTreeNode />
     </FigTreeProvider>
   )
 }
