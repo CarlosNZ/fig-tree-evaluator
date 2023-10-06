@@ -157,6 +157,7 @@ The `options` parameter is an object with the following available properties (al
 - `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
+- `caseInsensitive` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
 - `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
 - `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them within the object tree.
 - `excludeOperators` -- an array of operator names (or [aliases](#operator--property-aliases)) to prohibit from being used in expressions. You may wish to restrict (for example) database access via FigTree configurations, in which case these exclusions can be defined when instantiating the FigTree instance (or updated on the fly).
@@ -323,6 +324,7 @@ Aliases: `=`, `eq`, `equal`, `equals`
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared for strict equality. This includes simple types as well as deep equality of objects and arrays.
+- `caseInsensitive`: (boolean, default `false`) -- when comparing string values, if this property is `true`, the case of the strings will be ignored (e.g. `"Monday" == "mONdAY"`)
 - `nullEqualsUndefined`: (boolean, default `false`) -- there are times when it is convenient for `null` to be considered equal to `undefined`. If this is desired, set this property to `true`, otherwise all equality checks will be "strict" equality. If you find that you want this setting enabled globally, then you can set it in the overall [evaluator options](#available-options) instead of having to add this additional property to every equality expression.
 
 e.g.
@@ -346,6 +348,7 @@ Aliases: `!=`, `!`, `ne`, `notEqual`
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared for inequality. This includes simple types as well as deep comparison of objects and arrays.
+- `caseInsensitive`: (boolean, default `false`) -- as [above](#equal)
 - `nullEqualsUndefined`: (boolean, default `false`) -- as [above](#equal)
 
 e.g.
@@ -1793,6 +1796,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.12.0**: Add `caseInsensitive` option to equality/non-equality operators
 - **v2.11.5**: Upgrade dependencies
 - **v2.11.4**: Bundle target ES6
 - **v2.11.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
