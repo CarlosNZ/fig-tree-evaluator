@@ -50,7 +50,7 @@
     "prepublishOnly": "yarn build"
   },
   "dependencies": {
-    "axios": "^1.4.0",
+    "axios": "^1.5.1",
     "change-case": "^4.1.2",
     "dequal": "^2.0.3",
     "object-property-extractor": "^1.0.7"
