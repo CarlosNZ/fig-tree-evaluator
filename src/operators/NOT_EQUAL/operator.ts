@@ -7,14 +7,26 @@ import { dequal } from 'dequal/lite'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [values, nullMatch] = (await evaluateArray(
-    [expression.values, expression.nullEqualsUndefined],
+  const [values, caseInsensitive, nullMatch] = (await evaluateArray(
+    [expression.values, expression.caseInsensitive, expression.nullEqualsUndefined],
     config
-  )) as [unknown[], boolean]
+  )) as [unknown[], boolean, boolean]
 
   config.typeChecker(
-    getTypeCheckInput(operatorData.parameters, { values, nullEqualsUndefined: nullMatch })
+    getTypeCheckInput(operatorData.parameters, {
+      values,
+      caseInsensitive,
+      nullEqualsUndefined: nullMatch,
+    })
   )
+
+  const isCaseInsensitive =
+    caseInsensitive !== undefined ? caseInsensitive : config.options?.caseInsensitive ?? false
+
+  const newValues =
+    isCaseInsensitive && values.every((val) => typeof val === 'string')
+      ? values.map((val) => (val as string).toLowerCase())
+      : values
 
   const nullEqualsUndefined =
     nullMatch !== undefined
@@ -23,10 +35,10 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       ? config.options.nullEqualsUndefined
       : false
 
-  if (nullEqualsUndefined && (values[0] === null || values[0] === undefined))
-    return values.some((value) => value === null && value === undefined)
+  if (nullEqualsUndefined && (newValues[0] === null || newValues[0] === undefined))
+    return newValues.some((value) => value === null && value === undefined)
 
-  return values.some((val) => !dequal(val, values[0]))
+  return newValues.some((val) => !dequal(val, newValues[0]))
 }
 
 export const NOT_EQUAL: OperatorObject = {
