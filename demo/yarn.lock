@@ -3575,10 +3575,10 @@ axe-core@^4.3.5:
   resolved "https://registry.yarnpkg.com/axe-core/-/axe-core-4.4.2.tgz#dcf7fb6dea866166c3eab33d68208afe4d5f670c"
   integrity sha512-LVAaGp/wkkgYJcjmHsoKx4juT1aQvJyPcW09MLCjVTh3V2cc6PnyempiLMNH5iMdfIX/zdbjUx2KDjMLCTdPeA==
 
-axios@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/axios/-/axios-1.4.0.tgz#38a7bf1224cd308de271146038b551d725f0be1f"
-  integrity sha512-S4XCWMEmzvo64T9GfvQDOXgYRDJ/wsSZc7Jvdgx5u1sd0JwsuPLqb3SYmusag+edF6ziyMensPVqLTSc1PiSEA==
+axios@^1.5.1:
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-1.5.1.tgz#11fbaa11fc35f431193a9564109c88c1f27b585f"
+  integrity sha512-Q28iYCWzNHjAm+yEAot5QaAMxhMghWLFVf7rRdwhUI+c2jix2DUXjAHXVi+s1ibs3mjPO/cCgbA++3BjD0vP/A==
   dependencies:
     follow-redirects "^1.15.0"
     form-data "^4.0.0"
@@ -5402,12 +5402,12 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.11.5:
-  version "2.11.5"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.11.5.tgz#4697a9be3c83f41ff15c0174bb3b599c4239831d"
-  integrity sha512-xcf8yRi4ChMZL2y8MN1b4DCSLm9LhbjaiG1nXy8h7hYJLSuceRb/QXSOWGEYrBnZ2AwOVVyp7NP+MWpZslgccQ==
+fig-tree-evaluator@^2.12.0:
+  version "2.12.0"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.12.0.tgz#6ee347ee21857f6632c91f60cfca0ecb7d69e0f4"
+  integrity sha512-lexU6dkcpWdBgexKDY0SEJ36mSi0kbK2ZabxPDYhYsEnVUvrOtp6trJsT4Nul5nffKz8IFCr3/E+SJPSeohCFQ==
   dependencies:
-    axios "^1.4.0"
+    axios "^1.5.1"
     change-case "^4.1.2"
     dequal "^2.0.3"
     object-property-extractor "^1.0.7"
