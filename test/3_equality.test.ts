@@ -31,6 +31,41 @@ test("Equality (strings) -- don't match", () => {
   })
 })
 
+test('Equality (strings, case insensitive)', () => {
+  const expression = { operator: 'Equal', values: ['MonDay', 'monDAY'], caseInsensitive: true }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe(true)
+  })
+})
+
+test("Equality (strings, case insensitive, don't match)", () => {
+  const expression = { operator: 'Equal', values: ['MoonDay', 'monDAY'], caseInsensitive: true }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Equality (strings, case insensitive set with options)', () => {
+  const expression = { operator: 'Equal', values: ['MonDay', 'monDAY'], caseInsensitive: true }
+  return evaluateExpression(expression, { caseInsensitive: true }).then((result) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Equality (strings, case insensitive set with options, overridden in expression)', () => {
+  const expression = { operator: 'Equal', values: ['MonDay', 'monDAY'], caseInsensitive: false }
+  return evaluateExpression(expression, { caseInsensitive: true }).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
+test("Equality (strings) -- case sensitive, don't match", () => {
+  const expression = { operator: 'Equal', children: ['MonDay', 'monDAY'], caseSensitive: true }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
 test('Equality (numbers, many)', () => {
   const expression = { operator: 'EQUAL', children: [99, 99, 99, 99, 99] }
   return evaluateExpression(expression).then((result) => {
@@ -213,9 +248,23 @@ test('Inequality (strings)', () => {
   })
 })
 
-test('Inequality (strings, false) -- false', () => {
+test('Inequality (strings, false)', () => {
   const expression = { operator: 'NOT_EQUAL', children: ['Matching', 'Matching'] }
   return evaluateExpression(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Inequality (strings, case insensitive)', () => {
+  const expression = { operator: 'ne', values: ['one', 'OnE'], caseInsensitive: true }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Inequality (strings, false, case insensitive set in options)', () => {
+  const expression = { operator: 'NOT_EQUAL', children: ['Matching', 'Matching', 'matching'] }
+  return evaluateExpression(expression, { caseInsensitive: true }).then((result) => {
     expect(result).toBe(false)
   })
 })

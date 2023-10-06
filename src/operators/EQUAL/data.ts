@@ -12,8 +12,16 @@ const parameters: Parameter[] = [
     type: 'array',
   },
   {
+    name: 'caseInsensitive',
+    description: 'If the values are strings, ignore the case (default: false)',
+    aliases: [],
+    required: false,
+    type: 'boolean',
+  },
+  {
     name: 'nullEqualsUndefined',
-    description: 'Whether a null value should be considered equal to an undefined value',
+    description:
+      'Whether a null value should be considered equal to an undefined value (default: false)',
     aliases: [],
     required: false,
     type: 'boolean',
