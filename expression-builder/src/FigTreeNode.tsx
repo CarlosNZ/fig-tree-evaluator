@@ -13,7 +13,8 @@ const nodeTypeOptions = [
 
 export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
   const { getNode, evaluate } = useFigTreeContext()
-  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(getNode(path)))
+  const node = getNode(path)
+  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(node))
 
   const pathArray = path.split('.')
   const [collapsed, setCollapsed] = useState(pathArray.length > 2)
@@ -23,23 +24,46 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
     return <ValueNode path={path} edit={editValue} setEdit={setEditValue} />
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 20 * pathArray.length }}>
-      <button
-        onClick={() => {
-          evaluate(path).then((result) => console.log(result))
-        }}
-      >
-        Evaluate
-      </button>
-      <select value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
-        {nodeTypeOptions.map(({ key, text, value }) => (
-          <option key={key} value={value}>
-            {text}
-          </option>
-        ))}
-      </select>
-      {nodeType === 'operator' && <OperatorNode path={path} />}
-      {nodeType === 'fragment' && <FragmentNode path={path} />}
+    <div
+      style={{ display: 'flex', flexDirection: 'row', marginLeft: 20 * pathArray.length, gap: 10 }}
+    >
+      <div onClick={() => setCollapsed(!collapsed)}>
+        <p>{collapsed ? '>' : '^'}</p>
+      </div>
+      {!collapsed ? (
+        <div>
+          <p>{'{'}</p>
+          <div style={{ marginLeft: 10 }}>
+            <div style={{ display: 'flex', gap: 5 }}>
+              <p>Node type: </p>
+              <select value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
+                {nodeTypeOptions.map(({ key, text, value }) => (
+                  <option key={key} value={value}>
+                    {text}
+                  </option>
+                ))}
+              </select>
+              <button
+                style={{ border: '1px solid black', maxWidth: 200 }}
+                onClick={() => {
+                  evaluate(path).then((result) => console.log(result))
+                }}
+              >
+                Evaluate
+              </button>
+            </div>
+            {nodeType === 'operator' && <OperatorNode path={path} />}
+            {nodeType === 'fragment' && <FragmentNode path={path} />}
+          </div>
+          <p>{'}'}</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 10 }}>
+          <p>{'{'}</p>
+          {nodeType === 'operator' ? <p>Operator: {node?.operator ?? ''}</p> : <p>Fragment</p>}
+          <p>{'}'}</p>
+        </div>
+      )}
     </div>
   )
 }
@@ -70,20 +94,22 @@ export const OperatorNode: React.FC<OperatorProps> = ({ path }) => {
     ? buildOperatorProps(thisNode, operator, updateNode)
     : { props: [], aliases: [] }
 
-  console.log('availableProps', availableProps)
-
   return (
     <div>
-      <select
-        value={alias}
-        onChange={(e) => update(`${path}`, { ...thisNode, operator: e.target.value })}
-      >
-        {operatorOptions.map(({ key, text, value }) => (
-          <option key={key} value={value}>
-            {text}
-          </option>
-        ))}
-      </select>
+      <div style={{ display: 'flex', gap: 5 }}>
+        <p>Operator</p>
+        <select
+          value={alias}
+          onChange={(e) => update(`${path}`, { ...thisNode, operator: e.target.value })}
+          style={{ maxWidth: 200 }}
+        >
+          {operatorOptions.map(({ key, text, value }) => (
+            <option key={key} value={value}>
+              {text}
+            </option>
+          ))}
+        </select>
+      </div>
       {props.map((prop) => (
         <div key={prop.name} style={{ display: 'flex' }}>
           {prop.name}
@@ -108,7 +134,7 @@ interface ValueNodeProps extends OperatorProps {
   setEdit: Dispatch<SetStateAction<boolean>>
 }
 
-export const ValueNode: React.FC<ValueNodeProps> = ({ path }) => {
+export const ValueNode: React.FC<ValueNodeProps> = ({ path, edit, setEdit }) => {
   const { getNode, update, operatorOptions, operators } = useFigTreeContext()
 
   const value = getNode(path)
