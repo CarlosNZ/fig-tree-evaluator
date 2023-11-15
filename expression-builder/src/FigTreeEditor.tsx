@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { FigTreeProvider } from './FigTreeContext'
+// import { FigTreeProvider } from './FigTreeContext'
 import { EvaluatorNode, FigTreeEvaluator } from 'fig-tree-evaluator'
-import JsonEditor from './json-edit-react-temp/src'
+import JsonEditor from './json-edit-react/index.esm'
 
 interface FigTreeEditorProps {
   figTree: FigTreeEvaluator
@@ -24,9 +24,9 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expr
           },
         ]}
       />
-      <FigTreeProvider figTree={figTree} expression={expression}>
-        {/* <FigTreeNode /> */}
-      </FigTreeProvider>
+      {/* <FigTreeProvider figTree={figTree} expression={expression}> */}
+      {/* <FigTreeNode /> */}
+      {/* </FigTreeProvider> */}
     </>
   )
 }

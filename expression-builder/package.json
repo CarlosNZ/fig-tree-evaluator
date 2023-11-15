@@ -10,7 +10,6 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
-    "json-edit-react": "^0.9.6",
     "object-property-assigner": "^1.0.1",
     "object-property-extractor": "^1.0.7"
   },
