@@ -12,13 +12,21 @@ const nodeTypeOptions = [
 ]
 
 export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
-  const { getNode, evaluate } = useFigTreeContext()
+  const { getNode, evaluate, update } = useFigTreeContext()
   const node = getNode(path)
+  const updateNode = (value: EvaluatorNode) => update(path, value)
   const [nodeType, setNodeType] = useState<NodeType>(getNodeType(node))
 
   const pathArray = path.split('.')
   const [collapsed, setCollapsed] = useState(pathArray.length > 2)
   const [editValue, setEditValue] = useState(false)
+
+  const handleNodeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value as NodeType
+    updateNode(getDefaultValue(value))
+    setNodeType(value)
+    console.log('pathArray', pathArray)
+  }
 
   if (nodeType === 'value' && !editValue)
     return <ValueNode path={path} edit={editValue} setEdit={setEditValue} />
@@ -36,7 +44,7 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
           <div style={{ marginLeft: 10 }}>
             <div style={{ display: 'flex', gap: 5 }}>
               <p>Node type: </p>
-              <select value={nodeType} onChange={(e) => setNodeType(e.target.value as NodeType)}>
+              <select value={nodeType} onChange={handleNodeTypeChange}>
                 {nodeTypeOptions.map(({ key, text, value }) => (
                   <option key={key} value={value}>
                     {text}
@@ -145,7 +153,7 @@ export const ValueNode: React.FC<ValueNodeProps> = ({ path, edit, setEdit }) => 
 
   const value = getNode(path)
 
-  return <p>{JSON.stringify(value)}</p>
+  return <p onClick={() => setEdit(!edit)}>{JSON.stringify(value)}</p>
 }
 
 const getCurrentOperator = (node: EvaluatorNode, operators: readonly OperatorMetadata[]) => {
@@ -255,6 +263,12 @@ const buildOperatorProps = (node: object, operator: OperatorMetadata) => {
 // Returns a valid default value for each (FigTree) data type
 const getDefaultValue = (type: string) => {
   switch (type) {
+    case 'operator':
+      return { operator: '+', values: [1, 1] }
+    case 'fragment':
+      return { fragment: 'TO-DO' }
+    case 'value':
+      return 'TEMP' // TO-DO: Should generate default based on property type
     case 'array':
       return []
     case 'string':
