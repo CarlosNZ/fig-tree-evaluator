@@ -47,3 +47,5 @@ src/dev/playground.ts
 temp.js
 .vscode/settings.json
 test/testSecrets.json
+
+json-edit-react-temp

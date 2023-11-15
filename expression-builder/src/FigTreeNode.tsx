@@ -11,11 +11,15 @@ const nodeTypeOptions = [
   { key: 'value', text: 'Value', value: 'value' },
 ]
 
-export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
-  const { getNode, evaluate, update } = useFigTreeContext()
-  const node = getNode(path)
-  const updateNode = (value: EvaluatorNode) => update(path, value)
-  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(node))
+export const FigTreeNode: React.FC<{ expression: EvaluatorNode; path: string }> = ({
+  path = '',
+  expression,
+}) => {
+  // const { getNode, evaluate, update } = useFigTreeContext()
+  // const node = getNode(path)
+  // const updateNode = (value: EvaluatorNode) => update(path, value)
+  console.log('DATA', expression)
+  const [nodeType, setNodeType] = useState<NodeType>(getNodeType(expression))
 
   const pathArray = path.split('.')
   const [collapsed, setCollapsed] = useState(pathArray.length > 2)
@@ -23,13 +27,12 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
 
   const handleNodeTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value as NodeType
-    updateNode(getDefaultValue(value))
+    // updateNode(getDefaultValue(value))
     setNodeType(value)
     console.log('pathArray', pathArray)
   }
 
-  if (nodeType === 'value' && !editValue)
-    return <ValueNode path={path} edit={editValue} setEdit={setEditValue} />
+  if (nodeType === 'value') return <ValueNode path={path} edit={editValue} setEdit={setEditValue} />
 
   return (
     <div
@@ -54,13 +57,13 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
               <button
                 style={{ border: '1px solid black', maxWidth: 200 }}
                 onClick={() => {
-                  evaluate(path).then((result) => console.log(result))
+                  // evaluate(path).then((result) => console.log(result))
                 }}
               >
                 Evaluate
               </button>
             </div>
-            {nodeType === 'operator' && <OperatorNode path={path} />}
+            {/* {nodeType === 'operator' && <OperatorNode path={path} />} */}
             {nodeType === 'fragment' && <FragmentNode path={path} />}
           </div>
           <p>{'}'}</p>
@@ -68,7 +71,11 @@ export const FigTreeNode: React.FC<{ path?: string }> = ({ path = '' }) => {
       ) : (
         <div style={{ display: 'flex', gap: 10 }}>
           <p>{'{'}</p>
-          {nodeType === 'operator' ? <p>Operator: {node?.operator ?? ''}</p> : <p>Fragment</p>}
+          {nodeType === 'operator' ? (
+            <p>Operator: {expression?.operator ?? ''}</p>
+          ) : (
+            <p>Fragment</p>
+          )}
           <p>{'}'}</p>
         </div>
       )}
