@@ -62,6 +62,8 @@
     "nodemon": "^3.0.1",
     "object-property-assigner": "^1.0.1",
     "react-scripts": "5.0.1",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "json-edit-react": "^0.9.6",
+    "object-property-extractor": "^1.0.7"
   }
 }

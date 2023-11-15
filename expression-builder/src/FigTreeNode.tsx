@@ -1,4 +1,4 @@
-import React, { Dispatch, SetStateAction, useState } from 'react'
+import React, { Dispatch, SetStateAction, useEffect, useState } from 'react'
 import { useFigTreeContext } from './FigTreeContext'
 import { EvaluatorNode, OperatorMetadata } from 'fig-tree-evaluator'
 import { isAliasString } from './helpers'
@@ -86,13 +86,19 @@ export const OperatorNode: React.FC<OperatorProps> = ({ path }) => {
   const thisNode = getNode(path) as object
   const updateNode = (value: EvaluatorNode) => update(path, value)
 
+  // console.log('thisNode', thisNode)
+
   const current = getCurrentOperator(thisNode, operators)
   const operator = current?.operator
   const alias = current?.alias
 
-  const { props, availableProps, aliases, fallback, outputType, useCache } = operator
-    ? buildOperatorProps(thisNode, operator, updateNode)
-    : { props: [], aliases: [] }
+  const { props, additionalProps, availableProps, aliases, fallback, outputType, useCache } =
+    operator ? buildOperatorProps(thisNode, operator) : { props: [], aliases: [] }
+
+  useEffect(() => {
+    console.log('additionalProps', additionalProps)
+    if (Object.keys(additionalProps).length > 0) updateNode({ ...thisNode, ...additionalProps })
+  }, [additionalProps])
 
   return (
     <div>
@@ -116,7 +122,7 @@ export const OperatorNode: React.FC<OperatorProps> = ({ path }) => {
           <FigTreeNode path={path === '' ? prop.name : `${path}.${prop.name}`} />
         </div>
       ))}
-      <CommonProperties path={path} />
+      {/* <CommonProperties path={path} /> */}
     </div>
   )
 }
@@ -164,11 +170,7 @@ type OperatorNodeProperty = AliasNodeProperty & {
   valid?: boolean
 }
 
-const buildOperatorProps = (
-  node: object,
-  operator: OperatorMetadata,
-  updateNode: (value: EvaluatorNode) => void
-) => {
+const buildOperatorProps = (node: object, operator: OperatorMetadata) => {
   const props: OperatorNodeProperty[] = []
   const aliases: AliasNodeProperty[] = []
   const availableProps: OperatorNodeProperty[] = []
@@ -213,7 +215,6 @@ const buildOperatorProps = (
     []
   )
 
-  let shouldUpdateNode = false
   // Add any required properties that aren't already in the node, and remove any
   // that don't belong
   const additionalProps = {}
@@ -222,7 +223,6 @@ const buildOperatorProps = (
     if (!allAliases.some((alias) => currentPropertyKeys.includes(alias))) {
       if (param.required) {
         additionalProps[param.name] = getDefaultValue(param.type as string)
-        shouldUpdateNode = true
       } else {
         availableProps.push({
           name: param.name,
@@ -238,13 +238,18 @@ const buildOperatorProps = (
   props.forEach((prop) => {
     if (!allPropertyAliases.includes(prop.name)) {
       delete node[prop.name]
-      shouldUpdateNode = true
     }
   })
 
-  if (shouldUpdateNode) updateNode({ ...node, ...additionalProps })
-
-  return { props, availableProps, aliases, fallback, outputType, useCache }
+  return {
+    props,
+    additionalProps,
+    availableProps,
+    aliases,
+    fallback,
+    outputType,
+    useCache,
+  }
 }
 
 // Returns a valid default value for each (FigTree) data type
