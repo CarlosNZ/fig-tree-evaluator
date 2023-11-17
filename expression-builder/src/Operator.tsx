@@ -3,7 +3,7 @@ import { FigTreeEvaluator, OperatorAlias, OperatorMetadata } from 'fig-tree-eval
 import { dequal } from 'dequal/lite'
 import { CustomNodeProps } from './json-edit-react/types'
 import './styles.css'
-import { buildOperatorProps, getCurrentOperator, getDefaultValue } from './helpers'
+import { validateOperatorState, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 
 interface OperatorProps {
@@ -24,7 +24,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const thisOperator = data as OperatorAlias
 
   const { updatedNode = {}, availableProperties = [] } = operatorData
-    ? buildOperatorProps(parentData, operatorData.operator)
+    ? validateOperatorState(parentData, operatorData.operator)
     : {}
 
   if (!dequal(parentData, updatedNode)) {
@@ -35,12 +35,15 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     <div className="ft-operator-block">
       <NodeTypeSelector
         value="operator"
-        changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
+        changeNode={(newValue) => onEdit(newValue, expressionPath)}
       />
+      :
       <OperatorSelector
         value={thisOperator}
         figTree={figTree}
-        changeOperator={(operator: OperatorAlias) => onEdit({ operator }, expressionPath)}
+        changeOperator={(operator: OperatorAlias) =>
+          onEdit({ ...parentData, operator }, expressionPath)
+        }
       />
       {availableProperties.length > 0 && (
         <PropertySelector
@@ -72,24 +75,23 @@ const OperatorSelector: React.FC<{
   }
 
   return (
-    <div style={{ display: 'flex' }}>
-      <span>Operator: </span>
-      <select value={value} onChange={handleChange} style={{ maxWidth: 200 }}>
-        {operatorOptions.map(({ key, text, value }) => (
-          <option key={key} value={value}>
-            {text}
-          </option>
-        ))}
-      </select>
-    </div>
+    // <div style={{ display: 'flex' }}>
+    <select value={value} onChange={handleChange} style={{ maxWidth: 150 }}>
+      {operatorOptions.map(({ key, text, value }) => (
+        <option key={key} value={value}>
+          {text}
+        </option>
+      ))}
+    </select>
+    // </div>
   )
 }
 
-const PropertySelector: React.FC<{
+export const PropertySelector: React.FC<{
   availableProperties: {
     name: string
-    description: string
-    aliases: string[]
+    description?: string
+    aliases?: string[]
     required: boolean
     type: string
     default?: unknown
@@ -117,7 +119,6 @@ const PropertySelector: React.FC<{
       <span>Add Property: </span>
       <select value={value} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 200 }}>
         <option label=" " hidden />
-
         {propertyOptions.map(({ key, text, value }) => (
           <option key={key} value={value}>
             {text}
@@ -133,7 +134,7 @@ const PropertySelector: React.FC<{
   )
 }
 
-interface DropdownOption {
+export interface DropdownOption {
   key: string
   value: string
   text: string
@@ -145,9 +146,9 @@ const getOperatorOptions = (operators: readonly OperatorMetadata[]) => {
     options.push({
       key: op.operator,
       value: op.operator,
-      text: `${op.operator} - ${op.description}`,
+      text: `${op.operator}`,
     })
-    op.aliases.forEach((alias) => options.push({ key: alias, value: alias, text: ` - ${alias}` }))
+    op.aliases.forEach((alias) => options.push({ key: alias, value: alias, text: ` • ${alias}` }))
   }
 
   return options

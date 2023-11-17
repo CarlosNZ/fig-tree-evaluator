@@ -57,7 +57,7 @@ interface AliasNodeProperty {
   value: EvaluatorNode
 }
 
-const commonProperties = [
+export const commonProperties = [
   {
     name: 'fallback',
     description: 'Value to return if the evaluation throws an error',
@@ -84,9 +84,17 @@ const commonProperties = [
   },
 ]
 
-const reservedProperties = ['operator', 'children', 'fallback', 'outputType', 'type', 'useCache']
+export const reservedProperties = [
+  'operator',
+  'fragment',
+  'children',
+  'fallback',
+  'outputType',
+  'type',
+  'useCache',
+]
 
-export const buildOperatorProps = (node: object, operator: OperatorMetadata) => {
+export const validateOperatorState = (node: object, operator: OperatorMetadata) => {
   const updatedNode = { ...node }
 
   const requiredProperties = operator.parameters.filter((param) => param.required)

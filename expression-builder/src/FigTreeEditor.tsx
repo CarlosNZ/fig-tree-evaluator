@@ -19,6 +19,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expr
         console.log('newData', newData)
         setExpression(newData)
       }}
+      showArrayIndices={false}
       customNodeDefinitions={[
         {
           condition: ({ key }) => key === 'operator',
