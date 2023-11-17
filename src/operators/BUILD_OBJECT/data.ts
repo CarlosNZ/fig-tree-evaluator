@@ -10,6 +10,7 @@ const parameters: Parameter[] = [
     aliases: ['values', 'keyValPairs', 'keyValuePairs'],
     required: true,
     type: 'array',
+    default: ['firstKey', 'firstValue', 'secondKey', 'secondValue'],
   },
 ]
 

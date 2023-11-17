@@ -17,10 +17,10 @@ import {
   Image,
 } from '@chakra-ui/react'
 import { FigTreeEvaluator as EvaluatorDev, FigTreeOptions } from './fig-tree-evaluator/src'
-import { FigTreeEvaluator as EvaluatorPublished } from 'fig-tree-evaluator'
+import { FigTreeEvaluator as EvaluatorPublished, FigTreeEvaluator } from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
 // import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
-// import { FigTreeEditor } from './expression-builder/src'
+import { FigTreeEditor } from './expression-builder/src'
 import { OptionsModal } from './OptionsModal'
 import {
   getInitOptions,
@@ -166,14 +166,16 @@ function App() {
         modalState={{ modalOpen, setModalOpen }}
       />
       <VStack h="100%">
-        {/* <FigTreeEditor
+        <FigTreeEditor
           figTree={evaluator as FigTreeEvaluator}
           expression={{
             operator: '?',
             condition: { operator: '=', values: [1, 1] },
             valueIfFalse: 'Blue',
+            notThisOne: 'Nah',
+            fallback: 'Should show up',
           }}
-        /> */}
+        />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />
           <VStack align="flex-end">

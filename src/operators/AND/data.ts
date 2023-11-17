@@ -10,6 +10,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: true,
     type: 'array',
+    default: [true, true],
   },
 ]
 

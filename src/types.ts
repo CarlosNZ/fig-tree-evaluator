@@ -132,13 +132,14 @@ export type ParseChildrenMethod = (
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
 
-// Operator Data
+// Operator Parameter Data
 export type Parameter = {
   name: string
   description: string
   aliases: string[]
   required: boolean
   type: ExpectedType
+  default?: unknown
 }
 
 export interface OperatorData {

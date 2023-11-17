@@ -10,6 +10,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: true,
     type: 'array',
+    default: ['These are equal', 'These are equal'],
   },
   {
     name: 'caseInsensitive',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
   {
     name: 'nullEqualsUndefined',
@@ -25,6 +27,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
 ]
 
