@@ -52,6 +52,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [true, true],
         },
       ],
     },
@@ -66,6 +67,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [true, false],
         },
       ],
     },
@@ -80,6 +82,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: ['These are equal', 'These are equal'],
         },
         {
           name: 'caseInsensitive',
@@ -87,6 +90,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
         {
           name: 'nullEqualsUndefined',
@@ -95,6 +99,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
       ],
     },
@@ -109,6 +114,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: ['These items', "don't match"],
         },
         {
           name: 'caseInsensitive',
@@ -116,6 +122,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
         {
           name: 'nullEqualsUndefined',
@@ -124,6 +131,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
       ],
     },
@@ -138,13 +146,17 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [1, 2, 3],
         },
         {
           name: 'type',
           description: 'Data type to coerce input values to before addition',
           aliases: [],
           required: false,
-          type: { literal: ['string', 'array', 'number', 'boolean', 'bool'] },
+          type: {
+            literal: ['string', 'array', 'number', 'boolean', 'bool'],
+          },
+          default: 'string',
         },
       ],
     },
@@ -159,6 +171,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'array',
+          default: [10, 5],
         },
         {
           name: 'from',
@@ -166,6 +179,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['subtractFrom'],
           required: false,
           type: 'number',
+          default: 100,
         },
         {
           name: 'subtract',
@@ -173,6 +187,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'number',
+          default: 50,
         },
       ],
     },
@@ -187,6 +202,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [5, 5],
         },
       ],
     },
@@ -201,6 +217,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'array',
+          default: [100, 10],
         },
         {
           name: 'dividend',
@@ -208,6 +225,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['divide'],
           required: false,
           type: 'number',
+          default: 99,
         },
         {
           name: 'divisor',
@@ -215,13 +233,17 @@ test('Metadata -- get operator info', () => {
           aliases: ['by', 'divideBy'],
           required: false,
           type: 'number',
+          default: 3,
         },
         {
           name: 'output',
           description: 'Whether to output a quotient, remainder or decimal',
           aliases: [],
           required: false,
-          type: { literal: ['quotient', 'remainder'] },
+          type: {
+            literal: ['quotient', 'remainder'],
+          },
+          default: 'quotient',
         },
       ],
     },
@@ -236,6 +258,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [10, 9],
         },
         {
           name: 'strict',
@@ -244,6 +267,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
       ],
     },
@@ -258,6 +282,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [9, 10],
         },
         {
           name: 'strict',
@@ -266,6 +291,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
       ],
     },
@@ -280,6 +306,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'any',
+          default: true,
         },
         {
           name: 'valueIfTrue',
@@ -287,6 +314,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['ifTrue'],
           required: true,
           type: 'any',
+          default: 'The condition is true',
         },
         {
           name: 'valueIfFalse',
@@ -294,6 +322,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['ifFalse', 'ifNot'],
           required: true,
           type: 'any',
+          default: 'The condition is false',
         },
       ],
     },
@@ -308,6 +337,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['string', 'value'],
           required: true,
           type: 'string',
+          default: 'test-this',
         },
         {
           name: 'pattern',
@@ -315,6 +345,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['regex', 'regexp', 'regExp', 're'],
           required: true,
           type: 'string',
+          default: '^[a-z]{4}-[a-z]{4}$',
         },
       ],
     },
@@ -337,6 +368,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['path', 'propertyName'],
           required: true,
           type: 'string',
+          default: 'path.to[0].my.data',
         },
         {
           name: 'additionalData',
@@ -344,6 +376,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['additional', 'objects', 'data', 'additionalObjects'],
           required: false,
           type: 'object',
+          default: {},
         },
       ],
     },
@@ -358,6 +391,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'string',
+          default: 'Hello, %1',
         },
         {
           name: 'substitutions',
@@ -365,6 +399,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['replacements', 'values'],
           required: true,
           type: ['array', 'object'],
+          default: ['friend'],
         },
         {
           name: 'trimWhiteSpace',
@@ -373,6 +408,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['trim', 'trimWhitespace'],
           required: false,
           type: 'boolean',
+          default: true,
         },
         {
           name: 'substitutionCharacter',
@@ -381,6 +417,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['subCharacter', 'subChar'],
           required: false,
           type: 'string',
+          default: '$',
         },
         {
           name: 'numberMapping',
@@ -388,10 +425,10 @@ test('Metadata -- get operator info', () => {
           aliases: ['numMap', 'numberMap', 'pluralisation', 'pluralization', 'plurals'],
           required: false,
           type: 'object',
+          default: {},
         },
       ],
     },
-
     {
       operator: 'SPLIT',
       description: 'Split a string into an array',
@@ -403,6 +440,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['string'],
           required: true,
           type: 'string',
+          default: 'Alpha, Bravo, Charlie',
         },
         {
           name: 'delimiter',
@@ -410,6 +448,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['separator'],
           required: false,
           type: 'string',
+          default: ',',
         },
         {
           name: 'trimWhiteSpace',
@@ -418,6 +457,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['trim', 'trimWhitespace'],
           required: false,
           type: 'boolean',
+          default: true,
         },
         {
           name: 'excludeTrailing',
@@ -426,6 +466,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['removeTrailing', 'excludeTrailingDelimiter'],
           required: false,
           type: 'boolean',
+          default: true,
         },
       ],
     },
@@ -440,6 +481,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'array',
+          default: [1, 2, 3, 4, 5],
         },
       ],
     },
@@ -454,6 +496,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['endpoint'],
           required: true,
           type: 'string',
+          default: 'https://restcountries.com/v3.1/name/zealand',
         },
         {
           name: 'returnProperty',
@@ -461,6 +504,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['outputProperty'],
           required: false,
           type: 'string',
+          default: 'result.path',
         },
         {
           name: 'headers',
@@ -468,6 +512,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'parameters',
@@ -475,6 +520,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['queryParams', 'queryParameters', 'urlQueries'],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'useCache',
@@ -482,6 +528,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: true,
         },
       ],
     },
@@ -496,6 +543,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['endpoint'],
           required: true,
           type: 'string',
+          default: 'https://jsonplaceholder.typicode.com/posts',
         },
         {
           name: 'returnProperty',
@@ -503,6 +551,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['outputProperty'],
           required: false,
           type: 'string',
+          default: 'result.path',
         },
         {
           name: 'headers',
@@ -510,6 +559,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'parameters',
@@ -517,6 +567,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['bodyJson', 'data'],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'useCache',
@@ -524,6 +575,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: true,
         },
       ],
     },
@@ -538,6 +590,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'string',
+          default: 'SELECT contact_name FROM customers;',
         },
         {
           name: 'values',
@@ -545,13 +598,17 @@ test('Metadata -- get operator info', () => {
           aliases: ['replacements'],
           required: false,
           type: 'array',
+          default: [],
         },
         {
           name: 'type',
           description: 'Determines the shape of the resulting data (see documentation)',
           aliases: ['queryType'],
           required: false,
-          type: { literal: ['array', 'string', 'number'] },
+          type: {
+            literal: ['array', 'string', 'number'],
+          },
+          default: 'array',
         },
         {
           name: 'useCache',
@@ -559,6 +616,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: true,
         },
       ],
     },
@@ -573,6 +631,8 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: true,
           type: 'string',
+          default:
+            'query getCountries {\n      countries(filter: {continent: {eq: "OC"}}) {\n        name\n      }\n    }',
         },
         {
           name: 'url',
@@ -580,6 +640,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['endpoint'],
           required: false,
           type: ['string', 'null'],
+          default: 'https://countries.trevorblades.com/',
         },
         {
           name: 'headers',
@@ -587,6 +648,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'variables',
@@ -594,6 +656,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'object',
+          default: {},
         },
         {
           name: 'returnNode',
@@ -601,6 +664,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['outputNode', 'returnProperty'],
           required: false,
           type: 'string',
+          default: 'data.countries[1].name',
         },
         {
           name: 'useCache',
@@ -608,10 +672,10 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: true,
         },
       ],
     },
-
     {
       operator: 'BUILD_OBJECT',
       description: 'Construct an object using objects defining keys and values',
@@ -623,6 +687,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['values', 'keyValPairs', 'keyValuePairs'],
           required: true,
           type: 'array',
+          default: ['firstKey', 'firstValue', 'secondKey', 'secondValue'],
         },
       ],
     },
@@ -637,6 +702,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['match'],
           required: true,
           type: ['string', 'number', 'boolean'],
+          default: 'matchMe',
         },
         {
           name: 'branches',
@@ -645,6 +711,10 @@ test('Metadata -- get operator info', () => {
           aliases: ['arms', 'cases'],
           required: false,
           type: ['object', 'array'],
+          default: {
+            matchMe: 'YES',
+            nonMatch: 'NO',
+          },
         },
       ],
     },
@@ -680,6 +750,7 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
+          default: false,
         },
       ],
     },
@@ -694,6 +765,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['_', 'data'],
           required: true,
           type: 'any',
+          default: null,
         },
       ],
     },

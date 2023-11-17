@@ -46,17 +46,6 @@ export const getCurrentOperator = (node: EvaluatorNode, operators: readonly Oper
   return { operator, alias: operatorName }
 }
 
-type OperatorNodeProperty = AliasNodeProperty & {
-  description: string
-  required?: boolean
-  valid?: boolean
-}
-
-interface AliasNodeProperty {
-  name: string
-  value: EvaluatorNode
-}
-
 export const commonProperties = [
   {
     name: 'fallback',
@@ -74,14 +63,14 @@ export const commonProperties = [
     type: 'any',
     default: 'string',
   },
-  {
-    name: 'useCache',
-    description: 'Override the global useCache value fo this node only',
-    aliases: [],
-    required: false,
-    type: 'boolean',
-    default: false,
-  },
+  // {
+  //   name: 'useCache',
+  //   description: 'Override the global useCache value fo this node only',
+  //   aliases: [],
+  //   required: false,
+  //   type: 'boolean',
+  //   default: false,
+  // },
 ]
 
 export const reservedProperties = [
@@ -126,7 +115,7 @@ export const validateOperatorState = (node: object, operator: OperatorMetadata) 
 
   // Check if optional properties are present, and add them to available
   // list if not
-  const availableProperties = [] as {
+  const availableProperties: OperatorData[] = [] as {
     name: string
     description: string
     aliases: string[]

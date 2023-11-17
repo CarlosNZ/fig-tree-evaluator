@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'HTTP GET Request'
 const aliases = ['get', 'api']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'url',
     description: 'Endpoint URL',
     aliases: ['endpoint'],
     required: true,
     type: 'string',
+    default: 'https://restcountries.com/v3.1/name/zealand',
   },
   {
     name: 'returnProperty',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['outputProperty'],
     required: false,
     type: 'string',
+    default: 'result.path',
   },
   {
     name: 'headers',
@@ -24,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'object',
+    default: {},
   },
   {
     name: 'parameters',
@@ -31,6 +34,7 @@ const parameters: Parameter[] = [
     aliases: ['queryParams', 'queryParameters', 'urlQueries'],
     required: false,
     type: 'object',
+    default: {},
   },
   {
     name: 'useCache',
@@ -38,6 +42,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: true,
   },
 ]
 

@@ -1,5 +1,5 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Call a custom function (defined in options)'
 const aliases = [
@@ -10,7 +10,7 @@ const aliases = [
   'functions',
   'runFunction',
 ]
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'functionPath',
     description: 'Path (in options.functions) to the required function',
@@ -31,6 +31,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
 ]
 

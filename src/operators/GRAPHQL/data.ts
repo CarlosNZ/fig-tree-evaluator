@@ -1,15 +1,20 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'GraphQL request'
 const aliases = ['graphQl', 'graphql', 'gql']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'query',
     description: 'GraphQL query string',
     aliases: [],
     required: true,
     type: 'string',
+    default: `query getCountries {
+      countries(filter: {continent: {eq: "OC"}}) {
+        name
+      }
+    }`,
   },
   {
     name: 'url',
@@ -17,6 +22,7 @@ const parameters: Parameter[] = [
     aliases: ['endpoint'],
     required: false,
     type: ['string', 'null'],
+    default: 'https://countries.trevorblades.com/',
   },
   {
     name: 'headers',
@@ -24,6 +30,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'object',
+    default: {},
   },
   {
     name: 'variables',
@@ -31,6 +38,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'object',
+    default: {},
   },
   {
     name: 'returnNode',
@@ -38,6 +46,7 @@ const parameters: Parameter[] = [
     aliases: ['outputNode', 'returnProperty'],
     required: false,
     type: 'string',
+    default: 'data.countries[1].name',
   },
   {
     name: 'useCache',
@@ -45,6 +54,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: true,
   },
 ]
 

@@ -6,10 +6,12 @@ import axios, { AxiosRequestConfig } from 'axios'
 import extractProperty from 'object-property-extractor'
 import { isObject } from '../helpers'
 import { typeCheck, TypeCheckInput, isLiteralType } from '../typeCheck'
-import { Parameter } from '../types'
+import { OperatorParameterMetadata } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
-export const getPropertyAliases = (parameters: Parameter[]): Record<string, string> => {
+export const getPropertyAliases = (
+  parameters: OperatorParameterMetadata[]
+): Record<string, string> => {
   const propertyAliases: Record<string, string> = {}
   parameters.forEach((param) => {
     param.aliases.forEach((alias) => (propertyAliases[alias] = param.name))
@@ -18,7 +20,7 @@ export const getPropertyAliases = (parameters: Parameter[]): Record<string, stri
 }
 
 export const getTypeCheckInput = (
-  parameterDefinitions: Parameter[],
+  parameterDefinitions: OperatorParameterMetadata[],
   params: Record<string, unknown>
 ) =>
   parameterDefinitions.map(({ name, required, type }) => {

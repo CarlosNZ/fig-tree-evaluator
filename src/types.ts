@@ -133,7 +133,7 @@ export type ParseChildrenMethod = (
 export type OperatorReference = { [key in Operator]: OperatorObject }
 
 // Operator Parameter Data
-export type Parameter = {
+export type OperatorParameterMetadata = {
   name: string
   description: string
   aliases: string[]
@@ -145,7 +145,7 @@ export type Parameter = {
 export interface OperatorData {
   description: string
   aliases: string[]
-  parameters: Parameter[]
+  parameters: OperatorParameterMetadata[]
 }
 
 export type OperatorMetadata = OperatorData & {

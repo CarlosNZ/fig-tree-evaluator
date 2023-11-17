@@ -1,9 +1,9 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Logical AND'
 const aliases = ['and', '&', '&&']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'Returns true if all values are true',

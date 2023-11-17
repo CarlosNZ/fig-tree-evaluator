@@ -1,9 +1,9 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Return a value based on a condition'
 const aliases = ['?', 'conditional', 'ifThen']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'condition',
     description: 'The expression to check for truthiness',

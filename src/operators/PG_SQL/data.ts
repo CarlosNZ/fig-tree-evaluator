@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Query a Postgres database using node-postgres'
 const aliases = ['pgSql', 'sql', 'postgres', 'pg', 'pgDb']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'query',
     description: 'A SQL query string, with parameterised replacements (i.e. $1, $2, etc)',
     aliases: [],
     required: true,
     type: 'string',
+    default: 'SELECT contact_name FROM customers;',
   },
   {
     name: 'values',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['replacements'],
     required: false,
     type: 'array',
+    default: [],
   },
   {
     name: 'type',
@@ -24,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: ['queryType'],
     required: false,
     type: { literal: ['array', 'string', 'number'] },
+    default: 'array',
   },
   {
     name: 'useCache',
@@ -31,6 +34,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: true,
   },
 ]
 
