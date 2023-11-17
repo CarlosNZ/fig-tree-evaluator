@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import { FigTreeEvaluator, OperatorAlias, OperatorMetadata } from 'fig-tree-evaluator'
+import { dequal } from 'dequal/lite'
 import { CustomNodeProps } from './json-edit-react/types'
 import './styles.css'
-import { buildOperatorProps, getCurrentOperator } from './helpers'
+import { buildOperatorProps, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 
 interface OperatorProps {
@@ -22,22 +23,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const operatorData = getCurrentOperator(parentData, figTree.getOperators())
   const thisOperator = data as OperatorAlias
 
-  console.log('operatorData', operatorData)
+  const { updatedNode = {}, availableProperties = [] } = operatorData
+    ? buildOperatorProps(parentData, operatorData.operator)
+    : {}
 
-  const {
-    // currentProps = [],
-    additionalProps = {},
-    availableProps = [],
-    // aliases=[],
-    // fallback,
-    // outputType,
-    // useCache,
-  } = operatorData ? buildOperatorProps(parentData, operatorData.operator) : {}
-
-  console.log('availableProps', availableProps)
-
-  if (Object.keys(additionalProps).length > 0) {
-    setTimeout(() => onEdit({ ...parentData, ...additionalProps }, expressionPath), 100)
+  if (!dequal(parentData, updatedNode)) {
+    setTimeout(() => onEdit(updatedNode, expressionPath), 100)
   }
 
   return (
@@ -51,6 +42,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         figTree={figTree}
         changeOperator={(operator: OperatorAlias) => onEdit({ operator }, expressionPath)}
       />
+      {availableProperties.length > 0 && (
+        <PropertySelector
+          availableProperties={availableProperties}
+          updateNode={(newProperty) => onEdit({ ...parentData, ...newProperty }, expressionPath)}
+        />
+      )}
       <button
         style={{ border: '1px solid black', maxWidth: 200 }}
         onClick={() => {
@@ -84,6 +81,54 @@ const OperatorSelector: React.FC<{
           </option>
         ))}
       </select>
+    </div>
+  )
+}
+
+const PropertySelector: React.FC<{
+  availableProperties: {
+    name: string
+    description: string
+    aliases: string[]
+    required: boolean
+    type: string
+    default?: unknown
+  }[]
+  updateNode: (newField: any) => void
+}> = ({ availableProperties, updateNode }) => {
+  const propertyOptions = availableProperties.map(({ name }) => ({
+    key: name,
+    text: name,
+    value: name,
+  }))
+
+  const [value, setValue] = useState<string>()
+
+  const handleAddProperty = () => {
+    const selected = availableProperties.find((property) => property.name === value)
+    if (selected) {
+      updateNode({ [selected.name]: selected.default ?? getDefaultValue(selected.type) })
+      setValue(undefined)
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex' }}>
+      <span>Add Property: </span>
+      <select value={value} onChange={(e) => setValue(e.target.value)} style={{ maxWidth: 200 }}>
+        <option label=" " hidden />
+
+        {propertyOptions.map(({ key, text, value }) => (
+          <option key={key} value={value}>
+            {text}
+          </option>
+        ))}
+      </select>
+      {value && (
+        <button style={{ border: '1px solid black', maxWidth: 200 }} onClick={handleAddProperty}>
+          +
+        </button>
+      )}
     </div>
   )
 }

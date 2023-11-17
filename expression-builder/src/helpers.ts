@@ -57,84 +57,91 @@ interface AliasNodeProperty {
   value: EvaluatorNode
 }
 
+const commonProperties = [
+  {
+    name: 'fallback',
+    description: 'Value to return if the evaluation throws an error',
+    aliases: [],
+    required: false,
+    type: 'any',
+    default: 'Returning fallback...',
+  },
+  {
+    name: 'outputType',
+    description: 'Convert the evaluation result to this type',
+    aliases: ['type'],
+    required: false,
+    type: 'any',
+    default: 'string',
+  },
+  {
+    name: 'useCache',
+    description: 'Override the global useCache value fo this node only',
+    aliases: [],
+    required: false,
+    type: 'boolean',
+    default: false,
+  },
+]
+
+const reservedProperties = ['operator', 'children', 'fallback', 'outputType', 'type', 'useCache']
+
 export const buildOperatorProps = (node: object, operator: OperatorMetadata) => {
-  const currentProps: OperatorNodeProperty[] = []
-  const aliases: AliasNodeProperty[] = []
-  const availableProps: OperatorNodeProperty[] = []
-  let fallback
-  let outputType
-  let useCache
-  for (const property in node) {
-    if (property === 'operator') continue
-    if (isAliasString(property)) {
-      aliases.push({ name: property, value: node[property] })
-      continue
-    }
-    if (property === 'fallback') {
-      fallback = node[property]
-      continue
-    }
-    if (property === 'outputType') {
-      outputType = node[property]
-      continue
-    }
-    if (property === 'useCache') {
-      useCache = node[property]
-      continue
-    }
+  const updatedNode = { ...node }
 
-    const propertyData = operator.parameters.find(
-      (param) => param.name === property || param.aliases.includes(property)
-    )
+  const requiredProperties = operator.parameters.filter((param) => param.required)
 
-    currentProps.push({
-      name: property,
-      value: node[property],
-      description: propertyData?.description ?? '',
-      required: propertyData?.required ?? false,
-      valid: true, // TODO -- check type AND if it's a relevant property for this operator
-    })
-  }
+  const optionalProperties = operator.parameters.filter((param) => !param.required)
 
-  const currentPropertyKeys = currentProps.map((prop) => prop.name)
+  const currentPropertyKeys = Object.keys(node)
   const allPropertyAliases = operator.parameters.reduce(
     (acc: string[], curr) => [...acc, curr.name, ...curr.aliases],
     []
   )
 
-  // Add any required properties that aren't already in the node, and remove any
-  // that don't belong
-  const additionalProps = {}
-  operator.parameters.forEach((param) => {
-    const allAliases = [param.name, ...param.aliases]
-    if (!allAliases.some((alias) => currentPropertyKeys.includes(alias))) {
-      if (param.required) {
-        additionalProps[param.name] = getDefaultValue(param.type as string)
-      } else {
-        availableProps.push({
-          name: param.name,
-          value: getDefaultValue(param.type as string),
-          description: param?.description ?? '',
-          required: false,
-          valid: true, // TODO -- check type AND if it's a relevant property for this operator
-        })
-      }
-    }
+  currentPropertyKeys.forEach((property) => {
+    if (reservedProperties.includes(property)) return
+    if (isAliasString(property)) return
+    if (allPropertyAliases.includes(property)) return
+
+    // It shouldn't be there, so remove it from node
+    delete updatedNode[property]
   })
 
-  currentProps.forEach((prop) => {
-    if (!allPropertyAliases.includes(prop.name)) {
-      delete node[prop.name]
-    }
+  // Check if all required properties are present, and add them if not
+  requiredProperties.forEach((property) => {
+    if (currentPropertyKeys.includes(property.name)) return
+    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
+
+    updatedNode[property.name] = property.default ?? getDefaultValue(property.type as string)
   })
 
-  return {
-    currentProps,
-    additionalProps,
-    availableProps,
-    aliases,
-    fallback,
-    outputType,
-    useCache,
-  }
+  // Check if optional properties are present, and add them to available
+  // list if not
+  const availableProperties = [] as {
+    name: string
+    description: string
+    aliases: string[]
+    required: boolean
+    type: string
+    default?: unknown
+  }[] // CHANGE TO PARAMETER
+
+  optionalProperties.forEach((property) => {
+    if (currentPropertyKeys.includes(property.name)) return
+    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
+
+    availableProperties.push(property)
+  })
+
+  // Check if common properties are present, and add them to available
+  // list if not
+  commonProperties.forEach((property) => {
+    if (currentPropertyKeys.includes(property.name)) return
+    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
+
+    availableProperties.push(property)
+  })
+
+  return { updatedNode, availableProperties }
 }
