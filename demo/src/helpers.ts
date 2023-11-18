@@ -1,6 +1,8 @@
 import initData from './data.json'
 
-const looseJSON = require('loose-json')
+// @ts-expect-error
+import looseJSON from 'loose-json'
+// const looseJSON = require('loose-json')
 
 export const getInitOptions = () => {
   const savedOptions = parseLocalStorage('options') ?? {}

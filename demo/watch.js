@@ -1,5 +1,5 @@
 // Watch parent repo for changes and updates inner copy if so
-const { execSync } = require('child_process')
+import { execSync } from 'child_process'
 
 console.log('Relaunching...')
 

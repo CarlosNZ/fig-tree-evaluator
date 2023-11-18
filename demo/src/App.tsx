@@ -45,7 +45,8 @@ import { InputState, IsValidState, ConfigState, Result } from './types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 import { Client } from 'pg'
 
-const looseJSON = require('loose-json')
+import looseJSON from 'loose-json'
+// const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()

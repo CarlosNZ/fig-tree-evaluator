@@ -1,4 +1,4 @@
-const config = require('./config.json')
+import config from './config.json'
 const port = config.postgresInterfacePort
 
 export class PostgresInterface {

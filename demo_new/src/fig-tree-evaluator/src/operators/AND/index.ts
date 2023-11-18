@@ -1,1 +1,0 @@
-export { AND } from './operator'
