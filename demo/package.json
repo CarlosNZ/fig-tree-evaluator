@@ -9,9 +9,11 @@
     "@emotion/styled": "^11.11.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "fig-tree-evaluator": "^2.12.0",
+    "fig-tree-evaluator": "^2.13.0",
     "framer-motion": "^10.15.1",
     "loose-json": "^1.1.2",
+    "object-property-assigner": "^1.0.1",
+    "object-property-extractor": "^1.0.7",
     "pg": "^8.11.2",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
@@ -59,11 +61,9 @@
     "@types/react-dom": "^18.2.7",
     "concurrently": "^8.2.0",
     "gh-pages": "^5.0.0",
-    "nodemon": "^3.0.1",
-    "object-property-assigner": "^1.0.1",
-    "react-scripts": "5.0.1",
-    "typescript": "^5.1.6",
     "json-edit-react": "^0.9.6",
-    "object-property-extractor": "^1.0.7"
+    "nodemon": "^3.0.1",
+    "react-scripts": "5.0.1",
+    "typescript": "^5.1.6"
   }
 }
