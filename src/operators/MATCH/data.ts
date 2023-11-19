@@ -21,6 +21,13 @@ const parameters: OperatorParameterMetadata[] = [
     type: ['object', 'array'],
     default: { matchMe: 'YES', nonMatch: 'NO' },
   },
+  {
+    name: '[...branches]',
+    description: 'Branch properties can optionally be placed at the operator root',
+    aliases: [],
+    required: false,
+    type: ['object', 'array'],
+  },
 ]
 
 export const propertyAliases = getPropertyAliases(parameters)

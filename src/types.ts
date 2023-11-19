@@ -59,7 +59,7 @@ export interface FigTreeOptions {
   useCache?: boolean
   maxCacheSize?: number
   maxCacheTime?: number // seconds
-  // Undocumented -- only for < v1 compatibility
+  // Undocumented -- only for v1.x compatibility
   supportDeprecatedValueNodes?: boolean
 }
 
@@ -93,7 +93,7 @@ export interface FragmentNode {
 
 export interface FragmentData {
   description?: string
-  parameters?: Record<string, { type: string | string[]; required: boolean }>
+  parameters?: FragmentParameterMetadata[]
 }
 
 export type Fragment =
@@ -133,12 +133,20 @@ export type ParseChildrenMethod = (
 export type OperatorReference = { [key in Operator]: OperatorObject }
 
 // Operator Parameter Data
-export type OperatorParameterMetadata = {
+export interface OperatorParameterMetadata {
   name: string
   description: string
   aliases: string[]
   required: boolean
   type: ExpectedType
+  default?: unknown
+}
+
+export interface FragmentParameterMetadata {
+  name: string
+  type: string | string[]
+  required: boolean
+  description?: string
   default?: unknown
 }
 
@@ -149,7 +157,7 @@ export interface OperatorData {
 }
 
 export type OperatorMetadata = OperatorData & {
-  operator: Operator
+  name: Operator
 }
 
 export type FragmentMetadata = FragmentData & { name: string }

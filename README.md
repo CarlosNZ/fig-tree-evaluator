@@ -1699,7 +1699,7 @@ This will return an array of operators with detailed info about their [aliases](
 [
   ...
   {
-    operator: 'PLUS',
+    name: 'PLUS',
     description: 'Add, concatenate or merge multiple values',
     aliases: ['+', 'plus', 'add', 'concat', 'join', 'merge'],
     parameters: [
@@ -1728,7 +1728,7 @@ This will return an array of operators with detailed info about their [aliases](
 Because Fragments are defined within the FigTree instance, optional metadata can be provided to make working with these fragments easier in a configuration UI:
 
 ```js
-fig.getOperators()
+fig.getFragments()
 ```
 
 This will return something like:

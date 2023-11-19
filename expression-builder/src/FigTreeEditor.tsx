@@ -1,9 +1,11 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { EvaluatorNode, FigTreeEvaluator, OperatorMetadata } from 'fig-tree-evaluator'
-import { JsonEditor } from 'json-edit-react'
+// import { JsonEditor } from 'json-edit-react'
+import { JsonEditor } from './json-edit-react'
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
+import { validateExpression } from './validator'
 
 interface FigTreeEditorProps {
   figTree: FigTreeEvaluator
@@ -11,20 +13,26 @@ interface FigTreeEditorProps {
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expressionInit }) => {
-  const [expression, setExpression] = useState(expressionInit)
+  const operators = useMemo(() => figTree.getOperators(), [figTree])
+  const fragments = useMemo(() => figTree.getFragments(), [figTree])
 
-  const customFunctionData = figTree
-    .getOperators()
-    .find((op) => op.operator === 'CUSTOM_FUNCTIONS') as OperatorMetadata
+  const [expression, setExpression] = useState(
+    validateExpression(expressionInit, { operators, fragments })
+  )
 
-  const customFunctionAliases = [customFunctionData?.operator, ...customFunctionData.aliases]
+  const customFunctionData = operators.find(
+    (op) => op.name === 'CUSTOM_FUNCTIONS'
+  ) as OperatorMetadata
+
+  const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
 
   return (
     <JsonEditor
       data={expression as object}
       onUpdate={({ newData }) => {
         console.log('newData', newData)
-        setExpression(newData)
+        console.log('validated', validateExpression(newData, { operators, fragments }))
+        setExpression(validateExpression(newData, { operators, fragments }))
       }}
       showArrayIndices={false}
       customNodeDefinitions={[
@@ -44,6 +52,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expr
           name: 'Operator',
           props: { figTree },
           hideKey: true,
+          showInTypesSelector: true,
           defaultValue: { operator: '+', values: [2, 2] },
         },
         {
@@ -52,6 +61,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expr
           name: 'Fragment',
           props: { figTree },
           hideKey: true,
+          showInTypesSelector: true,
           defaultValue: { fragment: '' },
         },
       ]}

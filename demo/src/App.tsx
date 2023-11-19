@@ -16,10 +16,10 @@ import {
   Link,
   Image,
 } from '@chakra-ui/react'
-// import {
-//   FigTreeEvaluator as EvaluatorDev,
-//   // FigTreeOptions,
-// } from './fig-tree-evaluator/src'
+import {
+  FigTreeEvaluator as EvaluatorDev,
+  // FigTreeOptions,
+} from './fig-tree-evaluator/src'
 import {
   FigTreeEvaluator as EvaluatorPublished,
   FigTreeEvaluator,
@@ -52,31 +52,7 @@ const pgConnection = new PostgresInterface() as Client
 const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
-const figTreeDev = new EvaluatorPublished({
-  ...initOptions,
-  pgConnection,
-  fragments: {
-    getFlag: {
-      operator: 'GET',
-      children: [
-        {
-          operator: 'stringSubstitution',
-          string: 'https://restcountries.com/v3.1/name/%1',
-          replacements: ['$country'],
-        },
-        [],
-        'flag',
-      ],
-      outputType: 'string',
-      metadata: {
-        description: 'Gets a country',
-        parameters: { $country: { type: 'string', required: true } },
-      },
-    },
-    simpleFragment: 'The flag of Brazil is: ',
-    adder: { operator: '+', values: '$values' },
-  },
-})
+const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()
@@ -203,9 +179,10 @@ function App() {
           expression={{
             operator: '?',
             condition: { operator: '=', values: [1, { fragment: 'simpleAdder' }] },
-            valueIfFalse: { fragment: 'getFlag' },
-            notThisOne: 'Nah',
+            valueIfFalse: { fragment: 'getCapital' },
             fallback: 'Should show up',
+            $myAlias: 'Should be at the end',
+            notThisOne: 'Nah',
           }}
         />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>

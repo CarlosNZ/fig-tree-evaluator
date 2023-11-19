@@ -10,10 +10,10 @@ const fig = new FigTreeEvaluator({
   },
   fragments: {
     getFlag: {
-      operator: 'GET',
+      name: 'GET',
       children: [
         {
-          operator: 'stringSubstitution',
+          name: 'stringSubstitution',
           string: 'https://restcountries.com/v3.1/name/%1',
           replacements: ['$country'],
         },
@@ -23,16 +23,16 @@ const fig = new FigTreeEvaluator({
       outputType: 'string',
       metadata: {
         description: 'Fetch a country flag',
-        parameters: { $country: { type: 'string', required: true } },
+        parameters: [{ name: '$country', type: 'string', required: true }],
       },
     },
     simpleFragment: 'The flag of Brazil is: ',
-    adder: { operator: '+', values: '$values' },
+    adder: { name: '+', values: '$values' },
     shorthandFragment: {
       $stringSubstitution: ['My name is %1', '$name'],
       metadata: {
         description: 'Substitute a name into the sentence',
-        parameters: { $name: { type: 'string', required: true } },
+        parameters: [{ name: '$name', type: 'string', required: true }],
       },
     },
   },
@@ -42,7 +42,7 @@ const fig = new FigTreeEvaluator({
 test('Metadata -- get operator info', () => {
   expect(fig.getOperators()).toStrictEqual([
     {
-      operator: 'AND',
+      name: 'AND',
       description: 'Logical AND',
       aliases: ['and', '&', '&&'],
       parameters: [
@@ -57,7 +57,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'OR',
+      name: 'OR',
       description: 'Logical OR',
       aliases: ['or', '|', '||'],
       parameters: [
@@ -72,7 +72,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'EQUAL',
+      name: 'EQUAL',
       description: 'Test multiple values are equal',
       aliases: ['=', 'eq', 'equal', 'equals'],
       parameters: [
@@ -104,7 +104,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'NOT_EQUAL',
+      name: 'NOT_EQUAL',
       description: 'Test if any values are different',
       aliases: ['!=', '!', 'ne', 'notEqual'],
       parameters: [
@@ -136,7 +136,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'PLUS',
+      name: 'PLUS',
       description: 'Add, concatenate or merge multiple values',
       aliases: ['+', 'plus', 'add', 'concat', 'join', 'merge'],
       parameters: [
@@ -161,7 +161,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'SUBTRACT',
+      name: 'SUBTRACT',
       description: 'Subtract one numerical value from another',
       aliases: ['-', 'subtract', 'minus', 'takeaway'],
       parameters: [
@@ -192,7 +192,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'MULTIPLY',
+      name: 'MULTIPLY',
       description: 'Multiply several numerical values together',
       aliases: ['*', 'x', 'multiply', 'times'],
       parameters: [
@@ -207,7 +207,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'DIVIDE',
+      name: 'DIVIDE',
       description: 'Divide one numerical value by another',
       aliases: ['/', 'divide', '÷'],
       parameters: [
@@ -248,7 +248,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'GREATER_THAN',
+      name: 'GREATER_THAN',
       description: 'Test if a value is greater than (or equal to) another value',
       aliases: ['>', 'greaterThan', 'higher', 'larger'],
       parameters: [
@@ -272,7 +272,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'LESS_THAN',
+      name: 'LESS_THAN',
       description: 'Test if a value is smaller than (or equal to) another value',
       aliases: ['<', 'lessThan', 'lower', 'smaller'],
       parameters: [
@@ -296,7 +296,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'CONDITIONAL',
+      name: 'CONDITIONAL',
       description: 'Return a value based on a condition',
       aliases: ['?', 'conditional', 'ifThen'],
       parameters: [
@@ -327,7 +327,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'REGEX',
+      name: 'REGEX',
       description: 'Compare a string against a regex pattern',
       aliases: ['regex', 'patternMatch', 'regexp', 'matchPattern'],
       parameters: [
@@ -350,7 +350,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'OBJECT_PROPERTIES',
+      name: 'OBJECT_PROPERTIES',
       description: 'Extract values from data objects',
       aliases: [
         'dataProperties',
@@ -381,7 +381,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'STRING_SUBSTITUTION',
+      name: 'STRING_SUBSTITUTION',
       description: 'Replace values in a string using simple parameter substitution',
       aliases: ['stringSubstitution', 'substitute', 'stringSub', 'replace'],
       parameters: [
@@ -430,7 +430,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'SPLIT',
+      name: 'SPLIT',
       description: 'Split a string into an array',
       aliases: ['split', 'arraySplit'],
       parameters: [
@@ -471,7 +471,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'COUNT',
+      name: 'COUNT',
       description: 'Count elements in an array',
       aliases: ['count', 'length'],
       parameters: [
@@ -486,7 +486,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'GET',
+      name: 'GET',
       description: 'HTTP GET Request',
       aliases: ['get', 'api'],
       parameters: [
@@ -533,7 +533,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'POST',
+      name: 'POST',
       description: 'HTTP POST Request',
       aliases: ['post'],
       parameters: [
@@ -580,7 +580,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'PG_SQL',
+      name: 'PG_SQL',
       description: 'Query a Postgres database using node-postgres',
       aliases: ['pgSql', 'sql', 'postgres', 'pg', 'pgDb'],
       parameters: [
@@ -621,7 +621,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'GRAPHQL',
+      name: 'GRAPHQL',
       description: 'GraphQL request',
       aliases: ['graphQl', 'graphql', 'gql'],
       parameters: [
@@ -677,7 +677,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'BUILD_OBJECT',
+      name: 'BUILD_OBJECT',
       description: 'Construct an object using objects defining keys and values',
       aliases: ['buildObject', 'build', 'object'],
       parameters: [
@@ -692,7 +692,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'MATCH',
+      name: 'MATCH',
       description: 'Return different values depending on a matching expression',
       aliases: ['match', 'switch'],
       parameters: [
@@ -719,7 +719,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'CUSTOM_FUNCTIONS',
+      name: 'CUSTOM_FUNCTIONS',
       description: 'Call a custom function (defined in options)',
       aliases: [
         'customFunctions',
@@ -736,6 +736,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['functionsPath', 'functionName', 'funcName', 'path', 'name'],
           required: true,
           type: 'string',
+          default: null,
         },
         {
           name: 'args',
@@ -743,6 +744,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['arguments', 'variables'],
           required: false,
           type: 'array',
+          default: [],
         },
         {
           name: 'useCache',
@@ -755,7 +757,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'PASSTHRU',
+      name: 'PASSTHRU',
       description: 'Pass through a value unchanged (or change its type)',
       aliases: ['_', 'passThru', 'passthru', 'pass', 'ignore', 'coerce', 'convert'],
       parameters: [
@@ -777,14 +779,14 @@ test('Metadata -- get fragment info', () => {
     {
       name: 'getFlag',
       description: 'Fetch a country flag',
-      parameters: { $country: { type: 'string', required: true } },
+      parameters: [{ name: '$country', type: 'string', required: true }],
     },
     { name: 'simpleFragment' },
     { name: 'adder' },
     {
       name: 'shorthandFragment',
       description: 'Substitute a name into the sentence',
-      parameters: { $name: { type: 'string', required: true } },
+      parameters: [{ name: '$name', type: 'string', required: true }],
     },
   ])
 })

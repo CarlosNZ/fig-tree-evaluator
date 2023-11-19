@@ -2432,10 +2432,10 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.13.0:
-  version "2.13.0"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.0.tgz#0923f5a04c5a356f907ddf31c68177cd62a01b46"
-  integrity sha512-bJpoF3fgrY139NWHnpKcW+BS/KBq+BrXlyIbpq8okD+ZH1FU1WUraRjKwbqRmuQ1rEBr+TRtQhDe1WjH+Aa8LQ==
+fig-tree-evaluator@^2.13.2:
+  version "2.13.2"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.2.tgz#2bfe091166b4a7ea365ea57631e5e01f93a150e1"
+  integrity sha512-olSMZMMyJUIrdKO5nl439lVnK4XqggYqEFeck25HM0MkQ8lpLLHGRov3mg3XsUif6KawZ4lFeLsbWQDDfAYV/Q==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"
@@ -2902,15 +2902,15 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^0.9.6:
-  version "0.9.6"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-0.9.6.tgz#f5da24c25064c51264fad02be39e33351666da38"
-  integrity sha512-D21IbROEDKpHOXHXuFgPGZEIlsRYmYW4X4ad6p4llNxqeV1wDSInjR+KyFWbmPP7DkLsY3QzHde3WQ1UAvX1kg==
+json-edit-react@^1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.0.0.tgz#e52ec366fd53025ddd711951b31e7af0c06a2597"
+  integrity sha512-qqbkupyanCxzFw0PsnmZdVjCQrdgfTC99MrjSOPYC+aWsQu1E2SwGrqIrqhOKoS/stwN7UGlRYIIbBPJv+gP3Q==
   dependencies:
     just-clone "^6.2.0"
     object-property-assigner "^1.0.1"
-    object-property-extractor "^1.0.6"
-    react-icons "^4.8.0"
+    object-property-extractor "^1.0.7"
+    react-icons "^4.12.0"
 
 json-parse-even-better-errors@^2.3.0:
   version "2.3.1"
@@ -3173,7 +3173,7 @@ object-property-assigner@^1.0.1:
   resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.0.1.tgz#0ce00a72877fc995e1504e04cf1509833c0f6147"
   integrity sha512-B+5FhEnpTg4XCf7931AbPTQ1PAm56K+cxWmu/QIG8mqCrfuOLnMw+87vjZfIYP7j8wV5e3E9dYh0uMdqEbmzyw==
 
-object-property-extractor@^1.0.6, object-property-extractor@^1.0.7:
+object-property-extractor@^1.0.7:
   version "1.0.7"
   resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.7.tgz#5b80d6bc2109ca7f49239359b3762adf332cbb41"
   integrity sha512-JiJtcIdSp7dTOTT5Ssztr/ZarFlruJAx11VEESgLPx6BTqjPzRgpg1KEqZjtnXlrf9MWc1Qcv1zaNMa1/3qLMA==
@@ -3587,7 +3587,7 @@ react-focus-lock@^2.9.4:
     use-callback-ref "^1.3.0"
     use-sidecar "^1.1.2"
 
-react-icons@^4.8.0:
+react-icons@^4.12.0:
   version "4.12.0"
   resolved "https://registry.yarnpkg.com/react-icons/-/react-icons-4.12.0.tgz#54806159a966961bfd5cdb26e492f4dafd6a8d78"
   integrity sha512-IBaDuHiShdZqmfc/TwHu6+d6k2ltNCf3AszxNmjJc1KUfXdEeRJOKyNvLmAHaarhzGmTSVygNdyu8/opXv2gaw==

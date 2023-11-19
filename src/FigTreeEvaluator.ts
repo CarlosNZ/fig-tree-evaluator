@@ -90,7 +90,7 @@ class FigTreeEvaluator {
       ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
       : this.operators
     const operatorList = Object.entries(validOperators).map(([key, value]) => ({
-      operator: key,
+      name: key,
       ...value.operatorData,
     }))
     // Ensures we return operators in the order listed in "operatorAliases",
@@ -98,7 +98,7 @@ class FigTreeEvaluator {
     // operators/index.ts, which is not stable through compilation
     const orderedOperators = [...new Set(Object.values(operatorAliases))] as string[]
     return operatorList.sort(
-      (a, b) => orderedOperators.indexOf(a.operator) - orderedOperators.indexOf(b.operator)
+      (a, b) => orderedOperators.indexOf(a.name) - orderedOperators.indexOf(b.name)
     ) as readonly OperatorMetadata[]
   }
 

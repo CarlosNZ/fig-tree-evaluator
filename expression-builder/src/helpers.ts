@@ -39,10 +39,10 @@ export const getCurrentOperator = (node: EvaluatorNode, operators: readonly Oper
 
   const operatorName = node?.operator as string
   const operator = operators.find(
-    (op) => op.operator === operatorName || op.aliases.includes(operatorName)
+    (op) => op.name === operatorName || op.aliases.includes(operatorName)
   )
   if (!operator) return undefined
-  return { operator, alias: operatorName }
+  return operator
 }
 
 export const commonProperties = [
@@ -82,55 +82,8 @@ export const reservedProperties = [
   'useCache',
 ]
 
-export const validateOperatorState = (node: object, operator: OperatorMetadata) => {
-  const updatedNode = { ...node }
+export const isArbitraryPropertyMarker = (propertyName: string) =>
+  /^\[\s*\.\.\.[A-Za-z]+\s*\]$/gm.test(propertyName)
 
-  const requiredProperties = operator.parameters.filter((param) => param.required)
-
-  const optionalProperties = operator.parameters.filter((param) => !param.required)
-
-  const currentPropertyKeys = Object.keys(node)
-  const allPropertyAliases = operator.parameters.reduce(
-    (acc: string[], curr) => [...acc, curr.name, ...curr.aliases],
-    []
-  )
-
-  currentPropertyKeys.forEach((property) => {
-    if (reservedProperties.includes(property)) return
-    if (isAliasString(property)) return
-    if (allPropertyAliases.includes(property)) return
-
-    // It shouldn't be there, so remove it from node
-    delete updatedNode[property]
-  })
-
-  // Check if all required properties are present, and add them if not
-  requiredProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
-
-    updatedNode[property.name] = property.default ?? getDefaultValue(property.type as string)
-  })
-
-  // Check if optional properties are present, and add them to available
-  // list if not
-  const availableProperties: OperatorParameterMetadata[] = []
-
-  optionalProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
-
-    availableProperties.push(property)
-  })
-
-  // Check if common properties are present, and add them to available
-  // list if not
-  commonProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
-
-    availableProperties.push(property)
-  })
-
-  return { updatedNode, availableProperties }
-}
+export const operatorAcceptsArbitraryProperties = ({ parameters }: OperatorMetadata) =>
+  parameters.some((param) => isArbitraryPropertyMarker(param.name))

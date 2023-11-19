@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react'
 import { FigTreeEvaluator, FragmentMetadata, FragmentNode, isAliasString } from 'fig-tree-evaluator'
-import { CustomNodeProps } from 'json-edit-react/types'
+import { CustomNodeProps } from 'json-edit-react'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { dequal } from 'dequal'
 import { commonProperties, getDefaultValue, reservedProperties } from './helpers'
 import { PropertySelector } from './Operator'
+import { getAvailableProperties } from './validator'
 
 interface FragmentProps {
   figTree: FigTreeEvaluator
@@ -20,17 +20,13 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
     customProps: { figTree },
   } = props
 
+  // console.log('figTree.getFragments()', figTree.getFragments())
+
   const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
-  const { updatedNode = {}, availableProperties = [] } = fragmentData
-    ? validateFragmentProperties(parentData as FragmentNode, fragmentData)
-    : {}
-
-  if (!dequal(parentData, updatedNode)) {
-    setTimeout(() => onEdit(updatedNode, expressionPath), 100)
-  }
+  const availableProperties = getAvailableProperties(fragmentData, parentData)
 
   return (
     <div className="ft-operator-block">
@@ -76,15 +72,14 @@ const FragmentSelector: React.FC<{
   }
 
   return (
-    // <div style={{ display: 'flex' }}>
     <select value={value} onChange={handleChange} style={{ maxWidth: 150 }}>
+      <option key="_blank" label=" " />
       {fragmentOptions.map(({ key, text, value }) => (
         <option key={key} value={value}>
           {text}
         </option>
       ))}
     </select>
-    // </div>
   )
 }
 
@@ -94,65 +89,3 @@ const getCurrentFragment = (node: FragmentNode, fragments: readonly FragmentMeta
 
   return fragment ?? fragments[0]
 }
-
-const validateFragmentProperties = (node: FragmentNode, fragment: FragmentMetadata) => {
-  const updatedNode = { ...node, fragment: fragment.name }
-
-  const parameters = Object.entries(fragment?.parameters ?? {}).map(
-    ([name, { type, required }]) => ({
-      name,
-      type,
-      required,
-    })
-  )
-
-  const requiredProperties = parameters.filter(({ required }) => required)
-
-  const optionalProperties = parameters.filter(({ required }) => !required)
-
-  const currentPropertyKeys = Object.keys(node)
-
-  currentPropertyKeys.forEach((property) => {
-    if (reservedProperties.includes(property)) return
-    if (isAliasString(property)) return
-
-    // It shouldn't be there, so remove it from node
-    // delete updatedNode[property]
-  })
-
-  // Check if all required properties are present, and add them if not
-  requiredProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-
-    updatedNode[property.name] = getDefaultValue(property.type as string)
-  })
-
-  // Check if optional properties are present, and add them to available
-  // list if not
-  const availableProperties = [] as {
-    name: string
-    required: boolean
-    type: string
-    // default?: unknown
-  }[] // CHANGE TO PARAMETER
-
-  optionalProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-    availableProperties.push(property)
-  })
-
-  // Check if common properties are present, and add them to available
-  // list if not
-  commonProperties.forEach((property) => {
-    if (currentPropertyKeys.includes(property.name)) return
-    if (property.aliases.some((alias) => currentPropertyKeys.includes(alias))) return
-
-    availableProperties.push(property)
-  })
-
-  return { updatedNode, availableProperties }
-}
-
-// const getFragmentOptions = (fragments: readonly FragmentMetadata[]) => {
-//   return fragments.map(({ name }) => ({ key: name, text: name, value: name }))
-// }

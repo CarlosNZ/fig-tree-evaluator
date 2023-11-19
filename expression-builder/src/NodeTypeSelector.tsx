@@ -27,8 +27,6 @@ export const NodeTypeSelector: React.FC<{
   }
 
   return (
-    // <div>
-    //   <span>Node type: </span>
     <select value={value} onChange={handleChange}>
       {nodeTypeOptions.map(({ key, text, value }) => (
         <option key={key} value={value}>
@@ -36,6 +34,5 @@ export const NodeTypeSelector: React.FC<{
         </option>
       ))}
     </select>
-    // </div>
   )
 }
