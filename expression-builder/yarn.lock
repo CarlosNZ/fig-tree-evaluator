@@ -101,10 +101,10 @@ diff@^4.0.1:
   resolved "https://registry.npmjs.org/diff/-/diff-4.0.2.tgz"
   integrity sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==
 
-json-edit-react@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.0.0.tgz#e52ec366fd53025ddd711951b31e7af0c06a2597"
-  integrity sha512-qqbkupyanCxzFw0PsnmZdVjCQrdgfTC99MrjSOPYC+aWsQu1E2SwGrqIrqhOKoS/stwN7UGlRYIIbBPJv+gP3Q==
+json-edit-react@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.1.1.tgz#be31a749de1be76baeaea8ed59f642675dad7c59"
+  integrity sha512-eZLPNpZQiNqUvW0w9go/wj8/uoUs+Xw/OPUJKNhdkYyXrC9aWAZTvh/5IJHwvgN54haM+2CGavuY2xUnirnbAQ==
   dependencies:
     just-clone "^6.2.0"
     object-property-assigner "^1.0.1"
