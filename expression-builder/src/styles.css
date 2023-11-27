@@ -15,3 +15,8 @@
 .jer-collection-item-count {
   display: none;
 }
+
+/* For react-select */
+.ft-rs-control {
+  border: 2px solid red !important;
+}

@@ -8,8 +8,9 @@ import {
   OperatorParameterMetadata,
 } from 'fig-tree-evaluator'
 import { CustomNodeProps } from 'json-edit-react'
+import { Select } from './Select'
 import './styles.css'
-import { validateOperatorState, getCurrentOperator, getDefaultValue } from './helpers'
+import { getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
 
@@ -87,15 +88,7 @@ const OperatorSelector: React.FC<{
     changeOperator(e.target.value)
   }
 
-  return (
-    <select value={value} onChange={handleChange} style={{ maxWidth: 150 }}>
-      {operatorOptions.map(({ key, text, value }) => (
-        <option key={key} value={value}>
-          {text}
-        </option>
-      ))}
-    </select>
-  )
+  return <Select options={operatorOptions} />
 }
 
 export const PropertySelector: React.FC<{
@@ -178,12 +171,8 @@ export interface DropdownOption {
 const getOperatorOptions = (operators: readonly OperatorMetadata[]) => {
   const options: DropdownOption[] = []
   for (const op of operators) {
-    options.push({
-      key: op.name,
-      value: op.name,
-      text: `${op.name}`,
-    })
-    op.aliases.forEach((alias) => options.push({ key: alias, value: alias, text: ` • ${alias}` }))
+    const operatorAliases = op.aliases.map((alias) => ({ value: alias, label: alias }))
+    options.push({ label: op.name, options: operatorAliases })
   }
 
   return options
