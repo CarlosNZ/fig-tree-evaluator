@@ -1,6 +1,5 @@
 import React, { useMemo, useState } from 'react'
 import { EvaluatorNode, FigTreeEvaluator, OperatorMetadata } from 'fig-tree-evaluator'
-// import { JsonEditor } from 'json-edit-react'
 import { JsonEditor } from './json-edit-react'
 import './styles.css'
 import { Operator } from './Operator'
@@ -38,13 +37,17 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({ figTree, expression: expr
       customNodeDefinitions={[
         {
           condition: ({ key, value }) =>
-            key === 'operator' && customFunctionAliases.includes(value),
+            key === 'operator' && customFunctionAliases.includes(value as string),
           element: Operator,
           name: 'Custom Functions',
           props: { figTree, isCustomFunctions: true },
           hideKey: true,
           defaultValue: { operator: 'function' },
           showInTypesSelector: false,
+          // customNodeProps:{},
+          showOnEdit: true,
+          showOnView: true,
+          showEditTools: true,
         },
         {
           condition: ({ key }) => key === 'operator',
