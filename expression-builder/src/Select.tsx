@@ -1,18 +1,25 @@
 import React from 'react'
-import ReactSelect, { OptionProps } from 'react-select'
+import ReactSelect, { GroupBase, Props } from 'react-select'
 
 // Custom re-export of react-select
 
-interface SelectProps {
-  value: any
-  options: OptionProps
-  ReactSelectProps: any
+interface SelectOption {
+  value: string
+  label: string
 }
 
-export const Select: React.FC<SelectProps> = ({ value, options, ReactSelectProps }) => {
+const Select: React.FC<Props> = <
+  Option,
+  IsMulti extends boolean = false,
+  Group extends GroupBase<Option> = GroupBase<Option>,
+>({
+  value,
+  ...props
+}: Props<Option, IsMulti, Group>) => {
+  console.log('Current operator value', value)
+
   return (
     <ReactSelect
-      options={options}
       value={value}
       classNamePrefix="ft-rs"
       styles={{
@@ -41,7 +48,9 @@ export const Select: React.FC<SelectProps> = ({ value, options, ReactSelectProps
           height: '2em',
         }),
       }}
-      {...ReactSelectProps}
+      {...props}
     />
   )
 }
+
+export { Select, SelectOption }
