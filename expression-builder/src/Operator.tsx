@@ -34,8 +34,8 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
   return (
-    <div className="ft-custom-function-wrapper">
-      <div className="ft-operator-block">
+    <div className="ft-custom ft-operator">
+      <div className="ft-toolbar ft-operator-toolbar">
         <NodeTypeSelector
           value="operator"
           changeNode={(newValue) => onEdit(newValue, expressionPath)}
@@ -89,6 +89,7 @@ const OperatorSelector: React.FC<{
 
   return (
     <Select
+      className="ft-operator-select"
       options={operatorOptions}
       value={{ value, label: value }}
       onChange={(newValue) => changeOperator((newValue as SelectOption).value)}
@@ -110,14 +111,13 @@ export const PropertySelector: React.FC<{
   }
 
   return (
-    <div style={{ display: 'flex' }}>
-      <Select
-        options={propertyOptions}
-        value={null}
-        placeholder="Add property"
-        onChange={(selected) => handleAddProperty((selected as SelectOption).value)}
-      />
-    </div>
+    <Select
+      className="ft-property-select"
+      options={propertyOptions}
+      value={null}
+      placeholder="Add property"
+      onChange={(selected) => handleAddProperty((selected as SelectOption).value)}
+    />
   )
 }
 
@@ -139,7 +139,7 @@ export const FunctionSelector: React.FC<{
   }
 
   return (
-    <div style={{ display: 'flex' }}>
+    <div className="ft-function-toolbar">
       <span>Select function: </span>
       <Select
         value={functionOptions.find((option) => value === option.value)}

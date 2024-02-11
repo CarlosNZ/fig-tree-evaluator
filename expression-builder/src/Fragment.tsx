@@ -1,9 +1,8 @@
 import React, { useMemo } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode, isAliasString } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, FragmentMetadata, FragmentNode } from 'fig-tree-evaluator'
 import { CustomNodeProps } from 'json-edit-react'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { commonProperties, getDefaultValue, reservedProperties } from './helpers'
 import { PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
@@ -21,8 +20,6 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
     customProps: { figTree, onEvaluate },
   } = props
 
-  // console.log('figTree.getFragments()', figTree.getFragments())
-
   const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
@@ -30,7 +27,7 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
   const availableProperties = getAvailableProperties(fragmentData, parentData)
 
   return (
-    <div className="ft-operator-block">
+    <div className="ft-custom ft-fragment ft-toolbar ft-fragment-toolbar">
       <NodeTypeSelector
         value="fragment"
         changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
@@ -72,6 +69,7 @@ const FragmentSelector: React.FC<{
 
   return (
     <Select
+      className="ft-fragment-select"
       value={{ label: value, value }}
       onChange={(selected) => changeFragment((selected as SelectOption).value)}
       options={fragmentOptions}

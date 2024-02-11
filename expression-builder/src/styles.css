@@ -1,23 +1,39 @@
 .fig-tree-node .jer-editor-container {
-  margin: 0;
-  padding: 0;
+  /* margin: 0;
+  padding: 0; */
 }
 
-.ft-operator-block {
+.ft-custom {
+  /* padding-top: 0.2em;
+  padding-bottom: 0.5em;
+  padding-left: 1em; */
+  margin-left: -0.5em;
+}
+
+.ft-toolbar {
   display: flex;
+  align-items: center;
+  gap: 0.3em;
 }
 
-.jer-collection-inner {
-  border: 1px solid grey;
-  border-radius: 5px;
-  padding: 5px;
+.jer-collection-component {
+  /* border: 1px solid grey;
+  border-radius: 0.5em;
+  padding: 0.5em;
+  margin-left: 1.5em !important; important to override inline collapse margin */
 }
+
+/* .jer-collection-inner {
+  border: 1px solid green;
+  border-radius: 0.5em;
+  padding: 0.5em;
+} */
 
 .jer-brackets {
-  display: none;
+  /* display: none; */
 }
 .jer-collection-item-count {
-  display: none;
+  /* display: none; */
 }
 
 /* For react-select */
