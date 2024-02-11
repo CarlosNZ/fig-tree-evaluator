@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   CustomFunctionMetadata,
   FigTreeEvaluator,
@@ -28,6 +28,8 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
     customProps: { figTree, isCustomFunctions, onEvaluate },
   } = props
 
+  const [isEditing, setIsEditing] = useState(false)
+
   const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(parentData, figTree.getOperators()) as OperatorMetadata
   const thisOperator = data as OperatorAlias
@@ -36,33 +38,55 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
   return (
     <div className="ft-custom ft-operator">
       <div className="ft-toolbar ft-operator-toolbar">
-        <NodeTypeSelector
-          value="operator"
-          changeNode={(newValue) => onEdit(newValue, expressionPath)}
-          showFragments={figTree.getFragments().length > 0}
-        />
-        :
-        <OperatorSelector
-          value={thisOperator}
-          figTree={figTree}
-          changeOperator={(operator: OperatorAlias) =>
-            onEdit({ ...cleanOperatorNode(parentData as OperatorNode), operator }, expressionPath)
-          }
-        />
-        {availableProperties.length > 0 && (
-          <PropertySelector
-            availableProperties={availableProperties as OperatorParameterMetadata[]}
-            updateNode={(newProperty) => onEdit({ ...parentData, ...newProperty }, expressionPath)}
-          />
+        {isEditing && (
+          <>
+            <NodeTypeSelector
+              value="operator"
+              changeNode={(newValue) => onEdit(newValue, expressionPath)}
+              showFragments={figTree.getFragments().length > 0}
+            />
+            :
+            <OperatorSelector
+              value={thisOperator}
+              figTree={figTree}
+              changeOperator={(operator: OperatorAlias) =>
+                onEdit(
+                  { ...cleanOperatorNode(parentData as OperatorNode), operator },
+                  expressionPath
+                )
+              }
+            />
+            {availableProperties.length > 0 && (
+              <PropertySelector
+                availableProperties={availableProperties as OperatorParameterMetadata[]}
+                updateNode={(newProperty) =>
+                  onEdit({ ...parentData, ...newProperty }, expressionPath)
+                }
+              />
+            )}
+            <button
+              style={{ border: '1px solid black', maxWidth: 200 }}
+              onClick={() => setIsEditing(false)}
+            >
+              Done
+            </button>
+          </>
         )}
-        <button
-          style={{ border: '1px solid black', maxWidth: 200 }}
-          onClick={() => {
-            figTree.evaluate(parentData).then((result) => onEvaluate(result))
-          }}
-        >
-          Evaluate
-        </button>
+        {!isEditing && (
+          <div style={{ display: 'flex', gap: '1em', alignItems: 'center' }}>
+            <span>operator:</span>
+            <span style={{ fontSize: '2em' }}>{thisOperator}</span>
+            <span onClick={() => setIsEditing(true)}>Edit</span>
+            <button
+              style={{ border: '1px solid black', maxWidth: 200 }}
+              onClick={() => {
+                figTree.evaluate(parentData).then((result) => onEvaluate(result))
+              }}
+            >
+              Evaluate
+            </button>
+          </div>
+        )}
       </div>
       {isCustomFunctions && (
         <FunctionSelector

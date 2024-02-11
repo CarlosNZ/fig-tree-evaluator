@@ -63,7 +63,6 @@ export const validateExpression = (
   // updated list
   for (const entry of expressionEntries) {
     const [key, value] = entry
-    console.log('Value', value, isOperatorNode(value))
 
     if (isOperatorNode(value) || isFragmentNode(value))
       entry[1] = validateExpression(value, figTreeMetaData)

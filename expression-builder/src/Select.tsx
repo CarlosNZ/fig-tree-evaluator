@@ -25,7 +25,7 @@ const Select: React.FC<Props> = <
           ...base,
           minHeight: '2em',
           height: '2em',
-          maxWidth: '10em',
+          maxWidth: '15em',
         }),
 
         // valueContainer: (provided, state) => ({

@@ -177,7 +177,7 @@ function App() {
       <VStack h="100%">
         <FigTreeEditor
           figTree={evaluator as FigTreeEvaluator}
-          expression={testExpressions.validateNested}
+          expression={testExpressions.defaultUnordered}
           onEvaluate={(value) => console.log(value)}
         />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
