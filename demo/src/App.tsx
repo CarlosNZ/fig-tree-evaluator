@@ -44,6 +44,7 @@ import useDebounce from './useDebounce'
 import { InputState, IsValidState, ConfigState, Result } from './types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 import { Client } from 'pg'
+import { testExpressions } from './testExpressions'
 
 import looseJSON from 'loose-json'
 // const looseJSON = require('loose-json')
@@ -176,14 +177,8 @@ function App() {
       <VStack h="100%">
         <FigTreeEditor
           figTree={evaluator as FigTreeEvaluator}
-          expression={{
-            operator: '?',
-            condition: { operator: '=', values: [1, { fragment: 'simpleAdder' }] },
-            valueIfFalse: { fragment: 'getCapital' },
-            fallback: 'Should show up',
-            $myAlias: 'Should be at the end',
-            notThisOne: 'Nah',
-          }}
+          expression={testExpressions.includesShorthand}
+          onEvaluate={(value) => console.log(value)}
         />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />

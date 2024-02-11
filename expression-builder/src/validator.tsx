@@ -112,6 +112,26 @@ export const validateExpression = (
 export const cleanOperatorNode = (node: OperatorNode) =>
   Object.fromEntries(Object.entries(node).filter(([key, _]) => commonProperties.includes(key)))
 
+// To add to list of available properties (drop-down)
+const commonPropertyDetails = [
+  {
+    name: 'fallback',
+    description: 'Value to return if operator throws error',
+    aliases: [],
+    required: false,
+    // type: 'string',
+    default: null,
+  },
+  {
+    name: 'outputType',
+    description: 'Convert output to another data type',
+    aliases: [],
+    required: false,
+    type: 'string',
+    default: 'string',
+  },
+]
+
 // Returns a list of available properties for Operator or Fragment, excluding
 // ones already in use
 export const getAvailableProperties = (
@@ -119,6 +139,7 @@ export const getAvailableProperties = (
   node: OperatorNode
 ) => {
   if (!metaData.parameters) return []
+  const allProperties = [...metaData.parameters, ...commonPropertyDetails]
   const currentProperties = Object.keys(node)
-  return metaData.parameters.filter((param) => !currentProperties.includes(param.name))
+  return allProperties.filter((param) => !currentProperties.includes(param.name))
 }

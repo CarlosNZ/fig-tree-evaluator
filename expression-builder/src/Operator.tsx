@@ -25,7 +25,7 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
     parentData,
     path,
     onEdit,
-    customProps: { figTree, isCustomFunctions },
+    customProps: { figTree, isCustomFunctions, onEvaluate },
   } = props
 
   const expressionPath = path.slice(0, -1)
@@ -34,19 +34,36 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
   return (
-    <div className="ft-operator-block">
-      <NodeTypeSelector
-        value="operator"
-        changeNode={(newValue) => onEdit(newValue, expressionPath)}
-      />
-      :
-      <OperatorSelector
-        value={thisOperator}
-        figTree={figTree}
-        changeOperator={(operator: OperatorAlias) =>
-          onEdit({ ...cleanOperatorNode(parentData as OperatorNode), operator }, expressionPath)
-        }
-      />
+    <div className="ft-custom-function-wrapper">
+      <div className="ft-operator-block">
+        <NodeTypeSelector
+          value="operator"
+          changeNode={(newValue) => onEdit(newValue, expressionPath)}
+          showFragments={figTree.getFragments().length > 0}
+        />
+        :
+        <OperatorSelector
+          value={thisOperator}
+          figTree={figTree}
+          changeOperator={(operator: OperatorAlias) =>
+            onEdit({ ...cleanOperatorNode(parentData as OperatorNode), operator }, expressionPath)
+          }
+        />
+        {availableProperties.length > 0 && (
+          <PropertySelector
+            availableProperties={availableProperties as OperatorParameterMetadata[]}
+            updateNode={(newProperty) => onEdit({ ...parentData, ...newProperty }, expressionPath)}
+          />
+        )}
+        <button
+          style={{ border: '1px solid black', maxWidth: 200 }}
+          onClick={() => {
+            figTree.evaluate(parentData).then((result) => onEvaluate(result))
+          }}
+        >
+          Evaluate
+        </button>
+      </div>
       {isCustomFunctions && (
         <FunctionSelector
           value={(parentData as OperatorNode)?.functionPath as string}
@@ -59,20 +76,6 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
           }}
         />
       )}
-      {availableProperties.length > 0 && (
-        <PropertySelector
-          availableProperties={availableProperties as OperatorParameterMetadata[]}
-          updateNode={(newProperty) => onEdit({ ...parentData, ...newProperty }, expressionPath)}
-        />
-      )}
-      <button
-        style={{ border: '1px solid black', maxWidth: 200 }}
-        onClick={() => {
-          figTree.evaluate(parentData).then((result) => console.log(result))
-        }}
-      >
-        Evaluate
-      </button>
     </div>
   )
 }
@@ -125,26 +128,24 @@ export const FunctionSelector: React.FC<{
 }> = ({ value, functions, updateNode }) => {
   const functionOptions = functions.map(({ name, numRequiredArgs }) => ({
     key: name,
-    text: `${name} (${numRequiredArgs})`,
+    label: `${name} (${numRequiredArgs})`,
     value: name,
   }))
 
-  const handleFunctionSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, numRequiredArgs = 0 } = functions.find((f) => f.name === e.target.value) ?? {}
+  const handleFunctionSelect = (selected: SelectOption) => {
+    const { name, numRequiredArgs = 0 } = functions.find((f) => f.name === selected.value) ?? {}
+    console.log(name, numRequiredArgs)
     if (name) updateNode(name, numRequiredArgs)
   }
 
   return (
     <div style={{ display: 'flex' }}>
       <span>Select function: </span>
-      <select value={value} onChange={handleFunctionSelect} style={{ maxWidth: 200 }}>
-        <option label=" " hidden />
-        {functionOptions.map(({ key, text, value }) => (
-          <option key={key} value={value}>
-            {text}
-          </option>
-        ))}
-      </select>
+      <Select
+        value={functionOptions.find((option) => value === option.value)}
+        options={functionOptions}
+        onChange={handleFunctionSelect}
+      />
     </div>
   )
 }

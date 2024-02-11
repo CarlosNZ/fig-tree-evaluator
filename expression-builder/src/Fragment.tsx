@@ -6,6 +6,7 @@ import { NodeTypeSelector } from './NodeTypeSelector'
 import { commonProperties, getDefaultValue, reservedProperties } from './helpers'
 import { PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
+import { Select, SelectOption } from './Select'
 
 interface FragmentProps {
   figTree: FigTreeEvaluator
@@ -17,7 +18,7 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
     parentData,
     path,
     onEdit,
-    customProps: { figTree },
+    customProps: { figTree, onEvaluate },
   } = props
 
   // console.log('figTree.getFragments()', figTree.getFragments())
@@ -33,6 +34,7 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
       <NodeTypeSelector
         value="fragment"
         changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
+        showFragments
       />
       :
       <FragmentSelector
@@ -49,7 +51,7 @@ export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
       <button
         style={{ border: '1px solid black', maxWidth: 200 }}
         onClick={() => {
-          figTree.evaluate(parentData).then((result) => console.log(result))
+          figTree.evaluate(parentData).then((result) => onEvaluate(result))
         }}
       >
         Evaluate
@@ -64,22 +66,16 @@ const FragmentSelector: React.FC<{
   changeFragment: (fragment: string) => void
 }> = ({ value, figTree, changeFragment }) => {
   const fragmentOptions = useMemo(
-    () => figTree.getFragments().map(({ name }) => ({ key: name, text: name, value: name })),
+    () => figTree.getFragments().map(({ name }) => ({ label: name, value: name })),
     [figTree]
   )
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    changeFragment(e.target.value)
-  }
 
   return (
-    <select value={value} onChange={handleChange} style={{ maxWidth: 150 }}>
-      <option key="_blank" label=" " />
-      {fragmentOptions.map(({ key, text, value }) => (
-        <option key={key} value={value}>
-          {text}
-        </option>
-      ))}
-    </select>
+    <Select
+      value={{ label: value, value }}
+      onChange={(selected) => changeFragment((selected as SelectOption).value)}
+      options={fragmentOptions}
+    />
   )
 }
 

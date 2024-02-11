@@ -16,8 +16,6 @@ const Select: React.FC<Props> = <
   value,
   ...props
 }: Props<Option, IsMulti, Group>) => {
-  console.log('Current operator value', value)
-
   return (
     <ReactSelect
       value={value}
