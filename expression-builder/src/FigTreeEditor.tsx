@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react'
 import { EvaluatorNode, FigTreeEvaluator, OperatorMetadata } from 'fig-tree-evaluator'
 // import { JsonEditor } from './json-edit-react'
-import { JsonEditor } from './package'
-// import { JsonEditor } from 'json-edit-react'
+// import { JsonEditor } from './package'
+import { JsonEditor } from 'json-edit-react'
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
@@ -32,6 +32,21 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   ) as OperatorMetadata
 
   const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
+
+  const propertyCountReplace = ({
+    value,
+  }: {
+    key: string | number
+    path: (string | number)[]
+    level: number
+    value: unknown
+    size: number | null
+  }) => {
+    if (!(value instanceof Object)) return null
+    if ('operator' in value) return `Operator: ${value.operator}`
+    if ('fragment' in value) return `Fragment: ${value.fragment}`
+    return null
+  }
 
   return (
     <JsonEditor
@@ -121,6 +136,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           showEditTools: true,
         },
       ]}
+      customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}
     />
   )
 }

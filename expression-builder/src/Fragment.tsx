@@ -3,22 +3,21 @@ import { FigTreeEvaluator, FragmentMetadata, FragmentNode } from 'fig-tree-evalu
 import { CustomNodeProps } from 'json-edit-react'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { PropertySelector } from './Operator'
+import { OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
 
-interface FragmentProps {
-  figTree: FigTreeEvaluator
-}
-
-export const Fragment: React.FC<CustomNodeProps<FragmentProps>> = (props) => {
+export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
     data,
     parentData,
-    path,
+    nodeData: { path },
     onEdit,
-    customProps: { figTree, onEvaluate },
+    customNodeProps,
   } = props
+
+  const { figTree, onEvaluate } = customNodeProps ?? {}
+  if (!figTree || !onEvaluate) return null
 
   const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())

@@ -14,19 +14,24 @@ import { getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
 
-// interface OperatorProps {
-//   figTree: FigTreeEvaluator
-//   isCustomFunctions?: boolean
-// }
+export interface OperatorProps {
+  figTree: FigTreeEvaluator
+  onEvaluate: (value: unknown) => void
+}
 
-export const Operator: React.FC<CustomNodeProps> = (props) => {
+export const Operator: React.FC<
+  CustomNodeProps<OperatorProps & { isCustomFunctions?: boolean }>
+> = (props) => {
   const {
     data,
     parentData,
-    path,
+    nodeData: { path },
     onEdit,
-    customProps: { figTree, isCustomFunctions, onEvaluate },
+    customNodeProps,
   } = props
+
+  const { figTree, isCustomFunctions, onEvaluate } = customNodeProps ?? {}
+  if (!figTree || !onEvaluate) return null
 
   const [isEditing, setIsEditing] = useState(false)
 
@@ -74,7 +79,7 @@ export const Operator: React.FC<CustomNodeProps> = (props) => {
         )}
         {!isEditing && (
           <div style={{ display: 'flex', gap: '1em', alignItems: 'center' }}>
-            <span>operator:</span>
+            {/* <span>operator:</span> */}
             <span style={{ fontSize: '2em' }}>{thisOperator}</span>
             <span onClick={() => setIsEditing(true)}>Edit</span>
             <button
