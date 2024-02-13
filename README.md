@@ -1796,6 +1796,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+
+- **v2.12.1**: Bug fix for `objectProperties` operator when array index larger than `9` is used
 - **v2.12.0**: Add `caseInsensitive` option to equality/non-equality operators
 - **v2.11.5**: Upgrade dependencies
 - **v2.11.4**: Bundle target ES6
