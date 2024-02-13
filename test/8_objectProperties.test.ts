@@ -14,6 +14,7 @@ const exp = new FigTreeEvaluator({
     application: {
       questions: { q1: 'What is the answer?', q2: 'Enter your name' },
     },
+    bigArray: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'],
   },
 })
 
@@ -35,6 +36,33 @@ test('Object properties, deeper, using properties', () => {
   }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe('Enter your name')
+  })
+})
+
+test('Object properties, get from long array', () => {
+  const expression = {
+    operator: 'getProperty',
+    property: 'bigArray[12]',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('m')
+  })
+})
+
+test('Object properties, array out of bounds', () => {
+  const expression = {
+    operator: 'getProperty',
+    property: 'vehicle.model.versions[4]',
+    data: {
+      vehicle: {
+        make: 'Honda',
+        model: { name: 'Accord', versions: ['Type A', 'Type B', 'Type C'] },
+      },
+    },
+    fallback: 'Too big',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('Too big')
   })
 })
 

@@ -53,7 +53,7 @@
     "axios": "^1.5.1",
     "change-case": "^4.1.2",
     "dequal": "^2.0.3",
-    "object-property-extractor": "^1.0.8"
+    "object-property-extractor": "^1.0.9"
   },
   "bugs": {
     "url": "https://github.com/CarlosNZ/fig-tree-evaluator/issues"
