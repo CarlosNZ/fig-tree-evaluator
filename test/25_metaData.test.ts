@@ -716,6 +716,13 @@ test('Metadata -- get operator info', () => {
             nonMatch: 'NO',
           },
         },
+        {
+          name: '[...branches]',
+          description: 'Branch properties can optionally be placed at the operator root',
+          aliases: [],
+          required: false,
+          type: ['object', 'array'],
+        },
       ],
     },
     {
