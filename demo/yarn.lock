@@ -2474,15 +2474,15 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.13.2:
-  version "2.13.2"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.2.tgz#2bfe091166b4a7ea365ea57631e5e01f93a150e1"
-  integrity sha512-olSMZMMyJUIrdKO5nl439lVnK4XqggYqEFeck25HM0MkQ8lpLLHGRov3mg3XsUif6KawZ4lFeLsbWQDDfAYV/Q==
+fig-tree-evaluator@^2.13.3:
+  version "2.13.3"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.3.tgz#fd6b71af86146dc5f5880f7c79318c0b6e45e5a3"
+  integrity sha512-qpYcRnWvh0IDOz3qo2YpuCmB+CKlMSQWfTJdHWL2Qfduu4bLDgA/CzHtNeu8f0ciF/f3AKoQcS24TeOVg9OqCQ==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"
     dequal "^2.0.3"
-    object-property-extractor "^1.0.7"
+    object-property-extractor "^1.0.9"
 
 file-entry-cache@^6.0.1:
   version "6.0.1"
@@ -3224,6 +3224,11 @@ object-property-extractor@^1.0.7:
   version "1.0.7"
   resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.7.tgz#5b80d6bc2109ca7f49239359b3762adf332cbb41"
   integrity sha512-JiJtcIdSp7dTOTT5Ssztr/ZarFlruJAx11VEESgLPx6BTqjPzRgpg1KEqZjtnXlrf9MWc1Qcv1zaNMa1/3qLMA==
+
+object-property-extractor@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.9.tgz#9e584084f49f2de690815ca6358e51b300e74061"
+  integrity sha512-ynLDKne9KQ9NL2TREohMeFbLRzbmdGI+Z1jK3CN7d7bMOpGbPBZAiR5CNRLB4slCN6fsGmVQX3l/1TADuFHN3Q==
 
 obuf@~1.1.2:
   version "1.1.2"

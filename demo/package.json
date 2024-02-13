@@ -26,7 +26,7 @@
     "@emotion/styled": "^11.11.0",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "fig-tree-evaluator": "^2.13.2",
+    "fig-tree-evaluator": "^2.13.3",
     "framer-motion": "^10.15.1",
     "loose-json": "^1.1.2",
     "object-property-assigner": "^1.0.1",
