@@ -3935,9 +3935,9 @@ caniuse-api@^3.0.0:
     lodash.uniq "^4.5.0"
 
 caniuse-lite@^1.0.0, caniuse-lite@^1.0.30001332, caniuse-lite@^1.0.30001335:
-  version "1.0.30001518"
-  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001518.tgz"
-  integrity sha512-rup09/e3I0BKjncL+FesTayKtPrdwKhUufQFd3riFw1hHg8JmIFoInYfB102cFcY/pPgGmdyl/iy+jgiDi2vdA==
+  version "1.0.30001587"
+  resolved "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30001587.tgz"
+  integrity sha512-HMFNotUmLXn71BQxg8cijvqxnIAofforZOwGsxyXJ0qugTdspUF4sPSJ2vhgprHCB996tIDzEq1ubumPDV8ULA==
 
 capital-case@^1.0.4:
   version "1.0.4"
@@ -5402,15 +5402,15 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.12.0:
-  version "2.12.0"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.12.0.tgz#6ee347ee21857f6632c91f60cfca0ecb7d69e0f4"
-  integrity sha512-lexU6dkcpWdBgexKDY0SEJ36mSi0kbK2ZabxPDYhYsEnVUvrOtp6trJsT4Nul5nffKz8IFCr3/E+SJPSeohCFQ==
+fig-tree-evaluator@^2.12.1:
+  version "2.12.1"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.12.1.tgz#33f77b0e70b313fb9abc31fff72386cb0f47b2ba"
+  integrity sha512-lX6BpJ/WsNIjAailR/FsmibdXFXwnYZUHZ2yrTgjykhf7p8NRgLynJpTLOsQ/gKMfJc0u+6U5jktjl8V0D7e6A==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"
     dequal "^2.0.3"
-    object-property-extractor "^1.0.7"
+    object-property-extractor "^1.0.9"
 
 file-entry-cache@^6.0.1:
   version "6.0.1"
@@ -7479,10 +7479,10 @@ object-keys@^1.1.1:
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
 
-object-property-extractor@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.7.tgz#5b80d6bc2109ca7f49239359b3762adf332cbb41"
-  integrity sha512-JiJtcIdSp7dTOTT5Ssztr/ZarFlruJAx11VEESgLPx6BTqjPzRgpg1KEqZjtnXlrf9MWc1Qcv1zaNMa1/3qLMA==
+object-property-extractor@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.9.tgz#9e584084f49f2de690815ca6358e51b300e74061"
+  integrity sha512-ynLDKne9KQ9NL2TREohMeFbLRzbmdGI+Z1jK3CN7d7bMOpGbPBZAiR5CNRLB4slCN6fsGmVQX3l/1TADuFHN3Q==
 
 object.assign@^4.1.0, object.assign@^4.1.2:
   version "4.1.2"
