@@ -1948,15 +1948,15 @@ fb-watchman@^2.0.0:
   dependencies:
     bser "2.1.1"
 
-fig-tree-evaluator@^2.13.2:
-  version "2.13.2"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.2.tgz#2bfe091166b4a7ea365ea57631e5e01f93a150e1"
-  integrity sha512-olSMZMMyJUIrdKO5nl439lVnK4XqggYqEFeck25HM0MkQ8lpLLHGRov3mg3XsUif6KawZ4lFeLsbWQDDfAYV/Q==
+fig-tree-evaluator@^2.13.4:
+  version "2.13.4"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.4.tgz#83c67e2227b027d12644453dc99e1d714ac494b8"
+  integrity sha512-YB23RSlOWm1Pe0HEg7uKhNw7vKaKLw3EML+PP+F6gQkFXenU4TmaUBkNXrLET03HAkKTb62ULPh7jN+czjlMeg==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"
     dequal "^2.0.3"
-    object-property-extractor "^1.0.7"
+    object-property-extractor "^1.0.10"
 
 file-entry-cache@^6.0.1:
   version "6.0.1"
@@ -3215,11 +3215,6 @@ object-property-extractor@^1.0.10:
   version "1.0.10"
   resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.10.tgz#970c04522b0d24cf1c059c333bd7144436318fa0"
   integrity sha512-9zKpkfjUZMYSBnj95tFNR9hjCuiyeVKBCKB2KGG4Nj/BDY4IeE8NobN/4rO2v8sgnwXoKotTRtLyKbtlN2/JrQ==
-
-object-property-extractor@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.7.tgz#5b80d6bc2109ca7f49239359b3762adf332cbb41"
-  integrity sha512-JiJtcIdSp7dTOTT5Ssztr/ZarFlruJAx11VEESgLPx6BTqjPzRgpg1KEqZjtnXlrf9MWc1Qcv1zaNMa1/3qLMA==
 
 object.assign@^4.1.4:
   version "4.1.4"
