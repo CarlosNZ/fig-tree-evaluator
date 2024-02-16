@@ -1,10 +1,4 @@
-import {
-  EvaluatorNode,
-  ExpectedType,
-  OperatorMetadata,
-  OperatorParameterMetadata,
-  isAliasString,
-} from 'fig-tree-evaluator'
+import { EvaluatorNode, ExpectedType, OperatorMetadata } from 'fig-tree-evaluator'
 import { NodeType } from './NodeTypeSelector'
 
 // Returns a valid default value for each (FigTree) data type
@@ -87,3 +81,12 @@ export const isArbitraryPropertyMarker = (propertyName: string) =>
 
 export const operatorAcceptsArbitraryProperties = ({ parameters }: OperatorMetadata) =>
   parameters.some((param) => isArbitraryPropertyMarker(param.name))
+
+export const getButtonFontSize = (operatorAlias: string) => {
+  const charCount = operatorAlias.length
+
+  if (charCount === 1) return '2.2em'
+  if (charCount < 8) return '2em'
+  if (charCount < 15) return '1.5em'
+  return '1.2em'
+}

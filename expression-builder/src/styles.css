@@ -4,34 +4,124 @@
 }
 
 .ft-custom {
-  /* padding-top: 0.2em;
-  padding-bottom: 0.5em;
-  padding-left: 1em; */
+  min-height: 3em;
   margin-left: -0.5em;
+  display: flex;
 }
 
+.jer-value-and-buttons,
+.jer-input-component {
+  /* width: 100%; */
+}
+
+/* Operator/Fragment node editing interface */
 .ft-toolbar {
   display: flex;
   align-items: center;
   gap: 0.3em;
 }
 
-.jer-collection-component {
-  /* border: 1px solid grey;
-  border-radius: 0.5em;
-  padding: 0.5em;
-  margin-left: 1.5em !important; important to override inline collapse margin */
+/* Operator/Fragment display interface */
+
+.ft-display-bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
 }
 
-/* .jer-collection-inner {
-  border: 1px solid green;
+.ft-button-and-edit {
+  display: flex;
+  align-items: end;
+  gap: 0.6em;
+}
+
+.ft-display-button {
+  display: flex;
+  justify-content: space-between;
+  min-width: 6em;
+  width: 100%;
+  padding: 0.3em;
   border-radius: 0.5em;
-  padding: 0.5em;
+  align-items: center;
+  gap: 0.4em;
+  padding-left: 1em;
+  padding-right: 1em;
+  cursor: pointer;
+  box-shadow:
+    rgba(50, 50, 93, 0.25) 0px 2px 5px -1px,
+    rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
+  transition: 0.3s;
+}
+
+.ft-display-button:hover {
+  box-shadow:
+    rgba(0, 0, 0, 0.1) 0px 0px 5px 0px,
+    rgba(0, 0, 0, 0.1) 0px 0px 1px 0px;
+  transform: scale(0.99);
+  transition: 0.3s;
+}
+
+.ft-operator-alias {
+  /* font-size: 2em; */
+  min-width: 1em;
+  text-align: center;
+  font-weight: bold;
+}
+
+.ft-icon.ft-evaluate-icon {
+  width: 1.5em;
+  transform: translateY(0.1em);
+}
+
+.ft-display-name {
+  position: absolute;
+  right: -0.5em;
+  top: 0em;
+  font-family: sans-serif;
+  color: gray;
+  font-variant: small-caps;
+  font-size: 0.7em;
+}
+
+/* .ft-display-bar:hover > .ft-edit-icon {
+  opacity: 1;
 } */
+
+/* .ft-button-and-edit:hover > .ft-edit-icon {
+  opacity: 1;
+} */
+
+.ft-edit-icon {
+  opacity: 0;
+  padding-right: 5em; /* Gives wider hover target */
+}
+
+.ft-edit-icon:hover {
+  opacity: 1;
+}
+
+.ft-okay-icon {
+  margin-left: 0.5em;
+  margin-top: 0.3em;
+}
+
+.jer-collection-inner {
+  /* border: 1px solid #dbdbdb;
+  border-radius: 0.75em;
+  padding: 0.5em;
+  margin-bottom: 0.5em;
+  padding-right: 1em; */
+}
 
 .jer-brackets {
   /* display: none; */
 }
+
+.jer-bracket-outside {
+  display: none;
+}
+
 .jer-collection-item-count {
   /* display: none; */
 }

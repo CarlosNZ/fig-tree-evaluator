@@ -2,26 +2,32 @@ import React, { useMemo, useState } from 'react'
 import {
   CustomFunctionMetadata,
   FigTreeEvaluator,
+  Operator as OperatorName,
   OperatorAlias,
   OperatorMetadata,
   OperatorNode,
   OperatorParameterMetadata,
 } from 'fig-tree-evaluator'
-import { CustomNodeProps } from 'json-edit-react'
+import { CustomNodeProps, IconEdit, IconOk } from './package'
+// import { CustomNodeProps, IconEdit } from 'json-edit-react'
 import { Select, SelectOption } from './Select'
+import { Icons } from './Icons'
 import './styles.css'
-import { getCurrentOperator, getDefaultValue } from './helpers'
+import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
+import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   onEvaluate: (value: unknown) => void
+  onEvaluateStart: () => void
+  onEvaluateError: (err: unknown) => void
+  operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
+  isCustomFunctions?: boolean
 }
 
-export const Operator: React.FC<
-  CustomNodeProps<OperatorProps & { isCustomFunctions?: boolean }>
-> = (props) => {
+export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
     data,
     parentData,
@@ -30,7 +36,10 @@ export const Operator: React.FC<
     customNodeProps,
   } = props
 
-  const { figTree, isCustomFunctions, onEvaluate } = customNodeProps ?? {}
+  if (!customNodeProps) throw new Error('Missing customNodeProps')
+
+  const { figTree, isCustomFunctions, onEvaluate, onEvaluateStart, onEvaluateError } =
+    customNodeProps
   if (!figTree || !onEvaluate) return null
 
   const [isEditing, setIsEditing] = useState(false)
@@ -40,59 +49,55 @@ export const Operator: React.FC<
   const thisOperator = data as OperatorAlias
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
+  const opDisplay = operatorDisplay[operatorData.name]
+
+  const evaluateNode = async () => {
+    onEvaluateStart && onEvaluateStart()
+    try {
+      const result = await figTree.evaluate(parentData)
+      onEvaluate(result)
+    } catch (err) {
+      onEvaluateError(err)
+    }
+  }
+
   return (
     <div className="ft-custom ft-operator">
-      <div className="ft-toolbar ft-operator-toolbar">
-        {isEditing && (
-          <>
-            <NodeTypeSelector
-              value="operator"
-              changeNode={(newValue) => onEdit(newValue, expressionPath)}
-              showFragments={figTree.getFragments().length > 0}
-            />
-            :
-            <OperatorSelector
-              value={thisOperator}
-              figTree={figTree}
-              changeOperator={(operator: OperatorAlias) =>
-                onEdit(
-                  { ...cleanOperatorNode(parentData as OperatorNode), operator },
-                  expressionPath
-                )
+      {isEditing ? (
+        <div className="ft-toolbar ft-operator-toolbar">
+          <NodeTypeSelector
+            value="operator"
+            changeNode={(newValue) => onEdit(newValue, expressionPath)}
+            showFragments={figTree.getFragments().length > 0}
+          />
+          :
+          <OperatorSelector
+            value={thisOperator}
+            figTree={figTree}
+            changeOperator={(operator: OperatorAlias) =>
+              onEdit({ ...cleanOperatorNode(parentData as OperatorNode), operator }, expressionPath)
+            }
+          />
+          {availableProperties.length > 0 && (
+            <PropertySelector
+              availableProperties={availableProperties as OperatorParameterMetadata[]}
+              updateNode={(newProperty) =>
+                onEdit({ ...parentData, ...newProperty }, expressionPath)
               }
             />
-            {availableProperties.length > 0 && (
-              <PropertySelector
-                availableProperties={availableProperties as OperatorParameterMetadata[]}
-                updateNode={(newProperty) =>
-                  onEdit({ ...parentData, ...newProperty }, expressionPath)
-                }
-              />
-            )}
-            <button
-              style={{ border: '1px solid black', maxWidth: 200 }}
-              onClick={() => setIsEditing(false)}
-            >
-              Done
-            </button>
-          </>
-        )}
-        {!isEditing && (
-          <div style={{ display: 'flex', gap: '1em', alignItems: 'center' }}>
-            {/* <span>operator:</span> */}
-            <span style={{ fontSize: '2em' }}>{thisOperator}</span>
-            <span onClick={() => setIsEditing(true)}>Edit</span>
-            <button
-              style={{ border: '1px solid black', maxWidth: 200 }}
-              onClick={() => {
-                figTree.evaluate(parentData).then((result) => onEvaluate(result))
-              }}
-            >
-              Evaluate
-            </button>
+          )}
+          <div className="ft-okay-icon" onClick={() => setIsEditing(false)}>
+            <IconOk size="2em" className="" style={{ color: 'green' }} />
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <DisplayBar
+          alias={thisOperator}
+          setIsEditing={() => setIsEditing(true)}
+          evaluate={evaluateNode}
+          {...opDisplay}
+        />
+      )}
       {isCustomFunctions && (
         <FunctionSelector
           value={(parentData as OperatorNode)?.functionPath as string}
@@ -105,6 +110,43 @@ export const Operator: React.FC<
           }}
         />
       )}
+    </div>
+  )
+}
+
+interface DisplayBarProps extends OperatorDisplay {
+  alias: OperatorAlias
+  setIsEditing: () => void
+  evaluate: () => void
+}
+
+export const DisplayBar: React.FC<DisplayBarProps> = ({
+  alias,
+  setIsEditing,
+  evaluate,
+  backgroundColor,
+  textColor,
+  displayName,
+}) => {
+  return (
+    <div className="ft-display-bar">
+      <div className="ft-button-and-edit">
+        <div
+          className="ft-display-button"
+          style={{ backgroundColor, color: textColor }}
+          onClick={evaluate}
+        >
+          {/* <span className="ft-operator-text">Operator:</span> */}
+          <span className="ft-operator-alias" style={{ fontSize: getButtonFontSize(alias) }}>
+            {alias}
+          </span>
+          {Icons.evaluate}
+        </div>
+        <span onClick={() => setIsEditing()} className="ft-edit-icon">
+          <IconEdit size="2em" style={{ color: 'rgb(42, 161, 152)' }} className="" />
+        </span>
+      </div>
+      <div className="ft-display-name">{displayName}</div>
     </div>
   )
 }
@@ -122,6 +164,7 @@ const OperatorSelector: React.FC<{
       options={operatorOptions}
       value={{ value, label: value }}
       onChange={(newValue) => changeOperator((newValue as SelectOption).value)}
+      // styles={{ control: { minWidth: '10em' } }}
     />
   )
 }
