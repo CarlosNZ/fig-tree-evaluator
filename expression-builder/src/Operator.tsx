@@ -87,7 +87,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
             />
           )}
           <div className="ft-okay-icon" onClick={() => setIsEditing(false)}>
-            <IconOk size="2em" className="" style={{ color: 'green' }} />
+            <IconOk size="2em" style={{ color: 'green' }} />
           </div>
         </div>
       ) : (
@@ -143,7 +143,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           {Icons.evaluate}
         </div>
         <span onClick={() => setIsEditing()} className="ft-edit-icon">
-          <IconEdit size="2em" style={{ color: 'rgb(42, 161, 152)' }} className="" />
+          <IconEdit size="2em" style={{ color: 'rgb(42, 161, 152)' }} />
         </span>
       </div>
       <div className="ft-display-name">{displayName}</div>
