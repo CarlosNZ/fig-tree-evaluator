@@ -1,11 +1,13 @@
-import React, { useMemo } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode } from 'fig-tree-evaluator'
-import { CustomNodeProps } from 'json-edit-react'
+import React, { useState, useMemo } from 'react'
+import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorNode } from 'fig-tree-evaluator'
+import { CustomNodeProps, IconOk } from './package'
+// import { CustomNodeProps, IconOk } from 'json-edit-react'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { OperatorProps, PropertySelector } from './Operator'
+import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
+import { operatorDisplay } from './operatorDisplay'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
@@ -16,42 +18,66 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     customNodeProps,
   } = props
 
-  const { figTree, onEvaluate } = customNodeProps ?? {}
+  if (!customNodeProps) throw new Error('Missing customNodeProps')
+
+  const { figTree, onEvaluate, onEvaluateStart, onEvaluateError } = customNodeProps
+  const [isEditing, setIsEditing] = useState(false)
+
   if (!figTree || !onEvaluate) return null
 
   const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
-  const availableProperties = getAvailableProperties(fragmentData, parentData)
+  const availableProperties = getAvailableProperties(fragmentData, parentData as OperatorNode)
+
+  const opDisplay = operatorDisplay.FRAGMENT
+
+  const evaluateNode = async () => {
+    onEvaluateStart && onEvaluateStart()
+    try {
+      const result = await figTree.evaluate(parentData)
+      onEvaluate(result)
+    } catch (err) {
+      onEvaluateError(err)
+    }
+  }
 
   return (
-    <div className="ft-custom ft-fragment ft-toolbar ft-fragment-toolbar">
-      <NodeTypeSelector
-        value="fragment"
-        changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
-        showFragments
-      />
-      :
-      <FragmentSelector
-        value={thisFragment}
-        figTree={figTree}
-        changeFragment={(fragment) => onEdit({ ...parentData, fragment }, expressionPath)}
-      />
-      {availableProperties.length > 0 && (
-        <PropertySelector
-          availableProperties={availableProperties}
-          updateNode={(newProperty) => onEdit({ ...parentData, ...newProperty }, expressionPath)}
+    <div className="ft-custom ft-fragment">
+      {isEditing ? (
+        <div className="ft-toolbar ft-fragment-toolbar">
+          <NodeTypeSelector
+            value="fragment"
+            changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
+            showFragments
+          />
+          :
+          <FragmentSelector
+            value={thisFragment}
+            figTree={figTree}
+            changeFragment={(fragment) => onEdit({ ...parentData, fragment }, expressionPath)}
+          />
+          {availableProperties.length > 0 && (
+            <PropertySelector
+              availableProperties={availableProperties}
+              updateNode={(newProperty) =>
+                onEdit({ ...parentData, ...newProperty }, expressionPath)
+              }
+            />
+          )}
+          <div className="ft-okay-icon" onClick={() => setIsEditing(false)}>
+            <IconOk size="2em" className="" style={{ color: 'green' }} />
+          </div>
+        </div>
+      ) : (
+        <DisplayBar
+          name={thisFragment}
+          setIsEditing={() => setIsEditing(true)}
+          evaluate={evaluateNode}
+          {...opDisplay}
         />
       )}
-      <button
-        style={{ border: '1px solid black', maxWidth: 200 }}
-        onClick={() => {
-          figTree.evaluate(parentData).then((result) => onEvaluate(result))
-        }}
-      >
-        Evaluate
-      </button>
     </div>
   )
 }

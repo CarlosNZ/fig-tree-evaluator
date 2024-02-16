@@ -40,9 +40,9 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const { figTree, isCustomFunctions, onEvaluate, onEvaluateStart, onEvaluateError } =
     customNodeProps
-  if (!figTree || !onEvaluate) return null
-
   const [isEditing, setIsEditing] = useState(false)
+
+  if (!figTree || !onEvaluate) return null
 
   const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(parentData, figTree.getOperators()) as OperatorMetadata
@@ -92,7 +92,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         </div>
       ) : (
         <DisplayBar
-          alias={thisOperator}
+          name={thisOperator}
           setIsEditing={() => setIsEditing(true)}
           evaluate={evaluateNode}
           {...opDisplay}
@@ -115,13 +115,13 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 }
 
 interface DisplayBarProps extends OperatorDisplay {
-  alias: OperatorAlias
+  name: OperatorAlias
   setIsEditing: () => void
   evaluate: () => void
 }
 
 export const DisplayBar: React.FC<DisplayBarProps> = ({
-  alias,
+  name,
   setIsEditing,
   evaluate,
   backgroundColor,
@@ -137,8 +137,8 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           onClick={evaluate}
         >
           {/* <span className="ft-operator-text">Operator:</span> */}
-          <span className="ft-operator-alias" style={{ fontSize: getButtonFontSize(alias) }}>
-            {alias}
+          <span className="ft-operator-alias" style={{ fontSize: getButtonFontSize(name) }}>
+            {name}
           </span>
           {Icons.evaluate}
         </div>

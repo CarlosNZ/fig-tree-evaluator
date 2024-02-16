@@ -6,10 +6,10 @@ export interface OperatorDisplay {
   displayName: string
 }
 
-export const operatorDisplay: Record<Operator, OperatorDisplay> = {
+export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: OperatorDisplay } = {
   AND: {
     backgroundColor: 'green',
-    textColor: 'black',
+    textColor: 'white',
     displayName: 'Logical AND',
   },
   OR: {
@@ -126,5 +126,10 @@ export const operatorDisplay: Record<Operator, OperatorDisplay> = {
     backgroundColor: 'green',
     textColor: 'black',
     displayName: 'Pass thru',
+  },
+  FRAGMENT: {
+    backgroundColor: 'green',
+    textColor: 'black',
+    displayName: 'Fragment',
   },
 }

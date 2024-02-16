@@ -18,17 +18,18 @@ import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 interface FigTreeEditorProps {
   figTree: FigTreeEvaluator
   expression: EvaluatorNode
-  onEvaluate: (value) => void
-  onStartEvaluate: () => void
+  onEvaluate: (value: unknown) => void
+  onEvaluateStart: () => void
+  onEvaluateError: (err: unknown) => void
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
-  theme: any // TO-DO
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   figTree,
   expression: expressionInit,
-  onStartEvaluate,
   onEvaluate,
+  onEvaluateStart,
+  onEvaluateError,
   operatorDisplay: operatorDisplayProp,
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
@@ -79,7 +80,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // fontFamily: 'monospace',
           },
           bracket: ({ value }) => {
-            if (!(isObject(value) && 'operator' in value)) return { display: 'inline' }
+            if (!(isObject(value) && ('operator' in value || 'fragment' in value)))
+              return { display: 'inline' }
           },
           collectionInner: [
             {
@@ -91,7 +93,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               borderRadius: '0.75em',
             },
             ({ collapsed, value }) => {
-              if (isObject(value) && 'operator' in value) {
+              if (isObject(value) && ('operator' in value || 'fragment' in value)) {
                 const style = {
                   // paddingLeft: '0.5em',
                   paddingRight: '1em',
@@ -111,20 +113,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           iconEdit: { color: 'rgb(42, 161, 152)' },
         },
       }}
-      translations={
-        {
-          // ITEM_SINGLE: '{{count}} property',
-          // ITEMS_MULTIPLE: '{{count}} properties',
-          // KEY_NEW: 'Enter new key',
-          // ERROR_KEY_EXISTS: 'Key already exists',
-          // ERROR_INVALID_JSON: 'Invalid JSON',
-          // ERROR_UPDATE: 'Update unsuccessful',
-          // ERROR_DELETE: 'Delete unsuccessful',
-          // ERROR_ADD: 'Adding node unsuccessful',
-          // DEFAULT_STRING: 'New data!',
-          // DEFAULT_NEW_KEY: 'key',
-        }
-      }
       customNodeDefinitions={[
         {
           condition: ({ key }) => key === 'operator',
@@ -133,7 +121,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           customNodeProps: {
             figTree,
             onEvaluate,
-            onStartEvaluate,
+            onEvaluateStart,
+            onEvaluateError,
             operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
           },
           hideKey: true,
@@ -147,10 +136,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           condition: ({ key }) => key === 'fragment',
           element: Fragment,
           name: 'Fragment',
-          customNodeProps: { figTree, onEvaluate, onStartEvaluate },
+          customNodeProps: { figTree, onEvaluate, onEvaluateStart, onEvaluateError },
           hideKey: true,
-          showOnView: true,
           showOnEdit: false,
+          showEditTools: false,
           showInTypesSelector: true,
           defaultValue: { fragment: '' },
         },
@@ -163,7 +152,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             figTree,
             isCustomFunctions: true,
             onEvaluate,
-            onStartEvaluate,
+            onEvaluateStart,
+            onEvaluateError,
             operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
           },
           hideKey: true,

@@ -179,6 +179,8 @@ function App() {
           figTree={evaluator as FigTreeEvaluator}
           expression={testExpressions.defaultUnordered}
           onEvaluate={(value) => console.log(value)}
+          onEvaluateStart={() => console.log('Evaluating...')}
+          onEvaluateError={(err) => console.error(err)}
         />
         {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />
