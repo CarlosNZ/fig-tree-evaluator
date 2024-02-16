@@ -7,6 +7,7 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
+  OperatorParameterMetadata,
 } from 'fig-tree-evaluator'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
@@ -42,7 +43,7 @@ export const validateExpression = (
     : []
   const allPropertyAliases = currentMetaData?.parameters
     ? isOperator
-      ? currentMetaData.parameters.reduce(
+      ? (currentMetaData as OperatorMetadata).parameters.reduce(
           (acc: string[], curr) => [...acc, curr.name, ...curr.aliases],
           []
         )
@@ -93,13 +94,15 @@ export const validateExpression = (
   }
 
   // Add any required properties that are missing
-
   const currentKeys = newExpression.map((el) => el[0])
   if (!('children' in expression)) {
+    const missingRequired = requiredProperties.filter(
+      (prop) =>
+        !currentKeys.includes(prop.name) &&
+        (prop.aliases ?? []).every((alias) => !currentKeys.includes(alias))
+    )
     newExpression.push(
-      ...requiredProperties
-        .filter((prop) => !currentKeys.includes(prop.name))
-        .map((prop) => [prop.name, prop.default ?? getDefaultValue(prop.type)])
+      ...missingRequired.map((prop) => [prop.name, prop.default ?? getDefaultValue(prop.type)])
     )
   }
 

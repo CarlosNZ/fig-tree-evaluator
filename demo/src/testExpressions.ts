@@ -7,6 +7,12 @@ export const testExpressions = {
     $myAlias: 'Should be at the end',
     notThisOne: 'Nah',
   },
+  simpleCondition: {
+    operator: '?',
+    condition: true,
+    ifTrue: 'YES',
+    valueIfFalse: 'Out',
+  },
   defaultUnordered: {
     fallback: 'Should show up',
     condition: { operator: '=', values: [1, { fragment: 'simpleAdder' }] },

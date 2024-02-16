@@ -7,6 +7,7 @@
   min-height: 3em;
   margin-left: -0.5em;
   display: flex;
+  flex-direction: column;
 }
 
 .jer-value-and-buttons,
@@ -104,6 +105,12 @@
 .ft-okay-icon {
   margin-left: 0.5em;
   margin-top: 0.3em;
+}
+
+.ft-function-select {
+  display: flex;
+  align-items: center;
+  padding: 0.5em;
 }
 
 .jer-collection-inner {

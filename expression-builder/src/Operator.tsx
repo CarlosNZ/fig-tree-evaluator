@@ -24,7 +24,6 @@ export interface OperatorProps {
   onEvaluateStart: () => void
   onEvaluateError: (err: unknown) => void
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
-  isCustomFunctions?: boolean
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
@@ -38,8 +37,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, isCustomFunctions, onEvaluate, onEvaluateStart, onEvaluateError } =
-    customNodeProps
+  const { figTree, onEvaluate, onEvaluateStart, onEvaluateError } = customNodeProps
   const [isEditing, setIsEditing] = useState(false)
 
   if (!figTree || !onEvaluate) return null
@@ -49,6 +47,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const thisOperator = data as OperatorAlias
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
+  const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
   const opDisplay = operatorDisplay[operatorData.name]
 
   const evaluateNode = async () => {
@@ -98,7 +97,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           {...opDisplay}
         />
       )}
-      {isCustomFunctions && (
+      {isCustomFunction && isEditing && (
         <FunctionSelector
           value={(parentData as OperatorNode)?.functionPath as string}
           functions={figTree.getCustomFunctions()}
@@ -211,11 +210,11 @@ export const FunctionSelector: React.FC<{
   }
 
   return (
-    <div className="ft-function-toolbar">
-      <span>Select function: </span>
+    <div className="ft-function-select">
       <Select
         value={functionOptions.find((option) => value === option.value)}
         options={functionOptions}
+        placeholder="Select function"
         onChange={handleFunctionSelect}
       />
     </div>
