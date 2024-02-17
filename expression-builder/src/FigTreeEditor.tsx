@@ -5,6 +5,7 @@ import {
   type Operator as OperatorName,
   type OperatorMetadata,
   isObject,
+  FigTreeOptions,
 } from 'fig-tree-evaluator'
 // import { JsonEditor } from './json-edit-react'
 import { JsonEditor } from './package'
@@ -18,15 +19,17 @@ import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 interface FigTreeEditorProps {
   figTree: FigTreeEvaluator
   expression: EvaluatorNode
+  options: FigTreeOptions
   onEvaluate: (value: unknown) => void
-  onEvaluateStart: () => void
-  onEvaluateError: (err: unknown) => void
-  operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
+  onEvaluateStart?: () => void
+  onEvaluateError?: (err: unknown) => void
+  operatorDisplay?: Partial<Record<OperatorName, OperatorDisplay>>
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   figTree,
   expression: expressionInit,
+  options,
   onEvaluate,
   onEvaluateStart,
   onEvaluateError,
@@ -38,6 +41,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const [expression, setExpression] = useState(
     validateExpression(expressionInit, { operators, fragments })
   )
+  const [isEvaluating, setIsEvaluating] = useState(false)
 
   const customFunctionData = operators.find(
     (op) => op.name === 'CUSTOM_FUNCTIONS'
@@ -60,6 +64,18 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     return null
   }
 
+  const evaluateNode = async (expression: EvaluatorNode) => {
+    setIsEvaluating(true)
+    onEvaluateStart && onEvaluateStart()
+    try {
+      const result = await figTree.evaluate(expression, options)
+      onEvaluate(result)
+    } catch (err) {
+      onEvaluateError && onEvaluateError(err)
+    }
+    setIsEvaluating(false)
+  }
+
   return (
     <JsonEditor
       className="ft-editor"
@@ -72,7 +88,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       showArrayIndices={false}
       indent={3}
       collapse={1}
-      minWidth={600}
+      // minWidth={600}
       theme={{
         styles: {
           container: {
@@ -120,9 +136,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           name: 'Operator',
           customNodeProps: {
             figTree,
-            onEvaluate,
-            onEvaluateStart,
-            onEvaluateError,
+            evaluateNode,
+            isEvaluating,
             operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
           },
           hideKey: true,
@@ -136,34 +151,34 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           condition: ({ key }) => key === 'fragment',
           element: Fragment,
           name: 'Fragment',
-          customNodeProps: { figTree, onEvaluate, onEvaluateStart, onEvaluateError },
+          customNodeProps: { figTree, isEvaluating, evaluateNode },
           hideKey: true,
           showOnEdit: false,
           showEditTools: false,
           showInTypesSelector: true,
           defaultValue: { fragment: '' },
         },
-        {
-          condition: ({ key, value }) =>
-            key === 'operator' && customFunctionAliases.includes(value as string),
-          element: Operator,
-          name: 'Custom Functions',
-          customNodeProps: {
-            figTree,
-            isCustomFunctions: true,
-            onEvaluate,
-            onEvaluateStart,
-            onEvaluateError,
-            operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
-          },
-          hideKey: true,
-          defaultValue: { operator: 'function' },
-          showInTypesSelector: false,
-          // customNodeProps:{},
-          showOnEdit: true,
-          showOnView: true,
-          showEditTools: true,
-        },
+        // {
+        //   condition: ({ key, value }) =>
+        //     key === 'operator' && customFunctionAliases.includes(value as string),
+        //   element: Operator,
+        //   name: 'Custom Functions',
+        //   customNodeProps: {
+        //     figTree,
+        //     isCustomFunctions: true,
+        //     onEvaluate,
+        //     onEvaluateStart,
+        //     onEvaluateError,
+        //     operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+        //   },
+        //   hideKey: true,
+        //   defaultValue: { operator: 'function' },
+        //   showInTypesSelector: false,
+        //   // customNodeProps:{},
+        //   showOnEdit: true,
+        //   showOnView: true,
+        //   showEditTools: true,
+        // },
       ]}
       customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}
     />

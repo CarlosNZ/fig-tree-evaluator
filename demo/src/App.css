@@ -14,3 +14,7 @@
 pre {
   white-space: pre-wrap;
 }
+
+.ft-display-button {
+  min-width: 8.5em !important;
+}

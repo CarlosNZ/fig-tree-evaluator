@@ -10,11 +10,11 @@ import {
   Checkbox,
   Select,
   Textarea,
-  Spinner,
   HStack,
   VStack,
   Link,
   Image,
+  useToast,
 } from '@chakra-ui/react'
 import {
   FigTreeEvaluator as EvaluatorDev,
@@ -66,6 +66,7 @@ function App() {
   const [debounceOutput, setDebounceInput] = useDebounce<string>('')
   const [modalOpen, setModalOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const toast = useToast()
 
   const [inputState, setInputState] = useState<InputState>({
     expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
@@ -175,14 +176,7 @@ function App() {
         modalState={{ modalOpen, setModalOpen }}
       />
       <VStack h="100%">
-        <FigTreeEditor
-          figTree={evaluator as FigTreeEvaluator}
-          expression={testExpressions.defaultUnordered}
-          onEvaluate={(value) => console.log(value)}
-          onEvaluateStart={() => console.log('Evaluating...')}
-          onEvaluateError={(err) => console.error(err)}
-        />
-        {/* <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
+        <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
           <Image src={logo} h="100%" />
           <VStack align="flex-end">
             <Link
@@ -202,8 +196,8 @@ function App() {
               https://www.npmjs.com/package/fig-tree-evaluator
             </Link>
           </VStack>
-        </HStack> */}
-        {/* <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
+        </HStack>
+        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
           <Box h={'100%'} p={2} minW={375}>
             <Heading size="md">Local data state</Heading>
             <Flex gap={2} justifyContent="flex-start" my={3}>
@@ -228,31 +222,8 @@ function App() {
             />
             <Text color="red">{!isValidState.data ? 'Invalid object input' : ''}</Text>
           </Box>
-          <Box h={'100%'} p={2} minW={375}>
+          <Box h={'100%'} p={2} minW={375} w="50%">
             <Heading size="md">Input</Heading>
-            <Flex gap={2} justifyContent="flex-start" my={3}>
-              <Button colorScheme="blue" onClick={() => prettifyInput('expression')}>
-                Prettify
-              </Button>
-              <Button colorScheme="blue" onClick={() => compactInput('expression')}>
-                Compact
-              </Button>
-              <Checkbox
-                isChecked={configState.strictJsonExpression}
-                onChange={() => toggleCheckbox('strictJsonExpression')}
-              >
-                Quoted field names
-              </Checkbox>
-            </Flex>
-            <Textarea
-              h={'85%'}
-              fontFamily="monospace"
-              value={inputState.expression}
-              onChange={(e) => updateInput(e?.target?.value, 'expression')}
-            />
-          </Box>
-          <Box h={'100%'} p={2} minW={375} maxW="33%">
-            <Heading size="md">Output</Heading>
             <Flex
               gap={4}
               alignItems="center"
@@ -263,7 +234,7 @@ function App() {
               <Select
                 id="evalSelect"
                 variant="outline"
-                w={'50%'}
+                w="50%"
                 value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
                 onChange={handleSelectEvaluator}
               >
@@ -271,19 +242,32 @@ function App() {
                 <option value={'Published'}>Published</option>
               </Select>
             </Flex>
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              border="1px solid"
-              borderColor="lightgrey"
-              borderRadius={3}
-              minHeight={20}
-              mx={5}
-              p={3}
-            >
-              {loading ? <Spinner /> : <ResultText result={result} />}
-            </Box>
+            <FigTreeEditor
+              figTree={evaluator as FigTreeEvaluator}
+              expression={inputState.expression}
+              options={{ data: looseJSON(inputState.data) }}
+              onEvaluate={(value) =>
+                toast({
+                  // title: 'Evaluation successful',
+                  description: String(value),
+                  position: 'top',
+                  status: 'success',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }
+              onEvaluateStart={() => console.log('Evaluating...')}
+              onEvaluateError={(err) =>
+                toast({
+                  title: 'Evaluation error',
+                  description: String(err),
+                  position: 'top',
+                  status: 'error',
+                  duration: 15000,
+                  isClosable: true,
+                })
+              }
+            />
             <Box style={{ position: 'fixed', bottom: 20, right: 20 }}>
               <Button colorScheme="blue" onClick={() => setModalOpen(true)}>
                 Configuration
@@ -293,28 +277,10 @@ function App() {
               </Text>
             </Box>
           </Box>
-        </Flex> */}
+        </Flex>
       </VStack>
     </Center>
   )
 }
 
 export default App
-
-const ResultText = ({ result }: { result: Result }) => {
-  if (result.error)
-    return (
-      <Text fontSize={'xl'} color="red">
-        {result.error}
-      </Text>
-    )
-  if (typeof result.output === 'object')
-    return (
-      <Text fontSize={'md'} fontFamily="monospace">
-        <pre> {JSON.stringify(result.output, null, 2)}</pre>
-      </Text>
-    )
-  if (typeof result.output === 'string')
-    return <Text fontSize={'xl'}>"{String(result.output)}"</Text>
-  return <Text fontSize={'xl'}>{String(result.output)}</Text>
-}

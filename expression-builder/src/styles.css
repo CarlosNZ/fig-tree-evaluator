@@ -42,12 +42,11 @@
   justify-content: space-between;
   min-width: 6em;
   width: 100%;
-  padding: 0.3em;
+  height: 2.9em;
+  padding: 0.3em 1em;
   border-radius: 0.5em;
   align-items: center;
   gap: 0.4em;
-  padding-left: 1em;
-  padding-right: 1em;
   cursor: pointer;
   box-shadow:
     rgba(50, 50, 93, 0.25) 0px 2px 5px -1px,
@@ -83,6 +82,27 @@
   color: gray;
   font-variant: small-caps;
   font-size: 0.7em;
+}
+
+/* Loading spinner */
+.loader {
+  /* width: 48px;
+  height: 48px; */
+  border-radius: 50%;
+  display: inline-block;
+  border-top: 3px solid #fff;
+  border-right: 3px solid transparent;
+  box-sizing: border-box;
+  animation: rotation 0.75s linear infinite;
+}
+
+@keyframes rotation {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* .ft-display-bar:hover > .ft-edit-icon {
