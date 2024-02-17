@@ -1626,7 +1626,7 @@ FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoizat
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
 - GET (`useCache` default: `true`)
-- POST (`useCache` default: `true`)
+- POST (`useCache` default: `false`) 
 - PG_SQL (`useCache` default: `true`)
 - GRAPH_QL (`useCache` default: `true`)
 - CUSTOM_FUNCTIONS (`useCache` default: `false`)

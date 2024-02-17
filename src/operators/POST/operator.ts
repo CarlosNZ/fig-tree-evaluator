@@ -26,7 +26,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     object,
     string,
     AxiosRequestHeaders,
-    boolean
+    boolean,
   ]
 
   const { url, headers: headersObj } =
@@ -41,7 +41,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   const httpHeaders = { ...config.options?.headers, ...headersObj, ...headers }
 
-  const shouldUseCache = useCache ?? config.options.useCache ?? true
+  const shouldUseCache = useCache ?? config.options.useCache ?? false
 
   const result = await config.cache.useCache(
     shouldUseCache,
