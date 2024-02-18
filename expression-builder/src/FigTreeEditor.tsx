@@ -3,12 +3,10 @@ import {
   type EvaluatorNode,
   type FigTreeEvaluator,
   type Operator as OperatorName,
-  type OperatorMetadata,
   isObject,
-  FigTreeOptions,
 } from 'fig-tree-evaluator'
-// import { JsonEditor } from './json-edit-react'
-import { JsonEditor } from './package'
+// import { JsonEditor, updateFunction } from './json-edit-react'
+import { JsonEditor, JsonEditorProps, UpdateFunction } from './package'
 // import { JsonEditor } from 'json-edit-react'
 import './styles.css'
 import { Operator } from './Operator'
@@ -16,24 +14,29 @@ import { Fragment } from './Fragment'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 
-interface FigTreeEditorProps {
+interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
   expression: EvaluatorNode
-  options: FigTreeOptions
+  objectData: object
+  onUpdate: UpdateFunction
   onEvaluate: (value: unknown) => void
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
   operatorDisplay?: Partial<Record<OperatorName, OperatorDisplay>>
+
+  // TO-DO: Plus all other JSON EDIT REACT PROPS...
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   figTree,
   expression: expressionInit,
-  options,
+  objectData,
+  onUpdate,
   onEvaluate,
   onEvaluateStart,
   onEvaluateError,
   operatorDisplay: operatorDisplayProp,
+  ...props
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
@@ -65,11 +68,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   }
 
   const evaluateNode = async (expression: EvaluatorNode) => {
-    console.log('Optoins', figTree.getOptions())
     setIsEvaluating(true)
     onEvaluateStart && onEvaluateStart()
     try {
-      const result = await figTree.evaluate(expression, options)
+      const result = await figTree.evaluate(expression, { data: objectData })
       onEvaluate(result)
     } catch (err) {
       onEvaluateError && onEvaluateError(err)
@@ -83,13 +85,15 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       rootName="parameterName"
       showCollectionCount="when-closed"
       data={expression as object}
-      onUpdate={({ newData }) => {
-        setExpression(validateExpression(newData, { operators, fragments }))
+      onUpdate={({ newData, ...rest }) => {
+        const validated = validateExpression(newData, { operators, fragments })
+        setExpression(validated)
+        onUpdate({ newData: validated, ...rest })
       }}
       showArrayIndices={false}
       indent={3}
       collapse={1}
-      // minWidth={600}
+      {...props}
       theme={{
         styles: {
           container: {

@@ -10,7 +10,6 @@ import {
   OperatorReference,
   CustomFunctionMetadata,
   FragmentMetadata,
-  Operator,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'

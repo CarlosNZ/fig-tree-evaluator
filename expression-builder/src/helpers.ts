@@ -87,8 +87,9 @@ export const operatorAcceptsArbitraryProperties = ({ parameters }: OperatorMetad
 export const getButtonFontSize = (operatorAlias: string) => {
   const charCount = operatorAlias.length
 
-  if (charCount === 1) return '2.2em'
-  if (charCount < 8) return '2em'
-  if (charCount < 15) return '1.5em'
-  return '1.2em'
+  if (charCount === 1) return '2em'
+  if (charCount < 3) return '1.6em'
+  if (charCount < 7) return '1.2em'
+  if (charCount < 15) return '1em'
+  return '0.9em'
 }

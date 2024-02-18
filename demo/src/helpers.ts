@@ -1,9 +1,5 @@
 import initData from './data.json'
 
-// @ts-expect-error
-import looseJSON from 'loose-json'
-// const looseJSON = require('loose-json')
-
 export const getInitOptions = () => {
   const savedOptions = parseLocalStorage('options') ?? {}
   const graphQLConnection = savedOptions.graphQLConnection ?? undefined
@@ -82,25 +78,6 @@ export const JSONstringifyLoose = (inputObject: object, compact = false) => {
   return replacementString
 }
 
-export const validateExpression = (input: string): boolean => {
-  try {
-    looseJSON(input)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export const validateData = (objects: string): boolean => {
-  try {
-    const cleanObjectInput = looseJSON(objects)
-    if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)
-    return true
-  } catch {
-    return false
-  }
-}
-
 // Given an object, returns a new object with all keys removed whose values
 // return false when passed into the 2nd parameter function. Can be use (for
 // example) to remove keys with null or undefined values (the default)
@@ -127,4 +104,9 @@ export const filterObjectRecursive = (
     })
     .filter(([_, value]) => filterFunction(value)) as [key: string, value: any][]
   return Object.fromEntries(filtered)
+}
+
+export const displayResult = (result: unknown) => {
+  if (result instanceof Object) return JSON.stringify(result, null, 2)
+  return String(result)
 }

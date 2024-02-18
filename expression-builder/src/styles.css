@@ -4,7 +4,7 @@
 }
 
 .ft-custom {
-  min-height: 3em;
+  min-height: 2.5em;
   margin-left: -0.5em;
   display: flex;
   flex-direction: column;
@@ -40,10 +40,10 @@
 .ft-display-button {
   display: flex;
   justify-content: space-between;
-  min-width: 6em;
+  min-width: 4em;
   width: 100%;
-  height: 2.9em;
-  padding: 0.3em 1em;
+  height: 2em;
+  padding: 0em 1em;
   border-radius: 0.5em;
   align-items: center;
   gap: 0.4em;
@@ -70,7 +70,7 @@
 }
 
 .ft-icon.ft-evaluate-icon {
-  width: 1.5em;
+  width: 1em;
   transform: translateY(0.1em);
 }
 

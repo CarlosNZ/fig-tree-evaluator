@@ -19,6 +19,8 @@ import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 
+const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
+
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
@@ -93,6 +95,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
             setLoading(false)
           }}
           isLoading={loading}
+          canonicalName={operatorData.name}
           {...opDisplay}
         />
       )}
@@ -117,6 +120,7 @@ interface DisplayBarProps extends OperatorDisplay {
   setIsEditing: () => void
   evaluate: () => void
   isLoading: boolean
+  canonicalName: string
 }
 
 export const DisplayBar: React.FC<DisplayBarProps> = ({
@@ -126,6 +130,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   isLoading,
   backgroundColor,
   textColor,
+  canonicalName,
   displayName,
 }) => {
   return (
@@ -153,10 +158,14 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           )}
         </div>
         <span onClick={() => setIsEditing()} className="ft-edit-icon">
-          <IconEdit size="2em" style={{ color: 'rgb(42, 161, 152)' }} />
+          <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
         </span>
       </div>
-      <div className="ft-display-name">{displayName}</div>
+      <div className="ft-display-name">
+        <a href={README_URL + canonicalName.toLowerCase()} target="_blank">
+          {displayName}
+        </a>
+      </div>
     </div>
   )
 }
