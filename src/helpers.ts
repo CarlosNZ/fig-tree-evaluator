@@ -33,7 +33,7 @@ export const isFragmentNode = (input: EvaluatorNode): input is FragmentNode =>
 
 // Convert to camelCase but *don't* remove stand-alone punctuation as they may
 // be valid operators (e.g. "+", "?")
-const standardiseOperatorName = (name: string) => {
+export const standardiseOperatorName = (name: string) => {
   const camelCaseName = camelCase(name)
   return camelCaseName ? camelCaseName : name
 }

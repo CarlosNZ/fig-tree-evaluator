@@ -7,7 +7,6 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
-  OperatorParameterMetadata,
 } from 'fig-tree-evaluator'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
@@ -33,7 +32,7 @@ export const validateExpression = (
   const isFragment = isFragmentNode(expression)
 
   const currentMetaData = isOperator
-    ? getCurrentOperator(expression, figTreeMetaData.operators)
+    ? getCurrentOperator(expression?.operator, figTreeMetaData.operators)
     : isFragment
     ? figTreeMetaData.fragments.find((frag) => frag.name === expression.fragment)
     : undefined

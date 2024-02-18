@@ -43,8 +43,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   if (!figTree) return null
 
   const expressionPath = path.slice(0, -1)
-  const operatorData = getCurrentOperator(parentData, figTree.getOperators()) as OperatorMetadata
+  const operatorData = getCurrentOperator(
+    figTree.standardiseOperatorName(parentData.operator),
+    figTree.getOperators()
+  ) as OperatorMetadata
   const thisOperator = data as OperatorAlias
+
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'

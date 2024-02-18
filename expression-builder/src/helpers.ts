@@ -28,10 +28,12 @@ export const getDefaultValue = (type: ExpectedType | NodeType) => {
   }
 }
 
-export const getCurrentOperator = (node: EvaluatorNode, operators: readonly OperatorMetadata[]) => {
-  if (typeof node !== 'object' || node === null || !('operator' in node)) return undefined
+export const getCurrentOperator = (
+  operatorName: string | undefined,
+  operators: readonly OperatorMetadata[]
+) => {
+  if (!operatorName) return undefined
 
-  const operatorName = node?.operator as string
   const operator = operators.find(
     (op) => op.name === operatorName || op.aliases.includes(operatorName)
   )

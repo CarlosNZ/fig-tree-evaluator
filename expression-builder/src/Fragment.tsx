@@ -65,7 +65,11 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         <DisplayBar
           name={thisFragment}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={() => evaluateNode(parentData)}
+          evaluate={async () => {
+            setLoading(true)
+            await evaluateNode(parentData)
+            setLoading(false)
+          }}
           isLoading={loading}
           {...opDisplay}
         />
