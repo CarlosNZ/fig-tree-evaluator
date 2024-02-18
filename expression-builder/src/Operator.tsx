@@ -46,8 +46,9 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(
-    figTree.standardiseOperatorName(parentData.operator),
-    figTree.getOperators()
+    parentData.operator,
+    figTree.getOperators(),
+    figTree
   ) as OperatorMetadata
   const thisOperator = data as OperatorAlias
 
@@ -152,7 +153,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
             <div style={{ width: '100%', textAlign: 'center' }}>
               <span
                 className="loader"
-                style={{ width: '2em', height: '2em', borderTopColor: textColor }}
+                style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
               ></span>
             </div>
           )}

@@ -1,4 +1,4 @@
-import { EvaluatorNode, ExpectedType, OperatorMetadata } from 'fig-tree-evaluator'
+import { EvaluatorNode, ExpectedType, FigTreeEvaluator, OperatorMetadata } from 'fig-tree-evaluator'
 import { NodeType } from './NodeTypeSelector'
 
 // Returns a valid default value for each (FigTree) data type
@@ -30,12 +30,15 @@ export const getDefaultValue = (type: ExpectedType | NodeType) => {
 
 export const getCurrentOperator = (
   operatorName: string | undefined,
-  operators: readonly OperatorMetadata[]
+  operators: readonly OperatorMetadata[],
+  figTree: FigTreeEvaluator
 ) => {
   if (!operatorName) return undefined
 
+  const standardisedOpName = figTree.standardiseOperatorName(operatorName)
+
   const operator = operators.find(
-    (op) => op.name === operatorName || op.aliases.includes(operatorName)
+    (op) => op.name === standardisedOpName || op.aliases.includes(standardisedOpName)
   )
   if (!operator) return undefined
   return operator

@@ -84,6 +84,11 @@
   font-size: 0.7em;
 }
 
+.ft-display-name a:hover {
+  text-decoration: underline;
+  color: rgb(76, 76, 76);
+}
+
 /* Loading spinner */
 .loader {
   /* width: 48px;

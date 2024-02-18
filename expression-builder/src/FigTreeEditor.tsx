@@ -38,11 +38,12 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   operatorDisplay: operatorDisplayProp,
   ...props
 }) => {
+  if (!figTree) return null
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
 
   const [expression, setExpression] = useState(
-    validateExpression(expressionInit, { operators, fragments })
+    validateExpression(expressionInit, { operators, fragments }, figTree)
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
 
@@ -86,13 +87,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       showCollectionCount="when-closed"
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
-        const validated = validateExpression(newData, { operators, fragments })
+        const validated = validateExpression(newData, { operators, fragments }, figTree)
         setExpression(validated)
         onUpdate({ newData: validated, ...rest })
       }}
       showArrayIndices={false}
       indent={3}
-      collapse={1}
+      collapse={2}
+      stringTruncate={50}
       {...props}
       theme={{
         styles: {

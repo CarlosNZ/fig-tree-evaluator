@@ -40,6 +40,7 @@ import { Client } from 'pg'
 import { testExpressions } from './testExpressions'
 
 import looseJSON from 'loose-json'
+import { truncateString } from './fig-tree-evaluator/src/helpers'
 // const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface() as Client
 
@@ -169,6 +170,15 @@ function App() {
                 })
               }
               rootName="FigTreeExpression"
+              enableClipboard={({ stringValue, type }) =>
+                toast({
+                  title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
+                  description: truncateString(String(stringValue)),
+                  status: 'success',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }
             />
             <Box style={{ position: 'fixed', bottom: 20, right: 20 }}>
               <Button colorScheme="blue" onClick={() => setModalOpen(true)}>
