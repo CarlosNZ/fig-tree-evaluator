@@ -21,8 +21,7 @@ import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
-  evaluateNode: (expression: EvaluatorNode) => void
-  isEvaluating: boolean
+  evaluateNode: (expression: EvaluatorNode) => Promise<void>
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
 }
 
@@ -37,8 +36,9 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode, isEvaluating } = customNodeProps
+  const { figTree, evaluateNode } = customNodeProps
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   if (!figTree) return null
 
@@ -83,8 +83,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         <DisplayBar
           name={thisOperator}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={() => evaluateNode(parentData)}
-          isEvaluating={isEvaluating}
+          evaluate={async () => {
+            setLoading(true)
+            await evaluateNode(parentData)
+            setLoading(false)
+          }}
+          isLoading={loading}
           {...opDisplay}
         />
       )}
@@ -108,14 +112,14 @@ interface DisplayBarProps extends OperatorDisplay {
   name: OperatorAlias
   setIsEditing: () => void
   evaluate: () => void
-  isEvaluating: boolean
+  isLoading: boolean
 }
 
 export const DisplayBar: React.FC<DisplayBarProps> = ({
   name,
   setIsEditing,
   evaluate,
-  isEvaluating,
+  isLoading,
   backgroundColor,
   textColor,
   displayName,
@@ -128,7 +132,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           style={{ backgroundColor, color: textColor }}
           onClick={evaluate}
         >
-          {!isEvaluating ? (
+          {!isLoading ? (
             <>
               <span className="ft-operator-alias" style={{ fontSize: getButtonFontSize(name) }}>
                 {name}

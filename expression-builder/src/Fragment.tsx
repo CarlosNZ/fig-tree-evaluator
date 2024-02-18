@@ -20,10 +20,11 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, onEvaluate, onEvaluateStart, onEvaluateError } = customNodeProps
+  const { figTree, evaluateNode } = customNodeProps
   const [isEditing, setIsEditing] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  if (!figTree || !onEvaluate) return null
+  if (!figTree) return null
 
   const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
@@ -32,16 +33,6 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const availableProperties = getAvailableProperties(fragmentData, parentData as OperatorNode)
 
   const opDisplay = operatorDisplay.FRAGMENT
-
-  const evaluateNode = async () => {
-    onEvaluateStart && onEvaluateStart()
-    try {
-      const result = await figTree.evaluate(parentData)
-      onEvaluate(result)
-    } catch (err) {
-      onEvaluateError(err)
-    }
-  }
 
   return (
     <div className="ft-custom ft-fragment">
@@ -74,7 +65,8 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         <DisplayBar
           name={thisFragment}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={evaluateNode}
+          evaluate={() => evaluateNode(parentData)}
+          isLoading={loading}
           {...opDisplay}
         />
       )}

@@ -43,11 +43,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
 
-  const customFunctionData = operators.find(
-    (op) => op.name === 'CUSTOM_FUNCTIONS'
-  ) as OperatorMetadata
+  // const customFunctionData = operators.find(
+  //   (op) => op.name === 'CUSTOM_FUNCTIONS'
+  // ) as OperatorMetadata
 
-  const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
+  // const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
 
   const propertyCountReplace = ({
     value,
@@ -65,6 +65,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   }
 
   const evaluateNode = async (expression: EvaluatorNode) => {
+    console.log('Optoins', figTree.getOptions())
     setIsEvaluating(true)
     onEvaluateStart && onEvaluateStart()
     try {
@@ -158,27 +159,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           showInTypesSelector: true,
           defaultValue: { fragment: '' },
         },
-        // {
-        //   condition: ({ key, value }) =>
-        //     key === 'operator' && customFunctionAliases.includes(value as string),
-        //   element: Operator,
-        //   name: 'Custom Functions',
-        //   customNodeProps: {
-        //     figTree,
-        //     isCustomFunctions: true,
-        //     onEvaluate,
-        //     onEvaluateStart,
-        //     onEvaluateError,
-        //     operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
-        //   },
-        //   hideKey: true,
-        //   defaultValue: { operator: 'function' },
-        //   showInTypesSelector: false,
-        //   // customNodeProps:{},
-        //   showOnEdit: true,
-        //   showOnView: true,
-        //   showEditTools: true,
-        // },
       ]}
       customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}
     />
