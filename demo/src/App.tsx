@@ -174,7 +174,7 @@ function App() {
                 toast({
                   title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
                   description: truncateString(String(stringValue)),
-                  status: 'success',
+                  status: 'info',
                   duration: 5000,
                   isClosable: true,
                 })

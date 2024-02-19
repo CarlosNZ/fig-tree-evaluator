@@ -15,7 +15,7 @@ import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import { operatorAliases } from './operators/operatorAliases'
 import * as operators from './operators'
-import { filterOperators, mergeOptions, standardiseOperatorName } from './helpers'
+import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 
@@ -114,9 +114,6 @@ class FigTreeEvaluator {
       numRequiredArgs: value.length,
     })) as readonly CustomFunctionMetadata[]
   }
-
-  // Used in Editor UI component
-  public standardiseOperatorName = standardiseOperatorName
 
   public getVersion = () => version
 }

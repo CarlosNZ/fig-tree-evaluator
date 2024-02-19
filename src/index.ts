@@ -17,15 +17,27 @@ import {
 } from './types'
 import { GraphQLConnection } from './operators'
 import { BasicType, LiteralType, ExpectedType } from './typeCheck'
-import { isAliasString, isFragmentNode, isOperatorNode, isObject } from './helpers'
-
-export {
-  evaluateExpression,
-  FigTreeEvaluator,
+import {
   isAliasString,
   isFragmentNode,
   isOperatorNode,
   isObject,
+  standardiseOperatorName,
+  truncateString,
+} from './helpers'
+
+export {
+  // Core
+  evaluateExpression,
+  FigTreeEvaluator,
+  // Additional helpers, utilities
+  isAliasString,
+  isFragmentNode,
+  isOperatorNode,
+  isObject,
+  standardiseOperatorName,
+  truncateString,
+  // Types
   type Operator,
   type OperatorAlias,
   type FigTreeOptions,

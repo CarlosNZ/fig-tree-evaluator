@@ -4,7 +4,8 @@ import {
   type FigTreeEvaluator,
   type Operator as OperatorName,
   isObject,
-} from 'fig-tree-evaluator'
+  // } from 'fig-tree-evaluator'
+} from './fig-tree-evaluator/src'
 // import { JsonEditor, updateFunction } from './json-edit-react'
 import { JsonEditor, JsonEditorProps, UpdateFunction } from './package'
 // import { JsonEditor } from 'json-edit-react'
@@ -43,7 +44,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
 
   const [expression, setExpression] = useState(
-    validateExpression(expressionInit, { operators, fragments }, figTree)
+    validateExpression(expressionInit, { operators, fragments })
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
 
@@ -87,7 +88,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       showCollectionCount="when-closed"
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
-        const validated = validateExpression(newData, { operators, fragments }, figTree)
+        const validated = validateExpression(newData, { operators, fragments })
         setExpression(validated)
         onUpdate({ newData: validated, ...rest })
       }}
