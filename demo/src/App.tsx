@@ -41,6 +41,7 @@ import { testExpressions } from './testExpressions'
 
 import looseJSON from 'loose-json'
 import { truncateString } from './fig-tree-evaluator/src/helpers'
+import { ResultToast } from './ResultToast'
 // const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface() as Client
 
@@ -120,6 +121,15 @@ function App() {
                 localStorage.setItem('objectData', JSON.stringify(newData))
               }}
               minWidth="50%"
+              enableClipboard={({ stringValue, type }) =>
+                toast({
+                  title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
+                  description: truncateString(String(stringValue)),
+                  status: 'info',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }
             />
           </Box>
           <Box h={'100%'} p={2} minW="45%">
@@ -149,7 +159,7 @@ function App() {
               onUpdate={({ newData }) =>
                 localStorage.setItem('expression', JSON.stringify(newData))
               }
-              onEvaluate={(value) =>
+              onEvaluate={(value: unknown) =>
                 toast({
                   title: 'Evaluation result',
                   description: displayResult(value),

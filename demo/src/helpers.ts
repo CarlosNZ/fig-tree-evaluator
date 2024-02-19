@@ -1,3 +1,4 @@
+import { truncateString } from './fig-tree-evaluator/src'
 import initData from './data.json'
 
 export const getInitOptions = () => {
@@ -107,6 +108,6 @@ export const filterObjectRecursive = (
 }
 
 export const displayResult = (result: unknown) => {
-  if (result instanceof Object) return JSON.stringify(result, null, 2)
-  return String(result)
+  if (result instanceof Object) return truncateString(JSON.stringify(result, null, 2), 1000)
+  return truncateString(String(result), 1000)
 }

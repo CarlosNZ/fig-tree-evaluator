@@ -123,7 +123,7 @@ export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: Op
     displayName: 'Custom functions()',
   },
   PASSTHRU: {
-    backgroundColor: 'green',
+    backgroundColor: '#bebebe',
     textColor: '#5a5a5a',
     displayName: 'Pass thru',
   },

@@ -46,12 +46,10 @@ const Select: React.FC<Props> = <
           ...base,
           width: 'fit-content',
         }),
-        // valueContainer: (provided, state) => ({
-        //   ...provided,
-        //   height: '30px',
-        //   padding: '0 6px',
-        // }),
-
+        groupHeading: (provided, _) => ({
+          ...provided,
+          fontSize: '1.5em',
+        }),
         input: (provided, _) => ({
           ...provided,
           margin: '0px',
