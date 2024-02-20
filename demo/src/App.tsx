@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './App.css'
 import {
   Box,
@@ -7,15 +7,17 @@ import {
   Heading,
   Text,
   Button,
-  Checkbox,
   Select,
-  Textarea,
+  Icon,
   HStack,
   VStack,
   Link,
   Image,
   useToast,
 } from '@chakra-ui/react'
+import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
+import { BiReset } from 'react-icons/bi'
+import { AiOutlineCloudUpload } from 'react-icons/ai'
 import {
   FigTreeEvaluator as EvaluatorDev,
   // FigTreeOptions,
@@ -28,9 +30,10 @@ import {
 // Enable instead temporarily when Dev has incompatible changes from Published
 // import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
 import { FigTreeEditor } from './expression-builder/src'
+// import { JsonEditor } from './package'
 import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
-import { getInitOptions, getInitCache, displayResult } from './helpers'
+import { getInitOptions, getInitCache } from './helpers'
 import functions from './customFunctions'
 import initData from './data.json'
 import { PostgresInterface } from './postgresInterface'
@@ -39,10 +42,8 @@ import logo from './img/fig_tree_evaluator_logo_512.png'
 import { Client } from 'pg'
 import { testExpressions } from './testExpressions'
 
-import looseJSON from 'loose-json'
 import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
-// const looseJSON = require('loose-json')
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
@@ -80,38 +81,55 @@ function App() {
   }
 
   return (
-    <Center h={'100vh'}>
+    <Center h={'100vh'} px={8} pt={4}>
       <OptionsModal
         options={evaluator.getOptions()}
         updateOptions={(options: FigTreeOptions) => evaluator.updateOptions(options)}
         modalState={{ modalOpen, setModalOpen }}
       />
       <VStack h="100%" w="100%">
-        <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
-          <Image src={logo} h="100%" />
-          <VStack align="flex-end">
-            <Link
-              href="https://github.com/CarlosNZ/fig-tree-evaluator"
-              isExternal
-              color="#28659e"
-              fontSize="sm"
-            >
-              https://github.com/CarlosNZ/fig-tree-evaluator
-            </Link>
-            <Link
-              href="https://www.npmjs.com/package/fig-tree-evaluator"
-              isExternal
-              color="#28659e"
-              fontSize="sm"
-            >
-              https://www.npmjs.com/package/fig-tree-evaluator
-            </Link>
+        {/** HEADER */}
+        <HStack w="100%" justify="space-between" align="flex-start">
+          <VStack align="flex-start" gap={3}>
+            <HStack align="flex-end" mt={2} gap={4} flexWrap="wrap">
+              <Flex gap={6} align="center">
+                <img src={logo} alt="logo" style={{ maxHeight: '6em' }} />
+                <div>
+                  <Heading as="h1" size="2xl" variant="other" mb={4}>
+                    fig-tree-evaluator
+                  </Heading>
+                  <Heading variant="sub">
+                    A highly configurable custom expression tree evaluator •{' '}
+                    <Link
+                      href="https://github.com/CarlosNZ/json-edit-react#readme"
+                      isExternal
+                      color="accent"
+                    >
+                      Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
+                    </Link>
+                  </Heading>
+                </div>
+              </Flex>
+            </HStack>
           </VStack>
+          <Flex align="center" gap={5}>
+            <a href="https://github.com/CarlosNZ/json-edit-react" target="_blank" rel="noreferrer">
+              <Icon boxSize="2em" as={FaGithub} color="accent" />
+            </a>
+            <a
+              href="https://www.npmjs.com/package/fig-tree-evaluator"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Icon boxSize="3em" as={FaNpm} color="accent" />
+            </a>
+          </Flex>
         </HStack>
+        <div>SELECT DEMO DATA</div>
+        {/** DATA COLUMN */}
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
           <Box p={2} minW="45%">
-            <Heading size="md">Local data state</Heading>
-            <Flex gap={2} justifyContent="flex-start" my={3}></Flex>
+            {/* <Heading size="md">Local data state</Heading> */}
             <JsonEditor
               data={objectData}
               rootName="data"
@@ -132,9 +150,9 @@ function App() {
               }
             />
           </Box>
+          {/** EXPRESSION EDITOR COLUMN */}
           <Box h={'100%'} p={2} minW="45%">
-            <Heading size="md">Input</Heading>
-            <Flex
+            {/* <Flex
               gap={4}
               alignItems="center"
               mb={6}
@@ -151,7 +169,7 @@ function App() {
                 <option value={'Development'}>Development</option>
                 <option value={'Published'}>Published</option>
               </Select>
-            </Flex>
+            </Flex> */}
             <FigTreeEditor
               figTree={evaluator as FigTreeEvaluator}
               expression={initialExpression}
@@ -161,8 +179,9 @@ function App() {
               }
               onEvaluate={(value: unknown) =>
                 toast({
-                  title: 'Evaluation result',
-                  description: displayResult(value),
+                  render: ({ onClose }) => (
+                    <ResultToast title="Evaluation result" value={value} close={onClose} />
+                  ),
                   position: 'top',
                   status: 'success',
                   duration: 5000,

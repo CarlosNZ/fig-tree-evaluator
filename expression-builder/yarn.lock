@@ -417,27 +417,25 @@ is-core-module@^2.13.0:
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
 
-json-edit-react@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.4.0.tgz#aeeec20e4448309ab906b89f399dfb9215ec83c9"
-  integrity sha512-NvHeAXYJ9j9w4vPcqnA3VaoO9UI9V3oZBddrFG0c8cS4kpTUN89VUO1uiNvAOhnb0wBvqqFJUhlKsGra5XkpGQ==
+json-edit-react@^1.4.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.4.2.tgz#dee271b76822a184966e68761b7d47303a30dc95"
+  integrity sha512-TizDBU1ocFuW3hWblu887LMrkWlX9BeG6uCLC6HmeaAKAAYC2WUuvAqxH/RkYNnA4WYi33OWfXls0kP+ytxSoQ==
   dependencies:
-    json-loose "^1.2.3"
+    json5 "^2.2.3"
     just-clone "^6.2.0"
     object-property-assigner "^1.2.0"
     object-property-extractor "^1.0.10"
-
-json-loose@^1.2.3:
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/json-loose/-/json-loose-1.2.3.tgz#200ed759bceb0e2cf6fdf30af1c566aaa87e0615"
-  integrity sha512-gnx3y7j68efE7WOAFJq4lcivbUZXjW1Udx0VWh25kGDDhsM4stK6TejLahGvqJ8lraua6+6+BbBxy6ABR0ayWA==
-  dependencies:
-    moo "^0.5.2"
 
 json-parse-even-better-errors@^2.3.0:
   version "2.3.1"
   resolved "https://registry.yarnpkg.com/json-parse-even-better-errors/-/json-parse-even-better-errors-2.3.1.tgz#7c47805a94319928e05777405dc12e1f7a4ee02d"
   integrity sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==
+
+json5@^2.2.3:
+  version "2.2.3"
+  resolved "https://registry.yarnpkg.com/json5/-/json5-2.2.3.tgz#78cd6f1a19bdc12b73db5ad0c61efd66c1e29283"
+  integrity sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==
 
 just-clone@^6.2.0:
   version "6.2.0"
@@ -465,11 +463,6 @@ memoize-one@^6.0.0:
   version "6.0.0"
   resolved "https://registry.yarnpkg.com/memoize-one/-/memoize-one-6.0.0.tgz#b2591b871ed82948aee4727dc6abceeeac8c1045"
   integrity sha512-rkpe71W0N0c0Xz6QD0eJETuWAJGnJ9afsl1srmwPrI+yBCkge5EycXXbYRyvL29zZVUWQCY7InPRCv3GDXuZNw==
-
-moo@^0.5.2:
-  version "0.5.2"
-  resolved "https://registry.yarnpkg.com/moo/-/moo-0.5.2.tgz#f9fe82473bc7c184b0d32e2215d3f6e67278733c"
-  integrity sha512-iSAJLHYKnX41mKcJKjqvnAN9sf0LMDTXDEvFv+ffuRR9a1MIuXLjMNL6EsnDHSkKLTWNqQQ5uo61P4EbU4NU+Q==
 
 object-assign@^4.1.1:
   version "4.1.1"

@@ -22,3 +22,8 @@ pre {
 .ft-icon.ft-evaluate-icon {
   transform: translateY(0em) !important;
 }
+
+.jer-editor-container {
+  margin-top: 0;
+  box-shadow: 0 3px 8px #0000003d;
+}

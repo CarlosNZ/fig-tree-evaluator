@@ -9,8 +9,8 @@ import {
   OperatorParameterMetadata,
   EvaluatorNode,
 } from 'fig-tree-evaluator'
-import { CustomNodeProps, IconEdit, IconOk } from './package'
-// import { CustomNodeProps, IconEdit } from 'json-edit-react'
+// import { CustomNodeProps, IconEdit, IconOk } from './package'
+import { CustomNodeProps, IconEdit, IconOk } from 'json-edit-react'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 import './styles.css'

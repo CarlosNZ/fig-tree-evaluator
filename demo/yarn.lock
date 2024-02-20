@@ -425,6 +425,13 @@
   dependencies:
     "@chakra-ui/shared-utils" "2.0.5"
 
+"@chakra-ui/icons@^2.1.1":
+  version "2.1.1"
+  resolved "https://registry.yarnpkg.com/@chakra-ui/icons/-/icons-2.1.1.tgz#58ff0f9e703f2f4f89debd600ce4e438f43f9c9a"
+  integrity sha512-3p30hdo4LlRZTT5CwoAJq3G9fHI0wDc0pBaMHj4SUn0yomO+RcDRlzhdXqdr5cVnzax44sqXJVnf3oQG0eI+4g==
+  dependencies:
+    "@chakra-ui/icon" "3.2.0"
+
 "@chakra-ui/image@2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@chakra-ui/image/-/image-2.1.0.tgz#6c205f1ca148e3bf58345b0b5d4eb3d959eb9f87"
@@ -2469,10 +2476,10 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.13.4:
-  version "2.13.4"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.4.tgz#83c67e2227b027d12644453dc99e1d714ac494b8"
-  integrity sha512-YB23RSlOWm1Pe0HEg7uKhNw7vKaKLw3EML+PP+F6gQkFXenU4TmaUBkNXrLET03HAkKTb62ULPh7jN+czjlMeg==
+fig-tree-evaluator@^2.13.5:
+  version "2.13.5"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.5.tgz#9d55af9f871ba383bb62addd16d1c6ea0061bd63"
+  integrity sha512-ot36D1NE5qqoR7ge+JEuap0OO417OUCwIXlmkL6bkb4m4cLvrz9MhXGu79kw0m3Rhleu0ONq34Cj6px0pkPNLg==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"
@@ -2939,12 +2946,12 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^1.4.0:
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.4.0.tgz#aeeec20e4448309ab906b89f399dfb9215ec83c9"
-  integrity sha512-NvHeAXYJ9j9w4vPcqnA3VaoO9UI9V3oZBddrFG0c8cS4kpTUN89VUO1uiNvAOhnb0wBvqqFJUhlKsGra5XkpGQ==
+json-edit-react@^1.4.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.4.2.tgz#dee271b76822a184966e68761b7d47303a30dc95"
+  integrity sha512-TizDBU1ocFuW3hWblu887LMrkWlX9BeG6uCLC6HmeaAKAAYC2WUuvAqxH/RkYNnA4WYi33OWfXls0kP+ytxSoQ==
   dependencies:
-    json-loose "^1.2.3"
+    json5 "^2.2.3"
     just-clone "^6.2.0"
     object-property-assigner "^1.2.0"
     object-property-extractor "^1.0.10"
@@ -3643,6 +3650,11 @@ react-focus-lock@^2.9.4:
     react-clientside-effect "^1.2.6"
     use-callback-ref "^1.3.0"
     use-sidecar "^1.1.2"
+
+react-icons@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/react-icons/-/react-icons-5.0.1.tgz#1694e11bfa2a2888cab47dcc30154ce90485feee"
+  integrity sha512-WqLZJ4bLzlhmsvme6iFdgO8gfZP17rfjYEJ2m9RsZjZ+cc4k1hTzknEz63YS1MeT50kVzoa1Nz36f4BEx+Wigw==
 
 react-is@^16.13.1, react-is@^16.7.0:
   version "16.13.1"
