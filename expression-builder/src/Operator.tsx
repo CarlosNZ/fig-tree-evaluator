@@ -131,7 +131,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   isLoading,
   backgroundColor,
   textColor,
-  canonicalName,
+  canonicalName = 'fragments',
   displayName,
 }) => {
   return (
