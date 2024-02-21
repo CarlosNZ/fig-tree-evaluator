@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import {
   type EvaluatorNode,
   type FigTreeEvaluator,
@@ -47,6 +47,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     validateExpression(expressionInit, { operators, fragments })
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
+
+  useEffect(() => {
+    setExpression(validateExpression(expressionInit, { operators, fragments }))
+  }, [expressionInit])
 
   // const customFunctionData = operators.find(
   //   (op) => op.name === 'CUSTOM_FUNCTIONS'

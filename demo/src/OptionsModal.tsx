@@ -261,6 +261,7 @@ export const OptionsModal = ({
                           useCache: !formState.useCache,
                         }))
                       }
+                      colorScheme="green"
                     >
                       <Text fontSize="sm">Use cache?</Text>
                     </Checkbox>
@@ -306,6 +307,7 @@ export const OptionsModal = ({
                         skipRuntimeTypeCheck: !formState.skipRuntimeTypeCheck,
                       }))
                     }
+                    colorScheme="green"
                   >
                     <Text fontSize="sm">Skip runtime type checking</Text>
                   </Checkbox>
@@ -319,6 +321,7 @@ export const OptionsModal = ({
                         evaluateFullObject: !formState.evaluateFullObject,
                       }))
                     }
+                    colorScheme="green"
                   >
                     <Text fontSize="sm">Evaluate full object input</Text>
                   </Checkbox>
@@ -326,7 +329,7 @@ export const OptionsModal = ({
               </Stack>
             </ModalBody>
             <ModalFooter>
-              <Button colorScheme="blue" mr={3} type="submit" onClick={handleSubmit}>
+              <Button colorScheme="green" mr={3} type="submit" onClick={handleSubmit}>
                 Save
               </Button>
             </ModalFooter>{' '}

@@ -14,7 +14,7 @@ const components = {
     },
   },
   Text: {
-    baseStyle: { color: 'secondary', fontSize: 16 },
+    baseStyle: { color: 'secondary', fontSize: 14 },
     variants: {
       primary: { color: 'primary' },
       accent: { color: 'accent' },

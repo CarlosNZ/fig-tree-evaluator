@@ -2,9 +2,9 @@ import { theme as base } from '@chakra-ui/react'
 
 const colors = {
   background: '#E9E9E9',
-  primary: '#335017',
+  primary: '#579f6e',
   secondary: '#343434',
-  accent: '#920909',
+  accent: '#9d0707',
   // altAccent: '#3FA34D',
   jetBlack: '#2B2B2B',
   offWhite: '#f2f2f2',

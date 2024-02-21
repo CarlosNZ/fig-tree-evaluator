@@ -16,6 +16,7 @@ export const ResultToast: React.FC<ResultProps> = ({ title, value, close }) => {
   const isTruncated = text.length >= RESULT_TEXT_LIMIT
   return (
     <Flex
+      key={String(value)}
       p={4}
       bgColor="green.600"
       color="white"

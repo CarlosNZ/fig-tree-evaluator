@@ -2,7 +2,6 @@ import { useState } from 'react'
 import './App.css'
 import {
   Box,
-  Center,
   Flex,
   Heading,
   Text,
@@ -12,12 +11,10 @@ import {
   HStack,
   VStack,
   Link,
-  Image,
   useToast,
+  Spacer,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import { BiReset } from 'react-icons/bi'
-import { AiOutlineCloudUpload } from 'react-icons/ai'
 import {
   FigTreeEvaluator as EvaluatorDev,
   // FigTreeOptions,
@@ -35,15 +32,16 @@ import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache } from './helpers'
 import functions from './customFunctions'
-import initData from './data.json'
+import initData from './data/data.json'
 import { PostgresInterface } from './postgresInterface'
 import { ConfigState } from './types'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 import { Client } from 'pg'
-import { testExpressions } from './testExpressions'
+import { demoData } from './data'
 
 import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
+import { useUndo } from './useUndo'
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
@@ -60,9 +58,24 @@ if (savedCache) {
 
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
-  const [objectData, setObjectData] = useState<object>(
-    JSON.parse(localStorage.getItem('objectData')) ?? initData.objects
-  )
+  // const [selectedDemo, setSelectedDemo] = useState<number>()
+
+  const {
+    data: objectData,
+    setData: setObjectData,
+    UndoRedo: DataUndoRedo,
+    setResetPoint: setDataResetPoint,
+    reset: resetData,
+  } = useUndo(JSON.parse(localStorage.getItem('objectData')) ?? initData.objects)
+
+  const {
+    data: expression,
+    setData: setExpression,
+    UndoRedo: ExpressionUndoRedo,
+    setResetPoint: setExpressionResetPoint,
+    reset: resetExpression,
+  } = useUndo(JSON.parse(localStorage.getItem('expression')) ?? initData.expression)
+
   const toast = useToast()
 
   const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
@@ -73,47 +86,66 @@ function App() {
       : figTreePub
   )
 
-  const initialExpression = JSON.parse(localStorage.getItem('expression')) ?? initData.expression
-
   const handleSelectEvaluator = (event: any) => {
     localStorage.setItem('evaluatorSelection', event.target.value)
     setEvaluator(event.target.value === 'Development' ? figTreeDev : figTreePub)
   }
 
+  const handleDemoSelect = (selected: number) => {
+    const { objectData, expression } = demoData[selected]
+    // setObjectData(objectData)
+    // setDataResetPoint(objectData)
+    // setExpression(expression as object)
+    // setExpressionResetPoint(expression as object)
+    resetData(objectData)
+    resetExpression(expression as object)
+    localStorage.setItem('objectData', JSON.stringify(objectData))
+    localStorage.setItem('expression', JSON.stringify(expression))
+    // TO-DO: Show information modal
+  }
+
   return (
-    <Center h={'100vh'} px={8} pt={4}>
-      <OptionsModal
-        options={evaluator.getOptions()}
-        updateOptions={(options: FigTreeOptions) => evaluator.updateOptions(options)}
-        modalState={{ modalOpen, setModalOpen }}
-      />
+    <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
       <VStack h="100%" w="100%">
+        <OptionsModal
+          options={evaluator.getOptions()}
+          updateOptions={(options: FigTreeOptions) => evaluator.updateOptions(options)}
+          modalState={{ modalOpen, setModalOpen }}
+        />
         {/** HEADER */}
-        <HStack w="100%" justify="space-between" align="flex-start">
+        <HStack w="100%" px={4} justify="space-between" align="flex-start">
           <VStack align="flex-start" gap={3}>
             <HStack align="flex-end" mt={2} gap={4} flexWrap="wrap">
-              <Flex gap={6} align="center">
-                <img src={logo} alt="logo" style={{ maxHeight: '6em' }} />
-                <div>
-                  <Heading as="h1" size="2xl" variant="other" mb={4}>
+              <Flex gap={6} align="flex-start">
+                <img
+                  src={logo}
+                  alt="logo"
+                  style={{ maxHeight: '6em', transform: 'translateY(-10px)' }}
+                />
+                <Box mb={8}>
+                  <Heading as="h1" size="2xl" variant="other" mb={2}>
                     fig-tree-evaluator
                   </Heading>
                   <Heading variant="sub">
                     A highly configurable custom expression tree evaluator •{' '}
                     <Link
-                      href="https://github.com/CarlosNZ/json-edit-react#readme"
+                      href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
                       isExternal
                       color="accent"
                     >
                       Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
                     </Link>
                   </Heading>
-                </div>
+                </Box>
               </Flex>
             </HStack>
           </VStack>
           <Flex align="center" gap={5}>
-            <a href="https://github.com/CarlosNZ/json-edit-react" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/CarlosNZ/fig-tree-evaluator"
+              target="_blank"
+              rel="noreferrer"
+            >
               <Icon boxSize="2em" as={FaGithub} color="accent" />
             </a>
             <a
@@ -125,11 +157,26 @@ function App() {
             </a>
           </Flex>
         </HStack>
-        <div>SELECT DEMO DATA</div>
         {/** DATA COLUMN */}
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
-          <Box p={2} minW="45%">
-            {/* <Heading size="md">Local data state</Heading> */}
+          <Flex w="45%" direction="column" alignItems="center">
+            <Box maxW={500}>
+              <Heading size="md" alignSelf="flex-start">
+                Application data state
+              </Heading>
+              <Text>
+                This object represents a data structure that is available to{' '}
+                <strong>FigTree</strong>. It can be accessed with the{' '}
+                <Link
+                  href="https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#object_properties"
+                  isExternal
+                >
+                  {' '}
+                  getData
+                </Link>{' '}
+                operator.
+              </Text>
+            </Box>
             <JsonEditor
               data={objectData}
               rootName="data"
@@ -149,9 +196,11 @@ function App() {
                 })
               }
             />
-          </Box>
+            {DataUndoRedo}
+          </Flex>
           {/** EXPRESSION EDITOR COLUMN */}
-          <Box h={'100%'} p={2} minW="45%">
+          <Flex h={'100%'} minW="45%" direction="column" alignItems="center">
+            {/* <Box h={'100%'} p={2} minW="45%"> */}
             {/* <Flex
               gap={4}
               alignItems="center"
@@ -170,13 +219,22 @@ function App() {
                 <option value={'Published'}>Published</option>
               </Select>
             </Flex> */}
+            <Box maxW={500}>
+              <Heading size="md" alignSelf="flex-start">
+                FigTree expression
+              </Heading>
+              <Text>
+                Edit the expression, and click any operator label to evaluate at that node.
+              </Text>
+            </Box>
             <FigTreeEditor
               figTree={evaluator as FigTreeEvaluator}
-              expression={initialExpression}
+              expression={expression}
               objectData={objectData}
-              onUpdate={({ newData }) =>
+              onUpdate={({ newData }) => {
+                setExpression(newData)
                 localStorage.setItem('expression', JSON.stringify(newData))
-              }
+              }}
               onEvaluate={(value: unknown) =>
                 toast({
                   render: ({ onClose }) => (
@@ -198,7 +256,7 @@ function App() {
                   isClosable: true,
                 })
               }
-              rootName="FigTreeExpression"
+              rootName="expression"
               enableClipboard={({ stringValue, type }) =>
                 toast({
                   title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
@@ -208,19 +266,39 @@ function App() {
                   isClosable: true,
                 })
               }
+              minWidth="90%"
             />
-            <Box style={{ position: 'fixed', bottom: 20, right: 20 }}>
-              <Button colorScheme="blue" onClick={() => setModalOpen(true)}>
-                Configuration
-              </Button>{' '}
-              <Text fontSize="xs" mb={1}>
-                fig-tree-evaluator v{evaluator.getVersion()}
-              </Text>
-            </Box>
-          </Box>
+            {ExpressionUndoRedo}
+          </Flex>
         </Flex>
       </VStack>
-    </Center>
+      <HStack w="100%" px={1} mt={10}>
+        <Text color="accent">
+          <strong>Experiment with various demo expressions</strong>
+        </Text>
+        <Select
+          // value={selectedDemo}
+          maxW={300}
+          placeholder="Select an option"
+          onChange={(e) => handleDemoSelect(Number(e.target.value))}
+        >
+          {demoData.map((data, index) => (
+            <option key={data.name} value={index}>
+              {data.name}
+            </option>
+          ))}
+        </Select>
+        <Spacer />
+        <Box>
+          <Button colorScheme="green" onClick={() => setModalOpen(true)}>
+            Configuration
+          </Button>{' '}
+          <Text fontSize="xs" mb={1}>
+            fig-tree-evaluator v{evaluator.getVersion()}
+          </Text>
+        </Box>
+      </HStack>
+    </Flex>
   )
 }
 

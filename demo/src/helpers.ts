@@ -1,4 +1,4 @@
-import initData from './data.json'
+import { evaluatorConfig } from './data/evaluatorConfig'
 
 export const getInitOptions = () => {
   const savedOptions = parseLocalStorage('options') ?? {}
@@ -7,10 +7,11 @@ export const getInitOptions = () => {
   const headers = savedOptions.headers ?? undefined
   const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
   const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
-  const fragments = savedOptions.fragments ?? initData.fragments
+  const fragments = savedOptions.fragments ?? evaluatorConfig.fragments
   const useCache = savedOptions.useCache ?? true
   const maxCacheSize = savedOptions.maxCacheSize ?? 50
   const maxCacheTime = savedOptions.maxCacheTime ?? 1800
+  const functions = evaluatorConfig.customFunctions
   return {
     graphQLConnection,
     baseEndpoint,
@@ -18,6 +19,7 @@ export const getInitOptions = () => {
     skipRuntimeTypeCheck,
     evaluateFullObject,
     fragments,
+    functions,
     useCache,
     maxCacheSize,
     maxCacheTime,
