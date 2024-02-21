@@ -5,16 +5,14 @@ import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } fr
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [property, additionalData] = (await evaluateArray(
+  const [property, additionalData = {}] = (await evaluateArray(
     [expression.property, expression.additionalData],
     config
   )) as [string, object]
 
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { property, additionalData }))
 
-  const inputObject = additionalData
-    ? { ...(config.options?.data ?? {}), ...additionalData }
-    : config.options?.data ?? {}
+  const inputObject = { ...(config.options?.data ?? {}), ...additionalData }
   return extractProperty(inputObject, property)
 }
 
