@@ -785,7 +785,7 @@ Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
 #### Properties
 
-- `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`
+- `string`<sup>*</sup>: (string) -- a parameterized (`%1`, `%2`, or `{{named}}`) string, where the parameters are to be replaced by dynamic values. E.g. `"My name is %1 (age %2)"`, or `"My name is {{name}} (age {{age}})"`
 - `substitutions` (or `replacements`, `values`)<sup>*</sup>: (array | object) -- the values to be substituted into `string`. Will be either an array or object depending on whether you're using positional replacements or named properties (see [below](#positional-replacement)).
 - `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of the substitution values
 - `substitutionCharacter` (or `subCharacter`, `subChar`): (`"%"` or `"$"`) -- by default, when using positional replacement, it looks for the `%` token (i.e `%1, %2, etc`), but this can be changed to `$` (i.e. `$1, $2, $3, etc`) by setting this property to `$`.
@@ -867,19 +867,50 @@ e.g.
 
 #### Named property replacement
 
-Replacement tokens can be indicated in the main string with a named value, using `{{<name>}}` syntax, e.g. `"Your name is {{firstName}} {{lastName}}"`. Then the `substitutions` property must be an object with those property names:
+Replacement tokens can be indicated in the main string with a named value, using `{{<name>}}` syntax, e.g. `"Your name is {{firstName}} {{lastName}} and your best friend is {{friends[0]}}"`. Then the `substitutions` property should be an object with those property names:
 
 ```js
 {
   operator: 'stringSubstitution',
-  string: 'Your name is {{firstName}} {{lastName}}',
+  string: 'Your name is {{firstName}} {{lastName}} and your best friend is {{friends[0]}}',
   substitutions: {
     firstName: 'Steve',
     lastName: "Rogers"
+    friends: [ "Bucky Barnes", "Peggy Carter" ]
   }
 }
-// => "Your name is Steve Rogers"
+// => "Your name is Steve Rogers and your best friend is Bucky Barnes"
 ```
+Note the use of `nested.properties` as per [objectProperties](#object_properties).
+
+Additionally, the substitutions can actually be provided directly in the associated `data` object and the operator will search for them there if not found in the `substitutions` property. This could be achieved simply by nesting a [`getData` node](#object_properties) inside the `substitutions` property, but because this is a very common scenario (the values provided will normally be dynamic based on application state), this shorthand is provided as a convenience.
+
+```js
+// With "data" object:
+{
+  info: { where: "Spain", what: "plain" }
+}
+
+// These two expressions are equivalent
+{
+  operator: 'stringSubstitution',
+  string: 'The rain in {{where}} falls mainly on the {{what}}',
+  substitutions: {
+    where: { operator: "getData", property: "info.where" },
+    what: { operator: "getData", property: "info.where" }
+  }
+}
+// or:
+{
+  operator: 'stringSubstitution',
+  string: 'The rain in {{info.where}} falls mainly on the {{info.what}}',
+}
+
+```
+
+
+
+#### Number mapping
 
 If the replacement values are numbers, we can extend this functionality with a special `numberMapping` object, which allows for different replacements depending on the value, which is handy for pluralisation, for example.
 

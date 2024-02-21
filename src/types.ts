@@ -138,6 +138,7 @@ export type Parameter = {
   description: string
   aliases: string[]
   required: boolean
+  suggest?: boolean // Defaults to same as required, can't be `false` if `required` is `true`
   type: ExpectedType
 }
 

@@ -1,3 +1,4 @@
+import extractProperty from 'object-property-extractor'
 import { zipArraysToObject, getTypeCheckInput } from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
 import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
@@ -47,6 +48,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       Array.from(uniqueParameters),
       substitutions.map((sub) => (trimWhiteSpace ? String(sub).trim() : sub))
     )
+
     return (
       string
         .split(parameterPattern)
@@ -58,13 +60,18 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   }
 
   // {{Named}} replacements
-  const parameterPattern = /(?<!\\)({{[A-z0-9_]+}})/g
+  const parameterPattern = /(?<!\\)({{(?:[A-Za-z0-9_.]|\[[0-9]+\])+}})/g
 
   return string
     .split(parameterPattern)
     .map((fragment) => {
       if (!/(?<!\\){{(.+)}}/.exec(fragment)) return fragment.replace('\\{{', '{{')
-      const replacement = getReplacement(fragment, substitutions, numberMapping)
+      const replacement = getReplacement(
+        fragment,
+        substitutions,
+        numberMapping,
+        config.options.data
+      )
       return trimWhiteSpace ? String(replacement).trim() : replacement
     })
     .join('')
@@ -89,11 +96,12 @@ interface NumberMap {
 const getReplacement = (
   fragment: string,
   replacements: { [key: string]: unknown },
-  numberMaps: NumberMap
+  numberMaps: NumberMap,
+  data: object = {}
 ) => {
   const key = fragment.replace(/{{(.+)}}/, '$1')
-  const value = replacements?.[key] ?? ''
-  if (typeof value !== 'number') return replacements?.[key] ?? ''
+  const value = extractProperty(replacements, key, extractProperty(data, key, ''))
+  if (typeof value !== 'number') return value
 
   // Value is a number, so check number mappings
   if (!(key in numberMaps)) return value

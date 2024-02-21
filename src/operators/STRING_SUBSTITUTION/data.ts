@@ -15,7 +15,8 @@ const parameters: Parameter[] = [
     name: 'substitutions',
     description: 'An array of substitution values for the parameterised string',
     aliases: ['replacements', 'values'],
-    required: true,
+    required: false, // Can use "data" object
+    suggest: true,
     type: ['array', 'object'],
   },
   {
