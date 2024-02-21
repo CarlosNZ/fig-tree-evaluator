@@ -48,8 +48,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(
     parentData.operator,
-    figTree.getOperators(),
-    figTree
+    figTree.getOperators()
   ) as OperatorMetadata
   const thisOperator = data as OperatorAlias
 

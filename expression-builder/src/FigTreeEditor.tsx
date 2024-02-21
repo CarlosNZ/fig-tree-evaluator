@@ -1,9 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react'
+import extract from 'object-property-extractor'
 import {
   type EvaluatorNode,
   type FigTreeEvaluator,
   type Operator as OperatorName,
   isObject,
+  OperatorNode,
 } from 'fig-tree-evaluator'
 // } from './fig-tree-evaluator/src'
 // import { JsonEditor, updateFunction } from './json-edit-react'
@@ -14,6 +16,7 @@ import { Operator } from './Operator'
 import { Fragment } from './Fragment'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
+import { getCurrentOperator } from './helpers'
 
 interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
@@ -96,6 +99,22 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         setExpression(validated)
         onUpdate({ newData: validated, ...rest })
       }}
+      restrictDelete={({ key, path }) => {
+        if (path.length === 0) return true
+        const parentPath = path.slice(0, -1)
+        const parentData = extract(
+          expression,
+          parentPath.length === 0 ? '' : parentPath,
+          {}
+        ) as OperatorNode
+        if (!isObject(parentData) || !('operator' in parentData)) return false
+        const required = getCurrentOperator(parentData.operator, operators)
+          ?.parameters.filter((param) => param.required)
+          .map((param) => [param.name, ...param.aliases])
+          .flat()
+
+        return required?.includes(key as string) ?? false
+      }}
       showArrayIndices={false}
       indent={3}
       collapse={2}
@@ -107,9 +126,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // backgroundColor: '#f6f6f6',
             // fontFamily: 'monospace',
           },
-          bracket: ({ value }) => {
+          bracket: ({ value, collapsed }) => {
             if (!(isObject(value) && ('operator' in value || 'fragment' in value)))
               return { display: 'inline' }
+            if (!collapsed) return { display: 'none' }
+          },
+          itemCount: ({ value }) => {
+            if (isObject(value) && ('operator' in value || 'fragment' in value))
+              return { fontSize: '1.1em' }
           },
           collectionInner: [
             {

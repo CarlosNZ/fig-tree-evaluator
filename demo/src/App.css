@@ -24,7 +24,7 @@ pre {
 }
 
 .jer-editor-container {
-  margin-top: 0;
+  margin-top: 0.6em;
   box-shadow: 0 3px 8px #0000003d;
   min-width: unset !important;
   width: clamp(300px, 600px, 90vw);
