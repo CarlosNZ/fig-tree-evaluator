@@ -7,7 +7,7 @@ import operatorData, { propertyAliases } from './data'
 const evaluate: EvaluateMethod = async (expression, config) => {
   const [
     string,
-    substitutions,
+    substitutions = {},
     trimWhiteSpace = true,
     substitutionCharacter = '%',
     numberMapping = {},

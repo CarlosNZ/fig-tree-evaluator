@@ -195,16 +195,15 @@ test('String substitution - parameters contain further expressions', () => {
 test('String substitution -- missing parameters', async () => {
   const expression = { operator: 'replace', irrelevant: 'value' }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)\n- Missing required property "substitutions" (type: array|object)'
+    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)'
   )
 })
 
 test('String substitution - missing replacements parameter', () => {
   const expression = { $replace: { string: 'This is the %1' } }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
-    expect(result).toBe(
-      'Operator: STRING_SUBSTITUTION\n- Missing required property "substitutions" (type: array|object)'
-    )
+  return exp.evaluate(expression).then((result) => {
+    // Sub char not removed as it defaults to {{named}} replacements
+    expect(result).toBe('This is the %1')
   })
 })
 
