@@ -1828,6 +1828,9 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.14.0**: Improvements to `stringSubstitution` operator:
+  - Can accept nested property references (e.g. `{{user.name}}`)
+  - Will also search for replacements from `data` object
 - **v2.13.4**: Bug fix for `objectProperties` operator when array index larger than `9` is used, and for sequential array indexes (e.g. `prop[1][2]`)
 - **v2.13.0**: Add default values to operator properties, export more types and helper methods
 - **v2.12.0**: Add `caseInsensitive` option to equality/non-equality operators
