@@ -195,16 +195,15 @@ test('String substitution - parameters contain further expressions', () => {
 test('String substitution -- missing parameters', async () => {
   const expression = { operator: 'replace', irrelevant: 'value' }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)\n- Missing required property "substitutions" (type: array|object)'
+    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)'
   )
 })
 
 test('String substitution - missing replacements parameter', () => {
   const expression = { $replace: { string: 'This is the %1' } }
-  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
-    expect(result).toBe(
-      'Operator: STRING_SUBSTITUTION\n- Missing required property "substitutions" (type: array|object)'
-    )
+  return exp.evaluate(expression).then((result) => {
+    // Sub char not removed as it defaults to {{named}} replacements
+    expect(result).toBe('This is the %1')
   })
 })
 
@@ -704,4 +703,66 @@ test('Named string substitution with number mapping', async () => {
   expect(await exp.evaluate({ ...expression, values: { count: { $times: [4, 0.5] } } })).toBe(
     'Number of things: Not many 🙁'
   )
+})
+
+// Deep replacement and data replacement
+test('String substitution - named replacement from nested object', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string:
+      'This should pull {{val}} from all levels of the {{inner.two}} object, not just the top {{innerArray[0].one.two}}',
+    replacements: {
+      val: 'values',
+      inner: { two: 'replacement' },
+      innerArray: [{ one: { two: 'one' } }, { one: { two: 'two' } }],
+    },
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(
+      'This should pull values from all levels of the replacement object, not just the top one'
+    )
+  })
+})
+
+test('String substitution - named replacement from nested object and data', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string:
+      'This one {{val}} from nested {{inner.two}} as well as the overall {{inside.data.array[2]}}, and it also should have one value {{cant.find.me}}missing',
+    replacements: {
+      val: 'should pull data',
+      inner: { two: 'replacements' },
+    },
+  }
+  return exp
+    .evaluate(expression, {
+      data: { inside: { one: 1, data: { string: 'hi', array: [1, 2, '"data" object'] } } },
+    })
+    .then((result) => {
+      expect(result).toBe(
+        'This one should pull data from nested replacements as well as the overall "data" object, and it also should have one value missing'
+      )
+    })
+})
+
+test('String substitution - named replacement from nested object and data, with plurals', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'I have {{how.many.potatoes}}, {{num.carrots}} and {{peaCount[1]}}',
+    replacements: {
+      how: { many: { potatoes: 6 } },
+    },
+    numberMapping: {
+      'how.many.potatoes': { 1: 'one potato', other: '{} potatoes' },
+      'num.carrots': { 1: 'just one carrot', other: '{} carrots' },
+      'peaCount[1]': { 1: 'one pea', 0: 'no peas', '>1': 'way too many peas to count!' },
+    },
+  }
+  return exp
+    .evaluate(expression, {
+      data: { num: { carrots: 1 }, peaCount: [null, 100] },
+    })
+    .then((result) => {
+      expect(result).toBe('I have 6 potatoes, just one carrot and way too many peas to count!')
+    })
 })

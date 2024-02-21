@@ -397,7 +397,7 @@ test('Metadata -- get operator info', () => {
           name: 'substitutions',
           description: 'An array of substitution values for the parameterised string',
           aliases: ['replacements', 'values'],
-          required: true,
+          required: false,
           type: ['array', 'object'],
           default: ['friend'],
         },

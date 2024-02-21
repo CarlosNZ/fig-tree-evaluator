@@ -16,7 +16,7 @@ const parameters: OperatorParameterMetadata[] = [
     name: 'substitutions',
     description: 'An array of substitution values for the parameterised string',
     aliases: ['replacements', 'values'],
-    required: true,
+    required: false, // Can use "data" object
     type: ['array', 'object'],
     default: ['friend'],
   },
