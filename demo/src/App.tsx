@@ -70,12 +70,8 @@ function App() {
 
   const handleDemoSelect = (selected: number) => {
     const { objectData, expression } = demoData[selected]
-    // setObjectData(objectData)
-    // setDataResetPoint(objectData)
-    // setExpression(expression as object)
-    // setExpressionResetPoint(expression as object)
-    resetData(objectData)
-    resetExpression(expression as object)
+    setObjectData(objectData)
+    setExpression(expression as object)
     localStorage.setItem('objectData', JSON.stringify(objectData))
     localStorage.setItem('expression', JSON.stringify(expression))
     // TO-DO: Show information modal

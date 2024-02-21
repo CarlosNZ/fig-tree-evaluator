@@ -41,7 +41,7 @@ export const useUndo = (initialData: object) => {
           Redo
         </Button>
       </HStack>
-      <HStack justify="flex-end" w="100%">
+      {/* <HStack justify="flex-end" w="100%">
         <Button
           color="accent"
           borderColor="accent"
@@ -52,7 +52,7 @@ export const useUndo = (initialData: object) => {
         >
           Reset
         </Button>
-      </HStack>
+      </HStack> */}
     </VStack>
   )
 
