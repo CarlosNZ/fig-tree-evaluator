@@ -2476,10 +2476,10 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.13.5:
-  version "2.13.5"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.13.5.tgz#9d55af9f871ba383bb62addd16d1c6ea0061bd63"
-  integrity sha512-ot36D1NE5qqoR7ge+JEuap0OO417OUCwIXlmkL6bkb4m4cLvrz9MhXGu79kw0m3Rhleu0ONq34Cj6px0pkPNLg==
+fig-tree-evaluator@^2.14.0:
+  version "2.14.0"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.14.0.tgz#789e8a339a6de30b3321fde50322263e3e2c5431"
+  integrity sha512-XVeDDJBn7KySInI0Tao0qd865BF/23ZrEIEzDrzV8KAGmAwM4dUQwbdGitr6sc69eV5lXFlixEtxRZccNqvUSw==
   dependencies:
     axios "^1.5.1"
     change-case "^4.1.2"

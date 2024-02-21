@@ -4,8 +4,8 @@ import {
   type FigTreeEvaluator,
   type Operator as OperatorName,
   isObject,
-  // } from 'fig-tree-evaluator'
-} from './fig-tree-evaluator/src'
+} from 'fig-tree-evaluator'
+// } from './fig-tree-evaluator/src'
 // import { JsonEditor, updateFunction } from './json-edit-react'
 // import { JsonEditor, JsonEditorProps, UpdateFunction } from './package'
 import { JsonEditor, JsonEditorProps, UpdateFunction } from 'json-edit-react'

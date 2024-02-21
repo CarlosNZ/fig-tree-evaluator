@@ -1,9 +1,9 @@
-// import { EvaluatorNode, ExpectedType, FigTreeEvaluator, OperatorMetadata } from 'fig-tree-evaluator'
-import {
-  ExpectedType,
-  OperatorMetadata,
-  standardiseOperatorName,
-} from '../src/fig-tree-evaluator/src'
+import { ExpectedType, standardiseOperatorName, OperatorMetadata } from 'fig-tree-evaluator'
+// import {
+//   ExpectedType,
+//   OperatorMetadata,
+//   standardiseOperatorName,
+// } from '../src/fig-tree-evaluator/src'
 import { NodeType } from './NodeTypeSelector'
 
 // Returns a valid default value for each (FigTree) data type
