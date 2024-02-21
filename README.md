@@ -891,7 +891,7 @@ Additionally, the substitutions can actually be provided directly in the associa
   info: { where: "Spain", what: "plain" }
 }
 
-// These two expressions are equivalent
+// These two expressions are equivalent:
 {
   operator: 'stringSubstitution',
   string: 'The rain in {{where}} falls mainly on the {{what}}',
@@ -900,12 +900,13 @@ Additionally, the substitutions can actually be provided directly in the associa
     what: { operator: "getData", property: "info.where" }
   }
 }
-// or:
+// or
 {
   operator: 'stringSubstitution',
   string: 'The rain in {{info.where}} falls mainly on the {{info.what}}',
 }
 
+// => "The rain in Spain falls mainly on the plain"
 ```
 
 

@@ -16,7 +16,6 @@ const parameters: Parameter[] = [
     description: 'The number that will be divided',
     aliases: ['divide'],
     required: false,
-    suggest: true,
     type: 'number',
   },
   {
@@ -24,7 +23,6 @@ const parameters: Parameter[] = [
     description: 'The number that dividend will be divided by',
     aliases: ['by', 'divideBy'],
     required: false,
-    suggest: true,
     type: 'number',
   },
   {

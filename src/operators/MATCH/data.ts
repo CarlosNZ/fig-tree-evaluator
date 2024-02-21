@@ -17,7 +17,6 @@ const parameters: Parameter[] = [
       'Object whose keys are compared against the match expression. The value of the matching key is returned',
     aliases: ['arms', 'cases'],
     required: false,
-    suggest: true,
     type: ['object', 'array'],
   },
 ]
