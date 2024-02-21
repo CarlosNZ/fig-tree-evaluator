@@ -22,7 +22,7 @@ export const useUndo = (initialData: object) => {
   }
 
   const UndoRedo = (
-    <VStack w="80%" align="flex-end" gap={4}>
+    <VStack w="80%" maxW={500} align="flex-end" gap={4}>
       <HStack w="100%" justify="space-between" mt={4}>
         <Button
           colorScheme="green"

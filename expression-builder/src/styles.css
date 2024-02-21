@@ -131,6 +131,10 @@
   margin-left: 0.5em;
   margin-top: 0.3em;
 }
+.ft-cancel-icon {
+  /* margin-left: 0.5em; */
+  margin-top: 0.3em;
+}
 
 .ft-function-select {
   display: flex;
@@ -154,7 +158,7 @@
   /* display: none; */
 }
 
-.jer-bracket-outside {
+.ft-editor .jer-bracket-outside {
   display: none;
 }
 

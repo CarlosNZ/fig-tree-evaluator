@@ -114,8 +114,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           collectionInner: [
             {
               borderColor: 'transparent',
-              transition: 'max-height 0.5s, border-color 0.5s, padding 1s',
-              transitionDelay: 'padding 1s',
+              transition: 'max-height 0.5s, border-color 0.5s, padding 0.5s',
               borderWidth: '1px',
               borderStyle: 'solid',
               borderRadius: '0.75em',

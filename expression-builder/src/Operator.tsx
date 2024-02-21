@@ -10,7 +10,7 @@ import {
   EvaluatorNode,
 } from 'fig-tree-evaluator'
 // import { CustomNodeProps, IconEdit, IconOk } from './package'
-import { CustomNodeProps, IconEdit, IconOk } from 'json-edit-react'
+import { CustomNodeProps, IconEdit, IconOk, IconCancel } from 'json-edit-react'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 import './styles.css'
@@ -39,6 +39,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
   const { figTree, evaluateNode } = customNodeProps
+  const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -82,8 +83,23 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
               }
             />
           )}
-          <div className="ft-okay-icon" onClick={() => setIsEditing(false)}>
+          <div
+            className="ft-okay-icon"
+            onClick={() => {
+              setPrevState(parentData)
+              setIsEditing(false)
+            }}
+          >
             <IconOk size="2em" style={{ color: 'green' }} />
+          </div>
+          <div
+            className="ft-cancel-icon"
+            onClick={() => {
+              onEdit(prevState, expressionPath)
+              setIsEditing(false)
+            }}
+          >
+            <IconCancel size="2.8em" style={{ color: 'rgb(203, 75, 22)' }} />
           </div>
         </div>
       ) : (

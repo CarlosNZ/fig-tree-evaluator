@@ -1,3 +1,4 @@
 import FigTreeEditor from './FigTreeEditor'
+import { Select } from './Select'
 
-export { FigTreeEditor }
+export { FigTreeEditor, Select }

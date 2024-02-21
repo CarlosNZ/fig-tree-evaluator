@@ -13,17 +13,11 @@ import {
   Link,
   useToast,
   Spacer,
+  useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import {
-  FigTreeEvaluator as EvaluatorDev,
-  // FigTreeOptions,
-} from './fig-tree-evaluator/src'
-import {
-  FigTreeEvaluator as EvaluatorPublished,
-  FigTreeEvaluator,
-  FigTreeOptions,
-} from 'fig-tree-evaluator'
+// import { FigTreeEvaluator, FigTreeOptions } from './fig-tree-evaluator/src'
+import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
 // import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
 import { FigTreeEditor } from './expression-builder/src'
@@ -47,18 +41,16 @@ const pgConnection = new PostgresInterface() as Client
 const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
-const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
-const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
+const figTree = new FigTreeEvaluator({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()
 if (savedCache) {
-  figTreeDev.setCache(savedCache)
-  figTreePub.setCache(savedCache)
+  figTree.setCache(savedCache)
 }
 
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
-  // const [selectedDemo, setSelectedDemo] = useState<number>()
+  const [isMobile] = useMediaQuery('(max-width: 635px)')
 
   const {
     data: objectData,
@@ -78,19 +70,6 @@ function App() {
 
   const toast = useToast()
 
-  const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
-    process.env.NODE_ENV === 'development'
-      ? localStorage.getItem('evaluatorSelection') === 'Development'
-        ? figTreeDev
-        : figTreePub
-      : figTreePub
-  )
-
-  const handleSelectEvaluator = (event: any) => {
-    localStorage.setItem('evaluatorSelection', event.target.value)
-    setEvaluator(event.target.value === 'Development' ? figTreeDev : figTreePub)
-  }
-
   const handleDemoSelect = (selected: number) => {
     const { objectData, expression } = demoData[selected]
     // setObjectData(objectData)
@@ -108,8 +87,8 @@ function App() {
     <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
       <VStack h="100%" w="100%">
         <OptionsModal
-          options={evaluator.getOptions()}
-          updateOptions={(options: FigTreeOptions) => evaluator.updateOptions(options)}
+          options={figTree.getOptions()}
+          updateOptions={(options: FigTreeOptions) => figTree.updateOptions(options)}
           modalState={{ modalOpen, setModalOpen }}
         />
         {/** HEADER */}
@@ -120,22 +99,28 @@ function App() {
                 <img
                   src={logo}
                   alt="logo"
-                  style={{ maxHeight: '6em', transform: 'translateY(-10px)' }}
+                  style={
+                    isMobile
+                      ? { maxHeight: '4em' }
+                      : { maxHeight: '6em', transform: 'translateY(-10px)' }
+                  }
                 />
-                <Box mb={8}>
+                <Box mb={isMobile ? -2 : 8}>
                   <Heading as="h1" size="2xl" variant="other" mb={2}>
                     fig-tree-evaluator
                   </Heading>
-                  <Heading variant="sub">
-                    A highly configurable custom expression tree evaluator •{' '}
-                    <Link
-                      href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
-                      isExternal
-                      color="accent"
-                    >
-                      Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
-                    </Link>
-                  </Heading>
+                  {!isMobile && (
+                    <Heading variant="sub">
+                      A highly configurable custom expression tree evaluator •{' '}
+                      <Link
+                        href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
+                        isExternal
+                        color="accent"
+                      >
+                        Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
+                      </Link>
+                    </Heading>
+                  )}
                 </Box>
               </Flex>
             </HStack>
@@ -157,9 +142,21 @@ function App() {
             </a>
           </Flex>
         </HStack>
+        {isMobile && (
+          <Heading px={8} variant="sub" fontSize="110%" mb={4} mt={-2}>
+            A highly configurable custom expression tree evaluator •{' '}
+            <Link
+              href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
+              isExternal
+              color="accent"
+            >
+              Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
+            </Link>
+          </Heading>
+        )}
         {/** DATA COLUMN */}
         <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
-          <Flex w="45%" direction="column" alignItems="center">
+          <Flex w="45%" direction="column" alignItems="center" flexGrow={1}>
             <Box maxW={500}>
               <Heading size="md" alignSelf="flex-start">
                 Application data state
@@ -199,26 +196,7 @@ function App() {
             {DataUndoRedo}
           </Flex>
           {/** EXPRESSION EDITOR COLUMN */}
-          <Flex h={'100%'} minW="45%" direction="column" alignItems="center">
-            {/* <Box h={'100%'} p={2} minW="45%"> */}
-            {/* <Flex
-              gap={4}
-              alignItems="center"
-              mb={6}
-              style={{ visibility: process.env.NODE_ENV === 'development' ? 'visible' : 'hidden' }}
-            >
-              <Text>Evaluator version:</Text>
-              <Select
-                id="evalSelect"
-                variant="outline"
-                w="50%"
-                value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
-                onChange={handleSelectEvaluator}
-              >
-                <option value={'Development'}>Development</option>
-                <option value={'Published'}>Published</option>
-              </Select>
-            </Flex> */}
+          <Flex h={'100%'} minW="45%" direction="column" alignItems="center" flexGrow={1}>
             <Box maxW={500}>
               <Heading size="md" alignSelf="flex-start">
                 FigTree expression
@@ -228,7 +206,7 @@ function App() {
               </Text>
             </Box>
             <FigTreeEditor
-              figTree={evaluator as FigTreeEvaluator}
+              figTree={figTree}
               expression={expression}
               objectData={objectData}
               onUpdate={({ newData }) => {
@@ -274,12 +252,13 @@ function App() {
       </VStack>
       <HStack w="100%" px={1} mt={10}>
         <Text color="accent">
-          <strong>Experiment with various demo expressions</strong>
+          <strong>Experiment with a range of demo expressions:</strong>
         </Text>
         <Select
-          // value={selectedDemo}
+          variant="filled"
+          backgroundColor="gray.50"
           maxW={300}
-          placeholder="Select an option"
+          placeholder="Select"
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
         >
           {demoData.map((data, index) => (
@@ -294,7 +273,7 @@ function App() {
             Configuration
           </Button>{' '}
           <Text fontSize="xs" mb={1}>
-            fig-tree-evaluator v{evaluator.getVersion()}
+            fig-tree-evaluator v{figTree.getVersion()}
           </Text>
         </Box>
       </HStack>
