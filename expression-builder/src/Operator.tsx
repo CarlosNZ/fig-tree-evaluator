@@ -58,6 +58,8 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
   const opDisplay = operatorDisplay[operatorData.name]
 
+  const fragments = figTree.getFragments()
+
   return (
     <div className="ft-custom ft-operator">
       {isEditing ? (
@@ -65,15 +67,20 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           <NodeTypeSelector
             value="operator"
             changeNode={(newValue) => onEdit(newValue, expressionPath)}
-            showFragments={figTree.getFragments().length > 0}
+            defaultFragment={fragments.length > 0 ? fragments[0].name : undefined}
           />
           :
           <OperatorSelector
             value={thisOperator}
             figTree={figTree}
-            changeOperator={(operator: OperatorAlias) =>
-              onEdit({ ...cleanOperatorNode(parentData as OperatorNode), operator }, expressionPath)
-            }
+            changeOperator={(operator: OperatorAlias) => {
+              // If we're just changing to another alias of the same operator
+              // type, then don't clean the node
+              const newNode = operatorData.aliases.includes(operator)
+                ? { ...parentData, operator }
+                : { ...cleanOperatorNode(parentData as OperatorNode), operator }
+              onEdit(newNode, expressionPath)
+            }}
           />
           {availableProperties.length > 0 && (
             <PropertySelector

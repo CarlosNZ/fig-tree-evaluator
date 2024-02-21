@@ -1,4 +1,5 @@
 import React, { Dispatch, useState } from 'react'
+import JSON5 from 'json5'
 import {
   Box,
   Modal,
@@ -105,9 +106,9 @@ export const OptionsModal = ({
       maxCacheTime,
     } = formState
 
-    const headers = headersText ? JSON.parse(headersText) : {}
-    const gqlHeaders = gqlHeadersText ? JSON.parse(gqlHeadersText) : {}
-    const fragments = fragmentsText ? JSON.parse(fragmentsText) : {}
+    const headers = headersText ? JSON5.parse(headersText) : {}
+    const gqlHeaders = gqlHeadersText ? JSON5.parse(gqlHeadersText) : {}
+    const fragments = fragmentsText ? JSON5.parse(fragmentsText) : {}
 
     const newOptions: FigTreeOptions = {
       ...filterObjectRecursive({
@@ -141,7 +142,7 @@ export const OptionsModal = ({
           <ModalCloseButton />
           <form onSubmit={handleSubmit}>
             <ModalBody>
-              <Stack spacing={4}>
+              <Stack spacing={2}>
                 <FormControl id="base-endpoint">
                   <FormLabel fontSize="sm">Base endpoint:</FormLabel>
                   <Input
@@ -301,7 +302,7 @@ export const OptionsModal = ({
                 <FormControl id="skip-runtime-check" mt="2 !important">
                   <Checkbox
                     isChecked={formState.skipRuntimeTypeCheck}
-                    onChange={(e) =>
+                    onChange={(_) =>
                       setFormState((curr) => ({
                         ...curr,
                         skipRuntimeTypeCheck: !formState.skipRuntimeTypeCheck,
@@ -315,7 +316,7 @@ export const OptionsModal = ({
                 <FormControl id="evaluate-object" mt="2 !important">
                   <Checkbox
                     isChecked={formState.evaluateFullObject}
-                    onChange={(e) =>
+                    onChange={(_) =>
                       setFormState((curr) => ({
                         ...curr,
                         evaluateFullObject: !formState.evaluateFullObject,

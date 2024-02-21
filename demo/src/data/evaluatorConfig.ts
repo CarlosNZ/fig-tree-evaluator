@@ -40,5 +40,11 @@ export const evaluatorConfig = {
       },
     },
   },
-  customFunctions: {},
+  customFunctions: {
+    reverse: (input: unknown[] | string) => {
+      if (Array.isArray(input)) return [...input].reverse()
+      return input.split('').reverse().join('')
+    },
+    plus: (...values: any[]) => values.reduce((acc, val) => acc + val),
+  },
 }

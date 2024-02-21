@@ -11,11 +11,11 @@ const nodeTypeOptions = [
 export const NodeTypeSelector: React.FC<{
   value: NodeType
   changeNode: (type: unknown) => void
-  showFragments: boolean
-}> = ({ value, changeNode, showFragments }) => {
+  defaultFragment?: string
+}> = ({ value, changeNode, defaultFragment }) => {
   const options = [
     ...nodeTypeOptions,
-    ...(showFragments ? [{ key: 'fragment', label: 'Fragment', value: 'fragment' }] : []),
+    ...(defaultFragment ? [{ key: 'fragment', label: 'Fragment', value: 'fragment' }] : []),
   ]
 
   const handleChange = (selected: SelectOption) => {
@@ -25,7 +25,7 @@ export const NodeTypeSelector: React.FC<{
         changeNode({ operator: '+' })
         break
       case 'fragment':
-        changeNode({ fragment: '' })
+        changeNode({ fragment: defaultFragment })
         break
       case 'value':
         changeNode('DEFAULT STRING')

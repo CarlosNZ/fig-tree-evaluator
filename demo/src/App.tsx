@@ -25,7 +25,6 @@ import { FigTreeEditor } from './expression-builder/src'
 import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache } from './helpers'
-import functions from './customFunctions'
 import initData from './data/data.json'
 import { PostgresInterface } from './postgresInterface'
 import { ConfigState } from './types'
@@ -39,7 +38,6 @@ import { useUndo } from './useUndo'
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
-initOptions.functions = functions
 
 const figTree = new FigTreeEvaluator({ ...initOptions, pgConnection })
 

@@ -167,7 +167,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           showOnEdit: false,
           showEditTools: false,
           showInTypesSelector: true,
-          defaultValue: { fragment: '' },
+          defaultValue: { fragment: fragments[0].name },
         },
       ]}
       customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}

@@ -26,8 +26,8 @@ pre {
 .jer-editor-container {
   margin-top: 0;
   box-shadow: 0 3px 8px #0000003d;
-  min-width: none;
-  max-width: none;
+  min-width: unset !important;
+  width: clamp(300px, 600px, 90vw);
 }
 
 .ft-operator-alias {

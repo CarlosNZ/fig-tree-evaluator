@@ -11,7 +11,6 @@ export const useUndo = (initialData: object) => {
     useUndoHook(initialData)
 
   const handleChange = (newData: object) => {
-    console.log('newData', newData)
     if (dequal(newData, data)) return
     setData(newData)
   }

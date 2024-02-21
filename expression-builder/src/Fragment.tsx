@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorNode } from 'fig-tree-evaluator'
 // import { CustomNodeProps, IconOk } from './package'
-import { CustomNodeProps, IconOk } from 'json-edit-react'
+import { CustomNodeProps, IconOk, IconCancel } from 'json-edit-react'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
@@ -21,6 +21,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
   const { figTree, evaluateNode } = customNodeProps
+  const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -41,7 +42,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           <NodeTypeSelector
             value="fragment"
             changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
-            showFragments
+            defaultFragment={thisFragment}
           />
           :
           <FragmentSelector
@@ -57,8 +58,23 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
               }
             />
           )}
-          <div className="ft-okay-icon" onClick={() => setIsEditing(false)}>
-            <IconOk size="2em" className="" style={{ color: 'green' }} />
+          <div
+            className="ft-okay-icon"
+            onClick={() => {
+              setPrevState(parentData)
+              setIsEditing(false)
+            }}
+          >
+            <IconOk size="2em" style={{ color: 'green' }} />
+          </div>
+          <div
+            className="ft-cancel-icon"
+            onClick={() => {
+              onEdit(prevState, expressionPath)
+              setIsEditing(false)
+            }}
+          >
+            <IconCancel size="2.8em" style={{ color: 'rgb(203, 75, 22)' }} />
           </div>
         </div>
       ) : (
