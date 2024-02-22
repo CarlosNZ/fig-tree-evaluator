@@ -100,6 +100,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         onUpdate({ newData: validated, ...rest })
       }}
       restrictDelete={({ key, path }) => {
+        // Unable to delete required properties
         if (path.length === 0) return true
         const parentPath = path.slice(0, -1)
         const parentData = extract(
@@ -118,7 +119,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       showArrayIndices={false}
       indent={3}
       collapse={2}
-      stringTruncate={50}
+      stringTruncate={100}
       {...props}
       theme={{
         styles: {

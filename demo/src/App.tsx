@@ -54,16 +54,16 @@ function App() {
     data: objectData,
     setData: setObjectData,
     UndoRedo: DataUndoRedo,
-    setResetPoint: setDataResetPoint,
-    reset: resetData,
+    // setResetPoint: setDataResetPoint,
+    // reset: resetData,
   } = useUndo(JSON.parse(localStorage.getItem('objectData')) ?? initData.objects)
 
   const {
     data: expression,
     setData: setExpression,
     UndoRedo: ExpressionUndoRedo,
-    setResetPoint: setExpressionResetPoint,
-    reset: resetExpression,
+    // setResetPoint: setExpressionResetPoint,
+    // reset: resetExpression,
   } = useUndo(JSON.parse(localStorage.getItem('expression')) ?? initData.expression)
 
   const toast = useToast()
@@ -252,9 +252,12 @@ function App() {
           variant="filled"
           backgroundColor="gray.50"
           maxW={300}
-          placeholder="Select"
+          // placeholder="Select"
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
         >
+          <option value="" disabled selected>
+            Select an option
+          </option>
           {demoData.map((data, index) => (
             <option key={data.name} value={index}>
               {data.name}

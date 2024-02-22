@@ -1,12 +1,12 @@
 import useUndoHook from 'use-undo'
 import { dequal } from 'dequal'
 import { Button, HStack, VStack, Spacer } from '@chakra-ui/react'
-import { BiReset } from 'react-icons/bi'
+// import { BiReset } from 'react-icons/bi'
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
 import { useState } from 'react'
 
 export const useUndo = (initialData: object) => {
-  const [resetPoint, setResetPoint] = useState(initialData)
+  // const [resetPoint, setResetPoint] = useState(initialData)
   const [{ present: data }, { set: setData, reset, undo, redo, canUndo, canRedo }] =
     useUndoHook(initialData)
 
@@ -15,10 +15,10 @@ export const useUndo = (initialData: object) => {
     setData(newData)
   }
 
-  const externalReset = (newData: object) => {
-    reset(newData)
-    setResetPoint(newData)
-  }
+  // const externalReset = (newData: object) => {
+  //   reset(newData)
+  //   setResetPoint(newData)
+  // }
 
   const UndoRedo = (
     <VStack w="80%" maxW={500} align="flex-end" gap={4}>
@@ -56,5 +56,11 @@ export const useUndo = (initialData: object) => {
     </VStack>
   )
 
-  return { data, setData: handleChange, reset: externalReset, setResetPoint, UndoRedo }
+  return {
+    data,
+    setData: handleChange,
+    // reset: externalReset,
+    // setResetPoint,
+    UndoRedo,
+  }
 }
