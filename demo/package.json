@@ -29,7 +29,7 @@
     "express": "^4.17.1",
     "fig-tree-evaluator": "^2.14.0",
     "framer-motion": "^10.15.1",
-    "json-edit-react": "^1.5.0",
+    "json-edit-react": "^1.7.0",
     "json5": "^2.2.3",
     "object-property-assigner": "^1.0.1",
     "object-property-extractor": "^1.0.7",

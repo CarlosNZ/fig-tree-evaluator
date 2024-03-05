@@ -2946,14 +2946,14 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^1.5.0:
-  version "1.5.0"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.5.0.tgz#b6f29d1ed2c78e748c129e28cefa2d170961315b"
-  integrity sha512-WIfOKSPzhZ13jxjw7cTSmfMlZhJI4TBQ7Wj5GOqENUQvwCVNI58xmxa4FgFB8C0phVqbaT6R8QSflBA3hzuVgg==
+json-edit-react@^1.7.0:
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.7.0.tgz#c56b9fcebf1efb19e136f742e10556e2fd718691"
+  integrity sha512-w/y/XT/8m8zUFPvVcJrn9Cxp+mb/QTm9Va/1dX2QsX9V2En5aYioFSXRDLkLpKC+84xSIUvcySZr43LzIgYA1A==
   dependencies:
     json5 "^2.2.3"
     just-clone "^6.2.0"
-    object-property-assigner "^1.2.0"
+    object-property-assigner "^1.2.2"
     object-property-extractor "^1.0.10"
 
 json-loose@^1.2.3:
@@ -3227,10 +3227,10 @@ object-property-assigner@^1.0.1:
   resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.0.1.tgz#0ce00a72877fc995e1504e04cf1509833c0f6147"
   integrity sha512-B+5FhEnpTg4XCf7931AbPTQ1PAm56K+cxWmu/QIG8mqCrfuOLnMw+87vjZfIYP7j8wV5e3E9dYh0uMdqEbmzyw==
 
-object-property-assigner@^1.2.0:
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.0.tgz#c6418c8d7f6a6a2dc883017fcbd539152f7bee48"
-  integrity sha512-ySOGVPpvEOHVp+adVcsBNqIQ0QRGDw/kGpEb1sgIIhcTW8//MMU6pqFhDGvCbhct9CnTJ1v8BkaeGVpS5e3N1Q==
+object-property-assigner@^1.2.2:
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.2.tgz#bc07ada5673892913d5206d4daf28e3c5cdc16b8"
+  integrity sha512-/t/aeJgDlP3FQTfVs+7XhLWe1WjH4V2TLX2Q0g++APfa7gHrtIB8HKuTUpH77LFOw9Rm0HyVW7t34KKRUAxF4A==
 
 object-property-extractor@^1.0.10:
   version "1.0.10"

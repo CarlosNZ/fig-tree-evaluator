@@ -417,14 +417,14 @@ is-core-module@^2.13.0:
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
 
-json-edit-react@^1.6.1:
-  version "1.6.1"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.6.1.tgz#a7b3c3ea7bd768faa5f52083d8b08c01c16cf95e"
-  integrity sha512-kQbtVpy66czFDseP7i5vqeK652aktb3tlGFMq+EtykhKhNFD2Lu+jkL8K6C8bq0QQJkWmVU3drLuO+72RBN8rw==
+json-edit-react@^1.7.0:
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.7.0.tgz#c56b9fcebf1efb19e136f742e10556e2fd718691"
+  integrity sha512-w/y/XT/8m8zUFPvVcJrn9Cxp+mb/QTm9Va/1dX2QsX9V2En5aYioFSXRDLkLpKC+84xSIUvcySZr43LzIgYA1A==
   dependencies:
     json5 "^2.2.3"
     just-clone "^6.2.0"
-    object-property-assigner "^1.2.1"
+    object-property-assigner "^1.2.2"
     object-property-extractor "^1.0.10"
 
 json-parse-even-better-errors@^2.3.0:
@@ -469,10 +469,10 @@ object-assign@^4.1.1:
   resolved "https://registry.yarnpkg.com/object-assign/-/object-assign-4.1.1.tgz#2109adc7965887cfc05cbbd442cac8bfbb360863"
   integrity sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==
 
-object-property-assigner@^1.2.1:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.1.tgz#ec16ecefd940d0fb973d392000c5744cbc1066c3"
-  integrity sha512-sMf0u3+7efLtYIjsuUec6lsjIm2cx+Kv3wsxhtiifQSgq1sFrKXUDCU0RQo52sKd1eN+VHhjePvtNDzbTdH27w==
+object-property-assigner@^1.2.2:
+  version "1.2.2"
+  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.2.tgz#bc07ada5673892913d5206d4daf28e3c5cdc16b8"
+  integrity sha512-/t/aeJgDlP3FQTfVs+7XhLWe1WjH4V2TLX2Q0g++APfa7gHrtIB8HKuTUpH77LFOw9Rm0HyVW7t34KKRUAxF4A==
 
 object-property-extractor@^1.0.10:
   version "1.0.10"
