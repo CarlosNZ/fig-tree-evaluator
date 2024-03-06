@@ -248,7 +248,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
-          showOnEdit: true,
+          // showOnEdit: true,
           // showEditTools: false,
           // showInTypesSelector: true,
           // defaultValue: { fragment: fragments[0].name },
