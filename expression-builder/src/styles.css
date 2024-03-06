@@ -142,6 +142,15 @@
   padding: 0.5em;
 }
 
+.ft-alias-header-text {
+  position: absolute;
+  top: -3.6em;
+  border-top: 1px solid #dbdbdb;
+  width: 100%;
+  padding-top: 0.6em;
+  font-family: sans-serif;
+}
+
 .jer-collection-inner {
   /* border: 1px solid #dbdbdb;
   border-radius: 0.75em;

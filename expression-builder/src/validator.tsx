@@ -7,7 +7,7 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
-} from 'fig-tree-evaluator'
+} from './figTreeImport'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
 export const commonProperties = ['fallback', 'outputType', 'type', 'useCache']

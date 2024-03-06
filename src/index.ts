@@ -16,6 +16,7 @@ import {
   OperatorParameterMetadata,
 } from './types'
 import { GraphQLConnection } from './operators'
+import { preProcessShorthand } from './shorthandSyntax'
 import { BasicType, LiteralType, ExpectedType } from './typeCheck'
 import {
   isAliasString,
@@ -35,6 +36,7 @@ export {
   isFragmentNode,
   isOperatorNode,
   isObject,
+  preProcessShorthand,
   standardiseOperatorName,
   truncateString,
   // Types

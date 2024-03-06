@@ -6,8 +6,11 @@ import {
   type Operator as OperatorName,
   isObject,
   OperatorNode,
-} from 'fig-tree-evaluator'
-// } from './fig-tree-evaluator/src'
+  preProcessShorthand,
+  isOperatorNode,
+  isFragmentNode,
+  isAliasString,
+} from './figTreeImport'
 // import { JsonEditor, updateFunction } from './json-edit-react'
 // import { JsonEditor, JsonEditorProps, UpdateFunction } from './package'
 import { JsonEditor, JsonEditorProps, UpdateFunction } from 'json-edit-react'
@@ -17,6 +20,7 @@ import { Fragment } from './Fragment'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import { getCurrentOperator } from './helpers'
+import { ShorthandNode } from './ShorthandNode'
 
 interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
@@ -127,6 +131,20 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // backgroundColor: '#f6f6f6',
             // fontFamily: 'monospace',
           },
+          collection: ({ key, index, parentData }) => {
+            const nonAliasProperties = isObject(parentData)
+              ? Object.keys(parentData).filter((k) => !isAliasString(k))
+              : []
+            if (isAliasString(key) && index === nonAliasProperties.length) {
+              return { marginTop: '3em' }
+            }
+          },
+          property: ({ key }) => {
+            if (isAliasString(key)) return { fontStyle: 'italic' }
+          },
+          string: ({ value }) => {
+            if (isAliasString(value)) return { fontStyle: 'italic' }
+          },
           bracket: ({ value, collapsed }) => {
             if (!(isObject(value) && ('operator' in value || 'fragment' in value)))
               return { display: 'inline' }
@@ -145,6 +163,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               borderRadius: '0.75em',
             },
             ({ collapsed, value }) => {
+              // Rounded border for Operator/Fragment nodes
               if (isObject(value) && ('operator' in value || 'fragment' in value)) {
                 const style = {
                   // paddingLeft: '0.5em',
@@ -193,6 +212,47 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           showEditTools: false,
           showInTypesSelector: true,
           defaultValue: { fragment: fragments[0].name },
+        },
+        {
+          condition: ({ level, value }) => {
+            if (isOperatorNode(value) || isFragmentNode(value)) return false
+            const processed = preProcessShorthand(value as EvaluatorNode)
+
+            return isOperatorNode(processed) || isFragmentNode(processed)
+          },
+          element: ShorthandNode,
+          customNodeProps: { figTree, isEvaluating, evaluateNode },
+          // hideKey: true,
+          // showOnEdit: false,
+          // showEditTools: false,
+          // showInTypesSelector: true,
+          // defaultValue: { fragment: fragments[0].name },
+        },
+        {
+          condition: ({ key, parentData, index }) => {
+            const nonAliasProperties = isObject(parentData)
+              ? Object.keys(parentData).filter((k) => !isAliasString(k))
+              : []
+            return isAliasString(key) && index === nonAliasProperties.length
+          },
+          element: ({ children, nodeData }) => {
+            // console.log(other)
+            return (
+              <>
+                <p className="ft-alias-header-text">
+                  <strong>Alias definitions:</strong>
+                </p>
+                {children}
+              </>
+            )
+          },
+          customNodeProps: { figTree, isEvaluating, evaluateNode },
+          // hideKey: true,
+          showOnEdit: true,
+          // showEditTools: false,
+          // showInTypesSelector: true,
+          // defaultValue: { fragment: fragments[0].name },
+          // showCollectionWrapper: false,
         },
       ]}
       customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}

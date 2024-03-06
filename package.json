@@ -47,7 +47,8 @@
     "prebuild": "yarn generate && yarn getVersion",
     "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
     "demo": "yarn getVersion && cd demo && yarn start",
-    "prepublishOnly": "yarn build"
+    "prepublishOnly": "yarn build",
+    "gui": "cp -R src/* expression-builder/src/fig-tree-evaluator/src"
   },
   "dependencies": {
     "axios": "^1.5.1",

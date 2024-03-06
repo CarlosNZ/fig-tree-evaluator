@@ -16,8 +16,8 @@ import {
   useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-// import { FigTreeEvaluator, FigTreeOptions } from './fig-tree-evaluator/src'
-import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, FigTreeOptions } from './fig-tree-evaluator/src'
+// import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
 // import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
 import { FigTreeEditor } from './expression-builder/src'

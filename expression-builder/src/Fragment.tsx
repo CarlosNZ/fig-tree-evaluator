@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorNode } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorNode } from './figTreeImport'
 // import { CustomNodeProps, IconOk } from './package'
 import { CustomNodeProps, IconOk, IconCancel } from 'json-edit-react'
 import './styles.css'
