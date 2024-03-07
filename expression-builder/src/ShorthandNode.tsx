@@ -60,9 +60,51 @@ export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) =
   //   const fragments = figTree.getFragments()
 
   return (
-    <div className="ft-custom ft-operator">
-      Shorthand
+    <div className="ft-shorthand">
       {children}
+      <div className="ft-display-bar">
+        <div className="ft-display-name">
+          <a href="" target="_blank">
+            Shorthand
+          </a>
+        </div>
+      </div>
     </div>
   )
+}
+
+export const ShorthandStringNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
+  const {
+    data,
+    parentData,
+    nodeData: { path },
+    onEdit,
+    customNodeProps,
+    children,
+  } = props
+
+  if (!customNodeProps) throw new Error('Missing customNodeProps')
+
+  const { figTree, evaluateNode } = customNodeProps
+  //   const [prevState, setPrevState] = useState(parentData)
+  //   const [isEditing, setIsEditing] = useState(false)
+  //   const [loading, setLoading] = useState(false)
+
+  if (!figTree) return null
+
+  //   const expressionPath = path.slice(0, -1)
+  //   const operatorData = getCurrentOperator(
+  //     parentData.operator,
+  //     figTree.getOperators()
+  //   ) as OperatorMetadata
+  //   const thisOperator = data as OperatorAlias
+
+  //   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
+
+  //   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
+  //   const opDisplay = operatorDisplay[operatorData.name]
+
+  //   const fragments = figTree.getFragments()
+
+  return <div className="ft-shorthand-string">{data}</div>
 }

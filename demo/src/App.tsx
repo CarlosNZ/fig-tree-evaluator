@@ -171,7 +171,7 @@ function App() {
             <JsonEditor
               data={objectData}
               rootName="data"
-              collapse={1}
+              collapse={2}
               onUpdate={({ newData }) => {
                 setObjectData(newData)
                 localStorage.setItem('objectData', JSON.stringify(newData))

@@ -6,9 +6,6 @@ import {
   type Operator as OperatorName,
   isObject,
   OperatorNode,
-  preProcessShorthand,
-  isOperatorNode,
-  isFragmentNode,
   isAliasString,
 } from './exports/figTreeImport'
 import { JsonEditor, JsonEditorProps, UpdateFunction } from './exports/JsonEditReactImport'
@@ -17,8 +14,31 @@ import { Operator } from './Operator'
 import { Fragment } from './Fragment'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
-import { getCurrentOperator } from './helpers'
-import { ShorthandNode } from './ShorthandNode'
+import {
+  getCurrentOperator,
+  isAliasNode as aliasNodeTester,
+  isFirstAliasNode,
+  isShorthandNode as shorthandNodeTester,
+  isShorthandString as shorthandStringTester,
+  propertyCountReplace,
+} from './helpers'
+import { ShorthandNode, ShorthandStringNode } from './ShorthandNode'
+
+const nodeBaseStyles = {
+  borderColor: 'transparent',
+  transition: 'max-height 0.5s, border-color 0.5s, padding 0.5s',
+  borderWidth: '1px',
+  borderStyle: 'solid',
+  borderRadius: '0.75em',
+}
+
+const nodeRoundedBorder = {
+  borderColor: '#dbdbdb',
+  paddingTop: '0.5em',
+  paddingBottom: '0.5em',
+  marginBottom: '0.5em',
+  paddingRight: '1em',
+}
 
 interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
@@ -48,6 +68,12 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
 
+  const allOpAliases = useMemo(() => {
+    const all = operators.map((op) => [op.name, ...op.aliases]).flat()
+    return new Set(all)
+  }, [])
+  const allFragments = useMemo(() => new Set(fragments.map((f) => f.name)), [])
+
   const [expression, setExpression] = useState(
     validateExpression(expressionInit, { operators, fragments })
   )
@@ -63,21 +89,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   // const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
 
-  const propertyCountReplace = ({
-    value,
-  }: {
-    key: string | number
-    path: (string | number)[]
-    level: number
-    value: unknown
-    size: number | null
-  }) => {
-    if (!(value instanceof Object)) return null
-    if ('operator' in value) return `Operator: ${value.operator}`
-    if ('fragment' in value) return `Fragment: ${value.fragment}`
-    return null
-  }
-
   const evaluateNode = async (expression: EvaluatorNode) => {
     setIsEvaluating(true)
     onEvaluateStart && onEvaluateStart()
@@ -89,6 +100,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     }
     setIsEvaluating(false)
   }
+
+  const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
+
+  const isShorthandNode = (value) => shorthandNodeTester(value, allOpAliases, allFragments)
+  const isShorthandString = (value) => shorthandStringTester(value, allOpAliases, allFragments)
 
   return (
     <JsonEditor
@@ -129,53 +145,50 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // backgroundColor: '#f6f6f6',
             // fontFamily: 'monospace',
           },
-          collection: ({ key, index, parentData }) => {
-            const nonAliasProperties = isObject(parentData)
-              ? Object.keys(parentData).filter((k) => !isAliasString(k))
-              : []
-            if (isAliasString(key) && index === nonAliasProperties.length) {
+          collection: (nodeData) => {
+            if (isFirstAliasNode(nodeData, allOpAliases, allFragments)) {
               return { marginTop: '3em' }
             }
           },
-          property: ({ key }) => {
-            if (isAliasString(key)) return { fontStyle: 'italic' }
+          property: (nodeData) => {
+            // console.log(key, parentData)
+            // if (!parentData) return
+            // if (isAliasNode(nodeData)) return { color: 'blue' }
+            if (isAliasString(nodeData.key)) return { fontStyle: 'italic' }
           },
           string: ({ value }) => {
             if (isAliasString(value)) return { fontStyle: 'italic' }
           },
           bracket: ({ value, collapsed }) => {
-            if (!(isObject(value) && ('operator' in value || 'fragment' in value)))
+            if (
+              !(
+                isObject(value) &&
+                ('operator' in value || 'fragment' in value || isShorthandNode(value))
+              )
+            )
               return { display: 'inline' }
             if (!collapsed) return { display: 'none' }
           },
           itemCount: ({ value }) => {
-            if (isObject(value) && ('operator' in value || 'fragment' in value))
+            if (
+              isObject(value) &&
+              ('operator' in value || 'fragment' in value || isShorthandNode(value))
+            )
               return { fontSize: '1.1em' }
           },
           collectionInner: [
-            {
-              borderColor: 'transparent',
-              transition: 'max-height 0.5s, border-color 0.5s, padding 0.5s',
-              borderWidth: '1px',
-              borderStyle: 'solid',
-              borderRadius: '0.75em',
-            },
+            nodeBaseStyles,
             ({ collapsed, value }) => {
               // Rounded border for Operator/Fragment nodes
-              if (isObject(value) && ('operator' in value || 'fragment' in value)) {
+              if (
+                isObject(value) &&
+                ('operator' in value || 'fragment' in value || isShorthandNode(value))
+              ) {
                 const style = {
                   // paddingLeft: '0.5em',
                   paddingRight: '1em',
                 }
-                return collapsed
-                  ? style
-                  : {
-                      ...style,
-                      borderColor: '#dbdbdb',
-                      paddingTop: '0.5em',
-                      paddingBottom: '0.5em',
-                      marginBottom: '0.5em',
-                    }
+                return collapsed ? style : nodeRoundedBorder
               }
             },
           ],
@@ -212,13 +225,26 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           defaultValue: { fragment: fragments[0].name },
         },
         {
-          condition: ({ level, value }) => {
-            if (isOperatorNode(value) || isFragmentNode(value)) return false
-            const processed = preProcessShorthand(value as EvaluatorNode)
-
-            return isOperatorNode(processed) || isFragmentNode(processed)
+          condition: ({ value, parentData }) => {
+            return isShorthandNode(parentData)
           },
           element: ShorthandNode,
+          customNodeProps: { figTree, isEvaluating, evaluateNode },
+          // hideKey: true,
+          // showOnEdit: false,
+          // showEditTools: false,
+          // showInTypesSelector: true,
+          // showCollectionWrapper: false,
+          // defaultValue: { fragment: fragments[0].name },
+          wrapperElement: ({ children }) => (
+            <div style={{ border: '1px solid red' }}>{children}</div>
+          ),
+        },
+        {
+          condition: ({ value }) => {
+            return isShorthandString(value)
+          },
+          element: ShorthandStringNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
           // showOnEdit: false,
@@ -227,12 +253,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           // defaultValue: { fragment: fragments[0].name },
         },
         {
-          condition: ({ key, parentData, index }) => {
-            const nonAliasProperties = isObject(parentData)
-              ? Object.keys(parentData).filter((k) => !isAliasString(k))
-              : []
-            return isAliasString(key) && index === nonAliasProperties.length
-          },
+          condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
           element: ({ children, nodeData }) => {
             // console.log(other)
             return (
