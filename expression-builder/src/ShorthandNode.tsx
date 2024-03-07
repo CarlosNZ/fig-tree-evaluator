@@ -8,8 +8,8 @@ import {
   OperatorNode,
   OperatorParameterMetadata,
   EvaluatorNode,
-} from './figTreeImport'
-import { CustomNodeProps, IconEdit, IconOk, IconCancel } from 'json-edit-react'
+} from './exports/figTreeImport'
+import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './exports/JsonEditReactImport'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 import './styles.css'

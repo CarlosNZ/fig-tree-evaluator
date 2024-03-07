@@ -1,4 +1,4 @@
-import { ExpectedType, standardiseOperatorName, OperatorMetadata } from './figTreeImport'
+import { ExpectedType, standardiseOperatorName, OperatorMetadata } from './exports/figTreeImport'
 import { NodeType } from './NodeTypeSelector'
 
 // Returns a valid default value for each (FigTree) data type

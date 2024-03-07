@@ -6,4 +6,4 @@
 // export * from 'fig-tree-evaluator'
 
 /* Local src */
-export * from './fig-tree-evaluator/src'
+export * from '../fig-tree-evaluator/src'

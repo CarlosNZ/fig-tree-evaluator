@@ -1,7 +1,11 @@
 import React, { useState, useMemo } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorNode } from './figTreeImport'
-// import { CustomNodeProps, IconOk } from './package'
-import { CustomNodeProps, IconOk, IconCancel } from 'json-edit-react'
+import {
+  FigTreeEvaluator,
+  FragmentMetadata,
+  FragmentNode,
+  OperatorNode,
+} from './exports/figTreeImport'
+import { CustomNodeProps, IconOk, IconCancel } from './exports/JsonEditReactImport'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'

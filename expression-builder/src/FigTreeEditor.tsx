@@ -10,10 +10,8 @@ import {
   isOperatorNode,
   isFragmentNode,
   isAliasString,
-} from './figTreeImport'
-// import { JsonEditor, updateFunction } from './json-edit-react'
-// import { JsonEditor, JsonEditorProps, UpdateFunction } from './package'
-import { JsonEditor, JsonEditorProps, UpdateFunction } from 'json-edit-react'
+} from './exports/figTreeImport'
+import { JsonEditor, JsonEditorProps, UpdateFunction } from './exports/JsonEditReactImport'
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
@@ -248,7 +246,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
-          // showOnEdit: true,
+          showOnEdit: true,
           // showEditTools: false,
           // showInTypesSelector: true,
           // defaultValue: { fragment: fragments[0].name },
