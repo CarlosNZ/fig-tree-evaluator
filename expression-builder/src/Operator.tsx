@@ -16,14 +16,13 @@ import './styles.css'
 import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
-import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
+import { operatorDisplay } from './operatorDisplay'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
-  operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
@@ -54,7 +53,6 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
-  const opDisplay = operatorDisplay[operatorData.name]
 
   const fragments = figTree.getFragments()
 
@@ -118,7 +116,6 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           }}
           isLoading={loading}
           canonicalName={operatorData.name}
-          {...opDisplay}
         />
       )}
       {isCustomFunction && isEditing && (
@@ -137,7 +134,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   )
 }
 
-interface DisplayBarProps extends OperatorDisplay {
+interface DisplayBarProps {
   name: OperatorAlias
   setIsEditing: () => void
   evaluate: () => void
@@ -150,11 +147,11 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   setIsEditing,
   evaluate,
   isLoading,
-  backgroundColor,
-  textColor,
   canonicalName = 'fragments',
-  displayName,
 }) => {
+  const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
+  const isShorthand = name.startsWith('$')
+
   return (
     <div className="ft-display-bar">
       <div className="ft-button-and-edit">
@@ -165,7 +162,13 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
         >
           {!isLoading ? (
             <>
-              <span className="ft-operator-alias" style={{ fontSize: getButtonFontSize(name) }}>
+              <span
+                className="ft-operator-alias"
+                style={{
+                  fontSize: getButtonFontSize(name),
+                  fontStyle: isShorthand ? 'italic' : 'inherit',
+                }}
+              >
                 {name}
               </span>
               {Icons.evaluate}
@@ -179,9 +182,12 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
             </div>
           )}
         </div>
-        <span onClick={() => setIsEditing()} className="ft-edit-icon">
-          <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
-        </span>
+        {!isShorthand && (
+          <span onClick={() => setIsEditing()} className="ft-edit-icon">
+            <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
+          </span>
+        )}
+        {isShorthand && <p style={{ alignSelf: 'center' }}>Shorthand</p>}
       </div>
       <div className="ft-display-name">
         <a href={README_URL + canonicalName.toLowerCase()} target="_blank">

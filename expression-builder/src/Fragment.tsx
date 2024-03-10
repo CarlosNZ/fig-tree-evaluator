@@ -37,8 +37,6 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const availableProperties = getAvailableProperties(fragmentData, parentData as OperatorNode)
 
-  const opDisplay = operatorDisplay.FRAGMENT
-
   return (
     <div className="ft-custom ft-fragment">
       {isEditing ? (
@@ -91,7 +89,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
             setLoading(false)
           }}
           isLoading={loading}
-          {...opDisplay}
+          canonicalName="FRAGMENT"
         />
       )}
     </div>

@@ -151,6 +151,28 @@
   font-family: sans-serif;
 }
 
+/* Shorthands */
+
+.ft-shorthand-wrapper {
+  position: relative;
+}
+
+.ft-shorthand-display-bar {
+  padding-left: 1.5em;
+}
+
+.ft-shorthand-node {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding-left: 1em;
+}
+
+.ft-shorthand-string {
+  margin-left: -1em;
+}
+
 .jer-collection-inner {
   /* border: 1px solid #dbdbdb;
   border-radius: 0.75em;

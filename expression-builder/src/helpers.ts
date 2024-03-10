@@ -13,6 +13,8 @@ import {
 import { NodeData } from './exports/JsonEditReactImport'
 import { NodeType } from './NodeTypeSelector'
 
+export const operatorStringRegex = /(\$[^()]+)\((.*)\)/
+
 // Returns a valid default value for each (FigTree) data type
 export const getDefaultValue = (type: ExpectedType | NodeType) => {
   switch (type) {
@@ -123,6 +125,10 @@ export const propertyCountReplace = ({
   return null
 }
 
+// TO-DO: Replace with exported one from jer
+export const isCollection = (value: unknown): value is Record<string, unknown> | unknown[] =>
+  value !== null && typeof value === 'object'
+
 export const isShorthandNode = (
   node: EvaluatorNode,
   allOperatorAliases: Set<OperatorAlias>,
@@ -137,6 +143,27 @@ export const isShorthandNode = (
 
   const alias = shorthandKey.slice(1)
 
+  if (!isCollection(node[shorthandKey as string])) return false
+
+  return allOperatorAliases.has(alias) || allFragments.has(alias)
+}
+
+export const isShorthandStringNode = (
+  node: EvaluatorNode,
+  allOperatorAliases: Set<OperatorAlias>,
+  allFragments: Set<string>
+) => {
+  if (!isObject(node)) return false
+  const keys = Object.keys(node)
+  if (keys.length > 1) return false
+
+  const shorthandKey = keys[0]
+  if (!isAliasString(shorthandKey)) return false
+
+  const alias = shorthandKey.slice(1)
+
+  if (isCollection(node[shorthandKey as string])) return false
+
   return allOperatorAliases.has(alias) || allFragments.has(alias)
 }
 
@@ -146,7 +173,7 @@ export const isShorthandString = (
   allFragments: Set<string>
 ) => {
   if (typeof value !== 'string') return false
-  const match = /(\$[^()]+)\((.*)\)/.exec(value)
+  const match = operatorStringRegex.exec(value)
   if (!match) return false
   const op = match[1].trim().slice(1)
   return allOperatorAliases.has(op) || allFragments.has(op)
@@ -159,8 +186,10 @@ export const isAliasNode = (
 ) => {
   return (
     isAliasString(key as string) &&
-    // index === nonAliasProperties.length &&
-    !isShorthandNode(parentData, allOperatorAliases, allFragments)
+    parentData &&
+    !('fragment' in parentData) &&
+    !isShorthandNode(parentData, allOperatorAliases, allFragments) &&
+    !isShorthandStringNode(parentData, allOperatorAliases, allFragments)
   )
 }
 

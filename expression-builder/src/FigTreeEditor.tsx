@@ -20,9 +20,11 @@ import {
   isFirstAliasNode,
   isShorthandNode as shorthandNodeTester,
   isShorthandString as shorthandStringTester,
+  isShorthandStringNode as shorthandStringNodeTester,
+  isShorthandStringNode,
   propertyCountReplace,
 } from './helpers'
-import { ShorthandNode, ShorthandStringNode } from './ShorthandNode'
+import { ShorthandNode, ShorthandNodeWrapper, ShorthandStringNode } from './Shorthand'
 
 const nodeBaseStyles = {
   borderColor: 'transparent',
@@ -104,6 +106,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
 
   const isShorthandNode = (value) => shorthandNodeTester(value, allOpAliases, allFragments)
+  const isShorthandStringNode = (value) =>
+    shorthandStringNodeTester(value, allOpAliases, allFragments)
   const isShorthandString = (value) => shorthandStringTester(value, allOpAliases, allFragments)
 
   return (
@@ -154,6 +158,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // console.log(key, parentData)
             // if (!parentData) return
             // if (isAliasNode(nodeData)) return { color: 'blue' }
+            if (isShorthandNode(nodeData.parentData)) return { display: 'none' }
+            if (isShorthandStringNode(nodeData.parentData)) return { display: 'none' }
             if (isAliasString(nodeData.key)) return { fontStyle: 'italic' }
           },
           string: ({ value }) => {
@@ -163,7 +169,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             if (
               !(
                 isObject(value) &&
-                ('operator' in value || 'fragment' in value || isShorthandNode(value))
+                ('operator' in value ||
+                  'fragment' in value ||
+                  isShorthandNode(value) ||
+                  isShorthandStringNode(value))
               )
             )
               return { display: 'inline' }
@@ -172,7 +181,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           itemCount: ({ value }) => {
             if (
               isObject(value) &&
-              ('operator' in value || 'fragment' in value || isShorthandNode(value))
+              ('operator' in value ||
+                'fragment' in value ||
+                isShorthandNode(value) ||
+                isShorthandStringNode(value))
             )
               return { fontSize: '1.1em' }
           },
@@ -182,7 +194,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               // Rounded border for Operator/Fragment nodes
               if (
                 isObject(value) &&
-                ('operator' in value || 'fragment' in value || isShorthandNode(value))
+                ('operator' in value ||
+                  'fragment' in value ||
+                  isShorthandNode(value) ||
+                  isShorthandStringNode(value))
               ) {
                 const style = {
                   // paddingLeft: '0.5em',
@@ -192,6 +207,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               }
             },
           ],
+          collectionElement: ({ key, value }) => {
+            if (isShorthandString(value))
+              return {
+                ...nodeBaseStyles,
+                ...nodeRoundedBorder,
+                marginLeft: '1.5em',
+              }
+          },
           iconEdit: { color: 'rgb(42, 161, 152)' },
         },
       }}
@@ -228,6 +251,21 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           condition: ({ value, parentData }) => {
             return isShorthandNode(parentData)
           },
+          // element: ShorthandNode,
+          // customNodeProps: { figTree, isEvaluating, evaluateNode },
+          // hideKey: true,
+          // showOnEdit: false,
+          // showEditTools: false,
+          // showInTypesSelector: true,
+          // showCollectionWrapper: false,
+          // defaultValue: { fragment: fragments[0].name },
+          wrapperElement: ShorthandNodeWrapper,
+          wrapperProps: { figTree, isEvaluating, evaluateNode },
+        },
+        {
+          condition: ({ value, parentData }) => {
+            return isShorthandStringNode(value)
+          },
           element: ShorthandNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
@@ -236,9 +274,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           // showInTypesSelector: true,
           // showCollectionWrapper: false,
           // defaultValue: { fragment: fragments[0].name },
-          wrapperElement: ({ children }) => (
-            <div style={{ border: '1px solid red' }}>{children}</div>
-          ),
+          // wrapperElement: ({ children }) => (
+          //   <div>{children}</div>
+          // ),
+          // wrapperProps: { figTree, isEvaluating, evaluateNode },
         },
         {
           condition: ({ value }) => {
