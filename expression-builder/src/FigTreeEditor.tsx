@@ -293,17 +293,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         },
         {
           condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
-          element: ({ children, nodeData }) => {
-            // console.log(other)
-            return (
-              <>
-                <p className="ft-alias-header-text">
-                  <strong>Alias definitions:</strong>
-                </p>
-                {children}
-              </>
-            )
-          },
           customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
           showOnEdit: true,
@@ -311,6 +300,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           // showInTypesSelector: true,
           // defaultValue: { fragment: fragments[0].name },
           // showCollectionWrapper: false,
+          wrapperElement: ({ children }) => (
+            <div>
+              <p className="ft-alias-header-text">
+                <strong>Alias definitions:</strong>
+              </p>
+              {children}
+            </div>
+          ),
         },
       ]}
       customText={{ ITEMS_MULTIPLE: propertyCountReplace, ITEM_SINGLE: propertyCountReplace }}

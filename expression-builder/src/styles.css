@@ -144,7 +144,8 @@
 
 .ft-alias-header-text {
   position: absolute;
-  top: -3.6em;
+  top: -1.8em;
+  left: 1em;
   border-top: 1px solid #dbdbdb;
   width: 100%;
   padding-top: 0.6em;
@@ -179,6 +180,10 @@
   padding: 0.5em;
   margin-bottom: 0.5em;
   padding-right: 1em; */
+}
+
+.jer-collection-element {
+  position: relative;
 }
 
 .jer-brackets {
