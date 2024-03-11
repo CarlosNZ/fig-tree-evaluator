@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react'
 import {
   CustomFunctionMetadata,
   FigTreeEvaluator,
-  Operator as OperatorName,
   OperatorAlias,
   OperatorMetadata,
   OperatorNode,
@@ -187,7 +186,6 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
             <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
           </span>
         )}
-        {isShorthand && <p style={{ alignSelf: 'center' }}>Shorthand</p>}
       </div>
       <div className="ft-display-name">
         <a href={README_URL + canonicalName.toLowerCase()} target="_blank">

@@ -255,7 +255,7 @@ function App() {
           // placeholder="Select"
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
         >
-          <option value="" disabled selected>
+          <option value="" disabled>
             Select an option
           </option>
           {demoData.map((data, index) => (

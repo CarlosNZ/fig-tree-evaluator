@@ -1,27 +1,14 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import {
-  CustomFunctionMetadata,
   FigTreeEvaluator,
   Operator as OperatorName,
-  OperatorAlias,
   OperatorMetadata,
-  OperatorNode,
-  OperatorParameterMetadata,
   EvaluatorNode,
 } from './exports/figTreeImport'
-import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './exports/JsonEditReactImport'
-import { Select, SelectOption } from './Select'
+import { CustomNodeProps } from './exports/JsonEditReactImport'
 import { Icons } from './Icons'
 import './styles.css'
-import {
-  getButtonFontSize,
-  getCurrentOperator,
-  getDefaultValue,
-  isCollection,
-  operatorStringRegex,
-} from './helpers'
-import { NodeTypeSelector } from './NodeTypeSelector'
-import { cleanOperatorNode, getAvailableProperties } from './validator'
+import { getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import { DisplayBar } from './Operator'
 
@@ -34,9 +21,8 @@ export interface OperatorProps {
 }
 
 export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const { data, parentData, nodeData, onEdit, customNodeProps, children, getStyles } = props
+  const { data, nodeData, customNodeProps, getStyles } = props
 
-  const { path } = nodeData
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
   const { figTree, evaluateNode } = customNodeProps
@@ -111,11 +97,7 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
 
   if (!figTree) return null
 
-  //   console.log(parentData)
-
   const operatorAlias = (key as string).slice(1)
-
-  console.log('operatorAlias', operatorAlias)
 
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 
@@ -157,20 +139,6 @@ export const ShorthandStringNode: React.FC<CustomNodeProps<OperatorProps>> = (pr
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 
   const { backgroundColor, textColor, displayName } = operatorDisplay[operatorData.name]
-
-  //   const expressionPath = path.slice(0, -1)
-  //   const operatorData = getCurrentOperator(
-  //     parentData.operator,
-  //     figTree.getOperators()
-  //   ) as OperatorMetadata
-  //   const thisOperator = data as OperatorAlias
-
-  //   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
-
-  //   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
-  //   const opDisplay = operatorDisplay[operatorData.name]
-
-  //   const fragments = figTree.getFragments()
 
   return (
     <div className="ft-shorthand-string">

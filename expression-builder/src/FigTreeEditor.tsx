@@ -149,17 +149,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             // backgroundColor: '#f6f6f6',
             // fontFamily: 'monospace',
           },
-          collection: (nodeData) => {
-            if (isFirstAliasNode(nodeData, allOpAliases, allFragments)) {
-              return { marginTop: '3em' }
-            }
-          },
+          // collection: (nodeData) => {
+          //   if (isFirstAliasNode(nodeData, allOpAliases, allFragments)) {
+          //     return { marginTop: '3em' }
+          //   }
+          // },
           property: (nodeData) => {
-            // console.log(key, parentData)
-            // if (!parentData) return
-            // if (isAliasNode(nodeData)) return { color: 'blue' }
-            if (isShorthandNode(nodeData.parentData)) return { display: 'none' }
-            if (isShorthandStringNode(nodeData.parentData)) return { display: 'none' }
+            // if (isShorthandNode(nodeData.parentData)) return { display: 'none' }
+            // if (isShorthandStringNode(nodeData.parentData)) return { display: 'none' }
             if (isAliasString(nodeData.key)) return { fontStyle: 'italic' }
           },
           string: ({ value }) => {
@@ -253,7 +250,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           // element: ShorthandNode,
           // customNodeProps: { figTree, isEvaluating, evaluateNode },
-          // hideKey: true,
+          hideKey: true,
           // showOnEdit: false,
           // showEditTools: false,
           // showInTypesSelector: true,
@@ -293,7 +290,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         },
         {
           condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
-          customNodeProps: { figTree, isEvaluating, evaluateNode },
+          // customNodeProps: { figTree, isEvaluating, evaluateNode },
           // hideKey: true,
           showOnEdit: true,
           // showEditTools: false,
