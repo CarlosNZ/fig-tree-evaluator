@@ -3,7 +3,7 @@
  */
 
 /* Local build */
-export * from '../package'
+// export * from '../package'
 
 /* Published package */
-// export * from 'json-edit-react'
+export * from 'json-edit-react'

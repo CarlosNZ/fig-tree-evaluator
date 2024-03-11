@@ -11,7 +11,7 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.7.2",
+    "json-edit-react": "^1.8.1",
     "object-property-extractor": "^1.0.10",
     "react-select": "^5.8.0"
   },

@@ -417,10 +417,10 @@ is-core-module@^2.13.0:
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
   integrity sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==
 
-json-edit-react@^1.7.2:
-  version "1.7.2"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.7.2.tgz#95139e8574d6f2c15d205574ea91f57c105f7997"
-  integrity sha512-TMw2/ClGRMAnIDwXimjXyovvTWtpFlswgv5qrCtztSdXNHsVyzMAIS7GwXGjG2hJw/Dbm9/qlQJrK+2+CEm8UQ==
+json-edit-react@^1.8.1:
+  version "1.8.1"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.8.1.tgz#51f4258acaba30bb28a8520a1a64913070a9b649"
+  integrity sha512-B+VULCJz8rmoWowOQDGOnu7q4Ty/SqdXe+r9YpyxOy7MHRIp7YEhvm5IWyDUnEHIROXw0vbA7G8S2yJXsi8lTQ==
   dependencies:
     json5 "^2.2.3"
     just-clone "^6.2.0"
