@@ -37,7 +37,6 @@ typings/
 #Misc
 .DS_Store
 
-# Duplicated source code for GUI app
 demo/src/fig-tree-evaluator
 demo/src/expression-builder
 expression-builder/src/fig-tree-evaluator
