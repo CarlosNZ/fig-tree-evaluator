@@ -3205,10 +3205,10 @@ object-keys@^1.1.1:
   resolved "https://registry.yarnpkg.com/object-keys/-/object-keys-1.1.1.tgz#1c47f272df277f3b1daf061677d9c82e2322c60e"
   integrity sha512-NuAESUOUMrlIXOfHKzD6bpPu3tYt3xvjNdRIQ+FeT0lNb4K8WR70CaDxhuNguS2XG+GjkyMwOzsN5ZktImfhLA==
 
-object-property-extractor@^1.0.10:
-  version "1.0.10"
-  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.10.tgz#970c04522b0d24cf1c059c333bd7144436318fa0"
-  integrity sha512-9zKpkfjUZMYSBnj95tFNR9hjCuiyeVKBCKB2KGG4Nj/BDY4IeE8NobN/4rO2v8sgnwXoKotTRtLyKbtlN2/JrQ==
+object-property-extractor@^1.0.11:
+  version "1.0.11"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.11.tgz#53cd9661266b4d6b5c7d32197b1824d2c5ecea60"
+  integrity sha512-VnDQcyN0FTXZ0hMZS/CTb2QkIssZ9XKB8zlf5rnFh1HjFQX1P73EHawavSztBOiPDGqAPNXebv4agjhF9eACAw==
 
 object-property-extractor@^1.0.7:
   version "1.0.7"
