@@ -43,7 +43,11 @@ export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) =
       <div
         className="ft-display-button"
         style={{ backgroundColor, color: textColor, width: 'unset' }}
-        onClick={() => evaluateNode(data)}
+        onClick={async () => {
+          setLoading(true)
+          await evaluateNode(data)
+          setLoading(false)
+        }}
       >
         {!loading ? (
           <>
@@ -89,7 +93,6 @@ export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) =
 export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
   children,
   nodeData: { key, parentData },
-  isEditing,
   customNodeProps,
 }) => {
   const { figTree, evaluateNode } = customNodeProps
@@ -98,6 +101,8 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
   if (!figTree) return null
 
   const operatorAlias = (key as string).slice(1)
+
+  console.log('operatorAlias', operatorAlias)
 
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 
@@ -145,7 +150,11 @@ export const ShorthandStringNode: React.FC<CustomNodeProps<OperatorProps>> = (pr
       <div
         className="ft-display-button"
         style={{ backgroundColor, color: textColor, width: 'unset' }}
-        onClick={() => evaluateNode(data)}
+        onClick={async () => {
+          setLoading(true)
+          await evaluateNode(data)
+          setLoading(false)
+        }}
       >
         {!loading ? (
           <>

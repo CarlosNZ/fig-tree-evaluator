@@ -105,9 +105,9 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
 
-  const isShorthandNode = (value) => shorthandNodeTester(value, allOpAliases, allFragments)
-  const isShorthandStringNode = (value) =>
-    shorthandStringNodeTester(value, allOpAliases, allFragments)
+  const isShorthandNode = (nodeData) => shorthandNodeTester(nodeData, allOpAliases, allFragments)
+  const isShorthandStringNode = (nodeData) =>
+    shorthandStringNodeTester(nodeData, allOpAliases, allFragments)
   const isShorthandString = (value) => shorthandStringTester(value, allOpAliases, allFragments)
 
   return (
@@ -187,7 +187,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           collectionInner: [
             nodeBaseStyles,
-            ({ collapsed, value }) => {
+            (nodeData) => {
+              const { value, collapsed, key } = nodeData
               // Rounded border for Operator/Fragment nodes
               if (
                 isObject(value) &&
@@ -245,8 +246,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           defaultValue: { fragment: fragments[0].name },
         },
         {
-          condition: ({ value, parentData }) => {
-            return isShorthandNode(parentData)
+          condition: (nodeData) => {
+            return isShorthandNode(nodeData)
           },
           // element: ShorthandNode,
           // customNodeProps: { figTree, isEvaluating, evaluateNode },
@@ -260,8 +261,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           wrapperProps: { figTree, isEvaluating, evaluateNode },
         },
         {
-          condition: ({ value, parentData }) => {
-            return isShorthandStringNode(value)
+          condition: (nodeData) => {
+            return isShorthandStringNode(nodeData)
           },
           element: ShorthandNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },

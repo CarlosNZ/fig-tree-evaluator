@@ -2,9 +2,6 @@ import {
   ExpectedType,
   standardiseOperatorName,
   OperatorMetadata,
-  preProcessShorthand,
-  isOperatorNode,
-  isFragmentNode,
   EvaluatorNode,
   isObject,
   isAliasString,
@@ -130,31 +127,26 @@ export const isCollection = (value: unknown): value is Record<string, unknown> |
   value !== null && typeof value === 'object'
 
 export const isShorthandNode = (
-  node: EvaluatorNode,
+  nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>
 ) => {
-  if (!isObject(node)) return false
-  const keys = Object.keys(node)
-  if (keys.length > 1) return false
+  const { parentData, key } = nodeData
+  if (!isObject(parentData)) return false
 
-  const shorthandKey = keys[0]
-  if (!isAliasString(shorthandKey)) return false
-
-  const alias = shorthandKey.slice(1)
-
-  if (!isCollection(node[shorthandKey as string])) return false
+  const alias = (key as string).slice(1)
 
   return allOperatorAliases.has(alias) || allFragments.has(alias)
 }
 
 export const isShorthandStringNode = (
-  node: EvaluatorNode,
+  nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>
 ) => {
-  if (!isObject(node)) return false
-  const keys = Object.keys(node)
+  const { parentData } = nodeData
+  if (!isObject(parentData)) return false
+  const keys = Object.keys(parentData)
   if (keys.length > 1) return false
 
   const shorthandKey = keys[0]
@@ -162,7 +154,7 @@ export const isShorthandStringNode = (
 
   const alias = shorthandKey.slice(1)
 
-  if (isCollection(node[shorthandKey as string])) return false
+  if (isCollection(parentData[shorthandKey as string])) return false
 
   return allOperatorAliases.has(alias) || allFragments.has(alias)
 }
@@ -188,8 +180,11 @@ export const isAliasNode = (
     isAliasString(key as string) &&
     parentData &&
     !('fragment' in parentData) &&
-    !isShorthandNode(parentData, allOperatorAliases, allFragments) &&
-    !isShorthandStringNode(parentData, allOperatorAliases, allFragments)
+    !allOperatorAliases.has(key) &&
+    !allFragments.has(key)
+    // !isShorthandNode(parentData, allOperatorAliases, allFragments)
+    // &&
+    // !isShorthandStringNode(parentData, allOperatorAliases, allFragments)
   )
 }
 
@@ -200,7 +195,10 @@ export const isFirstAliasNode = (
 ) => {
   if (!isAliasNode(nodeData, allOperatorAliases, allFragments)) return false
 
-  const { parentData, index } = nodeData
+  const { parentData, index, key } = nodeData
+  console.log(key, key === '$Test')
+
+  return key === '$Test'
   const nonAliasProperties = isObject(parentData)
     ? Object.keys(parentData).filter((k) => !isAliasString(k))
     : []

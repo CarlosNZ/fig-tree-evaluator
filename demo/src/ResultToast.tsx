@@ -42,8 +42,12 @@ export const ResultToast: React.FC<ResultProps> = ({ title, value, close }) => {
             <Text color="white">
               <strong>{String(title)}</strong>
             </Text>
-            <Text color="white" fontSize={text.length < 30 ? '120%' : undefined}>
-              {breakString(truncate(text, RESULT_TEXT_LIMIT))}
+            <Text
+              color="white"
+              whiteSpace="pre-wrap"
+              fontSize={text.length < 30 ? '120%' : undefined}
+            >
+              {truncate(text, RESULT_TEXT_LIMIT)}
             </Text>
           </Box>
         </HStack>
