@@ -183,14 +183,17 @@
 /* Shorthands */
 
 .ft-shorthand-wrapper {
+  /* border: 1px solid red; */
   position: relative;
 }
 
 .ft-shorthand-display-bar {
+  /* border: 1px solid blue; */
   padding-left: 1.5em;
 }
 
 .ft-shorthand-node {
+  /* border: 1px solid yellow; */
   position: relative;
   display: flex;
   align-items: center;
@@ -199,6 +202,7 @@
 }
 
 .ft-shorthand-string {
+  /* border: 1px solid green; */
   margin-left: -1em;
 }
 

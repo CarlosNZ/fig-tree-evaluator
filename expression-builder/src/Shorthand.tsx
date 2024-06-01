@@ -102,8 +102,6 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
 
   const operatorAlias = (key as string).slice(1)
 
-  console.log('operatorAlias', operatorAlias)
-
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 
   return (

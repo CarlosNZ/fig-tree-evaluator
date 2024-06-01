@@ -11,13 +11,15 @@
     "react-dom": "^18.2.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.9.3",
+    "json-edit-react": "^1.11.3",
     "object-property-extractor": "^1.0.11",
     "react-select": "^5.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.5.1",
     "@types/react": "^18.2.20",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.4",
     "ts-node": "^10.9.1",
     "tslib": "^2.6.2",
     "typescript": "^5.1.6"
