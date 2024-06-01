@@ -23,6 +23,7 @@ import {
   isShorthandString as shorthandStringTester,
   isShorthandStringNode as shorthandStringNodeTester,
   propertyCountReplace,
+  isCollection,
 } from './helpers'
 import { ShorthandNode, ShorthandNodeWrapper, ShorthandStringNode } from './Shorthand'
 
@@ -103,7 +104,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     setIsEvaluating(false)
   }
 
-  const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
+  // const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
 
   const isShorthandWrapper = (nodeData) =>
     shorthandWrapperTester(nodeData, allOpAliases, allFragments)
@@ -244,24 +245,25 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           showInTypesSelector: true,
           defaultValue: { fragment: fragments[0].name },
         },
-        // {
-        //   condition: (nodeData) => {
-        //     return isShorthandWrapper(nodeData)
-        //   },
-        //   // element: ShorthandNode,
-        //   // customNodeProps: { figTree, isEvaluating, evaluateNode },
-        //   hideKey: true,
-        //   // showOnEdit: false,
-        //   // showEditTools: false,
-        //   // showInTypesSelector: true,
-        //   // showCollectionWrapper: false,
-        //   // defaultValue: { fragment: fragments[0].name },
-        //   wrapperElement: ShorthandNodeWrapper,
-        //   wrapperProps: { figTree, isEvaluating, evaluateNode },
-        // },
         {
           condition: (nodeData) => {
-            return isShorthandNode(nodeData)
+            return isShorthandWrapper(nodeData)
+          },
+          // element: ShorthandNode,
+          // customNodeProps: { figTree, isEvaluating, evaluateNode },
+          hideKey: true,
+          // showOnEdit: false,
+          // showEditTools: false,
+          // showInTypesSelector: true,
+          // showCollectionWrapper: false,
+          // defaultValue: { fragment: fragments[0].name },
+          wrapperElement: ShorthandNodeWrapper,
+          wrapperProps: { figTree, isEvaluating, evaluateNode },
+        },
+        {
+          condition: (nodeData) => {
+            if (isShorthandNode(nodeData)) console.log(nodeData)
+            return isShorthandNode(nodeData) && !isCollection(Object.values(nodeData.value)[0])
           },
           element: ShorthandNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },

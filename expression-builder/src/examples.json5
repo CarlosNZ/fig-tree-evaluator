@@ -30,6 +30,10 @@
         operator: 'getData',
         property: 'user.lastName',
       },
+      {
+        operator: '+',
+        values: [2, 2],
+      },
     ],
   },
 ]

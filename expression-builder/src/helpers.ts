@@ -154,8 +154,6 @@ export const isShorthandNode = (
 
   const alias = shorthandKey.slice(1)
 
-  // if (isCollection(value[shorthandKey as string])) return false
-
   return allOperatorAliases.has(alias) || allFragments.has(alias)
 }
 

@@ -37,6 +37,8 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const availableProperties = getAvailableProperties(fragmentData, parentData as OperatorNode)
 
+  console.log('availableProperties', availableProperties)
+
   return (
     <div className="ft-custom ft-fragment">
       {isEditing ? (
