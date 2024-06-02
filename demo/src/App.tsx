@@ -16,15 +16,10 @@ import {
   useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import { FigTreeEvaluator, FigTreeOptions } from './fig-tree-evaluator/src'
-// import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
-// Enable instead temporarily when Dev has incompatible changes from Published
-// import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
-import { FigTreeEditor } from './expression-builder/src'
-// import { JsonEditor } from './package'
+import { FigTreeEvaluator, FigTreeOptions, FigTreeEditor } from './packageImports'
 import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
-import { getInitOptions, getInitCache } from './helpers'
+import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 import initData from './data/data.json'
 import { PostgresInterface } from './postgresInterface'
 import { ConfigState } from './types'
@@ -54,9 +49,7 @@ function App() {
     data: objectData,
     setData: setObjectData,
     UndoRedo: DataUndoRedo,
-    // setResetPoint: setDataResetPoint,
-    // reset: resetData,
-  } = useUndo(JSON.parse(localStorage.getItem('objectData')) ?? initData.objects)
+  } = useUndo(getLocalStorage('objectData') ?? initData.objects)
 
   const {
     data: expression,
@@ -64,7 +57,7 @@ function App() {
     UndoRedo: ExpressionUndoRedo,
     // setResetPoint: setExpressionResetPoint,
     // reset: resetExpression,
-  } = useUndo(JSON.parse(localStorage.getItem('expression')) ?? initData.expression)
+  } = useUndo(getLocalStorage('expression') ?? initData.expression)
 
   const toast = useToast()
 
@@ -72,8 +65,8 @@ function App() {
     const { objectData, expression } = demoData[selected]
     setObjectData(objectData)
     setExpression(expression as object)
-    localStorage.setItem('objectData', JSON.stringify(objectData))
-    localStorage.setItem('expression', JSON.stringify(expression))
+    setLocalStorage('objectData', objectData)
+    setLocalStorage('expression', expression as object)
     // TO-DO: Show information modal
   }
 

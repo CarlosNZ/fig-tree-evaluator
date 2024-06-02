@@ -27,7 +27,7 @@
     }
   },
   "expression": {
-    "operator": "+",
+    "operator": "+s",
     "values": [
       { "operator": "objectProperties", "property": "user.firstName" },
       " ",

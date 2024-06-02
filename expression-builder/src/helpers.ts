@@ -93,8 +93,11 @@ export const reservedProperties = [
 export const isArbitraryPropertyMarker = (propertyName: string) =>
   /^\[\s*\.\.\.[A-Za-z]+\s*\]$/gm.test(propertyName)
 
-export const operatorAcceptsArbitraryProperties = ({ parameters }: OperatorMetadata) =>
-  parameters.some((param) => isArbitraryPropertyMarker(param.name))
+export const operatorAcceptsArbitraryProperties = (opData: OperatorMetadata) => {
+  const { parameters } = opData
+  if (!parameters) return false
+  return parameters.some((param) => isArbitraryPropertyMarker(param.name))
+}
 
 export const getButtonFontSize = (operatorAlias: string) => {
   const charCount = operatorAlias.length

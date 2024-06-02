@@ -78,3 +78,13 @@ export const filterObjectRecursive = (
     .filter(([_, value]) => filterFunction(value)) as [key: string, value: any][]
   return Object.fromEntries(filtered)
 }
+
+export const getLocalStorage = (key: string) => {
+  const value = localStorage.getItem(key)
+  if (value) return JSON.parse(value)
+  return null
+}
+
+export const setLocalStorage = (key: string, value: object) => {
+  localStorage.setItem(key, JSON.stringify(value))
+}

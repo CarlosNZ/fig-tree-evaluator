@@ -49,9 +49,12 @@ export const validateExpression = (
       : currentMetaData.parameters.map((property) => property.name)
     : []
 
-  const acceptArbitraryProperties = isOperator
-    ? operatorAcceptsArbitraryProperties(currentMetaData as OperatorMetadata)
-    : false
+  if (isOperator && allPropertyAliases.length === 0) throw new Error('Invalid operator')
+
+  const acceptArbitraryProperties =
+    isOperator && currentMetaData?.parameters
+      ? operatorAcceptsArbitraryProperties(currentMetaData as OperatorMetadata)
+      : false
 
   const expressionEntries = Object.entries(expression)
 
@@ -154,7 +157,7 @@ export const getAvailableProperties = (
   metaData: OperatorMetadata | FragmentMetadata,
   node: OperatorNode
 ) => {
-  if (!metaData.parameters) return []
+  if (!metaData?.parameters) return []
   const allProperties = [...metaData.parameters, ...commonPropertyDetails]
   const currentProperties = Object.keys(node)
   return allProperties.filter((param) => !currentProperties.includes(param.name))

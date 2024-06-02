@@ -243,3 +243,8 @@
 .ft-rs-control {
   border: 2px solid red !important;
 }
+
+.ft-property-select {
+  font-size: 80%;
+  text-wrap: nowrap;
+}

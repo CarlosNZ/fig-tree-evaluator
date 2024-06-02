@@ -5,8 +5,8 @@ import {
   type FigTreeEvaluator,
   type Operator as OperatorName,
   isObject,
-  OperatorNode,
   isAliasString,
+  OperatorNode,
 } from './exports/figTreeImport'
 import { JsonEditor, JsonEditorProps, UpdateFunction } from './exports/JsonEditReactImport'
 import './styles.css'
@@ -16,7 +16,6 @@ import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import {
   getCurrentOperator,
-  isAliasNode as aliasNodeTester,
   isFirstAliasNode,
   isShorthandWrapper as shorthandWrapperTester,
   isShorthandNode as shorthandNodeTester,
@@ -52,8 +51,6 @@ interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
   operatorDisplay?: Partial<Record<OperatorName, OperatorDisplay>>
-
-  // TO-DO: Plus all other JSON EDIT REACT PROPS...
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
@@ -78,12 +75,24 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const allFragments = useMemo(() => new Set(fragments.map((f) => f.name)), [])
 
   const [expression, setExpression] = useState(
-    validateExpression(expressionInit, { operators, fragments })
+    (() => {
+      try {
+        return validateExpression(expressionInit, { operators, fragments })
+      } catch (err) {
+        console.log(`Error: ${err.message}`)
+        return {}
+      }
+    })()
   )
   const [isEvaluating, setIsEvaluating] = useState(false)
 
   useEffect(() => {
-    setExpression(validateExpression(expressionInit, { operators, fragments }))
+    try {
+      const exp = validateExpression(expressionInit, { operators, fragments })
+      setExpression(exp)
+    } catch {
+      // onUpdate('Invalid expression')
+    }
   }, [expressionInit])
 
   // const customFunctionData = operators.find(
@@ -120,9 +129,13 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       showCollectionCount="when-closed"
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
-        const validated = validateExpression(newData, { operators, fragments })
-        setExpression(validated)
-        onUpdate({ newData: validated, ...rest })
+        try {
+          const validated = validateExpression(newData, { operators, fragments })
+          setExpression(validated)
+          onUpdate({ newData: validated, ...rest })
+        } catch (err) {
+          return err.message
+        }
       }}
       restrictDelete={({ key, path }) => {
         // Unable to delete required properties
@@ -148,15 +161,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       {...props}
       theme={{
         styles: {
-          container: {
-            // backgroundColor: '#f6f6f6',
-            // fontFamily: 'monospace',
-          },
-          // collection: (nodeData) => {
-          //   if (isFirstAliasNode(nodeData, allOpAliases, allFragments)) {
-          //     return { marginTop: '3em' }
-          //   }
-          // },
+          container: {},
           property: (nodeData) => {
             // if (isShorthandNode(nodeData.parentData)) return { display: 'none' }
             // if (isShorthandStringNode(nodeData.parentData)) return { display: 'none' }
@@ -249,34 +254,16 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           condition: (nodeData) => {
             return isShorthandWrapper(nodeData)
           },
-          // element: ShorthandNode,
-          // customNodeProps: { figTree, isEvaluating, evaluateNode },
           hideKey: true,
-          // showOnEdit: false,
-          // showEditTools: false,
-          // showInTypesSelector: true,
-          // showCollectionWrapper: false,
-          // defaultValue: { fragment: fragments[0].name },
           wrapperElement: ShorthandNodeWrapper,
           wrapperProps: { figTree, isEvaluating, evaluateNode },
         },
         {
           condition: (nodeData) => {
-            if (isShorthandNode(nodeData)) console.log(nodeData)
             return isShorthandNode(nodeData) && !isCollection(Object.values(nodeData.value)[0])
           },
           element: ShorthandNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },
-          // hideKey: true,
-          // showOnEdit: false,
-          // showEditTools: false,
-          // showInTypesSelector: true,
-          // showCollectionWrapper: false,
-          // defaultValue: { fragment: fragments[0].name },
-          // wrapperElement: ({ children }) => (
-          //   <div>{children}</div>
-          // ),
-          // wrapperProps: { figTree, isEvaluating, evaluateNode },
         },
         {
           condition: ({ value }) => {
@@ -284,21 +271,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           element: ShorthandStringNode,
           customNodeProps: { figTree, isEvaluating, evaluateNode },
-          // hideKey: true,
-          // showOnEdit: false,
-          // showEditTools: false,
-          // showInTypesSelector: true,
-          // defaultValue: { fragment: fragments[0].name },
         },
         {
           condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
-          // customNodeProps: { figTree, isEvaluating, evaluateNode },
-          // hideKey: true,
           showOnEdit: true,
-          // showEditTools: false,
-          // showInTypesSelector: true,
-          // defaultValue: { fragment: fragments[0].name },
-          // showCollectionWrapper: false,
           wrapperElement: ({ children }) => (
             <div>
               <p className="ft-alias-header-text">

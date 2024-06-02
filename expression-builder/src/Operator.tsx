@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   CustomFunctionMetadata,
   FigTreeEvaluator,
@@ -49,11 +49,34 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   ) as OperatorMetadata
   const thisOperator = data as OperatorAlias
 
+  if (!operatorData) return null
+
   const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
 
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
 
   const fragments = figTree.getFragments()
+
+  const handleSubmit = () => {
+    setPrevState(parentData)
+    setIsEditing(false)
+  }
+
+  const handleCancel = () => {
+    onEdit(prevState, expressionPath)
+    setIsEditing(false)
+  }
+
+  const listenForSubmit = (e: any) => {
+    if (e.key === 'Enter') handleSubmit()
+    if (e.key === 'Escape') handleCancel()
+  }
+
+  useEffect(() => {
+    if (isEditing) document.addEventListener('keydown', listenForSubmit)
+    else document.removeEventListener('keydown', listenForSubmit)
+    return () => document.removeEventListener('keydown', listenForSubmit)
+  }, [isEditing])
 
   return (
     <div className="ft-custom ft-operator">
@@ -85,22 +108,10 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
               }
             />
           )}
-          <div
-            className="ft-okay-icon"
-            onClick={() => {
-              setPrevState(parentData)
-              setIsEditing(false)
-            }}
-          >
+          <div className="ft-okay-icon" onClick={handleSubmit}>
             <IconOk size="2em" style={{ color: 'green' }} />
           </div>
-          <div
-            className="ft-cancel-icon"
-            onClick={() => {
-              onEdit(prevState, expressionPath)
-              setIsEditing(false)
-            }}
-          >
+          <div className="ft-cancel-icon" onClick={handleCancel}>
             <IconCancel size="2.8em" style={{ color: 'rgb(203, 75, 22)' }} />
           </div>
         </div>

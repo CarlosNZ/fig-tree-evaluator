@@ -37,6 +37,7 @@ export const NodeTypeSelector: React.FC<{
       value={options.find((option) => option.value === value)}
       options={options}
       onChange={handleChange}
+      onKeyDown={(e) => console.log('SELECT Key', e.key)}
     />
   )
 }
