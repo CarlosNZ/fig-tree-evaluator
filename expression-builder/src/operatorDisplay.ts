@@ -1,4 +1,4 @@
-import { type Operator } from './exports/figTreeImport'
+import { type Operator } from './packages/figTreeImport'
 
 export interface OperatorDisplay {
   backgroundColor: string

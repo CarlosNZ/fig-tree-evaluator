@@ -5,8 +5,8 @@ import {
   isObject,
   isAliasString,
   OperatorAlias,
-} from './exports/figTreeImport'
-import { NodeData, isCollection } from './exports/JsonEditReactImport'
+} from './packages/figTreeImport'
+import { NodeData, isCollection } from './packages/JsonEditReactImport'
 import { NodeType } from './NodeTypeSelector'
 
 export const operatorStringRegex = /(\$[^()]+)\((.*)\)/
@@ -161,7 +161,7 @@ export const isShorthandStringNode = (
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>
 ) => {
-  const { parentData } = nodeData
+  const { parentData } = nodeData as { parentData: Record<string, unknown> }
   if (!isObject(parentData)) return false
   const keys = Object.keys(parentData)
   if (keys.length > 1) return false
@@ -171,7 +171,7 @@ export const isShorthandStringNode = (
 
   const alias = shorthandKey.slice(1)
 
-  if (isCollection(parentData[shorthandKey as string])) return false
+  if (isCollection(parentData?.[shorthandKey as string])) return false
 
   return allOperatorAliases.has(alias) || allFragments.has(alias)
 }

@@ -9,7 +9,8 @@ import {
   OperatorNode,
   FragmentNode,
   OperatorParameterMetadata,
-} from './exports/figTreeImport'
+  FragmentParameterMetadata,
+} from './packages/figTreeImport'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
 export const commonProperties = ['fallback', 'outputType', 'type', 'useCache']
@@ -24,7 +25,7 @@ export const validateExpression = (
     operators: readonly OperatorMetadata[]
     fragments: readonly FragmentMetadata[]
   }
-) => {
+): EvaluatorNode => {
   if (Array.isArray(expression))
     return expression.map((value) => validateExpression(value, figTreeMetaData))
 
@@ -40,7 +41,11 @@ export const validateExpression = (
     : undefined
 
   const requiredProperties = (
-    currentMetaData?.parameters ? currentMetaData.parameters.filter((param) => param.required) : []
+    currentMetaData?.parameters
+      ? (
+          currentMetaData.parameters as (OperatorParameterMetadata | FragmentParameterMetadata)[]
+        ).filter((param) => param.required)
+      : []
   ) as OperatorParameterMetadata[]
   const allPropertyAliases = currentMetaData?.parameters
     ? isOperator
@@ -158,7 +163,7 @@ const commonPropertyDetails = [
 // Returns a list of available properties for Operator or Fragment, excluding
 // ones already in use
 export const getAvailableProperties = (
-  metaData: OperatorMetadata | FragmentMetadata,
+  metaData: OperatorMetadata,
   node: OperatorNode | FragmentNode
 ) => {
   if (!metaData?.parameters) return []

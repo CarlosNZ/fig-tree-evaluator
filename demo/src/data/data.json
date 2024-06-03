@@ -27,11 +27,11 @@
     }
   },
   "expression": {
-    "operator": "+s",
+    "operator": "+",
     "values": [
-      { "operator": "objectProperties", "property": "user.firstName" },
+      { "operator": "getData", "property": "user.firstName" },
       " ",
-      { "operator": "objectProperties", "property": "user.lastName" }
+      { "operator": "getData", "property": "user.lastName" }
     ]
   },
   "fragments": {

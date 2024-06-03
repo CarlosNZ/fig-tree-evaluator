@@ -2,7 +2,7 @@
  * Quickly switch between importing from local src or installed package
  */
 
-/* Installed package */
+/* Published package */
 // export * from 'fig-tree-evaluator'
 
 /* Local src */

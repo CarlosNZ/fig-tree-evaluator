@@ -14,6 +14,7 @@ import {
   FragmentMetadata,
   CustomFunctionMetadata,
   OperatorParameterMetadata,
+  FragmentParameterMetadata,
 } from './types'
 import { GraphQLConnection } from './operators'
 import { preProcessShorthand } from './shorthandSyntax'
@@ -54,6 +55,7 @@ export {
   type FragmentMetadata,
   type CustomFunctionMetadata,
   type OperatorParameterMetadata,
+  type FragmentParameterMetadata,
   type GraphQLConnection,
   type BasicType,
   type LiteralType,

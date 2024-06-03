@@ -7,14 +7,15 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
-} from './exports/figTreeImport'
+} from './packages/figTreeImport'
 import {
   CustomNodeDefinition,
   JsonEditor,
   JsonEditorProps,
+  NodeData,
   UpdateFunction,
   isCollection,
-} from './exports/JsonEditReactImport'
+} from './packages/JsonEditReactImport'
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
@@ -83,7 +84,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     (() => {
       try {
         return validateExpression(expressionInit, { operators, fragments })
-      } catch (err) {
+      } catch (err: any) {
         console.log(`Error: ${err.message}`)
         return {}
       }
@@ -120,13 +121,15 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   // const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
 
-  const isShorthandWrapper = (nodeData) =>
+  const isShorthandWrapper = (nodeData: NodeData) =>
     shorthandWrapperTester(nodeData, allOpAliases, allFragments)
-  const isShorthandNode = (nodeData) => shorthandNodeTester(nodeData, allOpAliases, allFragments)
+  const isShorthandNode = (nodeData: NodeData) =>
+    shorthandNodeTester(nodeData, allOpAliases, allFragments)
 
-  const isShorthandStringNode = (nodeData) =>
+  const isShorthandStringNode = (nodeData: NodeData) =>
     shorthandStringNodeTester(nodeData, allOpAliases, allFragments)
-  const isShorthandString = (value) => shorthandStringTester(value, allOpAliases, allFragments)
+  const isShorthandString = (value: unknown) =>
+    shorthandStringTester(value, allOpAliases, allFragments)
 
   return (
     <JsonEditor
@@ -135,10 +138,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
         try {
-          const validated = validateExpression(newData, { operators, fragments })
+          const validated = validateExpression(newData, { operators, fragments }) as object
           setExpression(validated)
           onUpdate({ newData: validated, ...rest })
-        } catch (err) {
+        } catch (err: any) {
           return err.message
         }
       }}
@@ -187,7 +190,9 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           itemCount: ({ value }) => {
             if (
               isObject(value) &&
-              ('operator' in value || 'fragment' in value || isShorthandStringNode(value))
+              ('operator' in value ||
+                'fragment' in value ||
+                isShorthandStringNode(value as NodeData))
             )
               return { fontSize: '1.1em' }
           },

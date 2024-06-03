@@ -245,10 +245,11 @@ function App() {
           variant="filled"
           backgroundColor="gray.50"
           maxW={300}
-          // placeholder="Select"
+          // placeholder="Select an option"
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
+          value="Select"
         >
-          <option value="" disabled>
+          <option value="Select" disabled>
             Select an option
           </option>
           {demoData.map((data, index) => (

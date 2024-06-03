@@ -7,8 +7,9 @@ import {
   OperatorNode,
   OperatorParameterMetadata,
   EvaluatorNode,
-} from './exports/figTreeImport'
-import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './exports/JsonEditReactImport'
+  type Operator as OpType,
+} from './packages/figTreeImport'
+import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './packages/JsonEditReactImport'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 import './styles.css'
@@ -149,7 +150,7 @@ interface DisplayBarProps {
   setIsEditing: () => void
   evaluate: () => void
   isLoading: boolean
-  canonicalName: string
+  canonicalName: OpType | 'FRAGMENT'
 }
 
 export const DisplayBar: React.FC<DisplayBarProps> = ({
@@ -157,7 +158,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   setIsEditing,
   evaluate,
   isLoading,
-  canonicalName = 'fragments',
+  canonicalName,
 }) => {
   const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
   const isShorthand = name.startsWith('$')
@@ -234,7 +235,7 @@ export const PropertySelector: React.FC<{
     value: property,
   }))
 
-  const handleAddProperty = (selected) => {
+  const handleAddProperty = (selected: OperatorParameterMetadata) => {
     updateNode({ [selected.name]: selected.default ?? getDefaultValue(selected.type) })
   }
 
@@ -244,7 +245,9 @@ export const PropertySelector: React.FC<{
       options={propertyOptions}
       value={null}
       placeholder="Add property"
-      onChange={(selected) => handleAddProperty((selected as SelectOption).value)}
+      onChange={(selected) =>
+        handleAddProperty((selected as { label: string; value: OperatorParameterMetadata }).value)
+      }
     />
   )
 }

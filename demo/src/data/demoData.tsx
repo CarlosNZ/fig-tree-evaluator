@@ -1,4 +1,5 @@
 import { EvaluatorNode } from 'fig-tree-evaluator'
+import data from './data.json'
 
 interface DemoData {
   name: string
@@ -8,6 +9,12 @@ interface DemoData {
 }
 
 export const demoData: DemoData[] = [
+  {
+    name: 'Basic data fetching',
+    description: <p>TO DO</p>,
+    objectData: data.objects,
+    expression: data.expression,
+  },
   {
     name: 'Decision Tree',
     description: <p>Test</p>,

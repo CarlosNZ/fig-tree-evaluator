@@ -1,6 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode } from './exports/figTreeImport'
-import { CustomNodeProps, IconOk, IconCancel } from './exports/JsonEditReactImport'
+import {
+  FigTreeEvaluator,
+  FragmentMetadata,
+  FragmentNode,
+  OperatorMetadata,
+} from './packages/figTreeImport'
+import { CustomNodeProps, IconOk, IconCancel } from './packages/JsonEditReactImport'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
@@ -30,7 +35,10 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
-  const availableProperties = getAvailableProperties(fragmentData, parentData as FragmentNode)
+  const availableProperties = getAvailableProperties(
+    fragmentData as OperatorMetadata,
+    parentData as FragmentNode
+  )
 
   const handleSubmit = () => {
     setPrevState(parentData)
