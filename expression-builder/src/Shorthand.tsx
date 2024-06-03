@@ -21,7 +21,8 @@ export interface OperatorProps {
 }
 
 export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const { data, nodeData, customNodeProps, getStyles } = props
+  const { data: d, nodeData, customNodeProps, getStyles } = props
+  const data = d as Record<string, string>
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
@@ -71,14 +72,7 @@ export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) =
           </div>
         )}
       </div>
-      <div
-        // onDoubleClick={() => setIsEditing(true)}
-        // onClick={(e) => {
-        //   if (e.getModifierState('Control') || e.getModifierState('Meta')) setIsEditing(true)
-        // }}
-        className="jer-value-string"
-        style={getStyles('string', nodeData)}
-      >
+      <div className="jer-value-string" style={getStyles('string', nodeData)}>
         &quot;{data[property]}&quot;
       </div>
       <div className="ft-display-name">
@@ -95,7 +89,9 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
   nodeData: { key, parentData },
   customNodeProps,
 }) => {
-  const { figTree, evaluateNode } = customNodeProps
+  const { figTree, evaluateNode } = customNodeProps ?? {}
+  if (!figTree || !evaluateNode) return null
+
   const [loading, setLoading] = useState(false)
 
   if (!figTree) return null
@@ -125,19 +121,20 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
 }
 
 export const ShorthandStringNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const { data, parentData, nodeData, onEdit, customNodeProps } = props
+  const { data: d, customNodeProps } = props
+
+  const data = d as string
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
   const { figTree, evaluateNode } = customNodeProps
-  //   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
 
   if (!figTree) return null
 
   const property = data.match(operatorStringRegex)
 
-  const operatorAlias = property[1].slice(1)
+  const operatorAlias = property?.[1].slice(1)
 
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 

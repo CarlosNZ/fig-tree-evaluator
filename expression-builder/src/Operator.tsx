@@ -16,6 +16,7 @@ import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helper
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
 import { operatorDisplay } from './operatorDisplay'
+import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
@@ -44,7 +45,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(
-    parentData.operator,
+    (parentData as OperatorNode).operator,
     figTree.getOperators()
   ) as OperatorMetadata
   const thisOperator = data as OperatorAlias
@@ -67,7 +68,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     setIsEditing(false)
   }
 
-  const listenForSubmit = (e: any) => {
+  const listenForSubmit = (e: KeyboardEvent) => {
     if (e.key === 'Enter') handleSubmit()
     if (e.key === 'Escape') handleCancel()
   }
@@ -133,7 +134,6 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           value={(parentData as OperatorNode)?.functionPath as string}
           functions={figTree.getCustomFunctions()}
           updateNode={(functionPath, numArgs) => {
-            console.log(functionPath, numArgs)
             const newNode = { ...parentData, functionPath } as Record<string, unknown>
             if (numArgs) newNode.args = new Array(numArgs).fill(null)
             onEdit(newNode, expressionPath)
@@ -226,7 +226,7 @@ const OperatorSelector: React.FC<{
 }
 
 export const PropertySelector: React.FC<{
-  availableProperties: OperatorParameterMetadata[]
+  availableProperties: OperatorParameterMetadata[] | FragmentParameterMetadata[]
   updateNode: (newField: any) => void
 }> = ({ availableProperties, updateNode }) => {
   const propertyOptions = availableProperties.map((property) => ({
@@ -272,16 +272,15 @@ export const FunctionSelector: React.FC<{
         value={functionOptions.find((option) => value === option.value)}
         options={functionOptions}
         placeholder="Select function"
-        onChange={handleFunctionSelect}
+        onChange={handleFunctionSelect as (s: unknown) => void}
       />
     </div>
   )
 }
 
 export interface DropdownOption {
-  key: string
-  value: string
-  text: string
+  label: string
+  options: { value: string; label: string }[]
 }
 
 const getOperatorOptions = (operators: readonly OperatorMetadata[]) => {

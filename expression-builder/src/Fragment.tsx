@@ -1,16 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import {
-  FigTreeEvaluator,
-  FragmentMetadata,
-  FragmentNode,
-  OperatorNode,
-} from './exports/figTreeImport'
+import { FigTreeEvaluator, FragmentMetadata, FragmentNode } from './exports/figTreeImport'
 import { CustomNodeProps, IconOk, IconCancel } from './exports/JsonEditReactImport'
 import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
+import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
@@ -34,7 +30,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
-  const availableProperties = getAvailableProperties(fragmentData, parentData as OperatorNode)
+  const availableProperties = getAvailableProperties(fragmentData, parentData as FragmentNode)
 
   const handleSubmit = () => {
     setPrevState(parentData)
@@ -46,7 +42,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     setIsEditing(false)
   }
 
-  const listenForSubmit = (e: any) => {
+  const listenForSubmit = (e: KeyboardEvent) => {
     if (e.key === 'Enter') handleSubmit()
     if (e.key === 'Escape') handleCancel()
   }
@@ -74,7 +70,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           />
           {availableProperties.length > 0 && (
             <PropertySelector
-              availableProperties={availableProperties}
+              availableProperties={availableProperties as FragmentParameterMetadata[]}
               updateNode={(newProperty) =>
                 onEdit({ ...parentData, ...newProperty }, expressionPath)
               }

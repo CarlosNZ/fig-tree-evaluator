@@ -17,7 +17,7 @@ const Select: React.FC<Props> = <
   styles = {},
   ...props
 }: Props<Option, IsMulti, Group>) => {
-  const { control = {}, input = {} } = styles as Record<string, React.CSSProperties>
+  const { control = {} } = styles as Record<string, React.CSSProperties>
   return (
     <ReactSelect
       value={value}

@@ -7,6 +7,8 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
+  FragmentNode,
+  OperatorParameterMetadata,
 } from './exports/figTreeImport'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
@@ -32,14 +34,14 @@ export const validateExpression = (
   const isFragment = isFragmentNode(expression)
 
   const currentMetaData = isOperator
-    ? getCurrentOperator(expression?.operator, figTreeMetaData.operators)
+    ? getCurrentOperator((expression as OperatorNode)?.operator, figTreeMetaData.operators)
     : isFragment
     ? figTreeMetaData.fragments.find((frag) => frag.name === expression.fragment)
     : undefined
 
-  const requiredProperties = currentMetaData?.parameters
-    ? currentMetaData.parameters.filter((param) => param.required)
-    : []
+  const requiredProperties = (
+    currentMetaData?.parameters ? currentMetaData.parameters.filter((param) => param.required) : []
+  ) as OperatorParameterMetadata[]
   const allPropertyAliases = currentMetaData?.parameters
     ? isOperator
       ? (currentMetaData as OperatorMetadata).parameters.reduce(
@@ -104,7 +106,9 @@ export const validateExpression = (
         (prop.aliases ?? []).every((alias) => !currentKeys.includes(alias))
     )
     newExpression.push(
-      ...missingRequired.map((prop) => [prop.name, prop.default ?? getDefaultValue(prop.type)])
+      ...missingRequired.map(
+        (prop) => [prop.name, prop.default ?? getDefaultValue(prop.type)] as [string, unknown]
+      )
     )
   }
 
@@ -155,7 +159,7 @@ const commonPropertyDetails = [
 // ones already in use
 export const getAvailableProperties = (
   metaData: OperatorMetadata | FragmentMetadata,
-  node: OperatorNode
+  node: OperatorNode | FragmentNode
 ) => {
   if (!metaData?.parameters) return []
   const allProperties = [...metaData.parameters, ...commonPropertyDetails]

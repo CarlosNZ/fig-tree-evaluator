@@ -6,7 +6,7 @@ import {
   isAliasString,
   OperatorAlias,
 } from './exports/figTreeImport'
-import { NodeData } from './exports/JsonEditReactImport'
+import { NodeData, isCollection } from './exports/JsonEditReactImport'
 import { NodeType } from './NodeTypeSelector'
 
 export const operatorStringRegex = /(\$[^()]+)\((.*)\)/
@@ -125,10 +125,6 @@ export const propertyCountReplace = (
   return null
 }
 
-// TO-DO: Replace with exported one from jer
-export const isCollection = (value: unknown): value is Record<string, unknown> | unknown[] =>
-  value !== null && typeof value === 'object'
-
 export const isShorthandWrapper = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
@@ -197,15 +193,13 @@ export const isAliasNode = (
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>
 ) => {
+  const keyString = key as string
   return (
-    isAliasString(key as string) &&
+    isAliasString(keyString) &&
     parentData &&
     !('fragment' in parentData) &&
-    !allOperatorAliases.has(key) &&
-    !allFragments.has(key)
-    // !isShorthandNode(parentData, allOperatorAliases, allFragments)
-    // &&
-    // !isShorthandStringNode(parentData, allOperatorAliases, allFragments)
+    !allOperatorAliases.has(keyString) &&
+    !allFragments.has(keyString)
   )
 }
 
@@ -216,7 +210,7 @@ export const isFirstAliasNode = (
 ) => {
   if (!isAliasNode(nodeData, allOperatorAliases, allFragments)) return false
 
-  const { parentData, index, key } = nodeData
+  const { parentData, index } = nodeData
 
   const nonAliasProperties = isObject(parentData)
     ? Object.keys(parentData).filter((k) => !isAliasString(k))

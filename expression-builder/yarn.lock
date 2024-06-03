@@ -1955,10 +1955,10 @@ jsesc@^2.5.1:
   resolved "https://registry.yarnpkg.com/jsesc/-/jsesc-2.5.2.tgz#80564d2e483dacf6e8ef209650a67df3f0c283a4"
   integrity sha512-OYu7XEzjkCQ3C5Ps3QIZsQfNpqoJyZZA99wd9aWd05NCtC5pWOkShK2mkL6HXQR6/Cy2lbNdPlZBpuQHXE63gA==
 
-json-edit-react@^1.11.3:
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.11.3.tgz#80edc1edd07051753324e1624e6a1cf628d9708c"
-  integrity sha512-TEQaKPwkwagrtoTCKzrwbURC2D/03xPCoZ9FbcRbaGP0y9dASiR54r7XMUJdw7t/3cjZYK/TKF+dyzZnm0d07g==
+json-edit-react@^1.11.6:
+  version "1.11.6"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.11.6.tgz#cdfe4905afc30bc14cbc06f82c5e6c1ec51e5e66"
+  integrity sha512-5TkPJ5RDKxekbXnq4psD8YxuOuDR29j9j6fEyC6IwduTQFp/b6BzMq9p7pSV48m7GAcUzp47Q9ymn2TM/2ub9Q==
   dependencies:
     json5 "^2.2.3"
     just-clone "^6.2.0"
