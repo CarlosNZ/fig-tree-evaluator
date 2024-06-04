@@ -58,12 +58,7 @@ export interface QueryInput {
   resultType?: ResultType
 }
 
-export type QueryOutput =
-  | Record<string, unknown>[]
-  | Array<unknown>[]
-  | string
-  | number
-  | { error: string }
+export type QueryOutput = Record<string, unknown>[] | Array<unknown>[] | string | number
 export interface SQLConnection {
   query: (input: QueryInput) => Promise<QueryOutput>
 }

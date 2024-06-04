@@ -30,6 +30,8 @@
     "rollup-plugin-dts": "^6.0.2",
     "rollup-plugin-sizes": "^1.0.5",
     "rollup-plugin-terser": "^7.0.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.8.0",
     "tslib": "^2.6.2",

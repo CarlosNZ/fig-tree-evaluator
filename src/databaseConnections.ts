@@ -5,7 +5,10 @@
 import { Client, QueryResult } from 'pg'
 import { QueryInput, QueryOutput } from './operators'
 
-// Postgres (using node-postgres)
+/**
+ * Postgres (using node-postgres)
+ * https://www.npmjs.com/package/pg
+ */
 
 export const SqlNodePostgres = (client: Client) => {
   const query = async ({ text, values, resultType }: QueryInput): Promise<QueryOutput> => {
@@ -34,4 +37,13 @@ export const SqlNodePostgres = (client: Client) => {
   }
 
   return { query }
+}
+
+/**
+ * SQLite (using sqlite/sqlite3)
+ * https://www.npmjs.com/package/sqlite
+ */
+
+export const SQLite = () => {
+  //
 }
