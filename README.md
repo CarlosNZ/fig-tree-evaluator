@@ -1179,9 +1179,9 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 #### Properties
 
 - `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
-- `values` (or `replacements`): (array) -- replacements for the `query` parameters
-- `type` (or `queryType`): (`"array" | "string" | "number"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
-  > By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.  
+- `values` (or `replacements`): (array / object) -- replacements for the `query` parameters
+- `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
+- `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
   We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
 

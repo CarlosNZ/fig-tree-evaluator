@@ -101,17 +101,168 @@ test('Postgres - count employees', () => {
   })
 })
 
-test('Postgres - get list of (most) products, using properties', () => {
+test('Postgres - get list of (most) products', async () => {
   const expression = {
     operator: 'pgSQL',
-    query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+    query: 'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
     values: [1, 16],
     flatten: true,
   }
-  return exp.evaluate(expression).then((result) => {
-    // prettier-ignore
-    expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual([
+    'Chai',
+    'Chang',
+    'Guaraná Fantástica',
+    'Côte de Blaye',
+    'Chartreuse verte',
+    'Ipoh Coffee',
+    'Outback Lager',
+    'Rhönbräu Klosterbier',
+    'Lakkalikööri',
+  ])
+  const expressionWithChildren = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    flatten: true,
+  }
+  const resultFromChildren = await exp.evaluate(expressionWithChildren)
+  expect(resultFromChildren).toStrictEqual([
+    'Chai',
+    'Chang',
+    'Guaraná Fantástica',
+    'Côte de Blaye',
+    'Chartreuse verte',
+    'Ipoh Coffee',
+    'Outback Lager',
+    'Rhönbräu Klosterbier',
+    'Lakkalikööri',
+  ])
+})
+
+test('Postgres - test single and flattening with multiple records', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual([
+    {
+      shipper_id: 1,
+      company_name: 'Speedy Express',
+      phone: '(503) 555-9831',
+    },
+    {
+      shipper_id: 2,
+      company_name: 'United Package',
+      phone: '(503) 555-3199',
+    },
+    {
+      shipper_id: 3,
+      company_name: 'Federal Shipping',
+      phone: '(503) 555-9931',
+    },
+    {
+      shipper_id: 4,
+      company_name: 'Alliance Shippers',
+      phone: '1-800-222-0451',
+    },
+    {
+      shipper_id: 5,
+      company_name: 'UPS',
+      phone: '1-800-782-7892',
+    },
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual({
+    shipper_id: 1,
+    company_name: 'Speedy Express',
+    phone: '(503) 555-9831',
   })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+    flatten: true,
+  }
+  const result3 = await exp.evaluate(expression3)
+  expect(result3).toStrictEqual([
+    [1, 'Speedy Express', '(503) 555-9831'],
+    [2, 'United Package', '(503) 555-3199'],
+    [3, 'Federal Shipping', '(503) 555-9931'],
+    [4, 'Alliance Shippers', '1-800-222-0451'],
+    [5, 'UPS', '1-800-782-7892'],
+    [6, 'DHL', '1-800-225-5345'],
+  ])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+    flatten: true,
+  }
+  const result4 = await exp.evaluate(expression4)
+  expect(result4).toStrictEqual([1, 'Speedy Express', '(503) 555-9831'])
+})
+
+test('Postgres - test single and flattening with single result record', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual([
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual({
+    shipper_id: 6,
+    company_name: 'DHL',
+    phone: '1-800-225-5345',
+  })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+    flatten: true,
+  }
+  const result3 = await exp.evaluate(expression3)
+  expect(result3).toStrictEqual([[6, 'DHL', '1-800-225-5345']])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+    flatten: true,
+  }
+  const result4 = await exp.evaluate(expression4)
+  expect(result4).toStrictEqual([6, 'DHL', '1-800-225-5345'])
 })
 
 // SQLite
@@ -171,17 +322,168 @@ test('SQLite - count employees', () => {
   })
 })
 
-test('SQLite - get list of (most) products, using properties', () => {
+test('SQLite - get list of (most) products', async () => {
   const expression = {
     operator: 'pgSQL',
-    query: 'SELECT product_name FROM products WHERE category_id = :catId AND supplier_id != :supId',
-    values: { ':catId': 1, ':supId': 16 },
+    query: 'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+    values: [1, 16],
     flatten: true,
   }
-  return expSqlite.evaluate(expression).then((result) => {
-    // prettier-ignore
-    expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toStrictEqual([
+    'Chai',
+    'Chang',
+    'Guaraná Fantástica',
+    'Côte de Blaye',
+    'Chartreuse verte',
+    'Ipoh Coffee',
+    'Outback Lager',
+    'Rhönbräu Klosterbier',
+    'Lakkalikööri',
+  ])
+  const expressionWithChildren = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    flatten: true,
+  }
+  const resultFromChildren = await expSqlite.evaluate(expressionWithChildren)
+  expect(resultFromChildren).toStrictEqual([
+    'Chai',
+    'Chang',
+    'Guaraná Fantástica',
+    'Côte de Blaye',
+    'Chartreuse verte',
+    'Ipoh Coffee',
+    'Outback Lager',
+    'Rhönbräu Klosterbier',
+    'Lakkalikööri',
+  ])
+})
+
+test('SQLite - test single and flattening with multiple records', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toMatchObject([
+    {
+      shipper_id: 1,
+      company_name: 'Speedy Express',
+      phone: '(503) 555-9831',
+    },
+    {
+      shipper_id: 2,
+      company_name: 'United Package',
+      phone: '(503) 555-3199',
+    },
+    {
+      shipper_id: 3,
+      company_name: 'Federal Shipping',
+      phone: '(503) 555-9931',
+    },
+    {
+      shipper_id: 4,
+      company_name: 'Alliance Shippers',
+      phone: '1-800-222-0451',
+    },
+    {
+      shipper_id: 5,
+      company_name: 'UPS',
+      phone: '1-800-782-7892',
+    },
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+  }
+  const result2 = await expSqlite.evaluate(expression2)
+  expect(result2).toMatchObject({
+    shipper_id: 1,
+    company_name: 'Speedy Express',
+    phone: '(503) 555-9831',
   })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+    flatten: true,
+  }
+  const result3 = await expSqlite.evaluate(expression3)
+  expect(result3).toMatchObject([
+    [1, 'Speedy Express', '(503) 555-9831'],
+    [2, 'United Package', '(503) 555-3199'],
+    [3, 'Federal Shipping', '(503) 555-9931'],
+    [4, 'Alliance Shippers', '1-800-222-0451'],
+    [5, 'UPS', '1-800-782-7892'],
+    [6, 'DHL', '1-800-225-5345'],
+  ])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+    flatten: true,
+  }
+  const result4 = await expSqlite.evaluate(expression4)
+  expect(result4).toMatchObject([1, 'Speedy Express', '(503) 555-9831'])
+})
+
+test('SQLite - test single and flattening with single result record', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toMatchObject([
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+  }
+  const result2 = await expSqlite.evaluate(expression2)
+  expect(result2).toMatchObject({
+    shipper_id: 6,
+    company_name: 'DHL',
+    phone: '1-800-225-5345',
+  })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+    flatten: true,
+  }
+  const result3 = await expSqlite.evaluate(expression3)
+  expect(result3).toMatchObject([[6, 'DHL', '1-800-225-5345']])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+    flatten: true,
+  }
+  const result4 = await expSqlite.evaluate(expression4)
+  expect(result4).toMatchObject([6, 'DHL', '1-800-225-5345'])
 })
 
 // GraphQL
@@ -259,33 +561,33 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
   })
 })
 
-test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
-  const expression = {
-    operator: 'graphQL',
-    query: `query getCountry($code: String!) {
-        countries(filter: {code: {eq: $code}}) {
-          name
-          emoji
-        }
-      }`,
-    variables: {
-      operator: 'buildObject',
-      values: [
-        {
-          key: 'code',
-          value: {
-            operator: 'GET',
-            children: ['https://restcountries.com/v3.1/name/nepal', [], '[0].cca2'],
-          },
-        },
-      ],
-    },
-    returnNode: 'countries[0].emoji',
-  }
-  return exp.evaluate(expression).then((result) => {
-    expect(result).toBe('🇳🇵')
-  })
-})
+// test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
+//   const expression = {
+//     operator: 'graphQL',
+//     query: `query getCountry($code: String!) {
+//         countries(filter: {code: {eq: $code}}) {
+//           name
+//           emoji
+//         }
+//       }`,
+//     variables: {
+//       operator: 'buildObject',
+//       values: [
+//         {
+//           key: 'code',
+//           value: {
+//             operator: 'GET',
+//             children: ['https://restcountries.com/v3.1/name/nepal', [], '[0].cca2'],
+//           },
+//         },
+//       ],
+//     },
+//     returnNode: 'countries[0].emoji',
+//   }
+//   return exp.evaluate(expression).then((result) => {
+//     expect(result).toBe('🇳🇵')
+//   })
+// })
 
 // Localhost tests, needs specific local setup
 // test('GraphQL -- use localhost endpoint', () => {

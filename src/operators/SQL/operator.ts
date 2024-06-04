@@ -8,7 +8,6 @@ import {
   EvaluatorOutput,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
-import { isObject } from '../../helpers'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
   const [query, values, single, flatten, useCache] = (await evaluateArray(
@@ -36,19 +35,18 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     const result = config.cache.useCache(
       shouldUseCache,
       async (query: string, values?: (string | number)[], single?: boolean, flatten?: boolean) => {
-        const result = ((await connection.query({ query, values, single, flatten })) ||
-          []) as Record<string, QueryOutput>[]
-        const returnValue = (single ? result[0] : result) ?? null
-        if (flatten) {
-          if (returnValue === null) return returnValue
-          if (isObject(returnValue))
-            return single ? Object.values(returnValue)[0] : Object.values(returnValue)
-          if (Array.isArray(returnValue))
-            return (returnValue as unknown[])
-              .map((el) => (isObject(el) ? Object.values(el) : el))
-              .flat()
-        }
-        return returnValue
+        const result = ((await connection.query({ query, values })) || []) as Record<
+          string,
+          QueryOutput
+        >[]
+        const structured = flatten
+          ? result.map((record) => {
+              const vals = Object.values(record)
+              return vals.length <= 1 ? vals[0] : vals
+            })
+          : result
+
+        return single ? structured[0] : structured
       },
       query,
       values,

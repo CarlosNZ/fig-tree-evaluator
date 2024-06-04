@@ -71,6 +71,7 @@ export const operatorAliases: OperatorAliases = {
   pg: 'SQL',
   sqLite: 'SQL',
   sqlite: 'SQL',
+  mySql: 'SQL',
   graphQl: 'GRAPHQL',
   graphql: 'GRAPHQL',
   gql: 'GRAPHQL',

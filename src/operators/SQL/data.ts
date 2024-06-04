@@ -28,9 +28,8 @@ const parameters: Parameter[] = [
   },
   {
     name: 'flatten',
-    description:
-      'Specify whether to flatten resulting object to an array of values (use in conjunction with "single")',
-    aliases: ['flat'],
+    description: 'Specify whether to flatten resulting record objects to arrays of values',
+    aliases: ['flat', 'array'],
     required: false,
     type: 'boolean',
   },
