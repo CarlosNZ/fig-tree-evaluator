@@ -2,34 +2,58 @@ import 'dotenv/config'
 import { FigTreeEvaluator } from './evaluator'
 import { Client } from 'pg'
 import pgConfig from './database/pgConfig.json'
-import { SqlNodePostgres } from '../src/databaseConnections'
+import { SQLNodePostgres } from '../src/databaseConnections'
+import sqlite3 from 'sqlite3'
+import { open, Database } from 'sqlite'
+import { SQLite } from '../src/databaseConnections'
 
-// Postgres tests require a copy of the Northwind database to be running
-// locally, with configuration defined in ./postgres/pgConfig.json. Initialise
+// SQL tests require a copy of the Northwind database to be running
+// locally, with configuration defined in ./database/pgConfig.json. Initialise
 // the Northwind DB using the "northwind.sql" script.
 
 const pgConnect = new Client(pgConfig)
 
 pgConnect.connect()
 
+let db: Database
+let expSqlite: FigTreeEvaluator
+
+const initialiseSqlLite = async () => {
+  db = await open({
+    filename: './test/database/northwind.sqlite',
+    driver: sqlite3.Database,
+  })
+
+  expSqlite = new FigTreeEvaluator({
+    sqlConnection: SQLite(db),
+    graphQLConnection: {
+      endpoint: 'https://countries.trevorblades.com/',
+    },
+  })
+}
+
+beforeAll(async () => {
+  return initialiseSqlLite()
+})
+
 const exp = new FigTreeEvaluator({
-  sqlConnection: SqlNodePostgres(pgConnect),
+  sqlConnection: SQLNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
 })
 
-// SQL
+// SQL -- Postgres
 
-test('Postgres - lookup single string', () => {
+test('Postgres - lookup single string', async () => {
   const expression = {
     operator: 'postgres',
     children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
-    type: 'string',
+    single: true,
+    flatten: true,
   }
-  return exp.evaluate(expression).then((result) => {
-    expect(result).toBe('Aria Cruz')
-  })
+  const result = await exp.evaluate(expression)
+  expect(result).toBe('Aria Cruz')
 })
 
 test('Postgres - get an array of Orders using var substitution', () => {
@@ -68,6 +92,8 @@ test('Postgres - count employees', () => {
   const expression = {
     operator: 'postgres',
     children: ['SELECT COUNT(*) FROM employees'],
+    single: true,
+    flatten: true,
     type: 'number',
   }
   return exp.evaluate(expression).then((result) => {
@@ -80,9 +106,79 @@ test('Postgres - get list of (most) products, using properties', () => {
     operator: 'pgSQL',
     query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
     values: [1, 16],
-    type: 'array',
+    flatten: true,
   }
   return exp.evaluate(expression).then((result) => {
+    // prettier-ignore
+    expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
+  })
+})
+
+// SQLite
+
+test('SQLite - lookup single string', async () => {
+  const expression = {
+    operator: 'postgres',
+    children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
+    single: true,
+    flatten: true,
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toBe('Aria Cruz')
+})
+
+test('SQLite - get an array of Orders using var substitution', async () => {
+  const expression = {
+    operator: 'pg',
+    children: [
+      'SELECT order_id, order_date, ship_city, ship_country FROM orders WHERE customer_id = ? AND order_id < 10500;',
+      'FAMIA',
+    ],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toEqual([
+    {
+      order_id: 10347,
+      order_date: '1996-11-06',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+    {
+      order_id: 10386,
+      order_date: '1996-12-18',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+    {
+      order_id: 10414,
+      order_date: '1997-01-14',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+  ])
+})
+
+test('SQLite - count employees', () => {
+  const expression = {
+    operator: 'postgres',
+    children: ['SELECT COUNT(*) FROM employees'],
+    single: true,
+    flatten: true,
+    type: 'number',
+  }
+  return expSqlite.evaluate(expression).then((result) => {
+    expect(result).toBe(9)
+  })
+})
+
+test('SQLite - get list of (most) products, using properties', () => {
+  const expression = {
+    operator: 'pgSQL',
+    query: 'SELECT product_name FROM products WHERE category_id = :catId AND supplier_id != :supId',
+    values: { ':catId': 1, ':supId': 16 },
+    flatten: true,
+  }
+  return expSqlite.evaluate(expression).then((result) => {
     // prettier-ignore
     expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
   })

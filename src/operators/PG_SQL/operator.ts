@@ -1,20 +1,30 @@
 import { getTypeCheckInput } from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
-import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import {
+  EvaluatorNode,
+  OperatorObject,
+  EvaluateMethod,
+  ParseChildrenMethod,
+  EvaluatorOutput,
+} from '../../types'
 import operatorData, { propertyAliases } from './data'
+import { isObject } from '../../helpers'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [query, type, values, useCache] = (await evaluateArray(
+  const [query, values, single, flatten, useCache] = (await evaluateArray(
     [
       expression.query,
-      expression.queryType ?? expression.type,
       expression.values || [],
+      expression.single,
+      expression.flatten,
       expression.useCache,
     ],
     config
-  )) as [string, string | undefined, (string | number | boolean)[], boolean]
+  )) as [string, (string | number | boolean)[] | object, boolean, boolean, boolean]
 
-  config.typeChecker(getTypeCheckInput(operatorData.parameters, { query, type, values, useCache }))
+  config.typeChecker(
+    getTypeCheckInput(operatorData.parameters, { query, single, flatten, values, useCache })
+  )
 
   const connection = config.options?.sqlConnection
 
@@ -25,12 +35,25 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   {
     const result = config.cache.useCache(
       shouldUseCache,
-      async (query: string, type: 'array' | 'string' | undefined, values: (string | number)[]) => {
-        return await connection.query({ text: query, values, resultType: type })
+      async (query: string, values?: (string | number)[], single?: boolean, flatten?: boolean) => {
+        const result = ((await connection.query({ query, values, single, flatten })) ||
+          []) as Record<string, QueryOutput>[]
+        const returnValue = (single ? result[0] : result) ?? null
+        if (flatten) {
+          if (returnValue === null) return returnValue
+          if (isObject(returnValue))
+            return single ? Object.values(returnValue)[0] : Object.values(returnValue)
+          if (Array.isArray(returnValue))
+            return (returnValue as unknown[])
+              .map((el) => (isObject(el) ? Object.values(el) : el))
+              .flat()
+        }
+        return returnValue
       },
       query,
-      type,
-      values
+      values,
+      single,
+      flatten
     )
 
     return result
@@ -51,14 +74,14 @@ export const PG_SQL: OperatorObject = {
 
 // SQL Connection Type
 
-type ResultType = 'array' | 'string' | 'number' | undefined
 export interface QueryInput {
-  text: string
-  values?: (string | number | boolean)[]
-  resultType?: ResultType
+  query: string
+  values?: (string | number | boolean)[] | object
+  single?: boolean
+  flatten?: boolean
 }
 
-export type QueryOutput = Record<string, unknown>[] | Array<unknown>[] | string | number
+export type QueryOutput = Exclude<EvaluatorOutput, undefined>
 export interface SQLConnection {
   query: (input: QueryInput) => Promise<QueryOutput>
 }

@@ -5,35 +5,25 @@
 import { Client, QueryResult } from 'pg'
 import { QueryInput, QueryOutput } from './operators'
 
+import { Database } from 'sqlite'
+
 /**
  * Postgres (using node-postgres)
  * https://www.npmjs.com/package/pg
  */
 
-export const SqlNodePostgres = (client: Client) => {
-  const query = async ({ text, values, resultType }: QueryInput): Promise<QueryOutput> => {
-    const pgQuery = {
-      text,
-      values: values,
-      rowMode: resultType ? 'array' : '',
+export const SQLNodePostgres = (client: Client) => {
+  const query = async ({ query, values = [] }: QueryInput): Promise<QueryOutput> => {
+    const pgQuery = { text: query, values: values ?? [] } as {
+      text: string
+      values: (string | number | boolean)[]
     }
 
     const res: QueryResult & { error?: string } = await client.query(pgQuery)
     // node-postgres doesn't throw, it just returns error object
     if (res?.error) throw new Error(res.error)
 
-    switch (resultType) {
-      case 'array':
-        return res.rows.flat()
-      case 'string':
-        return res.rows.flat().join(' ')
-      case 'number': {
-        const result = res.rows.flat()
-        return Number.isNaN(Number(result)) ? result : Number(result)
-      }
-      default:
-        return res.rows
-    }
+    return res.rows
   }
 
   return { query }
@@ -44,6 +34,15 @@ export const SqlNodePostgres = (client: Client) => {
  * https://www.npmjs.com/package/sqlite
  */
 
-export const SQLite = () => {
-  //
+export const SQLite = (db: Database) => {
+  const query = async ({ query, values = [] }: QueryInput) => {
+    try {
+      const result = await db.all(query, values)
+      return result
+    } catch (err) {
+      throw `SQLite error: ${(err as any)?.message}`
+    }
+  }
+
+  return { query }
 }
