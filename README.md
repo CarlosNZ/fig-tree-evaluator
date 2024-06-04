@@ -43,7 +43,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [GET](#get)
   - [POST](#post)
   - [GRAPHQL](#graphql)
-  - [PG\_SQL](#pg_sql)
+  - [SQL](#sql)
   - [BUILD\_OBJECT](#build_object)
   - [MATCH](#match)
   - [PASSTHRU](#passthru)
@@ -150,7 +150,7 @@ The `options` parameter is an object with the following available properties (al
 - `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
 - `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
-- `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postgres](https://node-postgres.com/) connection object here.
+- `sqlConnection` -- if you wish to make calls to an SQL database using the [`SQL` operator](#sql), pass a connection to the database here. See operator details below.
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
 - `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
@@ -1170,11 +1170,11 @@ e.g.
 ```
 
 ----
-### PG_SQL
+### SQL
 
-*Query a Postgres database using [`node-postgres`](https://node-postgres.com/)*
+*Query a SQL database*
 
-Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
+Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
 #### Properties
 

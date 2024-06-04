@@ -23,7 +23,7 @@ export const Operators = [
   'COUNT',
   'GET',
   'POST',
-  'PG_SQL',
+  'SQL',
   'GRAPHQL',
   'BUILD_OBJECT',
   'MATCH',

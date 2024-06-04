@@ -65,7 +65,7 @@ const parseChildren: ParseChildrenMethod = (expression) => {
   return { ...expression, query, values }
 }
 
-export const PG_SQL: OperatorObject = {
+export const SQL: OperatorObject = {
   propertyAliases,
   operatorData,
   evaluate,

@@ -16,7 +16,11 @@ import {
   Link,
   Image,
 } from '@chakra-ui/react'
-import { FigTreeEvaluator as EvaluatorDev, FigTreeOptions } from './fig-tree-evaluator/src'
+import {
+  FigTreeEvaluator as EvaluatorDev,
+  FigTreeOptions,
+  SQLNodePostgres,
+} from './fig-tree-evaluator/src'
 import { FigTreeEvaluator as EvaluatorPublished } from 'fig-tree-evaluator'
 // Enable instead temporarily when Dev has incompatible changes from Published
 // import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
@@ -43,7 +47,10 @@ const pgConnection = new PostgresInterface() as Client
 const initOptions: FigTreeOptions = getInitOptions()
 initOptions.functions = functions
 
-const figTreeDev = new EvaluatorDev({ ...initOptions, pgConnection })
+const figTreeDev = new EvaluatorDev({
+  ...initOptions,
+  sqlConnection: SQLNodePostgres(pgConnection),
+})
 const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()

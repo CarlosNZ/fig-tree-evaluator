@@ -2,19 +2,19 @@ import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, Parameter } from '../../types'
 
 const description = 'Query a Postgres database using node-postgres'
-const aliases = ['pgSql', 'sql', 'postgres', 'pg', 'pgDb']
+const aliases = ['sql', 'pgSql', 'postgres', 'pg', 'sqLite', 'sqlite', 'mySql']
 const parameters: Parameter[] = [
   {
     name: 'query',
     description: 'A SQL query string, with parameterised replacements (e.g. $1, $2, etc)',
-    aliases: [],
+    aliases: ['text'],
     required: true,
     type: 'string',
   },
   {
     name: 'values',
     description:
-      'An array/object of values to replace in the SQL string parameters, as per SQL connection specifications ',
+      'An array/object of values to replace the SQL string parameters, as per SQL connection specifications ',
     aliases: ['replacements'],
     required: false,
     type: ['array', 'object'],
@@ -22,7 +22,7 @@ const parameters: Parameter[] = [
   {
     name: 'single',
     description: 'Specify if returning a single record',
-    aliases: ['queryType'],
+    aliases: ['singleRecord'],
     required: false,
     type: 'boolean',
   },
