@@ -1,7 +1,8 @@
 import 'dotenv/config'
 import { FigTreeEvaluator } from './evaluator'
 import { Client } from 'pg'
-import pgConfig from './postgres/pgConfig.json'
+import pgConfig from './database/pgConfig.json'
+import { SqlNodePostgres } from '../src/databaseConnections'
 
 // Postgres tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./postgres/pgConfig.json. Initialise
@@ -12,13 +13,13 @@ const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
 const exp = new FigTreeEvaluator({
-  pgConnection: pgConnect,
+  sqlConnection: SqlNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
 })
 
-// Postgres
+// SQL
 
 test('Postgres - lookup single string', () => {
   const expression = {

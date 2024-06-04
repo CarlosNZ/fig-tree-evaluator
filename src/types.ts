@@ -1,8 +1,7 @@
 import FigTreeCache from './cache'
-import { GraphQLConnection } from './operators'
+import { GraphQLConnection, SQLConnection } from './operators'
 import { operatorAliases } from './operators/operatorAliases'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
-import { Client } from 'pg'
 
 export const Operators = [
   // Canonical operator names
@@ -44,8 +43,8 @@ export interface FigTreeOptions {
   objects?: object // same as "data" -- deprecated
   functions?: Record<string, UnknownFunction>
   fragments?: Fragments
-  pgConnection?: Client
   graphQLConnection?: GraphQLConnection
+  sqlConnection?: SQLConnection
   baseEndpoint?: string
   headers?: { [key: string]: string }
   returnErrorAsString?: boolean
