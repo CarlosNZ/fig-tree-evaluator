@@ -561,33 +561,33 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
   })
 })
 
-// test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
-//   const expression = {
-//     operator: 'graphQL',
-//     query: `query getCountry($code: String!) {
-//         countries(filter: {code: {eq: $code}}) {
-//           name
-//           emoji
-//         }
-//       }`,
-//     variables: {
-//       operator: 'buildObject',
-//       values: [
-//         {
-//           key: 'code',
-//           value: {
-//             operator: 'GET',
-//             children: ['https://restcountries.com/v3.1/name/nepal', [], '[0].cca2'],
-//           },
-//         },
-//       ],
-//     },
-//     returnNode: 'countries[0].emoji',
-//   }
-//   return exp.evaluate(expression).then((result) => {
-//     expect(result).toBe('🇳🇵')
-//   })
-// })
+test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
+  const expression = {
+    operator: 'graphQL',
+    query: `query getCountry($code: String!) {
+        countries(filter: {code: {eq: $code}}) {
+          name
+          emoji
+        }
+      }`,
+    variables: {
+      operator: 'buildObject',
+      values: [
+        {
+          key: 'code',
+          value: {
+            operator: 'GET',
+            children: ['https://restcountries.com/v3.1/name/nepal', [], '[0].cca2'],
+          },
+        },
+      ],
+    },
+    returnNode: 'countries[0].emoji',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('🇳🇵')
+  })
+})
 
 // Localhost tests, needs specific local setup
 // test('GraphQL -- use localhost endpoint', () => {
