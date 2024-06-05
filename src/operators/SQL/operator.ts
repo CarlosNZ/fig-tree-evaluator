@@ -6,39 +6,50 @@ import {
   EvaluateMethod,
   ParseChildrenMethod,
   EvaluatorOutput,
+  OutputType,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [query, values, single, flatten, useCache] = (await evaluateArray(
+  const connection = config.options?.sqlConnection
+  if (!connection) throw new Error('No SQL database connection provided')
+
+  const [query, values, single, flatten, useCache, queryType] = (await evaluateArray(
     [
       expression.query,
       expression.values || [],
       expression.single,
       expression.flatten,
       expression.useCache,
+      expression.type,
     ],
     config
-  )) as [string, (string | number | boolean)[] | object, boolean, boolean, boolean]
+  )) as [string, (string | number | boolean)[] | object, boolean, boolean, boolean, OutputType]
 
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, { query, single, flatten, values, useCache })
   )
-
-  const connection = config.options?.sqlConnection
-
-  if (!connection) throw new Error('No SQL database connection provided')
 
   const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
 
   {
     const result = config.cache.useCache(
       shouldUseCache,
-      async (query: string, values?: (string | number)[], single?: boolean, flatten?: boolean) => {
+      async (
+        query: string,
+        values?: (string | number)[],
+        single?: boolean,
+        flatten?: boolean,
+        queryType?: OutputType
+      ) => {
         const result = ((await connection.query({ query, values })) || []) as Record<
           string,
           QueryOutput
         >[]
+        // NOTE: queryType only exists for backwards compatibility with <2.15.
+        // Should remove completely at some point.
+        if (['array', 'string', 'number'].includes(queryType ?? '')) flatten = true
+
         const structured = flatten
           ? result.map((record) => {
               const vals = Object.values(record)
@@ -51,7 +62,8 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       query,
       values,
       single,
-      flatten
+      flatten,
+      queryType
     )
 
     return result

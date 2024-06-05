@@ -371,17 +371,7 @@ test('SQLite - get list of (most) products', async () => {
     flatten: true,
   }
   const result = await expSqlite.evaluate(expression)
-  expect(result).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(result).toStrictEqual(expectedProductResult)
   const expressionWithChildren = {
     operator: 'pgSQL',
     children: [
@@ -391,18 +381,9 @@ test('SQLite - get list of (most) products', async () => {
     ],
     flatten: true,
   }
+
   const resultFromChildren = await expSqlite.evaluate(expressionWithChildren)
-  expect(resultFromChildren).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(resultFromChildren).toStrictEqual(expectedProductResult)
 })
 
 test('SQLite - test single and flattening with multiple records', async () => {
