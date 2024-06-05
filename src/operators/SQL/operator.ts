@@ -10,6 +10,9 @@ import {
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
+  const connection = config.options?.sqlConnection
+  if (!connection) throw new Error('No SQL database connection provided')
+
   const [query, values, single, flatten, useCache] = (await evaluateArray(
     [
       expression.query,
@@ -24,10 +27,6 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, { query, single, flatten, values, useCache })
   )
-
-  const connection = config.options?.sqlConnection
-
-  if (!connection) throw new Error('No SQL database connection provided')
 
   const shouldUseCache = expression.useCache ?? config.options.useCache ?? true
 

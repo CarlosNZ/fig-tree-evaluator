@@ -90,7 +90,7 @@ export const simplifyObject = (item: unknown) => {
 Extracts a (nested) property from Object and simplifies output as above
 */
 export const extractAndSimplify = (
-  data: object | object[],
+  data: unknown,
   returnProperty: string | undefined,
   fallback: unknown = undefined
 ) => {
@@ -137,5 +137,34 @@ export const axiosRequest = async ({
       console.log(err.response?.data)
     }
     throw err
+  }
+}
+
+export interface HttpClient {
+  get: (req: Omit<HttpRequest, 'method'>) => Promise<unknown>
+  post: (req: Omit<HttpRequest, 'method'>) => Promise<unknown>
+  throwError: (err: unknown) => void
+}
+
+export interface HttpRequest {
+  url: string
+  params?: { [key: string]: string }
+  data?: Record<string, unknown>
+  headers?: Record<string, unknown>
+  method?: 'get' | 'post'
+}
+
+export const httpRequest = async (client: HttpClient, request: HttpRequest) => {
+  const { url, params = {}, data = {}, headers = {}, method = 'get' } = request
+  try {
+    const response = await client[method]({
+      url,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headers },
+      params,
+      data,
+    })
+    return response
+  } catch (err) {
+    client.throwError(err)
   }
 }

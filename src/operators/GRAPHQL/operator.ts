@@ -4,8 +4,9 @@ import {
   extractAndSimplify,
   isFullUrl,
   joinUrlParts,
-  axiosRequest,
+  httpRequest,
   getTypeCheckInput,
+  HttpClient,
 } from '../operatorUtils'
 import {
   OperatorNode,
@@ -15,9 +16,11 @@ import {
   ParseChildrenMethod,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
-import { AxiosRequestHeaders } from 'axios'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
+  const client = config.options?.graphQLConnection?.httpClient ?? config.options?.httpClient
+  if (!client) throw new Error('No HTTP client provided for GraphQL connection')
+
   const [query, urlObj, variables, returnNode, headers, useCache] = (await evaluateArray(
     [
       expression.query,
@@ -30,11 +33,11 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     config
   )) as [
     string,
-    string | { url: string; headers: AxiosRequestHeaders },
+    string | { url: string; headers: Record<string, unknown> },
     object,
     string,
-    AxiosRequestHeaders,
-    boolean
+    Record<string, unknown>,
+    boolean,
   ]
 
   const { url, headers: headersObj } =
@@ -65,9 +68,16 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (url: string, data: object, headers: AxiosRequestHeaders, returnNode?: string) => {
-      const response = await axiosRequest({ url, method: 'post', data, headers })
-      return extractAndSimplify(response.data, returnNode)
+    async (
+      url: string,
+      data: Record<string, unknown>,
+      headers: Record<string, unknown>,
+      returnNode?: string
+    ) => {
+      const response = (await httpRequest(client, { url, method: 'post', data, headers })) as {
+        data: unknown
+      }
+      return extractAndSimplify(response?.data, returnNode)
     },
     fullUrl,
     data,
@@ -99,6 +109,7 @@ const parseChildren: ParseChildrenMethod = async (expression, config) => {
 export interface GraphQLConnection {
   endpoint: string
   headers?: { [key: string]: string }
+  httpClient?: HttpClient
 }
 
 export const GRAPHQL: OperatorObject = {

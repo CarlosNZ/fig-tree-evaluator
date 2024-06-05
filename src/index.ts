@@ -1,5 +1,6 @@
 import FigTreeEvaluator, { evaluateExpression } from './FigTreeEvaluator'
 import { SQLNodePostgres, SQLite } from './databaseConnections'
+import { AxiosClient } from './httpClients'
 import {
   Operator,
   OperatorAlias,
@@ -16,6 +17,7 @@ export {
   FigTreeEvaluator,
   SQLNodePostgres,
   SQLite,
+  AxiosClient,
   type Operator,
   type OperatorAlias,
   type FigTreeOptions,

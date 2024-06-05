@@ -1,6 +1,5 @@
-import { AxiosRequestHeaders } from 'axios'
 import {
-  axiosRequest,
+  httpRequest,
   extractAndSimplify,
   isFullUrl,
   joinUrlParts,
@@ -12,6 +11,9 @@ import { parseChildrenGET as parseChildren } from '../GET/operator'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
+  const client = config.options?.httpClient
+  if (!client) throw new Error('No HTTP client provided')
+
   const [urlObj, data, returnProperty, headers, useCache] = (await evaluateArray(
     [
       expression.url,
@@ -22,10 +24,10 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     ],
     config
   )) as [
-    string | { url: string; headers: AxiosRequestHeaders },
-    object,
+    string | { url: string; headers: Record<string, unknown> },
+    Record<string, unknown>,
     string,
-    AxiosRequestHeaders,
+    Record<string, unknown>,
     boolean,
   ]
 
@@ -45,8 +47,13 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   const result = await config.cache.useCache(
     shouldUseCache,
-    async () => {
-      const response = await axiosRequest({
+    async (
+      url: string,
+      data: Record<string, unknown>,
+      headers: Record<string, unknown>,
+      returnProperty?: string
+    ) => {
+      const response = await httpRequest(client, {
         url,
         data,
         headers,
