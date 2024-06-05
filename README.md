@@ -1172,7 +1172,7 @@ e.g.
 ----
 ### SQL
 
-*Query a SQL database*
+*Query an SQL database*
 
 Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
@@ -1183,44 +1183,123 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 - `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
 - `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
-  We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
+#### Connecting to the database
 
-In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
+In order to query the SQL database, fig-tree must be provided with a database connection object in its `sqlConnection` option. The connection object can be any object that implements a `query` method with the following signature:
+
+```ts
+interface SQLConnection {
+  query: (input: QueryInput) => Promise<QueryOutput>
+}
+
+// where `QueryInput` is:
+interface QueryInput {
+  query: string
+  values?: (string | number | boolean)[] | object
+  single?: boolean
+  flatten?: boolean
+}
+
+// and `QueryOutput` is any FigTree output
+```
+
+An `SQLConnection` is basically an abstraction around a specific database connection. Two such "wrappers" are provided in the FigTree package for the following database connections:
+
+- **PostgreSQL** using [`node-postgres`](https://node-postgres.com/): `SQLNodePostgres` wrapper
+- **SQLite** using[`sqlite`/`sqlite3`](https://www.npmjs.com/package/sqlite): `SQLite` wrapper
+
+You will need to have the appropriate package installed separately, and they can be implemented as follows:
+
+##### PostgreSQL
 
 ```js
-import { Client } from 'pg'
-const pgConnect = new Client(pgConfig) // pgConfig = database details, see node-postgres documentation
+import { Client } from 'pg' // node-postgres
+import { FigTreeEvaluator, SQLNodePostgres } from 'fig-tree-evaluator'
+
+const pgConfig = {
+  // database config, see node-postgres documentation
+  user: 'postgres',
+  host: 'localhost',
+  database: 'northwind',
+  port: 5432,
+  ...etc
+}
+
+const pgConnect = new Client(pgConfig)
 
 pgConnect.connect()
 
-const fig = new FigTreeEvaluator({ pgConnection: pgConnect })
+const fig = new FigTreeEvaluator({
+  sqlConnection: SQLNodePostgres(pgConnect),
+  ...otherOptions
+})
+
+fig.evaluate({
+  operator: "SQL",
+  query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
+  single: true,
+  flatten: true
+})
+.then((result) => console.log(result)) // => "Aria Cruz"
 ```
 
-The following examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
+##### SQLite
 
-e.g.
+
+```js
+import sqlite3 from 'sqlite3'
+import { open, Database } from 'sqlite'
+import { FigTreeEvaluator, SQLite } from 'fig-tree-evaluator'
+
+open({
+    filename: '/path/to/sqlite.db',
+    driver: sqlite3.Database
+  }).then((db) => {
+    const fig = new FigTreeEvaluator({
+      sqlConnection: SQLite(db),
+      ...otherOptions
+    })
+
+    fig.evaluate(...) // Continue app operations
+})
+```
+
+#### Examples
+
+The following additional examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
+
 ```js
 {
-  operator: 'pgSql',
+  operator: 'sql',
   query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
-  type: 'string',
+  single: true,
+  flatten: true
 }
 // => "Aria Cruz"
 
 {
-  operator: 'pgSQL',
-  query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+  operator: 'sql',
+  query: `SELECT product_name FROM public.products
+    WHERE category_id = $1 AND supplier_id != $2`,
   values: [1, 16],
-  type: 'array',
+  flatten: true,
 }
 // => ["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte",
 //     "Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"]
+
+{
+  operator: 'sql',
+  query: 'SELECT COUNT(*) FROM employees',
+  flatten: true,
+  type: 'number',
+}
+// => 9
 
 ```
 
 `children` array: `[queryString, ...substitutions]`
 
-(`type` is provided by the common `type`/`outputType` property)
+(`single` and `flatten` can not be part of `children` array)
 
 
 ----

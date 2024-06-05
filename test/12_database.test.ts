@@ -2,10 +2,9 @@ import 'dotenv/config'
 import { FigTreeEvaluator } from './evaluator'
 import { Client } from 'pg'
 import pgConfig from './database/pgConfig.json'
-import { SQLNodePostgres } from '../src/databaseConnections'
+import { SQLNodePostgres, SQLite } from '../src/databaseConnections'
 import sqlite3 from 'sqlite3'
 import { open, Database } from 'sqlite'
-import { SQLite } from '../src/databaseConnections'
 
 // SQL tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./database/pgConfig.json. Initialise
