@@ -1185,7 +1185,7 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
 #### Connecting to the database
 
-In order to query the SQL database, fig-tree must be provided with a database connection object in its `sqlConnection` option. The connection object can be any object that implements a `query` method with the following signature:
+In order to query the SQL database, fig-tree must be provided with a database connection object in its `sqlConnection` option. The connection object can be any object that implements a `query` method with the following type structure:
 
 ```ts
 interface SQLConnection {
