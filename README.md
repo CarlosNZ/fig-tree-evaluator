@@ -1005,7 +1005,7 @@ e.g.
 
 ### HTTP requests
 
-The following three operators (`GET`, `POST`, `GraphQL`) make http requests, so require an http client. If using fig-tree in the browser, it will use the native `fetch()` method by default, so no configuration is required. However, if using in `node`, or you wish to use a different http client (if your project is already using [`axios`](https://www.npmjs.com/package/axios), say), you can specify it with the `httpClient` option.
+The following three operators (`GET`, `POST`, `GraphQL`) make http requests, so require an http client. If using fig-tree in the browser, it will use the native `fetch()` method by default, *so no configuration is required*. However, if using in `node`, or you wish to use a different http client (if your project is already using [`axios`](https://www.npmjs.com/package/axios), say), you can specify it with the `httpClient` option.
 
 The `httpClient` object is an abstraction around an http package in order to standardise the implementation for use in fig-tree. Two such "wrappers" are provided in the FigTree package, for:
 
