@@ -1264,6 +1264,8 @@ open({
 })
 ```
 
+To create additional abstractions for other database connections, check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/108-generalise-SQL-operator/src/databaseConnections.ts).
+
 #### Examples
 
 The following additional examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
