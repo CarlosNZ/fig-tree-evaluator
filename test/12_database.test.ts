@@ -57,6 +57,18 @@ test('Postgres - lookup single string', async () => {
   expect(result).toBe('Aria Cruz')
 })
 
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - lookup single string (deprecated syntax)', () => {
+  const expression = {
+    operator: 'postgres',
+    children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
+    type: 'string',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('Aria Cruz')
+  })
+})
+
 test('Postgres - get an array of Orders using var substitution', () => {
   const expression = {
     operator: 'pg',
@@ -102,6 +114,30 @@ test('Postgres - count employees', () => {
   })
 })
 
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - count employees (deprecated syntax)', () => {
+  const expression = {
+    operator: 'postgres',
+    children: ['SELECT COUNT(*) FROM employees'],
+    type: 'number',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(9)
+  })
+})
+
+const expectedProductResult = [
+  'Chai',
+  'Chang',
+  'Guaraná Fantástica',
+  'Côte de Blaye',
+  'Chartreuse verte',
+  'Ipoh Coffee',
+  'Outback Lager',
+  'Rhönbräu Klosterbier',
+  'Lakkalikööri',
+]
+
 test('Postgres - get list of (most) products', async () => {
   const expression = {
     operator: 'pgSQL',
@@ -110,17 +146,8 @@ test('Postgres - get list of (most) products', async () => {
     flatten: true,
   }
   const result = await exp.evaluate(expression)
-  expect(result).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(result).toStrictEqual(expectedProductResult)
+
   const expressionWithChildren = {
     operator: 'pgSQL',
     children: [
@@ -131,17 +158,32 @@ test('Postgres - get list of (most) products', async () => {
     flatten: true,
   }
   const resultFromChildren = await exp.evaluate(expressionWithChildren)
-  expect(resultFromChildren).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(resultFromChildren).toStrictEqual(expectedProductResult)
+})
+
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - get list of (most) products, using properties (deprecated syntax)', async () => {
+  const expression = {
+    operator: 'pgSQL',
+    query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+    values: [1, 16],
+    type: 'array',
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual(expectedProductResult)
+
+  // with [children]
+  const expression2 = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    type: 'array',
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual(expectedProductResult)
 })
 
 test('Postgres - test single and flattening with multiple records', async () => {
@@ -331,17 +373,7 @@ test('SQLite - get list of (most) products', async () => {
     flatten: true,
   }
   const result = await expSqlite.evaluate(expression)
-  expect(result).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(result).toStrictEqual(expectedProductResult)
   const expressionWithChildren = {
     operator: 'pgSQL',
     children: [
@@ -351,18 +383,9 @@ test('SQLite - get list of (most) products', async () => {
     ],
     flatten: true,
   }
+
   const resultFromChildren = await expSqlite.evaluate(expressionWithChildren)
-  expect(resultFromChildren).toStrictEqual([
-    'Chai',
-    'Chang',
-    'Guaraná Fantástica',
-    'Côte de Blaye',
-    'Chartreuse verte',
-    'Ipoh Coffee',
-    'Outback Lager',
-    'Rhönbräu Klosterbier',
-    'Lakkalikööri',
-  ])
+  expect(resultFromChildren).toStrictEqual(expectedProductResult)
 })
 
 test('SQLite - test single and flattening with multiple records', async () => {
