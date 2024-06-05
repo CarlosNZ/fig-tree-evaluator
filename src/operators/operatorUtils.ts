@@ -2,7 +2,6 @@
 Functions used specifically by various operators
 */
 
-import axios, { AxiosRequestConfig } from 'axios'
 import extractProperty from 'object-property-extractor'
 import { isObject } from '../helpers'
 import { typeCheck, TypeCheckInput, isLiteralType } from '../typeCheck'
@@ -113,31 +112,6 @@ export const joinUrlParts = (...urls: string[]) => {
     if (newPart === '') return acc
     return acc + (index === 0 ? '' : '/') + newPart
   }, '')
-}
-
-export const axiosRequest = async ({
-  url,
-  params = {},
-  data = {},
-  headers = {},
-  method = 'get',
-}: AxiosRequestConfig) => {
-  try {
-    const response = await axios({
-      method,
-      url,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...headers },
-      params,
-      data,
-    })
-    return response.data
-  } catch (err) {
-    if (axios.isAxiosError(err)) {
-      if (!err?.response) throw new Error('Network Error')
-      console.log(err.response?.data)
-    }
-    throw err
-  }
 }
 
 export interface HttpClient {

@@ -6,8 +6,9 @@ import { SQLNodePostgres } from '../src/databaseConnections'
 import sqlite3 from 'sqlite3'
 import { open, Database } from 'sqlite'
 import { SQLite } from '../src/databaseConnections'
-import { AxiosClient } from '../src'
+import { AxiosClient, FetchClient } from '../src'
 import axios from 'axios'
+import fetch from 'node-fetch'
 
 // SQL tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./database/pgConfig.json. Initialise
@@ -41,6 +42,7 @@ const exp = new FigTreeEvaluator({
     endpoint: 'https://countries.trevorblades.com/',
     httpClient: AxiosClient(axios),
   },
+  httpClient: FetchClient(fetch),
 })
 
 // SQL -- Postgres

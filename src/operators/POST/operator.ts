@@ -11,7 +11,7 @@ import { parseChildrenGET as parseChildren } from '../GET/operator'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const client = config.options?.httpClient
+  const client = config.httpClient
   if (!client) throw new Error('No HTTP client provided')
 
   const [urlObj, data, returnProperty, headers, useCache] = (await evaluateArray(

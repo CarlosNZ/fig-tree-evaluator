@@ -1,9 +1,39 @@
 /**
- * Wrappers for various HTTP clients
+ * Abstraction wrappers to standardise the implementations of various HTTP
+ * clients
  */
 
-import { AxiosRequestConfig, AxiosStatic } from 'axios'
-import { HttpRequest } from './operators/operatorUtils'
+import { type AxiosRequestConfig, type AxiosStatic } from 'axios'
+import { type RequestInfo, type RequestInit, type Response } from 'node-fetch'
+import { HttpClient, HttpRequest } from './operators/operatorUtils'
+import { errorMessage } from './helpers'
+
+export type Fetch = (
+  input: URL | string | RequestInfo,
+  init?: RequestInit | undefined
+) => Promise<Response>
+
+declare const window: { document: unknown; fetch: Fetch }
+
+/**
+ * Auto-detect the passed-in client and return it in the appropriate abstraction
+ * wrapper
+ */
+export const getHttpClient = (
+  client: HttpClient | AxiosStatic | Fetch | undefined
+): HttpClient | undefined => {
+  if (!client) {
+    // In browser, use built-in `fetch` by default
+    if (typeof window !== 'undefined' && 'document' in window && 'fetch' in window)
+      return FetchClient(window.fetch)
+    else return undefined
+  }
+  if ('name' in client && client.name === 'fetch') return FetchClient(client as Fetch)
+
+  if ('Axios' in client && client.Axios.name === 'Axios') return AxiosClient(client)
+
+  return client as HttpClient
+}
 
 /**
  * Axios
@@ -27,6 +57,51 @@ export const AxiosClient = (axios: AxiosStatic) => {
       console.log(err.response?.data)
     }
     throw err
+  }
+
+  return { get, post, throwError }
+}
+
+/**
+ * Fetch / Node-fetch
+ * https://www.npmjs.com/package/node-fetch
+ * (should also work with browser window.fetch)
+ */
+
+export const FetchClient = (fetch: Fetch) => {
+  const get = async (req: Omit<HttpRequest, 'method'>) => {
+    const { url, headers, params } = req
+    const queryParams = new URLSearchParams(params)
+    const queryString = queryParams.size > 0 ? `?${queryParams.toString()}` : ''
+
+    const response = await fetch(url + queryString, { headers, method: 'GET' } as RequestInit)
+    const json = await response.json()
+    if (!response.ok) {
+      console.log(json)
+      throw new Error(`Request failed with status code ${response.status}`)
+    }
+    return json
+  }
+
+  const post = async (req: Omit<HttpRequest, 'method'>) => {
+    const { url, headers, params, data } = req
+    const queryParams = new URLSearchParams(params)
+    const queryString = queryParams.size > 0 ? `?${queryParams.toString()}` : ''
+    const response = await fetch(url + queryString, {
+      headers,
+      body: JSON.stringify(data),
+      method: 'POST',
+    } as RequestInit)
+    const json = await response.json()
+    if (!response.ok) {
+      console.log(json)
+      throw new Error(`Request failed with status code ${response.status}`)
+    }
+    return json
+  }
+
+  const throwError = (err: unknown) => {
+    throw new Error(`${errorMessage(err)}`)
   }
 
   return { get, post, throwError }

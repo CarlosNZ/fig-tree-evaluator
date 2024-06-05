@@ -16,9 +16,11 @@ import {
   ParseChildrenMethod,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
+import { AxiosStatic } from 'axios'
+import { Fetch } from '../../httpClients'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const client = config.options?.graphQLConnection?.httpClient ?? config.options?.httpClient
+  const client = config.graphQLClient ?? config.httpClient
   if (!client) throw new Error('No HTTP client provided for GraphQL connection')
 
   const [query, urlObj, variables, returnNode, headers, useCache] = (await evaluateArray(
@@ -109,7 +111,7 @@ const parseChildren: ParseChildrenMethod = async (expression, config) => {
 export interface GraphQLConnection {
   endpoint: string
   headers?: { [key: string]: string }
-  httpClient?: HttpClient
+  httpClient?: HttpClient | AxiosStatic | Fetch
 }
 
 export const GRAPHQL: OperatorObject = {
