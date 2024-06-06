@@ -1262,28 +1262,6 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 - `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
 - `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
-##### SQLite
-
-
-```js
-import sqlite3 from 'sqlite3'
-import { open, Database } from 'sqlite'
-import { FigTreeEvaluator, SQLite } from 'fig-tree-evaluator'
-
-open({
-    filename: '/path/to/sqlite.db',
-    driver: sqlite3.Database
-  }).then((db) => {
-    const fig = new FigTreeEvaluator({
-      sqlConnection: SQLite(db),
-      ...otherOptions
-    })
-
-    fig.evaluate(...) // Continue app operations
-})
-```
-
-To create additional abstractions for other database connections, check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/108-generalise-SQL-operator/src/databaseConnections.ts).
 
 #### Examples
 
