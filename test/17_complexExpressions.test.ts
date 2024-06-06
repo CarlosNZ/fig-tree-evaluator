@@ -1,14 +1,15 @@
 import { Client } from 'pg'
 import { FigTreeEvaluator } from './evaluator'
-import pgConfig from './postgres/pgConfig.json'
+import pgConfig from './database/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../codegen/queryBuilder'
+import { SQLNodePostgres } from '../src'
 
 const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
 const exp = new FigTreeEvaluator({
-  pgConnection: pgConnect,
+  sqlConnection: SQLNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
