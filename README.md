@@ -2012,10 +2012,11 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-- **2.15.0**:
+- **v2.15.0**:
   - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*
   - Generalise `PG_SQL` operator to a client-agnostic `SQL` operator (with built-in abstractions for `node-postgres` and `SQLite`)
-  - **Breaking changes** as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
+  - ***Breaking changes*** as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
+  - Changes to `SQL` parameters to reflect the aforementioned agnosticism.
 - **v2.14.0**: Improvements to `stringSubstitution` operator:
   - Can accept nested property references (e.g. `{{user.name}}`)
   - Will also search for replacements from `data` object
