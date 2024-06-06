@@ -28,6 +28,9 @@ const initialiseSqlLite = async () => {
 
   expSqlite = new FigTreeEvaluator({
     sqlConnection: SQLite(db),
+    graphQLConnection: {
+      endpoint: 'https://countries.trevorblades.com/',
+    },
   })
 }
 
