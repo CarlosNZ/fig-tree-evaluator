@@ -1070,7 +1070,7 @@ const fig = new FigTreeEvaluator({
 
 ```
 
-See the implementation for `axios` and `node-fetch` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/91-exclude-axios-from-package/src/httpClients.ts) for specific details.
+See the implementation for `axios` and `node-fetch` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/src/httpClients.ts) for specific details.
 
 
 ### GET
@@ -1262,7 +1262,6 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 - `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
 - `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
-
 #### Examples
 
 The following additional examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
@@ -1383,7 +1382,7 @@ interface QueryInput {
 
 You then implement in FigTree options the same way as the two described above.
 
-Check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/108-generalise-SQL-operator/src/databaseConnections.ts) for specific details.
+Check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/src/databaseConnections.ts) for specific details.
 
 ----
 ### BUILD_OBJECT
