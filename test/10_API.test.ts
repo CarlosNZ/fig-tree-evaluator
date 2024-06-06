@@ -11,69 +11,69 @@ const expFetch = new FigTreeEvaluator({
 
 // GET
 
-// test.concurrent('GET: Fetch a country', async () => {
-//   const expression = {
-//     operator: 'GET',
-//     children: ['https://restcountries.com/v3.1/name/zealand', [], 'name.common'],
-//     type: 'string',
-//   }
-//   const result = await exp.evaluate(expression)
-//   expect(result).toBe('New Zealand')
+test.concurrent('GET: Fetch a country', async () => {
+  const expression = {
+    operator: 'GET',
+    children: ['https://restcountries.com/v3.1/name/zealand', [], 'name.common'],
+    type: 'string',
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toBe('New Zealand')
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toBe('New Zealand')
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toBe('New Zealand')
+})
 
-// test.concurrent('GET: Fetch a country, using properties', async () => {
-//   const expression = {
-//     operator: 'GET',
-//     url: 'https://restcountries.com/v3.1/name/zealand',
-//     returnProperty: 'name.common',
-//     type: 'string',
-//   }
-//   const result = await exp.evaluate(expression)
-//   expect(result).toBe('New Zealand')
+test.concurrent('GET: Fetch a country, using properties', async () => {
+  const expression = {
+    operator: 'GET',
+    url: 'https://restcountries.com/v3.1/name/zealand',
+    returnProperty: 'name.common',
+    type: 'string',
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toBe('New Zealand')
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toBe('New Zealand')
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toBe('New Zealand')
+})
 
-// test.concurrent('GET: Fetch a country with params', async () => {
-//   const expression = {
-//     operator: 'Get',
-//     children: [
-//       { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'india'] },
-//       ['fullText'],
-//       'true',
-//       '[0].name.nativeName.hin',
-//     ],
-//   }
-//   const result = await exp.evaluate(expression)
-//   expect(result).toStrictEqual({
-//     official: 'भारत गणराज्य',
-//     common: 'भारत',
-//   })
+test.concurrent('GET: Fetch a country with params', async () => {
+  const expression = {
+    operator: 'Get',
+    children: [
+      { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'india'] },
+      ['fullText'],
+      'true',
+      '[0].name.nativeName.hin',
+    ],
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual({
+    official: 'भारत गणराज्य',
+    common: 'भारत',
+  })
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toStrictEqual({
-//     official: 'भारत गणराज्य',
-//     common: 'भारत',
-//   })
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toStrictEqual({
+    official: 'भारत गणराज्य',
+    common: 'भारत',
+  })
+})
 
-// test.concurrent('GET: Fetch a country with params, using props', async () => {
-//   const expression = {
-//     operator: 'get',
-//     endpoint: { operator: '+', values: ['https://restcountries.com/v3.1/name/', 'india'] },
-//     parameters: { fullText: true },
-//     outputProperty: '[0].name.nativeName.hin',
-//   }
-//   const result = await exp.evaluate(expression)
-//   expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
+test.concurrent('GET: Fetch a country with params, using props', async () => {
+  const expression = {
+    operator: 'get',
+    endpoint: { operator: '+', values: ['https://restcountries.com/v3.1/name/', 'india'] },
+    parameters: { fullText: true },
+    outputProperty: '[0].name.nativeName.hin',
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
+})
 
 test.concurrent('GET: Return an array of titles plucked from inside array of objects', async () => {
   const expression = {
@@ -239,108 +239,108 @@ test.concurrent('GET: Fetch comments by post ID, no return prop', async () => {
   expect(resultFetch).toStrictEqual(expectedResult)
 })
 
-// test.concurrent('GET: Fetch a country with multiple params', async () => {
-//   const expression = {
-//     operator: 'get',
-//     children: [
-//       { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
-//       ['fullText', 'fields'],
-//       'true',
-//       'name,capital,flag',
-//     ],
-//   }
-//   const expectedResult = [
-//     {
-//       name: {
-//         common: 'Cuba',
-//         official: 'Republic of Cuba',
-//         nativeName: {
-//           spa: {
-//             official: 'República de Cuba',
-//             common: 'Cuba',
-//           },
-//         },
-//       },
-//       capital: ['Havana'],
-//       // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
-//       flag: '🇨🇺',
-//     },
-//   ]
-//   const result = await exp.evaluate(expression)
-//   expect(result).toStrictEqual(expectedResult)
+test.concurrent('GET: Fetch a country with multiple params', async () => {
+  const expression = {
+    operator: 'get',
+    children: [
+      { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
+      ['fullText', 'fields'],
+      'true',
+      'name,capital,flag',
+    ],
+  }
+  const expectedResult = [
+    {
+      name: {
+        common: 'Cuba',
+        official: 'Republic of Cuba',
+        nativeName: {
+          spa: {
+            official: 'República de Cuba',
+            common: 'Cuba',
+          },
+        },
+      },
+      capital: ['Havana'],
+      // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+      flag: '🇨🇺',
+    },
+  ]
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual(expectedResult)
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toStrictEqual(expectedResult)
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toStrictEqual(expectedResult)
+})
 
-// test.concurrent('GET: Fetch a country with multiple params, using props', async () => {
-//   const expression = {
-//     operator: 'API',
-//     url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
-//     parameters: { fullText: true, fields: 'name,capital,flag' },
-//   }
-//   const expectedResult = [
-//     {
-//       name: {
-//         common: 'Cuba',
-//         official: 'Republic of Cuba',
-//         nativeName: {
-//           spa: {
-//             official: 'República de Cuba',
-//             common: 'Cuba',
-//           },
-//         },
-//       },
-//       capital: ['Havana'],
-//       // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
-//       flag: '🇨🇺',
-//     },
-//   ]
-//   const result = await exp.evaluate(expression)
-//   expect(result).toStrictEqual(expectedResult)
+test.concurrent('GET: Fetch a country with multiple params, using props', async () => {
+  const expression = {
+    operator: 'API',
+    url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
+    parameters: { fullText: true, fields: 'name,capital,flag' },
+  }
+  const expectedResult = [
+    {
+      name: {
+        common: 'Cuba',
+        official: 'Republic of Cuba',
+        nativeName: {
+          spa: {
+            official: 'República de Cuba',
+            common: 'Cuba',
+          },
+        },
+      },
+      capital: ['Havana'],
+      // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+      flag: '🇨🇺',
+    },
+  ]
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual(expectedResult)
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toStrictEqual(expectedResult)
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toStrictEqual(expectedResult)
+})
 
-// test.concurrent(
-//   'GET: Fetch a country with multiple params, with nested buildObject for parameters',
-//   async () => {
-//     const expression = {
-//       operator: 'API',
-//       url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
-//       parameters: {
-//         operator: 'buildObject',
-//         properties: [
-//           { key: 'fullText', value: true },
-//           { key: 'fields', value: 'name,capital,flag' },
-//         ],
-//       },
-//     }
-//     const expectedResult = [
-//       {
-//         name: {
-//           common: 'Cuba',
-//           official: 'Republic of Cuba',
-//           nativeName: {
-//             spa: {
-//               official: 'República de Cuba',
-//               common: 'Cuba',
-//             },
-//           },
-//         },
-//         capital: ['Havana'],
-//         // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
-//         flag: '🇨🇺',
-//       },
-//     ]
-//     const result = await exp.evaluate(expression)
-//     expect(result).toStrictEqual(expectedResult)
+test.concurrent(
+  'GET: Fetch a country with multiple params, with nested buildObject for parameters',
+  async () => {
+    const expression = {
+      operator: 'API',
+      url: { operator: '+', children: ['https://restcountries.com/v3.1/name/', 'cuba'] },
+      parameters: {
+        operator: 'buildObject',
+        properties: [
+          { key: 'fullText', value: true },
+          { key: 'fields', value: 'name,capital,flag' },
+        ],
+      },
+    }
+    const expectedResult = [
+      {
+        name: {
+          common: 'Cuba',
+          official: 'Republic of Cuba',
+          nativeName: {
+            spa: {
+              official: 'República de Cuba',
+              common: 'Cuba',
+            },
+          },
+        },
+        capital: ['Havana'],
+        // altSpellings: ['CU', 'Republic of Cuba', 'República de Cuba'],
+        flag: '🇨🇺',
+      },
+    ]
+    const result = await exp.evaluate(expression)
+    expect(result).toStrictEqual(expectedResult)
 
-//     const resultFetch = await expFetch.evaluate(expression)
-//     expect(resultFetch).toStrictEqual(expectedResult)
-//   }
-// )
+    const resultFetch = await expFetch.evaluate(expression)
+    expect(resultFetch).toStrictEqual(expectedResult)
+  }
+)
 
 test.concurrent('GET: Inspect authorization headers', async () => {
   const expression = {
@@ -478,18 +478,18 @@ test.concurrent('GET: Bad url', async () => {
 
 // Using baseUrl
 
-// test('GET: Fetch a country with params, using props', async () => {
-//   exp.updateOptions({ baseEndpoint: 'https://restcountries.com/' })
-//   const expression = {
-//     operator: 'get',
-//     endpoint: { operator: '+', values: ['/v3.1/name/', 'india'] },
-//     parameters: { fullText: true },
-//     outputProperty: '[0].name.nativeName.hin',
-//   }
+test('GET: Fetch a country with params, using props', async () => {
+  exp.updateOptions({ baseEndpoint: 'https://restcountries.com/' })
+  const expression = {
+    operator: 'get',
+    endpoint: { operator: '+', values: ['/v3.1/name/', 'india'] },
+    parameters: { fullText: true },
+    outputProperty: '[0].name.nativeName.hin',
+  }
 
-//   const result = await exp.evaluate(expression)
-//   expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
 
-//   const resultFetch = await expFetch.evaluate(expression)
-//   expect(resultFetch).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
-// })
+  const resultFetch = await expFetch.evaluate(expression)
+  expect(resultFetch).toStrictEqual({ official: 'भारत गणराज्य', common: 'भारत' })
+})

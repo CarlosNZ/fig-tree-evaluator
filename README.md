@@ -1012,7 +1012,7 @@ The `httpClient` object is an abstraction around an http package in order to sta
 - [`axios`](https://www.npmjs.com/package/axios)
 - [`node-fetch`](https://www.npmjs.com/package/node-fetch) (same API as browser `fetch`, but for `node`)
 
-In the FigTree options, you just pass the client directly to the `httpClient` option, like so:
+To specify one of these for use, just pass the client directly to the `httpClient` option, like so:
 
 #### Axios
 
