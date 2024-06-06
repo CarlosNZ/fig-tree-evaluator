@@ -18,12 +18,16 @@ import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
+import { HttpClient } from './operators/operatorUtils'
+import { getHttpClient } from './httpClients'
 
 class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference
   private operatorAliases: OperatorAliases
   private cache: FigTreeCache
+  private graphQLClient?: HttpClient
+  private httpClient?: HttpClient
   constructor(options: FigTreeOptions = {}) {
     this.options = standardiseOptionNames(options)
     this.operators = filterOperators(
@@ -33,6 +37,8 @@ class FigTreeEvaluator {
     )
     this.operatorAliases = operatorAliases
     this.cache = new FigTreeCache({ maxSize: options.maxCacheSize, maxTime: options.maxCacheTime })
+    this.graphQLClient = getHttpClient(options.graphQLConnection?.httpClient)
+    this.httpClient = getHttpClient(options.httpClient)
   }
 
   private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
@@ -47,6 +53,10 @@ class FigTreeEvaluator {
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
     // Update options from current call if specified
     const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
+
+    if (options.httpClient) this.httpClient = getHttpClient(options.httpClient)
+    if (options.graphQLConnection?.httpClient)
+      this.graphQLClient = getHttpClient(options.graphQLConnection.httpClient)
 
     // Update cache options
     if (currentOptions.maxCacheSize && currentOptions.maxCacheSize !== this.cache.getMax())
@@ -67,6 +77,8 @@ class FigTreeEvaluator {
         : this.typeChecker,
       resolvedAliasNodes: {},
       cache: this.cache,
+      graphQLClient: this.graphQLClient,
+      httpClient: this.httpClient,
     })
   }
 

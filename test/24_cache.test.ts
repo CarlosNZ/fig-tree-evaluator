@@ -12,7 +12,7 @@ const figTreeOptions = {
     getRandom: { $function: 'random' },
     getRandomAPI: {
       $GET: {
-        url: { $plus: ['https://random-data-api.com/api/v2/users?size=', '$size'] },
+        url: { $plus: ['https://fakerapi.it/api/v1/persons?_quantity=', '$size'] },
         returnProperty: '$return',
       },
     },
@@ -138,19 +138,19 @@ test('Cache - Random function returns either same or different depending on cach
   await expect(result3).toEqual(result4)
 })
 
-// - with API calls: https://random-data-api.com/
+// - with API calls: https://fakerapi.it/en
 test('Cache - fetching random data from API', async () => {
   const fig = new FigTreeEvaluator(figTreeOptions)
-  const expression = { $getRandomAPI: { $size: 50, $return: 'username' } }
+  const expression = { $getRandomAPI: { $size: 5, $return: 'data' } }
   // Cache on by default for API operators
   const result1 = await fig.evaluate(expression)
   const result2 = await fig.evaluate(expression)
-  await expect(result1).toEqual(result2)
+  expect(result1).toEqual(result2)
 
   fig.updateOptions({ useCache: false })
   const result3 = await fig.evaluate(expression)
   const result4 = await fig.evaluate(expression)
-  await expect(result3).not.toEqual(result4)
+  expect(result3).not.toEqual(result4)
 })
 
 test('Cache - uncached result if original item has been dropped from cache', async () => {

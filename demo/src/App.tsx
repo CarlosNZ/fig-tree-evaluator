@@ -16,8 +16,14 @@ import {
   useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import { FigTreeEvaluator, FigTreeOptions, FigTreeEditor } from './packageImports'
+import { FigTreeEvaluator as EvaluatorPublished, FigTreeOptions, FigTreeEditor } from './packageImports'
 import { JsonEditor } from 'json-edit-react'
+import {
+  FigTreeEvaluator as EvaluatorDev,
+  SQLNodePostgres,
+} from './fig-tree-evaluator/src'
+// Enable instead temporarily when Dev has incompatible changes from Published
+// import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 import initData from './data/data.json'
@@ -34,7 +40,11 @@ const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
 
-const figTree = new FigTreeEvaluator({ ...initOptions, pgConnection })
+const figTreeDev = new EvaluatorDev({
+  ...initOptions,
+  sqlConnection: SQLNodePostgres(pgConnection),
+})
+const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()
 if (savedCache) {

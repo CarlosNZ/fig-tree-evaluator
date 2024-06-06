@@ -1,26 +1,67 @@
 import 'dotenv/config'
 import { FigTreeEvaluator } from './evaluator'
 import { Client } from 'pg'
-import pgConfig from './postgres/pgConfig.json'
+import pgConfig from './database/pgConfig.json'
+import { SQLNodePostgres, SQLite } from '../src/databaseConnections'
+import sqlite3 from 'sqlite3'
+import { open, Database } from 'sqlite'
+import { AxiosClient, FetchClient } from '../src'
+import axios from 'axios'
+import fetch from 'node-fetch'
 
-// Postgres tests require a copy of the Northwind database to be running
-// locally, with configuration defined in ./postgres/pgConfig.json. Initialise
+// SQL tests require a copy of the Northwind database to be running
+// locally, with configuration defined in ./database/pgConfig.json. Initialise
 // the Northwind DB using the "northwind.sql" script.
 
 const pgConnect = new Client(pgConfig)
 
 pgConnect.connect()
 
-const exp = new FigTreeEvaluator({
-  pgConnection: pgConnect,
-  graphQLConnection: {
-    endpoint: 'https://countries.trevorblades.com/',
-  },
+let db: Database
+let expSqlite: FigTreeEvaluator
+
+const initialiseSqlLite = async () => {
+  db = await open({
+    filename: './test/database/northwind.sqlite',
+    driver: sqlite3.Database,
+  })
+
+  expSqlite = new FigTreeEvaluator({
+    sqlConnection: SQLite(db),
+    graphQLConnection: {
+      endpoint: 'https://countries.trevorblades.com/',
+    },
+  })
+}
+
+beforeAll(async () => {
+  return initialiseSqlLite()
 })
 
-// Postgres
+const exp = new FigTreeEvaluator({
+  sqlConnection: SQLNodePostgres(pgConnect),
+  graphQLConnection: {
+    endpoint: 'https://countries.trevorblades.com/',
+    httpClient: AxiosClient(axios),
+  },
+  httpClient: FetchClient(fetch),
+})
 
-test('Postgres - lookup single string', () => {
+// SQL -- Postgres
+
+test('Postgres - lookup single string', async () => {
+  const expression = {
+    operator: 'postgres',
+    children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
+    single: true,
+    flatten: true,
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toBe('Aria Cruz')
+})
+
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - lookup single string (deprecated syntax)', () => {
   const expression = {
     operator: 'postgres',
     children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
@@ -67,6 +108,8 @@ test('Postgres - count employees', () => {
   const expression = {
     operator: 'postgres',
     children: ['SELECT COUNT(*) FROM employees'],
+    single: true,
+    flatten: true,
     type: 'number',
   }
   return exp.evaluate(expression).then((result) => {
@@ -74,17 +117,400 @@ test('Postgres - count employees', () => {
   })
 })
 
-test('Postgres - get list of (most) products, using properties', () => {
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - count employees (deprecated syntax)', () => {
+  const expression = {
+    operator: 'postgres',
+    children: ['SELECT COUNT(*) FROM employees'],
+    type: 'number',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(9)
+  })
+})
+
+const expectedProductResult = [
+  'Chai',
+  'Chang',
+  'Guaraná Fantástica',
+  'Côte de Blaye',
+  'Chartreuse verte',
+  'Ipoh Coffee',
+  'Outback Lager',
+  'Rhönbräu Klosterbier',
+  'Lakkalikööri',
+]
+
+test('Postgres - get list of (most) products', async () => {
+  const expression = {
+    operator: 'pgSQL',
+    query: 'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+    values: [1, 16],
+    flatten: true,
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual(expectedProductResult)
+
+  const expressionWithChildren = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    flatten: true,
+  }
+  const resultFromChildren = await exp.evaluate(expressionWithChildren)
+  expect(resultFromChildren).toStrictEqual(expectedProductResult)
+})
+
+// Deprecated syntax, keeping for backwards compatibility
+test('Postgres - get list of (most) products, using properties (deprecated syntax)', async () => {
   const expression = {
     operator: 'pgSQL',
     query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
     values: [1, 16],
     type: 'array',
   }
-  return exp.evaluate(expression).then((result) => {
-    // prettier-ignore
-    expect(result).toStrictEqual(["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte","Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"])
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual(expectedProductResult)
+
+  // with [children]
+  const expression2 = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    type: 'array',
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual(expectedProductResult)
+})
+
+test('Postgres - test single and flattening with multiple records', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual([
+    {
+      shipper_id: 1,
+      company_name: 'Speedy Express',
+      phone: '(503) 555-9831',
+    },
+    {
+      shipper_id: 2,
+      company_name: 'United Package',
+      phone: '(503) 555-3199',
+    },
+    {
+      shipper_id: 3,
+      company_name: 'Federal Shipping',
+      phone: '(503) 555-9931',
+    },
+    {
+      shipper_id: 4,
+      company_name: 'Alliance Shippers',
+      phone: '1-800-222-0451',
+    },
+    {
+      shipper_id: 5,
+      company_name: 'UPS',
+      phone: '1-800-782-7892',
+    },
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual({
+    shipper_id: 1,
+    company_name: 'Speedy Express',
+    phone: '(503) 555-9831',
   })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+    flatten: true,
+  }
+  const result3 = await exp.evaluate(expression3)
+  expect(result3).toStrictEqual([
+    [1, 'Speedy Express', '(503) 555-9831'],
+    [2, 'United Package', '(503) 555-3199'],
+    [3, 'Federal Shipping', '(503) 555-9931'],
+    [4, 'Alliance Shippers', '1-800-222-0451'],
+    [5, 'UPS', '1-800-782-7892'],
+    [6, 'DHL', '1-800-225-5345'],
+  ])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+    flatten: true,
+  }
+  const result4 = await exp.evaluate(expression4)
+  expect(result4).toStrictEqual([1, 'Speedy Express', '(503) 555-9831'])
+})
+
+test('Postgres - test single and flattening with single result record', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toStrictEqual([
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+  }
+  const result2 = await exp.evaluate(expression2)
+  expect(result2).toStrictEqual({
+    shipper_id: 6,
+    company_name: 'DHL',
+    phone: '1-800-225-5345',
+  })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+    flatten: true,
+  }
+  const result3 = await exp.evaluate(expression3)
+  expect(result3).toStrictEqual([[6, 'DHL', '1-800-225-5345']])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+    flatten: true,
+  }
+  const result4 = await exp.evaluate(expression4)
+  expect(result4).toStrictEqual([6, 'DHL', '1-800-225-5345'])
+})
+
+// SQLite
+
+test('SQLite - lookup single string', async () => {
+  const expression = {
+    operator: 'postgres',
+    children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
+    single: true,
+    flatten: true,
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toBe('Aria Cruz')
+})
+
+test('SQLite - get an array of Orders using var substitution', async () => {
+  const expression = {
+    operator: 'pg',
+    children: [
+      'SELECT order_id, order_date, ship_city, ship_country FROM orders WHERE customer_id = ? AND order_id < 10500;',
+      'FAMIA',
+    ],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toEqual([
+    {
+      order_id: 10347,
+      order_date: '1996-11-06',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+    {
+      order_id: 10386,
+      order_date: '1996-12-18',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+    {
+      order_id: 10414,
+      order_date: '1997-01-14',
+      ship_city: 'Sao Paulo',
+      ship_country: 'Brazil',
+    },
+  ])
+})
+
+test('SQLite - count employees', () => {
+  const expression = {
+    operator: 'postgres',
+    children: ['SELECT COUNT(*) FROM employees'],
+    single: true,
+    flatten: true,
+    type: 'number',
+  }
+  return expSqlite.evaluate(expression).then((result) => {
+    expect(result).toBe(9)
+  })
+})
+
+test('SQLite - get list of (most) products', async () => {
+  const expression = {
+    operator: 'pgSQL',
+    query: 'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+    values: [1, 16],
+    flatten: true,
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toStrictEqual(expectedProductResult)
+  const expressionWithChildren = {
+    operator: 'pgSQL',
+    children: [
+      'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
+      1,
+      16,
+    ],
+    flatten: true,
+  }
+
+  const resultFromChildren = await expSqlite.evaluate(expressionWithChildren)
+  expect(resultFromChildren).toStrictEqual(expectedProductResult)
+})
+
+test('SQLite - test single and flattening with multiple records', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toMatchObject([
+    {
+      shipper_id: 1,
+      company_name: 'Speedy Express',
+      phone: '(503) 555-9831',
+    },
+    {
+      shipper_id: 2,
+      company_name: 'United Package',
+      phone: '(503) 555-3199',
+    },
+    {
+      shipper_id: 3,
+      company_name: 'Federal Shipping',
+      phone: '(503) 555-9931',
+    },
+    {
+      shipper_id: 4,
+      company_name: 'Alliance Shippers',
+      phone: '1-800-222-0451',
+    },
+    {
+      shipper_id: 5,
+      company_name: 'UPS',
+      phone: '1-800-782-7892',
+    },
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+  }
+  const result2 = await expSqlite.evaluate(expression2)
+  expect(result2).toMatchObject({
+    shipper_id: 1,
+    company_name: 'Speedy Express',
+    phone: '(503) 555-9831',
+  })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers;'],
+    flatten: true,
+  }
+  const result3 = await expSqlite.evaluate(expression3)
+  expect(result3).toMatchObject([
+    [1, 'Speedy Express', '(503) 555-9831'],
+    [2, 'United Package', '(503) 555-3199'],
+    [3, 'Federal Shipping', '(503) 555-9931'],
+    [4, 'Alliance Shippers', '1-800-222-0451'],
+    [5, 'UPS', '1-800-782-7892'],
+    [6, 'DHL', '1-800-225-5345'],
+  ])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers;',
+    single: true,
+    flatten: true,
+  }
+  const result4 = await expSqlite.evaluate(expression4)
+  expect(result4).toMatchObject([1, 'Speedy Express', '(503) 555-9831'])
+})
+
+test('SQLite - test single and flattening with single result record', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+  }
+  const result = await expSqlite.evaluate(expression)
+  expect(result).toMatchObject([
+    {
+      shipper_id: 6,
+      company_name: 'DHL',
+      phone: '1-800-225-5345',
+    },
+  ])
+
+  const expression2 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+  }
+  const result2 = await expSqlite.evaluate(expression2)
+  expect(result2).toMatchObject({
+    shipper_id: 6,
+    company_name: 'DHL',
+    phone: '1-800-225-5345',
+  })
+
+  const expression3 = {
+    operator: 'sql',
+    children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
+    flatten: true,
+  }
+  const result3 = await expSqlite.evaluate(expression3)
+  expect(result3).toMatchObject([[6, 'DHL', '1-800-225-5345']])
+
+  const expression4 = {
+    operator: 'sql',
+    query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
+    values: [6],
+    single: true,
+    flatten: true,
+  }
+  const result4 = await expSqlite.evaluate(expression4)
+  expect(result4).toMatchObject([6, 'DHL', '1-800-225-5345'])
 })
 
 // GraphQL
@@ -163,6 +589,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
 })
 
 test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
+  exp.updateOptions({ httpClient: AxiosClient(axios) })
   const expression = {
     operator: 'graphQL',
     query: `query getCountry($code: String!) {
@@ -241,6 +668,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
 
 test('GraphQL - Get repo info using partial url and updated options, requires auth', () => {
   exp.updateOptions({
+    httpClient: AxiosClient(axios),
     graphQLConnection: {
       endpoint: 'https://api.github.com/',
       headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN },

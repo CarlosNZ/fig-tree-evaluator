@@ -40,10 +40,11 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [OBJECT\_PROPERTIES](#object_properties)
   - [STRING\_SUBSTITUTION](#string_substitution)
   - [SPLIT](#split)
+  - [HTTP requests](#http-requests)
   - [GET](#get)
   - [POST](#post)
   - [GRAPHQL](#graphql)
-  - [PG\_SQL](#pg_sql)
+  - [SQL](#sql)
   - [BUILD\_OBJECT](#build_object)
   - [MATCH](#match)
   - [PASSTHRU](#passthru)
@@ -150,8 +151,9 @@ The `options` parameter is an object with the following available properties (al
 - `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
 - `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
 - `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
-- `pgConnection` -- if you wish to make calls to a Postgres database using the [`pgSQL` operator](#pg_sql), pass a [node-postgres](https://node-postgres.com/) connection object here.
+- `httpClient` -- pass your http client in here in order to use the HTTP-based operators ([`GET`](#get), [`POST`](#post), [`GraphQL`](#graphql)) (uses browser's native `fetch` by default). 
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
+- `sqlConnection` -- if you wish to make calls to an SQL database using the [`SQL` operator](#sql), pass a connection to the database here. See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
 - `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
 - `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
@@ -1000,11 +1002,84 @@ e.g.
 (`trimWhiteSpace` and `excludeTrailing` not available, since array can only support one optional parameter)
 
 ---
+
+### HTTP requests
+
+The following three operators (`GET`, `POST`, `GraphQL`) make http requests, so require an http client. If using fig-tree in the browser, it will use the native `fetch()` method by default, *so no configuration is required*. However, if using in `node`, or you wish to use a different http client (if your project is already using [`axios`](https://www.npmjs.com/package/axios), say), you can specify it with the `httpClient` option.
+
+The `httpClient` object is an abstraction around an http package in order to standardise the implementation for use in fig-tree. Two such "wrappers" are provided in the FigTree package, for:
+
+- [`axios`](https://www.npmjs.com/package/axios)
+- [`node-fetch`](https://www.npmjs.com/package/node-fetch) (same API as browser `fetch`, but for `node`)
+
+To specify one of these for use, just pass the client directly to the `httpClient` option, like so:
+
+#### Axios
+
+```js
+import axios from 'axios'
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
+
+const fig = new FigTreeEvaluator({
+  httpClient: axios,
+  ...otherOptions
+})
+```
+
+#### Node-Fetch
+
+```js
+import fetch from 'node-fetch'
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
+
+const fig = new FigTreeEvaluator({
+  httpClient: fetch,
+  ...otherOptions
+})
+```
+
+If you wish to use a client other than these two, you must provide an function that takes the client as a parameter and returns an object of the following type structure:
+
+```ts
+interface HttpClient {
+  get: (req: Omit<HttpRequest, 'method'>) => Promise<unknown>
+  post: (req: Omit<HttpRequest, 'method'>) => Promise<unknown>
+  throwError: (err: unknown) => void
+}
+
+// where HttpRequest is an input of the following shape:
+interface HttpRequest {
+  url: string
+  params?: { [key: string]: string }
+  data?: Record<string, unknown>
+  headers?: Record<string, unknown>
+  method?: 'get' | 'post'
+}
+```
+
+And then in FigTree, for example:
+
+```js
+import { MyHttpWrapper } from './customWrappers'
+import { someClient } from 'some-library'
+
+const fig = new FigTreeEvaluator({
+  httpClient: MyHttpWrapper(someClient),
+  ...otherOptions
+})
+
+```
+
+See the implementation for `axios` and `node-fetch` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/91-exclude-axios-from-package/src/httpClients.ts) for specific details.
+
+
 ### GET
 
 *Http GET request*
 
 Aliases: `get`, `api`
+
+*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
 
 #### Properties
 
@@ -1070,6 +1145,8 @@ Aliases: `post`
 
 The "POST" operator is basically structurally the same as [GET](#get).
 
+*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
+
 #### Properties
 
 - `url`/`endpoint`<sup>*</sup>, `headers`, `returnProperty`/`outputProperty` -- same as "GET" operator.
@@ -1102,6 +1179,8 @@ e.g.
 Aliases: `graphQl`, `graphql`, `gql`
 
 This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
+
+*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
 
 #### Properties
 
@@ -1170,58 +1249,163 @@ e.g.
 ```
 
 ----
-### PG_SQL
+### SQL
 
-*Query a Postgres database using [`node-postgres`](https://node-postgres.com/)*
+*Query an SQL database*
 
-Aliases: `pgSql`, `sql`, `postgres`, `pg`, `pgDb`
+Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
 #### Properties
 
 - `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
-- `values` (or `replacements`): (array) -- replacements for the `query` parameters
-- `type` (or `queryType`): (`"array" | "string" | "number"`) -- determines the shape of the resulting data. To quote `node-postgres`:  
-  > By default node-postgres reads rows and collects them into JavaScript objects with the keys matching the column names and the values matching the corresponding row value for each column. If you do not need or do not want this behavior you can pass rowMode: 'array' to a query object. This will inform the result parser to bypass collecting rows into a JavaScript object, and instead will return each row as an array of values.  
+- `values` (or `replacements`): (array / object) -- replacements for the `query` parameters
+- `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
+- `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
-  We extend this a step further by flattening the array, and (if `"string"` or `"number"`) converting the result to a concatenated string or (if possible) number.
+##### SQLite
 
-In order to query a postgres database, fig-tree must be provided with a database connection object -- specifically, a [`node-postgres`](https://node-postgres.com/) `Client` object:
 
 ```js
-import { Client } from 'pg'
-const pgConnect = new Client(pgConfig) // pgConfig = database details, see node-postgres documentation
+import sqlite3 from 'sqlite3'
+import { open, Database } from 'sqlite'
+import { FigTreeEvaluator, SQLite } from 'fig-tree-evaluator'
 
-pgConnect.connect()
+open({
+    filename: '/path/to/sqlite.db',
+    driver: sqlite3.Database
+  }).then((db) => {
+    const fig = new FigTreeEvaluator({
+      sqlConnection: SQLite(db),
+      ...otherOptions
+    })
 
-const fig = new FigTreeEvaluator({ pgConnection: pgConnect })
+    fig.evaluate(...) // Continue app operations
+})
 ```
 
-The following examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
+To create additional abstractions for other database connections, check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/108-generalise-SQL-operator/src/databaseConnections.ts).
 
-e.g.
+#### Examples
+
+The following additional examples query a default installation of the [Northwind](https://github.com/pthom/northwind_psql) demo database.
+
 ```js
 {
-  operator: 'pgSql',
+  operator: 'sql',
   query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
-  type: 'string',
+  single: true,
+  flatten: true
 }
 // => "Aria Cruz"
 
 {
-  operator: 'pgSQL',
-  query: 'SELECT product_name FROM public.products WHERE category_id = $1 AND supplier_id != $2',
+  operator: 'sql',
+  query: `SELECT product_name FROM public.products
+    WHERE category_id = $1 AND supplier_id != $2`,
   values: [1, 16],
-  type: 'array',
+  flatten: true,
 }
 // => ["Chai","Chang","Guaraná Fantástica","Côte de Blaye","Chartreuse verte",
 //     "Ipoh Coffee","Outback Lager","Rhönbräu Klosterbier","Lakkalikööri"]
+
+{
+  operator: 'sql',
+  query: 'SELECT COUNT(*) FROM employees',
+  flatten: true,
+  type: 'number',
+}
+// => 9
 
 ```
 
 `children` array: `[queryString, ...substitutions]`
 
-(`type` is provided by the common `type`/`outputType` property)
+(`single` and `flatten` can not be part of `children` array)
 
+#### Connecting to the database
+
+In order to query the SQL database, fig-tree must be provided with a database connection object in its `sqlConnection` option. An `SQLConnection` is an abstraction around a specific database connection in order to standardise the implementation for use in fig-tree. Two such "wrappers" are provided in the FigTree package for the following database connections:
+
+- **PostgreSQL** using [`node-postgres`](https://node-postgres.com/): `SQLNodePostgres` wrapper
+- **SQLite** using[`sqlite`/`sqlite3`](https://www.npmjs.com/package/sqlite): `SQLite` wrapper
+
+You will need to have the appropriate package installed separately, and they can be implemented as follows:
+
+##### PostgreSQL
+
+```js
+import { Client } from 'pg' // node-postgres
+import { FigTreeEvaluator, SQLNodePostgres } from 'fig-tree-evaluator'
+
+const pgConfig = {
+  // database config, see node-postgres documentation
+  user: 'postgres',
+  host: 'localhost',
+  database: 'northwind',
+  port: 5432,
+  ...etc
+}
+
+const pgConnect = new Client(pgConfig)
+
+pgConnect.connect()
+
+const fig = new FigTreeEvaluator({
+  sqlConnection: SQLNodePostgres(pgConnect),
+  ...otherOptions
+})
+
+fig.evaluate({
+  operator: "SQL",
+  query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
+  single: true,
+  flatten: true
+})
+.then((result) => console.log(result)) // => "Aria Cruz"
+```
+
+##### SQLite
+
+
+```js
+import sqlite3 from 'sqlite3'
+import { open, Database } from 'sqlite'
+import { FigTreeEvaluator, SQLite } from 'fig-tree-evaluator'
+
+open({
+    filename: '/path/to/sqlite.db',
+    driver: sqlite3.Database
+  }).then((db) => {
+    const fig = new FigTreeEvaluator({
+      sqlConnection: SQLite(db),
+      ...otherOptions
+    })
+
+    fig.evaluate(...) // Continue app operations
+})
+```
+
+To create additional abstractions for other database connections, you need to provide a function that takes the library's connection object as a parameter and returns an object with a `.query()` method with the following type structure:
+
+```ts
+interface SQLConnection {
+  query: (input: QueryInput) => Promise<QueryOutput>
+}
+
+// where `QueryInput` is:
+interface QueryInput {
+  query: string
+  values?: (string | number | boolean)[] | object
+  single?: boolean
+  flatten?: boolean
+}
+
+// and `QueryOutput` is any FigTree output
+```
+
+You then implement in FigTree options the same way as the two described above.
+
+Check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/108-generalise-SQL-operator/src/databaseConnections.ts) for specific details.
 
 ----
 ### BUILD_OBJECT
