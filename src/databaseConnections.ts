@@ -1,5 +1,5 @@
 /**
- * Connections for various database interfaces
+ * Connection abstractions for various database interfaces
  */
 
 import { Client, QueryResult } from 'pg'

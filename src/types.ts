@@ -1,7 +1,10 @@
+import { AxiosStatic } from 'axios'
 import FigTreeCache from './cache'
 import { GraphQLConnection, SQLConnection } from './operators'
 import { operatorAliases } from './operators/operatorAliases'
+import { HttpClient } from './operators/operatorUtils'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
+import { Fetch } from './httpClients'
 
 export const Operators = [
   // Canonical operator names
@@ -43,6 +46,7 @@ export interface FigTreeOptions {
   objects?: object // same as "data" -- deprecated
   functions?: Record<string, UnknownFunction>
   fragments?: Fragments
+  httpClient?: HttpClient | AxiosStatic | Fetch
   graphQLConnection?: GraphQLConnection
   sqlConnection?: SQLConnection
   baseEndpoint?: string
@@ -69,6 +73,8 @@ export interface FigTreeConfig {
   typeChecker: (...args: TypeCheckInput[] | [TypeCheckInput[]]) => void
   resolvedAliasNodes: { [key: string]: EvaluatorOutput }
   cache: FigTreeCache
+  httpClient?: HttpClient
+  graphQLClient?: HttpClient
 }
 
 export type OutputType = 'string' | 'number' | 'boolean' | 'bool' | 'array'

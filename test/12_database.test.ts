@@ -5,6 +5,9 @@ import pgConfig from './database/pgConfig.json'
 import { SQLNodePostgres, SQLite } from '../src/databaseConnections'
 import sqlite3 from 'sqlite3'
 import { open, Database } from 'sqlite'
+import { AxiosClient, FetchClient } from '../src'
+import axios from 'axios'
+import fetch from 'node-fetch'
 
 // SQL tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./database/pgConfig.json. Initialise
@@ -39,7 +42,9 @@ const exp = new FigTreeEvaluator({
   sqlConnection: SQLNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
+    httpClient: AxiosClient(axios),
   },
+  httpClient: FetchClient(fetch),
 })
 
 // SQL -- Postgres
@@ -584,6 +589,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
 })
 
 test('GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject', () => {
+  exp.updateOptions({ httpClient: AxiosClient(axios) })
   const expression = {
     operator: 'graphQL',
     query: `query getCountry($code: String!) {
@@ -662,6 +668,7 @@ test('GraphQL - single country lookup, default endpoint, return node, using para
 
 test('GraphQL - Get repo info using partial url and updated options, requires auth', () => {
   exp.updateOptions({
+    httpClient: AxiosClient(axios),
     graphQLConnection: {
       endpoint: 'https://api.github.com/',
       headers: { Authorization: 'Bearer ' + process.env.GITHUB_TOKEN },

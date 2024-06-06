@@ -83,7 +83,6 @@ export const SQL: OperatorObject = {
 }
 
 // SQL Connection Type
-
 export interface QueryInput {
   query: string
   values?: (string | number | boolean)[] | object
