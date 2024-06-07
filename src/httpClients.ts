@@ -5,6 +5,7 @@
 
 import { type AxiosRequestConfig, type AxiosStatic } from 'axios'
 import { type RequestInfo, type RequestInit, type Response } from 'node-fetch'
+import querystring from 'querystring'
 import { HttpClient, HttpRequest } from './operators/operatorUtils'
 import { errorMessage } from './helpers'
 
@@ -70,9 +71,8 @@ export const AxiosClient = (axios: AxiosStatic) => {
 
 export const FetchClient = (fetch: Fetch) => {
   const get = async (req: Omit<HttpRequest, 'method'>) => {
-    const { url, headers, params } = req
-    const queryParams = new URLSearchParams(params)
-    const queryString = queryParams.size > 0 ? `?${queryParams.toString()}` : ''
+    const { url, headers, params = {} } = req
+    const queryString = Object.keys(params).length > 0 ? `?${querystring.stringify(params)}` : ''
 
     const response = await fetch(url + queryString, { headers, method: 'GET' } as RequestInit)
     const json = await response.json()
