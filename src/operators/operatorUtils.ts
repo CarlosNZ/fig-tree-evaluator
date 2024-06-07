@@ -132,6 +132,7 @@ export interface HttpRequest {
 
 export const httpRequest = async (client: HttpClient, request: HttpRequest) => {
   const { url, params = {}, data = {}, headers = {}, method = 'get' } = request
+  if (!url || url === '') throw new Error('Invalid url')
   try {
     const response = await client[method]({
       url,
