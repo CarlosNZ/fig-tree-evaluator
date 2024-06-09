@@ -14,13 +14,13 @@ import { DisplayBar } from './Operator'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
-export interface OperatorProps {
+export interface ShorthandProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
 }
 
-export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
+export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) => {
   const { data: d, nodeData, customNodeProps, getStyles } = props
   const data = d as Record<string, string>
 
@@ -84,7 +84,7 @@ export const ShorthandNode: React.FC<CustomNodeProps<OperatorProps>> = (props) =
   )
 }
 
-export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
+export const ShorthandNodeWrapper: React.FC<CustomNodeProps<ShorthandProps>> = ({
   children,
   nodeData: { key, parentData },
   customNodeProps,
@@ -120,7 +120,7 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<OperatorProps>> = ({
   )
 }
 
-export const ShorthandStringNode: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
+export const ShorthandStringNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) => {
   const { data: d, customNodeProps } = props
 
   const data = d as string

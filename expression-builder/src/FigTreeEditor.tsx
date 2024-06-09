@@ -19,6 +19,7 @@ import {
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
+import { TopLevelContainer } from './TopLevel'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import {
@@ -101,12 +102,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     }
   }, [expressionInit])
 
-  // const customFunctionData = operators.find(
-  //   (op) => op.name === 'CUSTOM_FUNCTIONS'
-  // ) as OperatorMetadata
-
-  // const customFunctionAliases = [customFunctionData?.name, ...customFunctionData.aliases]
-
   const evaluateNode = async (expression: EvaluatorNode) => {
     setIsEvaluating(true)
     onEvaluateStart && onEvaluateStart()
@@ -118,8 +113,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     }
     setIsEvaluating(false)
   }
-
-  // const isAliasNode = (nodeData) => aliasNodeTester(nodeData, allOpAliases, allFragments)
 
   const isShorthandWrapper = (nodeData: NodeData) =>
     shorthandWrapperTester(nodeData, allOpAliases, allFragments)
@@ -237,7 +230,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
             },
             hideKey: true,
-            // showOnView: false,
             showOnEdit: false,
             showEditTools: false,
             showInTypesSelector: true,
@@ -289,6 +281,17 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
                 {children}
               </div>
             ),
+          },
+          {
+            condition: (nodeData: any) => nodeData.path.length === 0,
+            element: TopLevelContainer,
+            customNodeProps: {
+              figTree,
+              isEvaluating,
+              evaluateNode,
+              isShorthandNode,
+              // evaluateFullObject,
+            },
           },
         ] as CustomNodeDefinition[]
       }

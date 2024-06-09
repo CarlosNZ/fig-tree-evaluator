@@ -15,10 +15,6 @@ pre {
   white-space: pre-wrap;
 }
 
-/* .ft-display-button {
-  min-width: 6em !important;
-} */
-
 .ft-icon.ft-evaluate-icon {
   transform: translateY(0em) !important;
 }

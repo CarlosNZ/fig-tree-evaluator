@@ -16,7 +16,7 @@ import './styles.css'
 import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
-import { operatorDisplay } from './operatorDisplay'
+import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
@@ -166,33 +166,13 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   return (
     <div className="ft-display-bar">
       <div className="ft-button-and-edit">
-        <div
-          className="ft-display-button"
-          style={{ backgroundColor, color: textColor }}
-          onClick={evaluate}
-        >
-          {!isLoading ? (
-            <>
-              <span
-                className="ft-operator-alias"
-                style={{
-                  fontSize: getButtonFontSize(name),
-                  fontStyle: isShorthand ? 'italic' : 'inherit',
-                }}
-              >
-                {name}
-              </span>
-              {Icons.evaluate}
-            </>
-          ) : (
-            <div style={{ width: '100%', textAlign: 'center' }}>
-              <span
-                className="loader"
-                style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
-              ></span>
-            </div>
-          )}
-        </div>
+        <EvaluateButton
+          name={name}
+          backgroundColor={backgroundColor}
+          textColor={textColor}
+          evaluate={evaluate}
+          isLoading={isLoading}
+        />
         {!isShorthand && (
           <span onClick={() => setIsEditing()} className="ft-edit-icon">
             <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
@@ -204,6 +184,52 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           {displayName}
         </a>
       </div>
+    </div>
+  )
+}
+
+export interface EvaluateButtonProps {
+  name: string
+  backgroundColor: string
+  textColor: string
+  evaluate: () => void
+  isLoading: boolean
+}
+
+export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
+  name,
+  backgroundColor,
+  textColor,
+  evaluate,
+  isLoading,
+}) => {
+  return (
+    <div
+      className="ft-display-button"
+      style={{ backgroundColor, color: textColor }}
+      onClick={evaluate}
+    >
+      {!isLoading ? (
+        <>
+          <span
+            className="ft-operator-alias"
+            style={{
+              fontSize: getButtonFontSize(name),
+              fontStyle: 'inherit',
+            }}
+          >
+            {name}
+          </span>
+          {Icons.evaluate}
+        </>
+      ) : (
+        <div style={{ width: '100%', textAlign: 'center' }}>
+          <span
+            className="loader"
+            style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
+          ></span>
+        </div>
+      )}
     </div>
   )
 }

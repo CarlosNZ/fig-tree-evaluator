@@ -37,6 +37,7 @@ const initOptions: FigTreeOptions = getInitOptions()
 const figTree = new FigTreeEvaluator({
   ...initOptions,
   sqlConnection: SQLNodePostgres(pgConnection),
+  // supportDeprecatedValueNodes: true,
 })
 
 const savedCache = getInitCache()

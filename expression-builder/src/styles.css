@@ -41,7 +41,7 @@
   display: flex;
   justify-content: space-between;
   min-width: 4em;
-  width: 100%;
+  /* width: 100%; */
   height: 2em;
   padding: 0em 1em;
   border-radius: 0.5em;
