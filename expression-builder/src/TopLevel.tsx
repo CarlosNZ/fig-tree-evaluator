@@ -6,7 +6,7 @@ import {
   isFragmentNode,
 } from './packages/figTreeImport'
 import { CustomNodeProps, NodeData } from './packages/JsonEditReactImport'
-import './styles.css'
+// import './styles.css'
 import { EvaluateButton } from './Operator'
 
 interface TopLevelProps {

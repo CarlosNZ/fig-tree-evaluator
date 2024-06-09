@@ -12,11 +12,11 @@ import {
 import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './packages/JsonEditReactImport'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
-import './styles.css'
+// import './styles.css'
 import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
-import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
+import { operatorDisplay } from './operatorDisplay'
 import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'

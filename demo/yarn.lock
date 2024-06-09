@@ -2459,14 +2459,6 @@ fig-tree-evaluator@^2.15.0:
     dequal "^2.0.3"
     object-property-extractor "^1.0.11"
 
-"fig-tree-expression-builder@file:../../../Desktop/fig-tree-expression-builder-v0.9.0.tgz":
-  version "0.9.0"
-  resolved "file:../../../Desktop/fig-tree-expression-builder-v0.9.0.tgz#d9dc8732da658a2108a5b3753213509c1811afa5"
-  dependencies:
-    json-edit-react "^1.11.6"
-    object-property-extractor "^1.0.11"
-    react-select "^5.8.0"
-
 file-entry-cache@^6.0.1:
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/file-entry-cache/-/file-entry-cache-6.0.1.tgz#211b2dd9659cb0394b073e7323ac3c933d522027"

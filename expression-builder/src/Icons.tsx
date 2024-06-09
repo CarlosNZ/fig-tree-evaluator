@@ -1,5 +1,3 @@
-import React from 'react'
-
 export const Icons = {
   evaluate: (
     // https://thenounproject.com/icon/play-6552224/

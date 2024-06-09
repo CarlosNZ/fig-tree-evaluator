@@ -6,7 +6,7 @@ import {
   OperatorMetadata,
 } from './packages/figTreeImport'
 import { CustomNodeProps, IconOk, IconCancel } from './packages/JsonEditReactImport'
-import './styles.css'
+// import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'

@@ -76,7 +76,7 @@ export const OptionsModal = ({
   }) => {
     const [key, value] = Object.entries(text)[0]
     if (!value) return
-    const json = value ? JSONstringify(value, false, true) : ''
+    const json = value ? JSON.stringify(value, null, 2) : ''
     const errorKey =
       key === 'headersText'
         ? 'headersError'

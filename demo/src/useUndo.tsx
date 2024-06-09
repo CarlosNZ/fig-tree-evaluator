@@ -3,11 +3,10 @@ import { dequal } from 'dequal'
 import { Button, HStack, VStack, Spacer } from '@chakra-ui/react'
 // import { BiReset } from 'react-icons/bi'
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons'
-import { useState } from 'react'
 
 export const useUndo = (initialData: object) => {
   // const [resetPoint, setResetPoint] = useState(initialData)
-  const [{ present: data }, { set: setData, reset, undo, redo, canUndo, canRedo }] =
+  const [{ present: data }, { set: setData, undo, redo, canUndo, canRedo }] =
     useUndoHook(initialData)
 
   const handleChange = (newData: object) => {

@@ -7,7 +7,7 @@ import {
 } from './packages/figTreeImport'
 import { CustomNodeProps } from './packages/JsonEditReactImport'
 import { Icons } from './Icons'
-import './styles.css'
+// import './styles.css'
 import { getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import { DisplayBar } from './Operator'
