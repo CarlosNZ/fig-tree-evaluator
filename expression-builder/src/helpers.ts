@@ -5,7 +5,7 @@ import {
   isObject,
   isAliasString,
   OperatorAlias,
-} from './packages/figTreeImport'
+} from './_imports'
 import { NodeData, isCollection } from './packages/JsonEditReactImport'
 import { NodeType } from './NodeTypeSelector'
 

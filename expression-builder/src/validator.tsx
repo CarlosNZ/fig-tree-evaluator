@@ -10,7 +10,7 @@ import {
   FragmentNode,
   OperatorParameterMetadata,
   FragmentParameterMetadata,
-} from './packages/figTreeImport'
+} from './_imports'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
 export const commonProperties = ['fallback', 'outputType', 'type', 'useCache']

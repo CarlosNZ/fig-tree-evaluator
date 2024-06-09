@@ -7,7 +7,7 @@ import {
   isObject,
   isAliasString,
   OperatorNode,
-} from './packages/figTreeImport'
+} from './_imports'
 import {
   CustomNodeDefinition,
   JsonEditor,
@@ -91,7 +91,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       }
     })()
   )
-  const [isEvaluating, setIsEvaluating] = useState(false)
 
   useEffect(() => {
     try {
@@ -103,7 +102,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   }, [expressionInit])
 
   const evaluateNode = async (expression: EvaluatorNode) => {
-    setIsEvaluating(true)
     onEvaluateStart && onEvaluateStart()
     try {
       const result = await figTree.evaluate(expression, { data: objectData })
@@ -111,7 +109,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     } catch (err) {
       onEvaluateError && onEvaluateError(err)
     }
-    setIsEvaluating(false)
   }
 
   const isShorthandWrapper = (nodeData: NodeData) =>

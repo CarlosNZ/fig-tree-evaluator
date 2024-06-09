@@ -16,7 +16,7 @@ import {
   useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import { FigTreeEvaluator, SQLNodePostgres, FigTreeOptions, FigTreeEditor } from './packageImports'
+import { FigTreeEvaluator, SQLNodePostgres, FigTreeOptions, FigTreeEditor } from './_imports.js'
 import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'

@@ -8,7 +8,7 @@ import {
   OperatorParameterMetadata,
   EvaluatorNode,
   type Operator as OpType,
-} from './packages/figTreeImport'
+} from './_imports'
 import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './packages/JsonEditReactImport'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'

@@ -1,10 +1,5 @@
 import React, { useState } from 'react'
-import {
-  FigTreeEvaluator,
-  EvaluatorNode,
-  isOperatorNode,
-  isFragmentNode,
-} from './packages/figTreeImport'
+import { FigTreeEvaluator, EvaluatorNode, isOperatorNode, isFragmentNode } from './_imports'
 import { CustomNodeProps, NodeData } from './packages/JsonEditReactImport'
 // import './styles.css'
 import { EvaluateButton } from './Operator'

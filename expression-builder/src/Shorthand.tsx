@@ -4,7 +4,7 @@ import {
   Operator as OperatorName,
   OperatorMetadata,
   EvaluatorNode,
-} from './packages/figTreeImport'
+} from './_imports'
 import { CustomNodeProps } from './packages/JsonEditReactImport'
 import { Icons } from './Icons'
 // import './styles.css'
