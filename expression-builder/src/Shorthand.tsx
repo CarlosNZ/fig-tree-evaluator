@@ -4,8 +4,8 @@ import {
   Operator as OperatorName,
   OperatorMetadata,
   EvaluatorNode,
+  CustomNodeProps,
 } from './_imports'
-import { CustomNodeProps } from './packages/JsonEditReactImport'
 import { Icons } from './Icons'
 // import './styles.css'
 import { getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'

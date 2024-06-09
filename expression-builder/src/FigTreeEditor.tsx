@@ -4,18 +4,18 @@ import {
   type EvaluatorNode,
   type FigTreeEvaluator,
   type Operator as OperatorName,
+  // Fig Tree
   isObject,
   isAliasString,
   OperatorNode,
-} from './_imports'
-import {
+  // json-edit-react
   CustomNodeDefinition,
   JsonEditor,
   JsonEditorProps,
   NodeData,
   UpdateFunction,
   isCollection,
-} from './packages/JsonEditReactImport'
+} from './_imports'
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
@@ -223,7 +223,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             customNodeProps: {
               figTree,
               evaluateNode,
-              isEvaluating,
               operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
             },
             hideKey: true,
@@ -236,7 +235,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             condition: ({ key }) => key === 'fragment',
             element: Fragment,
             name: 'Fragment',
-            customNodeProps: { figTree, isEvaluating, evaluateNode },
+            customNodeProps: { figTree, evaluateNode },
             hideKey: true,
             showOnEdit: false,
             showEditTools: false,
@@ -249,7 +248,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             },
             hideKey: true,
             wrapperElement: ShorthandNodeWrapper,
-            wrapperProps: { figTree, isEvaluating, evaluateNode },
+            wrapperProps: { figTree, evaluateNode },
           },
           {
             condition: (nodeData) => {
@@ -258,14 +257,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               )
             },
             element: ShorthandNode,
-            customNodeProps: { figTree, isEvaluating, evaluateNode },
+            customNodeProps: { figTree, evaluateNode },
           },
           {
             condition: ({ value }) => {
               return isShorthandString(value)
             },
             element: ShorthandStringNode,
-            customNodeProps: { figTree, isEvaluating, evaluateNode },
+            customNodeProps: { figTree, evaluateNode },
           },
           {
             condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
@@ -284,7 +283,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             element: TopLevelContainer,
             customNodeProps: {
               figTree,
-              isEvaluating,
               evaluateNode,
               isShorthandNode,
               // evaluateFullObject,

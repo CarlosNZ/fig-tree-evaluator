@@ -99,7 +99,7 @@ export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: Op
     textColor: '#403f65',
     displayName: 'Http POST request',
   },
-  PG_SQL: {
+  SQL: {
     backgroundColor: '#48648a',
     textColor: '#f8f8f8',
     displayName: 'PostgreSQL query',

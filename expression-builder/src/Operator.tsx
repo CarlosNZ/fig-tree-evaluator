@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
+  // fig-tree
   CustomFunctionMetadata,
   FigTreeEvaluator,
   OperatorAlias,
@@ -8,8 +9,12 @@ import {
   OperatorParameterMetadata,
   EvaluatorNode,
   type Operator as OpType,
+  // json-edit-react
+  CustomNodeProps,
+  IconEdit,
+  IconOk,
+  IconCancel,
 } from './_imports'
-import { CustomNodeProps, IconEdit, IconOk, IconCancel } from './packages/JsonEditReactImport'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'

@@ -5,8 +5,9 @@ import {
   isObject,
   isAliasString,
   OperatorAlias,
+  NodeData,
+  isCollection,
 } from './_imports'
-import { NodeData, isCollection } from './packages/JsonEditReactImport'
 import { NodeType } from './NodeTypeSelector'
 
 export const operatorStringRegex = /(\$[^()]+)\((.*)\)/

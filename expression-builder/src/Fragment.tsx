@@ -1,6 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react'
-import { FigTreeEvaluator, FragmentMetadata, FragmentNode, OperatorMetadata } from './_imports'
-import { CustomNodeProps, IconOk, IconCancel } from './packages/JsonEditReactImport'
+import {
+  FigTreeEvaluator,
+  FragmentMetadata,
+  FragmentNode,
+  OperatorMetadata,
+  CustomNodeProps,
+  IconOk,
+  IconCancel,
+} from './_imports'
 // import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'

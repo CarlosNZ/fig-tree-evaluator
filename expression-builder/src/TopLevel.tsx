@@ -1,6 +1,12 @@
 import React, { useState } from 'react'
-import { FigTreeEvaluator, EvaluatorNode, isOperatorNode, isFragmentNode } from './_imports'
-import { CustomNodeProps, NodeData } from './packages/JsonEditReactImport'
+import {
+  FigTreeEvaluator,
+  EvaluatorNode,
+  isOperatorNode,
+  isFragmentNode,
+  CustomNodeProps,
+  NodeData,
+} from './_imports'
 // import './styles.css'
 import { EvaluateButton } from './Operator'
 
@@ -24,10 +30,10 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
   if (!evaluateNode || !isShorthandNode) return null
 
   if (
+    !figTree?.getOptions().evaluateFullObject ||
     isOperatorNode(nodeData.value as EvaluatorNode) ||
     isFragmentNode(nodeData.value as EvaluatorNode) ||
-    isShorthandNode(nodeData) ||
-    !figTree?.getOptions().evaluateFullObject
+    isShorthandNode(nodeData)
   )
     return children
 

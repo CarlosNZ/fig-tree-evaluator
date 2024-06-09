@@ -67,4 +67,4 @@ const Select: React.FC<Props> = <
   )
 }
 
-export { Select, SelectOption }
+export { Select, type SelectOption }
