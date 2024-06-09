@@ -189,7 +189,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
 }
 
 export interface EvaluateButtonProps {
-  name: string
+  name?: string
   backgroundColor: string
   textColor: string
   evaluate: () => void
@@ -211,15 +211,17 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
     >
       {!isLoading ? (
         <>
-          <span
-            className="ft-operator-alias"
-            style={{
-              fontSize: getButtonFontSize(name),
-              fontStyle: 'inherit',
-            }}
-          >
-            {name}
-          </span>
+          {name && (
+            <span
+              className="ft-operator-alias"
+              style={{
+                fontSize: getButtonFontSize(name),
+                fontStyle: 'inherit',
+              }}
+            >
+              {name}
+            </span>
+          )}
           {Icons.evaluate}
         </>
       ) : (

@@ -7,4 +7,3 @@
 
 /* Local src */
 export * from '../fig-tree-evaluator/src'
-export * from 'fig-tree-expression-builder'

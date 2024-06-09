@@ -6,7 +6,9 @@ export interface OperatorDisplay {
   displayName: string
 }
 
-export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: OperatorDisplay } = {
+export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: OperatorDisplay } & {
+  OUTER: OperatorDisplay
+} = {
   AND: {
     backgroundColor: '#91dfd6',
     textColor: '#605f5f',
@@ -131,5 +133,10 @@ export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: Op
     backgroundColor: '#477799',
     textColor: '#ebdf5a',
     displayName: 'Fragment',
+  },
+  OUTER: {
+    backgroundColor: '#454545',
+    textColor: 'white',
+    displayName: '',
   },
 }

@@ -16,7 +16,7 @@ import {
   UpdateFunction,
   isCollection,
 } from './packages/JsonEditReactImport'
-// import './styles.css'
+import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
 import { TopLevelContainer } from './TopLevel'

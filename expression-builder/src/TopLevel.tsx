@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import {
   FigTreeEvaluator,
   EvaluatorNode,
@@ -41,8 +41,8 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
       <div className="ft-display-bar">
         {/* <div> */}
         <EvaluateButton
-          name=""
-          backgroundColor="black"
+          // name=""
+          backgroundColor="#454545"
           textColor="white"
           evaluate={async () => {
             setLoading(true)
