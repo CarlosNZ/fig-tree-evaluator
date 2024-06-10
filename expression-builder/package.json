@@ -19,7 +19,7 @@
     "react": ">=16.0.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.11.6",
+    "json-edit-react": "^1.11.7",
     "object-property-extractor": "^1.0.11",
     "react-select": "^5.8.0"
   },

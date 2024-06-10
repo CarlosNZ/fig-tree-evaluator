@@ -2905,14 +2905,14 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^1.11.6:
-  version "1.11.6"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.11.6.tgz#cdfe4905afc30bc14cbc06f82c5e6c1ec51e5e66"
-  integrity sha512-5TkPJ5RDKxekbXnq4psD8YxuOuDR29j9j6fEyC6IwduTQFp/b6BzMq9p7pSV48m7GAcUzp47Q9ymn2TM/2ub9Q==
+json-edit-react@^1.11.7:
+  version "1.11.7"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.11.7.tgz#d1f129ebf844f2d54cfb2bd0aa8452961de36e03"
+  integrity sha512-vCkREGhBN7P3i0QHeGd1bt2ZQ+c6qLzDLzksqz/hybAZoQxJUXF9YZpGNRF46kslKwI87Qnn13RgmoYG0MUF4w==
   dependencies:
     json5 "^2.2.3"
     just-clone "^6.2.0"
-    object-property-assigner "^1.2.3"
+    object-property-assigner "^1.2.4"
     object-property-extractor "^1.0.11"
 
 json-loose@^1.2.3:
@@ -3181,15 +3181,10 @@ object-inspect@^1.9.0:
   resolved "https://registry.yarnpkg.com/object-inspect/-/object-inspect-1.13.1.tgz#b96c6109324ccfef6b12216a956ca4dc2ff94bc2"
   integrity sha512-5qoj1RUiKOMsCCNLV1CBiPYE10sziTsnmNxkAI/rZhiD63CF7IqdFGC/XzjWjpSgLf0LxXX3bDFIh0E18f6UhQ==
 
-object-property-assigner@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.0.1.tgz#0ce00a72877fc995e1504e04cf1509833c0f6147"
-  integrity sha512-B+5FhEnpTg4XCf7931AbPTQ1PAm56K+cxWmu/QIG8mqCrfuOLnMw+87vjZfIYP7j8wV5e3E9dYh0uMdqEbmzyw==
-
-object-property-assigner@^1.2.3:
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.3.tgz#73389a071ec5d1bb1117bb02c846727b892e3f9e"
-  integrity sha512-+9sLdS0jr2kjl5HskuX6/Fxvlyt9mfex3TbbjLPRdEXd+zAtAxrzv7fJz/2Q3mag9dclDrgjgwD+uEO1bHNEpA==
+object-property-assigner@^1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/object-property-assigner/-/object-property-assigner-1.2.4.tgz#1545f55e51b6b3b0eaf83ce2bfd1ea171e3949bb"
+  integrity sha512-wL4Y1ugqycyFu6ihfDM8BPhJR5NbaFXW7RXlt6ROmeAEyuBDI2XDctMUowQYlkj5LxQcxGC7NP6axENyZGge6A==
 
 object-property-extractor@^1.0.11:
   version "1.0.11"
