@@ -66,9 +66,9 @@ export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
 
 /*
-Will throw an error (with `errorMessage`) if no `fallback` is provided. If
+Will throw an error (FigTreeError) if no `fallback` is provided. If
 `returnErrorAsString` is enabled, then it won't throw, but instead return a
-string containing the error message. 
+string containing a formatted error message. 
 */
 interface ErrorInput {
   fallback?: EvaluatorOutput
