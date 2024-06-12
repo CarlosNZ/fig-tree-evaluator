@@ -47,7 +47,10 @@ class FigTreeEvaluator {
       args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
     const result = typeCheck(...inputArgs)
     if (result === true) return
-    throw new Error(result)
+
+    const err = new Error(result)
+    err.name = 'Type Error'
+    throw err
   }
 
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {

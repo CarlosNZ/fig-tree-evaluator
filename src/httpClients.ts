@@ -53,10 +53,11 @@ export const AxiosClient = (axios: AxiosStatic) => {
   }
 
   const throwError = (err: unknown) => {
-    if (axios.isAxiosError(err)) {
+    if (axios.isAxiosError(err) && err.response) {
       ;(err as FigTreeError).errorData = {
         status: err.response?.status,
         error: err.response?.statusText,
+        url: err.config?.url,
         response: err.response?.data,
       }
       console.log((err as FigTreeError).errorData)
@@ -87,6 +88,7 @@ export const FetchClient = (fetch: Fetch) => {
       err.errorData = {
         status: response.status,
         error: response.statusText,
+        url: response.url,
         response: json,
       }
       console.log(err.errorData)
@@ -111,6 +113,7 @@ export const FetchClient = (fetch: Fetch) => {
       err.errorData = {
         status: response.status,
         error: response.statusText,
+        url: response.url,
         response: json,
       }
       console.log(err.errorData)

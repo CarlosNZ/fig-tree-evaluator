@@ -91,8 +91,8 @@ export const fallbackOrError = ({
   const err: FigTreeError = typeof error === 'string' ? new Error(error) : error
   if (name) err.name = name
   if (err.name === 'Error') err.name = 'FigTreeError'
-  err.expression = expression
-  err.operator = operator
+  err.expression = err.expression ?? expression
+  err.operator = err.operator ?? operator
 
   if (!returnErrorAsString) throw err
 
@@ -101,7 +101,9 @@ export const fallbackOrError = ({
   const topLine = operatorText + nameText
   const extraData = err.errorData ? '\n' + JSON.stringify(err.errorData, null, 2) : ''
 
-  return `${topLine !== '' ? topLine + '\n' : ''}${err.message}${extraData}`
+  return `${topLine !== '' ? topLine + '\n' : ''}${truncateString(err.message)}${
+    extraData === '\n{}' ? '' : extraData
+  }`
 }
 
 /*
