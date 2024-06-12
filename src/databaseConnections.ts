@@ -21,7 +21,6 @@ export const SQLNodePostgres = (client: Client) => {
 
     try {
       const res: QueryResult & { error?: string } = await client.query(pgQuery)
-      // node-postgres doesn't throw, it just returns error object
       if (res?.error) throw new Error(res.error)
 
       return res.rows
