@@ -330,8 +330,8 @@ test('GET - 404 error', async () => {
   )
   try {
     await exp.evaluate(expression)
-  } catch (err: any) {
-    expect(err.operator).toBe('GET')
+  } catch (err) {
+    expect((err as FigTreeError).operator).toBe('GET')
   }
 })
 
@@ -365,5 +365,21 @@ test('POST - Bad login', async () => {
         error: 'Missing password',
       },
     })
+  }
+})
+
+test('GET - 404 error', async () => {
+  const expression = {
+    operator: 'get',
+    url: 'http://httpstat.us/404',
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('Problem with GET request')
+  await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
+    'Request failed with status code 404'
+  )
+  try {
+    await exp.evaluate(expression)
+  } catch (err: any) {
+    expect(err.operator).toBe('GET')
   }
 })

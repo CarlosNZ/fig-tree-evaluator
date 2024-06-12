@@ -402,6 +402,7 @@ Request failed with status code 400
 {
   "status": 400,
   "error": "Bad Request",
+  "url": "https://reqres.in/api/login",
   "response": {
     "error": "Missing password"
   }
@@ -413,6 +414,7 @@ Problem with POST request
 {
   "status": 400,
   "error": "Bad Request",
+  "url": "https://reqres.in/api/login",
   "response": {
     "error": "Missing password"
   }
@@ -451,6 +453,7 @@ Request failed with status code 403
 {
   "status": 403,
   "error": "Forbidden",
+  "url": "http://httpstat.us/403",
   "response": {
     "code": 403,
     "description": "Forbidden"
@@ -463,6 +466,7 @@ Problem with GET request
 {
   "status": 403,
   "error": "Forbidden",
+  "url": "http://httpstat.us/403",
   "response": {
     "code": 403,
     "description": "Forbidden"
@@ -481,6 +485,7 @@ Request failed with status code 404
 {
   "status": 404,
   "error": "Not Found",
+  "url": "http://httpstat.us/404",
   "response": {
     "code": 404,
     "description": "Not Found"
@@ -493,6 +498,7 @@ Problem with GET request
 {
   "status": 404,
   "error": "Not Found",
+  "url": "http://httpstat.us/404",
   "response": {
     "code": 404,
     "description": "Not Found"
@@ -519,12 +525,14 @@ test.concurrent('GET: Bad url', async () => {
     url: 'http://there-is-no-f-ing-site.com',
   }
   const result = await exp.evaluate(expression)
-  expect(result).toBe('Operator: GET\nNetwork Error')
+  expect(result).toBe(
+    'Operator: GET\nNetwork error: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
+  )
 
   const resultFetch = await expFetch.evaluate(expression)
   // This is different in browser vs node-fetch
   expect(resultFetch).toBe(
-    'Operator: GET\nrequest to http://there-is-no-f-ing-site.com/ failed, reason: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
+    'Operator: GET - FetchError\nrequest to http://there-is-no-f-ing-site.com/ failed, reason: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
   )
 })
 
