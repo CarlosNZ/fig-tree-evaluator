@@ -195,7 +195,7 @@ test('String substitution - parameters contain further expressions', () => {
 test('String substitution -- missing parameters', async () => {
   const expression = { operator: 'replace', irrelevant: 'value' }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)'
+    '- Missing required property "string" (type: string)'
   )
 })
 

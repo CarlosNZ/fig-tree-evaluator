@@ -85,7 +85,7 @@ test('Conditional -- missing parameters', async () => {
     operator: '?',
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    'Operator: CONDITIONAL\n- Missing required property "condition" (type: any)\n- Missing required property "valueIfTrue" (type: any)\n- Missing required property "valueIfFalse" (type: any)'
+    '- Missing required property "condition" (type: any)\n- Missing required property "valueIfTrue" (type: any)\n- Missing required property "valueIfFalse" (type: any)'
   )
 })
 
@@ -97,7 +97,7 @@ test('Conditional -- 1 missing parameter (error as string)', () => {
   }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe(
-      'Operator: CONDITIONAL\n- Missing required property "valueIfTrue" (type: any)'
+      'Operator: CONDITIONAL - Type Error\n- Missing required property "valueIfTrue" (type: any)'
     )
   })
 })

@@ -373,7 +373,9 @@ test('GET - 404 error', async () => {
     operator: 'get',
     url: 'http://httpstat.us/404',
   }
-  await expect(exp.evaluate(expression)).rejects.toThrow('Problem with GET request')
+  await expect(exp.evaluate(expression, { httpClient: fetch })).rejects.toThrow(
+    'Problem with GET request'
+  )
   await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
     'Request failed with status code 404'
   )
