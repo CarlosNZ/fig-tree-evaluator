@@ -580,7 +580,7 @@ test('Metadata -- get operator info', () => {
       ],
     },
     {
-      operator: 'SQL',
+      name: 'SQL',
       description: 'Query an SQL database',
       aliases: ['sql', 'pgSql', 'postgres', 'pg', 'sqLite', 'sqlite', 'mySql'],
       parameters: [
@@ -590,7 +590,6 @@ test('Metadata -- get operator info', () => {
           aliases: ['text'],
           required: true,
           type: 'string',
-          default: 'SELECT contact_name FROM customers;',
         },
         {
           name: 'values',
@@ -620,7 +619,6 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: 'boolean',
-          default: true,
         },
       ],
     },

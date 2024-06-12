@@ -1,9 +1,11 @@
+import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
 import FigTreeCache from '../src/cache'
 
 jest.useFakeTimers()
 
 const figTreeOptions = {
+  httpClient: fetch,
   functions: {
     random: () => Math.random(),
     square: (n: number) => n * n,
