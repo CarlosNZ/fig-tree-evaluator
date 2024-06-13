@@ -1868,16 +1868,17 @@ Operator: <OPERATOR_NAME>: - <error.name (if specific)>
 ```
 `errorData` is specific data returned by the error thrown by an internal process (such as a network request using [fetch](#http-requests)).
 
-For example, a failed login using the `POST` operator (with Axios HTTP client) would return a string like:
+For example, a 403 (forbidden) error thrown by the `GET` operator (with Axios HTTP client) would return a string like:
 ```
-Operator: POST - AxiosError
-Request failed with status code 400
+Operator: GET - AxiosError
+Request failed with status code 403
 {
-  "status": 400,
-  "error": "Bad Request",
-  "url": "https://reqres.in/api/login",
+  "status": 403,
+  "error": "Forbidden",
+  "url": "http://httpstat.us/403",
   "response": {
-    "error": "Missing password"
+    "success": false,
+    "message": "jwt must be provided"
   }
 }
 ```
@@ -1886,20 +1887,22 @@ And, if thrown, the error object would contain:
 ```js
 {
   name: "AxiosError",
-  message: "Request failed with status code 400"
-  operator: "POST",
+  message: "Request failed with status code 403"
+  operator: "GET",
   errorData: {
-      status: 400,
-      error: 'Bad Request',
-      url: 'https://reqres.in/api/login',
-      response: { error: 'Missing password' }
+      status: 403,
+      error: 'Forbidden',
+      url: 'http://httpstat.us/403',
+      response: {
+        success: false,
+        message: "jwt must be provided"
+      }
     }
   expression: {
-      operator: 'POST',
-      url: 'https://reqres.in/api/login',
-      parameters: { email: 'eve.holt@reqres.in' }
+      operator: 'API',
+      url: 'http://httpstat.us/403',
     }
-  ...otherProperties // all AxiosError and standard Error properties
+    ...otherProperties // all AxiosError and standard Error properties
 }
 ```
 
@@ -1911,9 +1914,9 @@ Evaluator expressions can be configured by hand, with [aliases](#alias-nodes), [
 
 However, you may wish to build an external UI for building FigTree expression. To this end, the FigTree instance provides three methods that could be useful for populating your configuration UI:
 
-#### New FigTree instance
+#### A new FigTree instance:
 
-Containing fragments and [custom functions](#custom_functions).
+- containing fragments and [custom functions](#custom_functions).
 
 ```js
 const fig = new FigTreeEvaluator({
