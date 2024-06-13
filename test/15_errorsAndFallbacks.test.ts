@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 import axios from 'axios'
-import { FigTreeError } from '../src/types'
+import { FigTreeError } from '../src/FigTreeError'
 
 const exp = new FigTreeEvaluator({
   objects: {
@@ -191,13 +191,16 @@ test('ERROR - bubble up from nested', async () => {
   try {
     await exp.evaluate(expression)
   } catch (err) {
+    const error = err as FigTreeError
     // Check error object data is as expected
-    expect((err as FigTreeError).operator).toBe('REGEX')
-    expect((err as FigTreeError).expression).toStrictEqual({
+    expect(error.operator).toBe('REGEX')
+    expect(error.expression).toStrictEqual({
       operator: 'regex',
       pattern: { one: 1 },
       testString: 'anything',
     })
+    expect(error.prettyPrint).toBe(`Operator: REGEX
+`)
   }
 })
 
@@ -292,7 +295,7 @@ test('Skip runtime type checking, from current options', () => {
     })
     .then((result) => {
       expect(result).toBe(
-        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown","organisation":{"id":1,"name":"The Avengers","category":"Superheroes"},"form":{"q1":"Thor","q2":"Asgard"},"fo...'
+        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown","organisation":{"id":1,"name":"The Avengers","category":"Superheroes"},"form":{"q1":"Thor","q2":"Asgard"},"form2":{"q1":"Company Registration","q2":"XYZ Chemicals"},"application":{"questions":{"q1":"What is the answer?","q2":"Enter your name"}}}'
       )
     })
 })
@@ -365,6 +368,16 @@ test('POST - Bad login', async () => {
         error: 'Missing password',
       },
     })
+    expect((err as FigTreeError).prettyPrint).toBe(`Operator: POST - AxiosError
+Request failed with status code 400
+{
+  "status": 400,
+  "error": "Bad Request",
+  "url": "https://reqres.in/api/login",
+  "response": {
+    "error": "Missing password"
+  }
+}`)
   }
 })
 

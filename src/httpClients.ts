@@ -54,13 +54,13 @@ export const AxiosClient = (axios: AxiosStatic) => {
 
   const throwError = (err: unknown) => {
     if (axios.isAxiosError(err) && err.response) {
-      ;(err as FigTreeError).errorData = {
+      ;(err as Partial<FigTreeError>).errorData = {
         status: err.response?.status,
         error: err.response?.statusText,
         url: err.config?.url,
         response: err.response?.data,
       }
-      console.log((err as FigTreeError).errorData)
+      // console.log((err as Partial<FigTreeError>).errorData)
       throw err
     }
     throw new Error('Network error: ' + (err as FigTreeError)?.message)

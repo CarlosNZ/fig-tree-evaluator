@@ -1851,13 +1851,14 @@ interface FigTreeError extends Error {
   errorData?: Record<string, unknown>
   operator?: Operator
   expression?: EvaluatorNode
+  prettyPrint: string // nicely formatted summary
 }
 ```
 
 There are two alternatives to throwing:
 
 1. **Fallback**: If the `fallback` property is specified in the expression, this will be returned whenever an error occurs at that node (or below). See [Fallback option](#other-common-properties).
-2. **Formatted string**: By using the `returnErrorAsString: true` option, FigTree will return a nicely formatted string describing the error. The formatted string will be structured like so:
+2. **Formatted string**: By using the `returnErrorAsString: true` option, FigTree will return a nicely formatted string describing the error. *This is the same string returned in the `prettyPrint` property of the FigTreeError.* The formatted string will be structured like so:
 
 ```
 Operator: <OPERATOR_NAME>: - <error.name (if specific)>
@@ -1901,7 +1902,8 @@ And, if thrown, the error object would contain:
   expression: {
       operator: 'API',
       url: 'http://httpstat.us/403',
-    }
+    },
+  prettyPrint: '[...the above formatted string...]'
     ...otherProperties // all AxiosError and standard Error properties
 }
 ```

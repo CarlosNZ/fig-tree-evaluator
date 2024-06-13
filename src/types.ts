@@ -173,4 +173,5 @@ export interface FigTreeError extends Error {
   errorData?: Record<string, unknown>
   operator?: Operator
   expression?: EvaluatorNode
+  prettyPrint: string
 }

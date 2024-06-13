@@ -78,7 +78,7 @@ interface ErrorInput {
   expression: EvaluatorNode
   returnErrorAsString?: boolean
 }
-export const fallbackOrError = ({
+const fallbackOrError = ({
   fallback,
   operator,
   name,
@@ -88,22 +88,29 @@ export const fallbackOrError = ({
 }: ErrorInput) => {
   if (fallback !== undefined) return fallback
 
-  const err: FigTreeError = typeof error === 'string' ? new Error(error) : error
+  // if (isFigTreeError(error)) throw error
+  if (error instanceof Error) console.log("It's an error")
+
+  const err = (typeof error === 'string' ? new Error(error) : error) as FigTreeError
   if (name) err.name = name
   if (err.name === 'Error') err.name = 'FigTreeError'
   err.expression = err.expression ?? expression
   err.operator = err.operator ?? operator
 
-  if (!returnErrorAsString) throw err
-
+  // Prepare formatted string
   const operatorText = operator ? 'Operator: ' + operator : ''
   const nameText = err.name === 'FigTreeError' ? '' : ` - ${err.name}`
   const topLine = operatorText + nameText
   const extraData = err.errorData ? '\n' + JSON.stringify(err.errorData, null, 2) : ''
 
-  return `${topLine !== '' ? topLine + '\n' : ''}${truncateString(err.message)}${
+  const prettyPrint = `${topLine !== '' ? topLine + '\n' : ''}${err.message}${
     extraData === '\n{}' ? '' : extraData
   }`
+
+  err.prettyPrint = prettyPrint
+  if (!returnErrorAsString) throw err
+
+  return prettyPrint
 }
 
 /*
@@ -199,3 +206,7 @@ Returns `true` if input is an object ({}) (but not an array)
 */
 export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
+
+// export const isFigTreeError = (input: unknown): input is FigTreeError => {
+//   //
+// }
