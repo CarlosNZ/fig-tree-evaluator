@@ -1844,7 +1844,7 @@ fig.setCache(cache) // where "cache" is the object retrieved by .getCache()
 
 ## Error handling
 
-By default, FigTree will throw errors that can be caught and handled by your application. The Error object is a `FigTreeError`, which extends the standard `Error` object (with `name` and `message` fields) with the following interface:
+By default, FigTree will throw errors that can be caught and handled by your application. The Error object is a `FigTreeError` type, which extends the standard `Error` object (with `name`, `message` and `stack` fields) with the following interface:
 
 ```ts
 interface FigTreeError extends Error {
@@ -1908,7 +1908,9 @@ And, if thrown, the error object would contain:
 }
 ```
 
-If extending FigTree with additional [HTTP Client](#http-requests) or [SQL Connection](#connecting-to-the-database) interfaces, please aim to adhere to this structure when throwing errors.
+It may seem that returning the error as a string results in the same output as catching the error and displaying `error.prettyPrint`. There is one key difference, however: if the error occurs deeper in the expression tree, a thrown error will be bubbled up immediately, whereas if it's returned as a string (or a fallback, for that matter), it'll be treated as any other string, which means it will be continued to be operated on as the expression is evaluated (you could concatenate multiple error strings together in this manner, for example).
+
+If extending FigTree with additional [HTTP Client](#http-requests), [SQL Connection](#connecting-to-the-database) or [Custom functions](#custom_functions), you don't need to specifically throw a `FigTreeError` -- just throw a normal error and FigTree will encapsulate it into a FigTreeError object further upstream. (The one exception is for detailed `errorData`, if you want it -- attach this as a property to your error object before throwing it.) See the [included http clients](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/src/httpClients.ts) for an example.
 
 ## Metadata
 

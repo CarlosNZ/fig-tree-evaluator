@@ -60,7 +60,6 @@ export const AxiosClient = (axios: AxiosStatic) => {
         url: err.config?.url,
         response: err.response?.data,
       }
-      // console.log((err as Partial<FigTreeError>).errorData)
       throw err
     }
     throw new Error('Network error: ' + (err as Error)?.message)

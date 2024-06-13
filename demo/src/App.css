@@ -31,3 +31,8 @@ pre {
     Work Sans,
     sans-serif;
 }
+
+/* Chakra "Toast" component */
+.chakra-alert__desc {
+  white-space: pre-wrap;
+}

@@ -16,7 +16,13 @@ import {
   useMediaQuery,
 } from '@chakra-ui/react'
 import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
-import { FigTreeEvaluator, SQLNodePostgres, FigTreeOptions, FigTreeEditor } from './_imports.js'
+import {
+  FigTreeEvaluator,
+  SQLNodePostgres,
+  FigTreeOptions,
+  FigTreeEditor,
+  FigTreeError,
+} from './_imports.js'
 import { JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
@@ -216,10 +222,10 @@ function App() {
                   isClosable: true,
                 })
               }
-              onEvaluateError={(err) =>
+              onEvaluateError={(err: FigTreeError) =>
                 toast({
                   title: 'Evaluation error',
-                  description: String(err),
+                  description: err.prettyPrint,
                   position: 'top',
                   status: 'error',
                   duration: 15000,

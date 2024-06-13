@@ -1,4 +1,5 @@
 import FigTreeEvaluator, { evaluateExpression } from './FigTreeEvaluator'
+import { FigTreeError, isFigTreeError } from './FigTreeError'
 import { SQLNodePostgres, SQLite } from './databaseConnections'
 import { AxiosClient, FetchClient } from './httpClients'
 import {
@@ -40,6 +41,8 @@ export {
   AxiosClient,
   FetchClient,
   // Additional helpers, utilities
+  FigTreeError,
+  isFigTreeError,
   isAliasString,
   isFragmentNode,
   isOperatorNode,
