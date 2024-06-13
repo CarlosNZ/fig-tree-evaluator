@@ -53,6 +53,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 - [Fragments](#fragments)
 - [Shorthand syntax](#shorthand-syntax)
 - [Caching (Memoization)](#caching-memoization)
+- [Error handling](#error-handling)
 - [Metadata](#metadata)
 - [More examples](#more-examples)
 - [Development environment](#development-environment)
@@ -156,7 +157,7 @@ The `options` parameter is an object with the following available properties (al
 - `sqlConnection` -- if you wish to make calls to an SQL database using the [`SQL` operator](#sql), pass a connection to the database here. See operator details below.
 - `baseEndpoint` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful if all http queries are to a common server -- then each individual node will only require a relative url. See specific operator for more details.
 - `headers` -- A general http headers object that will be passed to *all* http-based operators. Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
-- `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below)
+- `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below). See [Error handling](#error-handling) section for more detail.
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
 - `caseInsensitive` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
@@ -226,7 +227,8 @@ Most of the time named properties would be preferable; however there are occasio
 
 In each operator node, as well as the operator-specific properties, the following three optional properties can be provided:
 
-- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes. *Fallbacks are strongly recommended if there is any chance of an error (e.g. a network "GET" request that doesn't yet have its parameters defined).*
+- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes. *Fallbacks are strongly recommended if there is any chance of an error (e.g. a network "GET" request that doesn't yet have its parameters defined).*  
+See [Error handling](#error-handling)
 - `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) to see the outcome of applying different `outputType` values to various results.
 - `useCache`: Overrides the global `useCache` value (from [options](#available-options)) for this node only. See [Caching/Memoization](#caching-memoization) below for more info.
 
@@ -1840,6 +1842,71 @@ fig.getCache() // returns key-value store
 fig.setCache(cache) // where "cache" is the object retrieved by .getCache()
 ```
 
+## Error handling
+
+By default, FigTree will throw errors that can be caught and handled by your application. The Error object is a `FigTreeError`, which extends the standard `Error` object (with `name` and `message` fields) with the following interface:
+
+```ts
+interface FigTreeError extends Error {
+  errorData?: Record<string, unknown>
+  operator?: Operator
+  expression?: EvaluatorNode
+}
+```
+
+There are two alternatives to throwing:
+
+1. **Fallback**: If the `fallback` property is specified in the expression, this will be returned whenever an error occurs at that node (or below). See [Fallback option](#other-common-properties).
+2. **Formatted string**: By using the `returnErrorAsString: true` option, FigTree will return a nicely formatted string describing the error. The formatted string will be structured like so:
+
+```
+Operator: <OPERATOR_NAME>: - <error.name (if specific)>
+<error.message>
+{
+  ...errorData
+}
+```
+`errorData` is specific data returned by the error thrown by an internal process (such as a network request using [fetch](#http-requests)).
+
+For example, a 403 (forbidden) error thrown by the `GET` operator (with Axios HTTP client) would return a string like:
+```
+Operator: GET - AxiosError
+Request failed with status code 403
+{
+  "status": 403,
+  "error": "Forbidden",
+  "url": "http://httpstat.us/403",
+  "response": {
+    "success": false,
+    "message": "jwt must be provided"
+  }
+}
+```
+
+And, if thrown, the error object would contain:
+```js
+{
+  name: "AxiosError",
+  message: "Request failed with status code 403"
+  operator: "GET",
+  errorData: {
+      status: 403,
+      error: 'Forbidden',
+      url: 'http://httpstat.us/403',
+      response: {
+        success: false,
+        message: "jwt must be provided"
+      }
+    }
+  expression: {
+      operator: 'API',
+      url: 'http://httpstat.us/403',
+    }
+    ...otherProperties // all AxiosError and standard Error properties
+}
+```
+
+If extending FigTree with additional [HTTP Client](#http-requests) or [SQL Connection](#connecting-to-the-database) interfaces, please aim to adhere to this structure when throwing errors.
 
 ## Metadata
 
@@ -1847,9 +1914,9 @@ Evaluator expressions can be configured by hand, with [aliases](#alias-nodes), [
 
 However, you may wish to build an external UI for building FigTree expression. To this end, the FigTree instance provides three methods that could be useful for populating your configuration UI:
 
-#### New FigTree instance
+#### A new FigTree instance:
 
-Containing fragments and [custom functions](#custom_functions).
+- containing fragments and [custom functions](#custom_functions).
 
 ```js
 const fig = new FigTreeEvaluator({
@@ -1892,7 +1959,7 @@ This will return an array of operators with detailed info about their [aliases](
 [
   ...
   {
-    operator: 'PLUS',
+    name: 'PLUS',
     description: 'Add, concatenate or merge multiple values',
     aliases: ['+', 'plus', 'add', 'concat', 'join', 'merge'],
     parameters: [
@@ -1921,7 +1988,7 @@ This will return an array of operators with detailed info about their [aliases](
 Because Fragments are defined within the FigTree instance, optional metadata can be provided to make working with these fragments easier in a configuration UI:
 
 ```js
-fig.getOperators()
+fig.getFragments()
 ```
 
 This will return something like:
@@ -1989,8 +2056,17 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-
-- **v2.12.1**: Bug fix for `objectProperties` operator when array index larger than `9` is used
+- **v2.16.0**: Standardise error response (see [Error handling](#error-handling))
+- **v2.15.0**:
+  - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*
+  - Generalise `PG_SQL` operator to a client-agnostic `SQL` operator (with built-in abstractions for `node-postgres` and `SQLite`)
+  - ***Breaking changes*** as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
+  - Changes to `SQL` parameters to reflect the aforementioned agnosticism.
+- **v2.14.0**: Improvements to `stringSubstitution` operator:
+  - Can accept nested property references (e.g. `{{user.name}}`)
+  - Will also search for replacements from `data` object
+- **v2.13.4**: Bug fix for `objectProperties` operator when array index larger than `9` is used, and for sequential array indexes (e.g. `prop[1][2]`)
+- **v2.13.0**: Add default values to operator properties, export more types and helper methods
 - **v2.12.0**: Add `caseInsensitive` option to equality/non-equality operators
 - **v2.11.5**: Upgrade dependencies
 - **v2.11.4**: Bundle target ES6
