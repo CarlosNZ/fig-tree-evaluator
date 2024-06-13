@@ -1,6 +1,5 @@
 import { getTypeCheckInput } from '../operatorUtils'
 import { evaluateArray } from '../../evaluate'
-import { errorMessage } from '../../helpers'
 import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
@@ -12,12 +11,8 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { testString, pattern }))
 
-  try {
-    const re = new RegExp(pattern)
-    return re.test(testString)
-  } catch (err) {
-    throw new Error('Regex error:' + errorMessage(err))
-  }
+  const re = new RegExp(pattern)
+  return re.test(testString)
 }
 
 const parseChildren: ParseChildrenMethod = (expression) => {

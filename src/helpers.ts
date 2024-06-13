@@ -13,6 +13,7 @@ import {
   Operator,
   FragmentNode,
   OperatorNode,
+  FigTreeError,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -65,18 +66,44 @@ export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
 
 /*
-Will throw an error (with `errorMessage`) if no `fallback` is provided. If
+Will throw an error (FigTreeError) if no `fallback` is provided. If
 `returnErrorAsString` is enabled, then it won't throw, but instead return a
-string containing the error message. 
+string containing a formatted error message. 
 */
-export const fallbackOrError = (
-  fallback: EvaluatorOutput,
-  errorMessage: string,
-  returnErrorAsString = false
-) => {
+interface ErrorInput {
+  fallback?: EvaluatorOutput
+  operator?: Operator
+  name?: string
+  error: Error | string
+  expression: EvaluatorNode
+  returnErrorAsString?: boolean
+}
+export const fallbackOrError = ({
+  fallback,
+  operator,
+  name,
+  error,
+  expression,
+  returnErrorAsString = false,
+}: ErrorInput) => {
   if (fallback !== undefined) return fallback
-  if (returnErrorAsString) return truncateString(errorMessage)
-  else throw new Error(truncateString(errorMessage))
+
+  const err: FigTreeError = typeof error === 'string' ? new Error(error) : error
+  if (name) err.name = name
+  if (err.name === 'Error') err.name = 'FigTreeError'
+  err.expression = err.expression ?? expression
+  err.operator = err.operator ?? operator
+
+  if (!returnErrorAsString) throw err
+
+  const operatorText = operator ? 'Operator: ' + operator : ''
+  const nameText = err.name === 'FigTreeError' ? '' : ` - ${err.name}`
+  const topLine = operatorText + nameText
+  const extraData = err.errorData ? '\n' + JSON.stringify(err.errorData, null, 2) : ''
+
+  return `${topLine !== '' ? topLine + '\n' : ''}${truncateString(err.message)}${
+    extraData === '\n{}' ? '' : extraData
+  }`
 }
 
 /*

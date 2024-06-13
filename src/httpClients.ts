@@ -7,7 +7,7 @@ import { type AxiosRequestConfig, type AxiosStatic } from 'axios'
 import { type RequestInfo, type RequestInit, type Response } from 'node-fetch'
 import querystring from 'querystring'
 import { HttpClient, HttpRequest } from './operators/operatorUtils'
-import { errorMessage } from './helpers'
+import { FigTreeError } from './types'
 
 export type Fetch = (
   input: URL | string | RequestInfo,
@@ -53,11 +53,17 @@ export const AxiosClient = (axios: AxiosStatic) => {
   }
 
   const throwError = (err: unknown) => {
-    if (axios.isAxiosError(err)) {
-      if (!err?.response) throw new Error('Network Error')
-      console.log(err.response?.data)
+    if (axios.isAxiosError(err) && err.response) {
+      ;(err as FigTreeError).errorData = {
+        status: err.response?.status,
+        error: err.response?.statusText,
+        url: err.config?.url,
+        response: err.response?.data,
+      }
+      console.log((err as FigTreeError).errorData)
+      throw err
     }
-    throw err
+    throw new Error('Network error: ' + (err as FigTreeError)?.message)
   }
 
   return { get, post, throwError }
@@ -77,8 +83,16 @@ export const FetchClient = (fetch: Fetch) => {
     const response = await fetch(url + queryString, { headers, method: 'GET' } as RequestInit)
     const json = await response.json()
     if (!response.ok) {
-      console.log(json)
-      throw new Error(`Request failed with status code ${response.status}`)
+      const err = new Error('Problem with GET request') as FigTreeError
+      err.name = 'FetchError'
+      err.errorData = {
+        status: response.status,
+        error: response.statusText,
+        url: response.url,
+        response: json,
+      }
+      console.log(err.errorData)
+      throw err
     }
     return json
   }
@@ -94,14 +108,22 @@ export const FetchClient = (fetch: Fetch) => {
     } as RequestInit)
     const json = await response.json()
     if (!response.ok) {
-      console.log(json)
-      throw new Error(`Request failed with status code ${response.status}`)
+      const err = new Error('Problem with POST request') as FigTreeError
+      err.name = 'FetchError'
+      err.errorData = {
+        status: response.status,
+        error: response.statusText,
+        url: response.url,
+        response: json,
+      }
+      console.log(err.errorData)
+      throw err
     }
     return json
   }
 
   const throwError = (err: unknown) => {
-    throw new Error(`${errorMessage(err)}`)
+    throw err
   }
 
   return { get, post, throwError }

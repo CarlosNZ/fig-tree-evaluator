@@ -1,4 +1,7 @@
+import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
+import axios from 'axios'
+import { FigTreeError } from '../src/types'
 
 const exp = new FigTreeEvaluator({
   objects: {
@@ -15,6 +18,7 @@ const exp = new FigTreeEvaluator({
       questions: { q1: 'What is the answer?', q2: 'Enter your name' },
     },
   },
+  httpClient: fetch,
   nullEqualsUndefined: true,
 })
 
@@ -44,7 +48,7 @@ test('ERROR - Invalid/Missing children error', async () => {
     children: 2,
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    'Operator: OR\n- Property "children" is not of type: array'
+    'Property "children" is not of type: array'
   )
 })
 
@@ -54,7 +58,7 @@ test('ERROR as string - Invalid/Missing children', () => {
     children: 2,
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
-    expect(result).toBe('Operator: OR\n- Property "children" is not of type: array')
+    expect(result).toBe('Operator: OR - Type Error\n- Property "children" is not of type: array')
   })
 })
 
@@ -65,7 +69,7 @@ test('ERROR - Invalid output type', async () => {
     type: 'Integer',
   }
   await expect(evaluateExpression(expression)).rejects.toThrow(
-    'Operator: PLUS\n- Property "type" (value: "Integer") is not of type: Literal("string", "array", "number", "boolean", "bool", undefined)'
+    'Property "type" (value: "Integer") is not of type: Literal("string", "array", "number", "boolean", "bool", undefined)'
   )
 })
 
@@ -76,7 +80,7 @@ test('OR - Error', async () => {
     operator: 'OR',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: OR\n- Missing required property "values" (type: array)'
+    'Missing required property "values" (type: array)'
   )
 })
 
@@ -85,7 +89,9 @@ test('OR - Error as string', () => {
     operator: 'OR',
   }
   return evaluateExpression(expression, { returnErrorAsString: true }).then((result) => {
-    expect(result).toBe('Operator: OR\n- Missing required property "values" (type: array)')
+    expect(result).toBe(
+      'Operator: OR - Type Error\n- Missing required property "values" (type: array)'
+    )
   })
 })
 
@@ -104,7 +110,7 @@ test('AND - Error', async () => {
     operator: 'AND',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: AND\n- Missing required property "values" (type: array)'
+    'Missing required property "values" (type: array)'
   )
 })
 
@@ -113,7 +119,9 @@ test('AND - Error as string', () => {
     operator: 'And',
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
-    expect(result).toBe('Operator: AND\n- Missing required property "values" (type: array)')
+    expect(result).toBe(
+      'Operator: AND - Type Error\n- Missing required property "values" (type: array)'
+    )
   })
 })
 
@@ -134,7 +142,7 @@ test('REGEX - Error', async () => {
     testString: 'anything',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: REGEX\n- Property "pattern" (value: {"one":1}) is not of type: string'
+    'Property "pattern" (value: {"one":1}) is not of type: string'
   )
 })
 
@@ -178,8 +186,19 @@ test('ERROR - bubble up from nested', async () => {
     ],
   }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: REGEX\n- Property "pattern" (value: {"one":1}) is not of type: string'
+    'Property "pattern" (value: {"one":1}) is not of type: string'
   )
+  try {
+    await exp.evaluate(expression)
+  } catch (err) {
+    // Check error object data is as expected
+    expect((err as FigTreeError).operator).toBe('REGEX')
+    expect((err as FigTreeError).expression).toStrictEqual({
+      operator: 'regex',
+      pattern: { one: 1 },
+      testString: 'anything',
+    })
+  }
 })
 
 // Fallback bubbles up from nested
@@ -204,6 +223,7 @@ test('FALLBACK - multiple bubble up and join', () => {
       },
     ],
   }
+
   return evaluateExpression(expression).then((result) => {
     expect(result).toBe('First Error / Second Error')
   })
@@ -272,7 +292,7 @@ test('Skip runtime type checking, from current options', () => {
     })
     .then((result) => {
       expect(result).toBe(
-        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown","organisation":{"id":1,"name":"The Avengers","category":"Superheroes"},"form":{"q...'
+        'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown","organisation":{"id":1,"name":"The Avengers","category":"Superheroes"},"form":{"q1":"Thor","q2":"Asgard"},"fo...'
       )
     })
 })
@@ -295,4 +315,73 @@ test('Skip runtime type checking, from constructor options', () => {
         'Operator: OBJECT_PROPERTIES\nUnable to extract object property\nLooking for property: not\nIn object: {"user":"Unknown"}'
       )
     })
+})
+
+// API and Database errors
+
+test('GET - 404 error', async () => {
+  const expression = {
+    operator: 'get',
+    url: 'http://httpstat.us/404',
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('Problem with GET request')
+  await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
+    'Request failed with status code 404'
+  )
+  try {
+    await exp.evaluate(expression)
+  } catch (err) {
+    expect((err as FigTreeError).operator).toBe('GET')
+  }
+})
+
+test('POST - Bad login', async () => {
+  const expAxios = new FigTreeEvaluator({
+    httpClient: axios,
+  })
+  const expression = {
+    operator: 'POST',
+    url: 'https://reqres.in/api/login',
+    parameters: { email: 'eve.holt@reqres.in' },
+  }
+  await expect(expAxios.evaluate(expression)).rejects.toThrow('Request failed with status code 400')
+  await expect(expAxios.evaluate(expression, { httpClient: fetch })).rejects.toThrow(
+    'Problem with POST request'
+  )
+  try {
+    await exp.evaluate(expression)
+  } catch (err) {
+    expect((err as FigTreeError).operator).toBe('POST')
+    expect((err as FigTreeError).expression).toStrictEqual({
+      operator: 'POST',
+      url: 'https://reqres.in/api/login',
+      parameters: { email: 'eve.holt@reqres.in' },
+    })
+    expect((err as FigTreeError).errorData).toStrictEqual({
+      status: 400,
+      error: 'Bad Request',
+      url: 'https://reqres.in/api/login',
+      response: {
+        error: 'Missing password',
+      },
+    })
+  }
+})
+
+test('GET - 404 error', async () => {
+  const expression = {
+    operator: 'get',
+    url: 'http://httpstat.us/404',
+  }
+  await expect(exp.evaluate(expression, { httpClient: fetch })).rejects.toThrow(
+    'Problem with GET request'
+  )
+  await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
+    'Request failed with status code 404'
+  )
+  try {
+    await exp.evaluate(expression)
+  } catch (err: any) {
+    expect(err.operator).toBe('GET')
+  }
 })

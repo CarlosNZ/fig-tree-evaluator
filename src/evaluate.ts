@@ -2,12 +2,18 @@
 The core evaluation function used by FigTreeEvaluator
 */
 
-import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
+import {
+  FigTreeConfig,
+  EvaluatorNode,
+  EvaluatorOutput,
+  OutputType,
+  OperatorNode,
+  FigTreeError,
+} from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
   fallbackOrError,
   convertOutputMethods,
-  errorMessage,
   parseIfJson,
   isOperatorNode,
   mapPropertyAliases,
@@ -68,11 +74,12 @@ export const evaluatorFunction = async (
       !options.noShorthand
     )
     if (fragmentReplacement === undefined)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Fragment not defined: ${fragment}`,
-        returnErrorAsString
-      )
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        error: `Fragment not defined: ${fragment}`,
+        expression,
+        returnErrorAsString,
+      })
     if (!isOperatorNode(fragmentReplacement))
       return replaceAliasNodeValues(fragmentReplacement, config)
     expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
@@ -83,18 +90,20 @@ export const evaluatorFunction = async (
     const operator = getOperatorName(expression.operator, operatorAliases)
 
     if (!operator)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Invalid operator: ${expression.operator}`,
-        returnErrorAsString
-      )
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        error: `Invalid operator: ${expression.operator}`,
+        expression,
+        returnErrorAsString,
+      })
 
     if (!config.operators[operator])
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Excluded operator: ${expression.operator}`,
-        returnErrorAsString
-      )
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        error: `Excluded operator: ${expression.operator}`,
+        expression,
+        returnErrorAsString,
+      })
 
     const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
@@ -125,11 +134,14 @@ export const evaluatorFunction = async (
       if (!Array.isArray(expression.children))
         expression.children = await evaluatorFunction(expression.children, childConfig)
       if (!Array.isArray(expression.children))
-        return fallbackOrError(
-          await evaluatorFunction(fallback, config),
-          `Operator: ${operator}\n- Property "children" is not of type: array`,
-          returnErrorAsString
-        )
+        return fallbackOrError({
+          fallback: await evaluatorFunction(fallback, config),
+          operator,
+          name: 'Type Error',
+          error: `- Property "children" is not of type: array`,
+          expression,
+          returnErrorAsString,
+        })
       expression = await parseChildren(expression, childConfig)
       delete expression.children
     }
@@ -138,12 +150,14 @@ export const evaluatorFunction = async (
     let result
     try {
       result = await evaluate(expression, childConfig)
-    } catch (err) {
-      return fallbackOrError(
-        await evaluatorFunction(expression.fallback, config),
-        `Operator: ${operator}\n${errorMessage(err)}`,
-        returnErrorAsString
-      )
+    } catch (error) {
+      return fallbackOrError({
+        fallback: await evaluatorFunction(expression.fallback, config),
+        operator,
+        error: error as Error,
+        expression,
+        returnErrorAsString,
+      })
     }
 
     const outputType = expression?.outputType ?? expression?.type
@@ -153,20 +167,23 @@ export const evaluatorFunction = async (
 
     // Output type conversion
     if (!(evaluatedOutputType in convertOutputMethods))
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Operator: ${operator}\n- Invalid output type: ${evaluatedOutputType}`,
-        returnErrorAsString
-      )
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        operator,
+        error: `- Invalid output type: ${evaluatedOutputType}`,
+        expression,
+        returnErrorAsString,
+      })
     else {
       return convertOutputMethods[evaluatedOutputType](result)
     }
-  } catch (err) {
-    return fallbackOrError(
-      await evaluatorFunction(fallback, config),
-      errorMessage(err),
-      returnErrorAsString
-    )
+  } catch (error) {
+    return fallbackOrError({
+      fallback: await evaluatorFunction(fallback, config),
+      error: error as Error,
+      expression,
+      returnErrorAsString,
+    })
   }
 }
 

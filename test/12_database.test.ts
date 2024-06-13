@@ -8,6 +8,7 @@ import { open, Database } from 'sqlite'
 import { AxiosClient, FetchClient } from '../src'
 import axios from 'axios'
 import fetch from 'node-fetch'
+import { FigTreeError } from '../src/types'
 
 // SQL tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./database/pgConfig.json. Initialise
@@ -311,6 +312,32 @@ test('Postgres - test single and flattening with single result record', async ()
   expect(result4).toStrictEqual([6, 'DHL', '1-800-225-5345'])
 })
 
+test('Postgres - database error', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM employee_table'],
+    type: 'number',
+  }
+  await expect(exp.evaluate(expression)).rejects.toThrow('relation "employee_table" does not exist')
+
+  const result = await exp.evaluate(expression, { returnErrorAsString: true })
+  expect(result).toBe(
+    'Operator: SQL - Node-Postgres error\nrelation "employee_table" does not exist'
+  )
+
+  try {
+    await exp.evaluate(expression)
+  } catch (err) {
+    expect((err as FigTreeError).operator).toBe('SQL')
+    expect((err as FigTreeError).expression).toStrictEqual({
+      operator: 'sql',
+      type: 'number',
+      query: 'SELECT * FROM employee_table',
+      values: [],
+    })
+  }
+})
+
 // SQLite
 
 test('SQLite - lookup single string', async () => {
@@ -511,6 +538,32 @@ test('SQLite - test single and flattening with single result record', async () =
   }
   const result4 = await expSqlite.evaluate(expression4)
   expect(result4).toMatchObject([6, 'DHL', '1-800-225-5345'])
+})
+
+test('SQLite - database error', async () => {
+  const expression = {
+    operator: 'sql',
+    children: ['SELECT * FROM employee_table'],
+    type: 'number',
+  }
+  await expect(expSqlite.evaluate(expression)).rejects.toThrow(
+    'SQLITE_ERROR: no such table: employee_table'
+  )
+
+  const result = await expSqlite.evaluate(expression, { returnErrorAsString: true })
+  expect(result).toBe('Operator: SQL - SQLite error\nSQLITE_ERROR: no such table: employee_table')
+
+  try {
+    await expSqlite.evaluate(expression)
+  } catch (err) {
+    expect((err as FigTreeError).operator).toBe('SQL')
+    expect((err as FigTreeError).expression).toStrictEqual({
+      operator: 'sql',
+      type: 'number',
+      query: 'SELECT * FROM employee_table',
+      values: [],
+    })
+  }
 })
 
 // GraphQL

@@ -77,9 +77,7 @@ test('Operator exclusion: update options later', async () => {
     values: [{ operator: 'subtract', values: [10, 3] }, 10],
   }
   figTree.updateOptions({ excludeOperators: ['-'] })
-  await expect(figTree.evaluate(expression)).rejects.toThrow(
-    'Operator: PLUS\nExcluded operator: subtract'
-  )
+  await expect(figTree.evaluate(expression)).rejects.toThrow('Excluded operator: subtract')
 })
 
 test('Operator exclusion: update options later -- previous exclusions are restored', async () => {

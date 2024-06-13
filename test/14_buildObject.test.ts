@@ -83,7 +83,7 @@ test('buildObject - missing properties', () => {
   const expression = { operator: 'buildObject' }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe(
-      'Operator: BUILD_OBJECT\n- Missing required property "properties" (type: array)'
+      'Operator: BUILD_OBJECT - Type Error\n- Missing required property "properties" (type: array)'
     )
   })
 })
@@ -95,7 +95,7 @@ test('buildObject - invalid key type', () => {
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe(
-      'Operator: BUILD_OBJECT\n- Property "key" (value: [1,2]) is not of type: string|number|boolean'
+      'Operator: BUILD_OBJECT - Type Error\n- Property "key" (value: [1,2]) is not of type: string|number|boolean'
     )
   })
 })
