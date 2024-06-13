@@ -7,7 +7,7 @@ import { type AxiosRequestConfig, type AxiosStatic } from 'axios'
 import { type RequestInfo, type RequestInit, type Response } from 'node-fetch'
 import querystring from 'querystring'
 import { HttpClient, HttpRequest } from './operators/operatorUtils'
-import { FigTreeError } from './types'
+import { FigTreeError } from './FigTreeError'
 
 export type Fetch = (
   input: URL | string | RequestInfo,
@@ -63,7 +63,7 @@ export const AxiosClient = (axios: AxiosStatic) => {
       // console.log((err as Partial<FigTreeError>).errorData)
       throw err
     }
-    throw new Error('Network error: ' + (err as FigTreeError)?.message)
+    throw new Error('Network error: ' + (err as Error)?.message)
   }
 
   return { get, post, throwError }

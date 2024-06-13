@@ -8,7 +8,7 @@ import { open, Database } from 'sqlite'
 import { AxiosClient, FetchClient } from '../src'
 import axios from 'axios'
 import fetch from 'node-fetch'
-import { FigTreeError } from '../src/types'
+import { FigTreeError } from '../src/FigTreeError'
 
 // SQL tests require a copy of the Northwind database to be running
 // locally, with configuration defined in ./database/pgConfig.json. Initialise

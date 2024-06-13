@@ -168,10 +168,3 @@ export type OperatorMetadata = OperatorData & {
 export type FragmentMetadata = FragmentData & { name: string }
 
 export type CustomFunctionMetadata = { name: string; numRequiredArgs: number }
-
-export interface FigTreeError extends Error {
-  errorData?: Record<string, unknown>
-  operator?: Operator
-  expression?: EvaluatorNode
-  prettyPrint: string
-}

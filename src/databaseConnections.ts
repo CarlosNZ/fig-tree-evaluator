@@ -5,7 +5,6 @@
 import { Client, QueryResult } from 'pg'
 import { QueryInput, QueryOutput } from './operators'
 import { Database } from 'sqlite'
-import { FigTreeError } from './types'
 
 /**
  * Postgres (using node-postgres)
@@ -25,7 +24,7 @@ export const SQLNodePostgres = (client: Client) => {
 
       return res.rows
     } catch (err) {
-      ;(err as FigTreeError).name = 'Node-Postgres error'
+      ;(err as Error).name = 'Node-Postgres error'
       throw err
     }
   }
@@ -44,7 +43,7 @@ export const SQLite = (db: Database) => {
       const result = await db.all(query, values)
       return result
     } catch (err) {
-      ;(err as FigTreeError).name = 'SQLite error'
+      ;(err as Error).name = 'SQLite error'
       throw err
     }
   }

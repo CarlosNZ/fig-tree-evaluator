@@ -199,8 +199,8 @@ test('ERROR - bubble up from nested', async () => {
       pattern: { one: 1 },
       testString: 'anything',
     })
-    expect(error.prettyPrint).toBe(`Operator: REGEX
-`)
+    expect(error.prettyPrint).toBe(`Operator: REGEX - Type Error
+- Property "pattern" (value: {"one":1}) is not of type: string`)
   }
 })
 

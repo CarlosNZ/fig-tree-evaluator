@@ -13,7 +13,6 @@ import {
   Operator,
   FragmentNode,
   OperatorNode,
-  FigTreeError,
 } from './types'
 
 export const parseIfJson = (input: EvaluatorNode) => {
@@ -64,54 +63,6 @@ version of the string, ending in "..."
 */
 export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
-
-/*
-Will throw an error (FigTreeError) if no `fallback` is provided. If
-`returnErrorAsString` is enabled, then it won't throw, but instead return a
-string containing a formatted error message. 
-*/
-interface ErrorInput {
-  fallback?: EvaluatorOutput
-  operator?: Operator
-  name?: string
-  error: Error | string
-  expression: EvaluatorNode
-  returnErrorAsString?: boolean
-}
-const fallbackOrError = ({
-  fallback,
-  operator,
-  name,
-  error,
-  expression,
-  returnErrorAsString = false,
-}: ErrorInput) => {
-  if (fallback !== undefined) return fallback
-
-  // if (isFigTreeError(error)) throw error
-  if (error instanceof Error) console.log("It's an error")
-
-  const err = (typeof error === 'string' ? new Error(error) : error) as FigTreeError
-  if (name) err.name = name
-  if (err.name === 'Error') err.name = 'FigTreeError'
-  err.expression = err.expression ?? expression
-  err.operator = err.operator ?? operator
-
-  // Prepare formatted string
-  const operatorText = operator ? 'Operator: ' + operator : ''
-  const nameText = err.name === 'FigTreeError' ? '' : ` - ${err.name}`
-  const topLine = operatorText + nameText
-  const extraData = err.errorData ? '\n' + JSON.stringify(err.errorData, null, 2) : ''
-
-  const prettyPrint = `${topLine !== '' ? topLine + '\n' : ''}${err.message}${
-    extraData === '\n{}' ? '' : extraData
-  }`
-
-  err.prettyPrint = prettyPrint
-  if (!returnErrorAsString) throw err
-
-  return prettyPrint
-}
 
 /*
 Converts Evaluator node to one with canonical property names,
@@ -206,7 +157,3 @@ Returns `true` if input is an object ({}) (but not an array)
 */
 export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
-
-// export const isFigTreeError = (input: unknown): input is FigTreeError => {
-//   //
-// }
