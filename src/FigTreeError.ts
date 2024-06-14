@@ -13,10 +13,13 @@ export class FigTreeError extends Error {
     expression?: EvaluatorNode
   ) {
     super(error.message)
-    this.name = name ?? (error.name === 'Error' ? 'FigTreeError' : error.name)
+    Object.assign(this, error)
     this.operator = operator
     this.expression = expression
     this.errorData = error.errorData
+
+    if (name) this.name = name
+    if (this.name === 'Error') this.name = 'FigTreeError'
 
     // Prepare formatted string
     const operatorText = operator ? 'Operator: ' + operator : ''
