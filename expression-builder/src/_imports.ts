@@ -20,4 +20,6 @@ export * from 'fig-tree-evaluator'
 // export * from '../package'
 
 /* Published */
-export * from 'json-edit-react'
+// export * from 'json-edit-react'
+
+export * from '/Users/carl/GitHub/json-edit-react/src'
