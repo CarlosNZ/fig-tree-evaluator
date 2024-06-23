@@ -115,10 +115,10 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
               }
             />
           )}
-          <div className="ft-okay-icon" onClick={handleSubmit}>
+          <div className="ft-clickable ft-okay-icon" onClick={handleSubmit}>
             <IconOk size="2em" style={{ color: 'green' }} />
           </div>
-          <div className="ft-cancel-icon" onClick={handleCancel}>
+          <div className="ft-clickable ft-cancel-icon" onClick={handleCancel}>
             <IconCancel size="2.8em" style={{ color: 'rgb(203, 75, 22)' }} />
           </div>
         </div>
@@ -167,6 +167,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
 }) => {
   const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
   const isShorthand = name.startsWith('$')
+  const link = README_URL + canonicalName.toLowerCase() + (canonicalName === 'FRAGMENT' ? 's' : '')
 
   return (
     <div className="ft-display-bar">
@@ -179,13 +180,13 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           isLoading={isLoading}
         />
         {!isShorthand && (
-          <span onClick={() => setIsEditing()} className="ft-edit-icon">
+          <span onClick={() => setIsEditing()} className="ft-clickable ft-edit-icon">
             <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
           </span>
         )}
       </div>
       <div className="ft-display-name">
-        <a href={README_URL + canonicalName.toLowerCase()} target="_blank">
+        <a href={link} target="_blank">
           {displayName}
         </a>
       </div>

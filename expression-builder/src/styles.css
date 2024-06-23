@@ -146,6 +146,10 @@
     opacity: 1;
   } */
 
+.ft-clickable {
+  cursor: pointer;
+}
+
 .ft-edit-icon {
   opacity: 0;
   padding-right: 5em; /* Gives wider hover target */
