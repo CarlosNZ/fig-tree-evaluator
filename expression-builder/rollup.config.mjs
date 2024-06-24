@@ -29,7 +29,7 @@ export default [
       bundleSize(),
       sizes(),
     ],
-    external: ['change-case', 'axios', 'dequal/lite'],
+    // external: ['fig-tree-evaluator', 'change-case', 'axios', 'dequal/lite'],
   },
   {
     input: './build/dts/index.d.ts',

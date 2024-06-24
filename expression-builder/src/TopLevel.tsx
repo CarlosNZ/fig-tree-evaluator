@@ -40,9 +40,7 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
   return (
     <div className="ft-top-level">
       <div className="ft-display-bar">
-        {/* <div> */}
         <EvaluateButton
-          // name=""
           backgroundColor="#454545"
           textColor="white"
           evaluate={async () => {
@@ -52,7 +50,6 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
           }}
           isLoading={loading}
         />
-        {/* </div> */}
       </div>
       {children}
     </div>

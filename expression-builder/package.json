@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-expression-builder",
-  "version": "0.9.0",
+  "version": "0.5.0",
   "description": "React UI for constructing FigTree Evaluator expressions",
   "main": "build/index.cjs.js",
   "module": "build/index.esm.js",
@@ -15,13 +15,13 @@
     "lint": "npx eslint"
   },
   "peerDependencies": {
-    "fig-tree-evaluator": "^2.16.1",
     "react": ">=16.0.0"
   },
   "dependencies": {
     "json-edit-react": "^1.13.1",
     "object-property-extractor": "^1.0.11",
-    "react-select": "^5.8.0"
+    "react-select": "^5.8.0",
+    "fig-tree-evaluator": "^2.16.1"
   },
   "devDependencies": {
     "@rollup/plugin-terser": "^0.4.4",

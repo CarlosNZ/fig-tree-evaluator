@@ -18,7 +18,7 @@ const parameters: OperatorParameterMetadata[] = [
     aliases: ['replacements', 'values'],
     required: false, // Can use "data" object
     type: ['array', 'object'],
-    default: ['friend'],
+    default: {},
   },
   {
     name: 'trimWhiteSpace',

@@ -6,18 +6,54 @@ interface DemoData {
   description: JSX.Element
   objectData: object
   expression: EvaluatorNode
+  descriptionDisplayPos: 'left' | 'right'
 }
 
 export const demoData: DemoData[] = [
   {
     name: 'Basic data fetching',
     description: <p>TO DO</p>,
-    objectData: data.objects,
-    expression: data.expression,
+    descriptionDisplayPos: 'right',
+    objectData: {
+      user: {
+        id: 2,
+        firstName: 'Steve',
+        lastName: 'Rogers',
+        title: 'The First Avenger',
+      },
+      organisation: {
+        id: 1,
+        name: 'The Avengers',
+        category: 'Superheroes',
+      },
+      form: {
+        q1: 'Thor',
+        q2: 'Asgard',
+      },
+      form2: {
+        q1: 'Company Registration',
+        q2: 'XYZ Chemicals',
+      },
+      application: {
+        questions: {
+          q1: 'What is the answer?',
+          q2: 'Enter your name',
+        },
+      },
+    },
+    expression: {
+      operator: '+',
+      values: [
+        { operator: 'getData', property: 'user.firstName' },
+        ' ',
+        { operator: 'getData', property: 'user.lastName' },
+      ],
+    },
   },
   {
     name: 'Decision Tree',
     description: <p>Test</p>,
+    descriptionDisplayPos: 'left',
     objectData: {
       numberOfPlayers: 1,
       ageOfYoungestPlayer: 12,
@@ -100,5 +136,85 @@ export const demoData: DemoData[] = [
         hard: '500',
       },
     },
+  },
+  {
+    name: 'City list from country selection',
+    description: <p>TO DO</p>,
+    objectData: {
+      userResponses: { name: 'Mohini', country: 'India' },
+    },
+    expression: {
+      operator: 'post',
+      url: 'https://countriesnow.space/api/v0.1/countries/cities',
+      returnProperty: 'data',
+      parameters: {
+        country: {
+          $getData: 'userResponses.country',
+        },
+      },
+    },
+    descriptionDisplayPos: 'right',
+  },
+  {
+    name: 'Complex string substitution',
+    description: <p>TO DO</p>,
+    objectData: {
+      user: {
+        name: {
+          first: 'Natasha',
+          last: 'Romanoff',
+        },
+        country: 'Russia',
+        friends: ['Steve', 'Bruce', 'Tony'],
+        gender: 'female',
+      },
+    },
+    expression: {
+      operator: 'stringSubstitution',
+      string:
+        "This applicant's name is {{user.name.first}} {{user.name.last}}. {{gender}} lives in {{user.country}}, where the capital city is {{capital}}. {{gender}} has {{friendCount}}.",
+      replacements: {
+        capital: {
+          operator: 'get',
+          url: {
+            operator: '+',
+            values: [
+              'https://restcountries.com/v3.1/name/',
+              {
+                $getData: 'user.country',
+              },
+            ],
+          },
+          returnProperty: '[0].capital[0]',
+          fallback: 'unknown',
+        },
+        friendCount: {
+          operator: 'count',
+          values: {
+            $getData: 'user.friends',
+          },
+        },
+        gender: {
+          operator: 'match',
+          matchExpression: {
+            $getData: 'user.gender',
+          },
+          branches: {
+            female: 'She',
+            male: 'He',
+          },
+          fallback: 'They',
+        },
+      },
+      numberMap: {
+        friendCount: {
+          '0': 'no friends 😢',
+          '1': 'only one friend',
+          other: '{} friends',
+          '>4': 'loads of friends',
+        },
+      },
+    },
+    descriptionDisplayPos: 'right',
   },
 ]

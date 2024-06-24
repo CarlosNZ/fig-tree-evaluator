@@ -1,19 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import {
+  // Fig-Tree
   FigTreeEvaluator,
   FragmentMetadata,
   FragmentNode,
   OperatorMetadata,
+  // json-edit-react
   CustomNodeProps,
   IconOk,
   IconCancel,
+  FragmentParameterMetadata,
 } from './_imports'
-// import './styles.css'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
-import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {

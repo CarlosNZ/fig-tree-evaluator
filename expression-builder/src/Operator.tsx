@@ -8,7 +8,7 @@ import {
   OperatorNode,
   OperatorParameterMetadata,
   EvaluatorNode,
-  type Operator as OpType,
+  Operator as OpType,
   // json-edit-react
   CustomNodeProps,
   IconEdit,
