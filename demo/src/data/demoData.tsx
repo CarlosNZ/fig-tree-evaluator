@@ -172,7 +172,7 @@ export const demoData: DemoData[] = [
     expression: {
       operator: 'stringSubstitution',
       string:
-        "This applicant's name is {{user.name.first}} {{user.name.last}}. {{gender}} lives in {{user.country}}, where the capital city is {{capital}}. {{gender}} has {{friendCount}}.",
+        "This applicant's name is {{user.name.first}} {{user.name.last}}. {{gender}} lives in {{user.country}}, where the capital city is {{capital}}. {{gender}} {{friendCount}}.",
       replacements: {
         capital: {
           operator: 'get',
@@ -200,10 +200,10 @@ export const demoData: DemoData[] = [
             $getData: 'user.gender',
           },
           branches: {
-            female: 'She',
-            male: 'He',
+            female: 'She has',
+            male: 'He has',
           },
-          fallback: 'They',
+          fallback: 'They have',
         },
       },
       numberMap: {
