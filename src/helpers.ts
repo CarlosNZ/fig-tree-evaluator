@@ -1,7 +1,6 @@
 /*
 Functions used by the main "evaluatorFunction" (evaluate.ts)
 */
-import { camelCase } from 'change-case'
 import {
   OutputType,
   EvaluatorNode,
@@ -150,6 +149,29 @@ const extractNumber = (input: EvaluatorOutput) => {
   const numberMatch = input.match(pattern)
   if (!numberMatch) return 0
   return Number(numberMatch[0])
+}
+
+// Convert to camelCase
+export const camelCase = (str: string): string => {
+  const words = str
+    .replace(/[^A-Za-z\d _-]/g, '')
+    .split(/[-_ ]/)
+    .map((word) => (word.match(/[a-z]+|[A-Z]+[a-z]*/g) as string[]) ?? word)
+    .flat()
+
+  const camelCaseString = words
+    .filter((word) => word !== '')
+    .map((word, index) => {
+      // First word should be in lowercase
+      if (index === 0) {
+        return word.toLowerCase()
+      }
+      // Capitalize the first letter of subsequent words
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join('')
+
+  return camelCaseString
 }
 
 /*

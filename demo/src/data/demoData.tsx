@@ -172,37 +172,28 @@ export const demoData: DemoData[] = [
     expression: {
       operator: 'stringSubstitution',
       string:
-        "This applicant's name is {{user.name.first}} {{user.name.last}}. {{gender}} lives in {{user.country}}, where the capital city is {{capital}}. {{gender}} {{friendCount}}.",
+        "This applicant's name is {{user.name.first}} {{user.name.last}}. {{genderLives}} in {{user.country}}, where the capital city is {{capital}}. {{genderHas}} {{friendCount}}.",
       replacements: {
         capital: {
           operator: 'get',
           url: {
             operator: '+',
-            values: [
-              'https://restcountries.com/v3.1/name/',
-              {
-                $getData: 'user.country',
-              },
-            ],
+            values: ['https://restcountries.com/v3.1/name/', { $getData: 'user.country' }],
           },
           returnProperty: '[0].capital[0]',
           fallback: 'unknown',
         },
-        friendCount: {
-          operator: 'count',
-          values: {
-            $getData: 'user.friends',
-          },
-        },
-        gender: {
+        friendCount: { operator: 'count', values: { $getData: 'user.friends' } },
+        genderLives: {
           operator: 'match',
-          matchExpression: {
-            $getData: 'user.gender',
-          },
-          branches: {
-            female: 'She has',
-            male: 'He has',
-          },
+          matchExpression: { $getData: 'user.gender' },
+          branches: { female: 'She lives', male: 'He lives' },
+          fallback: 'They live',
+        },
+        genderHas: {
+          operator: 'match',
+          matchExpression: { $getData: 'user.gender' },
+          branches: { female: 'She has', male: 'He has' },
           fallback: 'They have',
         },
       },
