@@ -1,7 +1,13 @@
 import extractProperty from 'object-property-extractor'
 import { zipArraysToObject, getTypeCheckInput } from '../operatorUtils'
-import { evaluateArray } from '../../evaluate'
-import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
+import { evaluateArray, evaluatorFunction } from '../../evaluate'
+import {
+  EvaluatorNode,
+  OperatorObject,
+  EvaluateMethod,
+  ParseChildrenMethod,
+  FigTreeConfig,
+} from '../../types'
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
@@ -62,19 +68,18 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   // {{Named}} replacements
   const parameterPattern = /(?<!\\)({{(?:[A-Za-z0-9_.]|\[[0-9]+\])+}})/g
 
-  return string
-    .split(parameterPattern)
-    .map((fragment) => {
-      if (!/(?<!\\){{(.+)}}/.exec(fragment)) return fragment.replace('\\{{', '{{')
-      const replacement = getReplacement(
-        fragment,
-        substitutions,
-        numberMapping,
-        config.options.data
-      )
-      return trimWhiteSpace ? String(replacement).trim() : replacement
-    })
-    .join('')
+  const replaced = []
+
+  for (const fragment of string.split(parameterPattern)) {
+    if (!/(?<!\\){{(.+)}}/.exec(fragment)) {
+      replaced.push(fragment.replace('\\{{', '{{'))
+      continue
+    }
+    const replacement = await getReplacement(fragment, substitutions, numberMapping, config)
+    replaced.push(trimWhiteSpace ? String(replacement).trim() : replacement)
+  }
+
+  return replaced.join('')
 }
 
 const parseChildren: ParseChildrenMethod = (expression) => {
@@ -93,14 +98,21 @@ interface NumberMap {
   [key: string]: { [key: string]: string }
 }
 
-const getReplacement = (
+const getReplacement = async (
   fragment: string,
   replacements: { [key: string]: unknown },
   numberMaps: NumberMap,
-  data: object = {}
+  config: FigTreeConfig
 ) => {
+  const data = config.options?.data ?? {}
   const key = fragment.replace(/{{(.+)}}/, '$1')
-  const value = extractProperty(replacements, key, extractProperty(data, key, ''))
+  // Need to evaluate each replacement, as they won't be reached it
+  // `evaluateFullObject` is not enabled
+  const value = await evaluatorFunction(
+    extractProperty(replacements, key, extractProperty(data, key, '')),
+    config
+  )
+
   if (typeof value !== 'number') return value
 
   // Value is a number, so check number mappings
