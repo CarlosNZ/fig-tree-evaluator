@@ -2060,6 +2060,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.16.1**: Make sure all `substitution` values in `stringSubstitution` operator get evaluated even when `evaluateFullObject` is off.
 - **v2.16.0**: Standardise error response (see [Error handling](#error-handling))
 - **v2.15.0**:
   - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*
