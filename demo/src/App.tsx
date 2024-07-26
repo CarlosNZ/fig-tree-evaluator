@@ -23,7 +23,7 @@ import {
   FigTreeEditor,
   FigTreeError,
 } from './_imports.js'
-import { JsonEditor } from 'json-edit-react'
+import { JsonData, JsonEditor } from 'json-edit-react'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 import initData from './data/data.json'
@@ -174,10 +174,10 @@ function App() {
             </Box>
             <JsonEditor
               data={objectData}
+              setData={setObjectData as (data: JsonData) => void}
               rootName="data"
               collapse={2}
               onUpdate={({ newData }) => {
-                setObjectData(newData)
                 localStorage.setItem('objectData', JSON.stringify(newData))
               }}
               minWidth="50%"
@@ -206,9 +206,9 @@ function App() {
             <FigTreeEditor
               figTree={figTree}
               expression={expression}
+              setData={setExpression as (data: JsonData) => void}
               objectData={objectData}
               onUpdate={({ newData }) => {
-                setExpression(newData)
                 localStorage.setItem('expression', JSON.stringify(newData))
               }}
               onEvaluate={(value: unknown) =>
@@ -243,6 +243,7 @@ function App() {
                 })
               }
               minWidth="90%"
+              stringTruncate={500}
             />
             {ExpressionUndoRedo}
           </Flex>

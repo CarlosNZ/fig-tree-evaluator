@@ -532,7 +532,7 @@ test.concurrent('GET: Bad url', async () => {
   const resultFetch = await expFetch.evaluate(expression)
   // This is different in browser vs node-fetch
   expect(resultFetch).toBe(
-    'Operator: GET - FetchError\nrequest to http://there-is-no-f-ing-site.com/ failed, reason: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
+    'Operator: GET\nrequest to http://there-is-no-f-ing-site.com/ failed, reason: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
   )
 })
 

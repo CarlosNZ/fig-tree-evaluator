@@ -399,7 +399,7 @@ test('Metadata -- get operator info', () => {
           aliases: ['replacements', 'values'],
           required: false,
           type: ['array', 'object'],
-          default: ['friend'],
+          default: {},
         },
         {
           name: 'trimWhiteSpace',
