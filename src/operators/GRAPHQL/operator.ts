@@ -1,4 +1,4 @@
-import { evaluateArray } from '../../evaluate'
+import { evaluateArray, evaluateObject } from '../../evaluate'
 import {
   zipArraysToObject,
   extractAndSimplify,
@@ -27,7 +27,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     [
       expression.query,
       expression.url,
-      expression.variables,
+      await evaluateObject(expression.variables, config),
       expression.returnNode,
       expression.headers,
       expression.useCache,

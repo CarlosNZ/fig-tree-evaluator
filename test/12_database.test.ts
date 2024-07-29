@@ -633,10 +633,10 @@ test('GraphQL - single country lookup, default endpoint, return node, using prop
           emoji
         }
       }`,
-    variables: { code: 'NZ' },
+    variables: { code: { operator: 'getData', property: 'code' } },
     returnNode: 'countries[0].emoji',
   }
-  return exp.evaluate(expression).then((result) => {
+  return exp.evaluate(expression, { data: { code: 'NZ' } }).then((result) => {
     expect(result).toBe('🇳🇿')
   })
 })

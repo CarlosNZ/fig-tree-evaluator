@@ -342,6 +342,30 @@ test.concurrent(
   }
 )
 
+test.concurrent('POST: Fetch city data with city param as FigTree expression', async () => {
+  const expression = {
+    operator: 'post',
+    url: 'https://countriesnow.space/api/v0.1/countries/population/cities',
+    returnProperty: 'data.populationCounts[0]',
+    parameters: {
+      city: {
+        $getData: 'country.city',
+      },
+    },
+  }
+  const expectedResult = {
+    year: '2013',
+    value: '204000',
+    sex: 'Both Sexes',
+    reliabilty: 'Final figure, complete',
+  }
+  const result = await exp.evaluate(expression, {
+    data: { country: { city: 'Wellington' } },
+    // evaluateFullObject: true,
+  })
+  expect(result).toStrictEqual(expectedResult)
+})
+
 test.concurrent('GET: Inspect authorization headers', async () => {
   const expression = {
     operator: 'API',

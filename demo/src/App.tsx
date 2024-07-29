@@ -22,14 +22,14 @@ import {
   FigTreeOptions,
   FigTreeEditor,
   FigTreeError,
-} from './_imports.js'
-import { JsonData, JsonEditor } from 'json-edit-react'
+} from './_imports'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 import initData from './data/data.json'
 // @ts-expect-error No declaration
 import { PostgresInterface } from './postgresInterface.js'
 import logo from './img/fig_tree_evaluator_logo_512.png'
+import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
 import { demoData } from './data'
 
