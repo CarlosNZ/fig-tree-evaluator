@@ -55,6 +55,7 @@ if (savedCache) {
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile] = useMediaQuery('(max-width: 635px)')
+  const [selectedData, setSelectedData] = useState<number>()
 
   const {
     data: objectData,
@@ -73,12 +74,12 @@ function App() {
   const toast = useToast()
 
   const handleDemoSelect = (selected: number) => {
+    setSelectedData(selected)
     const { objectData, expression } = demoData[selected]
     setObjectData(objectData)
     setExpression(expression as object)
     setLocalStorage('objectData', objectData)
     setLocalStorage('expression', expression as object)
-    // TO-DO: Show information modal
   }
 
   return (
@@ -153,7 +154,7 @@ function App() {
           </Heading>
         )}
         {/** DATA COLUMN */}
-        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
+        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5} mb={20}>
           <Flex w="45%" direction="column" alignItems="center" flexGrow={1}>
             <Box maxW={500}>
               <Heading size="md" alignSelf="flex-start">
@@ -194,7 +195,7 @@ function App() {
             {DataUndoRedo}
           </Flex>
           {/** EXPRESSION EDITOR COLUMN */}
-          <Flex h={'100%'} minW="45%" direction="column" alignItems="center" flexGrow={1}>
+          <Flex h={'100%'} minW="45%" direction="column" alignItems="center" flexGrow={1} mb={10}>
             <Box maxW={500}>
               <Heading size="md" alignSelf="flex-start">
                 FigTree expression
@@ -249,7 +250,14 @@ function App() {
           </Flex>
         </Flex>
       </VStack>
-      <HStack w="100%" px={1} mt={10}>
+      <HStack
+        w="100%"
+        px={3}
+        pos="fixed"
+        bottom={0}
+        backgroundColor="background"
+        boxShadow="rgba(17, 17, 26, 0.1) 0px 4px 16px, rgba(17, 17, 26, 0.1) 0px 8px 24px, rgba(17, 17, 26, 0.1) 0px 16px 56px;"
+      >
         <Text color="accent">
           <strong>Experiment with a range of demo expressions:</strong>
         </Text>
@@ -257,9 +265,8 @@ function App() {
           variant="filled"
           backgroundColor="gray.50"
           maxW={300}
-          // placeholder="Select an option"
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
-          value="Select"
+          value={selectedData ?? 'Select'}
         >
           <option value="Select" disabled>
             Select an option
@@ -271,14 +278,14 @@ function App() {
           ))}
         </Select>
         <Spacer />
-        <Box>
-          <Button colorScheme="green" onClick={() => setModalOpen(true)}>
-            Configuration
-          </Button>{' '}
+        <HStack alignItems="flex-end" p={2}>
           <Text fontSize="xs" mb={1}>
             fig-tree-evaluator v{figTree.getVersion()}
           </Text>
-        </Box>
+          <Button colorScheme="green" onClick={() => setModalOpen(true)}>
+            Configuration
+          </Button>
+        </HStack>
       </HStack>
     </Flex>
   )

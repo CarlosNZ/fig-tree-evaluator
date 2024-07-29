@@ -68,7 +68,8 @@ test('Operator exclusion: ignore invalid exclusion value', async () => {
   })
 })
 
-// Update using "updateOptions" (and check previously excluded are now available)
+// Update using "updateOptions" (and check previously excluded are now
+// available)
 
 test('Operator exclusion: update options later', async () => {
   const figTree = new FigTreeEvaluator({ excludeOperators: ['+'] })
