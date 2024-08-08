@@ -1,9 +1,8 @@
 import { EvaluatorNode } from 'fig-tree-evaluator'
-import data from './data.json'
 
 interface DemoData {
   name: string
-  description: JSX.Element
+  content: string // Markdown
   objectData: object
   expression: EvaluatorNode
   descriptionDisplayPos: 'left' | 'right'
@@ -12,7 +11,11 @@ interface DemoData {
 export const demoData: DemoData[] = [
   {
     name: 'Basic data fetching',
-    description: <p>TO DO</p>,
+    content: `
+# Basic data fetching
+
+Welcome to **FigTree Evaluator**
+`,
     descriptionDisplayPos: 'right',
     objectData: {
       user: {
@@ -52,7 +55,7 @@ export const demoData: DemoData[] = [
   },
   {
     name: 'Decision Tree',
-    description: <p>Test</p>,
+    content: '# Test',
     descriptionDisplayPos: 'left',
     objectData: {
       numberOfPlayers: 1,
@@ -139,7 +142,7 @@ export const demoData: DemoData[] = [
   },
   {
     name: 'City list from country selection',
-    description: <p>TO DO</p>,
+    content: '# TO-DO',
     objectData: {
       userResponses: { name: 'Mohini', country: 'India' },
     },
@@ -157,7 +160,7 @@ export const demoData: DemoData[] = [
   },
   {
     name: 'Complex string substitution',
-    description: <p>TO DO</p>,
+    content: '# TO-DO',
     objectData: {
       user: {
         name: {

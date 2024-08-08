@@ -36,6 +36,7 @@ import { demoData } from './data'
 import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
 import { useUndo } from './useUndo'
+import { InfoModal } from './InfoModal'
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
@@ -55,7 +56,9 @@ if (savedCache) {
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile] = useMediaQuery('(max-width: 635px)')
-  const [selectedData, setSelectedData] = useState<number>()
+  const [selectedDataIndex, setSelectedDataIndex] = useState<number>()
+
+  const [showInfo, setShowInfo] = useState(false)
 
   const {
     data: objectData,
@@ -74,7 +77,7 @@ function App() {
   const toast = useToast()
 
   const handleDemoSelect = (selected: number) => {
-    setSelectedData(selected)
+    setSelectedDataIndex(selected)
     const { objectData, expression } = demoData[selected]
     setObjectData(objectData)
     setExpression(expression as object)
@@ -89,6 +92,10 @@ function App() {
           options={figTree.getOptions()}
           updateOptions={(options: FigTreeOptions) => figTree.updateOptions(options)}
           modalState={{ modalOpen, setModalOpen }}
+        />
+        <InfoModal
+          content={demoData[selectedDataIndex ?? 0].content}
+          modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
         />
         {/** HEADER */}
         <HStack w="100%" px={4} justify="space-between" align="flex-start">
@@ -266,7 +273,7 @@ function App() {
           backgroundColor="gray.50"
           maxW={300}
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
-          value={selectedData ?? 'Select'}
+          value={selectedDataIndex ?? 'Select'}
         >
           <option value="Select" disabled>
             Select an option
@@ -277,6 +284,9 @@ function App() {
             </option>
           ))}
         </Select>
+        <Button colorScheme="blue" onClick={() => setShowInfo(true)}>
+          Info
+        </Button>
         <Spacer />
         <HStack alignItems="flex-end" p={2}>
           <Text fontSize="xs" mb={1}>

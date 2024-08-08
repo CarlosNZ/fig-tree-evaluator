@@ -57,7 +57,9 @@
   },
   "dependencies": {
     "dequal": "^2.0.3",
-    "object-property-extractor": "^1.0.11"
+    "markdown-to-jsx": "^7.4.7",
+    "object-property-extractor": "^1.0.11",
+    "react-markdown": "^9.0.1"
   },
   "bugs": {
     "url": "https://github.com/CarlosNZ/fig-tree-evaluator/issues"
