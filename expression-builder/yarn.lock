@@ -1975,11 +1975,6 @@ define-properties@^1.2.0, define-properties@^1.2.1:
     has-property-descriptors "^1.0.0"
     object-keys "^1.1.1"
 
-dequal@^2.0.3:
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/dequal/-/dequal-2.0.3.tgz#2644214f1997d39ed0ee0ece72335490a7ac67be"
-  integrity sha512-0je+qPKHEMohvfRTCEo3CrPG6cAzAYgmzKyxRiYSSDkS6eGJdyVJm7WaYA5ECaAD9wLB2T4EEeymA5aFVcYXCA==
-
 detect-newline@^3.0.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/detect-newline/-/detect-newline-3.1.0.tgz#576f5dfc63ae1a192ff192d8ad3af6308991b651"
@@ -2555,14 +2550,6 @@ fb-watchman@^2.0.0:
   integrity sha512-p5161BqbuCaSnB8jIbzQHOlpgsPmK5rJVDfDKO91Axs5NC1uu3HRQm6wt9cd9/+GtQQIO53JdGXXoyDpTAsgYA==
   dependencies:
     bser "2.1.1"
-
-fig-tree-evaluator@^2.16.5:
-  version "2.16.5"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.16.5.tgz#f6a6f21bbc242065dd6145b0be430366ebce87b9"
-  integrity sha512-aYFLUZwP9eVf+2JjjdKvxUbEyzD/+Eq9re25CblDFMVytRzu+Fdq+szgK50clgkG/q6kujVJynDvkRToqeArSQ==
-  dependencies:
-    dequal "^2.0.3"
-    object-property-extractor "^1.0.11"
 
 figures@^1.0.1:
   version "1.7.0"
@@ -3613,10 +3600,10 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^1.15.3:
-  version "1.15.3"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.15.3.tgz#70c48154a6e34b25f5d9c8e93a380a970c55da09"
-  integrity sha512-LqmA2b1OxG57zIlTo6tSzbhpmq+vJZ4d2v2slO9ZWVBcDprYTPMeRv7x9fdTEWwcjyPfAYHofA0OVIeMwi1ZJg==
+json-edit-react@^1.15.5:
+  version "1.15.5"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.15.5.tgz#127621c697572f77ef147c86498e10ad2ebb4b26"
+  integrity sha512-t+vuVFK2+aEJ/qXELNjvhGJQiTl5BFBWoCO+lxxjwmwNuY1yfYP7cRlOy36JW88O2UPSXEoIAZ4Wn58fN8DPrA==
   dependencies:
     object-property-assigner "^1.3.0"
     object-property-extractor "^1.0.11"
