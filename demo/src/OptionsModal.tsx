@@ -28,6 +28,7 @@ import {
 } from '@chakra-ui/react'
 import { filterObjectRecursive } from './helpers'
 import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
+import { JsonData, JsonEditor } from 'json-edit-react'
 
 const resetFormState = (options: FigTreeOptions) => {
   const baseEndpoint = options.baseEndpoint
@@ -44,16 +45,13 @@ const resetFormState = (options: FigTreeOptions) => {
   return {
     baseEndpoint,
     authHeader,
-    headersText: JSON.stringify(headers),
-    headersError: false,
+    headers,
     gqlEndpoint,
     gqlAuth,
-    gqlHeadersText: JSON.stringify(gqlHeaders),
-    gqlHeadersError: false,
+    gqlHeaders,
     skipRuntimeTypeCheck,
     evaluateFullObject,
-    fragmentsText: JSON.stringify(fragments, null, 2),
-    fragmentsError: false,
+    fragments,
     useCache: options.useCache ?? true,
     maxCacheSize: options.maxCacheSize,
     maxCacheTime: options.maxCacheTime,
@@ -75,46 +73,23 @@ export const OptionsModal = ({
     }
   }, [modalOpen, figTree])
 
-  const formatHeadersText = (text: {
-    [key in 'headersText' | 'gqlHeadersText' | 'fragmentsText']?: string
-  }) => {
-    const [key, value] = Object.entries(text)[0]
-    console.log('value', value)
-    if (!value) return
-    const json = value ? JSON.stringify(value, null, 2) : ''
-    console.log('json', json)
-    const errorKey =
-      key === 'headersText'
-        ? 'headersError'
-        : key === 'gqlHeadersText'
-        ? 'gqlHeadersError'
-        : 'fragmentsError'
-    if (json) {
-      setFormState((curr) => ({ ...curr, [key]: json, [errorKey]: false }))
-    } else setFormState((curr) => ({ ...curr, [errorKey]: true }))
-  }
-
   const handleSubmit = (e: any) => {
     e.preventDefault()
     if (formState.headersError || formState.gqlHeadersError) return
     const {
       baseEndpoint,
       authHeader,
-      headersText,
+      headers,
       gqlEndpoint,
       gqlAuth,
-      gqlHeadersText,
+      gqlHeaders,
       skipRuntimeTypeCheck,
       evaluateFullObject,
-      fragmentsText,
+      fragments,
       useCache,
       maxCacheSize,
       maxCacheTime,
     } = formState
-
-    const headers = headersText ? JSON5.parse(headersText) : {}
-    const gqlHeaders = gqlHeadersText ? JSON5.parse(gqlHeadersText) : {}
-    const fragments = fragmentsText ? JSON5.parse(fragmentsText) : {}
 
     const newOptions: FigTreeOptions = {
       ...filterObjectRecursive({
@@ -133,23 +108,33 @@ export const OptionsModal = ({
       fragments,
     }
 
+    console.log('newOptions.fragments', newOptions.fragments)
+
     figTree.updateOptions(newOptions)
     localStorage.setItem('options', JSON.stringify(newOptions))
     setModalOpen(false)
   }
 
+  const labelStyles = { fontSize: 'sm', mb: 0 }
+
   return (
     <Box>
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+      <Modal
+        size="xl"
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        closeOnOverlayClick={false}
+        closeOnEsc={false}
+      >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Evaluator Configuration</ModalHeader>
+          <ModalHeader pb={0}>Evaluator Configuration</ModalHeader>
           <ModalCloseButton />
           <form onSubmit={handleSubmit}>
             <ModalBody>
               <Stack spacing={2}>
                 <FormControl id="base-endpoint">
-                  <FormLabel fontSize="sm">Base endpoint:</FormLabel>
+                  <FormLabel {...labelStyles}>Base endpoint:</FormLabel>
                   <Input
                     value={formState.baseEndpoint}
                     onChange={(e) =>
@@ -158,7 +143,7 @@ export const OptionsModal = ({
                   />
                 </FormControl>
                 <FormControl id="auth-token">
-                  <FormLabel fontSize="sm">{'Authorization (eg Bearer <JWT>)'}:</FormLabel>
+                  <FormLabel {...labelStyles}>{'Authorization (eg Bearer <JWT>)'}:</FormLabel>
                   <Textarea
                     fontSize="xs"
                     value={formState.authHeader}
@@ -168,113 +153,168 @@ export const OptionsModal = ({
                   />
                 </FormControl>
                 <FormControl id="headers" isInvalid={formState.headersError}>
-                  <FormLabel fontSize="sm">{'Other headers (JSON object)'}:</FormLabel>
-                  <Textarea
-                    fontSize="xs"
-                    fontFamily="monospace"
-                    value={formState.headersText}
-                    onChange={(e) =>
-                      setFormState((curr) => ({ ...curr, headersText: e.target.value }))
+                  <JsonEditor
+                    data={formState.headers ?? {}}
+                    setData={(data) =>
+                      setFormState({
+                        ...formState,
+                        headers: data as Record<string, string>,
+                      })
                     }
-                    onBlur={(e) => formatHeadersText({ headersText: e.target.value })}
+                    collapse={Object.keys(formState.headers).length > 0 ? 1 : 0}
+                    rootName="Other HTTP headers"
+                    rootFontSize={12}
+                    maxWidth="100%"
+                    theme={{
+                      styles: {
+                        container: {
+                          backgroundColor: 'transparent',
+                          boxShadow: 'none',
+                          padding: 0,
+                          marginTop: 0,
+                          marginLeft: '1em',
+                        },
+                        property: ({ level }) => {
+                          if (level === 0)
+                            return {
+                              fontSize: 12,
+                              fontFamily: 'Work Sans, sans-serif',
+                              marginRight: '0.5em',
+                              // fontWeight: 'bold',
+                            }
+                        },
+                      },
+                    }}
+                    showCollectionCount="when-closed"
                   />
-                  <FormErrorMessage>Invalid Input</FormErrorMessage>
                 </FormControl>
-
-                <Accordion allowToggle>
+                <Accordion allowToggle mt={2}>
                   <AccordionItem>
-                    <AccordionButton>
-                      <h2>
-                        <Box flex="1" textAlign="left">
-                          <Text>GraphQL (if different from above)</Text>
-                        </Box>
-                      </h2>
+                    <AccordionButton pl={0}>
+                      <Box flex="1" textAlign="left">
+                        <Text>
+                          <strong>GraphQL</strong> (if different from above)
+                        </Text>
+                      </Box>
                       <AccordionIcon />
                     </AccordionButton>
-                    <AccordionPanel>
-                      <FormControl id="gql-endpoint">
-                        <FormLabel fontSize="sm">Endpoint:</FormLabel>
-                        <Input
-                          value={formState.gqlEndpoint}
-                          onChange={(e) =>
-                            setFormState((curr) => ({ ...curr, gqlEndpoint: e.target.value }))
-                          }
-                        />
-                      </FormControl>
-                      <FormControl id="gql-auth-token">
-                        <FormLabel fontSize="sm">{'Authorization'}:</FormLabel>
-                        <Textarea
-                          fontSize="xs"
-                          value={formState.gqlAuth}
-                          onChange={(e) =>
-                            setFormState((curr) => ({ ...curr, gqlAuth: e.target.value }))
-                          }
-                        />
-                      </FormControl>
-                      <FormControl id="gql-headers" isInvalid={formState.gqlHeadersError}>
-                        <FormLabel fontSize="sm">{'Other headers (JSON object)'}:</FormLabel>
-                        <Textarea
-                          fontSize="xs"
-                          fontFamily="monospace"
-                          value={formState.gqlHeadersText}
-                          onChange={(e) =>
-                            setFormState((curr) => ({ ...curr, gqlHeadersText: e.target.value }))
-                          }
-                          onBlur={(e) => formatHeadersText({ gqlHeadersText: e.target.value })}
-                        />
-                        <FormErrorMessage>Invalid Input</FormErrorMessage>
-                      </FormControl>
+                    <AccordionPanel pt={0} px={0}>
+                      <Stack spacing={2}>
+                        <FormControl id="gql-endpoint">
+                          <FormLabel {...labelStyles}>Endpoint:</FormLabel>
+                          <Input
+                            value={formState.gqlEndpoint}
+                            onChange={(e) =>
+                              setFormState((curr) => ({ ...curr, gqlEndpoint: e.target.value }))
+                            }
+                          />
+                        </FormControl>
+                        <FormControl id="gql-auth-token">
+                          <FormLabel {...labelStyles}>{'Authorization'}:</FormLabel>
+                          <Textarea
+                            fontSize="xs"
+                            value={formState.gqlAuth}
+                            onChange={(e) =>
+                              setFormState((curr) => ({ ...curr, gqlAuth: e.target.value }))
+                            }
+                          />
+                        </FormControl>
+                        <FormControl id="gql-headers" isInvalid={formState.gqlHeadersError}>
+                          <JsonEditor
+                            data={formState.gqlHeaders ?? {}}
+                            setData={(data) =>
+                              setFormState({
+                                ...formState,
+                                gqlHeaders: data as Record<string, string>,
+                              })
+                            }
+                            collapse={Object.keys(formState.gqlHeaders).length > 0 ? 1 : 0}
+                            rootName="Other headers"
+                            rootFontSize={12}
+                            maxWidth="100%"
+                            theme={{
+                              styles: {
+                                container: {
+                                  backgroundColor: 'transparent',
+                                  boxShadow: 'none',
+                                  padding: 0,
+                                  // marginTop: 0,
+                                  marginLeft: '1em',
+                                },
+                                property: ({ level }) => {
+                                  if (level === 0)
+                                    return {
+                                      fontSize: 12,
+                                      fontFamily: 'Work Sans, sans-serif',
+                                      marginRight: '0.5em',
+                                    }
+                                },
+                              },
+                            }}
+                            showCollectionCount="when-closed"
+                          />
+                        </FormControl>
+                      </Stack>
                     </AccordionPanel>
                   </AccordionItem>
                 </Accordion>
-                <Accordion allowToggle>
-                  <AccordionItem>
-                    <AccordionButton>
-                      <h2>
-                        <Box flex="1" textAlign="left">
-                          <Text>Fragments (JSON)</Text>
-                        </Box>
-                      </h2>
-                      <AccordionIcon />
-                    </AccordionButton>
-                    <AccordionPanel>
-                      <FormControl id="fragments" isInvalid={formState.fragmentsError}>
-                        <Textarea
-                          fontSize="xs"
-                          fontFamily="monospace"
-                          rows={12}
-                          value={formState.fragmentsText}
-                          onChange={(e) =>
-                            setFormState((curr) => ({ ...curr, fragmentsText: e.target.value }))
-                          }
-                          onBlur={(e) => formatHeadersText({ fragmentsText: e.target.value })}
-                        />
-                        <FormErrorMessage>Invalid Input</FormErrorMessage>
-                      </FormControl>
-                    </AccordionPanel>
-                  </AccordionItem>
-                </Accordion>
-                <VStack align="flex-start">
+                <FormControl id="fragments" isInvalid={formState.fragmentsError}>
+                  <JsonEditor
+                    data={formState.fragments ?? {}}
+                    setData={(data) =>
+                      setFormState({
+                        ...formState,
+                        fragments: data as Record<string, JsonData>,
+                      })
+                    }
+                    collapse={0}
+                    rootName="Fragments"
+                    rootFontSize={12}
+                    maxWidth="100%"
+                    theme={{
+                      styles: {
+                        container: {
+                          backgroundColor: 'transparent',
+                          boxShadow: 'none',
+                          padding: 0,
+                          marginBottom: '0.5em',
+                        },
+                        property: ({ level }) => {
+                          if (level === 0)
+                            return {
+                              fontSize: 14,
+                              fontFamily: 'Work Sans, sans-serif',
+                              marginRight: '0.5em',
+                              fontWeight: 'bold',
+                            }
+                        },
+                      },
+                    }}
+                    showCollectionCount="when-closed"
+                  />
+                </FormControl>
+                <hr />
+                <VStack align="flex-start" gap={0} mt={1} mb={3}>
                   <Text fontSize="md">
                     <strong>Cache:</strong>
                   </Text>
-                  <FormControl id="evaluate-object" mt="2 !important">
-                    <Checkbox
-                      isChecked={formState.useCache}
-                      onChange={(_) =>
-                        setFormState((curr) => ({
-                          ...curr,
-                          useCache: !formState.useCache,
-                        }))
-                      }
-                      colorScheme="green"
-                    >
-                      <Text fontSize="sm">Use cache?</Text>
-                    </Checkbox>
-                  </FormControl>
-                  <HStack>
+                  <HStack alignItems="flex-end" mt={-2}>
+                    <FormControl id="cache-toggle" flexBasis="60%">
+                      <Checkbox
+                        isChecked={formState.useCache}
+                        onChange={(_) =>
+                          setFormState((curr) => ({
+                            ...curr,
+                            useCache: !formState.useCache,
+                          }))
+                        }
+                        colorScheme="green"
+                      >
+                        <Text {...labelStyles}>Use cache?</Text>
+                      </Checkbox>
+                    </FormControl>
                     <FormControl id="cache-size">
-                      <FormLabel fontSize="smaller">Size</FormLabel>
+                      <FormLabel {...labelStyles}>Size</FormLabel>
                       <Input
                         size="sm"
                         value={formState.maxCacheSize}
@@ -287,7 +327,7 @@ export const OptionsModal = ({
                       />
                     </FormControl>
                     <FormControl id="cache-time">
-                      <FormLabel fontSize="smaller">Max time (seconds)</FormLabel>
+                      <FormLabel {...labelStyles}>Max time (seconds)</FormLabel>
                       <Input
                         size="sm"
                         value={formState.maxCacheTime}
@@ -301,10 +341,11 @@ export const OptionsModal = ({
                     </FormControl>
                   </HStack>
                 </VStack>
+                <hr />
                 <Text fontSize="md">
                   <strong>Miscellaneous:</strong>
                 </Text>
-                <FormControl id="skip-runtime-check" mt="2 !important">
+                <FormControl id="skip-runtime-check">
                   <Checkbox
                     isChecked={formState.skipRuntimeTypeCheck}
                     onChange={(_) =>
@@ -318,7 +359,7 @@ export const OptionsModal = ({
                     <Text fontSize="sm">Skip runtime type checking</Text>
                   </Checkbox>
                 </FormControl>
-                <FormControl id="evaluate-object" mt="2 !important">
+                <FormControl id="evaluate-object">
                   <Checkbox
                     isChecked={formState.evaluateFullObject}
                     onChange={(_) =>
