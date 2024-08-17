@@ -115,3 +115,20 @@ test('Operator exclusion: exclude in evaluation call -- check only excluded for 
     expect(result).toEqual(70)
   })
 })
+
+// Fragments and data are only merged when passed in to individual evaluation,
+// not when updating options
+test('Update options -- fragments and data should not be merged', async () => {
+  const figTree = new FigTreeEvaluator({
+    fragments: { test: 'Output' },
+    data: { one: 1 },
+    noShorthand: true,
+  })
+  figTree.updateOptions({ fragments: { replacement: 'YES' }, data: { two: 2 } })
+
+  expect(figTree.getOptions()).toStrictEqual({
+    fragments: { replacement: 'YES' },
+    data: { two: 2 },
+    noShorthand: true,
+  })
+})

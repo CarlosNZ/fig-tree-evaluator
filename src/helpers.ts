@@ -110,9 +110,14 @@ proper deep merging.
 */
 export const mergeOptions = (
   origOptions: FigTreeOptions,
-  newOptions: FigTreeOptions
+  newOptions: FigTreeOptions,
+  deep: boolean
 ): FigTreeOptions => {
   const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
+  if (!deep) return combinedOptions
+
+  // We only do deep merging of the following for a specific evaluation, not
+  // when performing ".updateOptions()"
   if (origOptions.data || newOptions.data)
     combinedOptions.data = { ...origOptions.data, ...newOptions.data }
   if (origOptions.functions || newOptions.functions)

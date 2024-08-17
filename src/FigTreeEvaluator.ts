@@ -55,7 +55,7 @@ class FigTreeEvaluator {
 
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
     // Update options from current call if specified
-    const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
+    const currentOptions = mergeOptions(this.options, standardiseOptionNames(options), true)
 
     if (options.httpClient) this.httpClient = getHttpClient(options.httpClient)
     if (options.graphQLConnection?.httpClient)
@@ -90,7 +90,7 @@ class FigTreeEvaluator {
   }
 
   public updateOptions(options: FigTreeOptions) {
-    this.options = mergeOptions(this.options, standardiseOptionNames(options))
+    this.options = mergeOptions(this.options, standardiseOptionNames(options), false)
     if (this.options.excludeOperators)
       this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }

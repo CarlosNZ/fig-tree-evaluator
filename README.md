@@ -2060,6 +2060,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.16.6**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
 - **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 
 `evaluateFullObject` is off.
 - **v2.16.0**: Standardise error response (see [Error handling](#error-handling))

@@ -238,6 +238,7 @@ test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
         },
         returnProperty: { operator: '+', values: ['[0].', '$field'] },
       },
+      ...fig.getOptions().fragments,
     },
   })
   return fig
