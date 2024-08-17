@@ -1,11 +1,12 @@
-import { EvaluatorNode } from 'fig-tree-evaluator'
+import { EvaluatorNode, FigTreeOptions } from 'fig-tree-evaluator'
 
 interface DemoData {
   name: string
   content: string // Markdown
-  objectData: object
+  objectData?: object
   expression: EvaluatorNode
   descriptionDisplayPos: 'left' | 'right'
+  figTreeOptions?: FigTreeOptions
 }
 
 export const demoData: DemoData[] = [
@@ -139,6 +140,21 @@ Welcome to **FigTree Evaluator**
         hard: '500',
       },
     },
+  },
+  {
+    name: 'String formatting with a random user',
+    content: '# TO-DO',
+    expression: {
+      operator: 'stringSubstitution',
+      string: 'Hello, {{name.first}} {{name.last}} from {{location.city}}, {{location.country}}!',
+      substitutions: {
+        operator: 'get',
+        url: 'https://randomuser.me/api/',
+        returnProperty: 'results[0]',
+      },
+    },
+    figTreeOptions: { useCache: false },
+    descriptionDisplayPos: 'right',
   },
   {
     name: 'City list from country selection',

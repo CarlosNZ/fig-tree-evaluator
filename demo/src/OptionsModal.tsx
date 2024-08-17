@@ -1,4 +1,4 @@
-import React, { Dispatch, useState } from 'react'
+import React, { Dispatch, useEffect, useState } from 'react'
 import JSON5 from 'json5'
 import {
   Box,
@@ -27,7 +27,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { filterObjectRecursive } from './helpers'
-import { FigTreeOptions } from './fig-tree-evaluator/src'
+import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
 
 const resetFormState = (options: FigTreeOptions) => {
   const baseEndpoint = options.baseEndpoint
@@ -61,22 +61,28 @@ const resetFormState = (options: FigTreeOptions) => {
 }
 
 export const OptionsModal = ({
-  options,
-  updateOptions,
+  figTree,
   modalState: { modalOpen, setModalOpen },
 }: {
-  options: FigTreeOptions
-  updateOptions: (options: FigTreeOptions) => void
+  figTree: FigTreeEvaluator
   modalState: { modalOpen: boolean; setModalOpen: Dispatch<React.SetStateAction<boolean>> }
 }) => {
-  const [formState, setFormState] = useState(resetFormState(options))
+  const [formState, setFormState] = useState(resetFormState(figTree.getOptions()))
+
+  useEffect(() => {
+    if (modalOpen) {
+      setFormState(resetFormState(figTree.getOptions()))
+    }
+  }, [modalOpen, figTree])
 
   const formatHeadersText = (text: {
     [key in 'headersText' | 'gqlHeadersText' | 'fragmentsText']?: string
   }) => {
     const [key, value] = Object.entries(text)[0]
+    console.log('value', value)
     if (!value) return
     const json = value ? JSON.stringify(value, null, 2) : ''
+    console.log('json', json)
     const errorKey =
       key === 'headersText'
         ? 'headersError'
@@ -127,10 +133,9 @@ export const OptionsModal = ({
       fragments,
     }
 
-    updateOptions(newOptions)
+    figTree.updateOptions(newOptions)
     localStorage.setItem('options', JSON.stringify(newOptions))
     setModalOpen(false)
-    resetFormState(options)
   }
 
   return (

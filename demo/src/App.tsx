@@ -78,21 +78,20 @@ function App() {
 
   const handleDemoSelect = (selected: number) => {
     setSelectedDataIndex(selected)
-    const { objectData, expression } = demoData[selected]
-    setObjectData(objectData)
+    const { objectData, expression, figTreeOptions = {} } = demoData[selected]
     setExpression(expression as object)
-    setLocalStorage('objectData', objectData)
     setLocalStorage('expression', expression as object)
+    if (objectData) {
+      setObjectData(objectData)
+      setLocalStorage('objectData', objectData)
+    }
+    figTree.updateOptions(figTreeOptions)
   }
 
   return (
     <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
       <VStack h="100%" w="100%">
-        <OptionsModal
-          options={figTree.getOptions()}
-          updateOptions={(options: FigTreeOptions) => figTree.updateOptions(options)}
-          modalState={{ modalOpen, setModalOpen }}
-        />
+        <OptionsModal figTree={figTree} modalState={{ modalOpen, setModalOpen }} />
         <InfoModal
           content={demoData[selectedDataIndex ?? 0].content}
           modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
