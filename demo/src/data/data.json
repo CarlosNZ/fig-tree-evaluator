@@ -74,6 +74,5 @@
         "values": "$values"
       }
     }
-  },
-  "demoData": [{ "name": "Some data", "expression": {}, "data": {} }]
+  }
 }

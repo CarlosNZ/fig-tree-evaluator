@@ -1,54 +1,50 @@
-import React, { Dispatch, useState } from 'react'
+import React, { Dispatch } from 'react'
 import { compiler } from 'markdown-to-jsx'
-// import Markdown from 'react-markdown'
 import {
   Box,
   Modal,
   ModalBody,
   ModalContent,
-  ModalHeader,
   ModalCloseButton,
   ModalFooter,
   ModalOverlay,
   Heading,
-  Button,
-  FormControl,
-  FormLabel,
-  FormErrorMessage,
-  Input,
   Stack,
-  Textarea,
-  Text,
-  Accordion,
-  AccordionItem,
-  AccordionButton,
-  AccordionIcon,
-  AccordionPanel,
-  Checkbox,
-  HStack,
-  VStack,
 } from '@chakra-ui/react'
-import { filterObjectRecursive } from './helpers'
-import { FigTreeOptions } from './fig-tree-evaluator/src'
+import { getLocalStorage, setLocalStorage } from './helpers'
 
 export const InfoModal = ({
+  selected,
   content,
   modalState: { modalOpen, setModalOpen },
 }: {
+  selected: string
   content: string
   modalState: { modalOpen: boolean; setModalOpen: Dispatch<React.SetStateAction<boolean>> }
 }) => {
   return (
     <Box>
-      <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)}>
+      <Modal
+        size="4xl"
+        isOpen={modalOpen}
+        onClose={() => {
+          const currentVisited = getLocalStorage('visited') ?? {}
+          currentVisited[selected] = true
+          setLocalStorage('visited', currentVisited)
+          setModalOpen(false)
+        }}
+      >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Evaluator Configuration</ModalHeader>
           <ModalCloseButton />
-          <ModalBody>
-            <Stack spacing={2}>
+          <ModalBody pt={5} className="modal-content">
+            <Stack spacing={3}>
               {compiler(content, {
-                overrides: { h1: { component: Heading, props: { as: 'h1', size: 'lg' } } },
+                wrapper: null,
+                overrides: {
+                  h1: { component: Heading, props: { as: 'h1', size: 'lg' } },
+                  a: { props: { target: '_blank' } },
+                },
               })}
             </Stack>
           </ModalBody>

@@ -36,3 +36,20 @@ pre {
 .chakra-alert__desc {
   white-space: pre-wrap;
 }
+
+/* For "Markdown" formatted content (in Modals) */
+
+/* .modal-content {
+} */
+
+.modal-content {
+  font-size: 110%;
+}
+
+.modal-content ul {
+  padding-left: 2em;
+}
+
+.modal-content pre {
+  font-size: 80%;
+}

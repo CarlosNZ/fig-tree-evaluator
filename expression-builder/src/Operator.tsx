@@ -80,8 +80,10 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   }
 
   useEffect(() => {
-    if (isEditing) document.addEventListener('keydown', listenForSubmit)
-    else document.removeEventListener('keydown', listenForSubmit)
+    if (isEditing) {
+      setPrevState(parentData)
+      document.addEventListener('keydown', listenForSubmit)
+    } else document.removeEventListener('keydown', listenForSubmit)
     return () => document.removeEventListener('keydown', listenForSubmit)
   }, [isEditing])
 

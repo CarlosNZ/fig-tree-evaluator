@@ -138,7 +138,9 @@ export const validateExpression = (
 // Strips operator node of all but the "common" properties -- used when
 // switching node
 export const cleanOperatorNode = (node: OperatorNode) =>
-  Object.fromEntries(Object.entries(node).filter(([key, _]) => commonProperties.includes(key)))
+  Object.fromEntries(
+    Object.entries(node).filter(([key, _]) => commonProperties.includes(key) || isAliasString(key))
+  )
 
 // To add to list of available properties (drop-down)
 const commonPropertyDetails = [

@@ -12,7 +12,6 @@ import {
   Button,
   FormControl,
   FormLabel,
-  FormErrorMessage,
   Input,
   Stack,
   Textarea,
@@ -108,8 +107,6 @@ export const OptionsModal = ({
       fragments,
     }
 
-    console.log('newOptions.fragments', newOptions.fragments)
-
     figTree.updateOptions(newOptions)
     localStorage.setItem('options', JSON.stringify(newOptions))
     setModalOpen(false)
@@ -152,7 +149,7 @@ export const OptionsModal = ({
                     }
                   />
                 </FormControl>
-                <FormControl id="headers" isInvalid={formState.headersError}>
+                <FormControl id="headers">
                   <JsonEditor
                     data={formState.headers ?? {}}
                     setData={(data) =>
@@ -186,6 +183,7 @@ export const OptionsModal = ({
                       },
                     }}
                     showCollectionCount="when-closed"
+                    jsonParse={JSON5.parse}
                   />
                 </FormControl>
                 <Accordion allowToggle mt={2}>
@@ -219,7 +217,7 @@ export const OptionsModal = ({
                             }
                           />
                         </FormControl>
-                        <FormControl id="gql-headers" isInvalid={formState.gqlHeadersError}>
+                        <FormControl id="gql-headers">
                           <JsonEditor
                             data={formState.gqlHeaders ?? {}}
                             setData={(data) =>
@@ -252,6 +250,7 @@ export const OptionsModal = ({
                               },
                             }}
                             showCollectionCount="when-closed"
+                            jsonParse={JSON5.parse}
                           />
                         </FormControl>
                       </Stack>
@@ -291,6 +290,7 @@ export const OptionsModal = ({
                       },
                     }}
                     showCollectionCount="when-closed"
+                    jsonParse={JSON5.parse}
                   />
                 </FormControl>
                 <hr />

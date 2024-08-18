@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import JSON5 from 'json5'
 import './App.css'
 import {
   Box,
@@ -25,13 +26,12 @@ import {
 } from './_imports'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
-import initData from './data/data.json'
 // @ts-expect-error No declaration
 import { PostgresInterface } from './postgresInterface.js'
 import logo from './img/fig_tree_evaluator_logo_512.png'
 import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
-import { demoData } from './data'
+import { demoData, defaultBlurb } from './data'
 
 import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
@@ -40,6 +40,7 @@ import { InfoModal } from './InfoModal'
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
+const initData = demoData[0]
 
 const figTree = new FigTreeEvaluator({
   ...initOptions,
@@ -58,33 +59,53 @@ function App() {
   const [isMobile] = useMediaQuery('(max-width: 635px)')
   const [selectedDataIndex, setSelectedDataIndex] = useState<number>()
 
-  const [showInfo, setShowInfo] = useState(false)
+  const [showInfo, setShowInfo] = useState(!getLocalStorage('visited')?.main ?? true)
 
   const {
     data: objectData,
     setData: setObjectData,
     UndoRedo: DataUndoRedo,
-  } = useUndo(getLocalStorage('objectData') ?? initData.objects)
+  } = useUndo(getLocalStorage('objectData') ?? initData.objectData)
+
+  const currentDemoData =
+    selectedDataIndex !== undefined ? demoData?.[selectedDataIndex] : undefined
+
+  const jsonEditorOptions = currentDemoData
+    ? currentDemoData?.objectJsonEditorProps
+    : getLocalStorage('jsonEditorOptions') ?? {}
+
+  const expressionCollapse = currentDemoData
+    ? currentDemoData?.expressionCollapse ?? 2
+    : getLocalStorage('expressionCollapse') ?? 2
 
   const {
     data: expression,
     setData: setExpression,
     UndoRedo: ExpressionUndoRedo,
-    // setResetPoint: setExpressionResetPoint,
-    // reset: resetExpression,
   } = useUndo(getLocalStorage('expression') ?? initData.expression)
 
   const toast = useToast()
 
   const handleDemoSelect = (selected: number) => {
     setSelectedDataIndex(selected)
-    const { objectData, expression, figTreeOptions = {} } = demoData[selected]
+    const visited = getLocalStorage('visited')
+    if (!visited?.[demoData?.[selected]?.name]) setShowInfo(true)
+
+    const {
+      objectData,
+      expression,
+      figTreeOptions = {},
+      objectJsonEditorProps = {},
+      expressionCollapse = 2,
+    } = demoData[selected]
     setExpression(expression as object)
     setLocalStorage('expression', expression as object)
     if (objectData) {
       setObjectData(objectData)
       setLocalStorage('objectData', objectData)
     }
+    setLocalStorage('jsonEditorOptions', objectJsonEditorProps)
+    setLocalStorage('expressionCollapse', expressionCollapse)
     figTree.updateOptions(figTreeOptions)
   }
 
@@ -93,7 +114,8 @@ function App() {
       <VStack h="100%" w="100%">
         <OptionsModal figTree={figTree} modalState={{ modalOpen, setModalOpen }} />
         <InfoModal
-          content={demoData[selectedDataIndex ?? 0].content}
+          selected={currentDemoData?.name ?? 'main'}
+          content={currentDemoData?.content ?? defaultBlurb}
           modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
         />
         {/** HEADER */}
@@ -183,7 +205,7 @@ function App() {
               data={objectData}
               setData={setObjectData as (data: JsonData) => void}
               rootName="data"
-              collapse={2}
+              collapse={jsonEditorOptions?.collapse ?? 2}
               onUpdate={({ newData }) => {
                 localStorage.setItem('objectData', JSON.stringify(newData))
               }}
@@ -197,6 +219,9 @@ function App() {
                   isClosable: true,
                 })
               }
+              showCollectionCount="when-closed"
+              jsonParse={JSON5.parse}
+              {...jsonEditorOptions}
             />
             {DataUndoRedo}
           </Flex>
@@ -207,7 +232,7 @@ function App() {
                 FigTree expression
               </Heading>
               <Text>
-                Edit the expression, and click any operator label to evaluate at that node.
+                Edit the expression, and click any operator "button" to evaluate at that node.
               </Text>
             </Box>
             <FigTreeEditor
@@ -251,6 +276,8 @@ function App() {
               }
               minWidth="90%"
               stringTruncate={500}
+              jsonParse={JSON5.parse}
+              collapse={expressionCollapse}
             />
             {ExpressionUndoRedo}
           </Flex>
@@ -274,7 +301,7 @@ function App() {
           onChange={(e) => handleDemoSelect(Number(e.target.value))}
           value={selectedDataIndex ?? 'Select'}
         >
-          <option value="Select" disabled>
+          <option value="Select" disabled={selectedDataIndex !== undefined}>
             Select an option
           </option>
           {demoData.map((data, index) => (

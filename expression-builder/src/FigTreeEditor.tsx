@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react'
-import extract from 'object-property-extractor'
+import { extract } from 'json-edit-react'
 
 import {
   type EvaluatorNode,

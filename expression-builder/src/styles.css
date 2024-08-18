@@ -105,11 +105,20 @@
 .ft-display-name {
   position: absolute;
   right: -0.5em;
-  top: 0em;
+  top: -0.3em;
+}
+
+.ft-display-name a {
   font-family: sans-serif;
   color: gray;
   font-variant: small-caps;
   font-size: 0.7em;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.ft-display-name a:visited {
+  /* color: red !important; */
 }
 
 .ft-display-name a:hover {

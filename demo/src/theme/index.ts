@@ -15,7 +15,7 @@ const theme = extendTheme({
         fontSize: '14px',
       },
       a: {
-        // color: 'brandDark.700',
+        color: 'accent',
         fontWeight: 600,
         _hover: { textDecoration: 'underline' },
       },
