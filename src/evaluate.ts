@@ -190,8 +190,17 @@ export const evaluateNodeAliases = async (expression: OperatorNode, config: FigT
 
   const evaluations: Promise<EvaluatorOutput>[] = []
   aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
+  const results = await Promise.all(evaluations)
+  const returnObject = zipArraysToObject(aliasKeys, await Promise.all(evaluations))
 
-  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
+  // This is for the case when an alias references another alias at the same
+  // level
+  for (const [index, result] of results.entries()) {
+    if (typeof result === 'string' && isAliasString(result))
+      returnObject[aliasKeys[index]] = returnObject?.[result] ?? result
+  }
+
+  return returnObject
 }
 
 /*

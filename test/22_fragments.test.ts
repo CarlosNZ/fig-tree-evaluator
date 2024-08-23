@@ -231,6 +231,23 @@ test('Using a fragment as an alias node', () => {
   })
 })
 
+test('Use an alias reference as a Fragment parameter', () => {
+  const expression = {
+    fragment: 'getFlag',
+    $country: '$selectedCountry',
+    $selectedCountry: {
+      operator: 'getData',
+      property: 'myFavouriteCountry',
+      fallback: 'Country not found',
+    },
+  }
+  return exp
+    .evaluate(expression, { data: { myFavouriteCountry: 'New Zealand' } })
+    .then((result) => {
+      expect(result).toBe('🇳🇿')
+    })
+})
+
 exp.updateOptions({
   fragments: {
     addAndDouble: { operator: 'x', values: [{ fragment: 'adder', $values: '$numbers' }, 2] },
