@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Subtract one numerical value from another'
 const aliases = ['-', 'subtract', 'minus', 'takeaway']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'Array of values - 2nd element will be subtracted from the first',
     aliases: [],
     required: false,
     type: 'array',
+    default: [10, 5],
   },
   {
     name: 'from',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['subtractFrom'],
     required: false,
     type: 'number',
+    default: 100,
   },
   {
     name: 'subtract',
@@ -24,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'number',
+    default: 50,
   },
 ]
 

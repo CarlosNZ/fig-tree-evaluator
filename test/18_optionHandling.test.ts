@@ -68,7 +68,8 @@ test('Operator exclusion: ignore invalid exclusion value', async () => {
   })
 })
 
-// Update using "updateOptions" (and check previously excluded are now available)
+// Update using "updateOptions" (and check previously excluded are now
+// available)
 
 test('Operator exclusion: update options later', async () => {
   const figTree = new FigTreeEvaluator({ excludeOperators: ['+'] })
@@ -77,9 +78,7 @@ test('Operator exclusion: update options later', async () => {
     values: [{ operator: 'subtract', values: [10, 3] }, 10],
   }
   figTree.updateOptions({ excludeOperators: ['-'] })
-  await expect(figTree.evaluate(expression)).rejects.toThrow(
-    'Operator: PLUS\nExcluded operator: subtract'
-  )
+  await expect(figTree.evaluate(expression)).rejects.toThrow('Excluded operator: subtract')
 })
 
 test('Operator exclusion: update options later -- previous exclusions are restored', async () => {
@@ -114,5 +113,22 @@ test('Operator exclusion: exclude in evaluation call -- check only excluded for 
   figTree.evaluate({ operator: '+', values: [1, 2, 3] }, { excludeOperators: ['*'] })
   return figTree.evaluate(expression).then((result) => {
     expect(result).toEqual(70)
+  })
+})
+
+// Fragments and data are only merged when passed in to individual evaluation,
+// not when updating options
+test('Update options -- fragments and data should not be merged', async () => {
+  const figTree = new FigTreeEvaluator({
+    fragments: { test: 'Output' },
+    data: { one: 1 },
+    noShorthand: true,
+  })
+  figTree.updateOptions({ fragments: { replacement: 'YES' }, data: { two: 2 } })
+
+  expect(figTree.getOptions()).toStrictEqual({
+    fragments: { replacement: 'YES' },
+    data: { two: 2 },
+    noShorthand: true,
   })
 })

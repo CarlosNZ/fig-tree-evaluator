@@ -10,7 +10,6 @@ import {
   OperatorReference,
   CustomFunctionMetadata,
   FragmentMetadata,
-  Operator,
 } from './types'
 import { evaluatorFunction } from './evaluate'
 import { typeCheck, TypeCheckInput } from './typeCheck'
@@ -48,12 +47,15 @@ class FigTreeEvaluator {
       args.length === 1 && Array.isArray(args[0]) ? args[0] : (args as TypeCheckInput[])
     const result = typeCheck(...inputArgs)
     if (result === true) return
-    throw new Error(result)
+
+    const err = new Error(result)
+    err.name = 'Type Error'
+    throw err
   }
 
   public async evaluate(expression: EvaluatorNode, options: FigTreeOptions = {}) {
     // Update options from current call if specified
-    const currentOptions = mergeOptions(this.options, standardiseOptionNames(options))
+    const currentOptions = mergeOptions(this.options, standardiseOptionNames(options), true)
 
     if (options.httpClient) this.httpClient = getHttpClient(options.httpClient)
     if (options.graphQLConnection?.httpClient)
@@ -88,7 +90,7 @@ class FigTreeEvaluator {
   }
 
   public updateOptions(options: FigTreeOptions) {
-    this.options = mergeOptions(this.options, standardiseOptionNames(options))
+    this.options = mergeOptions(this.options, standardiseOptionNames(options), false)
     if (this.options.excludeOperators)
       this.operators = filterOperators(operators, this.options.excludeOperators, operatorAliases)
   }
@@ -102,7 +104,7 @@ class FigTreeEvaluator {
       ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
       : this.operators
     const operatorList = Object.entries(validOperators).map(([key, value]) => ({
-      operator: key,
+      name: key,
       ...value.operatorData,
     }))
     // Ensures we return operators in the order listed in "operatorAliases",
@@ -110,7 +112,7 @@ class FigTreeEvaluator {
     // operators/index.ts, which is not stable through compilation
     const orderedOperators = [...new Set(Object.values(operatorAliases))] as string[]
     return operatorList.sort(
-      (a, b) => orderedOperators.indexOf(a.operator) - orderedOperators.indexOf(b.operator)
+      (a, b) => orderedOperators.indexOf(a.name) - orderedOperators.indexOf(b.name)
     ) as readonly OperatorMetadata[]
   }
 

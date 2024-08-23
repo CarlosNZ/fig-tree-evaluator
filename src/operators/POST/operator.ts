@@ -5,7 +5,7 @@ import {
   joinUrlParts,
   getTypeCheckInput,
 } from '../operatorUtils'
-import { evaluateArray } from '../../evaluate'
+import { evaluateArray, evaluateObject } from '../../evaluate'
 import { EvaluateMethod, OperatorObject } from '../../types'
 import { parseChildrenGET as parseChildren } from '../GET/operator'
 import operatorData, { propertyAliases } from './data'
@@ -17,9 +17,9 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   const [urlObj, data, returnProperty, headers, useCache] = (await evaluateArray(
     [
       expression.url,
-      expression.parameters,
+      await evaluateObject(expression.parameters, config),
       expression.returnProperty,
-      expression.headers,
+      await evaluateObject(expression.headers, config),
       expression.useCache,
     ],
     config

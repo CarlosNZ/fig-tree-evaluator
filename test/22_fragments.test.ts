@@ -1,9 +1,11 @@
+import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
 
 const exp = new FigTreeEvaluator({
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
+  httpClient: fetch,
   returnErrorAsString: true,
   objects: { myCountry: 'Brazil' },
   fragments: {
@@ -112,6 +114,7 @@ test('Use old and new fragments', () => {
         },
         returnProperty: { operator: '+', values: ['[0].', '$field'] },
       },
+      ...exp.getOptions().fragments,
     },
   })
   return exp
@@ -197,6 +200,7 @@ exp.updateOptions({
         },
       ],
     },
+    ...exp.getOptions().fragments,
   },
 })
 
@@ -227,9 +231,27 @@ test('Using a fragment as an alias node', () => {
   })
 })
 
+test('Use an alias reference as a Fragment parameter', () => {
+  const expression = {
+    fragment: 'getFlag',
+    $country: '$selectedCountry',
+    $selectedCountry: {
+      operator: 'getData',
+      property: 'myFavouriteCountry',
+      fallback: 'Country not found',
+    },
+  }
+  return exp
+    .evaluate(expression, { data: { myFavouriteCountry: 'New Zealand' } })
+    .then((result) => {
+      expect(result).toBe('🇳🇿')
+    })
+})
+
 exp.updateOptions({
   fragments: {
     addAndDouble: { operator: 'x', values: [{ fragment: 'adder', $values: '$numbers' }, 2] },
+    ...exp.getOptions().fragments,
   },
 })
 test('Fragment references another fragment 🙄', () => {
@@ -242,7 +264,14 @@ test('Fragment references another fragment 🙄', () => {
 // Edge cases (not useful IRL) -- fragment values are falsy
 
 exp.updateOptions({
-  fragments: { falsy: false, falsy2: null, falsy3: '', falsy4: 0, truthy: true },
+  fragments: {
+    falsy: false,
+    falsy2: null,
+    falsy3: '',
+    falsy4: 0,
+    truthy: true,
+    ...exp.getOptions().fragments,
+  },
 })
 test('Fragment values are falsy', () => {
   const expression = [

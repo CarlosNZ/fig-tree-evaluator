@@ -342,6 +342,30 @@ test.concurrent(
   }
 )
 
+test.concurrent('POST: Fetch city data with city param as FigTree expression', async () => {
+  const expression = {
+    operator: 'post',
+    url: 'https://countriesnow.space/api/v0.1/countries/population/cities',
+    returnProperty: 'data.populationCounts[0]',
+    parameters: {
+      city: {
+        $getData: 'country.city',
+      },
+    },
+  }
+  const expectedResult = {
+    year: '2013',
+    value: '204000',
+    sex: 'Both Sexes',
+    reliabilty: 'Final figure, complete',
+  }
+  const result = await exp.evaluate(expression, {
+    data: { country: { city: 'Wellington' } },
+    // evaluateFullObject: true,
+  })
+  expect(result).toStrictEqual(expectedResult)
+})
+
 test.concurrent('GET: Inspect authorization headers', async () => {
   const expression = {
     operator: 'API',
@@ -397,10 +421,28 @@ test.concurrent('POST: Unsuccessful login, using properties', async () => {
     parameters: { email: 'eve.holt@reqres.in' },
   }
   const result = await exp.evaluate(expression)
-  expect(result).toBe('Operator: POST\nRequest failed with status code 400')
+  expect(result).toBe(`Operator: POST - AxiosError
+Request failed with status code 400
+{
+  "status": 400,
+  "error": "Bad Request",
+  "url": "https://reqres.in/api/login",
+  "response": {
+    "error": "Missing password"
+  }
+}`)
 
   const resultFetch = await expFetch.evaluate(expression)
-  expect(resultFetch).toBe('Operator: POST\nRequest failed with status code 400')
+  expect(resultFetch).toBe(`Operator: POST - FetchError
+Problem with POST request
+{
+  "status": 400,
+  "error": "Bad Request",
+  "url": "https://reqres.in/api/login",
+  "response": {
+    "error": "Missing password"
+  }
+}`)
 })
 
 test.concurrent('POST: Successful login, using parameters from (nested) buildObject', async () => {
@@ -430,10 +472,30 @@ test.concurrent('GET: 403 error', async () => {
     url: 'http://httpstat.us/403',
   }
   const result = await exp.evaluate(expression)
-  expect(result).toBe('Operator: GET\nRequest failed with status code 403')
+  expect(result).toBe(`Operator: GET - AxiosError
+Request failed with status code 403
+{
+  "status": 403,
+  "error": "Forbidden",
+  "url": "http://httpstat.us/403",
+  "response": {
+    "code": 403,
+    "description": "Forbidden"
+  }
+}`)
 
   const resultFetch = await expFetch.evaluate(expression)
-  expect(resultFetch).toBe('Operator: GET\nRequest failed with status code 403')
+  expect(resultFetch).toBe(`Operator: GET - FetchError
+Problem with GET request
+{
+  "status": 403,
+  "error": "Forbidden",
+  "url": "http://httpstat.us/403",
+  "response": {
+    "code": 403,
+    "description": "Forbidden"
+  }
+}`)
 })
 
 test.concurrent('GET: 404 error', async () => {
@@ -442,10 +504,30 @@ test.concurrent('GET: 404 error', async () => {
     url: 'http://httpstat.us/404',
   }
   const result = await exp.evaluate(expression)
-  expect(result).toBe('Operator: GET\nRequest failed with status code 404')
+  expect(result).toBe(`Operator: GET - AxiosError
+Request failed with status code 404
+{
+  "status": 404,
+  "error": "Not Found",
+  "url": "http://httpstat.us/404",
+  "response": {
+    "code": 404,
+    "description": "Not Found"
+  }
+}`)
 
   const resultFetch = await expFetch.evaluate(expression)
-  expect(resultFetch).toBe('Operator: GET\nRequest failed with status code 404')
+  expect(resultFetch).toBe(`Operator: GET - FetchError
+Problem with GET request
+{
+  "status": 404,
+  "error": "Not Found",
+  "url": "http://httpstat.us/404",
+  "response": {
+    "code": 404,
+    "description": "Not Found"
+  }
+}`)
 })
 
 test.concurrent('GET: 429 Error with fallback', async () => {
@@ -467,7 +549,9 @@ test.concurrent('GET: Bad url', async () => {
     url: 'http://there-is-no-f-ing-site.com',
   }
   const result = await exp.evaluate(expression)
-  expect(result).toBe('Operator: GET\nNetwork Error')
+  expect(result).toBe(
+    'Operator: GET\nNetwork error: getaddrinfo ENOTFOUND there-is-no-f-ing-site.com'
+  )
 
   const resultFetch = await expFetch.evaluate(expression)
   // This is different in browser vs node-fetch
@@ -480,6 +564,7 @@ test.concurrent('GET: Bad url', async () => {
 
 test('GET: Fetch a country with params, using props', async () => {
   exp.updateOptions({ baseEndpoint: 'https://restcountries.com/' })
+  expFetch.updateOptions({ baseEndpoint: 'https://restcountries.com/' })
   const expression = {
     operator: 'get',
     endpoint: { operator: '+', values: ['/v3.1/name/', 'india'] },

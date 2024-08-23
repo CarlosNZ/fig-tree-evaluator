@@ -1,6 +1,7 @@
+import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
-const exp = new FigTreeEvaluator()
+const exp = new FigTreeEvaluator({ httpClient: fetch })
 
 // STRING SUBSTITUTION
 
@@ -195,7 +196,7 @@ test('String substitution - parameters contain further expressions', () => {
 test('String substitution -- missing parameters', async () => {
   const expression = { operator: 'replace', irrelevant: 'value' }
   await expect(exp.evaluate(expression)).rejects.toThrow(
-    'Operator: STRING_SUBSTITUTION\n- Missing required property "string" (type: string)'
+    '- Missing required property "string" (type: string)'
   )
 })
 
@@ -764,5 +765,56 @@ test('String substitution - named replacement from nested object and data, with 
     })
     .then((result) => {
       expect(result).toBe('I have 6 potatoes, just one carrot and way too many peas to count!')
+    })
+})
+
+test('String substitution - named replacement with figTree expressions as replacements, evaluateFullObject off', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string:
+      "This applicant's name is {{user.name.first}} {{user.name.last}}. {{gender}} lives in {{user.country}}, where the capital city is {{capital}}. {{gender}} {{friendCount}}.",
+    replacements: {
+      capital: {
+        operator: 'get',
+        url: {
+          operator: '+',
+          values: ['https://restcountries.com/v3.1/name/', { $getData: 'user.country' }],
+        },
+        returnProperty: '[0].capital[0]',
+        fallback: 'unknown',
+      },
+      friendCount: { operator: 'count', values: { $getData: 'user.friends' } },
+      gender: {
+        operator: 'match',
+        matchExpression: { $getData: 'user.gender' },
+        branches: { female: 'She has', male: 'He has' },
+        fallback: 'They have',
+      },
+    },
+    numberMap: {
+      friendCount: {
+        '0': 'no friends 😢',
+        '1': 'only one friend',
+        other: '{} friends',
+        '>4': 'loads of friends',
+      },
+    },
+  }
+  return exp
+    .evaluate(expression, {
+      data: {
+        user: {
+          name: { first: 'Natasha', last: 'Romanoff' },
+          country: 'Russia',
+          friends: ['Steve', 'Bruce', 'Tony'],
+          gender: 'female',
+        },
+      },
+      evaluateFullObject: false,
+    })
+    .then((result) => {
+      expect(result).toBe(
+        "This applicant's name is Natasha Romanoff. She has lives in Russia, where the capital city is Moscow. She has 3 friends."
+      )
     })
 })

@@ -4,11 +4,13 @@ import pgConfig from './database/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../codegen/queryBuilder'
 import { SQLNodePostgres } from '../src'
+import axios from 'axios'
 
 const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
 const exp = new FigTreeEvaluator({
+  httpClient: axios,
   sqlConnection: SQLNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
@@ -91,7 +93,7 @@ test('"children" is an evaluator expression but doesn\'t return an array', () =>
     })
     .then((result) => {
       expect(result).toStrictEqual(
-        'Operator: OBJECT_PROPERTIES\n- Property "children" is not of type: array'
+        'Operator: OBJECT_PROPERTIES - Type Error\n- Property "children" is not of type: array'
       )
     })
 })

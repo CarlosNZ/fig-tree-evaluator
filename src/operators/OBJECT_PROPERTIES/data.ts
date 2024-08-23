@@ -1,5 +1,5 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Extract values from data objects'
 const aliases = [
@@ -11,13 +11,14 @@ const aliases = [
   'getProperty',
   'getObjProp',
 ]
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'property',
     description: 'The path to the required property (e.g. "user.firstName")',
     aliases: ['path', 'propertyName'],
     required: true,
     type: 'string',
+    default: 'path.to[0].my.data',
   },
   {
     name: 'additionalData',
@@ -25,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: ['additional', 'objects', 'data', 'additionalObjects'],
     required: false,
     type: 'object',
+    default: {},
   },
 ]
 

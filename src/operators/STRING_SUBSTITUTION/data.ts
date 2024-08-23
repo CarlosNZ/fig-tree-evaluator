@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Replace values in a string using simple parameter substitution'
 const aliases = ['stringSubstitution', 'substitute', 'stringSub', 'replace']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'string',
     description: 'A parameterised (%1, %2) string where the parameters are to be replaced',
     aliases: [],
     required: true,
     type: 'string',
+    default: 'Hello, %1',
   },
   {
     name: 'substitutions',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['replacements', 'values'],
     required: false, // Can use "data" object
     type: ['array', 'object'],
+    default: {},
   },
   {
     name: 'trimWhiteSpace',
@@ -25,6 +27,7 @@ const parameters: Parameter[] = [
     aliases: ['trim', 'trimWhitespace'],
     required: false,
     type: 'boolean',
+    default: true,
   },
   {
     name: 'substitutionCharacter',
@@ -33,6 +36,7 @@ const parameters: Parameter[] = [
     aliases: ['subCharacter', 'subChar'],
     required: false,
     type: 'string',
+    default: '$',
   },
   {
     name: 'numberMapping',
@@ -40,6 +44,7 @@ const parameters: Parameter[] = [
     aliases: ['numMap', 'numberMap', 'pluralisation', 'pluralization', 'plurals'],
     required: false,
     type: 'object',
+    default: {},
   },
 ]
 

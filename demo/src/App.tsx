@@ -1,310 +1,331 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import JSON5 from 'json5'
 import './App.css'
 import {
   Box,
-  Center,
   Flex,
   Heading,
   Text,
   Button,
-  Checkbox,
   Select,
-  Textarea,
-  Spinner,
+  Icon,
   HStack,
   VStack,
   Link,
-  Image,
+  useToast,
+  Spacer,
+  useMediaQuery,
 } from '@chakra-ui/react'
+import { FaNpm, FaExternalLinkAlt, FaGithub } from 'react-icons/fa'
 import {
-  FigTreeEvaluator as EvaluatorDev,
-  FigTreeOptions,
+  FigTreeEvaluator,
   SQLNodePostgres,
-} from './fig-tree-evaluator/src'
-import { FigTreeEvaluator as EvaluatorPublished } from 'fig-tree-evaluator'
-// Enable instead temporarily when Dev has incompatible changes from Published
-// import { FigTreeEvaluator as EvaluatorPublished } from './fig-tree-evaluator/src'
+  FigTreeOptions,
+  FigTreeEditor,
+  isFigTreeError,
+} from './_imports'
 import { OptionsModal } from './OptionsModal'
-import {
-  getInitOptions,
-  JSONstringify,
-  JSONstringifyLoose,
-  validateExpression,
-  validateData,
-  getInitCache,
-} from './helpers'
-import functions from './customFunctions'
-import initData from './data.json'
-import { PostgresInterface } from './postgresInterface'
-import useDebounce from './useDebounce'
-import { InputState, IsValidState, ConfigState, Result } from './types'
+import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
+// @ts-expect-error No declaration
+import { PostgresInterface } from './postgresInterface.js'
 import logo from './img/fig_tree_evaluator_logo_512.png'
+import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
+import { demoData, defaultBlurb } from './data'
 
-const looseJSON = require('loose-json')
+import { truncateString } from './fig-tree-evaluator/src/helpers'
+import { ResultToast } from './ResultToast'
+import { useUndo } from './useUndo'
+import { InfoModal } from './InfoModal'
 const pgConnection = new PostgresInterface() as Client
 
 const initOptions: FigTreeOptions = getInitOptions()
-initOptions.functions = functions
+const initData = demoData[0]
 
-const figTreeDev = new EvaluatorDev({
+const figTree = new FigTreeEvaluator({
   ...initOptions,
   sqlConnection: SQLNodePostgres(pgConnection),
+  // returnErrorAsString: true,
+  // supportDeprecatedValueNodes: true,
 })
-const figTreePub = new EvaluatorPublished({ ...initOptions, pgConnection })
 
 const savedCache = getInitCache()
 if (savedCache) {
-  figTreeDev.setCache(savedCache)
-  figTreePub.setCache(savedCache)
+  figTree.setCache(savedCache)
 }
 
 function App() {
-  const [debounceOutput, setDebounceInput] = useDebounce<string>('')
   const [modalOpen, setModalOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [isMobile] = useMediaQuery('(max-width: 635px)')
+  const [selectedDataIndex, setSelectedDataIndex] = useState<number>()
 
-  const [inputState, setInputState] = useState<InputState>({
-    expression: localStorage.getItem('inputText') || JSONstringifyLoose(initData.expression),
-    data: localStorage.getItem('objectText') || JSONstringifyLoose(initData.objects),
-  })
-  const [result, setResult] = useState<Result>({ output: null, error: false })
-  const [isValidState, setIsValidState] = useState<IsValidState>({
-    expression: validateExpression(inputState.expression),
-    data: validateData(inputState.data),
-  })
+  const [showInfo, setShowInfo] = useState(!getLocalStorage('visited')?.main ?? true)
 
-  const [configState, setConfigState] = useState<ConfigState>({
-    strictJsonExpression: localStorage.getItem('strictJsonExpression') === 'true' ?? false,
-    strictJsonData: localStorage.getItem('strictJsonData') === 'true' ?? false,
-  })
+  const {
+    data: objectData,
+    setData: setObjectData,
+    UndoRedo: DataUndoRedo,
+  } = useUndo(getLocalStorage('objectData') ?? initData.objectData)
 
-  const [evaluator, setEvaluator] = useState<EvaluatorDev | EvaluatorPublished>(
-    process.env.NODE_ENV === 'development'
-      ? localStorage.getItem('evaluatorSelection') === 'Development'
-        ? figTreeDev
-        : figTreePub
-      : figTreePub
-  )
+  const currentDemoData =
+    selectedDataIndex !== undefined ? demoData?.[selectedDataIndex] : undefined
 
-  const updateOptions = (options: FigTreeOptions) => {
-    evaluator.updateOptions(options)
-    reEvaluate()
-  }
+  const jsonEditorOptions = currentDemoData
+    ? currentDemoData?.objectJsonEditorProps
+    : getLocalStorage('jsonEditorOptions') ?? {}
 
-  const reEvaluate = () => {
-    setLoading(true)
-    const { expression, data } = inputState
-    const expressionValid = validateExpression(inputState.expression)
-    const dataValid = validateData(inputState.data)
-    setIsValidState({ expression: expressionValid, data: dataValid })
+  const expressionCollapse = currentDemoData
+    ? currentDemoData?.expressionCollapse ?? 2
+    : getLocalStorage('expressionCollapse') ?? 2
 
-    if (!expressionValid || !dataValid) {
-      setResult({ output: null, error: 'Invalid Input' })
-      setLoading(false)
-      return
+  const {
+    data: expression,
+    setData: setExpression,
+    UndoRedo: ExpressionUndoRedo,
+  } = useUndo(getLocalStorage('expression') ?? initData.expression)
+
+  const toast = useToast()
+
+  const handleDemoSelect = (selected: number) => {
+    setSelectedDataIndex(selected)
+    const visited = getLocalStorage('visited')
+    if (!visited?.[demoData?.[selected]?.name]) setShowInfo(true)
+
+    const {
+      objectData,
+      expression,
+      figTreeOptions = {},
+      objectJsonEditorProps = {},
+      expressionCollapse = 2,
+    } = demoData[selected]
+    setExpression(expression as object)
+    setLocalStorage('expression', expression as object)
+    if (objectData) {
+      setObjectData(objectData)
+      setLocalStorage('objectData', objectData)
     }
-
-    evaluator
-      .evaluate(looseJSON(expression), { objects: looseJSON(data) })
-      .then((result) => {
-        if (result instanceof Object && 'error' in result)
-          // @ts-ignore
-          setResult({ output: null, error: result.error })
-        else setResult({ output: result, error: false })
-        setLoading(false)
-        if (evaluator.getOptions().useCache)
-          localStorage.setItem('cache', JSON.stringify(evaluator.getCache()))
-      })
-      .catch((error) => {
-        setResult({ output: null, error: error.message })
-        setLoading(false)
-      })
-  }
-
-  useEffect(() => {
-    const { expression, data } = inputState
-    localStorage.setItem('inputText', expression)
-    localStorage.setItem('objectText', data)
-    reEvaluate()
-  }, [debounceOutput, configState]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const updateInput = (text: string, type: 'expression' | 'data') => {
-    setInputState({ ...inputState, [type]: text })
-    setDebounceInput(text)
-  }
-
-  const toggleCheckbox = (type: 'strictJsonData' | 'strictJsonExpression') => {
-    const newState = !configState[type]
-    setConfigState((prev) => ({ ...prev, [type]: newState }))
-    localStorage.setItem(type, String(newState))
-  }
-
-  const handleSelectEvaluator = (event: any) => {
-    localStorage.setItem('evaluatorSelection', event.target.value)
-    setEvaluator(event.target.value === 'Development' ? figTreeDev : figTreePub)
-    reEvaluate()
-  }
-
-  const prettifyInput = (type: 'expression' | 'data') => {
-    const strict =
-      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonData
-    const currentValue = inputState[type]
-    const pretty = JSONstringify(currentValue, false, strict)
-    if (pretty) setInputState((currState) => ({ ...currState, [type]: pretty }))
-    else alert('Invalid input')
-  }
-
-  const compactInput = (type: 'expression' | 'data') => {
-    const strict =
-      type === 'expression' ? configState.strictJsonExpression : configState.strictJsonData
-    const currentValue = inputState[type]
-    const compact = JSONstringify(currentValue, true, strict)
-    if (compact) setInputState((currState) => ({ ...currState, [type]: compact }))
-    else alert('Invalid input')
+    setLocalStorage('jsonEditorOptions', objectJsonEditorProps)
+    setLocalStorage('expressionCollapse', expressionCollapse)
+    figTree.updateOptions(figTreeOptions)
   }
 
   return (
-    <Center h={'100vh'}>
-      <OptionsModal
-        options={evaluator.getOptions()}
-        updateOptions={updateOptions}
-        modalState={{ modalOpen, setModalOpen }}
-      />
-      <VStack h="100%">
-        <HStack justifyContent="space-between" width="100%" mt={2} px={4} maxH={100}>
-          <Image src={logo} h="100%" />
-          <VStack align="flex-end">
-            <Link
-              href="https://github.com/CarlosNZ/fig-tree-evaluator"
-              isExternal
-              color="#28659e"
-              fontSize="sm"
-            >
-              https://github.com/CarlosNZ/fig-tree-evaluator
-            </Link>
-            <Link
-              href="https://www.npmjs.com/package/fig-tree-evaluator"
-              isExternal
-              color="#28659e"
-              fontSize="sm"
-            >
-              https://www.npmjs.com/package/fig-tree-evaluator
-            </Link>
+    <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
+      <VStack h="100%" w="100%">
+        <OptionsModal figTree={figTree} modalState={{ modalOpen, setModalOpen }} />
+        <InfoModal
+          selected={currentDemoData?.name ?? 'main'}
+          content={currentDemoData?.content ?? defaultBlurb}
+          modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
+        />
+        {/** HEADER */}
+        <HStack w="100%" px={4} justify="space-between" align="flex-start">
+          <VStack align="flex-start" gap={3}>
+            <HStack align="flex-end" mt={2} gap={4} flexWrap="wrap">
+              <Flex gap={6} align="flex-start">
+                <img
+                  src={logo}
+                  alt="logo"
+                  style={
+                    isMobile
+                      ? { maxHeight: '4em' }
+                      : { maxHeight: '6em', transform: 'translateY(-10px)' }
+                  }
+                />
+                <Box mb={isMobile ? -2 : 8}>
+                  <Heading as="h1" size="2xl" variant="other" mb={2}>
+                    fig-tree-evaluator
+                  </Heading>
+                  {!isMobile && (
+                    <Heading variant="sub">
+                      A highly configurable custom expression tree evaluator •{' '}
+                      <Link
+                        href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
+                        isExternal
+                        color="accent"
+                      >
+                        Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
+                      </Link>
+                    </Heading>
+                  )}
+                </Box>
+              </Flex>
+            </HStack>
           </VStack>
+          <Flex align="center" gap={5}>
+            <a
+              href="https://github.com/CarlosNZ/fig-tree-evaluator"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Icon boxSize="2em" as={FaGithub} color="accent" />
+            </a>
+            <a
+              href="https://www.npmjs.com/package/fig-tree-evaluator"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Icon boxSize="3em" as={FaNpm} color="accent" />
+            </a>
+          </Flex>
         </HStack>
-        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5}>
-          <Box h={'100%'} p={2} minW={375}>
-            <Heading size="md">Local data state</Heading>
-            <Flex gap={2} justifyContent="flex-start" my={3}>
-              <Button colorScheme="blue" onClick={() => prettifyInput('data')}>
-                Prettify
-              </Button>
-              <Button colorScheme="blue" onClick={() => compactInput('data')}>
-                Compact
-              </Button>
-              <Checkbox
-                isChecked={configState.strictJsonData}
-                onChange={() => toggleCheckbox('strictJsonData')}
-              >
-                Quoted field names
-              </Checkbox>
-            </Flex>
-            <Textarea
-              h={'85%'}
-              fontFamily="monospace"
-              value={inputState.data}
-              onChange={(e) => updateInput(e?.target?.value, 'data')}
-            />
-            <Text color="red">{!isValidState.data ? 'Invalid object input' : ''}</Text>
-          </Box>
-          <Box h={'100%'} p={2} minW={375}>
-            <Heading size="md">Input</Heading>
-            <Flex gap={2} justifyContent="flex-start" my={3}>
-              <Button colorScheme="blue" onClick={() => prettifyInput('expression')}>
-                Prettify
-              </Button>
-              <Button colorScheme="blue" onClick={() => compactInput('expression')}>
-                Compact
-              </Button>
-              <Checkbox
-                isChecked={configState.strictJsonExpression}
-                onChange={() => toggleCheckbox('strictJsonExpression')}
-              >
-                Quoted field names
-              </Checkbox>
-            </Flex>
-            <Textarea
-              h={'85%'}
-              fontFamily="monospace"
-              value={inputState.expression}
-              onChange={(e) => updateInput(e?.target?.value, 'expression')}
-            />
-          </Box>
-          <Box h={'100%'} p={2} minW={375} maxW="33%">
-            <Heading size="md">Output</Heading>
-            <Flex
-              gap={4}
-              alignItems="center"
-              mb={6}
-              style={{ visibility: process.env.NODE_ENV === 'development' ? 'visible' : 'hidden' }}
+        {isMobile && (
+          <Heading px={8} variant="sub" fontSize="110%" mb={4} mt={-2}>
+            A highly configurable custom expression tree evaluator •{' '}
+            <Link
+              href="https://github.com/CarlosNZ/fig-tree-evaluator#readme"
+              isExternal
+              color="accent"
             >
-              <Text>Evaluator version:</Text>
-              <Select
-                id="evalSelect"
-                variant="outline"
-                w={'50%'}
-                value={localStorage.getItem('evaluatorSelection') ?? 'Published'}
-                onChange={handleSelectEvaluator}
-              >
-                <option value={'Development'}>Development</option>
-                <option value={'Published'}>Published</option>
-              </Select>
-            </Flex>
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              border="1px solid"
-              borderColor="lightgrey"
-              borderRadius={3}
-              minHeight={20}
-              mx={5}
-              p={3}
-            >
-              {loading ? <Spinner /> : <ResultText result={result} />}
-            </Box>
-            <Box style={{ position: 'fixed', bottom: 20, right: 20 }}>
-              <Button colorScheme="blue" onClick={() => setModalOpen(true)}>
-                Configuration
-              </Button>{' '}
-              <Text fontSize="xs" mb={1}>
-                fig-tree-evaluator v{evaluator.getVersion()}
+              Docs <Icon boxSize={4} as={FaExternalLinkAlt} />
+            </Link>
+          </Heading>
+        )}
+        {/** DATA COLUMN */}
+        <Flex wrap="wrap" h="100%" w="100%" justify="space-around" gap={5} mb={20}>
+          <Flex w="45%" direction="column" alignItems="center" flexGrow={1}>
+            <Box maxW={500}>
+              <Heading size="md" alignSelf="flex-start">
+                Application data state
+              </Heading>
+              <Text>
+                This object represents a data structure that is available to{' '}
+                <strong>FigTree</strong>. It can be accessed with the{' '}
+                <Link
+                  href="https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#object_properties"
+                  isExternal
+                >
+                  {' '}
+                  getData
+                </Link>{' '}
+                operator.
               </Text>
             </Box>
-          </Box>
+            <JsonEditor
+              data={objectData}
+              setData={setObjectData as (data: JsonData) => void}
+              rootName="data"
+              collapse={jsonEditorOptions?.collapse ?? 2}
+              onUpdate={({ newData }) => {
+                localStorage.setItem('objectData', JSON.stringify(newData))
+              }}
+              minWidth="50%"
+              enableClipboard={({ stringValue, type }) => {
+                toast({
+                  title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
+                  description: truncateString(String(stringValue)),
+                  status: 'info',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }}
+              showCollectionCount="when-closed"
+              jsonParse={JSON5.parse}
+              {...jsonEditorOptions}
+            />
+            {DataUndoRedo}
+          </Flex>
+          {/** EXPRESSION EDITOR COLUMN */}
+          <Flex h={'100%'} minW="45%" direction="column" alignItems="center" flexGrow={1} mb={10}>
+            <Box maxW={500}>
+              <Heading size="md" alignSelf="flex-start">
+                FigTree expression
+              </Heading>
+              <Text>
+                Edit the expression, and click any operator "button" to evaluate at that node.
+              </Text>
+            </Box>
+            <FigTreeEditor
+              figTree={figTree}
+              expression={expression}
+              setData={setExpression as (data: JsonData) => void}
+              objectData={objectData}
+              onUpdate={({ newData }) => {
+                localStorage.setItem('expression', JSON.stringify(newData))
+              }}
+              onEvaluate={(value: unknown) =>
+                toast({
+                  render: ({ onClose }) => (
+                    <ResultToast title="Evaluation result" value={value} close={onClose} />
+                  ),
+                  position: 'top',
+                  status: 'success',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }
+              onEvaluateError={(err) => {
+                if (isFigTreeError(err))
+                  toast({
+                    title: 'Evaluation error',
+                    description: err.prettyPrint,
+                    position: 'top',
+                    status: 'error',
+                    duration: 15000,
+                    isClosable: true,
+                  })
+              }}
+              rootName="expression"
+              enableClipboard={({ stringValue, type }) =>
+                toast({
+                  title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
+                  description: truncateString(String(stringValue)),
+                  status: 'info',
+                  duration: 5000,
+                  isClosable: true,
+                })
+              }
+              minWidth="90%"
+              stringTruncate={500}
+              jsonParse={JSON5.parse}
+              collapse={expressionCollapse}
+            />
+            {ExpressionUndoRedo}
+          </Flex>
         </Flex>
       </VStack>
-    </Center>
+      <HStack
+        w="100%"
+        px={3}
+        pos="fixed"
+        bottom={0}
+        backgroundColor="background"
+        boxShadow="rgba(17, 17, 26, 0.1) 0px 4px 16px, rgba(17, 17, 26, 0.1) 0px 8px 24px, rgba(17, 17, 26, 0.1) 0px 16px 56px;"
+      >
+        <Text color="accent">
+          <strong>Experiment with a range of demo expressions:</strong>
+        </Text>
+        <Select
+          variant="filled"
+          backgroundColor="gray.50"
+          maxW={300}
+          onChange={(e) => handleDemoSelect(Number(e.target.value))}
+          value={selectedDataIndex ?? 'Select'}
+        >
+          <option value="Select" disabled={selectedDataIndex !== undefined}>
+            Select an option
+          </option>
+          {demoData.map((data, index) => (
+            <option key={data.name} value={index}>
+              {data.name}
+            </option>
+          ))}
+        </Select>
+        <Button colorScheme="blue" onClick={() => setShowInfo(true)}>
+          Info
+        </Button>
+        <Spacer />
+        <HStack alignItems="flex-end" p={2}>
+          <Text fontSize="xs" mb={1}>
+            fig-tree-evaluator v{figTree.getVersion()}
+          </Text>
+          <Button colorScheme="green" onClick={() => setModalOpen(true)}>
+            Configuration
+          </Button>
+        </HStack>
+      </HStack>
+    </Flex>
   )
 }
 
 export default App
-
-const ResultText = ({ result }: { result: Result }) => {
-  if (result.error)
-    return (
-      <Text fontSize={'xl'} color="red">
-        {result.error}
-      </Text>
-    )
-  if (typeof result.output === 'object')
-    return (
-      <Text fontSize={'md'} fontFamily="monospace">
-        <pre> {JSON.stringify(result.output, null, 2)}</pre>
-      </Text>
-    )
-  if (typeof result.output === 'string')
-    return <Text fontSize={'xl'}>"{String(result.output)}"</Text>
-  return <Text fontSize={'xl'}>{String(result.output)}</Text>
-}

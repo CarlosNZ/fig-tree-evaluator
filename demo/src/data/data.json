@@ -1,0 +1,78 @@
+{
+  "objects": {
+    "user": {
+      "id": 2,
+      "firstName": "Steve",
+      "lastName": "Rogers",
+      "title": "The First Avenger"
+    },
+    "organisation": {
+      "id": 1,
+      "name": "The Avengers",
+      "category": "Superheroes"
+    },
+    "form": {
+      "q1": "Thor",
+      "q2": "Asgard"
+    },
+    "form2": {
+      "q1": "Company Registration",
+      "q2": "XYZ Chemicals"
+    },
+    "application": {
+      "questions": {
+        "q1": "What is the answer?",
+        "q2": "Enter your name"
+      }
+    }
+  },
+  "expression": {
+    "operator": "+",
+    "values": [
+      { "operator": "getData", "property": "user.firstName" },
+      " ",
+      { "operator": "getData", "property": "user.lastName" }
+    ]
+  },
+  "fragments": {
+    "getCapital": {
+      "operator": "GET",
+      "url": {
+        "operator": "stringSubstitution",
+        "string": "https://restcountries.com/v3.1/name/%1",
+        "replacements": ["$country"]
+      },
+      "returnProperty": "[0].capital",
+      "outputType": "string",
+      "metadata": {
+        "description": "Gets a country's capital city",
+        "parameters": [{ "name": "$country", "type": "string", "required": true }]
+      },
+      "getFlag": {
+        "operator": "GET",
+        "children": [
+          {
+            "operator": "stringSubstitution",
+            "string": "https://restcountries.com/v3.1/name/%1",
+            "replacements": ["$country"],
+            "default": "New Zealand"
+          },
+          [],
+          "flag"
+        ],
+        "outputType": "string",
+        "metadata": {
+          "description": "Gets a country's flag",
+          "parameters": [
+            { "name": "$country", "type": "string", "required": true, "default": "New Zealand" }
+          ]
+        }
+      },
+      "simpleFragment": "The flag of Brazil is: ",
+      "adder": {
+        "operator": "+",
+        "values": "$values"
+      }
+    }
+  }
+}

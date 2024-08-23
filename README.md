@@ -2060,6 +2060,10 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.16.10**: Fix for when aliases reference other aliases at the same level
+- **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
+- **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 
+`evaluateFullObject` is off.
 - **v2.16.0**: Standardise error response (see [Error handling](#error-handling))
 - **v2.15.0**:
   - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*

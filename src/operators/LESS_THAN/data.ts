@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Test if a value is smaller than (or equal to) another value'
 const aliases = ['<', 'lessThan', 'lower', 'smaller']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'Array of values - 1st element will be compared to the second',
     aliases: [],
     required: true,
     type: 'array',
+    default: [9, 10],
   },
   {
     name: 'strict',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
 ]
 

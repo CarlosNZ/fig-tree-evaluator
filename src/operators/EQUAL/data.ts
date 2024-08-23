@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Test multiple values are equal'
 const aliases = ['=', 'eq', 'equal', 'equals']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'Array of values to check for equality',
     aliases: [],
     required: true,
     type: 'array',
+    default: ['These are equal', 'These are equal'],
   },
   {
     name: 'caseInsensitive',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
   {
     name: 'nullEqualsUndefined',
@@ -25,6 +27,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: 'boolean',
+    default: false,
   },
 ]
 

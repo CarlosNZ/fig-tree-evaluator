@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Count elements in an array'
 const aliases = ['count', 'length']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'An array to count',
     aliases: [],
     required: true,
     type: 'array',
+    default: [1, 2, 3, 4, 5],
   },
 ]
 

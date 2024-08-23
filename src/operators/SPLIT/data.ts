@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Split a string into an array'
 const aliases = ['split', 'arraySplit']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'value',
     description: 'The string to be split',
     aliases: ['string'],
     required: true,
     type: 'string',
+    default: 'Alpha, Bravo, Charlie',
   },
   {
     name: 'delimiter',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['separator'],
     required: false,
     type: 'string',
+    default: ',',
   },
   {
     name: 'trimWhiteSpace',
@@ -24,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: ['trim', 'trimWhitespace'],
     required: false,
     type: 'boolean',
+    default: true,
   },
   {
     name: 'excludeTrailing',
@@ -32,6 +35,7 @@ const parameters: Parameter[] = [
     aliases: ['removeTrailing', 'excludeTrailingDelimiter'],
     required: false,
     type: 'boolean',
+    default: true,
   },
 ]
 

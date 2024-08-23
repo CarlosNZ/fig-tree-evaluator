@@ -1,3 +1,4 @@
+import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
 import { preProcessShorthand } from '../src/shorthandSyntax'
 
@@ -5,6 +6,7 @@ const fig = new FigTreeEvaluator({
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
+  httpClient: fetch,
   returnErrorAsString: true,
   objects: {
     myCountry: 'Brazil',
@@ -236,6 +238,7 @@ test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
         },
         returnProperty: { operator: '+', values: ['[0].', '$field'] },
       },
+      ...fig.getOptions().fragments,
     },
   })
   return fig

@@ -1,4 +1,4 @@
-import { evaluateArray } from '../../evaluate'
+import { evaluateArray, evaluateObject } from '../../evaluate'
 import {
   zipArraysToObject,
   httpRequest,
@@ -22,9 +22,9 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   const [urlObj, parameters, returnProperty, headers, useCache] = (await evaluateArray(
     [
       expression.url,
-      expression.parameters,
+      await evaluateObject(expression.parameters, config),
       expression.returnProperty,
-      expression.headers,
+      await evaluateObject(expression.headers, config),
       expression.useCache,
     ],
     config

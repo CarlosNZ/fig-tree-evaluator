@@ -1,6 +1,4 @@
-import initData from './data.json'
-
-const looseJSON = require('loose-json')
+import { evaluatorConfig } from './data/evaluatorConfig'
 
 export const getInitOptions = () => {
   const savedOptions = parseLocalStorage('options') ?? {}
@@ -9,10 +7,11 @@ export const getInitOptions = () => {
   const headers = savedOptions.headers ?? undefined
   const skipRuntimeTypeCheck = savedOptions.skipRuntimeTypeCheck ?? undefined
   const evaluateFullObject = savedOptions.evaluateFullObject ?? undefined
-  const fragments = savedOptions.fragments ?? initData.fragments
+  const fragments = savedOptions.fragments ?? evaluatorConfig.fragments
   const useCache = savedOptions.useCache ?? true
   const maxCacheSize = savedOptions.maxCacheSize ?? 50
   const maxCacheTime = savedOptions.maxCacheTime ?? 1800
+  const functions = evaluatorConfig.customFunctions
   return {
     graphQLConnection,
     baseEndpoint,
@@ -20,6 +19,7 @@ export const getInitOptions = () => {
     skipRuntimeTypeCheck,
     evaluateFullObject,
     fragments,
+    functions,
     useCache,
     maxCacheSize,
     maxCacheTime,
@@ -51,54 +51,6 @@ export const parseLocalStorage = (key: string | object) => {
   }
 }
 
-export const JSONstringify = (input: string, compact = false, strict = false) => {
-  const indent = compact ? 0 : 2
-  try {
-    const backtickRe = /`[\s\S]*?`/g
-    const backtickSubstitutions = input.match(backtickRe)
-    const backtickReplacement = !compact ? input.replaceAll(backtickRe, `"@1234@"`) : input
-    const inputObject = looseJSON(backtickReplacement)
-    const stringified = strict
-      ? JSON.stringify(inputObject, null, indent)
-      : JSONstringifyLoose(inputObject, compact)
-    let output = stringified
-    if (backtickSubstitutions) {
-      backtickSubstitutions.forEach((sub) => {
-        output = output.replace(`"@1234@"`, sub)
-      })
-    }
-    return output
-  } catch {
-    return false
-  }
-}
-
-export const JSONstringifyLoose = (inputObject: object, compact = false) => {
-  const objectString = compact ? JSON.stringify(inputObject) : JSON.stringify(inputObject, null, 2)
-  const regex = /(")([^"]*?)("):/gm
-  const replacementString = objectString.replaceAll(regex, '$2:')
-  return replacementString
-}
-
-export const validateExpression = (input: string): boolean => {
-  try {
-    looseJSON(input)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export const validateData = (objects: string): boolean => {
-  try {
-    const cleanObjectInput = looseJSON(objects)
-    if (!Array.isArray(cleanObjectInput)) looseJSON(`${objects}`)
-    return true
-  } catch {
-    return false
-  }
-}
-
 // Given an object, returns a new object with all keys removed whose values
 // return false when passed into the 2nd parameter function. Can be use (for
 // example) to remove keys with null or undefined values (the default)
@@ -125,4 +77,14 @@ export const filterObjectRecursive = (
     })
     .filter(([_, value]) => filterFunction(value)) as [key: string, value: any][]
   return Object.fromEntries(filtered)
+}
+
+export const getLocalStorage = (key: string) => {
+  const value = localStorage.getItem(key)
+  if (value) return JSON.parse(value)
+  return null
+}
+
+export const setLocalStorage = (key: string, value: object | string | number) => {
+  localStorage.setItem(key, JSON.stringify(value))
 }

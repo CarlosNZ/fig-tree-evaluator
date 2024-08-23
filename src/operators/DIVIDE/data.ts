@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Divide one numerical value by another'
 const aliases = ['/', 'divide', '÷']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
     description: 'Array of values - 1st element will be divided by the first',
     aliases: [],
     required: false,
     type: 'array',
+    default: [100, 10],
   },
   {
     name: 'dividend',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['divide'],
     required: false,
     type: 'number',
+    default: 99,
   },
   {
     name: 'divisor',
@@ -24,6 +26,7 @@ const parameters: Parameter[] = [
     aliases: ['by', 'divideBy'],
     required: false,
     type: 'number',
+    default: 3,
   },
   {
     name: 'output',
@@ -31,6 +34,7 @@ const parameters: Parameter[] = [
     aliases: [],
     required: false,
     type: { literal: ['quotient', 'remainder'] },
+    default: 'quotient',
   },
 ]
 

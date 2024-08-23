@@ -118,7 +118,9 @@ test('Merge 3 objects', () => {
 test('Missing values', () => {
   const expression = { operator: '+' }
   return exp.evaluate(expression).then((result) => {
-    expect(result).toBe('Operator: PLUS\n- Missing required property "values" (type: array)')
+    expect(result).toBe(
+      'Operator: PLUS - Type Error\n- Missing required property "values" (type: array)'
+    )
   })
 })
 

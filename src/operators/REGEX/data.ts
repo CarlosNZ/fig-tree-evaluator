@@ -1,15 +1,16 @@
 import { getPropertyAliases } from '../operatorUtils'
-import { OperatorData, Parameter } from '../../types'
+import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Compare a string against a regex pattern'
 const aliases = ['regex', 'patternMatch', 'regexp', 'matchPattern']
-const parameters: Parameter[] = [
+const parameters: OperatorParameterMetadata[] = [
   {
     name: 'testString',
     description: 'The string to test',
     aliases: ['string', 'value'],
     required: true,
     type: 'string',
+    default: 'test-this',
   },
   {
     name: 'pattern',
@@ -17,6 +18,7 @@ const parameters: Parameter[] = [
     aliases: ['regex', 'regexp', 'regExp', 're'],
     required: true,
     type: 'string',
+    default: '^[a-z]{4}-[a-z]{4}$',
   },
 ]
 

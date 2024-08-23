@@ -1,7 +1,6 @@
 /*
 Functions used by the main "evaluatorFunction" (evaluate.ts)
 */
-import { camelCase } from 'change-case'
 import {
   OutputType,
   EvaluatorNode,
@@ -33,7 +32,7 @@ export const isFragmentNode = (input: EvaluatorNode): input is FragmentNode =>
 
 // Convert to camelCase but *don't* remove stand-alone punctuation as they may
 // be valid operators (e.g. "+", "?")
-const standardiseOperatorName = (name: string) => {
+export const standardiseOperatorName = (name: string) => {
   const camelCaseName = camelCase(name)
   return camelCaseName ? camelCaseName : name
 }
@@ -63,21 +62,6 @@ version of the string, ending in "..."
 */
 export const truncateString = (string: string, length = 200) =>
   string.length < length ? string : `${string.slice(0, length - 2).trim()}...`
-
-/*
-Will throw an error (with `errorMessage`) if no `fallback` is provided. If
-`returnErrorAsString` is enabled, then it won't throw, but instead return a
-string containing the error message. 
-*/
-export const fallbackOrError = (
-  fallback: EvaluatorOutput,
-  errorMessage: string,
-  returnErrorAsString = false
-) => {
-  if (fallback !== undefined) return fallback
-  if (returnErrorAsString) return truncateString(errorMessage)
-  else throw new Error(truncateString(errorMessage))
-}
 
 /*
 Converts Evaluator node to one with canonical property names,
@@ -126,9 +110,14 @@ proper deep merging.
 */
 export const mergeOptions = (
   origOptions: FigTreeOptions,
-  newOptions: FigTreeOptions
+  newOptions: FigTreeOptions,
+  deep: boolean
 ): FigTreeOptions => {
   const combinedOptions: FigTreeOptions = { ...origOptions, ...newOptions }
+  if (!deep) return combinedOptions
+
+  // We only do deep merging of the following for a specific evaluation, not
+  // when performing ".updateOptions()"
   if (origOptions.data || newOptions.data)
     combinedOptions.data = { ...origOptions.data, ...newOptions.data }
   if (origOptions.functions || newOptions.functions)
@@ -165,6 +154,29 @@ const extractNumber = (input: EvaluatorOutput) => {
   const numberMatch = input.match(pattern)
   if (!numberMatch) return 0
   return Number(numberMatch[0])
+}
+
+// Convert to camelCase
+export const camelCase = (str: string): string => {
+  const words = str
+    .replace(/[^A-Za-z\d _-]/g, '')
+    .split(/[-_ ]/)
+    .map((word) => (word.match(/[a-z]+|[A-Z]+[a-z]*/g) as string[]) ?? word)
+    .flat()
+
+  const camelCaseString = words
+    .filter((word) => word !== '')
+    .map((word, index) => {
+      // First word should be in lowercase
+      if (index === 0) {
+        return word.toLowerCase()
+      }
+      // Capitalize the first letter of subsequent words
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    })
+    .join('')
+
+  return camelCaseString
 }
 
 /*

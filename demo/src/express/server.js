@@ -1,10 +1,11 @@
-const express = require('express')
+import express from 'express'
 const app = express()
-const cors = require('cors')
-const config = require('../config.json')
+import cors from 'cors'
+import config from '../config.json' assert { type: 'json' }
 const port = config.postgresInterfacePort
+import pg from 'pg'
 
-const { Client } = require('pg')
+const { Client } = pg
 const client = new Client(config.pg_database_connection)
 
 client.connect()

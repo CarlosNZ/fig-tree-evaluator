@@ -4,10 +4,9 @@ The core evaluation function used by FigTreeEvaluator
 
 import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
+import { fallbackOrError } from './FigTreeError'
 import {
-  fallbackOrError,
   convertOutputMethods,
-  errorMessage,
   parseIfJson,
   isOperatorNode,
   mapPropertyAliases,
@@ -68,105 +67,107 @@ export const evaluatorFunction = async (
       !options.noShorthand
     )
     if (fragmentReplacement === undefined)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Fragment not defined: ${fragment}`,
-        returnErrorAsString
-      )
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        error: `Fragment not defined: ${fragment}`,
+        expression,
+        returnErrorAsString,
+      })
     if (!isOperatorNode(fragmentReplacement))
       return replaceAliasNodeValues(fragmentReplacement, config)
     expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
     delete expression.fragment
   }
 
-  try {
-    const operator = getOperatorName(expression.operator, operatorAliases)
+  const operator = getOperatorName(expression.operator, operatorAliases)
 
-    if (!operator)
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Invalid operator: ${expression.operator}`,
-        returnErrorAsString
-      )
+  if (!operator)
+    return fallbackOrError({
+      fallback: await evaluatorFunction(fallback, config),
+      error: `Invalid operator: ${expression.operator}`,
+      expression,
+      returnErrorAsString,
+    })
 
-    if (!config.operators[operator])
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Excluded operator: ${expression.operator}`,
-        returnErrorAsString
-      )
+  if (!config.operators[operator])
+    return fallbackOrError({
+      fallback: await evaluatorFunction(fallback, config),
+      error: `Excluded operator: ${expression.operator}`,
+      expression,
+      returnErrorAsString,
+    })
 
-    const { propertyAliases, evaluate, parseChildren } = operators[operator]
+  const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
-    expression = mapPropertyAliases(propertyAliases, expression)
+  expression = mapPropertyAliases(propertyAliases, expression)
 
-    // Evaluate any alias nodes defined at this level and save them in "config"
-    // object so they get accumulated as we progress down the tree.
-    const newAliasNodes = await evaluateNodeAliases(expression, config)
-    if (!isFragment)
-      // It is important to mutate this object in place rather than create a
-      // shallow copy, or else we can end up with different versions replacing
-      // each other due to parallel evaluation
-      Object.entries(newAliasNodes).forEach(
-        ([alias, result]) => (config.resolvedAliasNodes[alias] = result)
-      )
-
-    // For fragments, we create a new instance of the config object with
-    // different resolved aliases -- this is because there may be more than one
-    // use of the same fragment at different places in the evaluation, and they
-    // each need their own unique instance of their resolved parameter alias.
-    const childConfig: FigTreeConfig = isFragment
-      ? { ...config, resolvedAliasNodes: { ...config.resolvedAliasNodes, ...newAliasNodes } }
-      : config
-
-    // If using "children" property, convert children array to expected
-    // properties
-    if ('children' in expression) {
-      if (!Array.isArray(expression.children))
-        expression.children = await evaluatorFunction(expression.children, childConfig)
-      if (!Array.isArray(expression.children))
-        return fallbackOrError(
-          await evaluatorFunction(fallback, config),
-          `Operator: ${operator}\n- Property "children" is not of type: array`,
-          returnErrorAsString
-        )
-      expression = await parseChildren(expression, childConfig)
-      delete expression.children
-    }
-
-    // Recursively evaluate node
-    let result
-    try {
-      result = await evaluate(expression, childConfig)
-    } catch (err) {
-      return fallbackOrError(
-        await evaluatorFunction(expression.fallback, config),
-        `Operator: ${operator}\n${errorMessage(err)}`,
-        returnErrorAsString
-      )
-    }
-
-    const outputType = expression?.outputType ?? expression?.type
-    if (!outputType) return result
-
-    const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType
-
-    // Output type conversion
-    if (!(evaluatedOutputType in convertOutputMethods))
-      return fallbackOrError(
-        await evaluatorFunction(fallback, config),
-        `Operator: ${operator}\n- Invalid output type: ${evaluatedOutputType}`,
-        returnErrorAsString
-      )
-    else {
-      return convertOutputMethods[evaluatedOutputType](result)
-    }
-  } catch (err) {
-    return fallbackOrError(
-      await evaluatorFunction(fallback, config),
-      errorMessage(err),
-      returnErrorAsString
+  // Evaluate any alias nodes defined at this level and save them in "config"
+  // object so they get accumulated as we progress down the tree.
+  const newAliasNodes = await evaluateNodeAliases(expression, config)
+  if (!isFragment)
+    // It is important to mutate this object in place rather than create a
+    // shallow copy, or else we can end up with different versions replacing
+    // each other due to parallel evaluation
+    Object.entries(newAliasNodes).forEach(
+      ([alias, result]) => (config.resolvedAliasNodes[alias] = result)
     )
+
+  // For fragments, we create a new instance of the config object with
+  // different resolved aliases -- this is because there may be more than one
+  // use of the same fragment at different places in the evaluation, and they
+  // each need their own unique instance of their resolved parameter alias.
+  const childConfig: FigTreeConfig = isFragment
+    ? { ...config, resolvedAliasNodes: { ...config.resolvedAliasNodes, ...newAliasNodes } }
+    : config
+
+  // If using "children" property, convert children array to expected
+  // properties
+  if ('children' in expression) {
+    if (!Array.isArray(expression.children))
+      expression.children = await evaluatorFunction(expression.children, childConfig)
+    if (!Array.isArray(expression.children))
+      return fallbackOrError({
+        fallback: await evaluatorFunction(fallback, config),
+        operator,
+        name: 'Type Error',
+        error: `- Property "children" is not of type: array`,
+        expression,
+        returnErrorAsString,
+      })
+    expression = await parseChildren(expression, childConfig)
+    delete expression.children
+  }
+
+  // Recursively evaluate node
+  let result
+  try {
+    result = await evaluate(expression, childConfig)
+  } catch (error) {
+    return fallbackOrError({
+      fallback: await evaluatorFunction(expression.fallback, config),
+      operator,
+      error: error as Error,
+      expression,
+      returnErrorAsString,
+    })
+  }
+
+  const outputType = expression?.outputType ?? expression?.type
+  if (!outputType) return result
+
+  const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType
+
+  // Output type conversion
+  if (!(evaluatedOutputType in convertOutputMethods))
+    return fallbackOrError({
+      fallback: await evaluatorFunction(fallback, config),
+      operator,
+      error: `- Invalid output type: ${evaluatedOutputType}`,
+      expression,
+      returnErrorAsString,
+    })
+  else {
+    return convertOutputMethods[evaluatedOutputType](result)
   }
 }
 
@@ -189,8 +190,17 @@ export const evaluateNodeAliases = async (expression: OperatorNode, config: FigT
 
   const evaluations: Promise<EvaluatorOutput>[] = []
   aliasKeys.forEach((alias) => evaluations.push(evaluatorFunction(expression[alias], config)))
+  const results = await Promise.all(evaluations)
+  const returnObject = zipArraysToObject(aliasKeys, await Promise.all(evaluations))
 
-  return zipArraysToObject(aliasKeys, await Promise.all(evaluations))
+  // This is for the case when an alias references another alias at the same
+  // level
+  for (const [index, result] of results.entries()) {
+    if (typeof result === 'string' && isAliasString(result))
+      returnObject[aliasKeys[index]] = returnObject?.[result] ?? result
+  }
+
+  return returnObject
 }
 
 /*
