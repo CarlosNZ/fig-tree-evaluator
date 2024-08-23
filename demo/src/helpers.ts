@@ -85,6 +85,6 @@ export const getLocalStorage = (key: string) => {
   return null
 }
 
-export const setLocalStorage = (key: string, value: object) => {
+export const setLocalStorage = (key: string, value: object | string | number) => {
   localStorage.setItem(key, JSON.stringify(value))
 }

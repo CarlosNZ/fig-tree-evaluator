@@ -231,6 +231,8 @@ A classic case for a form input is to choose your country from a drop-down, then
 
 This expression returns the city list based on the \`country\` value in \`userResponses\`. You can see this applied to a real form with [this example](https://carlosnz.github.io/jsonforms-with-figtree-demo/) which uses FigTree to extend the dynamic functionality of [JSON Forms](https://jsonforms.io/).
 
+<img src="src/img/country_city_form.png" width="500"/>
+
 Note the \`fallback\` property used here — an array with a "Loading..." indicator. This ensures that the Cities dropdown can render with valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,
     objectData: {
@@ -259,7 +261,7 @@ A diagram of this particular tree can be found [here](https://user-images.github
 
 *Hot tip: Click the "Expand" icon at the top of the expression object while holding "Option"/"Alt" to quickly expand the entire expression tree at once.*
 
-This expression also makes use of [Alias nodes](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#alias-nodes), which reduces the amount of duplication required in this structure.
+This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#alias-nodes), which reduces the amount of duplication required in this structure.
     `,
     objectData: {
       Info: 'Change the following values to get a card game recommendation! (Difficultly can be either "easy" or "challenging")',
@@ -355,26 +357,26 @@ This expression also makes use of [Alias nodes](https://github.com/CarlosNZ/fig-
     content: '# TO-DO',
     objectData: {
       title: 'Star Wars',
-      selected: 'Luke Skywalker',
+      selected: 'Luke',
       characters: {
-        'Luke Skywalker': 1,
+        Luke: 1,
         'C-3PO': 2,
         'R2-D2': 3,
-        'Darth Vader': 4,
-        'Leia Organa': 5,
-        'Owen Lars': 6,
-        'Beru Whitesun Lars': 7,
+        Vader: 4,
+        Leia: 5,
+        Owen: 6,
+        Beru: 7,
         'R5-D4': 8,
-        'Biggs Darklighter': 9,
-        'Obi-Wan Kenobi': 10,
-        'Anakin Skywalker': 11,
-        'Wilhuff Tarkin': 12,
+        Biggs: 9,
+        'Obi-Wan': 10,
+        Anakin: 11,
+        Tarkin: 12,
         Chewbacca: 13,
-        'Han Solo': 14,
+        Han: 14,
         Greedo: 15,
-        'Jabba the Hutt': 16,
-        'Wedge Antilles': 17,
-        'Jek Tono Porkins': 19,
+        Jabba: 16,
+        Wedge: 17,
+        Porkins: 19,
         Yoda: 20,
         Palpatine: 21,
       },
@@ -423,7 +425,11 @@ This expression also makes use of [Alias nodes](https://github.com/CarlosNZ/fig-
   },
   {
     name: '🧩 Fragments',
-    content: '# TO-DO',
+    content: `
+# Fragments
+
+Say you have...
+    `,
     objectData: {
       myFavouriteCountry: 'New Zealand',
     },

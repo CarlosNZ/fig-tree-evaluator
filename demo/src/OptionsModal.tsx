@@ -74,7 +74,6 @@ export const OptionsModal = ({
 
   const handleSubmit = (e: any) => {
     e.preventDefault()
-    if (formState.headersError || formState.gqlHeadersError) return
     const {
       baseEndpoint,
       authHeader,
@@ -257,7 +256,7 @@ export const OptionsModal = ({
                     </AccordionPanel>
                   </AccordionItem>
                 </Accordion>
-                <FormControl id="fragments" isInvalid={formState.fragmentsError}>
+                <FormControl id="fragments">
                   <JsonEditor
                     data={formState.fragments ?? {}}
                     setData={(data) =>

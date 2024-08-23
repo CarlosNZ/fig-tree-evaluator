@@ -22,7 +22,7 @@ import {
   SQLNodePostgres,
   FigTreeOptions,
   FigTreeEditor,
-  FigTreeError,
+  isFigTreeError,
 } from './_imports'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
@@ -210,7 +210,7 @@ function App() {
                 localStorage.setItem('objectData', JSON.stringify(newData))
               }}
               minWidth="50%"
-              enableClipboard={({ stringValue, type }) =>
+              enableClipboard={({ stringValue, type }) => {
                 toast({
                   title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
                   description: truncateString(String(stringValue)),
@@ -218,7 +218,7 @@ function App() {
                   duration: 5000,
                   isClosable: true,
                 })
-              }
+              }}
               showCollectionCount="when-closed"
               jsonParse={JSON5.parse}
               {...jsonEditorOptions}
@@ -254,16 +254,17 @@ function App() {
                   isClosable: true,
                 })
               }
-              onEvaluateError={(err: FigTreeError) =>
-                toast({
-                  title: 'Evaluation error',
-                  description: err.prettyPrint,
-                  position: 'top',
-                  status: 'error',
-                  duration: 15000,
-                  isClosable: true,
-                })
-              }
+              onEvaluateError={(err) => {
+                if (isFigTreeError(err))
+                  toast({
+                    title: 'Evaluation error',
+                    description: err.prettyPrint,
+                    position: 'top',
+                    status: 'error',
+                    duration: 15000,
+                    isClosable: true,
+                  })
+              }}
               rootName="expression"
               enableClipboard={({ stringValue, type }) =>
                 toast({

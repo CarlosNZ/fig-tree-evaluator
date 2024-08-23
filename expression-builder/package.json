@@ -15,11 +15,11 @@
     "lint": "npx eslint"
   },
   "peerDependencies": {
-    "react": ">=16.0.0",
-    "fig-tree-evaluator": "^2.16.8"
+    "fig-tree-evaluator": "^2.16.9",
+    "react": ">=16.0.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.15.8",
+    "json-edit-react": "^1.15.9",
     "react-select": "^5.8.0"
   },
   "devDependencies": {
