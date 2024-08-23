@@ -32,7 +32,6 @@ export const evaluatorConfig = {
         parameters: [{ name: '$country', type: 'string', required: true, default: 'New Zealand' }],
       },
     },
-    simpleFragment: 'The flag of Brazil is: ',
     adder: {
       operator: '+',
       values: '$values',

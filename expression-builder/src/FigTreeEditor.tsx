@@ -16,6 +16,7 @@ import {
   NodeData,
   UpdateFunction,
   isCollection,
+  isFigTreeError,
 } from './_imports'
 import './styles.css'
 import { Operator } from './Operator'
@@ -119,6 +120,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       const result = await figTree.evaluate(expression, { data: objectData })
       onEvaluate(result)
     } catch (err) {
+      if (isFigTreeError(err)) console.error(err.prettyPrint)
       onEvaluateError && onEvaluateError(err)
     }
   }
