@@ -7,6 +7,7 @@ import {
   OperatorAlias,
   NodeData,
   isCollection,
+  EvaluatorNode,
 } from './_imports'
 import { NodeType } from './NodeTypeSelector'
 
@@ -98,6 +99,11 @@ export const operatorAcceptsArbitraryProperties = (opData: OperatorMetadata) => 
   const { parameters } = opData
   if (!parameters) return false
   return parameters.some((param) => isArbitraryPropertyMarker(param.name))
+}
+
+export const getAliases = (expression: EvaluatorNode) => {
+  if (!isObject(expression)) return {}
+  return Object.fromEntries(Object.entries(expression).filter(([key, _]) => isAliasString(key)))
 }
 
 export const getButtonFontSize = (operatorAlias: string) => {

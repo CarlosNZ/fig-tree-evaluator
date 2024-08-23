@@ -15,6 +15,7 @@ import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
+import { getAliases } from './helpers'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
@@ -27,7 +28,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode } = customNodeProps
+  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
   const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -63,6 +64,8 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     else document.removeEventListener('keydown', listenForSubmit)
     return () => document.removeEventListener('keydown', listenForSubmit)
   }, [isEditing])
+
+  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
 
   return (
     <div className="ft-custom ft-fragment">
@@ -100,7 +103,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           setIsEditing={() => setIsEditing(true)}
           evaluate={async () => {
             setLoading(true)
-            await evaluateNode(parentData)
+            await evaluateNode({ ...parentData, ...aliases })
             setLoading(false)
           }}
           isLoading={loading}

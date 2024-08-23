@@ -8,7 +8,7 @@ import {
 } from './_imports'
 import { Icons } from './Icons'
 // import './styles.css'
-import { getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'
+import { getAliases, getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 import { DisplayBar } from './Operator'
 
@@ -18,6 +18,7 @@ export interface ShorthandProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
+  topLevelAliases: Record<string, EvaluatorNode>
 }
 
 export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) => {
@@ -26,7 +27,7 @@ export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) 
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode } = customNodeProps
+  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
   const [loading, setLoading] = useState(false)
 
   if (!figTree) return null
@@ -39,6 +40,8 @@ export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) 
 
   const { backgroundColor, textColor, displayName } = operatorDisplay[operatorData.name]
 
+  const aliases = { ...topLevelAliases, ...getAliases(data) }
+
   return (
     <div className="ft-shorthand-node">
       <div
@@ -46,7 +49,7 @@ export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) 
         style={{ backgroundColor, color: textColor, width: 'unset' }}
         onClick={async () => {
           setLoading(true)
-          await evaluateNode(data)
+          await evaluateNode({ ...data, ...aliases })
           setLoading(false)
         }}
       >
@@ -89,7 +92,7 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<ShorthandProps>> = (
   nodeData: { key, parentData },
   customNodeProps,
 }) => {
-  const { figTree, evaluateNode } = customNodeProps ?? {}
+  const { figTree, evaluateNode, topLevelAliases } = customNodeProps ?? {}
   if (!figTree || !evaluateNode) return null
 
   const [loading, setLoading] = useState(false)
@@ -100,6 +103,8 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<ShorthandProps>> = (
 
   const operatorData = getCurrentOperator(operatorAlias, figTree.getOperators()) as OperatorMetadata
 
+  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
+
   return (
     <div className="ft-shorthand-wrapper">
       <div className="ft-shorthand-display-bar">
@@ -108,7 +113,7 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<ShorthandProps>> = (
           setIsEditing={() => {}}
           evaluate={async () => {
             setLoading(true)
-            await evaluateNode(parentData)
+            await evaluateNode({ ...parentData, ...aliases })
             setLoading(false)
           }}
           isLoading={loading}

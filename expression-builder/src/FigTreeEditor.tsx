@@ -31,6 +31,7 @@ import {
   isShorthandString as shorthandStringTester,
   isShorthandStringNode as shorthandStringNodeTester,
   propertyCountReplace,
+  getAliases,
 } from './helpers'
 import { ShorthandNode, ShorthandNodeWrapper, ShorthandStringNode } from './Shorthand'
 
@@ -72,7 +73,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   operatorDisplay: operatorDisplayProp,
   ...props
 }) => {
-  if (!figTree) return null
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
 
@@ -93,6 +93,15 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     })()
   )
 
+  // Deeper nodes don't have access to higher-level alias definitions when
+  // evaluating them on their own (only when evaluated from above), so we
+  // collect all top-level aliases and pass them down to all child components
+  // (Limitation: aliases defined part-way down the tree, i.e. lower than the
+  // root, but higher than where they're used, won't be picked up for evaluation
+  // at the inner nodes. But this is not a common scenario, and isn't a big deal
+  // for the editor)
+  const topLevelAliases = getAliases(expression)
+
   useEffect(() => {
     try {
       const exp = validateExpression(expressionInit, { operators, fragments })
@@ -101,6 +110,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       // onUpdate('Invalid expression')
     }
   }, [expressionInit])
+
+  if (!figTree) return null
 
   const evaluateNode = async (expression: EvaluatorNode) => {
     onEvaluateStart && onEvaluateStart()
@@ -225,6 +236,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               figTree,
               evaluateNode,
               operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+              topLevelAliases,
             },
             hideKey: true,
             showOnEdit: false,
@@ -236,7 +248,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             condition: ({ key }) => key === 'fragment',
             element: Fragment,
             name: 'Fragment',
-            customNodeProps: { figTree, evaluateNode },
+            customNodeProps: { figTree, evaluateNode, topLevelAliases },
             hideKey: true,
             showOnEdit: false,
             showEditTools: false,
@@ -249,7 +261,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             },
             hideKey: true,
             wrapperElement: ShorthandNodeWrapper,
-            wrapperProps: { figTree, evaluateNode },
+            wrapperProps: { figTree, evaluateNode, topLevelAliases },
           },
           {
             condition: (nodeData) => {
@@ -258,7 +270,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               )
             },
             element: ShorthandNode,
-            customNodeProps: { figTree, evaluateNode },
+            customNodeProps: { figTree, evaluateNode, topLevelAliases },
           },
           {
             condition: ({ value }) => {

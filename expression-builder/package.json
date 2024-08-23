@@ -15,7 +15,7 @@
     "lint": "npx eslint"
   },
   "peerDependencies": {
-    "fig-tree-evaluator": "^2.16.9",
+    "fig-tree-evaluator": "^2.16.10",
     "react": ">=16.0.0"
   },
   "dependencies": {

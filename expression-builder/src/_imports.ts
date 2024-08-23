@@ -10,6 +10,8 @@
 export * from 'fig-tree-evaluator'
 
 /* Local src */
+/* This will rarely be required as the main fig-tree instance is
+passed in externally. This one is only for type imports */
 // export * from './fig-tree-evaluator/src'
 
 /**

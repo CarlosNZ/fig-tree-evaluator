@@ -8,6 +8,7 @@ import {
   OperatorNode,
   OperatorParameterMetadata,
   EvaluatorNode,
+  FragmentParameterMetadata,
   Operator as OpType,
   // json-edit-react
   CustomNodeProps,
@@ -18,31 +19,31 @@ import {
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'
-import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
+import { getAliases, getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
 import { operatorDisplay } from './operatorDisplay'
-import { FragmentParameterMetadata } from './fig-tree-evaluator/src/types'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
+  topLevelAliases: Record<string, EvaluatorNode>
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
     data,
     parentData,
-    nodeData: { path },
+    nodeData: { path, level },
     onEdit,
     customNodeProps,
   } = props
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode } = customNodeProps
+  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
   const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -87,6 +88,8 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     return () => document.removeEventListener('keydown', listenForSubmit)
   }, [isEditing])
 
+  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
+
   return (
     <div className="ft-custom ft-operator">
       {isEditing ? (
@@ -130,7 +133,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           setIsEditing={() => setIsEditing(true)}
           evaluate={async () => {
             setLoading(true)
-            await evaluateNode(parentData)
+            await evaluateNode({ ...parentData, ...aliases })
             setLoading(false)
           }}
           isLoading={loading}

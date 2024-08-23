@@ -437,11 +437,16 @@ Say you have...
       operator: 'stringSubstitution',
       string: '===={{country}}====\nCapital city: {{capital}}\nFlag: {{flag}}',
       replacements: {
-        capital: { fragment: 'getCapital', $country: '$selectedCountry()' },
-        flag: { fragment: 'getFlag', $country: '$selectedCountry()' },
-        country: '$selectedCountry()',
+        capital: { fragment: 'getCapital', $country: '$selectedCountry' },
+        flag: { fragment: 'getFlag', $country: '$selectedCountry' },
+        country: '$selectedCountry',
       },
       fallback: "Can't find country 😔",
+      $selectedCountry: {
+        operator: 'getData',
+        property: 'myFavouriteCountry',
+        fallback: 'Country not found',
+      },
     },
     expressionCollapse: 3,
     figTreeOptions: {
@@ -457,13 +462,7 @@ Say you have...
           outputType: 'string',
           metadata: {
             description: "Gets a country's capital city",
-            parameters: [
-              {
-                name: '$country',
-                type: 'string',
-                required: true,
-              },
-            ],
+            parameters: [{ name: '$country', type: 'string', required: true }],
           },
         },
         getFlag: {
@@ -482,23 +481,36 @@ Say you have...
           metadata: {
             description: "Gets a country's flag",
             parameters: [
-              {
-                name: '$country',
-                type: 'string',
-                required: true,
-                default: 'New Zealand',
-              },
+              { name: '$country', type: 'string', required: true, default: 'New Zealand' },
             ],
           },
         },
-        selectedCountry: {
-          operator: 'getData',
-          property: 'myFavouriteCountry',
-          fallback: 'Country not found',
-          metadata: {
-            description: 'Pulls favourite country from data',
-          },
-        },
+      },
+    },
+  },
+  {
+    name: '🧩 Custom Functions',
+    content: `
+# Custom Functions
+
+Say you have...
+    `,
+    objectData: {
+      myFavouriteCountry: 'New Zealand',
+    },
+    expression: {
+      operator: 'stringSubstitution',
+      string: '===={{country}}====\nCapital city: {{capital}}\nFlag: {{flag}}',
+      replacements: {
+        capital: { fragment: 'getCapital', $country: '$selectedCountry' },
+        flag: { fragment: 'getFlag', $country: '$selectedCountry' },
+        country: '$selectedCountry',
+      },
+      fallback: "Can't find country 😔",
+      $selectedCountry: {
+        operator: 'getData',
+        property: 'myFavouriteCountry',
+        fallback: 'Country not found',
       },
     },
   },
