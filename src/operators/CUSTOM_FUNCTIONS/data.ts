@@ -14,7 +14,7 @@ const parameters: OperatorParameterMetadata[] = [
   {
     name: 'functionPath',
     description: 'Path (in options.functions) to the required function',
-    aliases: ['functionsPath', 'functionName', 'funcName', 'path', 'name'],
+    aliases: ['functionPath', 'funcName', 'functionName', 'function', 'path', 'name'],
     required: true,
     type: 'string',
     default: null,
@@ -24,8 +24,16 @@ const parameters: OperatorParameterMetadata[] = [
     description: 'Arguments for the function',
     aliases: ['arguments', 'variables'],
     required: false,
-    type: 'array',
+    type: ['array', 'any'],
     default: [],
+  },
+  {
+    name: 'input',
+    description: 'Argument for the function if a single input parameter',
+    aliases: ['arg'],
+    required: false,
+    type: 'any',
+    default: 'input',
   },
   {
     name: 'useCache',

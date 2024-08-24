@@ -5,6 +5,17 @@ const exp = new FigTreeEvaluator({
     fDouble: (...args: number[]) => args.map((e) => e + e),
     fDate: (dateString: string) => new Date(dateString),
     fNoArgs: () => 5 * 5,
+    reverse: {
+      function: (input: unknown[] | string) => {
+        if (Array.isArray(input)) return [...input].reverse()
+        return input.split('').reverse().join('')
+      },
+      description: 'Reverse a string or array',
+      parameterDefaults: ['Reverse Me'],
+    },
+    getFullName: (nameObject: { firstName: string; lastName: string }) => {
+      return `${nameObject.firstName} ${nameObject.lastName}`
+    },
   },
   objects: { functions: { square: (x: number) => x ** 2, notAFunction: 'sorry' } },
 })
@@ -67,8 +78,8 @@ test('Custom functions - "functions." is in path string', () => {
 test('Custom functions - create a date from a string', () => {
   const expression = {
     operator: 'function',
-    functionsPath: 'fDate',
-    arguments: [{ operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
+    functionPath: 'fDate',
+    input: { operator: '+', children: ['December 17, ', '1995 03:24:00'] },
   }
   return evaluateExpression(expression, {
     functions: { fDate: (dateString: string) => new Date(dateString) },
@@ -80,7 +91,7 @@ test('Custom functions - create a date from a string', () => {
 test('Custom functions - no args', () => {
   const expression = {
     operator: 'function',
-    functionsPath: 'fNoArgs',
+    functionPath: 'fNoArgs',
   }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe(25)
@@ -114,5 +125,28 @@ test('Custom functions - path is not a function', () => {
   }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe('Operator: CUSTOM_FUNCTIONS\n- No function found: "functions.notAFunction"')
+  })
+})
+
+test('Custom functions - verbose function definition structure', () => {
+  const expression = {
+    operator: 'function',
+    function: 'reverse',
+    input: [1, 2, 3, 4],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([4, 3, 2, 1])
+  })
+})
+
+test('Custom functions - object properties become argument', () => {
+  const expression = {
+    operator: 'function',
+    function: 'getFullName',
+    firstName: 'Mark',
+    lastName: 'Hamill',
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([4, 3, 2, 1])
   })
 })

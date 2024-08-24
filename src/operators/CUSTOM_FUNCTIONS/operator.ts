@@ -5,15 +5,18 @@ import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } fr
 import operatorData, { propertyAliases } from './data'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
-  const [functionPath, args = [], useCache] = (await evaluateArray(
-    [expression.functionPath, expression.args, expression.useCache],
+  const [functionPath, args = [], input, useCache] = (await evaluateArray(
+    [expression.functionPath, expression.args, expression.input, expression.useCache],
     config
-  )) as [string, EvaluatorNode[], boolean]
+  )) as [string, EvaluatorNode[], unknown, boolean]
 
   config.typeChecker(getTypeCheckInput(operatorData.parameters, { functionPath, args }))
 
   const { data, functions } = config.options
+  if (!functions) throw new Error('- No functions defined')
+
   const func =
+    extractProperty(functions, `${functionPath}.function`, null) ??
     extractProperty(functions, functionPath, null) ??
     // Functions should always be referenced relative to the "functions"
     // parameter in options. However, for backwards compatibility, we also check
@@ -27,13 +30,18 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   const shouldUseCache = useCache ?? config.options.useCache ?? false
 
+  const inputArgs = [
+    ...(input === undefined ? [] : [input]),
+    ...(Array.isArray(args) ? args : [args]),
+  ]
+
   const result = await config.cache.useCache(
     shouldUseCache,
-    async (_: string, ...args: unknown[]) => {
-      return await func(...args)
+    async (_: string, ...inputArgs: unknown[]) => {
+      return await func(...inputArgs)
     },
     functionPath,
-    ...args
+    ...inputArgs
   )
 
   return result
