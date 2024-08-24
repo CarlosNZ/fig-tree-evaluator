@@ -13,11 +13,18 @@ const exp = new FigTreeEvaluator({
       description: 'Reverse a string or array',
       parameterDefaults: ['Reverse Me'],
     },
-    getFullName: (nameObject: { firstName: string; lastName: string }) => {
-      return `${nameObject.firstName} ${nameObject.lastName}`
+    getFullName: {
+      function: (nameObject: { firstName: string; lastName: string }) => {
+        return `${nameObject.firstName} ${nameObject.lastName}`
+      },
+      description: 'Combine first and last names',
+      operatorDefault: { firstName: 'First', lastName: 'Last' },
     },
   },
-  objects: { functions: { square: (x: number) => x ** 2, notAFunction: 'sorry' } },
+  objects: {
+    functions: { square: (x: number) => x ** 2, notAFunction: 'sorry' },
+    user: { firstName: 'Mark', lastName: 'Hamill' },
+  },
 })
 
 // CUSTOM FUNCTIONS
@@ -139,14 +146,129 @@ test('Custom functions - verbose function definition structure', () => {
   })
 })
 
-test('Custom functions - object properties become argument', () => {
+// The rest are the same as above, but in "Custom Operator" format:
+
+test('Custom operators - double elements in an array', () => {
   const expression = {
-    operator: 'function',
-    function: 'getFullName',
-    firstName: 'Mark',
-    lastName: 'Hamill',
+    operator: 'fDouble',
+    args: [1, 2, 3, 'four'],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
+  })
+})
+
+test('Custom operators - create a date from a string', () => {
+  const expression = {
+    operator: 'fDate',
+    args: [{ operator: '+', children: ['December 17, ', '1995 03:24:00'] }],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
+  })
+})
+
+test('Custom operators - create a date from a string', () => {
+  const expression = {
+    operator: 'fDate',
+    input: { operator: '+', children: ['December 23, ', '1995 03:24:00'] },
+  }
+  return evaluateExpression(expression, {
+    functions: { fDate: (dateString: string) => new Date(dateString) },
+  }).then((result) => {
+    expect(result).toEqual(new Date('December 23, 1995 03:24:00'))
+  })
+})
+
+test('Custom operators - no args', () => {
+  const expression = { operator: 'fNoArgs' }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(25)
+  })
+})
+
+test('Custom operators - invalid function path', () => {
+  const expression = { operator: 'invalid.path' }
+  return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
+    expect(result).toBe('Invalid operator: invalid.path')
+  })
+})
+
+test('Custom operators - verbose function definition structure', () => {
+  const expression = {
+    operator: 'reverse',
+    input: [1, 2, 3, 4],
   }
   return exp.evaluate(expression).then((result) => {
     expect(result).toStrictEqual([4, 3, 2, 1])
+  })
+})
+
+test('Custom operators - properties to args', () => {
+  const expression = {
+    operator: 'getFullName',
+    firstName: { $getData: 'user.firstName' },
+    lastName: { $getData: 'user.lastName' },
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual('Mark Hamill')
+  })
+})
+
+// And again, but in Shorthand syntax
+
+test('Custom operators (shorthand) - double elements in an array', () => {
+  const expression = { $fDouble: [1, 2, 3, 'four'] }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([2, 4, 6, 'fourfour'])
+  })
+})
+
+test('Custom operators (shorthand) - create a date from a string', () => {
+  const expression = { $fDate: { operator: '+', children: ['December 17, ', '1995 03:24:00'] } }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(new Date('December 17, 1995 03:24:00'))
+  })
+})
+
+test('Custom operators (shorthand) - create a date from a string', () => {
+  const expression = {
+    $fDate: { input: { operator: '+', children: ['December 23, ', '1995 03:24:00'] } },
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(new Date('December 23, 1995 03:24:00'))
+  })
+})
+
+test('Custom operators (shorthand) - no args', () => {
+  const expression = { $fNoArgs: null }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(25)
+  })
+})
+
+test('Custom operators (shorthand) - invalid function path/operator', () => {
+  const expression = { $invalidFunction: null }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual({ $invalidFunction: null })
+  })
+})
+
+test('Custom operators (shorthand) - verbose function definition structure', () => {
+  const expression = { $reverse: { input: [1, 2, 3, 4] } }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([4, 3, 2, 1])
+  })
+})
+
+test('Custom operators (shorthand) - properties to args', () => {
+  const expression = {
+    $getFullName: {
+      firstName: { $getData: 'user.firstName' },
+      lastName: { $getData: 'user.lastName' },
+    },
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual('Mark Hamill')
   })
 })

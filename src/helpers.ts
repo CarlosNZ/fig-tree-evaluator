@@ -104,6 +104,40 @@ export const replaceAliasNodeValues = (
 }
 
 /*
+Converts a custom function expressed as a "custom operator" into a standard
+operator node
+e.g. {
+  "operator": "myFunction",
+  "param1": "something",
+  "param2": "another"
+} => {
+  "operator": "customFunctions",
+  "function": "myFunction",
+  "input": {
+    "param1": "something",
+    "param2": "another"
+  }}
+*/
+export const replaceCustomOperator = async (expression: OperatorNode, config: FigTreeConfig) => {
+  if (!(expression.operator in (config.options?.functions ?? {}))) return expression
+
+  const { operator, fallback, outputType, type, useCache, input, args, ...rest } = expression
+
+  const modifiedExpression: OperatorNode = { operator: 'CUSTOM_FUNCTIONS', function: operator }
+
+  if (fallback !== undefined) modifiedExpression.fallback = fallback
+  if (outputType !== undefined) modifiedExpression.outputType = outputType
+  if (type !== undefined) modifiedExpression.type = type
+  if (useCache !== undefined) modifiedExpression.useCache = useCache
+
+  if (args !== undefined) modifiedExpression.args = args
+  if (input !== undefined) modifiedExpression.input = input
+  else if (Object.keys(rest).length > 0) modifiedExpression.input = rest
+
+  return modifiedExpression
+}
+
+/*
 Mostly we can just merge the options objects, but for "data", "functions",
 "fragments" and "headers", they might need merging separately so we preserve
 proper deep merging.

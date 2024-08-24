@@ -1,6 +1,6 @@
 import extractProperty from 'object-property-extractor'
 import { getTypeCheckInput } from '../operatorUtils'
-import { evaluateArray } from '../../evaluate'
+import { evaluateArray, evaluateObject } from '../../evaluate'
 import { EvaluatorNode, OperatorObject, EvaluateMethod, ParseChildrenMethod } from '../../types'
 import operatorData, { propertyAliases } from './data'
 
@@ -31,7 +31,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   const shouldUseCache = useCache ?? config.options.useCache ?? false
 
   const inputArgs = [
-    ...(input === undefined ? [] : [input]),
+    ...(input === undefined ? [] : [await evaluateObject(input, config)]),
     ...(Array.isArray(args) ? args : [args]),
   ]
 

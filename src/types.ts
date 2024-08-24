@@ -105,7 +105,7 @@ export interface FunctionDefinition {
   function: UnknownFunction
   description?: string
   parameterDefaults?: unknown[]
-  operatorDefault?: OperatorNode
+  operatorDefault?: Record<string, unknown>
 }
 
 export type Fragment =

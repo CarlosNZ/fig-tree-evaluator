@@ -9,27 +9,34 @@ const functionStringRegex = /(\$[^()]+)\((.*)\)/
 export const preProcessShorthand = (
   expression: EvaluatorNode,
   fragments: Fragments = {},
+  functionNames: string[],
   useShorthand = true
 ): EvaluatorNode | FragmentNode => {
   if (!useShorthand) return expression
 
-  if (typeof expression === 'string') return processString(expression, fragments)
-  if (isObject(expression)) return processObject(expression, fragments)
+  if (typeof expression === 'string') return processString(expression, fragments, functionNames)
+  if (isObject(expression)) return processObject(expression, fragments, functionNames)
 
   return expression
 }
 
-const processString = (expString: string, fragments: Fragments): EvaluatorNode => {
+const processString = (
+  expString: string,
+  fragments: Fragments,
+  functionNames: string[]
+): EvaluatorNode => {
   const match = functionStringRegex.exec(expString)
   if (!match) return expString
 
   const method = match[1].trim()
-  const params = match[2].split(',').map((p) => preProcessShorthand(p.trim(), fragments))
+  const params = match[2]
+    .split(',')
+    .map((p) => preProcessShorthand(p.trim(), fragments, functionNames))
 
-  return buildNodeElements(method, params, fragments)
+  return buildNodeElements(method, params, fragments, functionNames)
 }
 
-const processObject = (expObject: object, fragments: Fragments) => {
+const processObject = (expObject: object, fragments: Fragments, functionNames: string[]) => {
   if (isOperatorNode(expObject) || isFragmentNode(expObject)) return expObject
 
   const keyVals = Object.entries(expObject)
@@ -37,7 +44,7 @@ const processObject = (expObject: object, fragments: Fragments) => {
   const otherParams = keyVals.filter(([key]) => !isAliasString(key))
 
   const newKeyVals = aliasParams.reduce((accObj: Record<string, unknown>, [alias, params]) => {
-    accObj = { ...accObj, ...buildNodeElements(alias, params, fragments) }
+    accObj = { ...accObj, ...buildNodeElements(alias, params, fragments, functionNames) }
     return accObj
   }, {})
 
@@ -50,7 +57,8 @@ const processObject = (expObject: object, fragments: Fragments) => {
 const buildNodeElements = (
   alias: string,
   params: EvaluatorNode[] | object,
-  fragments: Fragments
+  fragments: Fragments,
+  functionNames: string[]
 ) => {
   const aliasName = alias.slice(1)
   const operator = getOperatorName(aliasName, operatorAliases)
@@ -64,6 +72,15 @@ const buildNodeElements = (
 
   if (aliasName in fragments) {
     return { fragment: aliasName, parameters: { ...params } }
+  }
+
+  if (functionNames.includes(aliasName)) {
+    if (Array.isArray(params)) return { operator: aliasName, args: params }
+    if (isObject(params)) {
+      if ('input' in params || 'args' in params) return { operator: aliasName, ...params }
+      return { operator: aliasName, input: params }
+    }
+    return { operator: aliasName, args: [params] }
   }
 
   return { [alias]: params }

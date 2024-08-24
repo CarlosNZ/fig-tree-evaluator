@@ -35,11 +35,14 @@ const fig = new FigTreeEvaluator({
   },
 })
 
+const fragments = fig.getOptions().fragments
+const functionNames = Object.keys(fig.getCustomFunctions())
+
 // Test pre-processing only
 
 test('Shorthand - simple string expression evaluation', () => {
   const expression = '$getData(path.to.country.name)'
-  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+  expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'OBJECT_PROPERTIES',
     children: ['path.to.country.name'],
   })
@@ -47,7 +50,7 @@ test('Shorthand - simple string expression evaluation', () => {
 
 test('Shorthand - nested string expression', () => {
   const expression = '$plus( $getData ( myCountry), $getData(otherCountry))'
-  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+  expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'PLUS',
     children: [
       {
@@ -64,7 +67,7 @@ test('Shorthand - nested string expression', () => {
 
 test('Shorthand - simple object expression', () => {
   const expression = { $plus: [1, 2, 3] }
-  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+  expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'PLUS',
     children: [1, 2, 3],
   })
@@ -74,7 +77,7 @@ test('Shorthand - nested object expression', () => {
   const expression = {
     $plus: [{ $getData: 'user.firstName' }, ' ', { $getData: 'user.lastName' }],
   }
-  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+  expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'PLUS',
     children: [
       {
@@ -90,7 +93,7 @@ test('Shorthand - nested object expression', () => {
 
 test('Shorthand - fragment 1', () => {
   const expression = { $getFlag: { $country: '$getData(myCountry)' } }
-  expect(preProcessShorthand(expression, fig.getOptions().fragments)).toStrictEqual({
+  expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     fragment: 'getFlag',
     parameters: {
       $country: '$getData(myCountry)',

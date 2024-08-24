@@ -15,6 +15,7 @@ import {
   isFragmentNode,
   isObject,
   isAliasString,
+  replaceCustomOperator,
 } from './helpers'
 import { zipArraysToObject, singleArrayToObject } from './operators/operatorUtils'
 
@@ -26,8 +27,15 @@ export const evaluatorFunction = async (
 
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
+  const functionNames = Object.keys(config.options?.functions ?? {})
+
   // Convert any shorthand syntax into standard expression structure
-  expression = preProcessShorthand(expression, config.options?.fragments, !options.noShorthand)
+  expression = preProcessShorthand(
+    expression,
+    config.options?.fragments,
+    functionNames,
+    !options.noShorthand
+  )
 
   // If an array, we evaluate each item in the array
   if (Array.isArray(expression)) {
@@ -36,6 +44,8 @@ export const evaluatorFunction = async (
 
   const isOperator = isOperatorNode(expression)
   const isFragment = isFragmentNode(expression)
+
+  if (isOperator) expression = await replaceCustomOperator(expression, config)
 
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
@@ -64,6 +74,7 @@ export const evaluatorFunction = async (
     const fragmentReplacement = preProcessShorthand(
       options?.fragments?.[fragment],
       options.fragments,
+      functionNames,
       !options.noShorthand
     )
     if (fragmentReplacement === undefined)
