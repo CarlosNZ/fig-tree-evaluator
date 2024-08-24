@@ -174,4 +174,7 @@ export type OperatorMetadata = OperatorData & {
 
 export type FragmentMetadata = FragmentData & { name: string }
 
-export type CustomFunctionMetadata = { name: string; numRequiredArgs: number }
+export type CustomFunctionMetadata = { name: string; numRequiredArgs: number } & Omit<
+  FunctionDefinition,
+  'function'
+>
