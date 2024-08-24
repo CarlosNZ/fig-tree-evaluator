@@ -43,5 +43,8 @@ export const evaluatorConfig = {
       return input.split('').reverse().join('')
     },
     plus: (...values: any[]) => values.reduce((acc, val) => acc + val),
+    getFullName: (nameObject: { firstName: string; lastName: string }) => {
+      return `${nameObject.firstName} ${nameObject.lastName}`
+    },
   },
 }

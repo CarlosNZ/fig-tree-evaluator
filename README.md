@@ -10,7 +10,7 @@ A typical use case would be for evaluating **configuration** files, where you ne
 - configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic. (See implementation in `20_match.test.ts`)
 - extend [JSON Forms](https://jsonforms.io) with more complex logic and dynamic lookups: https://github.com/CarlosNZ/jsonforms-with-figtree-demo
 
-A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs.
+A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs. Plus, you can extend functionality with your own [custom operators](#custom-functionsoperators)
 
 [**Demo/Playground**](https://carlosnz.github.io/fig-tree-evaluator/)
 
@@ -48,7 +48,9 @@ A range of built-in operators are available, from simple logic, arithmetic and s
   - [BUILD\_OBJECT](#build_object)
   - [MATCH](#match)
   - [PASSTHRU](#passthru)
-  - [CUSTOM\_FUNCTIONS](#custom_functions)
+- [Custom Functions/Operators](#custom-functionsoperators)
+  - [The CUSTOM\_FUNCTIONS operator](#the-custom_functions-operator)
+  - [Custom Operators](#custom-operators)
 - [Alias Nodes](#alias-nodes)
 - [Fragments](#fragments)
 - [Shorthand syntax](#shorthand-syntax)
@@ -67,7 +69,7 @@ A range of built-in operators are available, from simple logic, arithmetic and s
 
 Fig-tree evaluates expressions structured in a JSON/Javascript object [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
 
-A wide range of [operators are available](#operator-reference), but [custom functions](#custom_functions) can be added to your implementation if you wish to extend the base functionality.
+A wide range of [operators are available](#operator-reference), but [custom functions/operators](#custom_functions) can be added to your implementation if you wish to extend the base functionality.
 
 For example:
 
@@ -150,7 +152,7 @@ FigTreeEvaluator is written in **Typescript**, and the following types are avail
 The `options` parameter is an object with the following available properties (all optional):
 
 - `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
-- `functions` -- a single object containing any *custom functions* available for use by the [customFunctions](#custom_functions) operator.
+- `functions` -- a single object containing any *custom functions* available for use by [custom functions/operators](#custom_functions).
 - `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
 - `httpClient` -- pass your http client in here in order to use the HTTP-based operators ([`GET`](#get), [`POST`](#post), [`GraphQL`](#graphql)) (uses browser's native `fetch` by default). 
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
@@ -1556,48 +1558,66 @@ e.g.
 
 ----
 
-### CUSTOM_FUNCTIONS
+## Custom Functions/Operators
 
-*Extend functionality by calling custom functions*
+There is one final operator `CUSTOM_FUNCTIONS`, which opens the door to extending FigTree's functionality. You can either call this operator directly, or make your functions "custom operators" in their own right.
 
-Aliases: `customFunctions`, `customFunction`, `objectFunctions`, `functions`, `function`, `runFunction`
+But first you need to define your functions in FigTree's [options](#available-options), for example:
 
-#### Properties
-
-- `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>: (string) -- path to where the function resides in the `options.functions` object
-- `args` (or `arguments`, `variables`): (array) -- input arguments for the function
-
-Custom functions provide a mechanism to extend the functionality of the FigTree evaluator to suit almost any requirements.
-
-Custom functions are stored in the evaluator `options`, in the `functions` property.
-
-For examples, consider the following fig-tree instance:
 ```js
 const fig = new FigTreeEvaluator({
   functions: {
     double: (x) => x * 2,
     getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
-    toUpperCase: (input) => input.toUpperCase(),
+    changeCase: ({string, case}) => case === "upper" ? 
+      string.toUpperCase() : string.toLowerCase()
+    average: (...numbers) => (numbers.reduce(
+      (a, n) => a + n, 0)) / numbers.length,
   },
 })
 ```
+
+*You can also define functions with extended metadata -- see [Metadata](#metadata) for more on that.*
+
+### The CUSTOM_FUNCTIONS operator
+
+Aliases: `customFunctions`, `customFunction`, `functions`, `function`, `runFunction`
+
+#### Properties
+
+- `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>): (string) -- name of the function in the  `options.functions` object
+- `args` (or `arguments`, `variables`): (array | any) -- input arguments for the function. If an array, will be passed in as multiple arguments.
+- `input`: Input argument if function only takes a single argument. Note that, if your function takes a single array as its argument, you'll need to pass it in the `input` property -- the `args` property will spread the array into multiple arguments.
 
 Here is the result of various expressions:
 ```js
 {
   operator: 'functions',
   functionPath: 'double',
-  args: [50],
+  input: 50,
 }
 // => 100
+
+{
+  operator: 'stringSubstitution',
+  string: "The average age of our students is %1"
+  replacements: [
+    {
+      operator: 'function',
+      functionPath: 'average',
+      args: [18, 35, 27, 55, 17, 28],
+    }
+  ]
+}
+// => "The average age of our students is 30"
 
 {
   operator: '+',
   values: [
     {
       operator: 'customFunctions',
-      functionPath: 'toUpperCase',
-      args: ['The current year is: '],
+      functionPath: 'changeCase',
+      args: ['The current year is: ', 'upper'],
     },
     {
       operator: 'customFunctions',
@@ -1610,14 +1630,49 @@ Here is the result of various expressions:
 
 `children` array: `[functionPath, ...args]`
 
-e.g.
+### Custom Operators
+
+Your expressions can actually refer to functions directly in the `operator` property, effectively allowing you to create any number of **custom operators**.
+
+Converting the above examples to this format:
+
 ```js
 {
-  operator: 'functions',
-  children: ['double', 99],
+  operator: 'double',
+  input: 50,
 }
-// => 198
+// => 100
+
+{
+  operator: 'stringSubstitution',
+  string: "The average age of our students is %1"
+  replacements: [
+    {
+      operator: 'average',
+      args: [18, 35, 27, 55, 17, 28],
+    }
+  ]
+}
+// => "The average age of our students is 30"
+
+{
+  operator: '+',
+  values: [
+    {
+      // Notice the properties of a single input object can be
+      // passed as properties on the main Operator node
+      operator: 'changeCase',
+      string: 'The current year is: ',
+      case: 'upper'
+    },
+    { operator: 'getCurrentYear' },
+  ],
+}
+// => "THE CURRENT YEAR IS: 2023"
 ```
+
+These custom operators even support the [shorthand syntax](#shorthand-syntax) -- they should behave just like standard operators.
+
 
 ## Alias Nodes
 
@@ -1943,8 +1998,17 @@ const fig = new FigTreeEvaluator({
     ... // More fragments
   },
   functions: {
-    doubleArray: (...args) => args.map((e) => e + e),
-    getDate: (dateString) => new Date(dateString),
+    doubleArray: {
+      function: (...args) => args.map((e) => e + e),
+      description: "Double each item in an array",
+      parameterDefaults: [1, 2, 3, 4]
+    },
+    changeCase: {
+      function: ({string, case}) => case === "upper" ? 
+        string.toUpperCase() : string.toLowerCase()
+      description: "Convert a string to either upper or lower case",
+      operatorDefault: {string: "New string", case: "upper"}
+    }
     ... // More functions
   }
   ... // More options
@@ -2020,9 +2084,18 @@ Returns:
 
 ```js
 [
-  { name: 'doubleArray', numRequiredArgs: 0 },
-  { name: 'getDate', numRequiredArgs: 1 },
-  ... // More functions
+  {
+    name: 'doubleArray',
+    numRequiredArgs: 1,
+    description: 'Double each item in an array',
+    parameterDefaults: [ 1, 2, 3, 4 ]
+  },
+  {
+    name: 'changeCase',
+    numRequiredArgs: 1,
+    description: 'Convert a string to either upper or lower case',
+    operatorDefault: { string: 'New string', case: 'upper' }
+  }
 ]
 ```
 
@@ -2060,6 +2133,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.17.0**: Allow Custom Functions to be expressed  as Custom Operators
 - **v2.16.10**: Fix for when aliases reference other aliases at the same level
 - **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
 - **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 
