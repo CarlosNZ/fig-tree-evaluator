@@ -11,14 +11,14 @@ const exp = new FigTreeEvaluator({
         return input.split('').reverse().join('')
       },
       description: 'Reverse a string or array',
-      parameterDefaults: ['Reverse Me'],
+      argsDefault: ['Reverse Me'],
     },
     getFullName: {
       function: (nameObject: { firstName: string; lastName: string }) => {
         return `${nameObject.firstName} ${nameObject.lastName}`
       },
       description: 'Combine first and last names',
-      operatorDefault: { firstName: 'First', lastName: 'Last' },
+      inputDefault: { firstName: 'First', lastName: 'Last' },
     },
   },
   objects: {
