@@ -128,10 +128,10 @@ class FigTreeEvaluator {
       const func = typeof f === 'function' ? f : f?.function
       const functionMetadata: CustomFunctionMetadata = { name, numRequiredArgs: func?.length }
       if (typeof f !== 'function') {
-        const { description, parameterDefaults, operatorDefault } = f
+        const { description, argsDefault, inputDefault } = f
         if (description) functionMetadata.description = description
-        if (parameterDefaults) functionMetadata.parameterDefaults = parameterDefaults
-        if (operatorDefault) functionMetadata.operatorDefault = operatorDefault
+        if (argsDefault) functionMetadata.argsDefault = argsDefault
+        if (inputDefault) functionMetadata.inputDefault = inputDefault
         return functionMetadata
       }
       return functionMetadata

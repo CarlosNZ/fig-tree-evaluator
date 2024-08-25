@@ -7,9 +7,9 @@ const fig = new FigTreeEvaluator({
     fDate: {
       function: (dateString: string) => new Date(dateString),
       description: 'Turn a date string into a JS Date object',
-      parameterDefaults: ['December 23, 1995 03:24:00'],
+      argsDefault: ['December 23, 1995 03:24:00'],
     },
-    addTwo: { function: (n1: number, n2: number) => n1 + n2, operatorDefault: { n1: 10, n2: 10 } },
+    addTwo: { function: (n1: number, n2: number) => n1 + n2, inputDefault: { n1: 10, n2: 10 } },
     fNoArgs: { function: () => 5 * 5, description: 'Returns 10 🤷‍♂️' },
   },
   fragments: {
@@ -744,9 +744,9 @@ test('Metadata -- get operator info', () => {
       ],
       parameters: [
         {
-          name: 'functionPath',
+          name: 'functionName',
           description: 'Path (in options.functions) to the required function',
-          aliases: ['functionPath', 'funcName', 'functionName', 'function', 'path', 'name'],
+          aliases: ['functionPath', 'funcName', 'function', 'path', 'name'],
           required: true,
           type: 'string',
           default: null,
@@ -813,6 +813,7 @@ test('Metadata -- get fragment info', () => {
 })
 
 test('Metadata -- get customFunction info', () => {
+  console.log(fig.getCustomFunctions())
   expect(fig.getCustomFunctions()).toStrictEqual([
     { name: 'getPrincess', numRequiredArgs: 1 },
     { name: 'fDouble', numRequiredArgs: 0 },
@@ -820,12 +821,12 @@ test('Metadata -- get customFunction info', () => {
       name: 'fDate',
       numRequiredArgs: 1,
       description: 'Turn a date string into a JS Date object',
-      parameterDefaults: ['December 23, 1995 03:24:00'],
+      argsDefault: ['December 23, 1995 03:24:00'],
     },
     {
       name: 'addTwo',
       numRequiredArgs: 2,
-      operatorDefault: { n1: 10, n2: 10 },
+      inputDefault: { n1: 10, n2: 10 },
     },
     {
       name: 'fNoArgs',

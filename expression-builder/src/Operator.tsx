@@ -36,7 +36,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const {
     data,
     parentData,
-    nodeData: { path, level },
+    nodeData: { path },
     onEdit,
     customNodeProps,
   } = props
@@ -142,11 +142,16 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
       )}
       {isCustomFunction && isEditing && (
         <FunctionSelector
-          value={(parentData as OperatorNode)?.functionPath as string}
+          value={(parentData as OperatorNode)?.functionName as string}
           functions={figTree.getCustomFunctions()}
-          updateNode={(functionPath, numArgs) => {
-            const newNode = { ...parentData, functionPath } as Record<string, unknown>
-            if (numArgs) newNode.args = new Array(numArgs).fill(null)
+          updateNode={({ name, numRequiredArgs, argsDefault, inputDefault }) => {
+            const newNode = { ...parentData, functionName: name } as Record<string, unknown>
+            delete newNode.input
+            delete newNode.args
+            if (inputDefault) newNode.input = inputDefault
+            if (argsDefault) newNode.args = argsDefault
+            if (numRequiredArgs && !argsDefault && !inputDefault)
+              newNode.args = new Array(numRequiredArgs).fill(null)
             onEdit(newNode, expressionPath)
           }}
         />
@@ -294,7 +299,7 @@ export const PropertySelector: React.FC<{
 export const FunctionSelector: React.FC<{
   value: string
   functions: readonly CustomFunctionMetadata[]
-  updateNode: (functionPath: string, numArgs: number) => void
+  updateNode: (functionDefinition: CustomFunctionMetadata) => void
 }> = ({ value, functions, updateNode }) => {
   const functionOptions = functions.map(({ name, numRequiredArgs }) => ({
     key: name,
@@ -303,9 +308,8 @@ export const FunctionSelector: React.FC<{
   }))
 
   const handleFunctionSelect = (selected: SelectOption) => {
-    const { name, numRequiredArgs = 0 } = functions.find((f) => f.name === selected.value) ?? {}
-    console.log(name, numRequiredArgs)
-    if (name) updateNode(name, numRequiredArgs)
+    const func = functions.find((f) => f.name === selected.value)
+    if (func) updateNode(func)
   }
 
   return (

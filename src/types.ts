@@ -104,8 +104,8 @@ export interface FragmentData {
 export interface FunctionDefinition {
   function: UnknownFunction
   description?: string
-  parameterDefaults?: unknown[]
-  operatorDefault?: Record<string, unknown>
+  argsDefault?: unknown[]
+  inputDefault?: Record<string, unknown>
 }
 
 export type Fragment =

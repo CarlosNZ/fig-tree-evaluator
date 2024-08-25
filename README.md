@@ -1560,7 +1560,7 @@ e.g.
 
 ## Custom Functions/Operators
 
-There is one final operator `CUSTOM_FUNCTIONS`, which opens the door to extending FigTree's functionality. You can either call this operator directly, or make your functions "custom operators" in their own right.
+There is one final operator, `CUSTOM_FUNCTIONS`, which opens the door to extending FigTree's functionality. You can either call this operator directly, or make your functions "custom operators" in their own right.
 
 But first you need to define your functions in FigTree's [options](#available-options), for example:
 
@@ -1569,7 +1569,7 @@ const fig = new FigTreeEvaluator({
   functions: {
     double: (x) => x * 2,
     getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
-    changeCase: ({string, case}) => case === "upper" ? 
+    changeCase: ({string, toCase}) => toCase === "upper" ? 
       string.toUpperCase() : string.toLowerCase()
     average: (...numbers) => (numbers.reduce(
       (a, n) => a + n, 0)) / numbers.length,
@@ -1663,7 +1663,7 @@ Converting the above examples to this format:
       // passed as properties on the main Operator node
       operator: 'changeCase',
       string: 'The current year is: ',
-      case: 'upper'
+      toCase: 'upper'
     },
     { operator: 'getCurrentYear' },
   ],
@@ -2001,13 +2001,13 @@ const fig = new FigTreeEvaluator({
     doubleArray: {
       function: (...args) => args.map((e) => e + e),
       description: "Double each item in an array",
-      parameterDefaults: [1, 2, 3, 4]
+      argsDefault: [1, 2, 3, 4]
     },
     changeCase: {
-      function: ({string, case}) => case === "upper" ? 
-        string.toUpperCase() : string.toLowerCase()
+      function: ({string, toCase}) => toCase === "upper" ? 
+        string.toUpperCase() : string.toLowerCase(),
       description: "Convert a string to either upper or lower case",
-      operatorDefault: {string: "New string", case: "upper"}
+      inputDefault: {string: "New string", toCase: "upper"}
     }
     ... // More functions
   }
@@ -2088,13 +2088,13 @@ Returns:
     name: 'doubleArray',
     numRequiredArgs: 1,
     description: 'Double each item in an array',
-    parameterDefaults: [ 1, 2, 3, 4 ]
+    argsDefault: [ 1, 2, 3, 4 ]
   },
   {
     name: 'changeCase',
     numRequiredArgs: 1,
     description: 'Convert a string to either upper or lower case',
-    operatorDefault: { string: 'New string', case: 'upper' }
+    inputDefault: { string: 'New string', toCase: 'upper' }
   }
 ]
 ```
@@ -2133,7 +2133,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
-- **v2.17.0**: Allow Custom Functions to be expressed  as Custom Operators
+- **v2.17.0**: Allow Custom Functions to be expressed as Custom Operators
 - **v2.16.10**: Fix for when aliases reference other aliases at the same level
 - **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
 - **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 

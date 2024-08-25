@@ -12,9 +12,9 @@ const aliases = [
 ]
 const parameters: OperatorParameterMetadata[] = [
   {
-    name: 'functionPath',
+    name: 'functionName',
     description: 'Path (in options.functions) to the required function',
-    aliases: ['functionPath', 'funcName', 'functionName', 'function', 'path', 'name'],
+    aliases: ['functionPath', 'funcName', 'function', 'path', 'name'],
     required: true,
     type: 'string',
     default: null,

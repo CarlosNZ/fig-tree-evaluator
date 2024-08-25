@@ -38,13 +38,20 @@ export const evaluatorConfig = {
     },
   },
   customFunctions: {
-    reverse: (input: unknown[] | string) => {
-      if (Array.isArray(input)) return [...input].reverse()
-      return input.split('').reverse().join('')
+    reverse: {
+      function: (input: unknown[] | string) => {
+        if (Array.isArray(input)) return [...input].reverse()
+        return input.split('').reverse().join('')
+      },
+      description: 'Reverse a string, or array',
+      argsDefault: ['Reverse Me'],
     },
-    plus: (...values: any[]) => values.reduce((acc, val) => acc + val),
-    getFullName: (nameObject: { firstName: string; lastName: string }) => {
-      return `${nameObject.firstName} ${nameObject.lastName}`
+    changeCase: {
+      function: ({ string, toCase }: { string: string; toCase: 'lower' | 'upper' }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase(),
+      description: 'Convert a string to either upper or lower case',
+      inputDefault: { string: 'New string', toCase: 'upper' },
     },
+    currentDate: () => new Date(),
   },
 }
