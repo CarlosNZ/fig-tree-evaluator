@@ -179,11 +179,10 @@ const commonPropertyDetails = [
 // Returns a list of available properties for Operator or Fragment, excluding
 // ones already in use
 export const getAvailableProperties = (
-  metaData: OperatorMetadata,
+  parameters: { name: string }[],
   node: OperatorNode | FragmentNode
 ) => {
-  if (!metaData?.parameters) return []
-  const allProperties = [...metaData.parameters, ...commonPropertyDetails]
+  const allProperties = [...parameters, ...commonPropertyDetails]
   const currentProperties = Object.keys(node)
   return allProperties.filter((param) => !currentProperties.includes(param.name))
 }

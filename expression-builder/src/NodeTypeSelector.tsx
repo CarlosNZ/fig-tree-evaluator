@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
 import { Select, SelectOption } from './Select'
-import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { FigTreeEvaluator } from './_imports'
 
 export type NodeType = 'operator' | 'fragment' | 'value' | 'customOperator'
 
@@ -13,7 +13,7 @@ export const NodeTypeSelector: React.FC<{
   value: NodeType
   changeNode: (type: unknown) => void
   figTree: FigTreeEvaluator
-  currentExpression: object | unknown[] | null
+  currentExpression?: object | unknown[] | null
 }> = ({ value, changeNode, figTree, currentExpression }) => {
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
   const functions = useMemo(() => figTree.getCustomFunctions(), [figTree])
@@ -60,6 +60,7 @@ export const NodeTypeSelector: React.FC<{
 
   return (
     <Select
+      className="ft-node-type-select"
       value={currentSelection}
       options={options}
       onChange={handleChange as (s: unknown) => void}

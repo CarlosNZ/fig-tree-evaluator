@@ -162,6 +162,7 @@
 .ft-edit-icon {
   opacity: 0;
   padding-right: 5em; /* Gives wider hover target */
+  /* display: flex; */
 }
 
 .ft-edit-icon:hover {
@@ -176,12 +177,11 @@
   /* margin-left: 0.5em; */
   margin-top: 0.3em;
 }
-/* 
+
 .ft-function-select {
-  display: flex;
-  align-items: center;
-  padding-bottom: 0.5em;
-} */
+  font-size: 80%;
+  text-wrap: nowrap;
+}
 
 .ft-alias-header-text {
   border-top: 1px solid #dbdbdb;

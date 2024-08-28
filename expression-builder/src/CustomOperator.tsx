@@ -23,6 +23,7 @@ import { getButtonFontSize, getDefaultValue } from './helpers'
 import { DisplayBar } from './Operator'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
+import { getAvailableProperties } from './validator'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
@@ -51,6 +52,8 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
 
   if (!functionData) return null
 
+  const availableProperties = getAvailableProperties([], parentData as OperatorNode)
+
   return (
     <div className="ft-custom ft-operator">
       {isEditing ? (
@@ -66,24 +69,24 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
             value={(parentData as OperatorNode)?.functionName as string}
             functions={figTree.getCustomFunctions()}
             updateNode={({ name, numRequiredArgs, argsDefault, inputDefault }) => {
-              const newNode = { ...parentData, functionName: name } as Record<string, unknown>
+              const newNode = { operator: name, ...inputDefault } as Record<string, unknown>
               delete newNode.input
               delete newNode.args
-              if (inputDefault) newNode.input = inputDefault
+              // if (inputDefault) newNode.input = inputDefault
               if (argsDefault) newNode.args = argsDefault
               if (numRequiredArgs && !argsDefault && !inputDefault)
                 newNode.args = new Array(numRequiredArgs).fill(null)
               onEdit(newNode, expressionPath)
             }}
           />
-          {/* {availableProperties.length > 0 && (
+          {availableProperties.length > 0 && (
             <PropertySelector
               availableProperties={availableProperties as OperatorParameterMetadata[]}
               updateNode={(newProperty) =>
                 onEdit({ ...parentData, ...newProperty }, expressionPath)
               }
             />
-          )} */}
+          )}
           <div className="ft-clickable ft-okay-icon" onClick={handleSubmit}>
             <IconOk size="2em" style={{ color: 'green' }} />
           </div>

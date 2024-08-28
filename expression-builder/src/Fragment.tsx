@@ -38,7 +38,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const thisFragment = data as string
 
   const availableProperties = getAvailableProperties(
-    fragmentData as OperatorMetadata,
+    fragmentData.parameters ?? [],
     parentData as FragmentNode
   )
 

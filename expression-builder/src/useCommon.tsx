@@ -12,13 +12,10 @@ interface Input {
 }
 
 export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Input) => {
-  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
+  const { evaluateNode, topLevelAliases } = customNodeProps
   const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
-
-  const fragments = figTree.getFragments()
-  const functions = figTree.getCustomFunctions()
 
   const expressionPath = nodeData.path.slice(0, -1)
 

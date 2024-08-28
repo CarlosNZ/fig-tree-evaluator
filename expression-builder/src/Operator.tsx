@@ -18,7 +18,6 @@ import {
 } from './_imports'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
-// import './styles.css'
 import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
@@ -58,12 +57,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!operatorData) return null
 
-  const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
+  const availableProperties = getAvailableProperties(
+    operatorData.parameters,
+    parentData as OperatorNode
+  )
 
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
-
-  const fragments = figTree.getFragments()
-  const functions = figTree.getCustomFunctions()
 
   return (
     <div className="ft-custom ft-operator">
@@ -144,7 +143,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   setIsEditing,
   evaluate,
   isLoading,
-  canonicalName,
+  canonicalName = 'CUSTOM_FUNCTIONS',
 }) => {
   const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
   const isShorthand = name.startsWith('$')

@@ -84,6 +84,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
     return new Set(all)
   }, [])
   const allFragments = useMemo(() => new Set(fragments.map((f) => f.name)), [])
+  const allFunctions = useMemo(() => new Set(functions.map((f) => f.name)), [])
 
   const [expression, setExpression] = useState(
     (() => {
@@ -128,14 +129,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   }
 
   const isShorthandWrapper = (nodeData: NodeData) =>
-    shorthandWrapperTester(nodeData, allOpAliases, allFragments)
+    shorthandWrapperTester(nodeData, allOpAliases, allFragments, allFunctions)
   const isShorthandNode = (nodeData: NodeData) =>
-    shorthandNodeTester(nodeData, allOpAliases, allFragments)
+    shorthandNodeTester(nodeData, allOpAliases, allFragments, allFunctions)
 
   const isShorthandStringNode = (nodeData: NodeData) =>
-    shorthandStringNodeTester(nodeData, allOpAliases, allFragments)
+    shorthandStringNodeTester(nodeData, allOpAliases, allFragments, allFunctions)
   const isShorthandString = (value: unknown) =>
-    shorthandStringTester(value, allOpAliases, allFragments)
+    shorthandStringTester(value, allOpAliases, allFragments, allFunctions)
 
   return (
     <JsonEditor
@@ -239,7 +240,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           {
             condition: ({ key, value }) => {
               console.log(key, value)
-              return key === 'operator' && functions.map(({ name }) => name).includes(String(value))
+              return key === 'operator' && allFunctions.has(String(value))
             },
             element: CustomOperator,
             customNodeProps: {
@@ -306,7 +307,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             customNodeProps: { figTree, evaluateNode },
           },
           {
-            condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
+            condition: (nodeData) =>
+              isFirstAliasNode(nodeData, allOpAliases, allFragments, allFunctions),
             showOnEdit: true,
             wrapperElement: ({ children }) => (
               <div>
@@ -330,8 +332,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         ] as CustomNodeDefinition[]
       }
       customText={{
-        ITEMS_MULTIPLE: (nodeData) => propertyCountReplace(nodeData, allOpAliases, allFragments),
-        ITEM_SINGLE: (nodeData) => propertyCountReplace(nodeData, allOpAliases, allFragments),
+        ITEMS_MULTIPLE: (nodeData) =>
+          propertyCountReplace(nodeData, allOpAliases, allFragments, allFunctions),
+        ITEM_SINGLE: (nodeData) =>
+          propertyCountReplace(nodeData, allOpAliases, allFragments, allFunctions),
       }}
     />
   )
