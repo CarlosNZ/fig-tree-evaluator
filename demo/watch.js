@@ -3,10 +3,11 @@ import { execSync } from 'child_process'
 
 console.log('Relaunching...')
 
-// Evaluator
-execSync('cp -R ../src/* ./src/fig-tree-evaluator/src')
-execSync('cp ../package.json ./src/fig-tree-evaluator')
-execSync('rimraf ./src/fig-tree-evaluator/src/test ./src/fig-tree-evaluator/src/dev')
+// Evaluator to Expression Editor
+execSync('cp -R ../src/* ../expression-builder/src/fig-tree-evaluator/src')
+execSync(
+  'rimraf ../expression-builder/src/fig-tree-evaluator/src/dev ../expression-builder/src/fig-tree-evaluator/src/test'
+)
 
 // Expression Editor
 execSync('cp -R ../expression-builder/src/* ./src/expression-builder/src')
