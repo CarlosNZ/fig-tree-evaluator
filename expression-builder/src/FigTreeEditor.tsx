@@ -79,8 +79,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
   const functions = useMemo(() => figTree.getCustomFunctions(), [figTree])
 
-  console.log('fragments', fragments)
-
   const allOpAliases = useMemo(() => {
     const all = operators.map((op) => [op.name, ...op.aliases]).flat()
     return new Set(all)

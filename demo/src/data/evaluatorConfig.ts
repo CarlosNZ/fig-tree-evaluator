@@ -48,6 +48,9 @@ export const evaluatorConfig = {
       description: 'Convert a string to either upper or lower case',
       inputDefault: { string: 'New string', toCase: 'upper' },
     },
-    currentDate: () => new Date().toLocaleDateString(),
+    currentDate: {
+      function: () => new Date().toLocaleDateString(),
+      description: "Returns today's date in local format",
+    },
   },
 }

@@ -8,7 +8,7 @@ import {
   NodeData,
 } from './_imports'
 // import './styles.css'
-import { EvaluateButton } from './Operator'
+import { EvaluateButton } from './DisplayBar'
 
 interface TopLevelProps {
   figTree: FigTreeEvaluator

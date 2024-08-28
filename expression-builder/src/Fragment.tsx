@@ -11,7 +11,8 @@ import {
   FragmentParameterMetadata,
 } from './_imports'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
+import { OperatorProps, PropertySelector } from './Operator'
+import { DisplayBar } from './DisplayBar'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
 import { useCommon } from './useCommon'
@@ -74,6 +75,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
       ) : (
         <DisplayBar
           name={thisFragment}
+          description={fragmentData.description}
           setIsEditing={() => setIsEditing(true)}
           evaluate={evaluate}
           isLoading={loading}

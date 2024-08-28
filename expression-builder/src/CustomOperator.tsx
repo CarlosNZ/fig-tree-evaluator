@@ -15,7 +15,8 @@ import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'
 import { getButtonFontSize } from './helpers'
-import { DisplayBar, PropertySelector } from './Operator'
+import { PropertySelector } from './Operator'
+import { DisplayBar } from './DisplayBar'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
 import { getAvailableProperties } from './validator'
@@ -67,7 +68,6 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
               const newNode = { operator: name, ...inputDefault } as Record<string, unknown>
               delete newNode.input
               delete newNode.args
-              // if (inputDefault) newNode.input = inputDefault
               if (argsDefault) newNode.args = argsDefault
               if (numRequiredArgs && !argsDefault && !inputDefault)
                 newNode.args = new Array(numRequiredArgs).fill(null)
@@ -92,6 +92,7 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
       ) : (
         <DisplayBar
           name={functionData.name}
+          description={functionData.description}
           setIsEditing={() => setIsEditing(true)}
           evaluate={evaluate}
           isLoading={loading}
