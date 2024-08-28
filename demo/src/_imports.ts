@@ -19,7 +19,7 @@ export { FigTreeEditor }
  */
 
 // Published
-export * from 'fig-tree-evaluator'
+// export * from 'fig-tree-evaluator'
 
 // Local
-// export * from './fig-tree-evaluator/src'
+export * from './expression-builder/src/fig-tree-evaluator/src'
