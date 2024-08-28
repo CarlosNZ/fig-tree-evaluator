@@ -124,10 +124,20 @@ class FigTreeEvaluator {
   }
 
   public getCustomFunctions() {
-    return Object.entries(this.options.functions ?? {}).map(([name, value]) => ({
-      name,
-      numRequiredArgs: value.length,
-    })) as readonly CustomFunctionMetadata[]
+    return Object.entries(this.options.functions ?? {}).map(([name, f]) => {
+      const func = typeof f === 'function' ? f : f?.function
+      const functionMetadata: CustomFunctionMetadata = { name, numRequiredArgs: func?.length }
+      if (typeof f !== 'function') {
+        const { description, argsDefault, inputDefault, textColor, backgroundColor } = f
+        if (description) functionMetadata.description = description
+        if (argsDefault) functionMetadata.argsDefault = argsDefault
+        if (inputDefault) functionMetadata.inputDefault = inputDefault
+        if (textColor) functionMetadata.textColor = textColor
+        if (backgroundColor) functionMetadata.backgroundColor = backgroundColor
+        return functionMetadata
+      }
+      return functionMetadata
+    }) as readonly CustomFunctionMetadata[]
   }
 
   public getVersion = () => version

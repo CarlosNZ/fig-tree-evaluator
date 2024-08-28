@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useMemo } from 'react'
 import {
   // Fig-Tree
   FigTreeEvaluator,
   FragmentMetadata,
   FragmentNode,
-  OperatorMetadata,
+
   // json-edit-react
   CustomNodeProps,
   IconOk,
@@ -12,60 +12,51 @@ import {
   FragmentParameterMetadata,
 } from './_imports'
 import { NodeTypeSelector } from './NodeTypeSelector'
-import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
+import { OperatorProps, PropertySelector } from './Operator'
+import { DisplayBar } from './DisplayBar'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
-import { getAliases } from './helpers'
+import { useCommon } from './useCommon'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const {
-    data,
-    parentData,
-    nodeData: { path },
-    onEdit,
-    customNodeProps,
-  } = props
+  const { data, parentData, nodeData, onEdit, customNodeProps } = props
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
-  const [prevState, setPrevState] = useState(parentData)
-  const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const {
+    handleCancel,
+    handleSubmit,
+    expressionPath,
+    isEditing,
+    setIsEditing,
+    evaluate,
+    loading,
+    operatorDisplay,
+  } = useCommon({
+    customNodeProps,
+    parentData,
+    nodeData,
+    onEdit,
+  })
+
+  const { figTree } = customNodeProps
 
   if (!figTree) return null
 
-  const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
   const availableProperties = getAvailableProperties(
-    fragmentData as OperatorMetadata,
+    fragmentData.parameters ?? [],
     parentData as FragmentNode
   )
 
-  const handleSubmit = () => {
-    setPrevState(parentData)
-    setIsEditing(false)
-  }
+  const { textColor, backgroundColor } = fragmentData
 
-  const handleCancel = () => {
-    onEdit(prevState, expressionPath)
-    setIsEditing(false)
-  }
-
-  const listenForSubmit = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') handleSubmit()
-    if (e.key === 'Escape') handleCancel()
-  }
-
-  useEffect(() => {
-    if (isEditing) document.addEventListener('keydown', listenForSubmit)
-    else document.removeEventListener('keydown', listenForSubmit)
-    return () => document.removeEventListener('keydown', listenForSubmit)
-  }, [isEditing])
-
-  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
+  const displayData =
+    textColor && backgroundColor
+      ? { textColor, backgroundColor, displayName: 'Custom Operator' }
+      : undefined
 
   return (
     <div className="ft-custom ft-fragment">
@@ -74,7 +65,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           <NodeTypeSelector
             value="fragment"
             changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
-            defaultFragment={thisFragment}
+            figTree={figTree}
           />
           :
           <FragmentSelector
@@ -100,14 +91,12 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
       ) : (
         <DisplayBar
           name={thisFragment}
+          description={fragmentData.description}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={async () => {
-            setLoading(true)
-            await evaluateNode({ ...parentData, ...aliases })
-            setLoading(false)
-          }}
+          evaluate={evaluate}
           isLoading={loading}
           canonicalName="FRAGMENT"
+          operatorDisplay={displayData ?? operatorDisplay?.FRAGMENT}
         />
       )}
     </div>

@@ -119,13 +119,14 @@ export const getButtonFontSize = (operatorAlias: string) => {
 export const propertyCountReplace = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   const { value } = nodeData
   if (!(value instanceof Object)) return null
   if ('operator' in value) return `Operator: ${value.operator}`
   if ('fragment' in value) return `Fragment: ${value.fragment}`
-  if (isShorthandNode(nodeData, allOperatorAliases, allFragments)) {
+  if (isShorthandNode(nodeData, allOperatorAliases, allFragments, allFunctions)) {
     const shorthandOperator = Object.keys(value)[0]
     return `Shorthand: ${shorthandOperator}`
   }
@@ -135,20 +136,22 @@ export const propertyCountReplace = (
 export const isShorthandWrapper = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   const { parentData, key } = nodeData
   if (!isObject(parentData)) return false
 
   const alias = (key as string).slice(1)
 
-  return allOperatorAliases.has(alias) || allFragments.has(alias)
+  return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
 }
 
 export const isShorthandNode = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   const { value } = nodeData
   if (!isObject(value)) return false
@@ -160,13 +163,14 @@ export const isShorthandNode = (
 
   const alias = shorthandKey.slice(1)
 
-  return allOperatorAliases.has(alias) || allFragments.has(alias)
+  return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
 }
 
 export const isShorthandStringNode = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   const { parentData } = nodeData as { parentData: Record<string, unknown> }
   if (!isObject(parentData)) return false
@@ -180,25 +184,27 @@ export const isShorthandStringNode = (
 
   if (isCollection(parentData?.[shorthandKey as string])) return false
 
-  return allOperatorAliases.has(alias) || allFragments.has(alias)
+  return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
 }
 
 export const isShorthandString = (
   value: unknown,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   if (typeof value !== 'string') return false
   const match = operatorStringRegex.exec(value)
   if (!match) return false
   const op = match[1].trim().slice(1)
-  return allOperatorAliases.has(op) || allFragments.has(op)
+  return allOperatorAliases.has(op) || allFragments.has(op) || allFunctions.has(op)
 }
 
 export const isAliasNode = (
   { key, parentData }: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
   const keyString = key as string
   return (
@@ -206,16 +212,18 @@ export const isAliasNode = (
     parentData &&
     !('fragment' in parentData) &&
     !allOperatorAliases.has(keyString) &&
-    !allFragments.has(keyString)
+    !allFragments.has(keyString) &&
+    !allFunctions.has(keyString.slice(1))
   )
 }
 
 export const isFirstAliasNode = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>
+  allFragments: Set<string>,
+  allFunctions: Set<string>
 ) => {
-  if (!isAliasNode(nodeData, allOperatorAliases, allFragments)) return false
+  if (!isAliasNode(nodeData, allOperatorAliases, allFragments, allFunctions)) return false
 
   const { parentData, index } = nodeData
 

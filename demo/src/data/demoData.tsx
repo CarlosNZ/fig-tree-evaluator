@@ -1,4 +1,4 @@
-import { EvaluatorNode, FigTreeOptions } from 'fig-tree-evaluator'
+import { EvaluatorNode, FigTreeOptions } from '../_imports'
 import { JsonEditorProps } from 'json-edit-react'
 
 export interface DemoData {
@@ -34,12 +34,13 @@ export const demoData: DemoData[] = [
 }
 \`\`\`
 
-Here, the **+** operator concatenates the results of its \`values\` array, two
-of which pull values from the object on the left, which represents data that would be available to the evaluator in your application.
+A basic expression that just joins a couple of values pulled from some form data.
 
 Experiment with changing the values of the data object as well as the object properties being referenced. (See what happens if you reference a path that doesn't exist, then try adding a [\`fallback\`](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#other-common-properties) to handle it.)
 
 Click the **+** button to see the result, or either of the **getData** buttons to evaluate the child elements individually.
+
+Try out some of the other [operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#operator-reference), and build your own expressions from scratch.
 `,
     objectData: {
       user: {
@@ -53,18 +54,14 @@ Click the **+** button to see the result, or either of the **getData** buttons t
         name: 'The Avengers',
         category: 'Superheroes',
       },
-      form: {
-        q1: 'Thor',
-        q2: 'Asgard',
-      },
-      form2: {
-        q1: 'Company Registration',
-        q2: 'XYZ Chemicals',
-      },
       application: {
         questions: {
-          q1: 'What is the answer?',
-          q2: 'Enter your name',
+          q1: 'When were you born?',
+          q2: 'What is your primary weapon',
+        },
+        responses: {
+          q1: '1918',
+          q2: 'Vibranium shield',
         },
       },
     },
@@ -83,6 +80,8 @@ Click the **+** button to see the result, or either of the **getData** buttons t
     content: `
 # Conditional logic
 
+<img src="/img/movie-ticket_300.png" width="150"/>
+
 The result of this expression determines whether the filmgoer is allowed entry to the film, based on their age and whether or not they have a parent in attendance.
 
 The rule is: the filmgoer must meet the minimum age restriction, unless they have a parent with them, in which case they must be over 13 years old.
@@ -91,17 +90,22 @@ Note that the deeper **getData** nodes are written using the [Shorthand syntax](
 
 \`\`\`
 {
-"operator": "getData",
-"property": "patron.age"
+  "operator": "getData",
+  "property": "patron.age"
 }
 \`\`\`
 
 we can just write:
 
 \`\`\`
-{ "$getData": "patron.isParentAttending" }
+{ "$getData": "patron.age" }
 \`\`\`
 `,
+    objectJsonEditorProps: {
+      restrictEdit: ({ level }) => level !== 2,
+      restrictDelete: true,
+      restrictAdd: true,
+    },
     objectData: {
       film: { title: 'Deadpool & Wolverine', minAgeRating: 17 },
       patron: { age: 12, isParentAttending: true },
@@ -145,7 +149,7 @@ Note that this query requires the FigTree [cache](https://github.com/CarlosNZ/fi
 
 Try toggling the "Use cache" setting to see the difference.
     `,
-    objectData: { Info: 'Data object not used' },
+    // objectData: { Info: 'Data object not used' },
     expression: {
       operator: 'stringSubstitution',
       string: 'Hello, {{name.first}} {{name.last}} from {{location.city}}, {{location.country}}!',
@@ -161,6 +165,7 @@ Try toggling the "Use cache" setting to see the difference.
   {
     name: '🧵 Complex string substitution',
     content: `
+# Complex string substitution
 This expression features a much more complex templated string, intended to showcase the capabilities of the [String Substitution](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#string_substitution) operator.
 
 The values substituted into the output string are based on several different factors:
@@ -172,6 +177,7 @@ The values substituted into the output string are based on several different fac
 
 Try changing all these values and see the output differences.
     `,
+    figTreeOptions: { useCache: true },
     objectData: {
       user: {
         name: {
@@ -182,6 +188,13 @@ Try changing all these values and see the output differences.
         friends: ['Steve', 'Bruce', 'Tony'],
         gender: 'female',
       },
+    },
+    objectJsonEditorProps: {
+      restrictEdit: ({ value }) => typeof value !== 'string' && !Array.isArray(value),
+      restrictDelete: true,
+      restrictAdd: true,
+      restrictTypeSelection: true,
+      collapse: 3,
     },
     expression: {
       operator: 'stringSubstitution',
@@ -220,7 +233,6 @@ Try changing all these values and see the output differences.
         },
       },
     },
-    objectJsonEditorProps: { collapse: 3 },
   },
   {
     name: '🏙️ City list from country selection',
@@ -231,10 +243,17 @@ A classic case for a form input is to choose your country from a drop-down, then
 
 This expression returns the city list based on the \`country\` value in \`userResponses\`. You can see this applied to a real form with [this example](https://carlosnz.github.io/jsonforms-with-figtree-demo/) which uses FigTree to extend the dynamic functionality of [JSON Forms](https://jsonforms.io/).
 
-<img src="src/img/country_city_form.png" width="500"/>
+<img src="/img/country_city_form.png" width="500"/>
 
 Note the \`fallback\` property used here — an array with a "Loading..." indicator. This ensures that the Cities dropdown can render with valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,
+    figTreeOptions: { useCache: true },
+    objectJsonEditorProps: {
+      restrictAdd: true,
+      restrictDelete: true,
+      restrictEdit: ({ key }) => key !== 'name' && key !== 'country',
+      restrictTypeSelection: true,
+    },
     objectData: {
       userResponses: { name: 'Mohini', country: 'India' },
     },
@@ -255,6 +274,8 @@ Note the \`fallback\` property used here — an array with a "Loading..." indica
     content: `
 # Decision Tree (for card games)
 
+<img src="/img/cards_500.png" width="250"/>
+
 This expression demonstrates a fairly convoluted [Decision tree](https://en.wikipedia.org/wiki/Decision_tree), making heavy use of the [Match](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#match) operator to handle conditional logic with multiple branches.
 
 A diagram of this particular tree can be found [here](https://user-images.githubusercontent.com/5456533/208660132-39f42ecf-894f-4e7a-891d-ce3a2d184d02.png).
@@ -264,7 +285,7 @@ A diagram of this particular tree can be found [here](https://user-images.github
 This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#alias-nodes), which reduces the amount of duplication required in this structure.
     `,
     objectData: {
-      Info: 'Change the following values to get a card game recommendation! (Difficultly can be either "easy" or "challenging")',
+      Info: 'Change the following values to get a card game recommendation! (Difficulty can be either "easy" or "challenging")',
       numberOfPlayers: 1,
       ageOfYoungestPlayer: 12,
       preferredDifficulty: 'easy',
@@ -273,6 +294,14 @@ This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree
       restrictEdit: ({ key }) => key === 'Info',
       restrictAdd: true,
       restrictDelete: true,
+      restrictTypeSelection: true,
+      onUpdate: ({ path, newValue }) => {
+        if (
+          path[0] === 'preferredDifficulty' &&
+          !['easy', 'challenging'].includes(newValue as string)
+        )
+          return 'Invalid value'
+      },
     },
     expression: {
       operator: 'match',
@@ -354,7 +383,32 @@ This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree
   },
   {
     name: '🕵️ Alias nodes (Star Wars 🚀)',
-    content: '# TO-DO',
+    content: `
+# Alias Nodes
+If you have the same data referenced more than once in your expression, it can be a good idea to create an [Alias node](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#alias-nodes) so it's only evaluated once, particularly if it's a network request.
+
+In this case, the \`$character\` alias pulls a chunk of data from [https://swapi.dev](https://swapi.dev) and then values from it are substituted into the final expression, or used as inputs to further lookups.
+
+Change the \`selected\` character name to look up a different Star Wars character.
+
+<div style="display:flex;justify-content:center">
+<img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExdzVvd2lsNjFqZHJ0NXZrMmE0MmMxbm5tcmcxOWF2NTIwdno5a3QwNSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3ofSB4uhagGiWdSVbi/giphy.webp"/>
+</div>
+    `,
+    objectJsonEditorProps: {
+      restrictDelete: true,
+      restrictAdd: true,
+      restrictEdit: ({ key }) => key !== 'selected',
+      restrictTypeSelection: true,
+      onUpdate: ({ newData, newValue }) => {
+        if (
+          !Object.keys((newData as Record<string, unknown>)?.characters ?? {}).includes(
+            newValue as string
+          )
+        )
+          return 'Invalid input'
+      },
+    },
     objectData: {
       title: 'Star Wars',
       selected: 'Luke',
@@ -400,7 +454,7 @@ This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree
       ],
       fallback: {
         operator: '+',
-        values: ["Can't find character: ", { $getData: 'selected' }],
+        values: ["Can't retrieve data for character: ", { $getData: 'selected' }],
         fallback: '‼️',
       },
       $character: {
@@ -428,10 +482,23 @@ This expression also features [Alias nodes](https://github.com/CarlosNZ/fig-tree
     content: `
 # Fragments
 
-Say you have...
+If you expect your configurations to re-use a lot of common expressions (for example, looking up your site database), you can hard-code [Fragments](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#fragments) into your app, making subsequent expressions simpler.
+
+In this case, two Fragments are pre-defined, and can be explored in the "Configuration" panel:
+
+- \`getCapital\`
+- \`getFlag\`
+
+They both require a \`$country\` parameter, which is substituted into the expression.
     `,
     objectData: {
       myFavouriteCountry: 'New Zealand',
+    },
+    objectJsonEditorProps: {
+      restrictDelete: true,
+      restrictAdd: true,
+      restrictEdit: ({ key }) => key !== 'myFavouriteCountry',
+      restrictTypeSelection: true,
     },
     expression: {
       operator: 'stringSubstitution',
@@ -450,6 +517,7 @@ Say you have...
     },
     expressionCollapse: 3,
     figTreeOptions: {
+      useCache: true,
       fragments: {
         getCapital: {
           operator: 'GET',
@@ -480,6 +548,8 @@ Say you have...
           outputType: 'string',
           metadata: {
             description: "Gets a country's flag",
+            textColor: 'white',
+            backgroundColor: 'black',
             parameters: [
               { name: '$country', type: 'string', required: true, default: 'New Zealand' },
             ],
@@ -489,29 +559,62 @@ Say you have...
     },
   },
   {
-    name: '🧩 Custom Functions',
+    name: '➡ Custom Operators',
     content: `
-# Custom Functions
+# Custom Operators
 
-Say you have...
+Extend the capabilities of FigTree by adding your own functions, which can be used as [Custom Operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#custom-functionsoperators).
+
+There are three hard-coded into this app:
+- **changeCase**:
+
+  \`\`\`
+  ({ string, toCase }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase()
+  \`\`\`
+- **reverse** (reverse a string or array):  
+  
+  \`\`\`
+  (input) => {
+    if (Array.isArray(input)) return [...input].reverse()
+    return input.split('').reverse().join('')
+  }
+  \`\`\`
+- **currentDate** (print current date in local format):
+  
+  \`\`\`
+  ({ string, toCase }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase()
+  \`\`\`  
     `,
     objectData: {
-      myFavouriteCountry: 'New Zealand',
+      backwardsInput: " :si etad s'yadoT",
+      case: 'upper',
+    },
+    objectJsonEditorProps: {
+      restrictDelete: true,
+      restrictAdd: true,
+      restrictEdit: ({ value }) => typeof value !== 'string',
+      restrictTypeSelection: true,
     },
     expression: {
-      operator: 'stringSubstitution',
-      string: '===={{country}}====\nCapital city: {{capital}}\nFlag: {{flag}}',
-      replacements: {
-        capital: { fragment: 'getCapital', $country: '$selectedCountry' },
-        flag: { fragment: 'getFlag', $country: '$selectedCountry' },
-        country: '$selectedCountry',
-      },
-      fallback: "Can't find country 😔",
-      $selectedCountry: {
-        operator: 'getData',
-        property: 'myFavouriteCountry',
-        fallback: 'Country not found',
+      operator: 'changeCase',
+      toCase: 'upper',
+      string: {
+        operator: '+',
+        values: [
+          {
+            operator: 'reverse',
+            args: [
+              {
+                $getData: 'backwardsInput',
+              },
+            ],
+          },
+          { operator: 'currentDate' },
+        ],
       },
     },
+    expressionCollapse: 4,
   },
 ]

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import JSON5 from 'json5'
 import './App.css'
 import {
@@ -23,17 +23,15 @@ import {
   FigTreeOptions,
   FigTreeEditor,
   isFigTreeError,
+  truncateString,
 } from './_imports'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 // @ts-expect-error No declaration
 import { PostgresInterface } from './postgresInterface.js'
-import logo from './img/fig_tree_evaluator_logo_512.png'
 import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
 import { demoData, defaultBlurb } from './data'
-
-import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
 import { useUndo } from './useUndo'
 import { InfoModal } from './InfoModal'
@@ -57,8 +55,10 @@ if (savedCache) {
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile] = useMediaQuery('(max-width: 635px)')
-  const [selectedDataIndex, setSelectedDataIndex] = useState<number>()
-
+  const [selectedDataIndex, setSelectedDataIndex] = useState<number>(
+    demoData.findIndex((data) => data.name === getLocalStorage('lastSelected'))
+  )
+  const modalContent = useRef('main')
   const [showInfo, setShowInfo] = useState(!getLocalStorage('visited')?.main ?? true)
 
   const {
@@ -91,32 +91,42 @@ function App() {
     const visited = getLocalStorage('visited')
     if (!visited?.[demoData?.[selected]?.name]) setShowInfo(true)
 
-    const {
-      objectData,
-      expression,
-      figTreeOptions = {},
-      objectJsonEditorProps = {},
-      expressionCollapse = 2,
-    } = demoData[selected]
+    const { objectData, expression, figTreeOptions = {} } = demoData[selected]
     setExpression(expression as object)
     setLocalStorage('expression', expression as object)
     if (objectData) {
       setObjectData(objectData)
       setLocalStorage('objectData', objectData)
     }
-    setLocalStorage('jsonEditorOptions', objectJsonEditorProps)
-    setLocalStorage('expressionCollapse', expressionCollapse)
+    setLocalStorage('lastSelected', demoData[selected].name)
+    modalContent.current = demoData[selected].name
     figTree.updateOptions(figTreeOptions)
+    setLocalStorage('options', figTreeOptions)
   }
 
   return (
     <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
       <VStack h="100%" w="100%">
-        <OptionsModal figTree={figTree} modalState={{ modalOpen, setModalOpen }} />
+        <OptionsModal
+          figTree={figTree}
+          modalState={{
+            modalOpen,
+            setModalOpen,
+          }}
+        />
         <InfoModal
           selected={currentDemoData?.name ?? 'main'}
-          content={currentDemoData?.content ?? defaultBlurb}
-          modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
+          content={
+            modalContent.current === 'main'
+              ? defaultBlurb
+              : currentDemoData?.content ?? defaultBlurb
+          }
+          modalState={{
+            modalOpen: showInfo,
+            closeModal: () => {
+              setShowInfo(false)
+            },
+          }}
         />
         {/** HEADER */}
         <HStack w="100%" px={4} justify="space-between" align="flex-start">
@@ -124,7 +134,7 @@ function App() {
             <HStack align="flex-end" mt={2} gap={4} flexWrap="wrap">
               <Flex gap={6} align="flex-start">
                 <img
-                  src={logo}
+                  src="https://raw.githubusercontent.com/CarlosNZ/fig-tree-evaluator/main/images/FigTreeEvaluator_logo_1000.png"
                   alt="logo"
                   style={
                     isMobile
@@ -206,8 +216,10 @@ function App() {
               setData={setObjectData as (data: JsonData) => void}
               rootName="data"
               collapse={jsonEditorOptions?.collapse ?? 2}
-              onUpdate={({ newData }) => {
-                localStorage.setItem('objectData', JSON.stringify(newData))
+              onUpdate={(result) => {
+                console.log(result)
+                localStorage.setItem('objectData', JSON.stringify(result.newData))
+                if (jsonEditorOptions?.onUpdate) return jsonEditorOptions.onUpdate(result)
               }}
               minWidth="50%"
               enableClipboard={({ stringValue, type }) => {
@@ -311,7 +323,7 @@ function App() {
             </option>
           ))}
         </Select>
-        <Button colorScheme="blue" onClick={() => setShowInfo(true)}>
+        <Button colorScheme="green" onClick={() => setShowInfo(true)}>
           Info
         </Button>
         <Spacer />

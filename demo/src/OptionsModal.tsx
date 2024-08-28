@@ -25,8 +25,8 @@ import {
   HStack,
   VStack,
 } from '@chakra-ui/react'
-import { filterObjectRecursive } from './helpers'
-import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
+import { filterObjectRecursive, setLocalStorage } from './helpers'
+import { FigTreeEvaluator, FigTreeOptions } from './_imports'
 import { JsonData, JsonEditor } from 'json-edit-react'
 
 const resetFormState = (options: FigTreeOptions) => {
@@ -107,7 +107,7 @@ export const OptionsModal = ({
     }
 
     figTree.updateOptions(newOptions)
-    localStorage.setItem('options', JSON.stringify(newOptions))
+    setLocalStorage('options', newOptions)
     setModalOpen(false)
   }
 

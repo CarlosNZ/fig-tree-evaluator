@@ -1,3 +1,4 @@
+import { CustomFunctionMetadata } from 'fig-tree-evaluator'
 import {
   EvaluatorNode,
   FragmentMetadata,
@@ -24,6 +25,7 @@ export const validateExpression = (
   figTreeMetaData: {
     operators: readonly OperatorMetadata[]
     fragments: readonly FragmentMetadata[]
+    functions: readonly CustomFunctionMetadata[]
   }
 ): EvaluatorNode => {
   if (Array.isArray(expression))
@@ -33,6 +35,13 @@ export const validateExpression = (
 
   const isOperator = isOperatorNode(expression)
   const isFragment = isFragmentNode(expression)
+  const isFunctionOperator =
+    isOperator &&
+    figTreeMetaData.functions
+      .map(({ name }) => name)
+      .includes((expression as OperatorNode)?.operator)
+
+  if (isFunctionOperator) return expression
 
   const currentMetaData = isOperator
     ? getCurrentOperator((expression as OperatorNode)?.operator, figTreeMetaData.operators)
@@ -56,7 +65,8 @@ export const validateExpression = (
       : currentMetaData.parameters.map((property) => property.name)
     : []
 
-  if (isOperator && allPropertyAliases.length === 0) throw new Error('Invalid operator')
+  if (isOperator && allPropertyAliases.length === 0 && !isFunctionOperator)
+    throw new Error('Invalid operator')
 
   const acceptArbitraryProperties =
     isOperator && currentMetaData?.parameters
@@ -165,11 +175,10 @@ const commonPropertyDetails = [
 // Returns a list of available properties for Operator or Fragment, excluding
 // ones already in use
 export const getAvailableProperties = (
-  metaData: OperatorMetadata,
+  parameters: { name: string }[],
   node: OperatorNode | FragmentNode
 ) => {
-  if (!metaData?.parameters) return []
-  const allProperties = [...metaData.parameters, ...commonPropertyDetails]
+  const allProperties = [...parameters, ...commonPropertyDetails]
   const currentProperties = Object.keys(node)
   return allProperties.filter((param) => !currentProperties.includes(param.name))
 }

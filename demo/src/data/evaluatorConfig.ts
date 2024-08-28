@@ -30,18 +30,31 @@ export const evaluatorConfig = {
       metadata: {
         description: "Gets a country's flag",
         parameters: [{ name: '$country', type: 'string', required: true, default: 'New Zealand' }],
+        textColor: 'white',
+        backgroundColor: 'black',
       },
-    },
-    adder: {
-      operator: '+',
-      values: '$values',
     },
   },
   customFunctions: {
-    reverse: (input: unknown[] | string) => {
-      if (Array.isArray(input)) return [...input].reverse()
-      return input.split('').reverse().join('')
+    reverse: {
+      function: (input: unknown[] | string) => {
+        if (Array.isArray(input)) return [...input].reverse()
+        return input.split('').reverse().join('')
+      },
+      description: 'Reverse a string, or array',
+      argsDefault: ['Reverse Me'],
+      backgroundColor: 'green',
+      textColor: 'red',
     },
-    plus: (...values: any[]) => values.reduce((acc, val) => acc + val),
+    changeCase: {
+      function: ({ string, toCase }: { string: string; toCase: 'lower' | 'upper' }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase(),
+      description: 'Convert a string to either upper or lower case',
+      inputDefault: { string: 'New string', toCase: 'upper' },
+    },
+    currentDate: {
+      function: () => new Date().toLocaleDateString(),
+      description: "Returns today's date in local format",
+    },
   },
 }

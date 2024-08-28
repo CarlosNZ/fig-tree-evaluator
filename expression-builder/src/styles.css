@@ -29,6 +29,7 @@
   align-items: center;
   width: 100%;
   justify-content: space-between;
+  margin-left: -0.5em;
 }
 
 .ft-button-and-edit {
@@ -162,6 +163,7 @@
 .ft-edit-icon {
   opacity: 0;
   padding-right: 5em; /* Gives wider hover target */
+  /* display: flex; */
 }
 
 .ft-edit-icon:hover {
@@ -178,9 +180,8 @@
 }
 
 .ft-function-select {
-  display: flex;
-  align-items: center;
-  padding: 0.5em;
+  font-size: 80%;
+  text-wrap: nowrap;
 }
 
 .ft-alias-header-text {
@@ -201,7 +202,6 @@
 }
 
 .ft-shorthand-display-bar {
-  /* border: 1px solid blue; */
   padding-left: 1.5em;
 }
 
@@ -219,37 +219,22 @@
   margin-left: -1em;
 }
 
-.jer-collection-inner {
-  /* border: 1px solid #dbdbdb;
-    border-radius: 0.75em;
-    padding: 0.5em;
-    margin-bottom: 0.5em;
-    padding-right: 1em; */
+.ft-editor .jer-collection-inner {
+  margin-left: -1em;
+  padding-left: 0.5em;
 }
 
-.jer-collection-element {
+.ft-editor .jer-collection-element {
   position: relative;
 }
 
-.jer-brackets {
-  /* display: none; */
-}
-
 /* Additional spacing for JSON text input */
-.jer-collection-text-edit {
+.ft-editor .jer-collection-text-edit {
   margin-left: 0.5em;
 }
 
-/* .ft-editor .jer-bracket-open {
-    display: none;
-  } */
-
 .ft-editor .jer-bracket-outside {
   display: none;
-}
-
-.jer-collection-item-count {
-  /* display: none; */
 }
 
 /* For react-select */

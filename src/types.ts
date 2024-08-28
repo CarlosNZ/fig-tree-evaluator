@@ -44,7 +44,7 @@ export type UnknownFunction = (...args: any[]) => EvaluatorOutput
 export interface FigTreeOptions {
   data?: object
   objects?: object // same as "data" -- deprecated
-  functions?: Record<string, UnknownFunction>
+  functions?: Record<string, UnknownFunction | FunctionDefinition>
   fragments?: Fragments
   httpClient?: HttpClient | AxiosStatic | Fetch
   graphQLConnection?: GraphQLConnection
@@ -99,6 +99,17 @@ export interface FragmentNode {
 export interface FragmentData {
   description?: string
   parameters?: FragmentParameterMetadata[]
+  textColor?: string
+  backgroundColor?: string
+}
+
+export interface FunctionDefinition {
+  function: UnknownFunction
+  description?: string
+  argsDefault?: unknown[]
+  inputDefault?: Record<string, unknown>
+  textColor?: string
+  backgroundColor?: string
 }
 
 export type Fragment =
@@ -165,6 +176,11 @@ export type OperatorMetadata = OperatorData & {
   name: Operator
 }
 
-export type FragmentMetadata = FragmentData & { name: string }
+export type FragmentMetadata = FragmentData & {
+  name: string
+}
 
-export type CustomFunctionMetadata = { name: string; numRequiredArgs: number }
+export type CustomFunctionMetadata = {
+  name: string
+  numRequiredArgs: number
+} & Omit<FunctionDefinition, 'function'>

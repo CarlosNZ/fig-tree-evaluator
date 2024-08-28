@@ -11,8 +11,6 @@ Have a play with this demo to see the range of different operators, and how they
 
 Click on any operator "button" to evaluate the expression at that level, and edit either individual nodes using the GUI, or via the JSON text editor.
 
-// IMAGE
-
 The expression builder featured here is a **React** component — it's essentially just a wrapper for [json-edit-react](https://carlosnz.github.io/json-edit-react/) but with additional [Custom Nodes](https://github.com/CarlosNZ/json-edit-react?tab=readme-ov-file#custom-nodes), so check out that project for some usage tips and examples.
 
 <!---The expression builder is available to use in your own projects at: ...--> 

@@ -4,9 +4,15 @@ const fig = new FigTreeEvaluator({
   functions: {
     getPrincess: (name: string) => `Princess ${name}`,
     fDouble: (...args: number[]) => args.map((e) => e + e),
-    fDate: (dateString: string) => new Date(dateString),
-    addTwo: (n1: number, n2: number) => n1 + n2,
-    fNoArgs: () => 5 * 5,
+    fDate: {
+      function: (dateString: string) => new Date(dateString),
+      description: 'Turn a date string into a JS Date object',
+      argsDefault: ['December 23, 1995 03:24:00'],
+      textColor: 'blue',
+      backgroundColor: 'yellow',
+    },
+    addTwo: { function: (n1: number, n2: number) => n1 + n2, inputDefault: { n1: 10, n2: 10 } },
+    fNoArgs: { function: () => 5 * 5, description: 'Returns 10 🤷‍♂️' },
   },
   fragments: {
     getFlag: {
@@ -24,6 +30,8 @@ const fig = new FigTreeEvaluator({
       metadata: {
         description: 'Fetch a country flag',
         parameters: [{ name: '$country', type: 'string', required: true }],
+        textColor: 'white',
+        backgroundColor: 'black',
       },
     },
     simpleFragment: 'The flag of Brazil is: ',
@@ -740,9 +748,9 @@ test('Metadata -- get operator info', () => {
       ],
       parameters: [
         {
-          name: 'functionPath',
+          name: 'functionName',
           description: 'Path (in options.functions) to the required function',
-          aliases: ['functionsPath', 'functionName', 'funcName', 'path', 'name'],
+          aliases: ['functionPath', 'funcName', 'function', 'path', 'name'],
           required: true,
           type: 'string',
           default: null,
@@ -752,8 +760,16 @@ test('Metadata -- get operator info', () => {
           description: 'Arguments for the function',
           aliases: ['arguments', 'variables'],
           required: false,
-          type: 'array',
+          type: ['array', 'any'],
           default: [],
+        },
+        {
+          name: 'input',
+          description: 'Argument for the function if a single input parameter',
+          aliases: ['arg'],
+          required: false,
+          type: 'any',
+          default: 'input',
         },
         {
           name: 'useCache',
@@ -789,6 +805,8 @@ test('Metadata -- get fragment info', () => {
       name: 'getFlag',
       description: 'Fetch a country flag',
       parameters: [{ name: '$country', type: 'string', required: true }],
+      textColor: 'white',
+      backgroundColor: 'black',
     },
     { name: 'simpleFragment' },
     { name: 'adder' },
@@ -804,8 +822,23 @@ test('Metadata -- get customFunction info', () => {
   expect(fig.getCustomFunctions()).toStrictEqual([
     { name: 'getPrincess', numRequiredArgs: 1 },
     { name: 'fDouble', numRequiredArgs: 0 },
-    { name: 'fDate', numRequiredArgs: 1 },
-    { name: 'addTwo', numRequiredArgs: 2 },
-    { name: 'fNoArgs', numRequiredArgs: 0 },
+    {
+      name: 'fDate',
+      numRequiredArgs: 1,
+      description: 'Turn a date string into a JS Date object',
+      argsDefault: ['December 23, 1995 03:24:00'],
+      textColor: 'blue',
+      backgroundColor: 'yellow',
+    },
+    {
+      name: 'addTwo',
+      numRequiredArgs: 2,
+      inputDefault: { n1: 10, n2: 10 },
+    },
+    {
+      name: 'fNoArgs',
+      numRequiredArgs: 0,
+      description: 'Returns 10 🤷‍♂️',
+    },
   ])
 })

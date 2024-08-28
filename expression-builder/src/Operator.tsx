@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import {
   // fig-tree
   CustomFunctionMetadata,
@@ -7,50 +7,55 @@ import {
   OperatorMetadata,
   OperatorNode,
   OperatorParameterMetadata,
+  Operator as OperatorName,
   EvaluatorNode,
   FragmentParameterMetadata,
-  Operator as OpType,
+
   // json-edit-react
   CustomNodeProps,
-  IconEdit,
   IconOk,
   IconCancel,
 } from './_imports'
+import { DisplayBar } from './DisplayBar'
 import { Select, SelectOption } from './Select'
-import { Icons } from './Icons'
-// import './styles.css'
-import { getAliases, getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
+import { getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
+import { useCommon } from './useCommon'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
-import { operatorDisplay } from './operatorDisplay'
-
-const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
+import { OperatorDisplay } from './operatorDisplay'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
   topLevelAliases: Record<string, EvaluatorNode>
+  operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const {
-    data,
-    parentData,
-    nodeData: { path, level },
-    onEdit,
-    customNodeProps,
-  } = props
+  const { data, parentData, nodeData, onEdit, customNodeProps } = props
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
-  const [prevState, setPrevState] = useState(parentData)
-  const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const {
+    handleCancel,
+    handleSubmit,
+    expressionPath,
+    isEditing,
+    setIsEditing,
+    evaluate,
+    loading,
+    operatorDisplay,
+  } = useCommon({
+    customNodeProps,
+    parentData,
+    nodeData,
+    onEdit,
+  })
+
+  const { figTree } = customNodeProps
 
   if (!figTree) return null
 
-  const expressionPath = path.slice(0, -1)
   const operatorData = getCurrentOperator(
     (parentData as OperatorNode).operator,
     figTree.getOperators()
@@ -59,36 +64,12 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!operatorData) return null
 
-  const availableProperties = getAvailableProperties(operatorData, parentData as OperatorNode)
+  const availableProperties = getAvailableProperties(
+    operatorData.parameters,
+    parentData as OperatorNode
+  )
 
   const isCustomFunction = operatorData.name === 'CUSTOM_FUNCTIONS'
-
-  const fragments = figTree.getFragments()
-
-  const handleSubmit = () => {
-    setPrevState(parentData)
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    onEdit(prevState, expressionPath)
-    setIsEditing(false)
-  }
-
-  const listenForSubmit = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') handleSubmit()
-    if (e.key === 'Escape') handleCancel()
-  }
-
-  useEffect(() => {
-    if (isEditing) {
-      setPrevState(parentData)
-      document.addEventListener('keydown', listenForSubmit)
-    } else document.removeEventListener('keydown', listenForSubmit)
-    return () => document.removeEventListener('keydown', listenForSubmit)
-  }, [isEditing])
-
-  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
 
   return (
     <div className="ft-custom ft-operator">
@@ -97,7 +78,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           <NodeTypeSelector
             value="operator"
             changeNode={(newValue) => onEdit(newValue, expressionPath)}
-            defaultFragment={fragments.length > 0 ? fragments[0].name : undefined}
+            figTree={figTree}
           />
           :
           <OperatorSelector
@@ -130,118 +111,29 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
       ) : (
         <DisplayBar
           name={thisOperator}
+          description={operatorData.description}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={async () => {
-            setLoading(true)
-            await evaluateNode({ ...parentData, ...aliases })
-            setLoading(false)
-          }}
+          evaluate={evaluate}
           isLoading={loading}
           canonicalName={operatorData.name}
+          operatorDisplay={operatorDisplay?.[operatorData.name]}
         />
       )}
       {isCustomFunction && isEditing && (
         <FunctionSelector
-          value={(parentData as OperatorNode)?.functionPath as string}
+          value={(parentData as OperatorNode)?.functionName as string}
           functions={figTree.getCustomFunctions()}
-          updateNode={(functionPath, numArgs) => {
-            const newNode = { ...parentData, functionPath } as Record<string, unknown>
-            if (numArgs) newNode.args = new Array(numArgs).fill(null)
+          updateNode={({ name, numRequiredArgs, argsDefault, inputDefault }) => {
+            const newNode = { ...parentData, functionName: name } as Record<string, unknown>
+            delete newNode.input
+            delete newNode.args
+            if (inputDefault) newNode.input = inputDefault
+            if (argsDefault) newNode.args = argsDefault
+            if (numRequiredArgs && !argsDefault && !inputDefault)
+              newNode.args = new Array(numRequiredArgs).fill(null)
             onEdit(newNode, expressionPath)
           }}
         />
-      )}
-    </div>
-  )
-}
-
-interface DisplayBarProps {
-  name: OperatorAlias
-  setIsEditing: () => void
-  evaluate: () => void
-  isLoading: boolean
-  canonicalName: OpType | 'FRAGMENT'
-}
-
-export const DisplayBar: React.FC<DisplayBarProps> = ({
-  name,
-  setIsEditing,
-  evaluate,
-  isLoading,
-  canonicalName,
-}) => {
-  const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
-  const isShorthand = name.startsWith('$')
-  const link = README_URL + canonicalName.toLowerCase() + (canonicalName === 'FRAGMENT' ? 's' : '')
-
-  return (
-    <div className="ft-display-bar">
-      <div className="ft-button-and-edit">
-        <EvaluateButton
-          name={name}
-          backgroundColor={backgroundColor}
-          textColor={textColor}
-          evaluate={evaluate}
-          isLoading={isLoading}
-        />
-        {!isShorthand && (
-          <span onClick={() => setIsEditing()} className="ft-clickable ft-edit-icon">
-            <IconEdit size="1.5em" style={{ color: 'rgb(42, 161, 152)' }} />
-          </span>
-        )}
-      </div>
-      <div className="ft-display-name">
-        <a href={link} target="_blank">
-          {displayName}
-        </a>
-      </div>
-    </div>
-  )
-}
-
-export interface EvaluateButtonProps {
-  name?: string
-  backgroundColor: string
-  textColor: string
-  evaluate: () => void
-  isLoading: boolean
-}
-
-export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
-  name,
-  backgroundColor,
-  textColor,
-  evaluate,
-  isLoading,
-}) => {
-  return (
-    <div
-      className="ft-display-button"
-      style={{ backgroundColor, color: textColor }}
-      onClick={evaluate}
-    >
-      {!isLoading ? (
-        <>
-          {name && (
-            <span
-              className="ft-operator-alias"
-              style={{
-                fontSize: getButtonFontSize(name),
-                fontStyle: 'inherit',
-              }}
-            >
-              {name}
-            </span>
-          )}
-          {Icons.evaluate}
-        </>
-      ) : (
-        <div style={{ width: '100%', textAlign: 'center' }}>
-          <span
-            className="loader"
-            style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
-          ></span>
-        </div>
       )}
     </div>
   )
@@ -294,7 +186,7 @@ export const PropertySelector: React.FC<{
 export const FunctionSelector: React.FC<{
   value: string
   functions: readonly CustomFunctionMetadata[]
-  updateNode: (functionPath: string, numArgs: number) => void
+  updateNode: (functionDefinition: CustomFunctionMetadata) => void
 }> = ({ value, functions, updateNode }) => {
   const functionOptions = functions.map(({ name, numRequiredArgs }) => ({
     key: name,
@@ -303,9 +195,8 @@ export const FunctionSelector: React.FC<{
   }))
 
   const handleFunctionSelect = (selected: SelectOption) => {
-    const { name, numRequiredArgs = 0 } = functions.find((f) => f.name === selected.value) ?? {}
-    console.log(name, numRequiredArgs)
-    if (name) updateNode(name, numRequiredArgs)
+    const func = functions.find((f) => f.name === selected.value)
+    if (func) updateNode(func)
   }
 
   return (

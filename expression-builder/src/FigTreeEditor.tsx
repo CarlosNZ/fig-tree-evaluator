@@ -21,9 +21,10 @@ import {
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
+import { CustomOperator } from './CustomOperator'
 import { TopLevelContainer } from './TopLevel'
 import { validateExpression } from './validator'
-import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
+import { type OperatorDisplay } from './operatorDisplay'
 import {
   getCurrentOperator,
   isFirstAliasNode,
@@ -60,7 +61,7 @@ interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   onEvaluate: (value: unknown) => void
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
-  operatorDisplay?: Partial<Record<OperatorName, OperatorDisplay>>
+  operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
@@ -71,22 +72,24 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   onEvaluate,
   onEvaluateStart,
   onEvaluateError,
-  operatorDisplay: operatorDisplayProp,
+  operatorDisplay,
   ...props
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
+  const functions = useMemo(() => figTree.getCustomFunctions(), [figTree])
 
   const allOpAliases = useMemo(() => {
     const all = operators.map((op) => [op.name, ...op.aliases]).flat()
     return new Set(all)
   }, [])
   const allFragments = useMemo(() => new Set(fragments.map((f) => f.name)), [])
+  const allFunctions = useMemo(() => new Set(functions.map((f) => f.name)), [])
 
   const [expression, setExpression] = useState(
     (() => {
       try {
-        return validateExpression(expressionInit, { operators, fragments })
+        return validateExpression(expressionInit, { operators, fragments, functions })
       } catch (err: any) {
         console.log(`Error: ${err.message}`)
         return {}
@@ -105,7 +108,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   useEffect(() => {
     try {
-      const exp = validateExpression(expressionInit, { operators, fragments })
+      const exp = validateExpression(expressionInit, { operators, fragments, functions })
       setExpression(exp)
     } catch {
       // onUpdate('Invalid expression')
@@ -126,14 +129,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   }
 
   const isShorthandWrapper = (nodeData: NodeData) =>
-    shorthandWrapperTester(nodeData, allOpAliases, allFragments)
+    shorthandWrapperTester(nodeData, allOpAliases, allFragments, allFunctions)
   const isShorthandNode = (nodeData: NodeData) =>
-    shorthandNodeTester(nodeData, allOpAliases, allFragments)
+    shorthandNodeTester(nodeData, allOpAliases, allFragments, allFunctions)
 
   const isShorthandStringNode = (nodeData: NodeData) =>
-    shorthandStringNodeTester(nodeData, allOpAliases, allFragments)
+    shorthandStringNodeTester(nodeData, allOpAliases, allFragments, allFunctions)
   const isShorthandString = (value: unknown) =>
-    shorthandStringTester(value, allOpAliases, allFragments)
+    shorthandStringTester(value, allOpAliases, allFragments, allFunctions)
 
   return (
     <JsonEditor
@@ -142,7 +145,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
         try {
-          const validated = validateExpression(newData, { operators, fragments }) as object
+          const validated = validateExpression(newData, {
+            operators,
+            fragments,
+            functions,
+          }) as object
           setExpression(validated)
           onUpdate({ newData: validated, ...rest })
         } catch (err: any) {
@@ -231,13 +238,30 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       customNodeDefinitions={
         [
           {
+            condition: ({ key, value }) => {
+              return key === 'operator' && allFunctions.has(String(value))
+            },
+            element: CustomOperator,
+            customNodeProps: {
+              figTree,
+              evaluateNode,
+              operatorDisplay,
+              topLevelAliases,
+            },
+            hideKey: true,
+            showOnEdit: false,
+            showEditTools: false,
+            showInTypesSelector: true,
+            defaultValue: { operator: '+', values: [2, 2] },
+          },
+          {
             condition: ({ key }) => key === 'operator',
             element: Operator,
             name: 'Operator',
             customNodeProps: {
               figTree,
               evaluateNode,
-              operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+              operatorDisplay,
               topLevelAliases,
             },
             hideKey: true,
@@ -250,12 +274,12 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             condition: ({ key }) => key === 'fragment',
             element: Fragment,
             name: 'Fragment',
-            customNodeProps: { figTree, evaluateNode, topLevelAliases },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay, topLevelAliases },
             hideKey: true,
             showOnEdit: false,
             showEditTools: false,
             showInTypesSelector: true,
-            defaultValue: { fragment: fragments[0].name },
+            defaultValue: fragments?.[0] ? { fragment: fragments?.[0].name } : null,
           },
           {
             condition: (nodeData) => {
@@ -272,17 +296,18 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               )
             },
             element: ShorthandNode,
-            customNodeProps: { figTree, evaluateNode, topLevelAliases },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay, topLevelAliases },
           },
           {
             condition: ({ value }) => {
               return isShorthandString(value)
             },
             element: ShorthandStringNode,
-            customNodeProps: { figTree, evaluateNode },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay },
           },
           {
-            condition: (nodeData) => isFirstAliasNode(nodeData, allOpAliases, allFragments),
+            condition: (nodeData) =>
+              isFirstAliasNode(nodeData, allOpAliases, allFragments, allFunctions),
             showOnEdit: true,
             wrapperElement: ({ children }) => (
               <div>
@@ -306,8 +331,10 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         ] as CustomNodeDefinition[]
       }
       customText={{
-        ITEMS_MULTIPLE: (nodeData) => propertyCountReplace(nodeData, allOpAliases, allFragments),
-        ITEM_SINGLE: (nodeData) => propertyCountReplace(nodeData, allOpAliases, allFragments),
+        ITEMS_MULTIPLE: (nodeData) =>
+          propertyCountReplace(nodeData, allOpAliases, allFragments, allFunctions),
+        ITEM_SINGLE: (nodeData) =>
+          propertyCountReplace(nodeData, allOpAliases, allFragments, allFunctions),
       }}
     />
   )

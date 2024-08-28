@@ -10,7 +10,7 @@ import { Icons } from './Icons'
 // import './styles.css'
 import { getAliases, getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
-import { DisplayBar } from './Operator'
+import { DisplayBar } from './DisplayBar'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
