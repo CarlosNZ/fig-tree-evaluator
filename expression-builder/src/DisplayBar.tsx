@@ -8,8 +8,8 @@ import {
   IconEdit,
 } from './_imports'
 import { Icons } from './Icons'
-import { getButtonFontSize, getCurrentOperator, getDefaultValue } from './helpers'
-import { operatorDisplay } from './operatorDisplay'
+import { getButtonFontSize } from './helpers'
+import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
 
 const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#'
 
@@ -20,6 +20,7 @@ interface DisplayBarProps {
   evaluate: () => void
   isLoading: boolean
   canonicalName: OpType | 'FRAGMENT'
+  operatorDisplay?: OperatorDisplay
 }
 
 export const DisplayBar: React.FC<DisplayBarProps> = ({
@@ -29,8 +30,10 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   evaluate,
   isLoading,
   canonicalName = 'CUSTOM_FUNCTIONS',
+  operatorDisplay: operatorDisplayOverride,
 }) => {
-  const { backgroundColor, textColor, displayName } = operatorDisplay[canonicalName]
+  const { backgroundColor, textColor, displayName } =
+    operatorDisplayOverride ?? operatorDisplay[canonicalName]
   const isShorthand = name.startsWith('$')
   const link = README_URL + canonicalName.toLowerCase() + (canonicalName === 'FRAGMENT' ? 's' : '')
 

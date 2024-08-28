@@ -61,7 +61,7 @@ interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   onEvaluate: (value: unknown) => void
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
-  operatorDisplay?: Partial<Record<OperatorName, OperatorDisplay>>
+  operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
@@ -72,7 +72,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   onEvaluate,
   onEvaluateStart,
   onEvaluateError,
-  operatorDisplay: operatorDisplayProp,
+  operatorDisplay,
   ...props
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
@@ -245,7 +245,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             customNodeProps: {
               figTree,
               evaluateNode,
-              operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+              operatorDisplay,
               topLevelAliases,
             },
             hideKey: true,
@@ -261,7 +261,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             customNodeProps: {
               figTree,
               evaluateNode,
-              operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+              operatorDisplay,
               topLevelAliases,
             },
             hideKey: true,
@@ -274,7 +274,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             condition: ({ key }) => key === 'fragment',
             element: Fragment,
             name: 'Fragment',
-            customNodeProps: { figTree, evaluateNode, topLevelAliases },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay, topLevelAliases },
             hideKey: true,
             showOnEdit: false,
             showEditTools: false,
@@ -296,14 +296,14 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
               )
             },
             element: ShorthandNode,
-            customNodeProps: { figTree, evaluateNode, topLevelAliases },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay, topLevelAliases },
           },
           {
             condition: ({ value }) => {
               return isShorthandString(value)
             },
             element: ShorthandStringNode,
-            customNodeProps: { figTree, evaluateNode },
+            customNodeProps: { figTree, evaluateNode, operatorDisplay },
           },
           {
             condition: (nodeData) =>

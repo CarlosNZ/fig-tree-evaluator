@@ -106,6 +106,8 @@ export interface FunctionDefinition {
   description?: string
   argsDefault?: unknown[]
   inputDefault?: Record<string, unknown>
+  textColor?: string
+  backgroundColor?: string
 }
 
 export type Fragment =
@@ -172,9 +174,13 @@ export type OperatorMetadata = OperatorData & {
   name: Operator
 }
 
-export type FragmentMetadata = FragmentData & { name: string }
+export type FragmentMetadata = FragmentData & {
+  name: string
+  textColor?: string
+  backgroundColor?: string
+}
 
-export type CustomFunctionMetadata = { name: string; numRequiredArgs: number } & Omit<
-  FunctionDefinition,
-  'function'
->
+export type CustomFunctionMetadata = {
+  name: string
+  numRequiredArgs: number
+} & Omit<FunctionDefinition, 'function'>

@@ -292,6 +292,18 @@ function App() {
               stringTruncate={500}
               jsonParse={JSON5.parse}
               collapse={expressionCollapse}
+              operatorDisplay={{
+                PLUS: {
+                  backgroundColor: 'yellow',
+                  textColor: 'blue',
+                  displayName: 'Yo!',
+                },
+                FRAGMENT: {
+                  backgroundColor: 'white',
+                  textColor: 'black',
+                  displayName: 'Fragga',
+                },
+              }}
             />
             {ExpressionUndoRedo}
           </Flex>

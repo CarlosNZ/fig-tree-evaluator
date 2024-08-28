@@ -128,10 +128,12 @@ class FigTreeEvaluator {
       const func = typeof f === 'function' ? f : f?.function
       const functionMetadata: CustomFunctionMetadata = { name, numRequiredArgs: func?.length }
       if (typeof f !== 'function') {
-        const { description, argsDefault, inputDefault } = f
+        const { description, argsDefault, inputDefault, textColor, backgroundColor } = f
         if (description) functionMetadata.description = description
         if (argsDefault) functionMetadata.argsDefault = argsDefault
         if (inputDefault) functionMetadata.inputDefault = inputDefault
+        if (textColor) functionMetadata.textColor = textColor
+        if (backgroundColor) functionMetadata.backgroundColor = backgroundColor
         return functionMetadata
       }
       return functionMetadata

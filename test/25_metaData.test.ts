@@ -8,6 +8,8 @@ const fig = new FigTreeEvaluator({
       function: (dateString: string) => new Date(dateString),
       description: 'Turn a date string into a JS Date object',
       argsDefault: ['December 23, 1995 03:24:00'],
+      textColor: 'blue',
+      backgroundColor: 'yellow',
     },
     addTwo: { function: (n1: number, n2: number) => n1 + n2, inputDefault: { n1: 10, n2: 10 } },
     fNoArgs: { function: () => 5 * 5, description: 'Returns 10 🤷‍♂️' },
@@ -822,6 +824,8 @@ test('Metadata -- get customFunction info', () => {
       numRequiredArgs: 1,
       description: 'Turn a date string into a JS Date object',
       argsDefault: ['December 23, 1995 03:24:00'],
+      textColor: 'blue',
+      backgroundColor: 'yellow',
     },
     {
       name: 'addTwo',

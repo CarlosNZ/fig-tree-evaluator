@@ -22,13 +22,21 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { handleCancel, handleSubmit, expressionPath, isEditing, setIsEditing, evaluate, loading } =
-    useCommon({
-      customNodeProps,
-      parentData,
-      nodeData,
-      onEdit,
-    })
+  const {
+    handleCancel,
+    handleSubmit,
+    expressionPath,
+    isEditing,
+    setIsEditing,
+    evaluate,
+    loading,
+    operatorDisplay,
+  } = useCommon({
+    customNodeProps,
+    parentData,
+    nodeData,
+    onEdit,
+  })
 
   const { figTree } = customNodeProps
 
@@ -80,6 +88,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           evaluate={evaluate}
           isLoading={loading}
           canonicalName="FRAGMENT"
+          operatorDisplay={operatorDisplay?.FRAGMENT}
         />
       )}
     </div>

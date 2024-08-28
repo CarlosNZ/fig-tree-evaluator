@@ -12,7 +12,7 @@ interface Input {
 }
 
 export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Input) => {
-  const { evaluateNode, topLevelAliases } = customNodeProps
+  const { evaluateNode, topLevelAliases, operatorDisplay } = customNodeProps
   const [prevState, setPrevState] = useState(parentData)
   const [isEditing, setIsEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -50,5 +50,14 @@ export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Inp
     setLoading(false)
   }
 
-  return { handleCancel, handleSubmit, expressionPath, isEditing, setIsEditing, evaluate, loading }
+  return {
+    handleCancel,
+    handleSubmit,
+    expressionPath,
+    isEditing,
+    setIsEditing,
+    evaluate,
+    loading,
+    operatorDisplay,
+  }
 }

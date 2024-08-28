@@ -7,6 +7,7 @@ import {
   OperatorMetadata,
   OperatorNode,
   OperatorParameterMetadata,
+  Operator as OperatorName,
   EvaluatorNode,
   FragmentParameterMetadata,
 
@@ -21,11 +22,13 @@ import { getCurrentOperator, getDefaultValue } from './helpers'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
 import { cleanOperatorNode, getAvailableProperties } from './validator'
+import { OperatorDisplay } from './operatorDisplay'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
   evaluateNode: (expression: EvaluatorNode) => Promise<void>
   topLevelAliases: Record<string, EvaluatorNode>
+  operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
@@ -33,13 +36,21 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { handleCancel, handleSubmit, expressionPath, isEditing, setIsEditing, evaluate, loading } =
-    useCommon({
-      customNodeProps,
-      parentData,
-      nodeData,
-      onEdit,
-    })
+  const {
+    handleCancel,
+    handleSubmit,
+    expressionPath,
+    isEditing,
+    setIsEditing,
+    evaluate,
+    loading,
+    operatorDisplay,
+  } = useCommon({
+    customNodeProps,
+    parentData,
+    nodeData,
+    onEdit,
+  })
 
   const { figTree } = customNodeProps
 
@@ -105,6 +116,7 @@ export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           evaluate={evaluate}
           isLoading={loading}
           canonicalName={operatorData.name}
+          operatorDisplay={operatorDisplay?.[operatorData.name]}
         />
       )}
       {isCustomFunction && isEditing && (

@@ -15,17 +15,11 @@ import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'
 import { getButtonFontSize } from './helpers'
-import { PropertySelector } from './Operator'
+import { OperatorProps, PropertySelector } from './Operator'
 import { DisplayBar } from './DisplayBar'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
 import { getAvailableProperties } from './validator'
-
-export interface OperatorProps {
-  figTree: FigTreeEvaluator
-  evaluateNode: (expression: EvaluatorNode) => Promise<void>
-  topLevelAliases: Record<string, EvaluatorNode>
-}
 
 export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
   const { data, parentData, nodeData, onEdit, customNodeProps } = props
@@ -49,6 +43,13 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
   if (!functionData) return null
 
   const availableProperties = getAvailableProperties([], parentData as OperatorNode)
+
+  const { textColor, backgroundColor } = functionData
+
+  const operatorData =
+    textColor && backgroundColor
+      ? { textColor, backgroundColor, displayName: 'Custom Operator' }
+      : undefined
 
   return (
     <div className="ft-custom ft-operator">
@@ -97,6 +98,7 @@ export const CustomOperator: React.FC<CustomNodeProps<OperatorProps>> = (props) 
           evaluate={evaluate}
           isLoading={loading}
           canonicalName={'CUSTOM_FUNCTIONS'}
+          operatorDisplay={operatorData}
         />
       )}
     </div>
