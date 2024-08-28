@@ -30,7 +30,6 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
   if (!evaluateNode || !isShorthandNode) return null
 
   if (
-    !figTree?.getOptions().evaluateFullObject ||
     isOperatorNode(nodeData.value as EvaluatorNode) ||
     isFragmentNode(nodeData.value as EvaluatorNode) ||
     isShorthandNode(nodeData)
@@ -39,8 +38,12 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
 
   return (
     <div className="ft-top-level">
-      <div className="ft-display-bar">
+      <div
+        className="ft-display-bar"
+        title="Evaluate a non-FigTree expression. In order for the inner nodes to be evaluated, the option 'Evaluate full object input' should be enabled."
+      >
         <EvaluateButton
+          name="Evaluate"
           backgroundColor="#454545"
           textColor="white"
           evaluate={async () => {
