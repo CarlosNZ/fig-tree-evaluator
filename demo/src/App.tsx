@@ -102,6 +102,7 @@ function App() {
     setLocalStorage('lastSelected', demoData[selected].name)
     modalContent.current = demoData[selected].name
     figTree.updateOptions(figTreeOptions)
+    setLocalStorage('options', figTreeOptions)
   }
 
   return (
@@ -248,7 +249,6 @@ function App() {
               </Text>
             </Box>
             <FigTreeEditor
-              // @ts-expect-error
               figTree={figTree}
               expression={expression}
               setData={setExpression as (data: JsonData) => void}

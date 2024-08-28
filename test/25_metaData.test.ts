@@ -30,6 +30,8 @@ const fig = new FigTreeEvaluator({
       metadata: {
         description: 'Fetch a country flag',
         parameters: [{ name: '$country', type: 'string', required: true }],
+        textColor: 'white',
+        backgroundColor: 'black',
       },
     },
     simpleFragment: 'The flag of Brazil is: ',
@@ -803,6 +805,8 @@ test('Metadata -- get fragment info', () => {
       name: 'getFlag',
       description: 'Fetch a country flag',
       parameters: [{ name: '$country', type: 'string', required: true }],
+      textColor: 'white',
+      backgroundColor: 'black',
     },
     { name: 'simpleFragment' },
     { name: 'adder' },
@@ -815,7 +819,6 @@ test('Metadata -- get fragment info', () => {
 })
 
 test('Metadata -- get customFunction info', () => {
-  console.log(fig.getCustomFunctions())
   expect(fig.getCustomFunctions()).toStrictEqual([
     { name: 'getPrincess', numRequiredArgs: 1 },
     { name: 'fDouble', numRequiredArgs: 0 },

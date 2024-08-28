@@ -99,6 +99,8 @@ export interface FragmentNode {
 export interface FragmentData {
   description?: string
   parameters?: FragmentParameterMetadata[]
+  textColor?: string
+  backgroundColor?: string
 }
 
 export interface FunctionDefinition {
@@ -176,8 +178,6 @@ export type OperatorMetadata = OperatorData & {
 
 export type FragmentMetadata = FragmentData & {
   name: string
-  textColor?: string
-  backgroundColor?: string
 }
 
 export type CustomFunctionMetadata = {
