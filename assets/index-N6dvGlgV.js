@@ -855,7 +855,7 @@ Try out some of the other [operators](https://github.com/CarlosNZ/fig-tree-evalu
 `,objectData:{user:{id:2,firstName:"Steve",lastName:"Rogers",title:"The First Avenger"},organisation:{id:1,name:"The Avengers",category:"Superheroes"},application:{questions:{q1:"When were you born?",q2:"What is your primary weapon"},responses:{q1:"1918",q2:"Vibranium shield"}}},expression:{operator:"+",values:[{operator:"getData",property:"user.firstName"}," ",{operator:"getData",property:"user.lastName"}]},expressionCollapse:3},{name:"❓ Conditional logic",content:`
 # Conditional logic
 
-<img src="/img/movie-ticket_300.png" width="150"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/movie-ticket_300.png" width="150"/>
 
 The result of this expression determines whether the filmgoer is allowed entry to the film, based on their age and whether or not they have a parent in attendance.
 
@@ -902,13 +902,13 @@ A classic case for a form input is to choose your country from a drop-down, then
 
 This expression returns the city list based on the \`country\` value in \`userResponses\`. You can see this applied to a real form with [this example](https://carlosnz.github.io/jsonforms-with-figtree-demo/) which uses FigTree to extend the dynamic functionality of [JSON Forms](https://jsonforms.io/).
 
-<img src="/img/country_city_form.png" width="500"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/country_city_form.png" width="500"/>
 
 Note the \`fallback\` property used here — an array with a *"Loading..."* indicator. This ensures that the Cities dropdown can render with a valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,figTreeOptions:{useCache:!0},objectJsonEditorProps:{restrictAdd:!0,restrictDelete:!0,restrictEdit:({key:e})=>e!=="name"&&e!=="country",restrictTypeSelection:!0},objectData:{userResponses:{name:"Mohini",country:"India"}},expression:{operator:"POST",url:"https://countriesnow.space/api/v0.1/countries/cities",returnProperty:"data",parameters:{country:{$getData:"userResponses.country"}},fallback:"Country not specified"}},{name:"🌴 Decision Tree",content:`
 # Decision Tree (for card games)
 
-<img src="/img/cards_500.png" width="250"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/cards_500.png" width="250"/>
 
 This expression demonstrates a fairly convoluted [Decision tree](https://en.wikipedia.org/wiki/Decision_tree), making heavy use of the [Match](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#match) operator to handle conditional logic with multiple branches.
 
