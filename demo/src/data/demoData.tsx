@@ -1,4 +1,4 @@
-import { EvaluatorNode, FigTreeOptions } from 'fig-tree-evaluator'
+import { EvaluatorNode, FigTreeOptions } from '../_imports'
 import { JsonEditorProps } from 'json-edit-react'
 
 export interface DemoData {

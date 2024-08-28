@@ -24,7 +24,7 @@ import { Fragment } from './Fragment'
 import { CustomOperator } from './CustomOperator'
 import { TopLevelContainer } from './TopLevel'
 import { validateExpression } from './validator'
-import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
+import { type OperatorDisplay } from './operatorDisplay'
 import {
   getCurrentOperator,
   isFirstAliasNode,

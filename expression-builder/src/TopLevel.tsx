@@ -7,7 +7,6 @@ import {
   CustomNodeProps,
   NodeData,
 } from './_imports'
-// import './styles.css'
 import { EvaluateButton } from './DisplayBar'
 
 interface TopLevelProps {
@@ -25,7 +24,7 @@ export const TopLevelContainer: React.FC<CustomNodeProps<TopLevelProps>> = ({
   children,
 }) => {
   const [loading, setLoading] = useState(false)
-  const { evaluateNode, isShorthandNode, figTree } = customNodeProps ?? {}
+  const { evaluateNode, isShorthandNode } = customNodeProps ?? {}
 
   if (!evaluateNode || !isShorthandNode) return null
 

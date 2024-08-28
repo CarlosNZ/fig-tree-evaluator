@@ -2,10 +2,9 @@ import React from 'react'
 import {
   // fig-tree
   CustomFunctionMetadata,
-  FigTreeEvaluator,
   OperatorNode,
   OperatorParameterMetadata,
-  EvaluatorNode,
+
   // json-edit-react
   CustomNodeProps,
   IconOk,

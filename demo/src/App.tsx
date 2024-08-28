@@ -29,7 +29,6 @@ import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
 // @ts-expect-error No declaration
 import { PostgresInterface } from './postgresInterface.js'
-import logo from './img/fig_tree_evaluator_logo_512.png'
 import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
 import { demoData, defaultBlurb } from './data'
@@ -135,7 +134,7 @@ function App() {
             <HStack align="flex-end" mt={2} gap={4} flexWrap="wrap">
               <Flex gap={6} align="flex-start">
                 <img
-                  src={logo}
+                  src="https://raw.githubusercontent.com/CarlosNZ/fig-tree-evaluator/main/images/FigTreeEvaluator_logo_1000.png"
                   alt="logo"
                   style={
                     isMobile
