@@ -80,7 +80,7 @@ Try out some of the other [operators](https://github.com/CarlosNZ/fig-tree-evalu
     content: `
 # Conditional logic
 
-<img src="/img/movie-ticket_300.png" width="150"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/movie-ticket_300.png" width="150"/>
 
 The result of this expression determines whether the filmgoer is allowed entry to the film, based on their age and whether or not they have a parent in attendance.
 
@@ -242,7 +242,7 @@ A classic case for a form input is to choose your country from a drop-down, then
 
 This expression returns the city list based on the \`country\` value in \`userResponses\`. You can see this applied to a real form with [this example](https://carlosnz.github.io/jsonforms-with-figtree-demo/) which uses FigTree to extend the dynamic functionality of [JSON Forms](https://jsonforms.io/).
 
-<img src="/img/country_city_form.png" width="500"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/country_city_form.png" width="500"/>
 
 Note the \`fallback\` property used here — an array with a *"Loading..."* indicator. This ensures that the Cities dropdown can render with a valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,
@@ -273,7 +273,7 @@ Note the \`fallback\` property used here — an array with a *"Loading..."* indi
     content: `
 # Decision Tree (for card games)
 
-<img src="/img/cards_500.png" width="250"/>
+<img src="https://carlosnz.github.io/fig-tree-evaluator/img/cards_500.png" width="250"/>
 
 This expression demonstrates a fairly convoluted [Decision tree](https://en.wikipedia.org/wiki/Decision_tree), making heavy use of the [Match](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#match) operator to handle conditional logic with multiple branches.
 
