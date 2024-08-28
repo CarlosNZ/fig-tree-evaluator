@@ -35,7 +35,13 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
   const { backgroundColor, textColor, displayName } =
     operatorDisplayOverride ?? operatorDisplay[canonicalName]
   const isShorthand = name.startsWith('$')
-  const link = README_URL + canonicalName.toLowerCase() + (canonicalName === 'FRAGMENT' ? 's' : '')
+  const linkSuffix =
+    canonicalName === 'FRAGMENT'
+      ? 'fragments'
+      : canonicalName === 'CUSTOM_FUNCTIONS'
+      ? 'custom-functionsoperators'
+      : canonicalName.toLowerCase()
+  const link = README_URL + linkSuffix
 
   return (
     <div className="ft-display-bar">

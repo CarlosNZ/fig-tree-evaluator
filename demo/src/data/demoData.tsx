@@ -145,11 +145,10 @@ we can just write:
 
 This expression fetches a random user object by making an HTTP request to [https://randomuser.me/api/](https://randomuser.me/api/). We then use this data to populate a templated string.
 
-Note that this query requires the FigTree [cache](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#caching-memoization) to be disabled, otherwise we'd get display the same result every time it's run. (You can see the "Use cache" option has been disabled in the "Configuration" panel.)
+Note that this query requires the FigTree [cache](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#caching-memoization) to be disabled, otherwise we'd get the same result every time it's run. (You can see the "Use cache" option has been disabled in the "Configuration" panel.)
 
 Try toggling the "Use cache" setting to see the difference.
     `,
-    // objectData: { Info: 'Data object not used' },
     expression: {
       operator: 'stringSubstitution',
       string: 'Hello, {{name.first}} {{name.last}} from {{location.city}}, {{location.country}}!',
@@ -245,7 +244,7 @@ This expression returns the city list based on the \`country\` value in \`userRe
 
 <img src="/img/country_city_form.png" width="500"/>
 
-Note the \`fallback\` property used here — an array with a "Loading..." indicator. This ensures that the Cities dropdown can render with valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
+Note the \`fallback\` property used here — an array with a *"Loading..."* indicator. This ensures that the Cities dropdown can render with a valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,
     figTreeOptions: { useCache: true },
     objectJsonEditorProps: {
@@ -565,7 +564,7 @@ They both require a \`$country\` parameter, which is substituted into the expres
 
 Extend the capabilities of FigTree by adding your own functions, which can be used as [Custom Operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#custom-functionsoperators).
 
-There are three hard-coded into this app:
+There are three hard-coded into this FigTree instance:
 - **changeCase**:
 
   \`\`\`
@@ -589,7 +588,7 @@ There are three hard-coded into this app:
     `,
     objectData: {
       backwardsInput: " :si etad s'yadoT",
-      case: 'upper',
+      toCase: 'upper',
     },
     objectJsonEditorProps: {
       restrictDelete: true,
@@ -599,18 +598,11 @@ There are three hard-coded into this app:
     },
     expression: {
       operator: 'changeCase',
-      toCase: 'upper',
+      toCase: { $getData: 'toCase' },
       string: {
         operator: '+',
         values: [
-          {
-            operator: 'reverse',
-            args: [
-              {
-                $getData: 'backwardsInput',
-              },
-            ],
-          },
+          { operator: 'reverse', args: [{ $getData: 'backwardsInput' }] },
           { operator: 'currentDate' },
         ],
       },

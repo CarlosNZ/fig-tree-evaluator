@@ -55,7 +55,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
 
   const displayData =
     textColor && backgroundColor
-      ? { textColor, backgroundColor, displayName: 'Custom Operator' }
+      ? { textColor, backgroundColor, displayName: 'Fragment' }
       : undefined
 
   return (

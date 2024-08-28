@@ -303,6 +303,7 @@ function App() {
         bottom={0}
         backgroundColor="background"
         boxShadow="rgba(17, 17, 26, 0.1) 0px 4px 16px, rgba(17, 17, 26, 0.1) 0px 8px 24px, rgba(17, 17, 26, 0.1) 0px 16px 56px;"
+        flexWrap="wrap"
       >
         <Text color="accent">
           <strong>Experiment with a range of demo expressions:</strong>
