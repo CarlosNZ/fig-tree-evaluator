@@ -21,6 +21,7 @@ import {
 import './styles.css'
 import { Operator } from './Operator'
 import { Fragment } from './Fragment'
+import { CustomOperator } from './CustomOperator'
 import { TopLevelContainer } from './TopLevel'
 import { validateExpression } from './validator'
 import { type OperatorDisplay, operatorDisplay } from './operatorDisplay'
@@ -76,6 +77,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
+  const functions = useMemo(() => figTree.getCustomFunctions(), [figTree])
 
   const allOpAliases = useMemo(() => {
     const all = operators.map((op) => [op.name, ...op.aliases]).flat()
@@ -86,7 +88,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const [expression, setExpression] = useState(
     (() => {
       try {
-        return validateExpression(expressionInit, { operators, fragments })
+        return validateExpression(expressionInit, { operators, fragments, functions })
       } catch (err: any) {
         console.log(`Error: ${err.message}`)
         return {}
@@ -105,7 +107,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   useEffect(() => {
     try {
-      const exp = validateExpression(expressionInit, { operators, fragments })
+      const exp = validateExpression(expressionInit, { operators, fragments, functions })
       setExpression(exp)
     } catch {
       // onUpdate('Invalid expression')
@@ -142,7 +144,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       data={expression as object}
       onUpdate={({ newData, ...rest }) => {
         try {
-          const validated = validateExpression(newData, { operators, fragments }) as object
+          const validated = validateExpression(newData, {
+            operators,
+            fragments,
+            functions,
+          }) as object
           setExpression(validated)
           onUpdate({ newData: validated, ...rest })
         } catch (err: any) {
@@ -230,6 +236,24 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       }}
       customNodeDefinitions={
         [
+          {
+            condition: ({ key, value }) => {
+              console.log(key, value)
+              return key === 'operator' && functions.map(({ name }) => name).includes(String(value))
+            },
+            element: CustomOperator,
+            customNodeProps: {
+              figTree,
+              evaluateNode,
+              operatorDisplay: { ...operatorDisplay, ...operatorDisplayProp },
+              topLevelAliases,
+            },
+            hideKey: true,
+            showOnEdit: false,
+            showEditTools: false,
+            showInTypesSelector: true,
+            defaultValue: { operator: '+', values: [2, 2] },
+          },
           {
             condition: ({ key }) => key === 'operator',
             element: Operator,

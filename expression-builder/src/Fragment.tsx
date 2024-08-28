@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useMemo } from 'react'
 import {
   // Fig-Tree
   FigTreeEvaluator,
@@ -15,27 +15,25 @@ import { NodeTypeSelector } from './NodeTypeSelector'
 import { DisplayBar, OperatorProps, PropertySelector } from './Operator'
 import { getAvailableProperties } from './validator'
 import { Select, SelectOption } from './Select'
-import { getAliases } from './helpers'
+import { useCommon } from './useCommon'
 
 export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
-  const {
-    data,
-    parentData,
-    nodeData: { path },
-    onEdit,
-    customNodeProps,
-  } = props
+  const { data, parentData, nodeData, onEdit, customNodeProps } = props
 
   if (!customNodeProps) throw new Error('Missing customNodeProps')
 
-  const { figTree, evaluateNode, topLevelAliases } = customNodeProps
-  const [prevState, setPrevState] = useState(parentData)
-  const [isEditing, setIsEditing] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const { handleCancel, handleSubmit, expressionPath, isEditing, setIsEditing, evaluate, loading } =
+    useCommon({
+      customNodeProps,
+      parentData,
+      nodeData,
+      onEdit,
+    })
+
+  const { figTree } = customNodeProps
 
   if (!figTree) return null
 
-  const expressionPath = path.slice(0, -1)
   const fragmentData = getCurrentFragment(parentData as FragmentNode, figTree.getFragments())
   const thisFragment = data as string
 
@@ -44,29 +42,6 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     parentData as FragmentNode
   )
 
-  const handleSubmit = () => {
-    setPrevState(parentData)
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    onEdit(prevState, expressionPath)
-    setIsEditing(false)
-  }
-
-  const listenForSubmit = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') handleSubmit()
-    if (e.key === 'Escape') handleCancel()
-  }
-
-  useEffect(() => {
-    if (isEditing) document.addEventListener('keydown', listenForSubmit)
-    else document.removeEventListener('keydown', listenForSubmit)
-    return () => document.removeEventListener('keydown', listenForSubmit)
-  }, [isEditing])
-
-  const aliases = { ...topLevelAliases, ...getAliases(parentData) }
-
   return (
     <div className="ft-custom ft-fragment">
       {isEditing ? (
@@ -74,7 +49,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           <NodeTypeSelector
             value="fragment"
             changeNode={(newValue: unknown) => onEdit(newValue, expressionPath)}
-            defaultFragment={thisFragment}
+            figTree={figTree}
           />
           :
           <FragmentSelector
@@ -101,11 +76,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
         <DisplayBar
           name={thisFragment}
           setIsEditing={() => setIsEditing(true)}
-          evaluate={async () => {
-            setLoading(true)
-            await evaluateNode({ ...parentData, ...aliases })
-            setLoading(false)
-          }}
+          evaluate={evaluate}
           isLoading={loading}
           canonicalName="FRAGMENT"
         />

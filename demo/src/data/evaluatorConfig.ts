@@ -53,5 +53,12 @@ export const evaluatorConfig = {
       inputDefault: { string: 'New string', toCase: 'upper' },
     },
     currentDate: () => new Date(),
+    getFullName: {
+      function: (nameObject: { firstName: string; lastName: string }) => {
+        return `${nameObject.firstName} ${nameObject.lastName}`
+      },
+      description: 'Combine first and last names',
+      inputDefault: { firstName: 'First', lastName: 'Last' },
+    },
   },
 }
