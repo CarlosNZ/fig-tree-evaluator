@@ -33,8 +33,6 @@ export const validateExpression = (
 
   if (!isObject(expression)) return expression
 
-  console.log('functions', figTreeMetaData.functions)
-
   const isOperator = isOperatorNode(expression)
   const isFragment = isFragmentNode(expression)
   const isFunctionOperator =
@@ -50,8 +48,6 @@ export const validateExpression = (
     : isFragment
     ? figTreeMetaData.fragments.find((frag) => frag.name === expression.fragment)
     : undefined
-
-  console.log('currentMetaData', currentMetaData)
 
   const requiredProperties = (
     currentMetaData?.parameters

@@ -29,6 +29,7 @@
   align-items: center;
   width: 100%;
   justify-content: space-between;
+  margin-left: -0.5em;
 }
 
 .ft-button-and-edit {
@@ -201,7 +202,6 @@
 }
 
 .ft-shorthand-display-bar {
-  /* border: 1px solid blue; */
   padding-left: 1.5em;
 }
 

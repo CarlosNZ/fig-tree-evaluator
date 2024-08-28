@@ -57,7 +57,9 @@ if (savedCache) {
 function App() {
   const [modalOpen, setModalOpen] = useState(false)
   const [isMobile] = useMediaQuery('(max-width: 635px)')
-  const [selectedDataIndex, setSelectedDataIndex] = useState<number>()
+  const [selectedDataIndex, setSelectedDataIndex] = useState<number>(
+    demoData.findIndex((data) => data.name === getLocalStorage('lastSelected'))
+  )
 
   const [showInfo, setShowInfo] = useState(!getLocalStorage('visited')?.main ?? true)
 
@@ -91,21 +93,14 @@ function App() {
     const visited = getLocalStorage('visited')
     if (!visited?.[demoData?.[selected]?.name]) setShowInfo(true)
 
-    const {
-      objectData,
-      expression,
-      figTreeOptions = {},
-      objectJsonEditorProps = {},
-      expressionCollapse = 2,
-    } = demoData[selected]
+    const { objectData, expression, figTreeOptions = {} } = demoData[selected]
     setExpression(expression as object)
     setLocalStorage('expression', expression as object)
     if (objectData) {
       setObjectData(objectData)
       setLocalStorage('objectData', objectData)
     }
-    setLocalStorage('jsonEditorOptions', objectJsonEditorProps)
-    setLocalStorage('expressionCollapse', expressionCollapse)
+    setLocalStorage('lastSelected', demoData[selected].name)
     figTree.updateOptions(figTreeOptions)
   }
 
@@ -206,8 +201,10 @@ function App() {
               setData={setObjectData as (data: JsonData) => void}
               rootName="data"
               collapse={jsonEditorOptions?.collapse ?? 2}
-              onUpdate={({ newData }) => {
-                localStorage.setItem('objectData', JSON.stringify(newData))
+              onUpdate={(result) => {
+                console.log(result)
+                localStorage.setItem('objectData', JSON.stringify(result.newData))
+                if (jsonEditorOptions.onUpdate) return jsonEditorOptions.onUpdate(result)
               }}
               minWidth="50%"
               enableClipboard={({ stringValue, type }) => {
@@ -311,7 +308,7 @@ function App() {
             </option>
           ))}
         </Select>
-        <Button colorScheme="blue" onClick={() => setShowInfo(true)}>
+        <Button colorScheme="green" onClick={() => setShowInfo(true)}>
           Info
         </Button>
         <Spacer />

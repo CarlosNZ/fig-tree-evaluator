@@ -239,7 +239,6 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
         [
           {
             condition: ({ key, value }) => {
-              console.log(key, value)
               return key === 'operator' && allFunctions.has(String(value))
             },
             element: CustomOperator,

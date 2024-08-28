@@ -206,9 +206,7 @@ export const isAliasNode = (
   allFragments: Set<string>,
   allFunctions: Set<string>
 ) => {
-  console.log('allFunctions', allFunctions)
   const keyString = key as string
-  console.log('keyString', keyString)
   return (
     isAliasString(keyString) &&
     parentData &&
