@@ -39,7 +39,6 @@ class FigTreeEvaluator {
     this.cache = new FigTreeCache({ maxSize: options.maxCacheSize, maxTime: options.maxCacheTime })
     this.graphQLClient = getHttpClient(options.graphQLConnection?.httpClient)
     this.httpClient = getHttpClient(options.httpClient)
-    console.log('Incoming...', options)
   }
 
   private typeChecker = (...args: TypeCheckInput[] | [TypeCheckInput[]]) => {
