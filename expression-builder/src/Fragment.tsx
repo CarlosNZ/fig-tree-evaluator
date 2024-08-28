@@ -4,7 +4,6 @@ import {
   FigTreeEvaluator,
   FragmentMetadata,
   FragmentNode,
-  OperatorMetadata,
   // json-edit-react
   CustomNodeProps,
   IconOk,

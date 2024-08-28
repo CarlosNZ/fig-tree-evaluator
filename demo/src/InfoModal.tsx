@@ -1,4 +1,3 @@
-import React, { Dispatch } from 'react'
 import { compiler } from 'markdown-to-jsx'
 import {
   Box,
@@ -16,11 +15,11 @@ import { getLocalStorage, setLocalStorage } from './helpers'
 export const InfoModal = ({
   selected,
   content,
-  modalState: { modalOpen, setModalOpen },
+  modalState: { modalOpen, closeModal },
 }: {
   selected: string
   content: string
-  modalState: { modalOpen: boolean; setModalOpen: Dispatch<React.SetStateAction<boolean>> }
+  modalState: { modalOpen: boolean; closeModal: () => void }
 }) => {
   return (
     <Box>
@@ -31,7 +30,7 @@ export const InfoModal = ({
           const currentVisited = getLocalStorage('visited') ?? {}
           currentVisited[selected] = true
           setLocalStorage('visited', currentVisited)
-          setModalOpen(false)
+          closeModal()
         }}
       >
         <ModalOverlay />

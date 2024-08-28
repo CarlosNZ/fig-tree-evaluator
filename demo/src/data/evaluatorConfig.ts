@@ -32,10 +32,6 @@ export const evaluatorConfig = {
         parameters: [{ name: '$country', type: 'string', required: true, default: 'New Zealand' }],
       },
     },
-    adder: {
-      operator: '+',
-      values: '$values',
-    },
   },
   customFunctions: {
     reverse: {
@@ -52,13 +48,6 @@ export const evaluatorConfig = {
       description: 'Convert a string to either upper or lower case',
       inputDefault: { string: 'New string', toCase: 'upper' },
     },
-    currentDate: () => new Date(),
-    getFullName: {
-      function: (nameObject: { firstName: string; lastName: string }) => {
-        return `${nameObject.firstName} ${nameObject.lastName}`
-      },
-      description: 'Combine first and last names',
-      inputDefault: { firstName: 'First', lastName: 'Last' },
-    },
+    currentDate: () => new Date().toLocaleDateString(),
   },
 }

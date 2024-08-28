@@ -8,7 +8,7 @@
     "start": "rimraf ./src/fig-tree-evaluator && rimraf ./src/expression-builder && mkdir ./src/fig-tree-evaluator && mkdir ./src/fig-tree-evaluator/src && mkdir ./src/expression-builder && mkdir ./src/expression-builder/src && concurrently --kill-others-on-fail \"yarn serve\" \"yarn dev\" \"nodemon watch.js\"",
     "serve": "node ./src/express/server",
     "dev": "vite --host",
-    "build": "tsc && vite build",
+    "build": "rimraf dist && tsc && vite build && cp -r img dist/",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },

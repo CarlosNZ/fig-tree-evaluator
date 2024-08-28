@@ -26,7 +26,7 @@ import {
   VStack,
 } from '@chakra-ui/react'
 import { filterObjectRecursive } from './helpers'
-import { FigTreeEvaluator, FigTreeOptions } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, FigTreeOptions } from './_imports'
 import { JsonData, JsonEditor } from 'json-edit-react'
 
 const resetFormState = (options: FigTreeOptions) => {

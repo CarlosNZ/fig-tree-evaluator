@@ -79,6 +79,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   const fragments = useMemo(() => figTree.getFragments(), [figTree])
   const functions = useMemo(() => figTree.getCustomFunctions(), [figTree])
 
+  console.log('fragments', fragments)
+
   const allOpAliases = useMemo(() => {
     const all = operators.map((op) => [op.name, ...op.aliases]).flat()
     return new Set(all)
@@ -279,7 +281,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             showOnEdit: false,
             showEditTools: false,
             showInTypesSelector: true,
-            defaultValue: { fragment: fragments[0].name },
+            defaultValue: fragments?.[0] ? { fragment: fragments?.[0].name } : null,
           },
           {
             condition: (nodeData) => {

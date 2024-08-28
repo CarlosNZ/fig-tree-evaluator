@@ -1,26 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React from 'react'
 import {
   // fig-tree
   CustomFunctionMetadata,
   FigTreeEvaluator,
-  OperatorAlias,
-  OperatorMetadata,
   OperatorNode,
   OperatorParameterMetadata,
   EvaluatorNode,
-  FragmentParameterMetadata,
-  Operator as OpType,
   // json-edit-react
   CustomNodeProps,
-  IconEdit,
   IconOk,
   IconCancel,
 } from './_imports'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'
-import { getButtonFontSize, getDefaultValue } from './helpers'
-import { DisplayBar } from './Operator'
+import { getButtonFontSize } from './helpers'
+import { DisplayBar, PropertySelector } from './Operator'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { useCommon } from './useCommon'
 import { getAvailableProperties } from './validator'
@@ -155,50 +150,6 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
   )
 }
 
-const OperatorSelector: React.FC<{
-  value: OperatorAlias
-  figTree: FigTreeEvaluator
-  changeOperator: (operator: OperatorAlias) => void
-}> = ({ value, figTree, changeOperator }) => {
-  const operatorOptions = useMemo(() => getOperatorOptions(figTree.getOperators()), [figTree])
-
-  return (
-    <Select
-      className="ft-operator-select"
-      options={operatorOptions}
-      value={{ value, label: value }}
-      onChange={(newValue) => changeOperator((newValue as SelectOption).value)}
-      // styles={{ control: { minWidth: '10em' } }}
-    />
-  )
-}
-
-export const PropertySelector: React.FC<{
-  availableProperties: OperatorParameterMetadata[] | FragmentParameterMetadata[]
-  updateNode: (newField: any) => void
-}> = ({ availableProperties, updateNode }) => {
-  const propertyOptions = availableProperties.map((property) => ({
-    label: property.name,
-    value: property,
-  }))
-
-  const handleAddProperty = (selected: OperatorParameterMetadata) => {
-    updateNode({ [selected.name]: selected.default ?? getDefaultValue(selected.type) })
-  }
-
-  return (
-    <Select
-      className="ft-property-select"
-      options={propertyOptions}
-      value={null}
-      placeholder="Add property"
-      onChange={(selected) =>
-        handleAddProperty((selected as { label: string; value: OperatorParameterMetadata }).value)
-      }
-    />
-  )
-}
-
 export const FunctionSelector: React.FC<{
   value: string
   functions: readonly CustomFunctionMetadata[]
@@ -230,14 +181,4 @@ export const FunctionSelector: React.FC<{
 export interface DropdownOption {
   label: string
   options: { value: string; label: string }[]
-}
-
-const getOperatorOptions = (operators: readonly OperatorMetadata[]) => {
-  const options: DropdownOption[] = []
-  for (const op of operators) {
-    const operatorAliases = op.aliases.map((alias) => ({ value: alias, label: alias }))
-    options.push({ label: op.name, options: operatorAliases })
-  }
-
-  return options
 }

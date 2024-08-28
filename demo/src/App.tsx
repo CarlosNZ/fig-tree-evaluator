@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import JSON5 from 'json5'
 import './App.css'
 import {
@@ -23,6 +23,7 @@ import {
   FigTreeOptions,
   FigTreeEditor,
   isFigTreeError,
+  truncateString,
 } from './_imports'
 import { OptionsModal } from './OptionsModal'
 import { getInitOptions, getInitCache, getLocalStorage, setLocalStorage } from './helpers'
@@ -32,8 +33,6 @@ import logo from './img/fig_tree_evaluator_logo_512.png'
 import { JsonData, JsonEditor } from 'json-edit-react'
 import { Client } from 'pg'
 import { demoData, defaultBlurb } from './data'
-
-import { truncateString } from './fig-tree-evaluator/src/helpers'
 import { ResultToast } from './ResultToast'
 import { useUndo } from './useUndo'
 import { InfoModal } from './InfoModal'
@@ -60,7 +59,7 @@ function App() {
   const [selectedDataIndex, setSelectedDataIndex] = useState<number>(
     demoData.findIndex((data) => data.name === getLocalStorage('lastSelected'))
   )
-
+  const modalContent = useRef('main')
   const [showInfo, setShowInfo] = useState(!getLocalStorage('visited')?.main ?? true)
 
   const {
@@ -101,17 +100,33 @@ function App() {
       setLocalStorage('objectData', objectData)
     }
     setLocalStorage('lastSelected', demoData[selected].name)
+    modalContent.current = demoData[selected].name
     figTree.updateOptions(figTreeOptions)
   }
 
   return (
     <Flex px={1} pt={3} minH="100vh" flexDirection="column" justifyContent="space-between">
       <VStack h="100%" w="100%">
-        <OptionsModal figTree={figTree} modalState={{ modalOpen, setModalOpen }} />
+        <OptionsModal
+          figTree={figTree}
+          modalState={{
+            modalOpen,
+            setModalOpen,
+          }}
+        />
         <InfoModal
           selected={currentDemoData?.name ?? 'main'}
-          content={currentDemoData?.content ?? defaultBlurb}
-          modalState={{ modalOpen: showInfo, setModalOpen: setShowInfo }}
+          content={
+            modalContent.current === 'main'
+              ? defaultBlurb
+              : currentDemoData?.content ?? defaultBlurb
+          }
+          modalState={{
+            modalOpen: showInfo,
+            closeModal: () => {
+              setShowInfo(false)
+            },
+          }}
         />
         {/** HEADER */}
         <HStack w="100%" px={4} justify="space-between" align="flex-start">
@@ -204,7 +219,7 @@ function App() {
               onUpdate={(result) => {
                 console.log(result)
                 localStorage.setItem('objectData', JSON.stringify(result.newData))
-                if (jsonEditorOptions.onUpdate) return jsonEditorOptions.onUpdate(result)
+                if (jsonEditorOptions?.onUpdate) return jsonEditorOptions.onUpdate(result)
               }}
               minWidth="50%"
               enableClipboard={({ stringValue, type }) => {
@@ -233,6 +248,7 @@ function App() {
               </Text>
             </Box>
             <FigTreeEditor
+              // @ts-expect-error
               figTree={figTree}
               expression={expression}
               setData={setExpression as (data: JsonData) => void}

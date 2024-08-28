@@ -34,12 +34,13 @@ export const demoData: DemoData[] = [
 }
 \`\`\`
 
-Here, the **+** operator concatenates the results of its \`values\` array, two
-of which pull values from the object on the left, which represents data that would be available to the evaluator in your application.
+A basic expression that just joins a couple of values pulled from some form data.
 
 Experiment with changing the values of the data object as well as the object properties being referenced. (See what happens if you reference a path that doesn't exist, then try adding a [\`fallback\`](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#other-common-properties) to handle it.)
 
 Click the **+** button to see the result, or either of the **getData** buttons to evaluate the child elements individually.
+
+Try out some of the other [operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#operator-reference), and build your own expressions from scratch.
 `,
     objectData: {
       user: {
@@ -53,18 +54,14 @@ Click the **+** button to see the result, or either of the **getData** buttons t
         name: 'The Avengers',
         category: 'Superheroes',
       },
-      form: {
-        q1: 'Thor',
-        q2: 'Asgard',
-      },
-      form2: {
-        q1: 'Company Registration',
-        q2: 'XYZ Chemicals',
-      },
       application: {
         questions: {
-          q1: 'What is the answer?',
-          q2: 'Enter your name',
+          q1: 'When were you born?',
+          q2: 'What is your primary weapon',
+        },
+        responses: {
+          q1: '1918',
+          q2: 'Vibranium shield',
         },
       },
     },
@@ -83,7 +80,7 @@ Click the **+** button to see the result, or either of the **getData** buttons t
     content: `
 # Conditional logic
 
-<img src="src/img/movie-ticket_300.png" width="150"/>
+<img src="/img/movie-ticket_300.png" width="150"/>
 
 The result of this expression determines whether the filmgoer is allowed entry to the film, based on their age and whether or not they have a parent in attendance.
 
@@ -168,6 +165,7 @@ Try toggling the "Use cache" setting to see the difference.
   {
     name: '🧵 Complex string substitution',
     content: `
+# Complex string substitution
 This expression features a much more complex templated string, intended to showcase the capabilities of the [String Substitution](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#string_substitution) operator.
 
 The values substituted into the output string are based on several different factors:
@@ -245,7 +243,7 @@ A classic case for a form input is to choose your country from a drop-down, then
 
 This expression returns the city list based on the \`country\` value in \`userResponses\`. You can see this applied to a real form with [this example](https://carlosnz.github.io/jsonforms-with-figtree-demo/) which uses FigTree to extend the dynamic functionality of [JSON Forms](https://jsonforms.io/).
 
-<img src="src/img/country_city_form.png" width="500"/>
+<img src="/img/country_city_form.png" width="500"/>
 
 Note the \`fallback\` property used here — an array with a "Loading..." indicator. This ensures that the Cities dropdown can render with valid \`options\` list even if the online lookup returns an error due to an invalid or incomplete "country" value.
 `,
@@ -276,7 +274,7 @@ Note the \`fallback\` property used here — an array with a "Loading..." indica
     content: `
 # Decision Tree (for card games)
 
-<img src="src/img/cards_500.png" width="250"/>
+<img src="/img/cards_500.png" width="250"/>
 
 This expression demonstrates a fairly convoluted [Decision tree](https://en.wikipedia.org/wiki/Decision_tree), making heavy use of the [Match](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#match) operator to handle conditional logic with multiple branches.
 
@@ -519,8 +517,8 @@ They both require a \`$country\` parameter, which is substituted into the expres
     },
     expressionCollapse: 3,
     figTreeOptions: {
+      useCache: true,
       fragments: {
-        useCache: true,
         getCapital: {
           operator: 'GET',
           url: {
@@ -559,29 +557,62 @@ They both require a \`$country\` parameter, which is substituted into the expres
     },
   },
   {
-    name: '➡ Custom Functions',
+    name: '➡ Custom Operators',
     content: `
-# Custom Functions
+# Custom Operators
 
-Extend the capabilities of FigTree by adding your own functions, which can be used as [Custom Operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#custom_functions)
+Extend the capabilities of FigTree by adding your own functions, which can be used as [Custom Operators](https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov-file#custom-functionsoperators).
+
+There are three hard-coded into this app:
+- **changeCase**:
+
+  \`\`\`
+  ({ string, toCase }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase()
+  \`\`\`
+- **reverse** (reverse a string or array):  
+  
+  \`\`\`
+  (input) => {
+    if (Array.isArray(input)) return [...input].reverse()
+    return input.split('').reverse().join('')
+  }
+  \`\`\`
+- **currentDate** (print current date in local format):
+  
+  \`\`\`
+  ({ string, toCase }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase()
+  \`\`\`  
     `,
     objectData: {
-      myFavouriteCountry: 'New Zealand',
+      backwardsInput: " :si etad s'yadoT",
+      case: 'upper',
+    },
+    objectJsonEditorProps: {
+      restrictDelete: true,
+      restrictAdd: true,
+      restrictEdit: ({ value }) => typeof value !== 'string',
+      restrictTypeSelection: true,
     },
     expression: {
-      operator: 'stringSubstitution',
-      string: '===={{country}}====\nCapital city: {{capital}}\nFlag: {{flag}}',
-      replacements: {
-        capital: { fragment: 'getCapital', $country: '$selectedCountry' },
-        flag: { fragment: 'getFlag', $country: '$selectedCountry' },
-        country: '$selectedCountry',
-      },
-      fallback: "Can't find country 😔",
-      $selectedCountry: {
-        operator: 'getData',
-        property: 'myFavouriteCountry',
-        fallback: 'Country not found',
+      operator: 'changeCase',
+      toCase: 'upper',
+      string: {
+        operator: '+',
+        values: [
+          {
+            operator: 'reverse',
+            args: [
+              {
+                $getData: 'backwardsInput',
+              },
+            ],
+          },
+          { operator: 'currentDate' },
+        ],
       },
     },
+    expressionCollapse: 4,
   },
 ]
