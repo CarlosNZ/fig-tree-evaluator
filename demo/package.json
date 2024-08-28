@@ -17,6 +17,9 @@
       "../src",
       "../expression-builder/src"
     ],
+    "ignore": [
+      "../expression-builder/src/fig-tree-evaluator"
+    ],
     "ext": "js, json, ts, tsx, txt",
     "delay": 200
   },

@@ -4,6 +4,7 @@ import {
   FigTreeEvaluator,
   FragmentMetadata,
   FragmentNode,
+
   // json-edit-react
   CustomNodeProps,
   IconOk,
@@ -50,6 +51,13 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
     parentData as FragmentNode
   )
 
+  const { textColor, backgroundColor } = fragmentData
+
+  const displayData =
+    textColor && backgroundColor
+      ? { textColor, backgroundColor, displayName: 'Custom Operator' }
+      : undefined
+
   return (
     <div className="ft-custom ft-fragment">
       {isEditing ? (
@@ -88,7 +96,7 @@ export const Fragment: React.FC<CustomNodeProps<OperatorProps>> = (props) => {
           evaluate={evaluate}
           isLoading={loading}
           canonicalName="FRAGMENT"
-          operatorDisplay={operatorDisplay?.FRAGMENT}
+          operatorDisplay={displayData ?? operatorDisplay?.FRAGMENT}
         />
       )}
     </div>

@@ -30,6 +30,8 @@ export const evaluatorConfig = {
       metadata: {
         description: "Gets a country's flag",
         parameters: [{ name: '$country', type: 'string', required: true, default: 'New Zealand' }],
+        textColor: 'white',
+        backgroundColor: 'black',
       },
     },
   },

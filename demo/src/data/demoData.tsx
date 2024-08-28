@@ -548,6 +548,8 @@ They both require a \`$country\` parameter, which is substituted into the expres
           outputType: 'string',
           metadata: {
             description: "Gets a country's flag",
+            textColor: 'white',
+            backgroundColor: 'black',
             parameters: [
               { name: '$country', type: 'string', required: true, default: 'New Zealand' },
             ],
