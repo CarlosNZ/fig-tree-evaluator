@@ -19,7 +19,7 @@
     "react": ">=16.0.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.15.10-rc1",
+    "json-edit-react": "^1.15.10",
     "react-select": "^5.8.0"
   },
   "devDependencies": {
