@@ -12,7 +12,7 @@ A typical use case would be for evaluating **configuration** files, where you ne
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs. Plus, you can extend functionality with your own [custom operators](#custom-functionsoperators)
 
-[**Demo/Playground**](https://carlosnz.github.io/fig-tree-evaluator/)
+### [Try the Demo/Playground](https://carlosnz.github.io/fig-tree-evaluator/)
 
 ## Contents <!-- omit in toc -->
 <!-- TOC -->
