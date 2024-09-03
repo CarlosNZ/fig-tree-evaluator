@@ -48,7 +48,7 @@ const Select: React.FC<Props> = <
         }),
         groupHeading: (provided, _) => ({
           ...provided,
-          fontSize: '1.5em',
+          fontSize: '1.2em',
         }),
         input: (provided, _) => ({
           ...provided,
@@ -60,6 +60,10 @@ const Select: React.FC<Props> = <
         indicatorsContainer: (provided, _) => ({
           ...provided,
           height: '2em',
+        }),
+        option: (provided) => ({
+          ...provided,
+          fontSize: '0.9em',
         }),
       }}
       {...props}

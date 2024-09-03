@@ -1,15 +1,6 @@
 import React from 'react'
-import {
-  // fig-tree
-  CustomFunctionMetadata,
-  OperatorNode,
-  OperatorParameterMetadata,
-
-  // json-edit-react
-  CustomNodeProps,
-  IconOk,
-  IconCancel,
-} from './_imports'
+import { CustomFunctionMetadata, OperatorNode, OperatorParameterMetadata } from 'fig-tree-evaluator'
+import { CustomNodeProps, IconOk, IconCancel } from './_imports'
 import { Select, SelectOption } from './Select'
 import { Icons } from './Icons'
 // import './styles.css'

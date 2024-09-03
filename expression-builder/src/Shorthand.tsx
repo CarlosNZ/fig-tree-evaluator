@@ -4,8 +4,8 @@ import {
   Operator as OperatorName,
   OperatorMetadata,
   EvaluatorNode,
-  CustomNodeProps,
-} from './_imports'
+} from 'fig-tree-evaluator'
+import { CustomNodeProps } from './_imports'
 import { Icons } from './Icons'
 // import './styles.css'
 import { getAliases, getButtonFontSize, getCurrentOperator, operatorStringRegex } from './helpers'

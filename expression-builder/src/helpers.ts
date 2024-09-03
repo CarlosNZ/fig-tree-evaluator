@@ -5,10 +5,9 @@ import {
   isObject,
   isAliasString,
   OperatorAlias,
-  NodeData,
-  isCollection,
   EvaluatorNode,
-} from './_imports'
+} from 'fig-tree-evaluator'
+import { NodeData, isCollection } from './_imports'
 import { NodeType } from './NodeTypeSelector'
 
 export const operatorStringRegex = /(\$[^()]+)\((.*)\)/

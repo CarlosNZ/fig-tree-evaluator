@@ -1,16 +1,11 @@
 import React, { useMemo } from 'react'
 import {
-  // Fig-Tree
   FigTreeEvaluator,
   FragmentMetadata,
   FragmentNode,
-
-  // json-edit-react
-  CustomNodeProps,
-  IconOk,
-  IconCancel,
   FragmentParameterMetadata,
-} from './_imports'
+} from 'fig-tree-evaluator'
+import { CustomNodeProps, IconOk, IconCancel } from './_imports'
 import { NodeTypeSelector } from './NodeTypeSelector'
 import { OperatorProps, PropertySelector } from './Operator'
 import { DisplayBar } from './DisplayBar'

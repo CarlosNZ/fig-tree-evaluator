@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import {
-  // fig-tree
   CustomFunctionMetadata,
   FigTreeEvaluator,
   OperatorAlias,
@@ -10,12 +9,8 @@ import {
   Operator as OperatorName,
   EvaluatorNode,
   FragmentParameterMetadata,
-
-  // json-edit-react
-  CustomNodeProps,
-  IconOk,
-  IconCancel,
-} from './_imports'
+} from 'fig-tree-evaluator'
+import { CustomNodeProps, IconOk, IconCancel } from './_imports'
 import { DisplayBar } from './DisplayBar'
 import { Select, SelectOption } from './Select'
 import { getCurrentOperator, getDefaultValue } from './helpers'

@@ -11,7 +11,7 @@ import {
   FragmentNode,
   OperatorParameterMetadata,
   FragmentParameterMetadata,
-} from './_imports'
+} from 'fig-tree-evaluator'
 import { getCurrentOperator, getDefaultValue, operatorAcceptsArbitraryProperties } from './helpers'
 
 export const commonProperties = ['fallback', 'outputType', 'type', 'useCache']
@@ -46,8 +46,8 @@ export const validateExpression = (
   const currentMetaData = isOperator
     ? getCurrentOperator((expression as OperatorNode)?.operator, figTreeMetaData.operators)
     : isFragment
-    ? figTreeMetaData.fragments.find((frag) => frag.name === expression.fragment)
-    : undefined
+      ? figTreeMetaData.fragments.find((frag) => frag.name === expression.fragment)
+      : undefined
 
   const requiredProperties = (
     currentMetaData?.parameters

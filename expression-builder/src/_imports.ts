@@ -7,7 +7,7 @@
  */
 
 /* Published package */
-export * from 'fig-tree-evaluator'
+// export * from 'fig-tree-evaluator'
 
 /* Local src */
 /* This will rarely be required as the main fig-tree instance is

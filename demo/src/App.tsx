@@ -235,6 +235,12 @@ function App() {
               jsonParse={JSON5.parse}
               {...jsonEditorOptions}
             />
+            <Text align="end" w="100%" maxW={600} fontSize="sm" mt={1} pr={1}>
+              Powered by{' '}
+              <Link href="https://carlosnz.github.io/json-edit-react/" isExternal>
+                json-edit-react
+              </Link>
+            </Text>
             {DataUndoRedo}
           </Flex>
           {/** EXPRESSION EDITOR COLUMN */}

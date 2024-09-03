@@ -1,14 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react'
 import { extract } from 'json-edit-react'
-
 import {
   type EvaluatorNode,
   type FigTreeEvaluator,
   type Operator as OperatorName,
-  // Fig Tree
   isObject,
   isAliasString,
   OperatorNode,
+  isFigTreeError,
+} from 'fig-tree-evaluator'
+import {
   // json-edit-react
   CustomNodeDefinition,
   JsonEditor,
@@ -16,7 +17,6 @@ import {
   NodeData,
   UpdateFunction,
   isCollection,
-  isFigTreeError,
 } from './_imports'
 import './styles.css'
 import { Operator } from './Operator'

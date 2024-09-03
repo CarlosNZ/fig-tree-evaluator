@@ -1,12 +1,6 @@
 import React from 'react'
-import {
-  // fig-tree
-  OperatorAlias,
-  Operator as OpType,
-
-  // json-edit-react
-  IconEdit,
-} from './_imports'
+import { OperatorAlias, Operator as OpType } from 'fig-tree-evaluator'
+import { IconEdit } from './_imports'
 import { Icons } from './Icons'
 import { getButtonFontSize } from './helpers'
 import { OperatorDisplay, operatorDisplay } from './operatorDisplay'
@@ -39,8 +33,8 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
     canonicalName === 'FRAGMENT'
       ? 'fragments'
       : canonicalName === 'CUSTOM_FUNCTIONS'
-      ? 'custom-functionsoperators'
-      : canonicalName.toLowerCase()
+        ? 'custom-functionsoperators'
+        : canonicalName.toLowerCase()
   const link = README_URL + linkSuffix
 
   return (

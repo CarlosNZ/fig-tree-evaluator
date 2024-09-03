@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react'
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
 import { Select, SelectOption } from './Select'
-import { FigTreeEvaluator } from './_imports'
 
 export type NodeType = 'operator' | 'fragment' | 'value' | 'customOperator'
 
