@@ -56,8 +56,8 @@ const nodeRoundedBorder = {
 interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
   expression: EvaluatorNode
-  objectData: object
-  onUpdate: UpdateFunction
+  objectData?: object
+  onUpdate?: UpdateFunction
   onEvaluate: (value: unknown) => void
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
@@ -67,8 +67,8 @@ interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   figTree,
   expression: expressionInit,
-  objectData,
-  onUpdate,
+  objectData = {},
+  onUpdate = () => {},
   onEvaluate,
   onEvaluateStart,
   onEvaluateError,
@@ -319,7 +319,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
             ),
           },
           {
-            condition: (nodeData: any) => nodeData.path.length === 0,
+            condition: (nodeData: any) => nodeData.path.length === 0 && isCollection(nodeData.data),
             element: TopLevelContainer,
             customNodeProps: {
               figTree,

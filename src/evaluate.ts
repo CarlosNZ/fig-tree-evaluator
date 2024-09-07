@@ -2,7 +2,14 @@
 The core evaluation function used by FigTreeEvaluator
 */
 
-import { FigTreeConfig, EvaluatorNode, EvaluatorOutput, OutputType, OperatorNode } from './types'
+import {
+  FigTreeConfig,
+  EvaluatorNode,
+  EvaluatorOutput,
+  OutputType,
+  OperatorNode,
+  FragmentNode,
+} from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import { fallbackOrError } from './FigTreeError'
 import {
@@ -45,7 +52,7 @@ export const evaluatorFunction = async (
   const isOperator = isOperatorNode(expression)
   const isFragment = isFragmentNode(expression)
 
-  if (isOperator) expression = await replaceCustomOperator(expression, config)
+  if (isOperator) expression = await replaceCustomOperator(expression as OperatorNode, config)
 
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
@@ -62,13 +69,14 @@ export const evaluatorFunction = async (
     return replaceAliasNodeValues(expression, config)
   }
 
-  const { fallback } = expression
+  const { fallback } = expression as OperatorNode
   const returnErrorAsString = options?.returnErrorAsString ?? false
 
   // Replace any fragments with their full expressions
   if (isFragment) {
+    const fragmentExpression = expression as FragmentNode
     const [fragment, parameters] = (await evaluateArray(
-      [expression.fragment, expression.parameters],
+      [fragmentExpression.fragment, fragmentExpression.parameters],
       config
     )) as [string, { [key: string]: EvaluatorNode }]
     const fragmentReplacement = preProcessShorthand(
@@ -86,16 +94,18 @@ export const evaluatorFunction = async (
       })
     if (!isOperatorNode(fragmentReplacement))
       return replaceAliasNodeValues(fragmentReplacement, config)
-    expression = { ...expression, ...(fragmentReplacement as OperatorNode), ...parameters }
-    delete expression.fragment
+    expression = { ...fragmentExpression, ...(fragmentReplacement as OperatorNode), ...parameters }
+    delete (expression as OperatorNode).fragment
   }
 
-  const operator = getOperatorName(expression.operator, operatorAliases)
+  const operatorExpression = expression as OperatorNode
+
+  const operator = getOperatorName(operatorExpression.operator, operatorAliases)
 
   if (!operator)
     return fallbackOrError({
       fallback: await evaluatorFunction(fallback, config),
-      error: `Invalid operator: ${expression.operator}`,
+      error: `Invalid operator: ${operatorExpression.operator}`,
       expression,
       returnErrorAsString,
     })
@@ -103,18 +113,21 @@ export const evaluatorFunction = async (
   if (!config.operators[operator])
     return fallbackOrError({
       fallback: await evaluatorFunction(fallback, config),
-      error: `Excluded operator: ${expression.operator}`,
+      error: `Excluded operator: ${operatorExpression.operator}`,
       expression,
       returnErrorAsString,
     })
 
   const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
-  expression = mapPropertyAliases(propertyAliases, expression)
+  let finalOperatorExpression = mapPropertyAliases(
+    propertyAliases,
+    operatorExpression
+  ) as OperatorNode
 
   // Evaluate any alias nodes defined at this level and save them in "config"
   // object so they get accumulated as we progress down the tree.
-  const newAliasNodes = await evaluateNodeAliases(expression, config)
+  const newAliasNodes = await evaluateNodeAliases(finalOperatorExpression, config)
   if (!isFragment)
     // It is important to mutate this object in place rather than create a
     // shallow copy, or else we can end up with different versions replacing
@@ -133,10 +146,13 @@ export const evaluatorFunction = async (
 
   // If using "children" property, convert children array to expected
   // properties
-  if ('children' in expression) {
-    if (!Array.isArray(expression.children))
-      expression.children = await evaluatorFunction(expression.children, childConfig)
-    if (!Array.isArray(expression.children))
+  if ('children' in finalOperatorExpression) {
+    if (!Array.isArray(finalOperatorExpression.children))
+      finalOperatorExpression.children = (await evaluatorFunction(
+        finalOperatorExpression.children,
+        childConfig
+      )) as EvaluatorNode[]
+    if (!Array.isArray(finalOperatorExpression.children))
       return fallbackOrError({
         fallback: await evaluatorFunction(fallback, config),
         operator,
@@ -145,25 +161,25 @@ export const evaluatorFunction = async (
         expression,
         returnErrorAsString,
       })
-    expression = await parseChildren(expression, childConfig)
-    delete expression.children
+    finalOperatorExpression = await parseChildren(finalOperatorExpression, childConfig)
+    delete finalOperatorExpression.children
   }
 
   // Recursively evaluate node
   let result
   try {
-    result = await evaluate(expression, childConfig)
+    result = await evaluate(finalOperatorExpression, childConfig)
   } catch (error) {
     return fallbackOrError({
-      fallback: await evaluatorFunction(expression.fallback, config),
+      fallback: await evaluatorFunction(finalOperatorExpression.fallback, config),
       operator,
       error: error as Error,
-      expression,
+      expression: finalOperatorExpression,
       returnErrorAsString,
     })
   }
 
-  const outputType = expression?.outputType ?? expression?.type
+  const outputType = finalOperatorExpression?.outputType ?? finalOperatorExpression?.type
   if (!outputType) return result
 
   const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType
@@ -174,7 +190,7 @@ export const evaluatorFunction = async (
       fallback: await evaluatorFunction(fallback, config),
       operator,
       error: `- Invalid output type: ${evaluatedOutputType}`,
-      expression,
+      expression: finalOperatorExpression,
       returnErrorAsString,
     })
   else {

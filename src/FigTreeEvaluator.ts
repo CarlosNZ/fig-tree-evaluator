@@ -152,7 +152,9 @@ export const evaluateExpression = (expression: EvaluatorNode, options?: FigTreeO
 
 // Some option names may change over time, or we allow aliases. This function
 // ensures backwards compatibility and keeps option names standardised.
-const standardiseOptionNames = (options: FigTreeOptions & { objects?: object }) => {
+const standardiseOptionNames = (
+  options: FigTreeOptions & { objects?: Record<string, unknown> }
+) => {
   if ('objects' in options) {
     return { ...options, data: options.objects }
   }

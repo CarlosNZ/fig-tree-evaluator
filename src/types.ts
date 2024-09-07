@@ -42,8 +42,8 @@ export type Fragments = Record<string, Fragment>
 export type UnknownFunction = (...args: any[]) => EvaluatorOutput
 
 export interface FigTreeOptions {
-  data?: object
-  objects?: object // same as "data" -- deprecated
+  data?: Record<string, unknown>
+  objects?: Record<string, unknown> // same as "data" -- deprecated
   functions?: Record<string, UnknownFunction | FunctionDefinition>
   fragments?: Fragments
   httpClient?: HttpClient | AxiosStatic | Fetch

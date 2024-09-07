@@ -10,6 +10,7 @@ import {
   EvaluatorNode,
   OperatorNode,
   FragmentNode,
+  Fragment,
   EvaluatorOutput,
   OutputType,
   OperatorData,
@@ -29,6 +30,7 @@ import {
   isObject,
   standardiseOperatorName,
   truncateString,
+  isFigTreeExpression,
 } from './helpers'
 
 export {
@@ -50,6 +52,7 @@ export {
   preProcessShorthand,
   standardiseOperatorName,
   truncateString,
+  isFigTreeExpression,
   // Types
   type Operator,
   type OperatorAlias,
@@ -58,6 +61,7 @@ export {
   type EvaluatorNode,
   type OperatorNode,
   type FragmentNode,
+  type Fragment,
   type EvaluatorOutput,
   type OutputType,
   type OperatorData,

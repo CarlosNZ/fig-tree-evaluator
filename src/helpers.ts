@@ -24,7 +24,7 @@ export const parseIfJson = (input: EvaluatorNode) => {
   }
 }
 
-export const isOperatorNode = (input: EvaluatorNode) =>
+export const isOperatorNode = (input: EvaluatorNode): input is OperatorNode =>
   input instanceof Object && 'operator' in input
 
 export const isFragmentNode = (input: EvaluatorNode): input is FragmentNode =>
@@ -218,3 +218,17 @@ Returns `true` if input is an object ({}) (but not an array)
 */
 export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
+
+/**
+ * The following is not used in FigTree itself, but might be a useful utility
+ * methods for consumers in order to determine if some value should be displayed
+ * as a FigTree expression or not
+ */
+
+export const isFigTreeExpression = (expression: EvaluatorNode) =>
+  isOperatorNode(expression) ||
+  isFragmentNode(expression) ||
+  (typeof expression === 'string' && isAliasString(expression)) ||
+  (isObject(expression) &&
+    Object.keys(expression).length === 1 &&
+    isAliasString(Object.keys(expression)[0]))
