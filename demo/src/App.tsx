@@ -257,7 +257,7 @@ function App() {
               figTree={figTree}
               expression={expression}
               setData={setExpression as (data: JsonData) => void}
-              objectData={objectData}
+              objectData={objectData as Record<string, unknown>}
               onUpdate={({ newData }) => {
                 localStorage.setItem('expression', JSON.stringify(newData))
               }}

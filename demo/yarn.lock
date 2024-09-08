@@ -2450,10 +2450,10 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.17.0:
-  version "2.17.0"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.17.0.tgz#a8b29c6671b3dae74857eef511f8d0e681c60740"
-  integrity sha512-mHNtSnIFIJW8sGQFOa8l1psEyYVnCYrJNDihf/AFW0UN3uCj/8C/qvNWo1ZDUjdHKToMdG8r1eUu+ZxLa+9UIQ==
+fig-tree-evaluator@^2.17.1:
+  version "2.17.1"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.17.1.tgz#e96391f43a71f04b3054959a0618e66bccf5e217"
+  integrity sha512-7dG+0vmRs8LVRxkJ+YmU0exF0T8CAlq+z1xTCL0d2fM2yum5EXw52Fl85f5s9CT1+gb7vX50Se1o0t5ig6Naeg==
   dependencies:
     dequal "^2.0.3"
     object-property-extractor "^1.0.12"

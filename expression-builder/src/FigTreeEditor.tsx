@@ -56,7 +56,7 @@ const nodeRoundedBorder = {
 interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   figTree: FigTreeEvaluator
   expression: EvaluatorNode
-  objectData?: object
+  objectData?: Record<string, unknown>
   onUpdate?: UpdateFunction
   onEvaluate: (value: unknown) => void
   onEvaluateStart?: () => void

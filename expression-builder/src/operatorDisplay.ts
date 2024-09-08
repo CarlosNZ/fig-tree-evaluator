@@ -102,7 +102,7 @@ export const operatorDisplay: Record<Operator, OperatorDisplay> & { FRAGMENT: Op
   SQL: {
     backgroundColor: '#48648a',
     textColor: '#f8f8f8',
-    displayName: 'PostgreSQL query',
+    displayName: 'SQL query',
   },
   GRAPHQL: {
     backgroundColor: '#b9d9d9',

@@ -4,7 +4,7 @@ import { JsonEditorProps } from 'json-edit-react'
 export interface DemoData {
   name: string
   content: string // Markdown
-  objectData?: object
+  objectData?: Record<string, unknown>
   objectJsonEditorProps?: Omit<JsonEditorProps, 'data'>
   expression: EvaluatorNode
   expressionCollapse?: number
