@@ -81,7 +81,7 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
     <div
       className="ft-display-button"
       style={{ backgroundColor, color: textColor }}
-      onClick={evaluate}
+      onClick={(e) => evaluate(e)}
     >
       {!isLoading ? (
         <>

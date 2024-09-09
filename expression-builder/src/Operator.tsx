@@ -21,7 +21,7 @@ import { OperatorDisplay } from './operatorDisplay'
 
 export interface OperatorProps {
   figTree: FigTreeEvaluator
-  evaluateNode: (expression: EvaluatorNode) => Promise<void>
+  evaluateNode: (expression: EvaluatorNode, e: React.KeyboardEvent) => Promise<void>
   topLevelAliases: Record<string, EvaluatorNode>
   operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
 }

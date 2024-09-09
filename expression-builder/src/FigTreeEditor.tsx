@@ -62,6 +62,7 @@ interface FigTreeEditorProps extends Omit<JsonEditorProps, 'data'> {
   onEvaluateStart?: () => void
   onEvaluateError?: (err: unknown) => void
   operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
+  styles?: Partial<any>
 }
 
 const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
@@ -73,6 +74,7 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
   onEvaluateStart,
   onEvaluateError,
   operatorDisplay,
+  styles = {},
   ...props
 }) => {
   const operators = useMemo(() => figTree.getOperators(), [figTree])
@@ -117,10 +119,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   if (!figTree) return null
 
-  const evaluateNode = async (expression: EvaluatorNode) => {
+  const evaluateNode = async (expression: EvaluatorNode, e: React.KeyboardEvent) => {
     onEvaluateStart && onEvaluateStart()
     try {
       const result = await figTree.evaluate(expression, { data: objectData })
+      if (e.shiftKey) navigator.clipboard.writeText(String(result))
       onEvaluate(result)
     } catch (err) {
       if (isFigTreeError(err)) console.error(err.prettyPrint)
@@ -178,8 +181,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
       collapse={2}
       stringTruncate={100}
       {...props}
-      theme={{
-        styles: {
+      theme={[
+        {
           container: {},
           property: (nodeData) => {
             if (isAliasString(String(nodeData.key))) return { fontStyle: 'italic' }
@@ -234,7 +237,8 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
           },
           iconEdit: { color: 'rgb(42, 161, 152)' },
         },
-      }}
+        styles,
+      ]}
       customNodeDefinitions={
         [
           {

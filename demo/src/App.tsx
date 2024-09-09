@@ -283,7 +283,7 @@ function App() {
                     isClosable: true,
                   })
               }}
-              rootName=""
+              rootName="expression"
               enableClipboard={({ stringValue, type }) =>
                 toast({
                   title: `${type === 'value' ? 'Value' : 'Path'} copied to clipboard:`,
