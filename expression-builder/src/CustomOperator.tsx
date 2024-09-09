@@ -134,7 +134,7 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
       ) : (
         <div style={{ width: '100%', textAlign: 'center' }}>
           <span
-            className="loader"
+            className="ft-loader"
             style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
           ></span>
         </div>

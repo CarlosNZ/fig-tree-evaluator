@@ -69,7 +69,7 @@ export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) 
         ) : (
           <div style={{ width: '100%', textAlign: 'center' }}>
             <span
-              className="loader"
+              className="ft-loader"
               style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
             ></span>
           </div>
@@ -173,7 +173,7 @@ export const ShorthandStringNode: React.FC<CustomNodeProps<ShorthandProps>> = (p
         ) : (
           <div style={{ width: '100%', textAlign: 'center' }}>
             <span
-              className="loader"
+              className="ft-loader"
               style={{ width: '1.5em', height: '1.5em', borderTopColor: textColor }}
             ></span>
           </div>
