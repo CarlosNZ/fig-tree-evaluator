@@ -11,7 +11,7 @@ interface DisplayBarProps {
   name: OperatorAlias
   description?: string
   setIsEditing: () => void
-  evaluate: () => void
+  evaluate: (e: React.MouseEvent) => void
   isLoading: boolean
   canonicalName: OpType | 'FRAGMENT'
   operatorDisplay?: OperatorDisplay
@@ -66,7 +66,7 @@ export interface EvaluateButtonProps {
   name?: string
   backgroundColor: string
   textColor: string
-  evaluate: () => void
+  evaluate: (e: React.MouseEvent) => void
   isLoading: boolean
 }
 

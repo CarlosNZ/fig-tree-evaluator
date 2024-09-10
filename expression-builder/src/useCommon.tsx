@@ -44,7 +44,7 @@ export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Inp
 
   const aliases = { ...topLevelAliases, ...getAliases(parentData) }
 
-  const evaluate = async (e: React.KeyboardEvent) => {
+  const evaluate = async (e: React.MouseEvent) => {
     setLoading(true)
     await evaluateNode({ ...parentData, ...aliases }, e)
     setLoading(false)

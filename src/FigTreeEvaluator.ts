@@ -21,7 +21,7 @@ import { version } from './version'
 import { HttpClient } from './operators/operatorUtils'
 import { getHttpClient } from './httpClients'
 
-class FigTreeEvaluator {
+export class FigTreeEvaluator {
   private options: FigTreeOptions
   private operators: OperatorReference
   private operatorAliases: OperatorAliases
@@ -142,8 +142,6 @@ class FigTreeEvaluator {
 
   public getVersion = () => version
 }
-
-export default FigTreeEvaluator
 
 // Stand-alone function for evaluating expressions without creating a
 // FigTreeEvaluator object instance

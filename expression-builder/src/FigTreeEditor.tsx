@@ -119,11 +119,11 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
   if (!figTree) return null
 
-  const evaluateNode = async (expression: EvaluatorNode, e: React.KeyboardEvent) => {
+  const evaluateNode = async (expression: EvaluatorNode, e: React.MouseEvent) => {
     onEvaluateStart && onEvaluateStart()
     try {
       const result = await figTree.evaluate(expression, { data: objectData })
-      if (e.shiftKey) navigator.clipboard.writeText(String(result))
+      if (e.getModifierState('Shift')) navigator.clipboard.writeText(String(result))
       onEvaluate(result)
     } catch (err) {
       if (isFigTreeError(err)) console.error(err.prettyPrint)
