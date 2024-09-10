@@ -1,6 +1,7 @@
 import typescript from '@rollup/plugin-typescript'
 import dts from 'rollup-plugin-dts'
 import sizes from 'rollup-plugin-sizes'
+import bundleSize from 'rollup-plugin-bundle-size'
 import { terser } from 'rollup-plugin-terser'
 
 export default [
@@ -16,7 +17,7 @@ export default [
         format: 'esm',
       },
     ],
-    plugins: [typescript({ module: 'ESNext', target: 'es6' }), sizes(), terser()],
+    plugins: [typescript({ module: 'ESNext', target: 'es6' }), terser(), bundleSize(), sizes()],
     external: ['object-property-extractor', 'dequal/lite', 'querystring'],
   },
   {
