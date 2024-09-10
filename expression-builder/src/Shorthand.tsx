@@ -16,7 +16,7 @@ const README_URL = 'https://github.com/CarlosNZ/fig-tree-evaluator?tab=readme-ov
 
 export interface ShorthandProps {
   figTree: FigTreeEvaluator
-  evaluateNode: (expression: EvaluatorNode) => Promise<void>
+  evaluateNode: (expression: EvaluatorNode, e: React.MouseEvent) => Promise<void>
   operatorDisplay: Partial<Record<OperatorName, OperatorDisplay>>
   topLevelAliases: Record<string, EvaluatorNode>
 }
@@ -47,9 +47,9 @@ export const ShorthandNode: React.FC<CustomNodeProps<ShorthandProps>> = (props) 
       <div
         className="ft-display-button"
         style={{ backgroundColor, color: textColor, width: 'unset' }}
-        onClick={async () => {
+        onClick={async (e) => {
           setLoading(true)
-          await evaluateNode({ ...data, ...aliases })
+          await evaluateNode({ ...data, ...aliases }, e)
           setLoading(false)
         }}
       >
@@ -111,9 +111,9 @@ export const ShorthandNodeWrapper: React.FC<CustomNodeProps<ShorthandProps>> = (
         <DisplayBar
           name={key as string}
           setIsEditing={() => {}}
-          evaluate={async () => {
+          evaluate={async (e) => {
             setLoading(true)
-            await evaluateNode({ ...parentData, ...aliases })
+            await evaluateNode({ ...parentData, ...aliases }, e)
             setLoading(false)
           }}
           isLoading={loading}
@@ -150,9 +150,9 @@ export const ShorthandStringNode: React.FC<CustomNodeProps<ShorthandProps>> = (p
       <div
         className="ft-display-button"
         style={{ backgroundColor, color: textColor, width: 'unset' }}
-        onClick={async () => {
+        onClick={async (e) => {
           setLoading(true)
-          await evaluateNode(data)
+          await evaluateNode(data, e)
           setLoading(false)
         }}
       >
