@@ -1,11 +1,12 @@
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
+import { FetchClient } from '../src'
 
 const exp = new FigTreeEvaluator({
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
   returnErrorAsString: true,
   objects: { myCountry: 'Brazil' },
   fragments: {

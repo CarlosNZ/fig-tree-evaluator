@@ -1,7 +1,8 @@
 import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
+import { FetchClient } from '../src'
 
-const exp = new FigTreeEvaluator({ httpClient: fetch })
+const exp = new FigTreeEvaluator({ httpClient: FetchClient(fetch) })
 
 // STRING SUBSTITUTION
 

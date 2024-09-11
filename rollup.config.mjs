@@ -18,7 +18,7 @@ export default [
       },
     ],
     plugins: [typescript({ module: 'ESNext', target: 'es6' }), terser(), bundleSize(), sizes()],
-    external: ['object-property-extractor', 'dequal/lite', 'querystring'],
+    external: ['object-property-extractor', 'dequal/lite'],
   },
   {
     // path to your declaration files root

@@ -46,7 +46,7 @@ export interface FigTreeOptions {
   objects?: Record<string, unknown> // same as "data" -- deprecated
   functions?: Record<string, UnknownFunction | FunctionDefinition>
   fragments?: Fragments
-  httpClient?: HttpClient | AxiosStatic | Fetch
+  httpClient?: HttpClient
   graphQLConnection?: GraphQLConnection
   sqlConnection?: SQLConnection
   baseEndpoint?: string

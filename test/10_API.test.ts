@@ -1,12 +1,13 @@
 import axios from 'axios'
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
+import { FetchClient, AxiosClient } from '../src'
 
-const exp = new FigTreeEvaluator({ returnErrorAsString: true, httpClient: axios })
+const exp = new FigTreeEvaluator({ returnErrorAsString: true, httpClient: AxiosClient(axios) })
 
 const expFetch = new FigTreeEvaluator({
   returnErrorAsString: true,
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
 })
 
 // GET

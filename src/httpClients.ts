@@ -16,21 +16,15 @@ export type Fetch = (
 declare const window: { document: unknown; fetch: Fetch }
 
 /**
- * Auto-detect the passed-in client and return it in the appropriate abstraction
- * wrapper
+ * Wrap the specified Http client in abstraction wrapper
  */
-export const getHttpClient = (
-  client: HttpClient | AxiosStatic | Fetch | undefined
-): HttpClient | undefined => {
+export const getHttpClient = (client: HttpClient | undefined): HttpClient | undefined => {
   if (!client) {
     // In browser, use built-in `fetch` by default
     if (typeof window !== 'undefined' && 'document' in window && 'fetch' in window)
       return FetchClient(window.fetch)
     else return undefined
   }
-  if ('name' in client && client.name === 'fetch') return FetchClient(client as Fetch)
-
-  if ('Axios' in client && client.Axios.name === 'Axios') return AxiosClient(client)
 
   return client as HttpClient
 }

@@ -1,5 +1,6 @@
 import { Client } from 'pg'
 import { FigTreeEvaluator } from './evaluator'
+import { AxiosClient } from '../src'
 import pgConfig from './database/pgConfig.json'
 import massiveQuery from './massiveQuery.json'
 import { config } from '../codegen/queryBuilder'
@@ -10,7 +11,7 @@ const pgConnect = new Client(pgConfig)
 pgConnect.connect()
 
 const exp = new FigTreeEvaluator({
-  httpClient: axios,
+  httpClient: AxiosClient(axios),
   sqlConnection: SQLNodePostgres(pgConnect),
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',

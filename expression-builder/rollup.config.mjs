@@ -21,7 +21,7 @@ export default [
       },
     ],
     plugins: [
-      styles(),
+      styles({ minimize: true }),
       peerDepsExternal({ includeDependencies: true }),
       typescript({ module: 'ESNext', target: 'es6' }),
       // sizes(),

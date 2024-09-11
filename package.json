@@ -7,7 +7,7 @@
   "sideEffects": false,
   "types": "build/index.d.ts",
   "files": [
-    "build/**/*"
+    "build"
   ],
   "repository": "git+https://github.com/CarlosNZ/fig-tree-evaluator.git",
   "author": "Carl Smith <5456533+CarlosNZ@users.noreply.github.com>",

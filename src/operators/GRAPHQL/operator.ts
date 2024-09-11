@@ -111,7 +111,7 @@ const parseChildren: ParseChildrenMethod = async (expression, config) => {
 export interface GraphQLConnection {
   endpoint: string
   headers?: { [key: string]: string }
-  httpClient?: HttpClient | AxiosStatic | Fetch
+  httpClient?: HttpClient
 }
 
 export const GRAPHQL: OperatorObject = {

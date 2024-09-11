@@ -1,12 +1,13 @@
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
+import { FetchClient } from '../src'
 import { preProcessShorthand } from '../src/shorthandSyntax'
 
 const fig = new FigTreeEvaluator({
   graphQLConnection: {
     endpoint: 'https://countries.trevorblades.com/',
   },
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
   returnErrorAsString: true,
   objects: {
     myCountry: 'Brazil',

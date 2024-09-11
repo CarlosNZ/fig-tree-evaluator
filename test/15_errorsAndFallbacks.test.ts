@@ -2,6 +2,7 @@ import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 import axios from 'axios'
 import { FigTreeError } from '../src/FigTreeError'
+import { FetchClient, AxiosClient } from '../src'
 
 const exp = new FigTreeEvaluator({
   objects: {
@@ -18,7 +19,7 @@ const exp = new FigTreeEvaluator({
       questions: { q1: 'What is the answer?', q2: 'Enter your name' },
     },
   },
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
   nullEqualsUndefined: true,
 })
 
@@ -328,7 +329,7 @@ test('GET - 404 error', async () => {
     url: 'http://httpstat.us/404',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow('Problem with GET request')
-  await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
+  await expect(exp.evaluate(expression, { httpClient: AxiosClient(axios) })).rejects.toThrow(
     'Request failed with status code 404'
   )
   try {
@@ -340,7 +341,7 @@ test('GET - 404 error', async () => {
 
 test('POST - Bad login', async () => {
   const expAxios = new FigTreeEvaluator({
-    httpClient: axios,
+    httpClient: AxiosClient(axios),
   })
   const expression = {
     operator: 'POST',
@@ -348,7 +349,7 @@ test('POST - Bad login', async () => {
     parameters: { email: 'eve.holt@reqres.in' },
   }
   await expect(expAxios.evaluate(expression)).rejects.toThrow('Request failed with status code 400')
-  await expect(expAxios.evaluate(expression, { httpClient: fetch })).rejects.toThrow(
+  await expect(expAxios.evaluate(expression, { httpClient: FetchClient(fetch) })).rejects.toThrow(
     'Problem with POST request'
   )
   try {
@@ -386,10 +387,10 @@ test('GET - 404 error', async () => {
     operator: 'get',
     url: 'http://httpstat.us/404',
   }
-  await expect(exp.evaluate(expression, { httpClient: fetch })).rejects.toThrow(
+  await expect(exp.evaluate(expression, { httpClient: FetchClient(fetch) })).rejects.toThrow(
     'Problem with GET request'
   )
-  await expect(exp.evaluate(expression, { httpClient: axios })).rejects.toThrow(
+  await expect(exp.evaluate(expression, { httpClient: AxiosClient(axios) })).rejects.toThrow(
     'Request failed with status code 404'
   )
   try {
