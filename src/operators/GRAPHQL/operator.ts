@@ -16,8 +16,6 @@ import {
   ParseChildrenMethod,
 } from '../../types'
 import operatorData, { propertyAliases } from './data'
-import { AxiosStatic } from 'axios'
-import { Fetch } from '../../httpClients'
 
 const evaluate: EvaluateMethod = async (expression, config) => {
   const client = config.graphQLClient ?? config.httpClient

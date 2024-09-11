@@ -1,10 +1,8 @@
-import { AxiosStatic } from 'axios'
 import FigTreeCache from './cache'
 import { GraphQLConnection, SQLConnection } from './operators'
 import { operatorAliases } from './operators/operatorAliases'
 import { HttpClient } from './operators/operatorUtils'
 import { ExpectedType, TypeCheckInput } from './typeCheck'
-import { Fetch } from './httpClients'
 
 export const Operators = [
   // Canonical operator names

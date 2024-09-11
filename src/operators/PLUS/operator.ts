@@ -25,7 +25,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   // Concatenate arrays/strings
   if (values.every((child) => typeof child === 'string' || Array.isArray(child)))
-    return values.reduce((acc, child) => acc.concat(child))
+    return values.reduce((acc, child) => acc.concat(child as string))
 
   // Merge objects
   if (values.every((child) => isObject(child)))
