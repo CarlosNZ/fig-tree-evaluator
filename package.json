@@ -6,6 +6,11 @@
   "module": "build/index.esm.js",
   "sideEffects": false,
   "types": "build/index.d.ts",
+  "exports": {
+    "types": "./build/index.d.ts",
+    "import": "./build/index.esm.js",
+    "require": "./dist/index.cjs.js"
+  },
   "files": [
     "build"
   ],
