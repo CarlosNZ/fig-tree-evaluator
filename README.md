@@ -1022,10 +1022,10 @@ To specify one of these for use, just pass the client directly to the `httpClien
 
 ```js
 import axios from 'axios'
-import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, AxiosClient } from 'fig-tree-evaluator'
 
 const fig = new FigTreeEvaluator({
-  httpClient: axios,
+  httpClient: AxiosClient(axios),
   ...otherOptions
 })
 ```
@@ -1034,10 +1034,10 @@ const fig = new FigTreeEvaluator({
 
 ```js
 import fetch from 'node-fetch'
-import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { FigTreeEvaluator, FetchClient } from 'fig-tree-evaluator'
 
 const fig = new FigTreeEvaluator({
-  httpClient: fetch,
+  httpClient: FetchClient(fetch),
   ...otherOptions
 })
 ```
