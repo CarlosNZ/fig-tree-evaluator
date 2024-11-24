@@ -106,7 +106,7 @@ const getReplacement = async (
 ) => {
   const data = config.options?.data ?? {}
   const key = fragment.replace(/{{(.+)}}/, '$1')
-  // Need to evaluate each replacement, as they won't be reached it
+  // Need to evaluate each replacement, as they won't be reached if
   // `evaluateFullObject` is not enabled
   const value = await evaluatorFunction(
     extractProperty(replacements, key, extractProperty(data, key, '')),
