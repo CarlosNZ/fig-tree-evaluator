@@ -3665,6 +3665,11 @@ object-property-extractor@^1.0.12:
   resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.12.tgz#d3824be4a01e8d4489d3cdcbd1dfc45828d1ad97"
   integrity sha512-X6rMK1O6O3EU4O06BtATezWKr+5idX6Yo0PndVqr8NlED3Eoa2YE+VKQgQL4EK0+vh+YA83Sjj9Nsi/PuXXeDQ==
 
+object-property-extractor@^1.0.13:
+  version "1.0.13"
+  resolved "https://registry.yarnpkg.com/object-property-extractor/-/object-property-extractor-1.0.13.tgz#fff188d6308ac5574eb2610221af906eb87b4f38"
+  integrity sha512-9kgEjTWDhTPuPn7nyof+5mLmCKBPKdU0c7IVpTbOvYKYSdXQ5skH4Pa/8MPbZXeyXBGrqS82JyWecsh6tMxiLw==
+
 object.assign@^4.1.4:
   version "4.1.5"
   resolved "https://registry.yarnpkg.com/object.assign/-/object.assign-4.1.5.tgz#3a833f9ab7fdb80fc9e8d2300c803d216d8fdbb0"

@@ -18,8 +18,8 @@ import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
-import { HttpClient } from './operators/operatorUtils'
 import { getHttpClient } from './httpClients'
+import { type HttpClient } from './operators/operatorUtils'
 
 export class FigTreeEvaluator {
   private options: FigTreeOptions
