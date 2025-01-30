@@ -176,6 +176,9 @@ const FigTreeEditor: React.FC<FigTreeEditorProps> = ({
 
         return required?.includes(key as string) ?? false
       }}
+      // Prevent operator nodes being edited using this component, as they have
+      // their own editing functionality
+      restrictEdit={({ key }) => key === 'operator' || key === 'fragment'}
       showArrayIndices={false}
       indent={3}
       collapse={2}
