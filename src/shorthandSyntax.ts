@@ -4,7 +4,7 @@ import { operatorAliases as opAliases } from './operators/operatorAliases'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
-const functionStringRegex = /(\$[^()]+)\((.*)\)/
+const functionStringRegex = /(\$[A-Za-z0-9_]+)\s*\((.*)\)/
 
 export const preProcessShorthand = (
   expression: EvaluatorNode,
