@@ -2121,6 +2121,8 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+- **v2.19.0**: *Remove* "string" shorthand syntax (technically a breaking change, but I doubt anyone is affected by this) #124
+- **v2.18.0**: Prevent HTTP clients from being bundled with main package
 - **v2.17.0**: Allow Custom Functions to be expressed as Custom Operators
 - **v2.16.10**: Fix for when aliases reference other aliases at the same level
 - **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
