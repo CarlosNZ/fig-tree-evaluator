@@ -14,6 +14,23 @@ test('buildObject - basic', () => {
   })
 })
 
+test('buildObject - basic, with children', () => {
+  const expression = {
+    operator: 'buildObject',
+    children: ['someKey', 'someValue'],
+  }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toStrictEqual({ someKey: 'someValue' })
+  })
+})
+
+test('buildObject - basic, shorthand', () => {
+  const expression = { $buildObject: ['someKey', 'someValue'] }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toStrictEqual({ someKey: 'someValue' })
+  })
+})
+
 test('buildObject - handling erroneous input', () => {
   const expression = {
     operator: 'buildObject',

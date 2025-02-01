@@ -41,28 +41,21 @@ const functionNames = Object.keys(fig.getCustomFunctions())
 
 // Test pre-processing only
 
-test('Shorthand - simple string expression evaluation', () => {
-  const expression = '$getData(path.to.country.name)'
+test('Shorthand - shorthand expression with string value', () => {
+  const expression = { $getData: 'path.to.country.name' }
   expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'OBJECT_PROPERTIES',
     children: ['path.to.country.name'],
   })
 })
 
-test('Shorthand - nested string expression', () => {
-  const expression = '$plus( $getData ( myCountry), $getData(otherCountry))'
+test('Shorthand - nested shorthand expression with string values', () => {
+  const expression = { $plus: [{ $getData: 'myCountry' }, { $getData: 'otherCountry' }] }
   expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     operator: 'PLUS',
-    children: [
-      {
-        operator: 'OBJECT_PROPERTIES',
-        children: ['myCountry'],
-      },
-      {
-        operator: 'OBJECT_PROPERTIES',
-        children: ['otherCountry'],
-      },
-    ],
+    // Shorthand pre-processing only goes one level deep, children will get
+    // processed when evaluated
+    children: [{ $getData: 'myCountry' }, { $getData: 'otherCountry' }],
   })
 })
 
@@ -93,25 +86,25 @@ test('Shorthand - nested object expression', () => {
 })
 
 test('Shorthand - fragment 1', () => {
-  const expression = { $getFlag: { $country: '$getData(myCountry)' } }
+  const expression = { $getFlag: { $country: { $getData: 'myCountry' } } }
   expect(preProcessShorthand(expression, fragments, functionNames)).toStrictEqual({
     fragment: 'getFlag',
     parameters: {
-      $country: '$getData(myCountry)',
+      $country: { $getData: 'myCountry' },
     },
   })
 })
 
 // Same as above expressions, but checking the actual evaluation result
-test('Shorthand - evaluate simple string expression', () => {
-  const expression = '$getData(deep.p)'
+test('Shorthand - evaluate simple single-value expression', () => {
+  const expression = { $getData: 'deep.p' }
   return fig.evaluate(expression).then((result) => {
     expect(result).toBe(12)
   })
 })
 
-test('Shorthand - evaluate nested string expression', () => {
-  const expression = '$plus( $getData ( myCountry), $getData(otherCountry))'
+test('Shorthand - evaluate nested expression', () => {
+  const expression = { $plus: [{ $getData: 'myCountry' }, { $getData: 'otherCountry' }] }
   return fig.evaluate(expression).then((result) => {
     expect(result).toBe('BrazilFrance')
   })
@@ -134,7 +127,7 @@ test('Shorthand - evaluate nested object expression', () => {
 })
 
 test('Shorthand - evaluate fragment', () => {
-  const expression = { $getFlag: { $country: '$getData(myCountry)' } }
+  const expression = { $getFlag: { $country: { $getData: 'myCountry' } } }
   return fig.evaluate(expression).then((result) => {
     expect(result).toBe('🇧🇷')
   })
@@ -147,8 +140,8 @@ test('Shorthand - custom function', () => {
   })
 })
 
-test('Shorthand - custom function as string', () => {
-  const expression = '$function(getPrincess, Diana)'
+test('Shorthand - custom function with named properties', () => {
+  const expression = { $function: { functionPath: 'getPrincess', input: 'Diana' } }
   return fig.evaluate(expression).then((result) => {
     expect(result).toBe('Princess Diana')
   })
@@ -218,13 +211,13 @@ test('Shorthand - mixed fragments & operators with multiple syntaxes', () => {
       $values: [
         {
           fragment: 'getCountryData',
-          $country: '$getData(variables.country)',
+          $country: { $getData: 'variables.country' },
           $field: { $getData: 'variables.field' },
         },
         ', ',
         {
           $getCountryData: {
-            $country: '$getData( variables.country )',
+            $country: { $getData: { property: 'variables.country' } },
             $field: { $getData: { property: 'variables.otherField' } },
           },
         },

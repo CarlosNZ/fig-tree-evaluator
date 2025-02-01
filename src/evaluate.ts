@@ -240,23 +240,26 @@ export const evaluateObject = async (
   input: EvaluatorNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  if (!isObject(input)) return input
+  const functionNames = Object.keys(config.options?.functions ?? {})
+  const fullNode = preProcessShorthand(input, config.options?.fragments, functionNames)
+
+  if (!isObject(fullNode)) return input
 
   const newObjectEntries: unknown[] = []
   const newAliases: unknown[] = []
 
   // First evaluate any Alias nodes we find and add them to config
-  Object.entries(input).forEach(([key, value]) => {
+  Object.entries(fullNode).forEach(([key, value]) => {
     if (isAliasString(key)) {
       newAliases.push(key, evaluatorFunction(value, config))
-      delete (input as Record<string, unknown>)[key]
+      delete (fullNode as Record<string, unknown>)[key]
     }
   })
   const aliasArray = await Promise.all(newAliases)
   config.resolvedAliasNodes = { ...config.resolvedAliasNodes, ...singleArrayToObject(aliasArray) }
 
   // Then evaluate the rest
-  Object.entries(input).forEach(([key, value]) => {
+  Object.entries(fullNode).forEach(([key, value]) => {
     newObjectEntries.push(key, evaluatorFunction(value, config))
   })
 

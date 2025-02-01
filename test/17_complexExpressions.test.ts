@@ -283,7 +283,7 @@ const shorthandExpression = {
   },
   $country: {
     $API: [
-      '$plus(https://restcountries.com/v3.1/name/, cuba)',
+      { $plus: ['https://restcountries.com/v3.1/name/', 'cuba'] },
       { $split: { value: 'fullText, fields', delimiter: ',' } },
       true,
       'name,capital,flag',
@@ -341,7 +341,7 @@ const shorthandExpression = {
             ],
           },
         },
-        '$getData(organisation)',
+        { $getData: 'organisation' },
       ],
     },
     { $doubleLineBreak: {} },
@@ -353,7 +353,7 @@ const shorthandExpression = {
         null,
       ],
     },
-    '$doubleLineBreak()',
+    { $doubleLineBreak: {} },
     {
       $myFallback: 'Empire',
       $stringSubstitution: {
@@ -370,7 +370,8 @@ const shorthandExpression = {
                     $gql: {
                       query:
                         'query capitals($code:String!) {countries(filter: {code: {eq: $code}}) {capital}}',
-                      variables: '$buildObject(code, NZ)',
+                      variables: { $buildObject: ['code', 'NZ'] },
+
                       returnNode: 'countries',
                     },
                   },
