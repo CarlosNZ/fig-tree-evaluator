@@ -1854,18 +1854,6 @@ It's possible to express FigTree expressions in a more compact syntax, as follow
   { $getData: "user.firstName" }
   ```
 
-- Operator nodes can even be represented as strings, written to resemble functions. The above example can be reduced further to just:  
-  ```js
-  "$getData(user.firstName)"
-  ```  
-  Multiple parameters are interpreted positionally, as above. These string-functions *can* be nested, although it is generally recommended to limit them to "leaf" nodes for readability.
-
-  Fragments can also be represented in this "string-function" syntax, but only if they have no parameters, for example:
-  ```js
-  "$myFragment()"
-  ```
-  would be replaced with the fragment `myFragment`.
-
 For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) app.
 
 

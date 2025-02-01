@@ -131,7 +131,7 @@ test('Cache - Reduce size limit below current contents', async () => {
 test('Cache - Random function returns either same or different depending on cache use', async () => {
   const fig = new FigTreeEvaluator(figTreeOptions)
   const result1 = await fig.evaluate({ $getRandom: {} })
-  const result2 = await fig.evaluate({ $getRandom: {} })
+  const result2 = await fig.evaluate({ $getRandom: '' })
   await expect(result1).not.toEqual(result2)
 
   fig.updateOptions({ useCache: true })
@@ -161,8 +161,8 @@ test('Cache - uncached result if original item has been dropped from cache', asy
   fig.updateOptions({ useCache: true })
 
   // First check that it *does* cache result
-  const result1 = await fig.evaluate({ $getRandom: {} })
-  const result2 = await fig.evaluate({ $getRandom: {} })
+  const result1 = await fig.evaluate({ $getRandom: null })
+  const result2 = await fig.evaluate({ $getRandom: undefined })
   await expect(result1).toEqual(result2)
 
   // Now fill the cache so original result gets dropped
