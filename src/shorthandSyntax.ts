@@ -4,8 +4,6 @@ import { operatorAliases as opAliases } from './operators/operatorAliases'
 
 const operatorAliases = opAliases as OperatorAliases // Set type for JSON object
 
-const functionStringRegex = /(\$[A-Za-z0-9_]+)\s*\((.*)\)/
-
 export const preProcessShorthand = (
   expression: EvaluatorNode,
   fragments: Fragments = {},
@@ -14,26 +12,9 @@ export const preProcessShorthand = (
 ): EvaluatorNode | FragmentNode => {
   if (!useShorthand) return expression
 
-  if (typeof expression === 'string') return processString(expression, fragments, functionNames)
   if (isObject(expression)) return processObject(expression, fragments, functionNames)
 
   return expression
-}
-
-const processString = (
-  expString: string,
-  fragments: Fragments,
-  functionNames: string[]
-): EvaluatorNode => {
-  const match = functionStringRegex.exec(expString)
-  if (!match) return expString
-
-  const method = match[1].trim()
-  const params = match[2]
-    .split(',')
-    .map((p) => preProcessShorthand(p.trim(), fragments, functionNames))
-
-  return buildNodeElements(method, params, fragments, functionNames)
 }
 
 const processObject = (expObject: object, fragments: Fragments, functionNames: string[]) => {

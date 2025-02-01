@@ -130,12 +130,12 @@ test('Cache - Reduce size limit below current contents', async () => {
 // Test Evaluator with cache
 test('Cache - Random function returns either same or different depending on cache use', async () => {
   const fig = new FigTreeEvaluator(figTreeOptions)
-  const result1 = await fig.evaluate('$getRandom()')
-  const result2 = await fig.evaluate('$getRandom()')
+  const result1 = await fig.evaluate({ $getRandom: {} })
+  const result2 = await fig.evaluate({ $getRandom: {} })
   await expect(result1).not.toEqual(result2)
 
   fig.updateOptions({ useCache: true })
-  const result3 = await fig.evaluate('$getRandom()')
+  const result3 = await fig.evaluate({ $getRandom: {} })
   // Note different syntax for same expression
   const result4 = await fig.evaluate({ operator: 'function', path: 'random' })
   await expect(result3).toEqual(result4)
@@ -161,15 +161,15 @@ test('Cache - uncached result if original item has been dropped from cache', asy
   fig.updateOptions({ useCache: true })
 
   // First check that it *does* cache result
-  const result1 = await fig.evaluate('$getRandom()')
-  const result2 = await fig.evaluate('$getRandom()')
+  const result1 = await fig.evaluate({ $getRandom: {} })
+  const result2 = await fig.evaluate({ $getRandom: {} })
   await expect(result1).toEqual(result2)
 
   // Now fill the cache so original result gets dropped
   for (let i = 2; i <= 55; i++) {
     await fig.evaluate({ $function: ['square', i] })
   }
-  const result3 = await fig.evaluate('$getRandom()')
+  const result3 = await fig.evaluate({ $getRandom: {} })
   await expect(result3).not.toEqual(result1)
 })
 
@@ -177,19 +177,19 @@ test('Cache - result not dropped as it has been used again before being dropped'
   const fig = new FigTreeEvaluator(figTreeOptions)
   fig.updateOptions({ useCache: true })
 
-  const result1 = await fig.evaluate('$getRandom()')
+  const result1 = await fig.evaluate({ $getRandom: {} })
 
   // Now part-fill the cache so original result doesn't get dropped
   for (let i = 2; i <= 40; i++) {
     await fig.evaluate({ $function: ['square', i] })
   }
-  const result2 = await fig.evaluate('$getRandom()')
+  const result2 = await fig.evaluate({ $getRandom: {} })
   await expect(result1).toEqual(result2)
   // Now keep filling, but result will be recent enough
   for (let i = 2; i <= 40; i++) {
     await fig.evaluate({ $function: ['square', i] })
   }
-  const result3 = await fig.evaluate('$getRandom()')
+  const result3 = await fig.evaluate({ $getRandom: {} })
   await expect(result3).toEqual(result1)
 })
 
@@ -197,11 +197,11 @@ test('Cache - expire cached result after 2 minutes', async () => {
   const fig = new FigTreeEvaluator({ ...figTreeOptions })
   fig.updateOptions({ useCache: true, maxCacheTime: 120 })
 
-  const result1 = await fig.evaluate('$getRandom()')
-  const result2 = await fig.evaluate('$getRandom()')
+  const result1 = await fig.evaluate({ $getRandom: {} })
+  const result2 = await fig.evaluate({ $getRandom: {} })
   await expect(result1).toEqual(result2)
 
   jest.advanceTimersByTime(125_000)
-  const result3 = await fig.evaluate('$getRandom()')
+  const result3 = await fig.evaluate({ $getRandom: {} })
   await expect(result3).not.toEqual(result1)
 })
