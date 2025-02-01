@@ -1,11 +1,12 @@
 {
   "name": "fig-tree-builder-react",
-  "version": "0.1.3",
+  "version": "0.5.0",
   "description": "React component for constructing FigTree Evaluator expressions",
   "main": "build/index.cjs.js",
   "module": "build/index.esm.js",
   "types": "build/index.d.ts",
-  "author": "Carl Smith",
+  "author": "Carl Smith <5456533+CarlosNZ@users.noreply.github.com>",
+  "repository": "git+https://github.com/CarlosNZ/fig-tree-evaluator.git",
   "files": [
     "build/**/*"
   ],
