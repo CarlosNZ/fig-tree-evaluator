@@ -1,5 +1,5 @@
 {
-  "name": "fig-tree-builder-react",
+  "name": "fig-tree-editor-react",
   "version": "0.5.0",
   "description": "React component for constructing FigTree Evaluator expressions",
   "main": "build/index.cjs.js",
@@ -16,11 +16,11 @@
     "lint": "npx eslint"
   },
   "peerDependencies": {
-    "fig-tree-evaluator": "^2.18.2",
+    "fig-tree-evaluator": "^2.19.0",
     "react": ">=16.0.0"
   },
   "dependencies": {
-    "json-edit-react": "^1.22.0",
+    "json-edit-react": "^1.22.1",
     "react-select": "^5.8.0"
   },
   "devDependencies": {

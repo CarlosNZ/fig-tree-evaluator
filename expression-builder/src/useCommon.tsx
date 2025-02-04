@@ -12,9 +12,9 @@ interface Input {
 }
 
 export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Input) => {
-  const { evaluateNode, topLevelAliases, operatorDisplay } = customNodeProps
+  const { evaluateNode, topLevelAliases, operatorDisplay, initialEdit } = customNodeProps
   const [prevState, setPrevState] = useState(parentData)
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing, setIsEditing] = useState(initialEdit.current)
   const [loading, setLoading] = useState(false)
 
   const expressionPath = nodeData.path.slice(0, -1)
@@ -22,11 +22,13 @@ export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Inp
   const handleSubmit = () => {
     setPrevState(parentData)
     setIsEditing(false)
+    initialEdit.current = false
   }
 
   const handleCancel = () => {
     onEdit(prevState, expressionPath)
     setIsEditing(false)
+    initialEdit.current = false
   }
 
   const listenForSubmit = (e: KeyboardEvent) => {
@@ -37,9 +39,9 @@ export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Inp
   useEffect(() => {
     if (isEditing) {
       setPrevState(parentData)
-      document.addEventListener('keydown', listenForSubmit)
-    } else document.removeEventListener('keydown', listenForSubmit)
-    return () => document.removeEventListener('keydown', listenForSubmit)
+      window.addEventListener('keydown', listenForSubmit)
+    } else window.removeEventListener('keydown', listenForSubmit)
+    return () => window.removeEventListener('keydown', listenForSubmit)
   }, [isEditing])
 
   const aliases = { ...topLevelAliases, ...getAliases(parentData) }
@@ -55,7 +57,10 @@ export const useCommon = ({ customNodeProps, parentData, nodeData, onEdit }: Inp
     handleSubmit,
     expressionPath,
     isEditing,
-    setIsEditing,
+    setIsEditing: (value: boolean) => {
+      setIsEditing(value)
+      initialEdit.current = value
+    },
     evaluate,
     loading,
     operatorDisplay,

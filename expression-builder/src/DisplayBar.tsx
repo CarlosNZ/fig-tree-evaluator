@@ -46,6 +46,7 @@ export const DisplayBar: React.FC<DisplayBarProps> = ({
           textColor={textColor}
           evaluate={evaluate}
           isLoading={isLoading}
+          isShorthand={isShorthand}
         />
         {!isShorthand && (
           <span onClick={() => setIsEditing()} className="ft-clickable ft-edit-icon">
@@ -68,6 +69,7 @@ export interface EvaluateButtonProps {
   textColor: string
   evaluate: (e: React.MouseEvent) => void
   isLoading: boolean
+  isShorthand?: boolean
 }
 
 export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
@@ -76,6 +78,7 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
   textColor,
   evaluate,
   isLoading,
+  isShorthand = false,
 }) => {
   return (
     <div
@@ -90,7 +93,7 @@ export const EvaluateButton: React.FC<EvaluateButtonProps> = ({
               className="ft-operator-alias"
               style={{
                 fontSize: getButtonFontSize(name),
-                fontStyle: 'inherit',
+                fontStyle: isShorthand ? 'italic' : 'inherit',
               }}
             >
               {name}

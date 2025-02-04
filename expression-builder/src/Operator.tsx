@@ -24,6 +24,7 @@ export interface OperatorProps {
   evaluateNode: (expression: EvaluatorNode, e: React.MouseEvent) => Promise<void>
   topLevelAliases: Record<string, EvaluatorNode>
   operatorDisplay?: Partial<Record<OperatorName | 'FRAGMENT', OperatorDisplay>>
+  initialEdit: React.MutableRefObject<boolean>
 }
 
 export const Operator: React.FC<CustomNodeProps<OperatorProps>> = (props) => {

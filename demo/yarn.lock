@@ -2450,10 +2450,10 @@ fastq@^1.6.0:
   dependencies:
     reusify "^1.0.4"
 
-fig-tree-evaluator@^2.18.2:
-  version "2.18.2"
-  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.18.2.tgz#d7711408dc52282f941a14f8bdd60a7575df1621"
-  integrity sha512-Pz0NyoA7dYaakpBp4FF8vEjoAoumyX060MV6L0L55EuHnkHeqvkBXD0ujG3QpsY1QZhV0DBE1F6qlraLKtFaIQ==
+fig-tree-evaluator@^2.19.1:
+  version "2.19.1"
+  resolved "https://registry.yarnpkg.com/fig-tree-evaluator/-/fig-tree-evaluator-2.19.1.tgz#a9d5857aa8b0f5f8cb0f19d4b54d5c6b67cd0da2"
+  integrity sha512-9+pa5nks7ojJD7FdYZwQ6+jxzwH5jrBdZT+FeOHYjihJ4B55vFPt9ddhD4t4glIthGKA6p+fQdkYsfxfsOCUjQ==
   dependencies:
     dequal "^2.0.3"
     object-property-extractor "^1.0.13"
@@ -2897,10 +2897,10 @@ json-buffer@3.0.1:
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"
   integrity sha512-4bV5BfR2mqfQTJm+V5tPPdf+ZpuhiIvTuAB5g8kcrXOZpTT/QwwVRWBywX1ozr6lEuPdbHxwaJlm9G6mI2sfSQ==
 
-json-edit-react@^1.22.0:
-  version "1.22.0"
-  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.22.0.tgz#38b7634f1a3b6f872490337720c929a1ef8a2225"
-  integrity sha512-ryENW4mTQsdxH3gBwdEylT/a7lfmzxC6a4SI1Pi0OKFVr7StgrdwvC6UqzzDhmELimfsXiLztdIrzYkFD6RnoQ==
+json-edit-react@^1.22.1:
+  version "1.22.1"
+  resolved "https://registry.yarnpkg.com/json-edit-react/-/json-edit-react-1.22.1.tgz#505f3593d93bc449e983deeaee6935635a60e28f"
+  integrity sha512-vo6sF9yOrEwyHmOZSyIogJFl6AEwq918DqrWX/9xgD2XsWIp/Ddr6yPuxTTh33Z7WjLbXncsvAKsvcIwTCV9HQ==
   dependencies:
     object-property-assigner "^1.3.5"
     object-property-extractor "^1.0.13"

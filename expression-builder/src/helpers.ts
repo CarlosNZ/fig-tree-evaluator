@@ -7,7 +7,7 @@ import {
   OperatorAlias,
   EvaluatorNode,
 } from 'fig-tree-evaluator'
-import { NodeData, isCollection } from './_imports'
+import { NodeData } from './_imports'
 import { NodeType } from './NodeTypeSelector'
 
 export const operatorStringRegex = /(\$[^()]+)\((.*)\)/
@@ -125,20 +125,24 @@ export const propertyCountReplace = (
   if (!(value instanceof Object)) return null
   if ('operator' in value) return `Operator: ${value.operator}`
   if ('fragment' in value) return `Fragment: ${value.fragment}`
-  if (isShorthandNode(nodeData, allOperatorAliases, allFragments, allFunctions)) {
+  if (isShorthandNodeWithSimpleValue(nodeData, allOperatorAliases, allFragments, allFunctions)) {
     const shorthandOperator = Object.keys(value)[0]
     return `Shorthand: ${shorthandOperator}`
   }
   return null
 }
 
-export const isShorthandWrapper = (
+// See Shorthand.tsx for the difference between ShorthandNodeCollection &
+// ShorthandNodeWithSimpleValue
+
+export const isShorthandNodeCollection = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>,
   allFunctions: Set<string>
 ) => {
   const { parentData, key } = nodeData
+
   if (!isObject(parentData)) return false
 
   const alias = (key as string).slice(1)
@@ -146,7 +150,7 @@ export const isShorthandWrapper = (
   return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
 }
 
-export const isShorthandNode = (
+export const isShorthandNodeWithSimpleValue = (
   nodeData: NodeData,
   allOperatorAliases: Set<OperatorAlias>,
   allFragments: Set<string>,
@@ -163,40 +167,6 @@ export const isShorthandNode = (
   const alias = shorthandKey.slice(1)
 
   return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
-}
-
-export const isShorthandStringNode = (
-  nodeData: NodeData,
-  allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>,
-  allFunctions: Set<string>
-) => {
-  const { parentData } = nodeData as { parentData: Record<string, unknown> }
-  if (!isObject(parentData)) return false
-  const keys = Object.keys(parentData)
-  if (keys.length > 1) return false
-
-  const shorthandKey = keys[0]
-  if (!isAliasString(shorthandKey)) return false
-
-  const alias = shorthandKey.slice(1)
-
-  if (isCollection(parentData?.[shorthandKey as string])) return false
-
-  return allOperatorAliases.has(alias) || allFragments.has(alias) || allFunctions.has(alias)
-}
-
-export const isShorthandString = (
-  value: unknown,
-  allOperatorAliases: Set<OperatorAlias>,
-  allFragments: Set<string>,
-  allFunctions: Set<string>
-) => {
-  if (typeof value !== 'string') return false
-  const match = operatorStringRegex.exec(value)
-  if (!match) return false
-  const op = match[1].trim().slice(1)
-  return allOperatorAliases.has(op) || allFragments.has(op) || allFunctions.has(op)
 }
 
 export const isAliasNode = (

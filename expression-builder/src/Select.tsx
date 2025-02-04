@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import ReactSelect, { GroupBase, Props } from 'react-select'
 
 // Custom re-export of react-select
@@ -17,6 +17,17 @@ const Select: React.FC<Props> = <
   styles = {},
   ...props
 }: Props<Option, IsMulti, Group>) => {
+  const [docRoot, setDocRoot] = useState<HTMLElement>()
+
+  // We want access to the global document.documentElement object, but can't
+  // access it directly when used with SSR. So we set it inside a `useEffect`,
+  // which won't run server-side (it'll just be undefined) until client
+  // hydration
+  useEffect(() => {
+    const root = document.documentElement
+    setDocRoot(root)
+  }, [])
+
   const { control = {} } = styles as Record<string, React.CSSProperties>
   return (
     <ReactSelect
@@ -26,7 +37,8 @@ const Select: React.FC<Props> = <
       // when first opening the menu:
       onMenuOpen={() => {
         setTimeout(() => {
-          const selectedEl = document.getElementsByClassName('ft-rs__option--is-selected')[0]
+          if (!docRoot) return
+          const selectedEl = docRoot.getElementsByClassName('ft-rs__option--is-selected')[0]
           if (selectedEl) {
             selectedEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' })
           }
@@ -45,6 +57,7 @@ const Select: React.FC<Props> = <
         menu: (base, _) => ({
           ...base,
           width: 'fit-content',
+          zIndex: 100,
         }),
         groupHeading: (provided, _) => ({
           ...provided,
