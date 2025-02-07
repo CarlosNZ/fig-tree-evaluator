@@ -63,6 +63,7 @@ test('Metadata -- get operator info', () => {
           default: [true, true],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'OR',
@@ -78,6 +79,7 @@ test('Metadata -- get operator info', () => {
           default: [true, false],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'EQUAL',
@@ -110,6 +112,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'NOT_EQUAL',
@@ -142,6 +145,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'PLUS',
@@ -167,6 +171,7 @@ test('Metadata -- get operator info', () => {
           default: 'string',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SUBTRACT',
@@ -198,6 +203,7 @@ test('Metadata -- get operator info', () => {
           default: 50,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'MULTIPLY',
@@ -213,6 +219,7 @@ test('Metadata -- get operator info', () => {
           default: [5, 5],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'DIVIDE',
@@ -254,6 +261,7 @@ test('Metadata -- get operator info', () => {
           default: 'quotient',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GREATER_THAN',
@@ -278,6 +286,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'LESS_THAN',
@@ -302,6 +311,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'CONDITIONAL',
@@ -333,6 +343,7 @@ test('Metadata -- get operator info', () => {
           default: 'The condition is false',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'REGEX',
@@ -356,6 +367,7 @@ test('Metadata -- get operator info', () => {
           default: '^[a-z]{4}-[a-z]{4}$',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'OBJECT_PROPERTIES',
@@ -387,6 +399,7 @@ test('Metadata -- get operator info', () => {
           default: {},
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'STRING_SUBSTITUTION',
@@ -436,6 +449,7 @@ test('Metadata -- get operator info', () => {
           default: {},
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SPLIT',
@@ -477,6 +491,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'COUNT',
@@ -492,6 +507,7 @@ test('Metadata -- get operator info', () => {
           default: [1, 2, 3, 4, 5],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GET',
@@ -539,6 +555,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'POST',
@@ -586,6 +603,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SQL',
@@ -629,6 +647,7 @@ test('Metadata -- get operator info', () => {
           type: 'boolean',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GRAPHQL',
@@ -685,6 +704,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'BUILD_OBJECT',
@@ -700,6 +720,7 @@ test('Metadata -- get operator info', () => {
           default: ['firstKey', 'firstValue', 'secondKey', 'secondValue'],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'MATCH',
@@ -734,6 +755,7 @@ test('Metadata -- get operator info', () => {
           type: ['object', 'array'],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'CUSTOM_FUNCTIONS',
@@ -780,6 +802,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'PASSTHRU',
@@ -795,6 +818,7 @@ test('Metadata -- get operator info', () => {
           default: null,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
   ])
 })

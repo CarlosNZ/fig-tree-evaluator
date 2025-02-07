@@ -106,6 +106,7 @@ export class FigTreeEvaluator {
     const operatorList = Object.entries(validOperators).map(([key, value]) => ({
       name: key,
       ...value.operatorData,
+      parseChildren: value.parseChildren,
     }))
     // Ensures we return operators in the order listed in "operatorAliases",
     // otherwise they're just ordered by the "import" order in
