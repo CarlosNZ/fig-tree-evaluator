@@ -252,7 +252,7 @@ test('Convert to V2 -- String Substitution', () => {
           fallback: '  ',
         },
         {
-          operator: 'graphQl',
+          operator: 'graphQL',
           query: 'query getRegAuth {organisation(id: 1) {name}}',
           url: 'graphQLEndpoint',
           variables: {},
