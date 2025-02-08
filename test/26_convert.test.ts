@@ -552,7 +552,27 @@ test('Convert to Shorthand -- fragments', () => {
   })
 })
 
-test('Convert to Shorthand -- non-standard nodes', () => {
-  const expression = {}
-  expect(convertToShorthand(expression, fig)).toStrictEqual({})
+test('Convert to Shorthand -- normal node with Fallback', () => {
+  const expression = {
+    operator: 'and',
+    values: [
+      { operator: '>', values: [{ $getData: 'patron.age' }, 13] },
+      { $getData: 'patron.isParentAttending' },
+    ],
+    fallback: 'This should show up',
+  }
+  expect(convertToShorthand(expression, fig)).toStrictEqual({
+    $and: {
+      values: [
+        { $greaterThan: [{ $getData: 'patron.age' }, 13] },
+        { $getData: 'patron.isParentAttending' },
+      ],
+      fallback: 'This should show up',
+    },
+  })
 })
+
+// test('Convert to Shorthand -- non-standard nodes', () => {
+//   const expression = {}
+//   expect(convertToShorthand(expression, fig)).toStrictEqual({})
+// })

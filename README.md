@@ -1399,14 +1399,17 @@ The "buildObject" operator would primarily be used to construct an object input 
 
 #### Properties
 
-- `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of objects of the following shape:  
-  ```ts
-  {
-    key: string
-    value: any
-  }
-  ```
-  Each element provides one key-value pair in the output object
+- `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of either:
+  -  objects of the following shape:  
+    ```ts
+    {
+      key: string
+      value: any
+    }
+    ```
+  - key/value pairs in sequence, e.g. `[ "key1", "value1", "key2", "value2", ... ]`
+
+  Each object or pair of elements provides one key-value pair in the output object
 
 e.g.
 ```js
@@ -1418,33 +1421,27 @@ e.g.
     {
       // Using "user" object from earlier
       key: { operator: 'objectProperties', property: 'user.friends[0]' },
-      value: {
-        operator: '+',
-        values: [7, 8, 9],
-      },
+      value: { operator: '+', values: [7, 8, 9] },
     },
   ],
 }
 // => { one: 1, two: 2, Ned: 24 }
 
-```
+// OR, this is equivalent...
 
-`children` array: `[key1, value1, key2, value2, ...]`
-
-This is one of the few cases where the `children` array might actually be simpler to define than the `properties` property, depending on how deep the array elements are themselves operator nodes.
-
-e.g.
-```js
-// This is the same as the previous expression
 {
   operator: 'buildObject',
-  children: ['one', 1, 'two', 2,
+  properties: [
+    "one", 1, "two", 2,
     { operator: 'objectProperties', property: 'user.friends[0]' },
-    { operator: '+', values: [7, 8, 9] },
-  ],
+    { operator: '+', values: [7, 8, 9] }
+  ]
 }
 // => { one: 1, two: 2, Ned: 24 }
+
 ```
+
+`children`: `[...properties]` (same as properties array above)
 
 ----
 

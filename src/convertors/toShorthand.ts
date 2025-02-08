@@ -131,10 +131,6 @@ const getPropertyStructure = (
 
       return fallback ? [propertyName[1], fallback[1]] : propertyName[1]
     }
-    case 'BUILD_OBJECT': {
-      // TO-DO
-      break
-    }
     default: {
       for (const { name, aliases, required } of operatorData.parameters) {
         const possibleNames = [name, ...aliases]
