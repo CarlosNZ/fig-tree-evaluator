@@ -1180,7 +1180,7 @@ e.g.
 
 *Http GraphQL request (using POST)*
 
-Aliases: `graphQl`, `graphql`, `gql`
+Aliases: `graphQL`, `graphQl`, `graphql`, `gql`
 
 This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
 

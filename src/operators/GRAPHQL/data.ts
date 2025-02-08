@@ -2,7 +2,7 @@ import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'GraphQL request'
-const aliases = ['graphQl', 'graphql', 'gql']
+const aliases = ['graphQL', 'graphQl', 'graphql', 'gql']
 const parameters: OperatorParameterMetadata[] = [
   {
     name: 'query',

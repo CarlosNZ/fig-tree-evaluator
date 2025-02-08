@@ -652,7 +652,7 @@ test('Metadata -- get operator info', () => {
     {
       name: 'GRAPHQL',
       description: 'GraphQL request',
-      aliases: ['graphQl', 'graphql', 'gql'],
+      aliases: ['graphQL', 'graphQl', 'graphql', 'gql'],
       parameters: [
         {
           name: 'query',
