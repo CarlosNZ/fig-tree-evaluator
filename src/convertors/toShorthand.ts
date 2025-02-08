@@ -3,7 +3,7 @@
  */
 
 import { FigTreeEvaluator } from '../FigTreeEvaluator'
-import { isObject, standardiseOperatorName } from '../helpers'
+import { isAliasString, isObject, standardiseOperatorName } from '../helpers'
 import {
   EvaluatorNode,
   FragmentNode,
@@ -14,55 +14,75 @@ import {
 } from '../types'
 
 export const convertToShorthand = (
-  figTree: FigTreeEvaluator,
   expression: EvaluatorNode,
+  figTree: FigTreeEvaluator,
   arrayThreshold: number = 2
 ): EvaluatorNode => {
-  if (Array.isArray(expression))
-    return expression.map((node) => convertToShorthand(figTree, node, arrayThreshold))
+  const operators = figTree.getOperators()
+  const fragments = figTree.getFragments()
+  const functions = figTree.getCustomFunctions()
 
-  if (!isObject(expression)) return expression
+  const allOpAliases = operators.map((op) => [op.name, ...op.aliases]).flat()
+  const allFragments = fragments.map((f) => f.name)
+  const allFunctions = functions.map((f) => f.name)
 
-  const { operator, fragment, ...otherProperties } = expression as OperatorNode | FragmentNode
+  const allReservedKeys = new Set([...allOpAliases, ...allFragments, ...allFunctions])
 
-  if (!operator && !fragment)
-    return Object.fromEntries(
-      Object.entries(expression).map(([key, value]) => [
-        key,
-        convertToShorthand(figTree, value, arrayThreshold),
-      ])
+  const toShorthand = (expression: EvaluatorNode): EvaluatorNode => {
+    if (Array.isArray(expression)) return expression.map((node) => toShorthand(node))
+
+    if (!isObject(expression)) return expression
+
+    const { operator, fragment, ...otherProperties } = expression as OperatorNode | FragmentNode
+
+    if (!operator && !fragment)
+      return Object.fromEntries(
+        Object.entries(expression).map(([key, value]) => [key, toShorthand(value)])
+      )
+
+    const operatorReplacement = getShorthandOperator(operator as string | undefined, operators)
+
+    const nodeKey = `$${operatorReplacement ?? fragment}`
+
+    const aliasDefinitionKeys = Object.keys(otherProperties).filter((key) =>
+      isAlias(key, allReservedKeys)
     )
 
-  const nodeKey = `$${operator ?? fragment}`
+    const properties = Object.entries(otherProperties)
+      .filter(([key]) => !aliasDefinitionKeys.includes(key))
+      .map(([key, value]) => [key, toShorthand(value)])
 
-  const properties = Object.entries(otherProperties).map(([key, value]) => [
-    key,
-    convertToShorthand(figTree, value, arrayThreshold),
-  ])
+    const aliasProperties = Object.fromEntries(
+      aliasDefinitionKeys.map((key) => [key, toShorthand(otherProperties[key])])
+    )
 
-  switch (true) {
-    case 'values' in otherProperties: {
-      if (properties.length === 1) return { [nodeKey]: properties[0][1] }
-      return { [nodeKey]: Object.fromEntries(properties) }
-    }
-    case properties.length > arrayThreshold ||
-      !!fragment ||
-      properties.some(([key]) => key === 'useCache' || key === 'outputType') ||
-      properties.some((prop) => Array.isArray(prop[1])): {
-      return { [nodeKey]: Object.fromEntries(properties) }
-    }
-    case properties.length === 1: {
-      return { [nodeKey]: properties[0][1] }
-    }
-    default:
-      return {
-        [nodeKey]: getPropertyStructure(
-          standardiseOperatorName(operator as OperatorAlias),
-          properties as Array<[key: string, value: unknown]>,
-          figTree.getOperators()
-        ),
+    switch (true) {
+      case 'values' in otherProperties: {
+        if (properties.length === 1) return { [nodeKey]: properties[0][1] }
+        return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
       }
+      case properties.length > arrayThreshold ||
+        !!fragment ||
+        properties.some(([key]) => key === 'useCache' || key === 'outputType') ||
+        properties.some((prop) => Array.isArray(prop[1])): {
+        return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
+      }
+      case properties.length === 1: {
+        return { [nodeKey]: properties[0][1], ...aliasProperties }
+      }
+      default:
+        return {
+          [nodeKey]: getPropertyStructure(
+            standardiseOperatorName(operator as OperatorAlias),
+            properties as Array<[key: string, value: unknown]>,
+            operators
+          ),
+          ...aliasProperties,
+        }
+    }
   }
+
+  return toShorthand(expression)
 }
 
 const getPropertyStructure = (
@@ -123,4 +143,20 @@ const findPropertyInParameters = (
   const possibleNames = [parameter.name, ...parameter.aliases]
 
   return properties.find(([key]) => possibleNames.includes(key))
+}
+
+const isAlias = (key: string, reservedKeys: Set<string>) =>
+  isAliasString(key) && !reservedKeys.has(key)
+
+const getShorthandOperator = (
+  opAlias: string | undefined,
+  operators: readonly OperatorMetadata[]
+) => {
+  if (!opAlias) return undefined
+
+  const operator = operators.find(
+    (op) => opAlias === op.name || op.aliases.includes(standardiseOperatorName(opAlias))
+  )
+
+  return operator?.aliases.find((alias) => /^[A-Za-z_]{2,}$/.test(alias))
 }

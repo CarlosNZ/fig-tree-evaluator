@@ -117,7 +117,7 @@ test('Metadata -- get operator info', () => {
     {
       name: 'NOT_EQUAL',
       description: 'Test if any values are different',
-      aliases: ['!=', '!', 'ne', 'notEqual'],
+      aliases: ['!=', 'notEqual', '!', 'ne'],
       parameters: [
         {
           name: 'values',
@@ -512,7 +512,7 @@ test('Metadata -- get operator info', () => {
     {
       name: 'GET',
       description: 'HTTP GET Request',
-      aliases: ['get', 'api'],
+      aliases: ['GET', 'get', 'api'],
       parameters: [
         {
           name: 'url',
@@ -560,7 +560,7 @@ test('Metadata -- get operator info', () => {
     {
       name: 'POST',
       description: 'HTTP POST Request',
-      aliases: ['post'],
+      aliases: ['POST', 'post'],
       parameters: [
         {
           name: 'url',

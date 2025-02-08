@@ -2,7 +2,7 @@ import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'HTTP GET Request'
-const aliases = ['get', 'api']
+const aliases = ['GET', 'get', 'api']
 const parameters: OperatorParameterMetadata[] = [
   {
     name: 'url',

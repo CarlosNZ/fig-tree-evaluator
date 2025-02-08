@@ -7,41 +7,45 @@ import { FigTreeEvaluator } from '../FigTreeEvaluator'
 import { isObject, standardiseOperatorName } from '../helpers'
 import { EvaluatorNode, OperatorNode } from '../types'
 
-export const convertV1ToV2 = async (figTree: FigTreeEvaluator, expression: EvaluatorNode) => {
-  if (!isObject(expression)) return expression
-
+export const convertV1ToV2 = async (expression: EvaluatorNode, figTree: FigTreeEvaluator) => {
   const operators = figTree.getOperators()
 
-  const newExpression = isV1Node(expression)
-    ? await (async () => {
-        const { operator } = expression
-        const standardisedOpName = standardiseOperatorName(operator)
-        const operatorRef = operators.find(
-          (op) => op.name === standardisedOpName || op.aliases.includes(standardisedOpName)
-        )
-        if (operatorRef) {
-          const result = await operatorRef.parseChildren(expression, figTree.getConfig())
-          delete result.children
-          const preferredOpName = operatorRef.aliases[0]
-          result.operator = preferredOpName
-          return result
-        } else throw new Error('Invalid operator: ' + operator)
-      })()
-    : expression
+  const v1ToV2 = async (expression: EvaluatorNode) => {
+    if (!isObject(expression)) return expression
 
-  const outputExpression: Record<string, unknown> = {}
+    const newExpression = isV1Node(expression)
+      ? await (async () => {
+          const { operator } = expression
+          const standardisedOpName = standardiseOperatorName(operator)
+          const operatorRef = operators.find(
+            (op) => op.name === standardisedOpName || op.aliases.includes(standardisedOpName)
+          )
+          if (operatorRef) {
+            const result = await operatorRef.parseChildren(expression, figTree.getConfig())
+            delete result.children
+            const preferredOpName = operatorRef.aliases[0]
+            result.operator = preferredOpName
+            return result
+          } else throw new Error('Invalid operator: ' + operator)
+        })()
+      : expression
 
-  for (const [key, value] of Object.entries(newExpression as object)) {
-    const modifiedKey = key === 'type' ? 'outputType' : key
-    if (Array.isArray(value)) {
-      const newArray = value.map((val) => convertV1ToV2(figTree, val))
-      const resolved = await Promise.all(newArray)
-      outputExpression[modifiedKey] = resolved
-    } else outputExpression[modifiedKey] = await convertV1ToV2(figTree, value)
+    const outputExpression: Record<string, unknown> = {}
+
+    for (const [key, value] of Object.entries(newExpression as object)) {
+      const modifiedKey = key === 'type' ? 'outputType' : key
+      if (Array.isArray(value)) {
+        const newArray = value.map((val) => v1ToV2(val))
+        const resolved = await Promise.all(newArray)
+        outputExpression[modifiedKey] = resolved
+      } else outputExpression[modifiedKey] = await v1ToV2(value)
+    }
+
+    return outputExpression
   }
 
-  return outputExpression
+  return v1ToV2(expression)
 }
 
-const isV1Node = (node: EvaluatorNode): node is OperatorNode =>
+export const isV1Node = (node: EvaluatorNode): node is OperatorNode =>
   isObject(node) && 'operator' in node && 'children' in node && Array.isArray(node.children)
