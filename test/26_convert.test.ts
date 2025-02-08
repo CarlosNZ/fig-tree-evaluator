@@ -1,10 +1,14 @@
+import { FetchClient } from '../src'
+import fetch from 'node-fetch'
 import { convertV1ToV2, convertToShorthand } from '../src/convertors'
 import { FigTreeEvaluator } from './evaluator'
 
 const fig = new FigTreeEvaluator({
+  httpClient: FetchClient(fetch),
   functions: {
     random: () => Math.random(),
     square: (n: number) => n * n,
+    getSomething: (a, b) => a + b,
     reverse: {
       function: (input: unknown[] | string) => {
         if (Array.isArray(input)) return [...input].reverse()
@@ -56,9 +60,15 @@ const fig = new FigTreeEvaluator({
     },
     adder: { operator: '+', values: '$values' },
   },
+  data: {
+    applicationData: { applicationSerial: 'X12345', firstName: 'Tom', lastName: 'Holland' },
+    film: { title: 'Deadpool & Wolverine', minAgeRating: 17 },
+    patron: { age: 12, isParentAttending: true },
+    myCountry: 'Morocco',
+  },
 })
 
-test('Convert to V2 -- basic', () => {
+test('Convert to V2 -- basic', async () => {
   const expression = {
     operator: 'AND',
     children: [
@@ -84,38 +94,41 @@ test('Convert to V2 -- basic', () => {
       },
     ],
   }
-  return convertV1ToV2(expression, fig).then((result) => {
-    expect(result).toStrictEqual({
-      operator: 'and',
-      values: [
-        {
-          operator: '=',
-          values: [
-            {
-              operator: 'getData',
-              property: 'responses.alreadyRegistered.optionIndex',
-              fallback: null,
-            },
-            0,
-          ],
-        },
-        {
-          operator: '!=',
-          values: [
-            {
-              operator: 'getData',
-              property: 'responses.provProdSelect.selection',
-              fallback: null,
-            },
-            null,
-          ],
-        },
-      ],
-    })
-  })
+  const result = {
+    operator: 'and',
+    values: [
+      {
+        operator: '=',
+        values: [
+          {
+            operator: 'getData',
+            property: 'responses.alreadyRegistered.optionIndex',
+            fallback: null,
+          },
+          0,
+        ],
+      },
+      {
+        operator: '!=',
+        values: [
+          {
+            operator: 'getData',
+            property: 'responses.provProdSelect.selection',
+            fallback: null,
+          },
+          null,
+        ],
+      },
+    ],
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  const v1Eval = await fig.evaluate(expression)
+  const v2Eval = await fig.evaluate(v2exp)
+  expect(v1Eval).toStrictEqual(v2Eval)
 })
 
-test('Convert to V2 -- more complex', () => {
+test('Convert to V2 -- more complex', async () => {
   const expression = {
     children: [
       {
@@ -182,143 +195,127 @@ test('Convert to V2 -- more complex', () => {
     ],
     operator: '?',
   }
-  return convertV1ToV2(expression, fig).then((result) => {
-    expect(result).toStrictEqual({
+  const result = {
+    operator: '?',
+    condition: {
+      operator: 'and',
+      values: [
+        {
+          operator: '=',
+          values: [
+            {
+              operator: 'getData',
+              property: 'responses.alreadyRegistered.optionIndex',
+              fallback: null,
+            },
+            0,
+          ],
+        },
+        {
+          operator: '!=',
+          values: [
+            {
+              operator: 'getData',
+              property: 'responses.provProdSelect',
+              fallback: null,
+            },
+            null,
+          ],
+        },
+      ],
+    },
+    valueIfTrue: {
+      operator: 'getData',
+      property: 'responses.provProdSelect.selection.tradeName',
+      fallback: null,
+    },
+    valueIfFalse: {
       operator: '?',
       condition: {
-        operator: 'and',
+        operator: 'or',
         values: [
           {
             operator: '=',
             values: [
               {
                 operator: 'getData',
-                property: 'responses.alreadyRegistered.optionIndex',
-                fallback: null,
+                property: 'responses.preregSelect.optionIndex',
+                fallback: '',
               },
               0,
             ],
           },
           {
-            operator: '!=',
+            operator: '=',
             values: [
               {
                 operator: 'getData',
-                property: 'responses.provProdSelect',
-                fallback: null,
+                property: 'responses.preregSelect.optionIndex',
+                fallback: '',
               },
-              null,
+              1,
             ],
           },
         ],
       },
       valueIfTrue: {
         operator: 'getData',
-        property: 'responses.provProdSelect.selection.tradeName',
+        property: 'responses.prodSelect.selection[0].tradeName',
         fallback: null,
       },
-      valueIfFalse: {
-        operator: '?',
-        condition: {
-          operator: 'or',
-          values: [
-            {
-              operator: '=',
-              values: [
-                {
-                  operator: 'getData',
-                  property: 'responses.preregSelect.optionIndex',
-                  fallback: '',
-                },
-                0,
-              ],
-            },
-            {
-              operator: '=',
-              values: [
-                {
-                  operator: 'getData',
-                  property: 'responses.preregSelect.optionIndex',
-                  fallback: '',
-                },
-                1,
-              ],
-            },
-          ],
-        },
-        valueIfTrue: {
-          operator: 'getData',
-          property: 'responses.prodSelect.selection[0].tradeName',
-          fallback: null,
-        },
-        valueIfFalse: null,
-      },
-    })
-  })
+      valueIfFalse: null,
+    },
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  const v1Eval = await fig.evaluate(expression)
+  const v2Eval = await fig.evaluate(v2exp)
+  expect(v1Eval).toStrictEqual(v2Eval)
 })
 
-test('Convert to V2 -- String Substitution', () => {
+test('Convert to V2 -- String Substitution', async () => {
   const expression = {
     children: [
       '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
+      { children: ['applicationData.applicationSerial', null], operator: 'objectProperties' },
+      { children: ['applicationData.firstName', null], operator: 'objectProperties' },
+      { children: ['applicationData.lastName', '  '], operator: 'objectProperties' },
       {
-        children: ['applicationData.applicationSerial', null],
-        operator: 'objectProperties',
-      },
-      {
-        children: ['applicationData.firstName', null],
-        operator: 'objectProperties',
-      },
-      {
-        children: ['applicationData.lastName', '  '],
-        operator: 'objectProperties',
-      },
-      {
+        operator: 'GraphQL',
         children: [
-          'query getRegAuth {organisation(id: 1) {name}}',
-          'graphQLEndpoint',
+          'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+          'https://countries.trevorblades.com/',
           [],
-          'organisation.name',
         ],
-        operator: 'graphQL',
       },
     ],
     operator: 'stringSubstitution',
   }
-  return convertV1ToV2(expression, fig).then((result) => {
-    expect(result).toStrictEqual({
-      operator: 'stringSubstitution',
-      string:
-        '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
-      substitutions: [
-        {
-          operator: 'getData',
-          property: 'applicationData.applicationSerial',
-          fallback: null,
-        },
-        {
-          operator: 'getData',
-          property: 'applicationData.firstName',
-          fallback: null,
-        },
-        {
-          operator: 'getData',
-          property: 'applicationData.lastName',
-          fallback: '  ',
-        },
-        {
-          operator: 'graphQL',
-          query: 'query getRegAuth {organisation(id: 1) {name}}',
-          url: 'graphQLEndpoint',
-          variables: {},
-          returnNode: 'organisation.name',
-        },
-      ],
-    })
-  })
+  const result = {
+    operator: 'stringSubstitution',
+    string:
+      '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
+    substitutions: [
+      { operator: 'getData', property: 'applicationData.applicationSerial', fallback: null },
+      { operator: 'getData', property: 'applicationData.firstName', fallback: null },
+      { operator: 'getData', property: 'applicationData.lastName', fallback: '  ' },
+      {
+        operator: 'graphQL',
+        query:
+          'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+        url: 'https://countries.trevorblades.com/',
+        variables: {},
+      },
+    ],
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  const v1Eval = await fig.evaluate(expression)
+  const v2Eval = await fig.evaluate(v2exp)
+  expect(v1Eval).toStrictEqual(v2Eval)
 })
 
-test('Convert to V2 -- trickier operators', () => {
+test('Convert to V2 -- trickier operators', async () => {
   const expression = {
     operator: 'buildObject',
     children: [
@@ -341,37 +338,40 @@ test('Convert to V2 -- trickier operators', () => {
       },
     ],
   }
-  return convertV1ToV2(expression, fig).then((result) => {
-    expect(result).toStrictEqual({
-      operator: 'buildObject',
-      properties: [
-        {
-          key: 'someKey',
-          value: 'someValue',
+  const result = {
+    operator: 'buildObject',
+    properties: [
+      {
+        key: 'someKey',
+        value: 'someValue',
+      },
+      {
+        key: {
+          operator: 'customFunctions',
+          functionName: 'functions.getSomething',
+          args: ['arg1', 'arg2'],
         },
-        {
-          key: {
-            operator: 'customFunctions',
-            functionName: 'functions.getSomething',
-            args: ['arg1', 'arg2'],
+        value: {
+          operator: 'GET',
+          url: 'https://restcountries.com/v3.1/name/cuba',
+          parameters: {
+            fullText: 'true',
+            fields: 'name,capital,flag',
           },
-          value: {
-            operator: 'GET',
-            url: 'https://restcountries.com/v3.1/name/cuba',
-            parameters: {
-              fullText: 'true',
-              fields: 'name,capital,flag',
-            },
-            returnProperty: 'capital',
-            outputType: 'string',
-          },
+          returnProperty: 'capital',
+          outputType: 'string',
         },
-      ],
-    })
-  })
+      },
+    ],
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  const v1Eval = await fig.evaluate(expression)
+  const v2Eval = await fig.evaluate(v2exp)
+  expect(v1Eval).toStrictEqual(v2Eval)
 })
 
-test('Convert to V2 -- already partially converted', () => {
+test('Convert to V2 -- already partially converted', async () => {
   const expression = {
     operator: '?',
     $getNZ: {
@@ -386,82 +386,75 @@ test('Convert to V2 -- already partially converted', () => {
     valueIfTrue: '$getNZ',
     valueIfFalse: 'Not New Zealand',
   }
-  return convertV1ToV2(expression, fig).then((result) => {
-    expect(result).toStrictEqual({
-      operator: '?',
-      $getNZ: {
-        operator: 'GET',
-        outputType: 'string',
-        url: 'https://restcountries.com/v3.1/name/zealand',
-        parameters: {},
-        returnProperty: 'name.common',
-      },
-      condition: {
-        operator: '!=',
-        values: ['$getNZ', null],
-      },
-      valueIfTrue: '$getNZ',
-      valueIfFalse: 'Not New Zealand',
-    })
-  })
+  const result = {
+    operator: '?',
+    $getNZ: {
+      operator: 'GET',
+      outputType: 'string',
+      url: 'https://restcountries.com/v3.1/name/zealand',
+      parameters: {},
+      returnProperty: 'name.common',
+    },
+    condition: {
+      operator: '!=',
+      values: ['$getNZ', null],
+    },
+    valueIfTrue: '$getNZ',
+    valueIfFalse: 'Not New Zealand',
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  const v1Eval = await fig.evaluate(expression)
+  const v2Eval = await fig.evaluate(v2exp)
+  expect(v1Eval).toStrictEqual(v2Eval)
 })
 
 // Convert to Shorthand
 
-test('Convert to Shorthand -- basic', () => {
+test('Convert to Shorthand -- basic', async () => {
   const expression = {
     operator: 'stringSubstitution',
     string:
       '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
     substitutions: [
+      { operator: 'getData', property: 'applicationData.applicationSerial', fallback: null },
+      { operator: 'getData', property: 'applicationData.firstName', fallback: null },
+      { operator: 'getData', property: 'applicationData.lastName', fallback: '  ' },
       {
-        operator: 'getData',
-        property: 'applicationData.applicationSerial',
-        fallback: null,
-      },
-      {
-        operator: 'getData',
-        property: 'applicationData.firstName',
-        fallback: null,
-      },
-      {
-        operator: 'getData',
-        property: 'applicationData.lastName',
-      },
-      {
-        operator: 'graphQl',
-        query: 'query getRegAuth {organisation(id: 1) {name}}',
-        url: 'graphQLEndpoint',
-        returnNode: 'organisation.name',
+        operator: 'graphQL',
+        query:
+          'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+        url: 'https://countries.trevorblades.com/',
+        variables: {},
       },
     ],
   }
-  expect(convertToShorthand(expression, fig)).toStrictEqual({
+  const result = {
     $stringSubstitution: {
       string:
         '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
       substitutions: [
-        {
-          $getData: ['applicationData.applicationSerial', null],
-        },
-        {
-          $getData: ['applicationData.firstName', null],
-        },
-        {
-          $getData: 'applicationData.lastName',
-        },
+        { $getData: ['applicationData.applicationSerial', null] },
+        { $getData: ['applicationData.firstName', null] },
+        { $getData: ['applicationData.lastName', '  '] },
         {
           $graphQL: {
-            query: 'query getRegAuth {organisation(id: 1) {name}}',
-            url: 'graphQLEndpoint',
-            returnNode: 'organisation.name',
+            query:
+              'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+            url: 'https://countries.trevorblades.com/',
+            variables: {},
           },
         },
       ],
     },
-  })
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
 })
-test('Convert to Shorthand -- bigger, with some nodes already shorthand', () => {
+test('Convert to Shorthand -- bigger, with some nodes already shorthand', async () => {
   const expression = {
     operator: '?',
     condition: {
@@ -488,7 +481,7 @@ test('Convert to Shorthand -- bigger, with some nodes already shorthand', () => 
     },
     valueIfFalse: "Sorry, try again when you're older 😔",
   }
-  expect(convertToShorthand(expression, fig)).toStrictEqual({
+  const result = {
     $conditional: {
       condition: {
         $or: [
@@ -511,10 +504,16 @@ test('Convert to Shorthand -- bigger, with some nodes already shorthand', () => 
       },
       valueIfFalse: "Sorry, try again when you're older 😔",
     },
-  })
+  }
+
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
 })
 
-test('Convert to Shorthand -- fragments', () => {
+test('Convert to Shorthand -- fragments', async () => {
   const expression = {
     operator: '+',
     values: [
@@ -534,7 +533,7 @@ test('Convert to Shorthand -- fragments', () => {
     ],
     type: 'array',
   }
-  expect(convertToShorthand(expression, fig)).toStrictEqual({
+  const result = {
     $plus: {
       values: [
         { $adder: { $values: [7, 8, 9] } },
@@ -549,10 +548,15 @@ test('Convert to Shorthand -- fragments', () => {
       ],
       type: 'array',
     },
-  })
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
 })
 
-test('Convert to Shorthand -- normal node with Fallback', () => {
+test('Convert to Shorthand -- normal node with Fallback', async () => {
   const expression = {
     operator: 'and',
     values: [
@@ -561,7 +565,7 @@ test('Convert to Shorthand -- normal node with Fallback', () => {
     ],
     fallback: 'This should show up',
   }
-  expect(convertToShorthand(expression, fig)).toStrictEqual({
+  const result = {
     $and: {
       values: [
         { $greaterThan: [{ $getData: 'patron.age' }, 13] },
@@ -569,10 +573,71 @@ test('Convert to Shorthand -- normal node with Fallback', () => {
       ],
       fallback: 'This should show up',
     },
-  })
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
 })
 
-// test('Convert to Shorthand -- non-standard nodes', () => {
-//   const expression = {}
-//   expect(convertToShorthand(expression, fig)).toStrictEqual({})
-// })
+test('Convert to Shorthand -- lots of node types', async () => {
+  const expression = [
+    {
+      operator: 'buildObject',
+      values: ['someKey', { operator: '+', values: [1, 2, 3] }],
+    },
+    {
+      operator: 'buildObject',
+      values: [
+        {
+          key: 'someKey',
+          value: { operator: 'objProps', property: 'testing.this', fallback: 'Internal' },
+        },
+      ],
+      fallback: 'Okay then',
+    },
+    {
+      operator: 'length',
+      values: [
+        'someKey',
+        { operator: '+', values: [1, 2, 3], useCache: true, outputType: 'array' },
+      ],
+    },
+    {
+      operator: '=',
+      values: [
+        { operator: 'equals', values: [1, 1, 2] },
+        { operator: 'eq', values: ['word', 'WORD'], caseInsensitive: true, fallback: 'Ooops' },
+        { operator: 'equal', values: [null, undefined], nullEqualsUndefined: true },
+      ],
+    },
+  ]
+  const result = [
+    { $buildObject: ['someKey', { $plus: [1, 2, 3] }] },
+    {
+      $buildObject: {
+        values: [{ key: 'someKey', value: { $getData: ['testing.this', 'Internal'] } }],
+        fallback: 'Okay then',
+      },
+    },
+    { $count: ['someKey', { $plus: { values: [1, 2, 3], useCache: true, outputType: 'array' } }] },
+    {
+      $eq: [
+        { $eq: [1, 1, 2] },
+        { $eq: { values: ['word', 'WORD'], caseInsensitive: true, fallback: 'Ooops' } },
+        { $eq: { values: [null, undefined], nullEqualsUndefined: true } },
+      ],
+    },
+  ]
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
+test('Convert to Shorthand -- Custom operators/functions', () => {
+  const expression = {}
+  expect(convertToShorthand(expression, fig)).toStrictEqual({})
+})
