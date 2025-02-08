@@ -141,6 +141,21 @@ export class FigTreeEvaluator {
     }) as readonly CustomFunctionMetadata[]
   }
 
+  public getConfig() {
+    return {
+      options: this.options,
+      operators: this.options.excludeOperators
+        ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
+        : this.operators,
+      operatorAliases: this.operatorAliases,
+      typeChecker: this.options.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      resolvedAliasNodes: {},
+      cache: this.cache,
+      graphQLClient: this.graphQLClient,
+      httpClient: this.httpClient,
+    }
+  }
+
   public getVersion = () => version
 }
 

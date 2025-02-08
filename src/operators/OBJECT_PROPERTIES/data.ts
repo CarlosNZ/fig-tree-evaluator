@@ -3,9 +3,9 @@ import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Extract values from data objects'
 const aliases = [
+  'getData',
   'dataProperties',
   'data',
-  'getData',
   'objectProperties',
   'objProps',
   'getProperty',

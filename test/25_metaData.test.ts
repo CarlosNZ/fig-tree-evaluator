@@ -373,9 +373,9 @@ test('Metadata -- get operator info', () => {
       name: 'OBJECT_PROPERTIES',
       description: 'Extract values from data objects',
       aliases: [
+        'getData',
         'dataProperties',
         'data',
-        'getData',
         'objectProperties',
         'objProps',
         'getProperty',
