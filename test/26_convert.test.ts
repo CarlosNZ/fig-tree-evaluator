@@ -41,12 +41,20 @@ const fig = new FigTreeEvaluator({
       },
     },
     getRandom: { $function: 'random' },
-    getRandomAPI: {
-      $GET: {
-        url: { $plus: ['https://random-data-api.com/api/v2/users?size=', '$size'] },
-        returnProperty: '$return',
-      },
+    getFlag: {
+      operator: 'GET',
+      children: [
+        {
+          operator: 'stringSubstitution',
+          string: 'https://restcountries.com/v3.1/name/%1',
+          replacements: ['$country'],
+        },
+        [],
+        'flag',
+      ],
+      outputType: 'string',
     },
+    adder: { operator: '+', values: '$values' },
   },
 })
 
@@ -514,16 +522,12 @@ test('Convert to Shorthand -- fragments', () => {
       {
         fragment: 'adder',
         parameters: {
-          operator: 'buildObject',
-          children: [
-            '$values',
-            [
-              { fragment: 'getFlag', $country: 'New Zealand' },
-              {
-                fragment: 'getFlag',
-                parameters: { $country: { operator: 'getData', property: 'myCountry' } },
-              },
-            ],
+          $values: [
+            { fragment: 'getFlag', $country: 'New Zealand' },
+            {
+              fragment: 'getFlag',
+              parameters: { $country: { operator: 'getData', property: 'myCountry' } },
+            },
           ],
         },
       },
@@ -531,27 +535,24 @@ test('Convert to Shorthand -- fragments', () => {
     type: 'array',
   }
   expect(convertToShorthand(expression, fig)).toStrictEqual({
-    $conditional: {
-      condition: {
-        $or: [
-          {
-            $greaterThan: {
-              values: [{ $getData: 'patron.age' }, { $getData: 'film.minAgeRating' }],
-              strict: false,
-            },
-          },
-          {
-            $and: [
-              { $greaterThan: { values: [{ $getData: 'patron.age' }, 13], strict: false } },
-              { $getData: 'patron.isParentAttending' },
+    $plus: {
+      values: [
+        { $adder: { $values: [7, 8, 9] } },
+        {
+          $adder: {
+            $values: [
+              { $getFlag: { $country: 'New Zealand' } },
+              { $getFlag: { $country: { $getData: 'myCountry' } } },
             ],
           },
-        ],
-      },
-      valueIfTrue: {
-        $stringSubstitution: ['Enjoy "{{movie}}"! 🍿🎬', { movie: { $getData: 'film.title' } }],
-      },
-      valueIfFalse: "Sorry, try again when you're older 😔",
+        },
+      ],
+      type: 'array',
     },
   })
+})
+
+test('Convert to Shorthand -- non-standard nodes', () => {
+  const expression = {}
+  expect(convertToShorthand(expression, fig)).toStrictEqual({})
 })

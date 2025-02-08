@@ -7,6 +7,7 @@ import { isAliasString, isObject, standardiseOperatorName } from '../helpers'
 import {
   EvaluatorNode,
   FragmentNode,
+  Fragments,
   OperatorAlias,
   OperatorMetadata,
   OperatorNode,
@@ -21,6 +22,7 @@ export const convertToShorthand = (
   const operators = figTree.getOperators()
   const fragments = figTree.getFragments()
   const functions = figTree.getCustomFunctions()
+  const fragmentDefinitions = figTree.getOptions().fragments
 
   const allOpAliases = operators.map((op) => [op.name, ...op.aliases]).flat()
   const allFragments = fragments.map((f) => f.name)
@@ -40,23 +42,41 @@ export const convertToShorthand = (
         Object.entries(expression).map(([key, value]) => [key, toShorthand(value)])
       )
 
+    if (fragment && otherProperties?.parameters) {
+      Object.entries(otherProperties.parameters).forEach(([key, value]) => {
+        otherProperties[key] = value
+      })
+      delete otherProperties.parameters
+    }
+
     const operatorReplacement = getShorthandOperator(operator as string | undefined, operators)
 
     const nodeKey = `$${operatorReplacement ?? fragment}`
 
-    const aliasDefinitionKeys = Object.keys(otherProperties).filter((key) =>
-      isAlias(key, allReservedKeys)
+    const fragmentParameterKeys = fragment
+      ? extractFragmentParameterKeys(fragment as string, fragmentDefinitions)
+      : []
+
+    const aliasDefinitionKeys = Object.keys(otherProperties).filter(
+      (key) => isAlias(key, allReservedKeys) && !fragmentParameterKeys.includes(key)
     )
 
     const properties = Object.entries(otherProperties)
-      .filter(([key]) => !aliasDefinitionKeys.includes(key))
+      .filter(([key]) => !aliasDefinitionKeys.includes(key) && !fragmentParameterKeys.includes(key))
       .map(([key, value]) => [key, toShorthand(value)])
 
     const aliasProperties = Object.fromEntries(
       aliasDefinitionKeys.map((key) => [key, toShorthand(otherProperties[key])])
     )
 
+    const fragmentProperties = Object.fromEntries(
+      fragmentParameterKeys.map((key) => [key, toShorthand(otherProperties[key])])
+    )
+
     switch (true) {
+      case Object.keys(fragmentProperties).length > 0: {
+        return { [nodeKey]: fragmentProperties, ...aliasProperties }
+      }
       case 'values' in otherProperties: {
         if (properties.length === 1) return { [nodeKey]: properties[0][1] }
         return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
@@ -159,4 +179,24 @@ const getShorthandOperator = (
   )
 
   return operator?.aliases.find((alias) => /^[A-Za-z_]{2,}$/.test(alias))
+}
+
+// Currently, there's no way to tell which properties of a fragment node are
+// parameters for the current fragment vs alias definitions, so it's hard to
+// know which ones should be placed inside the Fragment shorthand object. For
+// now, we'll have to do a regex search on the stringified Fragment definition
+// to find them.
+const extractFragmentParameterKeys = (fragmentName: string, fragments: Fragments = {}) => {
+  const fragment = fragments[fragmentName]
+  if (!fragment)
+    throw new Error(
+      'Fragment referenced in expression that is not defined in FigTree: ' + fragmentName
+    )
+
+  const fragmentAsString = JSON.stringify(fragment)
+  const matches = fragmentAsString.match(/"(\$\w+)"/gm)
+  if (!matches) return []
+  const uniqueMatches = new Set<string>()
+  matches.forEach((match) => uniqueMatches.add(match.replace(/"/g, '')))
+  return Array.from(uniqueMatches)
 }

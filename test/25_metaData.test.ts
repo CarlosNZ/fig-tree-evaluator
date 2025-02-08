@@ -16,7 +16,7 @@ const fig = new FigTreeEvaluator({
   },
   fragments: {
     getFlag: {
-      name: 'GET',
+      operator: 'GET',
       children: [
         {
           name: 'stringSubstitution',
@@ -35,7 +35,7 @@ const fig = new FigTreeEvaluator({
       },
     },
     simpleFragment: 'The flag of Brazil is: ',
-    adder: { name: '+', values: '$values' },
+    adder: { operator: '+', values: '$values' },
     shorthandFragment: {
       $stringSubstitution: ['My name is %1', '$name'],
       metadata: {

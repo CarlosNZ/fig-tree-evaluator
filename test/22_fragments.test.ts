@@ -64,16 +64,12 @@ test('Fragment used multiple times in an expression (with different parameters (
       {
         fragment: 'adder',
         parameters: {
-          operator: 'buildObject',
-          children: [
-            '$values',
-            [
-              { fragment: 'getFlag', $country: 'New Zealand' },
-              {
-                fragment: 'getFlag',
-                parameters: { $country: { operator: 'getData', property: 'myCountry' } },
-              },
-            ],
+          $values: [
+            { fragment: 'getFlag', $country: 'New Zealand' },
+            {
+              fragment: 'getFlag',
+              parameters: { $country: { operator: 'getData', property: 'myCountry' } },
+            },
           ],
         },
       },
