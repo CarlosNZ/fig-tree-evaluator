@@ -730,7 +730,7 @@ test('Metadata -- get operator info', () => {
         {
           name: 'matchExpression',
           description: 'Expression to match against',
-          aliases: ['match'],
+          aliases: ['matchValue'],
           required: true,
           type: ['string', 'number', 'boolean'],
           default: 'matchMe',

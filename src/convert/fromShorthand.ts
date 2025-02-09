@@ -3,8 +3,8 @@
  */
 
 import { FigTreeEvaluator } from '../FigTreeEvaluator'
-import { isAliasString, isObject, standardiseOperatorName } from '../helpers'
-import { EvaluatorNode, FragmentNode } from '../types'
+import { isFragmentNode, isObject, isOperatorNode, standardiseOperatorName } from '../helpers'
+import { EvaluatorNode, FragmentNode, OperatorMetadata } from '../types'
 
 export const convertFromShorthand = async (
   expression: EvaluatorNode,
@@ -43,7 +43,12 @@ export const convertFromShorthand = async (
       }
 
       const fullValue = await fromShorthand(value)
-      if (!isObject(fullValue)) {
+      if (
+        !isObject(fullValue) ||
+        !hasOperatorProperties(fullValue, operatorData) ||
+        isOperatorNode(fullValue) ||
+        isFragmentNode(fullValue)
+      ) {
         const firstParam = operatorData.parameters[0].name
         return { operator, [firstParam]: fullValue }
       }
@@ -61,25 +66,21 @@ export const convertFromShorthand = async (
     }
 
     if (allFunctions.includes(operatorAlias)) {
-      //
+      const operator = operatorAlias
+      const value = properties[0][1]
+
+      const fullValue = await fromShorthand(value)
+      if (!isObject(fullValue) || isOperatorNode(fullValue) || isFragmentNode(fullValue)) {
+        const firstParam = 'args'
+        return { operator, [firstParam]: fullValue }
+      }
+      return { operator, ...fullValue, ...(await getAdditionalProperties(properties)) }
     }
 
     // Not a shorthand node, just process the children
     return Object.fromEntries(
       await Promise.all(properties.map(async ([key, value]) => [key, await fromShorthand(value)]))
     )
-
-    return expression
-
-    // Get key
-    // - convert to preferred operator name
-
-    // Handle property
-    // - if single val, use first parameter
-    // - if array, parse children
-    // - otherwise map properties
-
-    //
   }
 
   const getAdditionalProperties = async (properties: [key: string, value: EvaluatorNode][]) => {
@@ -93,4 +94,14 @@ export const convertFromShorthand = async (
   }
 
   return fromShorthand(expression)
+}
+
+const hasOperatorProperties = (input: object, operatorData: OperatorMetadata) => {
+  const possibleProperties = operatorData.parameters
+    .map((param) => [param.name, ...param.aliases])
+    .flat()
+
+  const presentProperties = Object.keys(input)
+
+  return presentProperties.some((prop) => possibleProperties.includes(prop))
 }

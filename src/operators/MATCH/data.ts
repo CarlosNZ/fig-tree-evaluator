@@ -7,7 +7,7 @@ const parameters: OperatorParameterMetadata[] = [
   {
     name: 'matchExpression',
     description: 'Expression to match against',
-    aliases: ['match'],
+    aliases: ['matchValue'],
     required: true,
     type: ['string', 'number', 'boolean'],
     default: 'matchMe',

@@ -177,7 +177,7 @@ exp.updateOptions({
         'sunny',
         {
           operator: 'match',
-          match: {
+          matchExpression: {
             operator: 'objProps',
             property: 'humidity',
           },
@@ -189,7 +189,7 @@ exp.updateOptions({
         'rainy',
         {
           operator: 'match',
-          match: {
+          matchExpression: {
             operator: 'objProps',
             property: 'wind',
           },

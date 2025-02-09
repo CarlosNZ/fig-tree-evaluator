@@ -645,11 +645,11 @@ test('Convert to Shorthand -- lots of node types', async () => {
     },
     {
       operator: 'Match',
-      match: { operator: 'getData', property: 'film.title' },
+      matchExpression: { operator: 'getData', property: 'film.title' },
       branches: {
         'Deadpool & Wolverine': {
           operator: 'match',
-          matchExpression: {
+          matchValue: {
             operator: 'getData',
             property: 'film.minAgeRating',
           },
@@ -693,13 +693,13 @@ test('Convert to Shorthand -- lots of node types', async () => {
     { $pass: { $pass: { value: [1, 2, { $pass: 'ONE' }] } } },
     {
       $match: {
-        match: { $getData: 'film.title' },
+        matchExpression: { $getData: 'film.title' },
         branches: {
           'Deadpool & Wolverine': {
             $match: {
               '17': 'OKAY',
               '69': 'Nope',
-              matchExpression: { $getData: 'film.minAgeRating' },
+              matchValue: { $getData: 'film.minAgeRating' },
             },
           },
           Other: 420,
@@ -957,21 +957,21 @@ test('Convert from Shorthand -- lots of node types', async () => {
       },
     },
     { $passThru: { $passThru: { value: [1, 2, { $passThru: 'ONE' }] } } },
-    // {
-    //   $match: {
-    //     match: { $getData: 'film.title' },
-    //     branches: {
-    //       'Deadpool & Wolverine': {
-    //         $match: {
-    //           '17': 'OKAY',
-    //           '69': 'Nope',
-    //           matchExpression: { $getData: 'film.minAgeRating' },
-    //         },
-    //       },
-    //       Other: 420,
-    //     },
-    //   },
-    // },
+    {
+      $match: {
+        matchExpression: { $getData: 'film.title' },
+        branches: {
+          'Deadpool & Wolverine': {
+            $match: {
+              '17': 'OKAY',
+              '69': 'Nope',
+              matchValue: { $getData: 'film.minAgeRating' },
+            },
+          },
+          Other: 420,
+        },
+      },
+    },
   ]
   const result = [
     {
@@ -1030,22 +1030,22 @@ test('Convert from Shorthand -- lots of node types', async () => {
       operator: 'pass',
       value: { operator: 'pass', value: [1, 2, { operator: 'pass', value: 'ONE' }] },
     },
-    // {
-    //   operator: 'Match',
-    //   match: { operator: 'getData', property: 'film.title' },
-    //   branches: {
-    //     'Deadpool & Wolverine': {
-    //       operator: 'match',
-    //       matchExpression: {
-    //         operator: 'getData',
-    //         property: 'film.minAgeRating',
-    //       },
-    //       69: 'Nope',
-    //       17: 'OKAY',
-    //     },
-    //     Other: 420,
-    //   },
-    // },
+    {
+      operator: 'match',
+      matchExpression: { operator: 'getData', property: 'film.title' },
+      branches: {
+        'Deadpool & Wolverine': {
+          operator: 'match',
+          matchValue: {
+            operator: 'getData',
+            property: 'film.minAgeRating',
+          },
+          69: 'Nope',
+          17: 'OKAY',
+        },
+        Other: 420,
+      },
+    },
   ]
   const full = await convertFromShorthand(expression, fig)
   expect(full).toStrictEqual(result)
@@ -1054,34 +1054,34 @@ test('Convert from Shorthand -- lots of node types', async () => {
   expect(origEval).toStrictEqual(fullEval)
 })
 
-// test('Convert to Shorthand -- Custom operators/functions', async () => {
-//   const expression = {
-//     operator: 'changeCase',
-//     toCase: { operator: 'getData', property: 'toCase' },
-//     string: {
-//       operator: '+',
-//       values: [
-//         { operator: 'reverse', args: [{ operator: 'getData', property: 'backwardsInput' }] },
-//         { operator: 'currentDate' },
-//         { operator: 'reverse', input: [1, 2, 3, 4] },
-//       ],
-//     },
-//   }
-//   const result = {
-//     $changeCase: {
-//       toCase: { $getData: 'toCase' },
-//       string: {
-//         $plus: [
-//           { $reverse: [{ $getData: 'backwardsInput' }] },
-//           { $currentDate: {} },
-//           { $reverse: { input: [1, 2, 3, 4] } },
-//         ],
-//       },
-//     },
-//   }
-//   const shorthand = await convertToShorthand(expression, fig)
-//   expect(shorthand).toStrictEqual(result)
-//   const origEval = await fig.evaluate(expression)
-//   const shorthandEval = await fig.evaluate(shorthand)
-//   expect(origEval).toStrictEqual(shorthandEval)
-// })
+test('Convert to Shorthand -- Custom operators/functions', async () => {
+  const expression = {
+    $changeCase: {
+      toCase: { $getData: 'toCase' },
+      string: {
+        $plus: [
+          { $reverse: [{ $getData: 'backwardsInput' }] },
+          { $currentDate: {} },
+          { $reverse: { input: [1, 2, 3, 4] } },
+        ],
+      },
+    },
+  }
+  const result = {
+    operator: 'changeCase',
+    toCase: { operator: 'getData', property: 'toCase' },
+    string: {
+      operator: '+',
+      values: [
+        { operator: 'reverse', args: [{ operator: 'getData', property: 'backwardsInput' }] },
+        { operator: 'currentDate' },
+        { operator: 'reverse', input: [1, 2, 3, 4] },
+      ],
+    },
+  }
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
