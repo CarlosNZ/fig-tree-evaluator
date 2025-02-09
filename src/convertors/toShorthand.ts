@@ -81,6 +81,9 @@ export const convertToShorthand = (
         if (properties.length === 1) return { [nodeKey]: properties[0][1] }
         return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
       }
+      case operatorReplacement === 'match': {
+        return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
+      }
       case properties.length > arrayThreshold ||
         !!fragment ||
         properties.some(([key]) => key === 'useCache' || key === 'outputType') ||

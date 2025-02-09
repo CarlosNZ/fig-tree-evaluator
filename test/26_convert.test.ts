@@ -612,6 +612,41 @@ test('Convert to Shorthand -- lots of node types', async () => {
         { operator: 'equal', values: [null, undefined], nullEqualsUndefined: true },
       ],
     },
+    {
+      operator: '?',
+      $getNZ: {
+        operator: 'GET',
+        url: 'https://restcountries.com/v3.1/name/zealand',
+        returnProperty: 'name.common',
+        outputType: 'string',
+      },
+      condition: {
+        operator: '!=',
+        values: ['$getNZ', null],
+      },
+      valueIfTrue: '$getNZ',
+      valueIfFalse: 'Not New Zealand',
+    },
+    {
+      operator: 'passThru',
+      value: { operator: 'PASS_THRU', value: [1, 2, { operator: 'pass', value: 'ONE' }] },
+    },
+    {
+      operator: 'Match',
+      match: { operator: 'getData', property: 'film.title' },
+      branches: {
+        'Deadpool & Wolverine': {
+          operator: 'match',
+          matchExpression: {
+            operator: 'getData',
+            property: 'film.minAgeRating',
+          },
+          69: 'Nope',
+          17: 'OKAY',
+        },
+        Other: 420,
+      },
+    },
   ]
   const result = [
     { $buildObject: ['someKey', { $plus: [1, 2, 3] }] },
@@ -628,6 +663,36 @@ test('Convert to Shorthand -- lots of node types', async () => {
         { $eq: { values: ['word', 'WORD'], caseInsensitive: true, fallback: 'Ooops' } },
         { $eq: { values: [null, undefined], nullEqualsUndefined: true } },
       ],
+    },
+    {
+      $conditional: {
+        condition: { $notEqual: ['$getNZ', null] },
+        valueIfTrue: '$getNZ',
+        valueIfFalse: 'Not New Zealand',
+      },
+      $getNZ: {
+        $GET: {
+          url: 'https://restcountries.com/v3.1/name/zealand',
+          returnProperty: 'name.common',
+          outputType: 'string',
+        },
+      },
+    },
+    { $passThru: { $passThru: { value: [1, 2, { $passThru: 'ONE' }] } } },
+    {
+      $match: {
+        match: { $getData: 'film.title' },
+        branches: {
+          'Deadpool & Wolverine': {
+            $match: {
+              '17': 'OKAY',
+              '69': 'Nope',
+              matchExpression: { $getData: 'film.minAgeRating' },
+            },
+          },
+          Other: 420,
+        },
+      },
     },
   ]
   const shorthand = await convertToShorthand(expression, fig)
