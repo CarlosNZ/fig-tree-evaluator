@@ -807,7 +807,7 @@ test('Metadata -- get operator info', () => {
     {
       name: 'PASSTHRU',
       description: 'Pass through a value unchanged (or change its type)',
-      aliases: ['_', 'passThru', 'passthru', 'pass', 'ignore', 'coerce', 'convert'],
+      aliases: ['pass', '_', 'passThru', 'passthru', 'ignore', 'coerce', 'convert'],
       parameters: [
         {
           name: 'value',

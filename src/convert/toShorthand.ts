@@ -42,6 +42,8 @@ export const convertToShorthand = (
         Object.entries(expression).map(([key, value]) => [key, toShorthand(value)])
       )
 
+    const isFunction = allFunctions.includes(operator as string)
+
     if (fragment && otherProperties?.parameters) {
       Object.entries(otherProperties.parameters).forEach(([key, value]) => {
         otherProperties[key] = value
@@ -49,7 +51,9 @@ export const convertToShorthand = (
       delete otherProperties.parameters
     }
 
-    const operatorReplacement = getShorthandOperator(operator as string | undefined, operators)
+    const operatorReplacement = isFunction
+      ? operator
+      : getShorthandOperator(operator as string | undefined, operators)
 
     const nodeKey = `$${operatorReplacement ?? fragment}`
 
@@ -76,6 +80,11 @@ export const convertToShorthand = (
     switch (true) {
       case Object.keys(fragmentProperties).length > 0: {
         return { [nodeKey]: fragmentProperties, ...aliasProperties }
+      }
+      case isFunction: {
+        if (properties.length === 1 && !('input' in otherProperties))
+          return { [nodeKey]: properties[0][1] }
+        return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
       }
       case 'values' in otherProperties: {
         if (properties.length === 1) return { [nodeKey]: properties[0][1] }

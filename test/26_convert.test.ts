@@ -1,7 +1,8 @@
 import { FetchClient } from '../src'
 import fetch from 'node-fetch'
-import { convertV1ToV2, convertToShorthand } from '../src/convertors'
+import { convertV1ToV2, convertToShorthand } from '../src/convert'
 import { FigTreeEvaluator } from './evaluator'
+import { convertFromShorthand } from '../src/convert/fromShorthand'
 
 const fig = new FigTreeEvaluator({
   httpClient: FetchClient(fetch),
@@ -21,7 +22,16 @@ const fig = new FigTreeEvaluator({
     getFullName: (nameObject: { firstName: string; lastName: string }) => {
       return `${nameObject.firstName} ${nameObject.lastName}`
     },
-    fDate: (dateString: string) => new Date(dateString),
+    changeCase: {
+      function: ({ string, toCase }: { string: string; toCase: 'lower' | 'upper' }) =>
+        toCase === 'upper' ? string.toUpperCase() : string.toLowerCase(),
+      description: 'Convert a string to either upper or lower case',
+      inputDefault: { string: 'New string', toCase: 'upper' },
+    },
+    currentDate: {
+      function: () => new Date().toLocaleDateString(),
+      description: "Returns today's date in local format",
+    },
   },
   fragments: {
     getCapital: {
@@ -65,6 +75,8 @@ const fig = new FigTreeEvaluator({
     film: { title: 'Deadpool & Wolverine', minAgeRating: 17 },
     patron: { age: 12, isParentAttending: true },
     myCountry: 'Morocco',
+    backwardsInput: " :si etad s'yadoT",
+    toCase: 'upper',
   },
 })
 
@@ -409,7 +421,7 @@ test('Convert to V2 -- already partially converted', async () => {
   expect(v1Eval).toStrictEqual(v2Eval)
 })
 
-// Convert to Shorthand
+// Convert TO Shorthand
 
 test('Convert to Shorthand -- basic', async () => {
   const expression = {
@@ -678,7 +690,7 @@ test('Convert to Shorthand -- lots of node types', async () => {
         },
       },
     },
-    { $passThru: { $passThru: { value: [1, 2, { $passThru: 'ONE' }] } } },
+    { $pass: { $pass: { value: [1, 2, { $pass: 'ONE' }] } } },
     {
       $match: {
         match: { $getData: 'film.title' },
@@ -702,7 +714,374 @@ test('Convert to Shorthand -- lots of node types', async () => {
   expect(origEval).toStrictEqual(shorthandEval)
 })
 
-test('Convert to Shorthand -- Custom operators/functions', () => {
-  const expression = {}
-  expect(convertToShorthand(expression, fig)).toStrictEqual({})
+test('Convert to Shorthand -- Custom operators/functions', async () => {
+  const expression = {
+    operator: 'changeCase',
+    toCase: { operator: 'getData', property: 'toCase' },
+    string: {
+      operator: '+',
+      values: [
+        { operator: 'reverse', args: [{ operator: 'getData', property: 'backwardsInput' }] },
+        { operator: 'currentDate' },
+        { operator: 'reverse', input: [1, 2, 3, 4] },
+      ],
+    },
+  }
+  const result = {
+    $changeCase: {
+      toCase: { $getData: 'toCase' },
+      string: {
+        $plus: [
+          { $reverse: [{ $getData: 'backwardsInput' }] },
+          { $currentDate: {} },
+          { $reverse: { input: [1, 2, 3, 4] } },
+        ],
+      },
+    },
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
 })
+
+// Convert FROM Shorthand -- these are all (essentially) the reverse of the
+// above
+
+test('Convert from Shorthand -- basic', async () => {
+  const expression = {
+    $stringSubstitution: {
+      string:
+        '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
+      substitutions: [
+        { $getData: ['applicationData.applicationSerial', null] },
+        { $getData: ['applicationData.firstName', null] },
+        { $getData: ['applicationData.lastName', '  '] },
+        {
+          $graphQL: {
+            query:
+              'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+            url: 'https://countries.trevorblades.com/',
+            variables: {},
+          },
+        },
+      ],
+    },
+  }
+  const result = {
+    operator: 'stringSubstitution',
+    string:
+      '**%1**\n**%2 %3**\n \nDear %2 %3,\n \nYour application for a permit to import medical products has been  successfully submitted.\n\nThe application will be reviewed and the outcome provided to you via email.\n \nKind regards,  \n%4\n\n',
+    substitutions: [
+      { operator: 'getData', property: 'applicationData.applicationSerial', fallback: null },
+      { operator: 'getData', property: 'applicationData.firstName', fallback: null },
+      { operator: 'getData', property: 'applicationData.lastName', fallback: '  ' },
+      {
+        operator: 'graphQL',
+        query:
+          'query getCountries {\n                countries(filter: {continent: {eq: "OC"}}) {\n                  name\n                }\n              }',
+        url: 'https://countries.trevorblades.com/',
+        variables: {},
+      },
+    ],
+  }
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
+
+test('Convert from Shorthand -- bigger, with lots of conditional logic', async () => {
+  const expression = {
+    $conditional: {
+      condition: {
+        $or: [
+          {
+            $greaterThan: {
+              values: [{ $getData: 'patron.age' }, { $getData: 'film.minAgeRating' }],
+              strict: false,
+            },
+          },
+          {
+            $and: [
+              { $greaterThan: { values: [{ $getData: 'patron.age' }, 13], strict: false } },
+              { $getData: 'patron.isParentAttending' },
+            ],
+          },
+        ],
+      },
+      valueIfTrue: {
+        $stringSubstitution: ['Enjoy "{{movie}}"! 🍿🎬', { movie: { $getData: 'film.title' } }],
+      },
+      valueIfFalse: "Sorry, try again when you're older 😔",
+    },
+  }
+  const result = {
+    operator: '?',
+    condition: {
+      operator: 'or',
+      values: [
+        {
+          operator: '>',
+          values: [
+            { operator: 'getData', property: 'patron.age' },
+            { operator: 'getData', property: 'film.minAgeRating' },
+          ],
+          strict: false,
+        },
+        {
+          operator: 'and',
+          values: [
+            {
+              operator: '>',
+              values: [{ operator: 'getData', property: 'patron.age' }, 13],
+              strict: false,
+            },
+            { operator: 'getData', property: 'patron.isParentAttending' },
+          ],
+        },
+      ],
+    },
+    valueIfTrue: {
+      operator: 'stringSubstitution',
+      string: 'Enjoy "{{movie}}"! 🍿🎬',
+      substitutions: [{ movie: { operator: 'getData', property: 'film.title' } }],
+    },
+    valueIfFalse: "Sorry, try again when you're older 😔",
+  }
+
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
+
+test('Convert from Shorthand -- fragments', async () => {
+  const expression = {
+    $plus: {
+      values: [
+        { $adder: { $values: [7, 8, 9] } },
+        {
+          $adder: {
+            $values: [
+              { $getFlag: { $country: 'New Zealand' } },
+              { $getFlag: { $country: { $getData: 'myCountry' } } },
+            ],
+          },
+        },
+      ],
+      type: 'array',
+    },
+  }
+  const result = {
+    operator: '+',
+    values: [
+      { fragment: 'adder', $values: [7, 8, 9] },
+      {
+        fragment: 'adder',
+        $values: [
+          { fragment: 'getFlag', $country: 'New Zealand' },
+          {
+            fragment: 'getFlag',
+            $country: { operator: 'getData', property: 'myCountry' },
+          },
+        ],
+      },
+    ],
+    type: 'array',
+  }
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
+
+test('Convert from Shorthand -- normal node with Fallback', async () => {
+  const expression = {
+    $and: {
+      values: [
+        { $greaterThan: [{ $getData: 'patron.age' }, 13] },
+        { $getData: 'patron.isParentAttending' },
+      ],
+      fallback: 'This should show up',
+    },
+  }
+  const result = {
+    operator: 'and',
+    values: [
+      { operator: '>', values: [{ operator: 'getData', property: 'patron.age' }, 13] },
+      { operator: 'getData', property: 'patron.isParentAttending' },
+    ],
+    fallback: 'This should show up',
+  }
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
+
+test('Convert from Shorthand -- lots of node types', async () => {
+  const expression = [
+    { $buildObject: ['someKey', { $plus: [1, 2, 3] }] },
+    {
+      $buildObject: {
+        values: [{ key: 'someKey', value: { $getData: ['testing.this', 'Internal'] } }],
+        fallback: 'Okay then',
+      },
+    },
+    { $count: ['someKey', { $plus: { values: [1, 2, 3], useCache: true, outputType: 'array' } }] },
+    {
+      $eq: [
+        { $eq: [1, 1, 2] },
+        { $eq: { values: ['word', 'WORD'], caseInsensitive: true, fallback: 'Ooops' } },
+        { $eq: { values: [null, undefined], nullEqualsUndefined: true } },
+      ],
+    },
+    {
+      $conditional: {
+        condition: { $notEqual: ['$getNZ', null] },
+        valueIfTrue: '$getNZ',
+        valueIfFalse: 'Not New Zealand',
+      },
+      $getNZ: {
+        $GET: {
+          url: 'https://restcountries.com/v3.1/name/zealand',
+          returnProperty: 'name.common',
+          outputType: 'string',
+        },
+      },
+    },
+    { $passThru: { $passThru: { value: [1, 2, { $passThru: 'ONE' }] } } },
+    // {
+    //   $match: {
+    //     match: { $getData: 'film.title' },
+    //     branches: {
+    //       'Deadpool & Wolverine': {
+    //         $match: {
+    //           '17': 'OKAY',
+    //           '69': 'Nope',
+    //           matchExpression: { $getData: 'film.minAgeRating' },
+    //         },
+    //       },
+    //       Other: 420,
+    //     },
+    //   },
+    // },
+  ]
+  const result = [
+    {
+      operator: 'buildObject',
+      properties: [
+        {
+          key: 'someKey',
+          value: {
+            operator: '+',
+            values: [1, 2, 3],
+          },
+        },
+      ],
+    },
+    {
+      operator: 'buildObject',
+      values: [
+        {
+          key: 'someKey',
+          value: { operator: 'getData', property: 'testing.this', fallback: 'Internal' },
+        },
+      ],
+      fallback: 'Okay then',
+    },
+    {
+      operator: 'count',
+      values: [
+        'someKey',
+        { operator: '+', values: [1, 2, 3], useCache: true, outputType: 'array' },
+      ],
+    },
+    {
+      operator: '=',
+      values: [
+        { operator: '=', values: [1, 1, 2] },
+        { operator: '=', values: ['word', 'WORD'], caseInsensitive: true, fallback: 'Ooops' },
+        { operator: '=', values: [null, undefined], nullEqualsUndefined: true },
+      ],
+    },
+    {
+      operator: '?',
+      $getNZ: {
+        operator: 'GET',
+        url: 'https://restcountries.com/v3.1/name/zealand',
+        returnProperty: 'name.common',
+        outputType: 'string',
+      },
+      condition: {
+        operator: '!=',
+        values: ['$getNZ', null],
+      },
+      valueIfTrue: '$getNZ',
+      valueIfFalse: 'Not New Zealand',
+    },
+    {
+      operator: 'pass',
+      value: { operator: 'pass', value: [1, 2, { operator: 'pass', value: 'ONE' }] },
+    },
+    // {
+    //   operator: 'Match',
+    //   match: { operator: 'getData', property: 'film.title' },
+    //   branches: {
+    //     'Deadpool & Wolverine': {
+    //       operator: 'match',
+    //       matchExpression: {
+    //         operator: 'getData',
+    //         property: 'film.minAgeRating',
+    //       },
+    //       69: 'Nope',
+    //       17: 'OKAY',
+    //     },
+    //     Other: 420,
+    //   },
+    // },
+  ]
+  const full = await convertFromShorthand(expression, fig)
+  expect(full).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const fullEval = await fig.evaluate(full)
+  expect(origEval).toStrictEqual(fullEval)
+})
+
+// test('Convert to Shorthand -- Custom operators/functions', async () => {
+//   const expression = {
+//     operator: 'changeCase',
+//     toCase: { operator: 'getData', property: 'toCase' },
+//     string: {
+//       operator: '+',
+//       values: [
+//         { operator: 'reverse', args: [{ operator: 'getData', property: 'backwardsInput' }] },
+//         { operator: 'currentDate' },
+//         { operator: 'reverse', input: [1, 2, 3, 4] },
+//       ],
+//     },
+//   }
+//   const result = {
+//     $changeCase: {
+//       toCase: { $getData: 'toCase' },
+//       string: {
+//         $plus: [
+//           { $reverse: [{ $getData: 'backwardsInput' }] },
+//           { $currentDate: {} },
+//           { $reverse: { input: [1, 2, 3, 4] } },
+//         ],
+//       },
+//     },
+//   }
+//   const shorthand = await convertToShorthand(expression, fig)
+//   expect(shorthand).toStrictEqual(result)
+//   const origEval = await fig.evaluate(expression)
+//   const shorthandEval = await fig.evaluate(shorthand)
+//   expect(origEval).toStrictEqual(shorthandEval)
+// })
