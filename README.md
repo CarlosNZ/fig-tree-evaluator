@@ -2121,6 +2121,10 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
+
+- **v2.20.0**:
+  - Add helper scripts to convert V1 to V2 expressions, and to and from Shorthand syntax -- used in [FigTree Editor](https://github.com/CarlosNZ/fig-tree-editor-react) tool.
+  - Small tweaks to `buildObject` and `match` operators to make them a little more consistent in their behaviour.
 - **v2.19.0**: *Remove* "string" shorthand syntax (technically a breaking change, but I doubt anyone is affected by this) #124
 - **v2.18.0**: Prevent HTTP clients from being bundled with main package
 - **v2.17.0**: Allow Custom Functions to be expressed as Custom Operators
