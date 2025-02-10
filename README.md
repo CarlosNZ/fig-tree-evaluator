@@ -12,7 +12,10 @@ A typical use case would be for evaluating **configuration** files, where you ne
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs. Plus, you can extend functionality with your own [custom operators](#custom-functionsoperators)
 
-### [Try the Demo/Playground](https://carlosnz.github.io/fig-tree-evaluator/)
+<!-- omit in toc -->
+## [Try the Demo/Playground](https://carlosnz.github.io/fig-tree-evaluator/)
+
+The demo is powered by [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react), a React component for editing FigTree expressions.
 
 ## Contents <!-- omit in toc -->
 <!-- TOC -->
@@ -1180,7 +1183,7 @@ e.g.
 
 *Http GraphQL request (using POST)*
 
-Aliases: `graphQl`, `graphql`, `gql`
+Aliases: `graphQL`, `graphQl`, `graphql`, `gql`
 
 This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
 
@@ -1399,14 +1402,17 @@ The "buildObject" operator would primarily be used to construct an object input 
 
 #### Properties
 
-- `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of objects of the following shape:  
-  ```ts
-  {
-    key: string
-    value: any
-  }
-  ```
-  Each element provides one key-value pair in the output object
+- `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of either:
+  -  objects of the following shape:  
+    ```ts
+    {
+      key: string
+      value: any
+    }
+    ```
+  - key/value pairs in sequence, e.g. `[ "key1", "value1", "key2", "value2", ... ]`
+
+  Each object or pair of elements provides one key-value pair in the output object
 
 e.g.
 ```js
@@ -1418,33 +1424,27 @@ e.g.
     {
       // Using "user" object from earlier
       key: { operator: 'objectProperties', property: 'user.friends[0]' },
-      value: {
-        operator: '+',
-        values: [7, 8, 9],
-      },
+      value: { operator: '+', values: [7, 8, 9] },
     },
   ],
 }
 // => { one: 1, two: 2, Ned: 24 }
 
-```
+// OR, this is equivalent...
 
-`children` array: `[key1, value1, key2, value2, ...]`
-
-This is one of the few cases where the `children` array might actually be simpler to define than the `properties` property, depending on how deep the array elements are themselves operator nodes.
-
-e.g.
-```js
-// This is the same as the previous expression
 {
   operator: 'buildObject',
-  children: ['one', 1, 'two', 2,
+  properties: [
+    "one", 1, "two", 2,
     { operator: 'objectProperties', property: 'user.friends[0]' },
-    { operator: '+', values: [7, 8, 9] },
-  ],
+    { operator: '+', values: [7, 8, 9] }
+  ]
 }
 // => { one: 1, two: 2, Ned: 24 }
+
 ```
+
+`children`: `[...properties]` (same as properties array above)
 
 ----
 
@@ -1458,7 +1458,7 @@ The "match" operator is equivalent to a "switch"/"case" in Javascript. It is sim
 
 #### Properties
 
-- `matchExpression` (or `match`)<sup>*</sup>: (string | number | boolean) -- a node that returns a value to be compared against possible cases.
+- `matchExpression` (or `matchValue`)<sup>*</sup>: (string | number | boolean) -- a node that returns a value to be compared against possible cases.
 - `branches` (or `arms` or `cases`): (object) -- an object whose *keys* are compared against the `matchExpression`. The *value* of the matching key is returned.
 - `...branches` -- as an alternative to the `branches` object, matching key/values can be placed at the root of the node (see example)
 

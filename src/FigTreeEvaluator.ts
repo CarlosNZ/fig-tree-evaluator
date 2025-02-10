@@ -106,6 +106,7 @@ export class FigTreeEvaluator {
     const operatorList = Object.entries(validOperators).map(([key, value]) => ({
       name: key,
       ...value.operatorData,
+      parseChildren: value.parseChildren,
     }))
     // Ensures we return operators in the order listed in "operatorAliases",
     // otherwise they're just ordered by the "import" order in
@@ -138,6 +139,21 @@ export class FigTreeEvaluator {
       }
       return functionMetadata
     }) as readonly CustomFunctionMetadata[]
+  }
+
+  public getConfig() {
+    return {
+      options: this.options,
+      operators: this.options.excludeOperators
+        ? filterOperators(operators, this.options.excludeOperators, operatorAliases)
+        : this.operators,
+      operatorAliases: this.operatorAliases,
+      typeChecker: this.options.skipRuntimeTypeCheck ? () => {} : this.typeChecker,
+      resolvedAliasNodes: {},
+      cache: this.cache,
+      graphQLClient: this.graphQLClient,
+      httpClient: this.httpClient,
+    }
   }
 
   public getVersion = () => version

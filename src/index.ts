@@ -33,6 +33,9 @@ import {
   isFigTreeExpression,
 } from './helpers'
 
+// Conversion functions not used in package, used in editor utility
+import { convertV1ToV2, convertToShorthand, convertFromShorthand, isV1Node } from './convert'
+
 export {
   // Core
   evaluateExpression,
@@ -53,6 +56,11 @@ export {
   standardiseOperatorName,
   truncateString,
   isFigTreeExpression,
+  // For external utilities, such as expression editor
+  convertV1ToV2,
+  convertToShorthand,
+  convertFromShorthand,
+  isV1Node,
   // Types
   type Operator,
   type OperatorAlias,

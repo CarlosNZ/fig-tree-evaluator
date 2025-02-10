@@ -16,7 +16,7 @@ const fig = new FigTreeEvaluator({
   },
   fragments: {
     getFlag: {
-      name: 'GET',
+      operator: 'GET',
       children: [
         {
           name: 'stringSubstitution',
@@ -35,7 +35,7 @@ const fig = new FigTreeEvaluator({
       },
     },
     simpleFragment: 'The flag of Brazil is: ',
-    adder: { name: '+', values: '$values' },
+    adder: { operator: '+', values: '$values' },
     shorthandFragment: {
       $stringSubstitution: ['My name is %1', '$name'],
       metadata: {
@@ -63,6 +63,7 @@ test('Metadata -- get operator info', () => {
           default: [true, true],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'OR',
@@ -78,6 +79,7 @@ test('Metadata -- get operator info', () => {
           default: [true, false],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'EQUAL',
@@ -110,11 +112,12 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'NOT_EQUAL',
       description: 'Test if any values are different',
-      aliases: ['!=', '!', 'ne', 'notEqual'],
+      aliases: ['!=', 'notEqual', '!', 'ne'],
       parameters: [
         {
           name: 'values',
@@ -142,6 +145,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'PLUS',
@@ -167,6 +171,7 @@ test('Metadata -- get operator info', () => {
           default: 'string',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SUBTRACT',
@@ -198,6 +203,7 @@ test('Metadata -- get operator info', () => {
           default: 50,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'MULTIPLY',
@@ -213,6 +219,7 @@ test('Metadata -- get operator info', () => {
           default: [5, 5],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'DIVIDE',
@@ -254,6 +261,7 @@ test('Metadata -- get operator info', () => {
           default: 'quotient',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GREATER_THAN',
@@ -278,6 +286,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'LESS_THAN',
@@ -302,6 +311,7 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'CONDITIONAL',
@@ -333,6 +343,7 @@ test('Metadata -- get operator info', () => {
           default: 'The condition is false',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'REGEX',
@@ -356,14 +367,15 @@ test('Metadata -- get operator info', () => {
           default: '^[a-z]{4}-[a-z]{4}$',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'OBJECT_PROPERTIES',
       description: 'Extract values from data objects',
       aliases: [
+        'getData',
         'dataProperties',
         'data',
-        'getData',
         'objectProperties',
         'objProps',
         'getProperty',
@@ -387,6 +399,7 @@ test('Metadata -- get operator info', () => {
           default: {},
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'STRING_SUBSTITUTION',
@@ -436,6 +449,7 @@ test('Metadata -- get operator info', () => {
           default: {},
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SPLIT',
@@ -477,6 +491,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'COUNT',
@@ -492,11 +507,12 @@ test('Metadata -- get operator info', () => {
           default: [1, 2, 3, 4, 5],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GET',
       description: 'HTTP GET Request',
-      aliases: ['get', 'api'],
+      aliases: ['GET', 'get', 'api'],
       parameters: [
         {
           name: 'url',
@@ -539,11 +555,12 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'POST',
       description: 'HTTP POST Request',
-      aliases: ['post'],
+      aliases: ['POST', 'post'],
       parameters: [
         {
           name: 'url',
@@ -586,6 +603,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'SQL',
@@ -629,11 +647,12 @@ test('Metadata -- get operator info', () => {
           type: 'boolean',
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'GRAPHQL',
       description: 'GraphQL request',
-      aliases: ['graphQl', 'graphql', 'gql'],
+      aliases: ['graphQL', 'graphQl', 'graphql', 'gql'],
       parameters: [
         {
           name: 'query',
@@ -685,6 +704,7 @@ test('Metadata -- get operator info', () => {
           default: true,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'BUILD_OBJECT',
@@ -700,6 +720,7 @@ test('Metadata -- get operator info', () => {
           default: ['firstKey', 'firstValue', 'secondKey', 'secondValue'],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'MATCH',
@@ -709,7 +730,7 @@ test('Metadata -- get operator info', () => {
         {
           name: 'matchExpression',
           description: 'Expression to match against',
-          aliases: ['match'],
+          aliases: ['matchValue'],
           required: true,
           type: ['string', 'number', 'boolean'],
           default: 'matchMe',
@@ -734,6 +755,7 @@ test('Metadata -- get operator info', () => {
           type: ['object', 'array'],
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'CUSTOM_FUNCTIONS',
@@ -780,11 +802,12 @@ test('Metadata -- get operator info', () => {
           default: false,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
     {
       name: 'PASSTHRU',
       description: 'Pass through a value unchanged (or change its type)',
-      aliases: ['_', 'passThru', 'passthru', 'pass', 'ignore', 'coerce', 'convert'],
+      aliases: ['pass', '_', 'passThru', 'passthru', 'ignore', 'coerce', 'convert'],
       parameters: [
         {
           name: 'value',
@@ -795,6 +818,7 @@ test('Metadata -- get operator info', () => {
           default: null,
         },
       ],
+      parseChildren: expect.objectContaining({ name: 'parseChildren' }),
     },
   ])
 })

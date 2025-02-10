@@ -161,8 +161,18 @@ export const evaluatorFunction = async (
         expression,
         returnErrorAsString,
       })
-    finalOperatorExpression = await parseChildren(finalOperatorExpression, childConfig)
-    delete finalOperatorExpression.children
+    try {
+      finalOperatorExpression = await parseChildren(finalOperatorExpression, childConfig)
+      delete finalOperatorExpression.children
+    } catch (error) {
+      return fallbackOrError({
+        fallback: await evaluatorFunction(finalOperatorExpression.fallback, config),
+        operator,
+        error: error as Error,
+        expression: finalOperatorExpression,
+        returnErrorAsString,
+      })
+    }
   }
 
   // Recursively evaluate node

@@ -172,6 +172,7 @@ export interface OperatorData {
 
 export type OperatorMetadata = OperatorData & {
   name: Operator
+  parseChildren: ParseChildrenMethod
 }
 
 export type FragmentMetadata = FragmentData & {

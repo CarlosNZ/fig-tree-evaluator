@@ -2,7 +2,7 @@ import { getPropertyAliases } from '../operatorUtils'
 import { OperatorData, OperatorParameterMetadata } from '../../types'
 
 const description = 'Test if any values are different'
-const aliases = ['!=', '!', 'ne', 'notEqual']
+const aliases = ['!=', 'notEqual', '!', 'ne']
 const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',

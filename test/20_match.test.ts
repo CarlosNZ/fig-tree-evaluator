@@ -24,7 +24,7 @@ const state = {
 test('Switch with "branches" object', () => {
   const expression = {
     operator: 'switch',
-    match: { operator: 'objectProperties', property: 'weather' },
+    matchExpression: { operator: 'objectProperties', property: 'weather' },
     branches: {
       sunny: { operator: '+', values: [2, 3, 4] },
       rainy: { operator: '+', values: [9, 9, 9] },
@@ -38,7 +38,7 @@ test('Switch with "branches" object', () => {
 test('Match with "branches" object built using buildObject', () => {
   const expression = {
     operator: 'match',
-    match: { operator: 'objectProperties', property: 'weather' },
+    matchValue: { operator: 'objectProperties', property: 'weather' },
     branches: {
       operator: 'buildObject',
       properties: [
@@ -60,7 +60,7 @@ test('Match with children, nested', () => {
       'sunny',
       {
         operator: 'match',
-        match: {
+        matchExpression: {
           operator: 'objProps',
           property: 'humidity',
         },
@@ -72,7 +72,7 @@ test('Match with children, nested', () => {
       'rainy',
       {
         operator: 'match',
-        match: {
+        matchValue: {
           operator: 'objProps',
           property: 'wind',
         },
@@ -142,7 +142,7 @@ const decisionTree = {
                 ifFalse: '$difficultyOlder',
               },
               operator: 'match',
-              match: { operator: 'objProps', property: 'numberOfPlayers' },
+              matchExpression: { operator: 'objProps', property: 'numberOfPlayers' },
               fallback: '$difficultyOlder',
             },
           },
@@ -309,7 +309,7 @@ test('Card Game Decision Tree - No match error', () => {
 })
 
 test('Match - invalid branches', () => {
-  const expression = { $match: { match: 'three', branches: 'not an object or array' } }
+  const expression = { $match: { matchValue: 'three', branches: 'not an object or array' } }
   return exp.evaluate(expression, { returnErrorAsString: true }).then((result) => {
     expect(result).toBe("Operator: MATCH\nBranches don't evaluate to an object")
   })
