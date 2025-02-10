@@ -1959,7 +1959,7 @@ If extending FigTree with additional [HTTP Client](#http-requests), [SQL Connect
 
 Evaluator expressions can be configured by hand, with [aliases](#alias-nodes), [fragments](#fragments) and [shorthand](#shorthand-syntax) available to make the job easier.
 
-However, you may wish to build an external UI for building FigTree expression. To this end, the FigTree instance provides three methods that could be useful for populating your configuration UI:
+However, you may wish to use an external UI (such as [this one](https://carlosnz.github.io/fig-tree-evaluator/) for React) for building FigTree expression (or create your own). To this end, the FigTree instance provides three methods that could be useful for populating the configuration UI:
 
 #### A new FigTree instance:
 
@@ -1981,6 +1981,9 @@ const fig = new FigTreeEvaluator({
       metadata: {
         description: "Fetches the capital city of a country",
         parameters: { $country: { type: 'string', required: true } },
+        textColor: "black"
+        backgroundColor: "orange"
+}
       }
     },
     ... // More fragments
@@ -1997,10 +2000,10 @@ const fig = new FigTreeEvaluator({
       description: "Convert a string to either upper or lower case",
       inputDefault: {string: "New string", toCase: "upper"}
     }
-    ... // More functions
+     // ...More functions
   }
-  ... // More options
-})
+  //... More options
+)
 ```
 
 #### Retrieve Operator info
@@ -2055,6 +2058,8 @@ This will return something like:
     name: 'getCapital',
     description: 'Fetches the capital city of a country',
     parameters: { $country: { type: 'string', required: true } },
+    textColor: "black"
+    backgroundColor: "orange"
   },
   { name: 'simpleFragment' }, // No metadata provided
   ... // More fragments
