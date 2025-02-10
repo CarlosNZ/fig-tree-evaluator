@@ -1,5 +1,18 @@
 /**
  * Convert a FigTree expression from "Full" syntax to "Shorthand" syntax
+ *
+ * In general, follows the following rule:
+ * - When operator has only one property, it is placed as a primitive value,
+ *   e.g. `{ $getData: "my.property" }`
+ * - If operator has up to the "arrayThreshold" number of properties (default
+ *   2), the value is an array, with the values positioned according to their
+ *   position in the Operator parameter definitions, e.g. `{ $getData: [
+ *   "my.property", "myFallback" ] }`
+ * - More than that, they are placed as named properties in an object, e.g. `{
+ *   $conditional: { condition: true, valueIfTrue: "YES", valueIfFalse: "NO" }}`
+ *
+ * There are some exceptions for specific operators, and Fragments are always
+ * placed as named parameters.
  */
 
 import { FigTreeEvaluator } from '../FigTreeEvaluator'
