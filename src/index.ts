@@ -34,7 +34,7 @@ import {
 } from './helpers'
 
 // Conversion functions not used in package, used in editor utility
-import { convertV1ToV2, convertToShorthand, convertFromShorthand } from './convert'
+import { convertV1ToV2, convertToShorthand, convertFromShorthand, isV1Node } from './convert'
 
 export {
   // Core
@@ -60,6 +60,7 @@ export {
   convertV1ToV2,
   convertToShorthand,
   convertFromShorthand,
+  isV1Node,
   // Types
   type Operator,
   type OperatorAlias,
