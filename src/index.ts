@@ -2,6 +2,7 @@ import { FigTreeEvaluator, evaluateExpression } from './FigTreeEvaluator'
 import { FigTreeError, isFigTreeError } from './FigTreeError'
 import { SQLNodePostgres, SQLite } from './databaseConnections'
 import { AxiosClient, FetchClient } from './httpClients'
+import { dequal } from 'dequal'
 import {
   Operator,
   OperatorAlias,
@@ -61,6 +62,8 @@ export {
   convertToShorthand,
   convertFromShorthand,
   isV1Node,
+  // External packages, but useful in fig-tree-edit-react
+  dequal,
   // Types
   type Operator,
   type OperatorAlias,
