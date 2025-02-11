@@ -2,7 +2,7 @@ import { FigTreeEvaluator, evaluateExpression } from './FigTreeEvaluator'
 import { FigTreeError, isFigTreeError } from './FigTreeError'
 import { SQLNodePostgres, SQLite } from './databaseConnections'
 import { AxiosClient, FetchClient } from './httpClients'
-import { dequal } from 'dequal'
+import { dequal } from 'dequal/lite'
 import {
   Operator,
   OperatorAlias,
