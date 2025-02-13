@@ -74,6 +74,16 @@ test('Custom functions - fallback to a function on Objects not Functions option'
 test('Custom functions - "functions." is in path string', () => {
   const expression = {
     operator: 'runFunction',
+    children: ['functions.fDouble', 8],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toStrictEqual([16])
+  })
+})
+
+test('Custom functions - "functions." is in path string and function is in "objects', () => {
+  const expression = {
+    operator: 'runFunction',
     functionPath: 'functions.fDouble',
     args: [8],
   }
