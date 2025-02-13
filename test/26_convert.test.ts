@@ -54,6 +54,8 @@ const fig = new FigTreeEvaluator({
         ],
       },
     },
+    'Frag With Spaces': { operator: 'plus', values: '$values' },
+    FragWithoutSpaces: { operator: 'plus', values: '$values' },
     getRandom: { $function: 'random' },
     getFlag: {
       operator: 'GET',
@@ -542,6 +544,8 @@ test('Convert to Shorthand -- fragments', async () => {
           ],
         },
       },
+      { fragment: 'Frag With Spaces', $values: [7, 8, 9] },
+      { fragment: 'FragWithoutSpaces', $values: [7, 8, 9] },
     ],
     type: 'array',
   }
@@ -557,6 +561,8 @@ test('Convert to Shorthand -- fragments', async () => {
             ],
           },
         },
+        { '$Frag With Spaces': { $values: [7, 8, 9] } },
+        { $FragWithoutSpaces: { $values: [7, 8, 9] } },
       ],
       type: 'array',
     },
@@ -869,6 +875,8 @@ test('Convert from Shorthand -- fragments', async () => {
             $values: [
               { $getFlag: { $country: 'New Zealand' } },
               { $getFlag: { $country: { $getData: 'myCountry' } } },
+              { '$Frag With Spaces': { $values: [7, 8, 9] } },
+              { $FragWithoutSpaces: { $values: [7, 8, 9] } },
             ],
           },
         },
@@ -888,6 +896,8 @@ test('Convert from Shorthand -- fragments', async () => {
             fragment: 'getFlag',
             $country: { operator: 'getData', property: 'myCountry' },
           },
+          { fragment: 'Frag With Spaces', $values: [7, 8, 9] },
+          { fragment: 'FragWithoutSpaces', $values: [7, 8, 9] },
         ],
       },
     ],
@@ -1054,7 +1064,7 @@ test('Convert from Shorthand -- lots of node types', async () => {
   expect(origEval).toStrictEqual(fullEval)
 })
 
-test('Convert to Shorthand -- Custom operators/functions', async () => {
+test('Convert from Shorthand -- Custom operators/functions', async () => {
   const expression = {
     $changeCase: {
       toCase: { $getData: 'toCase' },

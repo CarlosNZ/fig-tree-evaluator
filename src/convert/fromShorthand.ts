@@ -27,11 +27,16 @@ export const convertFromShorthand = async (
 
     if (properties.length === 0) return expression
 
-    const operatorAlias = standardiseOperatorName(properties[0][0].replace('$', ''))
+    const objectKey = properties[0][0].replace('$', '')
+
+    const operatorAlias = standardiseOperatorName(objectKey)
 
     const operatorData = operators.find(
       (op) => op.name === operatorAlias || op.aliases.includes(operatorAlias)
     )
+    const isFragment = allFragments.includes(objectKey)
+    const isFunction = allFunctions.includes(objectKey)
+
     if (operatorData) {
       const operator = operatorData.aliases[0]
       const value = properties[0][1]
@@ -55,18 +60,18 @@ export const convertFromShorthand = async (
       return { operator, ...fullValue, ...(await getAdditionalProperties(properties)) }
     }
 
-    if (allFragments.includes(operatorAlias)) {
+    if (isFragment) {
       const fragmentProperties = await fromShorthand((expression as FragmentNode)[properties[0][0]])
       if (!isObject(fragmentProperties)) throw new Error('Invalid shorthand Fragment')
       return {
-        fragment: operatorAlias,
+        fragment: objectKey,
         ...fragmentProperties,
         ...(await getAdditionalProperties(properties)),
       }
     }
 
-    if (allFunctions.includes(operatorAlias)) {
-      const operator = operatorAlias
+    if (isFunction) {
+      const operator = objectKey
       const value = properties[0][1]
 
       const fullValue = await fromShorthand(value)
