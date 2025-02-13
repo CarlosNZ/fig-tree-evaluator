@@ -12,6 +12,7 @@ import {
   OperatorNode,
   FragmentNode,
   Fragment,
+  Fragments,
   EvaluatorOutput,
   OutputType,
   OperatorData,
@@ -20,6 +21,8 @@ import {
   CustomFunctionMetadata,
   OperatorParameterMetadata,
   FragmentParameterMetadata,
+  FunctionDefinition,
+  UnknownFunction,
 } from './types'
 import { GraphQLConnection } from './operators'
 import { preProcessShorthand } from './shorthandSyntax'
@@ -73,6 +76,9 @@ export {
   type OperatorNode,
   type FragmentNode,
   type Fragment,
+  type Fragments,
+  type FunctionDefinition,
+  type UnknownFunction,
   type EvaluatorOutput,
   type OutputType,
   type OperatorData,
