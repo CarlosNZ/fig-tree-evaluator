@@ -93,11 +93,8 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   return result
 }
 
-const parseChildren: ParseChildrenMethod = async (expression, config) => {
-  const [query, url = '', fieldNames, ...rest] = (await evaluateArray(
-    expression.children as EvaluatorNode[],
-    config
-  )) as [string, string, string[]]
+const parseChildren: ParseChildrenMethod = (expression) => {
+  const [query, url = '', fieldNames, ...rest] = expression.children as EvaluatorNode[]
   const fieldKeys = Array.isArray(fieldNames) ? fieldNames : [fieldNames]
   const values = rest.slice(0, fieldKeys.length)
   const variables = zipArraysToObject(fieldKeys, values)
