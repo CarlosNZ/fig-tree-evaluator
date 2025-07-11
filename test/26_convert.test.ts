@@ -367,13 +367,16 @@ test('Convert to V2 -- trickier operators', async () => {
         },
         value: {
           operator: 'GET',
-          url: 'https://restcountries.com/v3.1/name/cuba',
+          outputType: 'string',
+          url: {
+            operator: '+',
+            values: ['https://restcountries.com/v3.1/name/', 'cuba'],
+          },
           parameters: {
             fullText: 'true',
             fields: 'name,capital,flag',
           },
           returnProperty: 'capital',
-          outputType: 'string',
         },
       },
     ],
@@ -421,6 +424,64 @@ test('Convert to V2 -- already partially converted', async () => {
   const v1Eval = await fig.evaluate(expression)
   const v2Eval = await fig.evaluate(v2exp)
   expect(v1Eval).toStrictEqual(v2Eval)
+})
+
+test('Convert to V2 -- when data objects not accessible', async () => {
+  const expression = {
+    operator: 'POST',
+    children: [
+      {
+        operator: '+',
+        children: [
+          {
+            operator: 'objectProperties',
+            children: ['applicationData.config.serverREST'],
+          },
+          '/public/login',
+        ],
+      },
+      ['username', 'password'],
+      {
+        operator: 'objectProperties',
+        children: ['currentUser.username'],
+      },
+      {
+        operator: 'objectProperties',
+        children: ['responses.thisResponse'],
+      },
+      'success',
+    ],
+  }
+  const result = {
+    operator: 'POST',
+    url: {
+      operator: '+',
+      values: [
+        {
+          operator: 'getData',
+          property: 'applicationData.config.serverREST',
+        },
+        '/public/login',
+      ],
+    },
+    returnProperty: 'success',
+    parameters: {
+      username: {
+        operator: 'getData',
+        property: 'currentUser.username',
+      },
+      password: {
+        operator: 'getData',
+        property: 'responses.thisResponse',
+      },
+    },
+  }
+  const v2exp = await convertV1ToV2(expression, fig)
+  expect(v2exp).toStrictEqual(result)
+  // This one can't actually be evaluated as the data objects aren't defined
+  // const v1Eval = await fig.evaluate(expression)
+  // const v2Eval = await fig.evaluate(v2exp)
+  // expect(v1Eval).toStrictEqual(v2Eval)
 })
 
 // Convert TO Shorthand

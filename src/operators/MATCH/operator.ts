@@ -18,7 +18,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   const branches = Array.isArray(expression.branches)
     ? singleArrayToObject(expression.branches)
-    : expression.branches ?? {}
+    : (expression.branches ?? {})
 
   const branchObject = (
     isOperatorNode(branches) ? await evaluatorFunction(branches, config) : branches
@@ -42,9 +42,9 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   throw new Error(`No match found for ${matchExpression}`)
 }
 
-const parseChildren: ParseChildrenMethod = async (expression, config) => {
+const parseChildren: ParseChildrenMethod = (expression) => {
   const [matchExpression, ...elements] = expression.children as EvaluatorNode[]
-  const branches = singleArrayToObject(await evaluateArray(elements, config))
+  const branches = singleArrayToObject(elements)
 
   return { ...expression, matchExpression, branches }
 }
