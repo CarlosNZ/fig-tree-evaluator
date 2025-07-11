@@ -326,7 +326,7 @@ test('Skip runtime type checking, from constructor options', () => {
 test('GET - 404 error', async () => {
   const expression = {
     operator: 'get',
-    url: 'http://httpstat.us/404',
+    url: 'https://httpbingo.org/hidden-basic-auth/user/password',
   }
   await expect(exp.evaluate(expression)).rejects.toThrow('Problem with GET request')
   await expect(exp.evaluate(expression, { httpClient: AxiosClient(axios) })).rejects.toThrow(
@@ -347,6 +347,7 @@ test('POST - Bad login', async () => {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
     parameters: { email: 'eve.holt@reqres.in' },
+    headers: { 'x-api-key': 'reqres-free-v1' },
   }
   await expect(expAxios.evaluate(expression)).rejects.toThrow('Request failed with status code 400')
   await expect(expAxios.evaluate(expression, { httpClient: FetchClient(fetch) })).rejects.toThrow(
@@ -360,6 +361,7 @@ test('POST - Bad login', async () => {
       operator: 'POST',
       url: 'https://reqres.in/api/login',
       parameters: { email: 'eve.holt@reqres.in' },
+      headers: { 'x-api-key': 'reqres-free-v1' },
     })
     expect((err as FigTreeError).errorData).toStrictEqual({
       status: 400,
@@ -385,7 +387,7 @@ Request failed with status code 400
 test('GET - 404 error', async () => {
   const expression = {
     operator: 'get',
-    url: 'http://httpstat.us/404',
+    url: 'https://httpbingo.org/hidden-basic-auth/user/password',
   }
   await expect(exp.evaluate(expression, { httpClient: FetchClient(fetch) })).rejects.toThrow(
     'Problem with GET request'

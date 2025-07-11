@@ -420,6 +420,7 @@ test.concurrent('POST: Unsuccessful login, using properties', async () => {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
     parameters: { email: 'eve.holt@reqres.in' },
+    headers: { 'x-api-key': 'reqres-free-v1' },
   }
   const result = await exp.evaluate(expression)
   expect(result).toBe(`Operator: POST - AxiosError
@@ -459,18 +460,20 @@ test.concurrent('POST: Successful login, using parameters from (nested) buildObj
     },
   }
 
-  const result = await exp.evaluate(expression)
+  const result = await exp.evaluate(expression, { headers: { 'x-api-key': 'reqres-free-v1' } })
   expect(result).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
 
-  const resultFetch = await expFetch.evaluate(expression)
+  const resultFetch = await expFetch.evaluate(expression, {
+    headers: { 'x-api-key': 'reqres-free-v1' },
+  })
   expect(resultFetch).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
 })
 
-// HTTP Error codes using httpstat.us
+// HTTP Error codes using https://httpbingo.org etc.
 test.concurrent('GET: 403 error', async () => {
   const expression = {
     operator: 'API',
-    url: 'http://httpstat.us/403',
+    url: 'https://httpbingo.org/status/403',
   }
   const result = await exp.evaluate(expression)
   expect(result).toBe(`Operator: GET - AxiosError
@@ -478,11 +481,8 @@ Request failed with status code 403
 {
   "status": 403,
   "error": "Forbidden",
-  "url": "http://httpstat.us/403",
-  "response": {
-    "code": 403,
-    "description": "Forbidden"
-  }
+  "url": "https://httpbingo.org/status/403",
+  "response": {}
 }`)
 
   const resultFetch = await expFetch.evaluate(expression)
@@ -491,18 +491,15 @@ Problem with GET request
 {
   "status": 403,
   "error": "Forbidden",
-  "url": "http://httpstat.us/403",
-  "response": {
-    "code": 403,
-    "description": "Forbidden"
-  }
+  "url": "https://httpbingo.org/status/403",
+  "response": {}
 }`)
 })
 
 test.concurrent('GET: 404 error', async () => {
   const expression = {
     operator: 'API',
-    url: 'http://httpstat.us/404',
+    url: 'https://httpbingo.org/hidden-basic-auth/user/password',
   }
   const result = await exp.evaluate(expression)
   expect(result).toBe(`Operator: GET - AxiosError
@@ -510,10 +507,10 @@ Request failed with status code 404
 {
   "status": 404,
   "error": "Not Found",
-  "url": "http://httpstat.us/404",
+  "url": "https://httpbingo.org/hidden-basic-auth/user/password",
   "response": {
-    "code": 404,
-    "description": "Not Found"
+    "status_code": 404,
+    "error": "Not Found"
   }
 }`)
 
@@ -523,10 +520,10 @@ Problem with GET request
 {
   "status": 404,
   "error": "Not Found",
-  "url": "http://httpstat.us/404",
+  "url": "https://httpbingo.org/hidden-basic-auth/user/password",
   "response": {
-    "code": 404,
-    "description": "Not Found"
+    "status_code": 404,
+    "error": "Not Found"
   }
 }`)
 })
