@@ -22,6 +22,16 @@ const exp = new FigTreeEvaluator({
         'flag',
       ],
       outputType: 'string',
+      metadata: {
+        parameters: [
+          {
+            name: 'country',
+            type: 'string',
+            required: true,
+            default: 'New Zealand',
+          },
+        ],
+      },
     },
     simpleFragment: 'The flag of Brazil is: ',
     adder: { operator: '+', values: '$values' },
@@ -35,6 +45,13 @@ test('Fragments, single parameter at root', () => {
     fragment: 'getFlag',
     $country: 'New Zealand',
   }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('🇳🇿')
+  })
+})
+
+test('Fragments, single parameter at root, with default parameter', () => {
+  const expression = { fragment: 'getFlag' }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe('🇳🇿')
   })

@@ -104,6 +104,28 @@ export const replaceAliasNodeValues = (
 }
 
 /*
+If a fragment has parameters defined in metadata, any *required* parameters
+which are not provided but have a default value will be inserted into the
+expression with their default value
+*/
+export const replaceMissingDefaultParameters = (fragment: FragmentNode, config: FigTreeConfig) => {
+  console.log('Replace Missing Default Parameters', fragment)
+  const requiredParameterDefinitions =
+    config.options?.fragments?.[fragment.fragment]?.metadata?.parameters?.filter(
+      (param) => param.required && param.default !== undefined
+    ) ?? []
+  if (requiredParameterDefinitions.length === 0) return fragment
+
+  for (const param of requiredParameterDefinitions) {
+    if (!(param.name in (fragment?.parameters ?? {}) && !(param.name in fragment))) {
+      fragment[param.name] = param.default as EvaluatorNode
+    }
+  }
+  console.log('After Replace Missing Default Parameters', fragment)
+  return fragment
+}
+
+/*
 Converts a custom function expressed as a "custom operator" into a standard
 operator node
 e.g. {

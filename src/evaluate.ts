@@ -23,6 +23,7 @@ import {
   isObject,
   isAliasString,
   replaceCustomOperator,
+  replaceMissingDefaultParameters,
 } from './helpers'
 import { zipArraysToObject, singleArrayToObject } from './operators/operatorUtils'
 
@@ -74,7 +75,7 @@ export const evaluatorFunction = async (
 
   // Replace any fragments with their full expressions
   if (isFragment) {
-    const fragmentExpression = expression as FragmentNode
+    const fragmentExpression = replaceMissingDefaultParameters(expression as FragmentNode, config)
     const [fragment, parameters] = (await evaluateArray(
       [fragmentExpression.fragment, fragmentExpression.parameters],
       config
