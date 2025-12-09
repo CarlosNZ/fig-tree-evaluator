@@ -22,6 +22,9 @@ const exp = new FigTreeEvaluator({
         'flag',
       ],
       outputType: 'string',
+      metadata: {
+        parameters: [{ name: '$country', type: 'string', required: true, default: 'New Zealand' }],
+      },
     },
     simpleFragment: 'The flag of Brazil is: ',
     adder: { operator: '+', values: '$values' },
@@ -255,6 +258,13 @@ test('Fragment references another fragment 🙄', () => {
   const expression = { fragment: 'addAndDouble', $numbers: [3, 4, 5] }
   return exp.evaluate(expression).then((result) => {
     expect(result).toBe(24)
+  })
+})
+
+test('Fragment uses default parameter value', () => {
+  const expression = { fragment: 'getFlag' }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('🇳🇿')
   })
 })
 
