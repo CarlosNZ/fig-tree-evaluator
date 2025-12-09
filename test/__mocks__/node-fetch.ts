@@ -188,6 +188,42 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
       )
     }
 
+    // restcountries.com - Morocco
+    if (
+      urlString.includes('restcountries.com/v3.1/name/morocco') ||
+      urlString.includes('restcountries.com/v3.1/name/Morocco')
+    ) {
+      return Promise.resolve(
+        createResponse([
+          {
+            name: { common: 'Morocco' },
+            capital: ['Rabat'],
+            tld: ['.ma'],
+            region: 'Africa',
+            flag: '🇲🇦',
+          },
+        ])
+      )
+    }
+
+    // restcountries.com - Russia
+    if (
+      urlString.includes('restcountries.com/v3.1/name/russia') ||
+      urlString.includes('restcountries.com/v3.1/name/Russia')
+    ) {
+      return Promise.resolve(
+        createResponse([
+          {
+            name: { common: 'Russia' },
+            capital: ['Moscow'],
+            tld: ['.ru'],
+            region: 'Europe',
+            flag: '🇷🇺',
+          },
+        ])
+      )
+    }
+
     // restcountries.com - Typo URL (zealands) - 404 error
     if (urlString.includes('restcountries.com/v3.1/name/zealands')) {
       return createErrorResponse(
@@ -339,6 +375,65 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
       return Promise.resolve(
         createResponse({
           headers: { Authorization: authHeader },
+        })
+      )
+    }
+
+    // fakerapi.it - Random person data
+    if (urlString.includes('fakerapi.it/api/v1/persons')) {
+      const match = urlString.match(/_quantity=(\d+)/)
+      const quantity = match ? parseInt(match[1], 10) : 1
+
+      const firstNames = [
+        'John',
+        'Jane',
+        'Michael',
+        'Sarah',
+        'David',
+        'Emily',
+        'James',
+        'Emma',
+        'Robert',
+        'Olivia',
+      ]
+      const lastNames = [
+        'Smith',
+        'Johnson',
+        'Williams',
+        'Brown',
+        'Jones',
+        'Garcia',
+        'Miller',
+        'Davis',
+        'Rodriguez',
+        'Martinez',
+      ]
+      const genders = ['male', 'female']
+
+      const persons = Array.from({ length: quantity }, (_, i) => ({
+        id: Math.floor(Math.random() * 10000) + 1,
+        firstname: firstNames[Math.floor(Math.random() * firstNames.length)],
+        lastname: lastNames[Math.floor(Math.random() * lastNames.length)],
+        email: `user${Math.floor(Math.random() * 10000)}@example.com`,
+        phone: `+1${Math.floor(Math.random() * 9000000000) + 1000000000}`,
+        birthday: `19${50 + Math.floor(Math.random() * 50)}-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')}`,
+        gender: genders[Math.floor(Math.random() * genders.length)],
+        address: {
+          street: `${Math.floor(Math.random() * 9999) + 1} Main St`,
+          city: ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix'][
+            Math.floor(Math.random() * 5)
+          ],
+          zipcode: String(Math.floor(Math.random() * 90000) + 10000),
+        },
+        website: `https://example${Math.floor(Math.random() * 1000)}.com`,
+      }))
+
+      return Promise.resolve(
+        createResponse({
+          status: 'OK',
+          code: 200,
+          total: quantity,
+          data: persons,
         })
       )
     }
