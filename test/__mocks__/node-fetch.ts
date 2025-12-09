@@ -134,10 +134,58 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
   if (method === 'GET') {
     // restcountries.com - New Zealand (exact match to avoid matching 'zealands')
     if (
-      urlString.includes('restcountries.com/v3.1/name/zealand') &&
+      (urlString.includes('restcountries.com/v3.1/name/zealand') ||
+        urlString.includes('restcountries.com/v3.1/name/New%20Zealand') ||
+        urlString.includes('restcountries.com/v3.1/name/New Zealand')) &&
       !urlString.includes('zealands')
     ) {
-      return Promise.resolve(createResponse([{ name: { common: 'New Zealand' } }]))
+      return Promise.resolve(
+        createResponse([
+          {
+            name: { common: 'New Zealand' },
+            capital: ['Wellington'],
+            tld: ['.nz'],
+            region: 'Oceania',
+            flag: '🇳🇿',
+          },
+        ])
+      )
+    }
+
+    // restcountries.com - Brazil
+    if (
+      urlString.includes('restcountries.com/v3.1/name/brazil') ||
+      urlString.includes('restcountries.com/v3.1/name/Brazil')
+    ) {
+      return Promise.resolve(
+        createResponse([
+          {
+            name: { common: 'Brazil' },
+            capital: ['Brasília'],
+            tld: ['.br'],
+            region: 'Americas',
+            flag: '🇧🇷',
+          },
+        ])
+      )
+    }
+
+    // restcountries.com - Australia
+    if (
+      urlString.includes('restcountries.com/v3.1/name/australia') ||
+      urlString.includes('restcountries.com/v3.1/name/Australia')
+    ) {
+      return Promise.resolve(
+        createResponse([
+          {
+            name: { common: 'Australia' },
+            capital: ['Canberra'],
+            tld: ['.au'],
+            region: 'Oceania',
+            flag: '🇦🇺',
+          },
+        ])
+      )
     }
 
     // restcountries.com - Typo URL (zealands) - 404 error
@@ -203,6 +251,31 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
               common: 'Nepal',
               official: 'Federal Democratic Republic of Nepal',
             },
+          },
+        ])
+      )
+    }
+
+    // restcountries.com - Alpha codes (NZ)
+    if (urlString.includes('restcountries.com/v3.1/alpha')) {
+      return Promise.resolve(
+        createResponse([
+          {
+            name: {
+              common: 'New Zealand',
+              official: 'New Zealand',
+              nativeName: {
+                eng: {
+                  official: 'New Zealand',
+                  common: 'New Zealand',
+                },
+                mri: {
+                  official: 'Aotearoa',
+                  common: 'Aotearoa',
+                },
+              },
+            },
+            capital: ['Wellington'],
           },
         ])
       )
@@ -367,6 +440,89 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
           token: 'QpwL5tke4Pnpja7X4',
         })
       )
+    }
+
+    // GraphQL - countries.trevorblades.com
+    if (urlString.includes('countries.trevorblades.com')) {
+      const query = bodyData?.query || ''
+
+      // Get list of Oceania countries
+      if (query.includes('continent: {eq: "OC"}')) {
+        return Promise.resolve(
+          createResponse({
+            data: {
+              countries: [
+                { name: 'American Samoa' },
+                { name: 'Australia' },
+                { name: 'Cook Islands' },
+                { name: 'Fiji' },
+                { name: 'Micronesia' },
+                { name: 'Guam' },
+                { name: 'Kiribati' },
+                { name: 'Marshall Islands' },
+                { name: 'Northern Mariana Islands' },
+                { name: 'New Caledonia' },
+                { name: 'Norfolk Island' },
+                { name: 'Nauru' },
+                { name: 'Niue' },
+                { name: 'New Zealand' },
+                { name: 'French Polynesia' },
+                { name: 'Papua New Guinea' },
+                { name: 'Pitcairn Islands' },
+                { name: 'Palau' },
+                { name: 'Solomon Islands' },
+                { name: 'Tokelau' },
+                { name: 'East Timor' },
+                { name: 'Tonga' },
+                { name: 'Tuvalu' },
+                { name: 'U.S. Minor Outlying Islands' },
+                { name: 'Vanuatu' },
+                { name: 'Wallis and Futuna' },
+                { name: 'Samoa' },
+              ],
+            },
+          })
+        )
+      }
+
+      // Get single country by code (with emoji)
+      if (
+        query.includes('getCountry') ||
+        (query.includes('code: {eq:') && query.includes('emoji'))
+      ) {
+        const code = bodyData?.variables?.code || 'NZ'
+        const countryData: Record<string, { name: string; emoji: string }> = {
+          NZ: { name: 'New Zealand', emoji: '🇳🇿' },
+          NP: { name: 'Nepal', emoji: '🇳🇵' },
+        }
+
+        return Promise.resolve(
+          createResponse({
+            data: {
+              countries: [countryData[code] || countryData.NZ],
+            },
+          })
+        )
+      }
+
+      // Get capital query
+      if (query.includes('capital')) {
+        const code = bodyData?.variables?.code || 'NZ'
+        const capitalData: Record<string, string> = {
+          NZ: 'Wellington',
+          NP: 'Kathmandu',
+        }
+
+        return Promise.resolve(
+          createResponse({
+            data: {
+              country: {
+                capital: capitalData[code] || capitalData.NZ,
+              },
+            },
+          })
+        )
+      }
     }
   }
 

@@ -214,6 +214,35 @@ mockAxios.get = jest.fn((url: string, config?: any) => {
     })
   }
 
+  // restcountries.com - Alpha codes (NZ)
+  if (url.includes('restcountries.com/v3.1/alpha')) {
+    return Promise.resolve({
+      data: [
+        {
+          name: {
+            common: 'New Zealand',
+            official: 'New Zealand',
+            nativeName: {
+              eng: {
+                official: 'New Zealand',
+                common: 'New Zealand',
+              },
+              mri: {
+                official: 'Aotearoa',
+                common: 'Aotearoa',
+              },
+            },
+          },
+          capital: ['Wellington'],
+        },
+      ],
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    })
+  }
+
   // jsonplaceholder.typicode.com - Albums
   if (url.includes('jsonplaceholder.typicode.com/albums')) {
     return Promise.resolve({
@@ -465,8 +494,8 @@ mockAxios.post = jest.fn((url: string, data?: any, config?: any) => {
       })
     }
 
-    // Get single country by code
-    if (query.includes('getCountry') || query.includes('code: {eq:')) {
+    // Get single country by code (with emoji)
+    if (query.includes('getCountry') || (query.includes('code: {eq:') && query.includes('emoji'))) {
       const code = data?.variables?.code || 'NZ'
       const countryData: Record<string, { name: string; emoji: string }> = {
         NZ: { name: 'New Zealand', emoji: '🇳🇿' },
@@ -477,6 +506,27 @@ mockAxios.post = jest.fn((url: string, data?: any, config?: any) => {
         data: {
           data: {
             countries: [countryData[code] || countryData.NZ],
+          },
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config,
+      })
+    }
+
+    // Get capital query
+    if (query.includes('capital')) {
+      const code = data?.variables?.code || 'NZ'
+      const capitalData: Record<string, string[]> = {
+        NZ: ['Wellington'],
+        NP: ['Kathmandu'],
+      }
+
+      return Promise.resolve({
+        data: {
+          data: {
+            countries: capitalData[code] || capitalData.NZ,
           },
         },
         status: 200,
