@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.20.6",
+  "version": "2.21.0",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.cjs.js",
   "module": "build/index.esm.js",
@@ -39,6 +39,7 @@
     "pg": "^8.11.3",
     "prettier": "^3.0.3",
     "rimraf": "^5.0.5",
+    "rollup": "^4.53.3",
     "rollup-plugin-bundle-size": "^1.0.3",
     "rollup-plugin-dts": "^6.0.2",
     "rollup-plugin-sizes": "^1.0.5",
