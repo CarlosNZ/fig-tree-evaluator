@@ -2,6 +2,7 @@ import axios from 'axios'
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
 import { FetchClient, AxiosClient } from '../src'
+import 'dotenv/config'
 
 const exp = new FigTreeEvaluator({ returnErrorAsString: true, httpClient: AxiosClient(axios) })
 
@@ -420,7 +421,7 @@ test.concurrent('POST: Unsuccessful login, using properties', async () => {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
     parameters: { email: 'eve.holt@reqres.in' },
-    headers: { 'x-api-key': 'reqres-free-v1' },
+    headers: { 'x-api-key': process.env.REQRES_API_KEY },
   }
   const result = await exp.evaluate(expression)
   expect(result).toBe(`Operator: POST - AxiosError
@@ -460,11 +461,13 @@ test.concurrent('POST: Successful login, using parameters from (nested) buildObj
     },
   }
 
-  const result = await exp.evaluate(expression, { headers: { 'x-api-key': 'reqres-free-v1' } })
+  const result = await exp.evaluate(expression, {
+    headers: { 'x-api-key': process.env.REQRES_API_KEY ?? '' },
+  })
   expect(result).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
 
   const resultFetch = await expFetch.evaluate(expression, {
-    headers: { 'x-api-key': 'reqres-free-v1' },
+    headers: { 'x-api-key': process.env.REQRES_API_KEY ?? '' },
   })
   expect(resultFetch).toStrictEqual({ token: 'QpwL5tke4Pnpja7X4' })
 })

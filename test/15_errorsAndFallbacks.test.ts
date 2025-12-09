@@ -3,6 +3,7 @@ import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 import axios from 'axios'
 import { FigTreeError } from '../src/FigTreeError'
 import { FetchClient, AxiosClient } from '../src'
+import 'dotenv/config'
 
 const exp = new FigTreeEvaluator({
   objects: {
@@ -347,7 +348,7 @@ test('POST - Bad login', async () => {
     operator: 'POST',
     url: 'https://reqres.in/api/login',
     parameters: { email: 'eve.holt@reqres.in' },
-    headers: { 'x-api-key': 'reqres-free-v1' },
+    headers: { 'x-api-key': process.env.REQRES_API_KEY },
   }
   await expect(expAxios.evaluate(expression)).rejects.toThrow('Request failed with status code 400')
   await expect(expAxios.evaluate(expression, { httpClient: FetchClient(fetch) })).rejects.toThrow(
@@ -361,7 +362,7 @@ test('POST - Bad login', async () => {
       operator: 'POST',
       url: 'https://reqres.in/api/login',
       parameters: { email: 'eve.holt@reqres.in' },
-      headers: { 'x-api-key': 'reqres-free-v1' },
+      headers: { 'x-api-key': process.env.REQRES_API_KEY },
     })
     expect((err as FigTreeError).errorData).toStrictEqual({
       status: 400,
