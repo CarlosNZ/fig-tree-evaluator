@@ -75,6 +75,23 @@ export const evaluatorFunction = async (
   // Replace any fragments with their full expressions
   if (isFragment) {
     const fragmentExpression = expression as FragmentNode
+
+    // Insert default values for any missing parameters
+    const parameterDefinitions = options?.fragments?.[
+      fragmentExpression.fragment
+    ]?.metadata?.parameters?.filter((f) => f.default !== undefined)
+
+    if (fragmentExpression.parameters === undefined) fragmentExpression.parameters = {}
+
+    parameterDefinitions?.forEach((param) => {
+      if (
+        fragmentExpression.parameters?.[param.name] === undefined &&
+        fragmentExpression?.[param.name] === undefined
+      ) {
+        fragmentExpression!.parameters![param.name] = param.default as EvaluatorNode
+      }
+    })
+
     const [fragment, parameters] = (await evaluateArray(
       [fragmentExpression.fragment, fragmentExpression.parameters],
       config
