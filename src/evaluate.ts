@@ -74,7 +74,8 @@ export const evaluatorFunction = async (
 
   // Replace any fragments with their full expressions
   if (isFragment) {
-    const fragmentExpression = expression as FragmentNode
+    // Spread to avoid mutating original expression
+    const fragmentExpression = { ...(expression as FragmentNode) }
 
     // Insert default values for any missing parameters
     const parameterDefinitions = options?.fragments?.[
