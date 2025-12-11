@@ -145,6 +145,24 @@ test('Object properties with more complex additional objects', () => {
   })
 })
 
+test('Object properties with additionalData as array', () => {
+  const expression = {
+    operator: 'objectProperties',
+    path: '[0]vehicle.make',
+    additionalData: [
+      {
+        vehicle: {
+          make: 'Honda',
+          model: { name: 'Accord', versions: ['Type A', 'Type B', 'Type C'] },
+        },
+      },
+    ],
+  }
+  return exp.evaluate(expression, { data: {} }).then((result) => {
+    expect(result).toBe('Honda')
+  })
+})
+
 test('Object properties with additional objects, fallback', () => {
   const expression = {
     operator: 'objectProperties',

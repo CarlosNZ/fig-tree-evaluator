@@ -25,7 +25,7 @@ const parameters: OperatorParameterMetadata[] = [
     description: 'Additional data objects to be considered',
     aliases: ['additional', 'objects', 'data', 'additionalObjects'],
     required: false,
-    type: 'object',
+    type: ['object', 'array'],
     default: {},
   },
 ]
