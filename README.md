@@ -2127,7 +2127,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 *Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
 
 
-- **v2.21.1**: Use default parameter values for Fragments if not provided in expression
+- **v2.21.0**: Use default parameter values for Fragments if not provided in expression
 - **v2.20.6**: Fix certain `parseChildren` methods to not evaluate while parsing
 - **v2.20.0**:
   - Add helper scripts to convert V1 to V2 expressions, and to and from Shorthand syntax -- used in [FigTree Editor](https://github.com/CarlosNZ/fig-tree-editor-react) tool.
