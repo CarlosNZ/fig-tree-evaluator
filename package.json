@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.21.2",
+  "version": "2.21.3",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.cjs.js",
   "module": "build/index.esm.js",
@@ -66,7 +66,7 @@
   },
   "dependencies": {
     "dequal": "^2.0.3",
-    "object-property-extractor": "^1.0.13"
+    "object-property-extractor": "^1.0.14"
   },
   "bugs": {
     "url": "https://github.com/CarlosNZ/fig-tree-evaluator/issues"
