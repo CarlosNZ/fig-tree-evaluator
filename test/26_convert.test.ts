@@ -813,6 +813,27 @@ test('Convert to Shorthand -- Custom operators/functions', async () => {
   expect(origEval).toStrictEqual(shorthandEval)
 })
 
+test('Convert to Shorthand -- getData with additionalProperties', async () => {
+  const expression = {
+    operator: 'getData',
+    property: 'name',
+    additionalData: '$character',
+    $character: { name: 'Spider-Man' },
+  }
+  const result = {
+    $getData: {
+      property: 'name',
+      additionalData: '$character',
+    },
+    $character: { name: 'Spider-Man' },
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
 // Convert FROM Shorthand -- these are all (essentially) the reverse of the
 // above
 

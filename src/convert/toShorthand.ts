@@ -148,7 +148,7 @@ const getPropertyStructure = (
         properties,
         operatorData.parameters
       )
-      if (additionalData) return Object.entries(properties)
+      if (additionalData) return Object.fromEntries(properties)
       const propertyName = findPropertyInParameters('property', properties, operatorData.parameters)
       if (!propertyName)
         throw new Error('Missing required property for operator $getData: property')
