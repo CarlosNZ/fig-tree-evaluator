@@ -834,6 +834,146 @@ test('Convert to Shorthand -- getData with additionalProperties', async () => {
   expect(origEval).toStrictEqual(shorthandEval)
 })
 
+test('Convert to Shorthand -- complex with alias nodes', async () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Name: %1\nGender: %2\nHomeworld: %3\nFirst appearance: %4',
+    substitutions: [
+      {
+        operator: 'getData',
+        property: 'name',
+        additionalData: '$character',
+      },
+      {
+        operator: 'getData',
+        property: 'gender',
+        additionalData: '$character',
+      },
+      {
+        operator: 'get',
+        url: {
+          operator: 'getData',
+          property: 'homeworld',
+          additionalData: '$character',
+        },
+        returnProperty: 'name',
+      },
+      {
+        operator: 'get',
+        url: {
+          operator: 'getData',
+          property: 'films[0]',
+          additionalData: '$character',
+        },
+        returnProperty: 'title',
+      },
+    ],
+    fallback: {
+      operator: '+',
+      values: [
+        "Can't retrieve data for character: ",
+        {
+          $getData: 'selected',
+        },
+      ],
+      fallback: '‼️',
+    },
+    $character: {
+      operator: 'GET',
+      url: {
+        operator: '+',
+        values: [
+          'https://swapi.py4e.com/api/people/',
+          {
+            operator: 'getData',
+            property: {
+              operator: 'substitute',
+              string: 'characters.%1',
+              substitutions: [
+                {
+                  operator: 'getData',
+                  property: 'selected',
+                },
+              ],
+            },
+          },
+        ],
+      },
+      fallback: 'Nope',
+    },
+  }
+  const result = {
+    $stringSubstitution: {
+      string: 'Name: %1\nGender: %2\nHomeworld: %3\nFirst appearance: %4',
+      substitutions: [
+        {
+          $getData: {
+            property: 'name',
+            additionalData: '$character',
+          },
+        },
+        {
+          $getData: {
+            property: 'gender',
+            additionalData: '$character',
+          },
+        },
+        {
+          $GET: [
+            {
+              $getData: {
+                property: 'homeworld',
+                additionalData: '$character',
+              },
+            },
+            'name',
+          ],
+        },
+        {
+          $GET: [
+            {
+              $getData: {
+                property: 'films[0]',
+                additionalData: '$character',
+              },
+            },
+            'title',
+          ],
+        },
+      ],
+      fallback: {
+        $plus: {
+          values: ["Can't retrieve data for character: ", { $getData: 'selected' }],
+          fallback: '‼️',
+        },
+      },
+    },
+    $character: {
+      $GET: {
+        url: {
+          $plus: [
+            'https://swapi.py4e.com/api/people/',
+            {
+              $getData: {
+                $stringSubstitution: {
+                  string: 'characters.%1',
+                  substitutions: [{ $getData: 'selected' }],
+                },
+              },
+            },
+          ],
+        },
+        fallback: 'Nope',
+      },
+    },
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
 // Convert FROM Shorthand -- these are all (essentially) the reverse of the
 // above
 

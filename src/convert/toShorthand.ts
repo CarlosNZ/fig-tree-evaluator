@@ -157,6 +157,7 @@ const getPropertyStructure = (
       return fallback ? [propertyName[1], fallback[1]] : propertyName[1]
     }
     default: {
+      const consumedKeys = new Set<string>()
       for (const { name, aliases, required } of operatorData.parameters) {
         const possibleNames = [name, ...aliases]
 
@@ -167,7 +168,13 @@ const getPropertyStructure = (
         if (property === undefined) break
 
         returnArray.push(property[1])
+        consumedKeys.add(property[0])
       }
+
+      // If any properties can't be represented in the positional array (e.g.
+      // `fallback`, or parameters that follow a gap), use the named-object form
+      // instead so they aren't silently dropped
+      if (properties.some(([key]) => !consumedKeys.has(key))) return Object.fromEntries(properties)
     }
   }
 

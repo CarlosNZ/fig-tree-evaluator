@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.21.5] - 2026-06-28
+
+### Fixed
+
+- Shorthand conversion (`convertToShorthand`) no longer drops non-parameter properties (e.g. `fallback`) when a node is converted to the positional-array form. Such nodes now use the named-object form so no information is lost.
+
 ## [2.21.4] - 2026-06-28
 
 ### Changed
