@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.21.6] - 2026-06-28
+
+### Fixed
+
+- Shorthand conversion (`convertToShorthand`) of `GET`/`POST`/`graphQL` nodes now uses the named-object form instead of the positional-array form. These operators have a custom `parseChildren` (field-name/value zipping) whose order doesn't match their parameter definitions, so the array form mis-mapped properties such as `returnProperty`.
+
 ## [2.21.5] - 2026-06-28
 
 ### Fixed
