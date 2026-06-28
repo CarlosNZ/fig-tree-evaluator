@@ -4,6 +4,10 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 
 ## [2.21.4] - 2026-06-28
 
+### Changed
+
+- Compile bundle to ES2020 (from ES2015). Eliminates the `tslib` runtime helpers that were ~13% of the bundle, reducing it by ~7% gzipped. Minimum supported runtime is now ES2020 (Node 14+, evergreen browsers).
+
 ### Fixed
 
 - Shorthand conversion (`convertToShorthand`) of `getData`/`objectProperties` nodes that include an `additionalData` parameter. Previously this produced a malformed, deeply-nested array instead of a named-property object.

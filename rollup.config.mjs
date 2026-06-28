@@ -17,7 +17,7 @@ export default [
         format: 'esm',
       },
     ],
-    plugins: [typescript({ module: 'ESNext', target: 'es6' }), terser(), bundleSize(), sizes()],
+    plugins: [typescript({ module: 'ESNext', target: 'es2020' }), terser(), bundleSize(), sizes()],
     external: ['object-property-extractor', 'dequal/lite'],
   },
   {
