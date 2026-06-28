@@ -919,26 +919,26 @@ test('Convert to Shorthand -- complex with alias nodes', async () => {
           },
         },
         {
-          $GET: [
-            {
+          $GET: {
+            url: {
               $getData: {
                 property: 'homeworld',
                 additionalData: '$character',
               },
             },
-            'name',
-          ],
+            returnProperty: 'name',
+          },
         },
         {
-          $GET: [
-            {
+          $GET: {
+            url: {
               $getData: {
                 property: 'films[0]',
                 additionalData: '$character',
               },
             },
-            'title',
-          ],
+            returnProperty: 'title',
+          },
         },
       ],
       fallback: {
@@ -965,6 +965,29 @@ test('Convert to Shorthand -- complex with alias nodes', async () => {
         },
         fallback: 'Nope',
       },
+    },
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
+test('Convert to Shorthand -- GET with returnProperty uses object form', async () => {
+  // GET's `parseChildren` uses a custom positional scheme (url, fieldNames,
+  // ...values, returnProperty) that does NOT match the parameter-definition
+  // order, so a positional-array shorthand would mis-map `returnProperty` as a
+  // query-parameter key. It must use the named-object form instead.
+  const expression = {
+    operator: 'get',
+    url: 'https://restcountries.com/v3.1/name/zealand',
+    returnProperty: 'name.common',
+  }
+  const result = {
+    $GET: {
+      url: 'https://restcountries.com/v3.1/name/zealand',
+      returnProperty: 'name.common',
     },
   }
   const shorthand = await convertToShorthand(expression, fig)

@@ -156,6 +156,15 @@ const getPropertyStructure = (
 
       return fallback ? [propertyName[1], fallback[1]] : propertyName[1]
     }
+    case 'GET':
+    case 'POST':
+    case 'GRAPHQL': {
+      // These operators have a custom `parseChildren` (field-name/value zipping)
+      // whose positional order doesn't match the parameter definitions, so the
+      // positional-array shorthand can't represent them correctly. Always use
+      // the named-object form, which bypasses `parseChildren` entirely.
+      return Object.fromEntries(properties)
+    }
     default: {
       const consumedKeys = new Set<string>()
       for (const { name, aliases, required } of operatorData.parameters) {
