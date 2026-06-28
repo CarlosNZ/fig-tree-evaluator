@@ -2124,77 +2124,7 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 
 ## Changelog
 
-*Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
-
-
-- **v2.21.0**: Use default parameter values for Fragments if not provided in expression
-- **v2.20.6**: Fix certain `parseChildren` methods to not evaluate while parsing
-- **v2.20.0**:
-  - Add helper scripts to convert V1 to V2 expressions, and to and from Shorthand syntax -- used in [FigTree Editor](https://github.com/CarlosNZ/fig-tree-editor-react) tool.
-  - Small tweaks to `buildObject` and `match` operators to make them a little more consistent in their behaviour.
-- **v2.19.0**: *Remove* "string" shorthand syntax (technically a breaking change, but I doubt anyone is affected by this) #124
-- **v2.18.0**: Prevent HTTP clients from being bundled with main package
-- **v2.17.0**: Allow Custom Functions to be expressed as Custom Operators
-- **v2.16.10**: Fix for when aliases reference other aliases at the same level
-- **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
-- **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 
-`evaluateFullObject` is off.
-- **v2.16.0**: Standardise error response (see [Error handling](#error-handling))
-- **v2.15.0**:
-  - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*
-  - Generalise `PG_SQL` operator to a client-agnostic `SQL` operator (with built-in abstractions for `node-postgres` and `SQLite`)
-  - ***Breaking changes*** as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
-  - Changes to `SQL` parameters to reflect the aforementioned agnosticism.
-- **v2.14.0**: Improvements to `stringSubstitution` operator:
-  - Can accept nested property references (e.g. `{{user.name}}`)
-  - Will also search for replacements from `data` object
-- **v2.13.4**: Bug fix for `objectProperties` operator when array index larger than `9` is used, and for sequential array indexes (e.g. `prop[1][2]`)
-- **v2.13.0**: Add default values to operator properties, export more types and helper methods
-- **v2.12.0**: Add `caseInsensitive` option to equality/non-equality operators
-- **v2.11.5**: Upgrade dependencies
-- **v2.11.4**: Bundle target ES6
-- **v2.11.0**: Improved package bundling (bundle size ~50%), with CommonJS and ESM outputs. Note: small **breaking change**: "FigTreeEvaluator" is no longer a default export, so need to import with: `import { FigTreeEvaluator } from 'fig-tree-evaluator'`
-- **v2.10.0**: Extended stringSubstitution functionality to included named
-  property substitution, trim whitespace option, and pluralisation (#97)
-- **v2.9.0**: Added ability to invalidate cache by time (#94)
-- **v2.8.6**: Small bug fix where `options` object would be mutated instead of replaced
-- **v2.8.5**: Small bug fix in [COUNT](#count) operator
-- **v2.8.4**: Refactor types, better compliance with [ESLint](https://eslint.org/) rules, add more tests
-- **v2.8.0**:
-  - **[Shorthand syntax](#shorthand-syntax)** (#80)
-  - **Methods to retrieve [metadata](#metadata)** about operators, fragments and
-    functions (#82)
-- **v2.7.0**: **Add `excludeOperators` option** to allow certain operators to be
-  prohibited (e.g. database lookups) (#54)
-- **v2.6.0**: Resolve alias nodes that are not part of an Operator node when `evaluateFullObject` is enabled (#78)
-- **v2.5.0**:
-  - Bug fixes for edge cases (mainly related to backwards compatibility)
-  - More backwards compatibility for very old (pre-v1) syntax (undocumented)
-- **v2.4.1**: Small bug fix for Fragments edge case
-- **v2.4.0**: **Implement [Fragments](#fragments)** (#74)
-- **v2.3.2**: Bug fix: alias nodes not working with `evaluateFullObject` (#72)
-- **v2.3.0**: **Implement [caching/memoization](#caching-memoization)** (#68)
-- **v2.2.3**: Change option `objects` name to `data` (but keep backward compatibility) (#66)
-- **v2.2.2**: **Option to evaluate whole object** if operator nodes are deep within it (#64)
-- **v2.2.1**: More efficient branch evaluation for condition/match operators (#63)
-- **v2.2.0**:
-  - **New "[Match](#match)" operator** (#61)
-  - Fix for regex incompatibility with Safari (#60)
-- **v2.1.4**: Upgrade dependencies
-- **v2.1.0**: **[Alias nodes](#alias-nodes)** (#57)
-- **v2.0.4**: Backwards compatibility for customFunctions (#53)
-- **v2.0.1**: **Add deep equality comparison** for objects/arrays in `=`/`!=` operators
-- **v2.0.0**: Re-write as stand-alone package. Major improvements include:
-  -  more [operators](#operator-reference)
-  -  operator (and property) [aliases](#operator--property-aliases)
-  -  more appropriately-named properties associated with each operator (as
-     opposed to a single `children` array)
-  -  class-based Evaluator instances
-  -  runtime type-checking
-  -  better error handling and error reporting
-  -  more flexible output conversion
-  -  more well-organised codebase
-- **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvements, but should be 99% backwards compatible.
+See [here](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/CHANGELOG.md)
 
 ## Credit
 Icon: Tree by ka reemov from <a href="https://thenounproject.com/icon/tree-2665898/" target="_blank" title="Tree Icon">Noun Project</a>
