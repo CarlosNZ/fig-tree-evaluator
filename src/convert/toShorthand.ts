@@ -55,6 +55,24 @@ export const convertToShorthand = (
         Object.entries(expression).map(([key, value]) => [key, toShorthand(value)])
       )
 
+    // If the node uses the positional `children` array form, map it onto named
+    // properties (via the operator's `parseChildren`) before converting —
+    // otherwise `children` is carried through verbatim into the shorthand output.
+    if (operator && Array.isArray((otherProperties as OperatorNode).children)) {
+      const standardisedName = standardiseOperatorName(operator as string)
+      const operatorData = operators.find(
+        (op) => op.name === standardisedName || op.aliases.includes(standardisedName)
+      )
+      if (operatorData) {
+        const parsed = operatorData.parseChildren(
+          { ...otherProperties, operator } as OperatorNode,
+          figTree.getConfig()
+        )
+        delete parsed.children
+        return toShorthand(parsed)
+      }
+    }
+
     const isFunction = allFunctions.includes(operator as string)
 
     if (fragment && otherProperties?.parameters) {
@@ -99,7 +117,7 @@ export const convertToShorthand = (
           return { [nodeKey]: properties[0][1] }
         return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
       }
-      case 'values' in otherProperties: {
+      case usesArrayParameter(operator as string | undefined, otherProperties, operators): {
         if (properties.length === 1) return { [nodeKey]: properties[0][1] }
         return { [nodeKey]: Object.fromEntries(properties), ...aliasProperties }
       }
@@ -188,6 +206,28 @@ const getPropertyStructure = (
   }
 
   return returnArray
+}
+
+// True when the node uses the operator's primary (array-typed) parameter — e.g.
+// `values` for AND/OR/+/=, or `properties` for buildObject (under any alias).
+// These operators collapse to the bare-array shorthand `{ $op: [...] }` rather
+// than the named-object form.
+const usesArrayParameter = (
+  operator: string | undefined,
+  otherProperties: object,
+  operators: readonly OperatorMetadata[]
+) => {
+  if (!operator) return false
+  const standardisedName = standardiseOperatorName(operator)
+  const firstParam = operators.find(
+    (op) => op.name === standardisedName || op.aliases.includes(standardisedName)
+  )?.parameters[0]
+  if (!firstParam) return false
+  const isArrayType =
+    firstParam.type === 'array' ||
+    (Array.isArray(firstParam.type) && firstParam.type.includes('array'))
+  if (!isArrayType) return false
+  return [firstParam.name, ...firstParam.aliases].some((key) => key in otherProperties)
 }
 
 const findPropertyInParameters = (

@@ -781,6 +781,36 @@ test('Convert to Shorthand -- lots of node types', async () => {
   expect(origEval).toStrictEqual(shorthandEval)
 })
 
+test('Convert to Shorthand -- array operator in positional "children" form', async () => {
+  const expression = { operator: '+', children: [10, 20, 30] }
+  const result = { $plus: [10, 20, 30] }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
+test('Convert to Shorthand -- operator with custom parseChildren in "children" form', async () => {
+  const expression = { operator: 'conditional', children: [true, 'YES', 'NO'] }
+  const result = { $conditional: { condition: true, valueIfTrue: 'YES', valueIfFalse: 'NO' } }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
+test('Convert to Shorthand -- buildObject using "values" alias collapses to array form', async () => {
+  const expression = { operator: 'buildObject', values: [{ key: 'name', value: 'Tom' }] }
+  const result = { $buildObject: [{ key: 'name', value: 'Tom' }] }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
 test('Convert to Shorthand -- Custom operators/functions', async () => {
   const expression = {
     operator: 'changeCase',
@@ -826,6 +856,36 @@ test('Convert to Shorthand -- getData with additionalProperties', async () => {
       additionalData: '$character',
     },
     $character: { name: 'Spider-Man' },
+  }
+  const shorthand = await convertToShorthand(expression, fig)
+  expect(shorthand).toStrictEqual(result)
+  const origEval = await fig.evaluate(expression)
+  const shorthandEval = await fig.evaluate(shorthand)
+  expect(origEval).toStrictEqual(shorthandEval)
+})
+
+test('Convert to Shorthand -- buildObject with nested getDatas', async () => {
+  const expression = {
+    operator: 'buildObject',
+    properties: [
+      {
+        key: 'text',
+        value: {
+          operator: 'objectProperties',
+          children: ['applicationData.firstName'],
+        },
+      },
+    ],
+  }
+  const result = {
+    $buildObject: [
+      {
+        key: 'text',
+        value: {
+          $getData: 'applicationData.firstName',
+        },
+      },
+    ],
   }
   const shorthand = await convertToShorthand(expression, fig)
   expect(shorthand).toStrictEqual(result)

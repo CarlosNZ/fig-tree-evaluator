@@ -2,6 +2,13 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.22.1] - 2026-06-30
+
+### Fixed
+
+- `convertToShorthand` now handles operator nodes in the positional `children` array form (previously emitted verbatim).
+- `convertToShorthand` of `buildObject` now uses the array form regardless of whether the input uses the `properties` or `values` parameter name.
+
 ## [2.22.0] - 2026-06-29
 
 ### Changed
