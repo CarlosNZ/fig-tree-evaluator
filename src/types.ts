@@ -139,10 +139,7 @@ export type EvaluateMethod = (
   config: FigTreeConfig
 ) => Promise<EvaluatorOutput>
 
-export type ParseChildrenMethod = (
-  expression: OperatorNode,
-  config: FigTreeConfig
-) => OperatorNode | Promise<OperatorNode>
+export type ParseChildrenMethod = (expression: OperatorNode, config: FigTreeConfig) => OperatorNode
 
 export type OperatorReference = { [key in Operator]: OperatorObject }
 

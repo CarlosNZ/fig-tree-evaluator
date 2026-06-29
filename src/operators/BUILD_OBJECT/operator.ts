@@ -19,7 +19,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   // alternating sequence of keys/values -- in the latter case we need to parse
   // it as "children"
   const { properties } = children.some((prop) => !isObject(prop))
-    ? await parseChildren({ ...expression, children }, config)
+    ? parseChildren({ ...expression, children }, config)
     : { properties: children }
 
   const evaluatePair = async (nodes: [EvaluatorNode, EvaluatorNode]) => {

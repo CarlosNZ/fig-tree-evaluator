@@ -180,7 +180,7 @@ export const evaluatorFunction = async (
         returnErrorAsString,
       })
     try {
-      finalOperatorExpression = await parseChildren(finalOperatorExpression, childConfig)
+      finalOperatorExpression = parseChildren(finalOperatorExpression, childConfig)
       delete finalOperatorExpression.children
     } catch (error) {
       return fallbackOrError({

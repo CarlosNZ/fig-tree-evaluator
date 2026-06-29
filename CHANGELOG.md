@@ -2,6 +2,13 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.22.0] - 2026-06-29
+
+### Changed
+
+- The `parseChildren` operator method (`ParseChildrenMethod`) is now synchronous — its return type narrows from `OperatorNode | Promise<OperatorNode>` to `OperatorNode`. The async option had been vestigial since v2.20.6, when `parseChildren` stopped evaluating children during parsing.
+- As a consequence, the conversion helpers `convertFromShorthand` and `convertV1ToV2` are now synchronous and no longer return a `Promise`. Existing `await`-ed calls continue to work unchanged.
+
 ## [2.21.6] - 2026-06-28
 
 ### Fixed

@@ -6,10 +6,10 @@ import { FigTreeEvaluator } from '../FigTreeEvaluator'
 import { isFragmentNode, isObject, isOperatorNode, standardiseOperatorName } from '../helpers'
 import { EvaluatorNode, FragmentNode, OperatorMetadata } from '../types'
 
-export const convertFromShorthand = async (
+export const convertFromShorthand = (
   expression: EvaluatorNode,
   figTree: FigTreeEvaluator
-): Promise<EvaluatorNode> => {
+): EvaluatorNode => {
   const operators = figTree.getOperators()
   const fragments = figTree.getFragments()
   const functions = figTree.getCustomFunctions()
@@ -17,9 +17,8 @@ export const convertFromShorthand = async (
   const allFragments = fragments.map((f) => f.name)
   const allFunctions = functions.map((f) => f.name)
 
-  const fromShorthand = async (expression: EvaluatorNode): Promise<EvaluatorNode> => {
-    if (Array.isArray(expression))
-      return await Promise.all(expression.map((node) => fromShorthand(node)))
+  const fromShorthand = (expression: EvaluatorNode): EvaluatorNode => {
+    if (Array.isArray(expression)) return expression.map((node) => fromShorthand(node))
 
     if (!isObject(expression)) return expression
 
@@ -41,13 +40,13 @@ export const convertFromShorthand = async (
       const operator = operatorData.aliases[0]
       const value = properties[0][1]
       if (Array.isArray(value)) {
-        const children = await Promise.all(value.map((el) => fromShorthand(el)))
-        const parsed = await operatorData.parseChildren({ operator, children }, figTree.getConfig())
+        const children = value.map((el) => fromShorthand(el))
+        const parsed = operatorData.parseChildren({ operator, children }, figTree.getConfig())
         delete parsed.children
-        return { ...parsed, ...(await getAdditionalProperties(properties)) }
+        return { ...parsed, ...getAdditionalProperties(properties) }
       }
 
-      const fullValue = await fromShorthand(value)
+      const fullValue = fromShorthand(value)
       if (
         !isObject(fullValue) ||
         !hasOperatorProperties(fullValue, operatorData) ||
@@ -57,16 +56,16 @@ export const convertFromShorthand = async (
         const firstParam = operatorData.parameters[0].name
         return { operator, [firstParam]: fullValue }
       }
-      return { operator, ...fullValue, ...(await getAdditionalProperties(properties)) }
+      return { operator, ...fullValue, ...getAdditionalProperties(properties) }
     }
 
     if (isFragment) {
-      const fragmentProperties = await fromShorthand((expression as FragmentNode)[properties[0][0]])
+      const fragmentProperties = fromShorthand((expression as FragmentNode)[properties[0][0]])
       if (!isObject(fragmentProperties)) throw new Error('Invalid shorthand Fragment')
       return {
         fragment: objectKey,
         ...fragmentProperties,
-        ...(await getAdditionalProperties(properties)),
+        ...getAdditionalProperties(properties),
       }
     }
 
@@ -74,26 +73,22 @@ export const convertFromShorthand = async (
       const operator = objectKey
       const value = properties[0][1]
 
-      const fullValue = await fromShorthand(value)
+      const fullValue = fromShorthand(value)
       if (!isObject(fullValue) || isOperatorNode(fullValue) || isFragmentNode(fullValue)) {
         const firstParam = 'args'
         return { operator, [firstParam]: fullValue }
       }
-      return { operator, ...fullValue, ...(await getAdditionalProperties(properties)) }
+      return { operator, ...fullValue, ...getAdditionalProperties(properties) }
     }
 
     // Not a shorthand node, just process the children
-    return Object.fromEntries(
-      await Promise.all(properties.map(async ([key, value]) => [key, await fromShorthand(value)]))
-    )
+    return Object.fromEntries(properties.map(([key, value]) => [key, fromShorthand(value)]))
   }
 
-  const getAdditionalProperties = async (properties: [key: string, value: EvaluatorNode][]) => {
+  const getAdditionalProperties = (properties: [key: string, value: EvaluatorNode][]) => {
     const otherProperties = properties.slice(1)
     const otherPropertyObject = Object.fromEntries(
-      await Promise.all(
-        otherProperties.map(async ([key, value]) => [key, await fromShorthand(value)])
-      )
+      otherProperties.map(([key, value]) => [key, fromShorthand(value)])
     )
     return otherPropertyObject
   }
