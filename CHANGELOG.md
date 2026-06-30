@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.23.0] - 2026-06-30
+
+### Added
+
+- New `FigTreeEvaluator` instance method `isFigTreeExpression(expression)` — a registry-aware check for whether an expression is something *this* instance would actually evaluate. Unlike the structural stand-alone `isFigTreeExpression` export, it validates `$`-prefixed shorthand and keys against the instance's registered operators, fragments and custom functions, and follows its `evaluateFullObject` and `noShorthand` settings. Useful for editor UIs deciding whether to treat a value as an evaluable expression rather than plain data.
+
 ## [2.22.1] - 2026-06-30
 
 ### Fixed

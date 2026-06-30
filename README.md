@@ -1959,7 +1959,7 @@ If extending FigTree with additional [HTTP Client](#http-requests), [SQL Connect
 
 Evaluator expressions can be configured by hand, with [aliases](#alias-nodes), [fragments](#fragments) and [shorthand](#shorthand-syntax) available to make the job easier.
 
-However, you may wish to use an external UI (such as [this one](https://carlosnz.github.io/fig-tree-evaluator/) for React) for building FigTree expression (or create your own). To this end, the FigTree instance provides three methods that could be useful for populating the configuration UI:
+However, you may wish to use an external UI (such as [this one](https://carlosnz.github.io/fig-tree-evaluator/) for React) for building FigTree expression (or create your own). To this end, the FigTree instance provides several methods that could be useful for populating the configuration UI:
 
 #### A new FigTree instance:
 
@@ -2091,6 +2091,26 @@ Returns:
   }
 ]
 ```
+
+#### Check if a value is a FigTree expression
+
+```js
+fig.isFigTreeExpression(value)
+```
+
+When building a UI, you often need to decide whether a given value should be treated as an evaluable FigTree expression or as plain data. This method returns `true` only for values that *this* instance would actually process as an expression. It is **registry-aware** — `$`-prefixed [shorthand](#shorthand-syntax) and keys are validated against the instance's registered operators, [fragments](#fragments) and [custom functions](#custom_functions) — and it follows the instance's [`evaluateFullObject`](#available-options) and `noShorthand` settings.
+
+```js
+fig.isFigTreeExpression({ operator: '+', values: [1, 2] }) // true
+fig.isFigTreeExpression({ $getData: 'user.name' })         // true  (registered shorthand)
+fig.isFigTreeExpression({ name: 'Steve', age: 30 })        // false (plain data)
+fig.isFigTreeExpression({ $somethingUnknown: 1 })          // false (not a registered operator/fragment/function)
+fig.isFigTreeExpression('$myAlias')                        // false (alias reference with no definition in scope)
+```
+
+The last two cases are why this is preferable to a purely structural check: an object whose only `$`-prefixed key doesn't correspond to anything the evaluator recognises (e.g. `{ "$somethingUnknown": 1 }`) is plain data, not an expression, and won't be flagged here.
+
+The check mirrors what the evaluator would actually do: operator/fragment nodes and arrays are always considered, but it only descends into plain (non-operator) objects when [`evaluateFullObject`](#available-options) is enabled on the instance. Alias references (`"$name"` strings) count only when a matching alias definition is in scope (on the same node or an ancestor).
 
 ## More examples
 

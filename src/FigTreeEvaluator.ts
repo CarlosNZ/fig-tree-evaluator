@@ -16,6 +16,7 @@ import { typeCheck, TypeCheckInput } from './typeCheck'
 import { operatorAliases } from './operators/operatorAliases'
 import * as operators from './operators'
 import { filterOperators, mergeOptions } from './helpers'
+import { checkIsFigTreeExpression } from './isFigTreeExpression'
 import FigTreeCache, { Store } from './cache'
 import { version } from './version'
 import { getHttpClient } from './httpClients'
@@ -82,6 +83,20 @@ export class FigTreeEvaluator {
       cache: this.cache,
       graphQLClient: this.graphQLClient,
       httpClient: this.httpClient,
+    })
+  }
+
+  // Registry-aware check for whether an expression is worth evaluating with
+  // this instance -- follows the instance's `evaluateFullObject`/`noShorthand`
+  // settings and its registered operators, fragments and custom functions.
+  // (The stand-alone `isFigTreeExpression` export is a purely structural,
+  // non-recursive guard with no registry awareness.)
+  public isFigTreeExpression(expression: EvaluatorNode): boolean {
+    return checkIsFigTreeExpression(expression, {
+      fragments: this.options.fragments ?? {},
+      functionNames: Object.keys(this.options.functions ?? {}),
+      evaluateFullObject: this.options.evaluateFullObject ?? false,
+      useShorthand: !this.options.noShorthand,
     })
   }
 

@@ -220,9 +220,14 @@ export const isObject = (input: unknown): input is object =>
   typeof input === 'object' && input !== null && !Array.isArray(input)
 
 /**
- * The following is not used in FigTree itself, but might be a useful utility
- * methods for consumers in order to determine if some value should be displayed
- * as a FigTree expression or not
+ * Not used in FigTree itself — a utility for consumers to determine whether some
+ * value should be displayed/treated as a FigTree expression.
+ *
+ * LEGACY: this is a purely structural, non-recursive check with no registry
+ * awareness, so it returns `true` for any `$`-prefixed key even when no such
+ * operator/fragment/function is registered. Prefer the registry-aware instance
+ * method `FigTreeEvaluator.isFigTreeExpression()`. Kept (undocumented) for
+ * backwards compatibility.
  */
 
 export const isFigTreeExpression = (expression: EvaluatorNode) =>
