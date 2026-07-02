@@ -125,6 +125,32 @@ test('Custom functions - no args as children', () => {
   })
 })
 
+test('Custom functions - primitive input value', () => {
+  const expression = {
+    operator: 'function',
+    functionPath: 'increment',
+    input: 5,
+  }
+  return evaluateExpression(expression, {
+    functions: { increment: { function: (n: number) => n + 1, inputDefault: 5 } },
+  }).then((result) => {
+    expect(result).toBe(6)
+  })
+})
+
+test('Custom functions - falsy primitive input value (0)', () => {
+  const expression = {
+    operator: 'function',
+    functionPath: 'isZero',
+    input: 0,
+  }
+  return evaluateExpression(expression, {
+    functions: { isZero: { function: (n: number) => n === 0, inputDefault: 0 } },
+  }).then((result) => {
+    expect(result).toBe(true)
+  })
+})
+
 test('Custom functions - invalid function path', () => {
   const expression = {
     operator: 'function',
