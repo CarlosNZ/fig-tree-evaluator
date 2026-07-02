@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.23.1] - 2026-07-02
+
+### Fixed
+
+- `inputDefault` in a custom `FunctionDefinition` now accepts primitive values (previously only object values were valid at the type level). Falsy primitives (`0`, `false`, `""`) are also preserved by `getCustomFunctions()` instead of being silently dropped from the exposed metadata.
+
 ## [2.23.0] - 2026-06-30
 
 ### Added
