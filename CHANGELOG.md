@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Fixed
+
+- `DIVIDE` operator: `output: 'decimal'` is now accepted (previously rejected by its own type-check, even though decimal division was the runtime fall-through behaviour). The `output` metadata `default` also now correctly reflects the actual runtime default (`'decimal'`). Minor typo fix in the `values` parameter description ("by the first" → "by the second").
+
 ## [2.23.0] - 2026-06-30
 
 ### Added

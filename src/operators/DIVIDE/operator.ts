@@ -8,7 +8,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
   const [values, dividend, divisor, output] = (await evaluateArray(
     [expression.values, expression.dividend, expression.divisor, expression.output],
     config
-  )) as [[number, number], number, number, 'quotient' | 'remainder']
+  )) as [[number, number], number, number, 'quotient' | 'remainder' | 'decimal']
 
   config.typeChecker(
     getTypeCheckInput(operatorData.parameters, { values, dividend, divisor, output })
@@ -25,6 +25,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       return Math.floor(vals[0] / vals[1])
     case 'remainder':
       return vals[0] % vals[1]
+    case 'decimal':
     default:
       return vals[0] / vals[1]
   }

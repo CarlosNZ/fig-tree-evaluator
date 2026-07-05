@@ -6,7 +6,7 @@ const aliases = ['/', 'divide', '÷']
 const parameters: OperatorParameterMetadata[] = [
   {
     name: 'values',
-    description: 'Array of values - 1st element will be divided by the first',
+    description: 'Array of values - 1st element will be divided by the second',
     aliases: [],
     required: false,
     type: 'array',
@@ -33,8 +33,8 @@ const parameters: OperatorParameterMetadata[] = [
     description: 'Whether to output a quotient, remainder or decimal',
     aliases: [],
     required: false,
-    type: { literal: ['quotient', 'remainder'] },
-    default: 'quotient',
+    type: { literal: ['quotient', 'remainder', 'decimal'] },
+    default: 'decimal',
   },
 ]
 

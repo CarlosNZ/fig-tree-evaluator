@@ -168,6 +168,13 @@ test('DIVIDE operator with fractional result', () => {
   })
 })
 
+test('DIVIDE operator with explicit decimal output', () => {
+  const expression = { operator: '/', values: [10, 4], output: 'decimal' }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toEqual(2.5)
+  })
+})
+
 test('DIVIDE - division by zero', async () => {
   const expression = {
     operator: '/',
