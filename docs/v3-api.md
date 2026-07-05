@@ -8,7 +8,7 @@
 
 | Area | Status |
 |---|---|
-| Node grammar & reserved keys | **Partial** — recognition grammar, static invocation names, shorthand sibling rule & hoisting removal agreed; reserved-key matrix & per-key semantics pending |
+| Node grammar & reserved keys | **Agreed** — includes `fallback`/kill-switch semantics, `outputType`→`convert`, `//` comments, name legality & opaque-value rules |
 | References & scoping (`$data` / `$vars` / `$params` / `$element`) | **Agreed** — lazy-var mechanism & exotic-key path grammar noted as implementation follow-ups |
 | Alias policy | **Partial** — operator naming & aliases settled under Operators; parameter-name aliases pending the per-operator parameter passes |
 | Type, coercion & null policy | — |
@@ -57,7 +57,7 @@ interface FigTreeOptions {
   // ── Resource limits ────────────────────────────────────
   maxDepth?: number  // structural, enforced at parse/validate
   maxNodes?: number  // structural, enforced at parse/validate
-  timeout?: number   // ms, whole evaluation
+  timeout?: number   // ms, whole evaluation — strict: deadline includes fallback evaluation; only timeout shielding (static root-level fallbacks) can shape a timed-out result (see Node grammar)
   signal?: AbortSignal // threaded through to HTTP/SQL clients; instance-level = default for all evaluations
 
   // ── Caching ────────────────────────────────────────────
@@ -151,7 +151,7 @@ This is not a new feature so much as the only reading consistent with what's alr
 
 Deferred to other areas:
 
-- Whether `vars` is reserved (and functional) on plain object literals — a `vars` block scoping a plain config subtree may be genuinely useful → Node grammar.
+- Whether `vars` is reserved (and functional) on plain object literals → **resolved in Node grammar**: it is — functional and consumed, with `literal` / `buildObject` as the escape for data genuinely needing a `vars` key.
 - `buildObject`'s remaining role narrows to dynamic *keys*, since dynamic values now come free → its parameter pass.
 - Result-immutability policy (the identity short-circuit returns shared references; see implementation notes) → Evaluator methods & return shapes.
 
@@ -193,6 +193,7 @@ Deferred to other areas:
 ### Deferred (to Evaluator methods & return shapes)
 
 - Exact return shapes for `mode: 'report'` and `trace: true`.
+- The return shape when the evaluation-level `timeout` aborts under `mode: 'report'` (presumably `{ result: <shielded assembly> ?? null, errors: [timeoutError] }` — see Node grammar, `fallback` rule 3).
 - The TypeScript story for instance-level `mode`/`trace` (return-type inference via class generic vs. a single stable return shape — to be settled together with the shapes themselves; note `updateOptions({ mode })` cannot re-type an existing instance).
 
 ---
@@ -212,7 +213,7 @@ Deferred to other areas:
 
 ### The canonical list
 
-41 core + 3 I/O operators, 12 symbolic aliases. Which export array each operator ships in (`coreOperators` vs optional grouped arrays) is a Packaging-area decision — this section locks names and semantics only.
+42 core + 3 I/O operators, 12 symbolic aliases. Which export array each operator ships in (`coreOperators` vs optional grouped arrays) is a Packaging-area decision — this section locks names and semantics only.
 
 The rule that shaped the math batch, and pre-answers every future "why not one operator with a mode?": **a mode parameter is acceptable only when the signature is invariant across modes** — as with `plus`'s add/concat/merge, always `values: [...]`. When modes would change the arity or types of the other parameters (`round(value, decimals)` vs `pow(base, exponent)` vs `min(values[])`), they are separate operators; a mode-switched mega-operator hides per-mode signatures from validation, positional mapping and the editor.
 
@@ -266,7 +267,7 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 | `upper` | — | **New** | |
 | `trim` | — | **New** | |
 | `substring` | — | **New** | |
-| `regex` | — | **Modified** (REGEX) | gains flags and an output mode (test / match / extract); drops `patternMatch`, `regexp`, `matchPattern` |
+| `regex` | — | **Modified** (REGEX) | gains flags and an output mode (test / match / extract); drops `patternMatch`, `regexp`, `matchPattern`; constraint for its parameter pass: v2's numeric-mining use case must stay cleanly expressible (`"15 grams"` → `15` via extract, then `convert`) |
 
 #### Arrays & iteration
 
@@ -291,12 +292,13 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 | v3 | Alias | vs v2 | Notes |
 |---|---|---|---|
 | `literal` | — | **New** | quote semantics: contents are not parsed, validated or evaluated — see [Unrecognized `$` and `literal`](#unrecognized--and-literal) |
+| `convert` | — | **New** (replaces the v2 `outputType` / `type` node modifier) | `value` / `to`, with `to` ∈ `number` / `string` / `boolean` / `array`; single operator sanctioned by the mode rule (signature invariant across modes); literal `to` validates at parse, dynamic `to` is legal and lands on the runtime type-check like any parameter; conversion strictness & null handling settled in Type, coercion & null policy; v2's implicit number-mining is *not* carried over — that use case moves to `regex` extract + `convert` |
 
 #### I/O — registered via `httpOperators(client)` / `sqlOperators(connection)`, never in core
 
 | v3 | Alias | vs v2 | Notes |
 |---|---|---|---|
-| `http` | — | **New** (merges GET + POST) | `method` param, default `'get'`; deliberately no method-pinning aliases; drops `GET`, `get`, `api`, `POST`, `post` |
+| `http` | — | **New** (merges GET + POST) | `method` param, default `'get'`; deliberately no method-pinning aliases; drops `GET`, `get`, `api`, `POST`, `post`; parameter-pass constraint (likewise `sql`): a per-request `timeout` must be expressible — its expiry is an ordinary runtime failure per Node grammar's `fallback` rules |
 | `graphQL` | — | **Modified** (GRAPHQL) | casing deliberately matches the agreed `graphQL` options block (exception to mechanical camelCase); implemented on the `http` core; drops `graphql`, `graphQl`, `gql` |
 | `sql` | — | **Kept** (SQL) | drops `pgSql`, `postgres`, `pg`, `sqLite`, `sqlite`, `mySql` — the injected connection determines the dialect, the name never did |
 
@@ -356,7 +358,7 @@ Payload forms are disambiguated by JSON type — no heuristics:
 | **BUILD_OBJECT** (`buildObject`, `build`, `object`) | `buildObject` | |
 | **MATCH** (`match`, `switch`) | `match` | |
 | **CUSTOM_FUNCTIONS** (`customFunctions`, `customFunction`, `objectFunctions`, `function`, `functions`, `runFunction`) | *(deleted)* | functions invoked by their registered name |
-| **PASSTHRU** (`pass`, `_`, `passThru`, `passthru`, `ignore`, `coerce`, `convert`) | *(deleted)* | any value already evaluates; `literal` covers the escape case |
+| **PASSTHRU** (`pass`, `_`, `passThru`, `passthru`, `ignore`, `coerce`, `convert`) | *(deleted)* | any value already evaluates; `literal` covers the escape case; its advertised coercion role → the real `convert` operator |
 
 ### Migration hazards — recycled names
 
@@ -369,6 +371,7 @@ The converter maps all of these mechanically, but human muscle memory won't — 
 | `lower` | LESS_THAN alias | lowercase string |
 | `join` | PLUS alias (concatenation) | array → string |
 | `data` | OBJECT_PROPERTIES alias | reserved namespace word |
+| `convert` | PASSTHRU alias (identity) | type conversion (replaces `outputType`) |
 
 ### Deferred
 
@@ -401,7 +404,7 @@ Naming notes: `$params` is plural for consistency with `$vars`; `$element`/`$ind
 3. **Path grammar**: dot-separated keys plus numeric bracket indices — `$data.users[0].name` — the same grammar as the `get` operator (v2's `object-property-extractor` syntax). Keys containing dots or brackets aren't expressible as a reference: use `get`, which takes the path as data.
 4. **Static recognition only**: references are recognized in the expression tree at parse time and **never** in values flowing through at runtime — a string arriving from `$data`, HTTP or a function result is never re-interpreted as a reference. (v2 violates this: `{{name}}` substitution evaluates content extracted from `data` as an expression — [STRING_SUBSTITUTION/operator.ts:111-114](../src/operators/STRING_SUBSTITUTION/operator.ts#L111-L114) — an injection path this rule kills.)
 5. **Recognized everywhere** in the expression — including strings nested inside plain object/array literals within parameters — except inside `literal`.
-6. **References are values, not nodes**: they can't carry `fallback` / `outputType`. If you need those, use `get` or `firstOf`.
+6. **References are values, not nodes**: they can't carry node modifiers like `fallback`. For defaults use `get` or `firstOf`; for type coercion wrap in `convert`.
 7. **Bare namespace**: `"$data"` (or `"$d"`) alone = the whole merged data object; `$element` is bare-or-drilled, `$index` bare only; bare `"$vars"` / `"$params"` = validation error.
 
 ### Absence semantics: `null`, and the layered defaults
@@ -478,20 +481,20 @@ Bound by the iterator operators (`map`, `filter`, `find`, `some`, `every`), alwa
 
 ---
 
-## Node grammar & reserved keys — **Partial**
+## Node grammar & reserved keys — **Agreed**
 
-*Agreed below: the recognition grammar (node kinds), static invocation names, the shorthand sibling-key rule, malformed-node errors, and the removal of hoisting. Still open in this area: the reserved-key inventory & placement matrix, `vars` on plain object literals, expression-vs-literal status of reserved-key values, `fallback` fine print, `outputType`'s survival, a comment/annotation key, the shared identifier grammar, v2 tombstone errors, and non-plain-object values.*
+*What makes an object a node (recognition grammar), the reserved node keys with their placement and value rules, `fallback` and kill-switch semantics, `//` comments, name legality, and the treatment of non-JSON values. Cross-area deferrals are marked inline (`convert` strictness → Type, coercion & null policy; per-operator parameter names → their parameter passes; report-mode return shapes → Evaluator methods).*
 
 ### Node kinds
 
 An expression is any JSON value. Recognition runs **once, at parse** — never against values flowing through at runtime (References §4). Every object in an authored expression classifies as exactly one of:
 
-1. **Operator node** — contains the key `operator`. Its value must be a **literal string** naming a canonical operator or its symbolic alias (normalized away at parse); an unknown name is a hard error (per Operators). Remaining keys: the operator's declared parameters plus the reserved node modifiers (working set `fallback` / `outputType` / `useCache` / `vars` — finalized with the reserved-key matrix, pending). Anything else is a hard error.
-2. **Fragment-call node** — contains the key `fragment`. Its value must be a **literal string** naming a registered fragment; an unknown name is a hard error (statically checkable, now that fragments are constructor/`updateOptions`-only — see Options). Arguments live **only** in `parameters` (named-object; fragments have no positional form, per Operators). Which modifiers are legal here is settled with the reserved-key matrix.
+1. **Operator node** — contains the key `operator`. Its value must be a **literal string** naming a canonical operator or its symbolic alias (normalized away at parse); an unknown name is a hard error (per Operators). Remaining keys: the operator's declared parameters plus the reserved node modifiers (`fallback` / `useCache` / `vars` / `//` — see the reserved-key set, below). Anything else is a hard error.
+2. **Fragment-call node** — contains the key `fragment`. Its value must be a **literal string** naming a registered fragment; an unknown name is a hard error (statically checkable, now that fragments are constructor/`updateOptions`-only — see Options). Arguments live **only** in `parameters` (named-object; fragments have no positional form, per Operators). Legal modifiers per the reserved-key set, below.
 3. **Shorthand node** — contains exactly one **recognized** `$name` key (canonical operator name, symbolic alias, fragment, or custom function/operator name), optionally accompanied by reserved modifier keys (sibling rule, below), and nothing else. Payload disambiguated by JSON type (per Operators). Normalizes at parse into kind 1 or 2.
 4. **Reference string** — a string value matching the token rule. Fully settled in References; listed for completeness. References are values, not nodes — they carry no modifiers.
 5. **`literal` node** — grammatically an operator node / shorthand face, but a **parse boundary**: contents are never walked, validated or evaluated (per Operators and the implementation notes).
-6. **Plain literal** — every other object, array or primitive. Objects and arrays are traversed per deep evaluation (Options); unrecognized `$` keys/strings are inert with a `validate()` warning. **Reserved modifier keys do not make an object a node**: `{ fallback: 1 }` with no `operator` / `fragment` / recognized `$name` key is plain data. (Whether `vars` becomes the one deliberate exception is the pending plain-literal-`vars` question.)
+6. **Plain literal** — every other object, array or primitive. Objects and arrays are traversed per deep evaluation (Options); unrecognized `$` keys/strings are inert with a `validate()` warning. **Reserved modifier keys do not make an object a node**: `{ fallback: 1 }` with no `operator` / `fragment` / recognized `$name` key is plain data. Two deliberate exceptions operate on plain object literals without making them nodes: `vars` (functional & consumed — see [`vars` on plain object literals](#vars-on-plain-object-literals)) and `//` (comments, stripped everywhere — see Comments).
 
 Non-plain objects in JS-authored expressions (class instances, `Date`s, functions) are pending — proposed treatment: opaque constants, never traversed.
 
@@ -538,16 +541,112 @@ The `$typo` contrast stands (per Operators): recognition is driven by *recognize
 - **MATCH branch hoisting** — branch values as arbitrary flat keys on the node, which is why v2 MATCH scans its own node for branch keys ([MATCH/operator.ts:39](../src/operators/MATCH/operator.ts#L39)) and a match value of `"operator"` or `"fallback"` resolves to the node's own reserved property. v3: branches live inside a dedicated parameter (name settled in `match`'s parameter pass).
 - **Fragment-parameter hoisting** — call-site arguments spread flat onto the call node ([evaluate.ts:115](../src/evaluate.ts#L115); defaults are even checked in both places, [evaluate.ts:88-94](../src/evaluate.ts#L88-L94)). v3: arguments only in `parameters`.
 
-Two consequences worth naming: branch keys inside the branches parameter are parameter *data*, outside the node namespace — a branch legitimately named `"operator"` or `"fallback"` is safe for the first time; and a misspelled parameter (`thn:` for `then:`) fails loudly at parse instead of being silently carried, which also buries the `type`-means-three-things overload for good (PLUS's mode selector is renamed, per Operators; the v2 `type` alias for `outputType` is gone).
+Two consequences worth naming: branch keys inside the branches parameter are parameter *data*, outside the node namespace — a branch legitimately named `"operator"` or `"fallback"` is safe for the first time; and a misspelled parameter (`thn:` for `then:`) fails loudly at parse instead of being silently carried, which also buries the `type`-means-three-things overload for good (PLUS's mode selector is renamed, per Operators; `outputType` and its `type` alias are deleted outright — see the reserved-key set).
 
-### Pending in this area
+### The reserved-key set
 
-- The reserved-key inventory & placement matrix (`operator`, `fragment`, `parameters`, `fallback`, `outputType`, `useCache`, `vars`) — which keys are legal on which node kinds; whether `useCache` applies to fragment calls; the standing rule that no operator parameter or fragment parameter may use a reserved name.
-- `vars` on plain object literals (deferred here from Options § Deep evaluation).
-- Which reserved keys take expressions vs literals only (v2 evaluates `outputType` dynamically — [evaluate.ts:213](../src/evaluate.ts#L213)).
-- `fallback` fine print: lazy-on-failure semantics, whether a fallback can itself fail, legality on `literal`.
-- `outputType`: survive or die (conversion semantics belong to Type, coercion & null policy either way).
-- A comment/annotation key legal on any node (candidate: `//`), ignored at parse, preserved by tooling.
-- The shared identifier grammar for author-chosen names (vars, fragment parameters, `as` bindings, registration names).
-- Tombstone errors for v2 keys (`children`, possibly `type`) with pointed migration messages.
-- Non-plain-object values in JS-authored trees (opaque-constant rule).
+Seven reserved node keys — `operator`, `fragment`, `parameters`, `fallback`, `useCache`, `vars`, `//` — case-sensitive, zero aliases. Placement:
+
+| Key | Operator node (incl. `literal`) | Fragment call | Plain object literal |
+|---|---|---|---|
+| `operator` | defining key | error | *(its presence makes the object an operator node)* |
+| `fragment` | error | defining key | *(its presence makes the object a fragment call)* |
+| `parameters` | error (reserved, unused) | the arguments object | inert data |
+| `fallback` | ✓ | ✓ — a failing fragment body can be caught at the call site without editing the definition | inert data |
+| `useCache` | ✓ | **✗** — caching stays operator-level: the I/O operators inside a fragment body already cache individually, and a fragment-*result* cache needs its own key-derivation story (parameters plus everything the body reads); adding it later is non-breaking, shipping it wrong isn't | inert data |
+| `vars` | ✓ (References) | ✓ (References) | **functional & consumed — see below** |
+| `//` | ✓ — stripped at parse | ✓ — stripped | **stripped** — comments are consumed everywhere in an authored expression (see Comments, below) |
+
+- **Flat reservation**: a reserved name is reserved everywhere, even where non-functional — no operator parameter and no fragment parameter may use one. Validated at registration (`defineOperator()`, fragment definitions) and binding on every per-operator parameter pass.
+- **Deliberate boundary**: the reference-namespace words (`data`, `element`, `index`, `params`, …) are **not** banned as parameter names — references live in string-value position, parameters in key position; nothing mechanically collides.
+- **`literal` is not special-cased**: grammatically an operator node, it takes the standard modifiers. Useless combinations (`vars` on `literal` — contents are never parsed, so nothing could reference them) get `validate()` warnings, not grammar exceptions.
+- **`outputType` is deliberately absent** — v2's node modifier (and its `type` alias) is deleted in favour of the `convert` operator (see Operators): a cast is a computation, not node behaviour. The flatness the modifier bought came with an ordering semantics nobody chose — v2 never applied `outputType` to a `fallback` result ([evaluate.ts:196-227](../src/evaluate.ts#L196-L227)), with no way to express the other intent; under `convert` the ordering is explicit tree structure (`fallback` inside or outside the wrap, author's choice).
+
+### `vars` on plain object literals
+
+**`vars` is functional — and consumed — on plain object literals**, resolving the question deferred from Options § Deep evaluation. `{ vars: {…}, title: …, sections: […] }` scopes those vars over the whole subtree (same lexical / lazy / memoized semantics as node vars, per References) and the `vars` key is removed from the evaluated output. This is the only placement that serves the everyday whole-config case: with PASSTHRU deleted there is no identity operator to hang a `vars` block on, and a wrapper operator (`$let`-style, considered, rejected) would nest the most common usage under an extra ceremony level. Defended by the same argument as `operator:` keys in plain data: runtime data is never parsed, so the rule only reaches authored expressions.
+
+Rules, uniform across every `vars` placement (operator node, fragment call, plain literal):
+
+- **A vars block is structural, never a node**: its value is read as a map of **static names → expressions**. Names are part of the grammar (this is what makes `$vars` resolution statically checkable and cycles detectable); values are ordinary expressions. Consequently `vars: { operator: 'x' }` declares a var named `operator` — it is not an operator node.
+- **Shape rule (loud)**: a `vars` value that isn't an object of identifier-shaped keys is a hard parse error — `{ vars: [1, 2] }` and `{ vars: "high" }` fail loudly rather than being silently swallowed.
+- **Unreferenced-vars warning**: `validate()` warns when a `vars` block declares names never referenced in its scope — dead-definition lint in general, and exactly the signature of innocent data being misread as a vars block.
+- Degenerate cases: `{ vars: {…} }` with no other keys evaluates to `{}`; arrays cannot carry vars (no keys).
+
+**Escape hatch** — for authored data that genuinely needs a plain `vars` key. Wrapping the *value* does not work, because the key is what's functional: `vars: { $literal: … }` fails the shape rule, and `vars: { literal: {…} }` just declares a var named `literal`. The real hatches:
+
+- `literal` around the containing object, when the subtree is constant: `{ $literal: { vars: {…}, … } }`.
+- `buildObject`, when other parts of the object still need evaluation: keys in its *output* are runtime data, never re-parsed, so a built object can carry `vars`, `operator`, or any other reserved key as data.
+
+Accepted residual, recorded honestly: well-shaped innocent data (`{ vars: { promotional: true } }` embedded in an authored expression) is consumed silently at runtime and caught only by the authoring-time warning — the same trade-off shape as the sibling-key rule.
+
+### Reserved-key values: expression vs literal
+
+The generating rule: **a modifier that changes how the engine treats a node must be knowable before evaluation** — a dynamic modifier can't be statically validated, and inverts evaluation order (it would need evaluating to know how to evaluate the node). `fallback` is the deliberate exception, because it isn't consulted until evaluation has already failed.
+
+| Key | Value status |
+|---|---|
+| `operator`, `fragment` | literal strings (per Static invocation names) |
+| `parameters` | structural map — argument *names* static, values expressions |
+| `vars` | structural map — var *names* static, values expressions (per the `vars` sections) |
+| `fallback` | **full expression** — evaluated lazily, only on failure; "fall back to `$data.default`" or a backup `http` call are intended uses; statically-constant fallbacks on root-level nodes additionally shield the evaluation timeout (see `fallback` semantics) |
+| `useCache` | **literal boolean only** — the cache lookup happens *before* evaluation; a dynamic value is incoherent |
+| `//` | anything — never parsed or evaluated; stripped at parse (see Comments) |
+
+v2's dynamically-evaluated `outputType` ([evaluate.ts:213](../src/evaluate.ts#L213)) was the one violation of this rule; it dies with the key. Contrast `convert`'s `to`, which as an ordinary *parameter* may be dynamic (per Operators).
+
+### `fallback` semantics
+
+*What `fallback` means — failure, not absence — was fixed in References. This settles the machinery.*
+
+**The error-partition invariant.** Every error the engine can raise belongs to exactly one class:
+
+| Class | Examples | Raised | `fallback` | Configuration-time detection |
+|---|---|---|---|---|
+| **Static** | unknown operator/fragment name, malformed node, unknown key, unresolved `$vars`/`$params`, fragment cycles, `maxDepth`/`maxNodes` | at parse/validation, before any evaluation begins | never caught | **guaranteed** — `validate()` reports every one |
+| **Runtime** | I/O failure (including a *per-request* timeout), runtime type-check failure, custom-function throw, `strictDataPaths` miss | during evaluation | always follows the fallback process | not possible (data-dependent) |
+| **Kill switch** | whole-evaluation `timeout`, `signal` | any time | cuts through fallbacks — rule 3's static-root exception only | n/a — caller-level, not expression errors |
+
+The contract: **if validation blesses an expression, no error it later produces can bypass the fallback process.** An error that escapes both `validate()` and `fallback` is by definition an engine bug. (v2 had no such partition — an invalid operator name was a runtime error that `fallback` could catch: [evaluate.ts:121-137](../src/evaluate.ts#L121-L137).)
+
+The rules:
+
+1. **Nearest-enclosing catch.** A runtime failure propagates to the innermost *enclosing node* that carries a `fallback` — try/catch semantics, passing through array elements and plain literals on the way. (Already implied by References: a `strictDataPaths` miss is caught by `fallback` even though references can't carry one.)
+2. **Runtime failures only.** Static errors fail at parse/validation, before any fallback exists. Deliberate change from v2, where `fallback` caught invalid-operator errors.
+3. **The kill switch cuts through — with one static exception: timeout shielding.** The whole-evaluation `timeout` is a **strict** bound on the entire call: the deadline includes any time fallback evaluation would take, so when it (or `signal`) fires, all in-flight work aborts unconditionally — no expression work of any kind runs past it, dynamic fallbacks included, and in-flight HTTP/SQL requests are cancelled via the threaded signal. The exception: an expression is **timeout-shielded** iff every maximal evaluable node at its root carries a **statically constant** `fallback` — for a node root that's the root itself; for a plain-literal root (a keyMap-style object/array parameter, or a whole config) it's every hole of the compiled skeleton. On timeout, a shielded expression returns instead of throwing: holes that completed contribute their real values, unfinished holes contribute their static fallbacks, and the constant skeleton is assembled around them — pure constant-splicing, zero post-deadline evaluation, so the bound holds exactly. An unshielded expression's timeout throws regardless of how many holes happened to finish: shielding is all-or-nothing precisely so that timeout behaviour is statically knowable — `validate()` and the editor can badge an expression as shielded (the parse phase already classifies constancy). A *dynamic* fallback never counts toward shielding (it could start new work past the deadline) but still catches ordinary runtime failures as usual. `signal` is never shaped by any fallback — the caller cancelled; nobody is waiting. The mechanism lives in the expression rather than in options because only each expression's author knows an appropriate placeholder — and its *type* (`options` should degrade to `[]`, a label to a string) — while the evaluating host (Conforma's pattern) is generic. Author guidance in one sentence: **give network-heavy or complex expressions static `fallback`s at the root — on the root node, or on each embedded expression when the root is a plain literal.** (A separate static-only key — `fallbackValue` — was considered and rejected: a near-duplicate name, and an author who already supplied a static `fallback` would reasonably expect it to shield the timeout.)
+   - Per-request timeouts are not this: an individual `http`/`sql` call exceeding its own limit is an ordinary runtime failure, which a `fallback` on that node can catch — the network-flakiness guard, applied per node rather than as a blanket. Constraint recorded for the I/O parameter passes: a per-request timeout must be expressible.
+   - A plain-literal root still carries no `fallback` *key* of its own — reserved keys stay inert on plain literals: there's no shape rule that could catch innocent `fallback:` data (any value is a plausible fallback), and stripping-vs-keeping the key would corrupt structures that legitimately contain a `fallback` property (e.g. a keyMap). Shielding a literal root is **per-hole** instead: each embedded expression declares its own static fallback, so each degraded value is the one *its* author chose. Timing note, recorded honestly: *which* holes contribute real values vs fallbacks depends on what finished before the deadline — inherent to timeouts; `trace` shows which applied.
+4. **A failing fallback fails the node.** The node fails with the *fallback's* error, the original failure attached as `cause` on the `FigTreeError`; that failure bubbles per rule 1 to the next enclosing fallback, else throw/report per `mode`.
+5. **Scope.** A fallback evaluates in its node's own scope — the node's `vars` are visible. Corner recorded: if the failure *was* a var's evaluation, a fallback referencing that var re-receives the memoized rejection and fails too (rule 4 takes over); a fallback that must be independent of the failing var shouldn't reference it.
+6. **Lazy, at most once.** Never evaluated unless the node fails, evaluated once when it does. On `literal` it's a useless-combination `validate()` warning (nothing to fail), per the reserved-key set.
+
+Discoverability caveat, recorded honestly: shielding depends on *constancy*, which isn't visually explicit — editing one static root-level fallback into a dynamic expression silently un-shields the whole expression. Shielded status is statically computable, so `validate()` and the editor should surface it; `trace` output shows what applied on an actual timeout.
+
+### Comments: the `//` key
+
+The `//` key is a comment, legal anywhere in an authored expression — on nodes (where strict unknown-key validation would otherwise leave annotations nowhere to live), inside `vars` blocks and `parameters` maps, and on plain object literals. Its value may be any JSON value (a string typically; an array of strings for multi-line notes) and is **never parsed, validated or evaluated**. Comments are **stripped everywhere at parse** — a comment on a plain data object does not appear in the evaluated output (the same consumed-key model as plain-literal `vars`). The one place `//` means nothing special: inside `literal`, whose contents pass through untouched by fiat. Tooling (editor, converters) must preserve comments through round-trips. JSON's unique-keys rule means one `//` per object.
+
+```js
+{
+  '//': 'Rate falls back to 1.0 if the currency API is down — agreed w/ finance, Mar 2026',
+  operator: 'http',
+  url: 'https://api.example.com/rates',
+  fallback: { base: 'USD', rate: 1.0 },
+}
+```
+
+### Name legality, not name style
+
+Author-chosen names — vars, fragment parameters, `as` bindings, and fragment/function/custom-operator registration names — have **no imposed style**: spaces, kebab-case and unicode are all legal; FigTree's audience shouldn't need to know what a programmer means by "identifier" (a camelCase *convention* may be recommended in docs; the engine doesn't care). One legality rule, shared by all of them and forced by the grammar rather than taste:
+
+> A name is any non-empty string that does not contain `.`, `[` or `]` and does not start with `$`.
+
+The `.` / `[` / `]` exclusion is disambiguation, not tidiness: drilling into var values is agreed in References (`$vars.country[0].name`), so a var named `a.b` would make `$vars.a.b` ambiguous between *var `a.b`* and *var `a` drilled with `.b`*. The `$` exclusion keeps the sigil's two jobs clean. Checked at declaration/registration time, on top of the existing collision rules (Operators §4–5) and the flat reservation for parameter names; reserved node keys are also barred as *registration* names (a fragment invoked as `$fallback` is confusion nobody needs).
+
+### No v2 tombstone keys
+
+Considered and rejected: reserving `children` / `type` solely to emit pointed "removed in v3" errors. v3 is a clean break — v1/v2 compatibility lives entirely in `./convert`, and `children` was itself a v1 hangover that freshly-authored v2 expressions should never have used. On a node these keys fail as ordinary unknown keys; history is the migration doc's job, not the runtime's. (Informed by v2's own experience carrying v1 relics — `supportDeprecatedValueNodes` — longer than they earned.)
+
+### Non-plain-object values: opaque constants
+
+A JS-authored expression may contain values with no JSON representation — `Date`s, `Map`s, class instances, functions. Anything that is not a plain object or array is an **opaque constant**: never traversed, never validated, passed through by identity (and classified constant by the compile phase, so opaque-only subtrees take the identity short-circuit). This is an authoring-side rule only; at runtime the question doesn't arise — values *flowing through* an evaluation are never parsed (References §4), so a custom function or `http` client may return a `Date` and it flows through operators untouched, subject only to each operator's runtime type-check policy.
