@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- `notEqual` (`!=`, `ne`) with `nullEqualsUndefined: true` no longer always returns `false` when the first value is `null` or `undefined`. The check now correctly returns `true` when any value falls outside the null/undefined equivalence class ([#140](https://github.com/CarlosNZ/fig-tree-evaluator/issues/140)).
+
 ## [2.23.0] - 2026-06-30
 
 ### Added

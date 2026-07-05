@@ -36,7 +36,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       : false
 
   if (nullEqualsUndefined && (newValues[0] === null || newValues[0] === undefined))
-    return newValues.some((value) => value === null && value === undefined)
+    return newValues.some((value) => !(value === null || value === undefined))
 
   return newValues.some((val) => !dequal(val, newValues[0]))
 }
