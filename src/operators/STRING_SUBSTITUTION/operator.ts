@@ -61,7 +61,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
         .map((fragment) => (fragment in replacementsObj ? replacementsObj[fragment] : fragment))
         .join('')
         // Remove escape character
-        .replace(`\\${subChar}`, subChar)
+        .replace(new RegExp(`\\\\${subChar === '$' ? '\\$' : subChar}`, 'g'), subChar)
     )
   }
 
@@ -72,7 +72,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
 
   for (const fragment of string.split(parameterPattern)) {
     if (!/(?<!\\){{(.+)}}/.exec(fragment)) {
-      replaced.push(fragment.replace('\\{{', '{{'))
+      replaced.push(fragment.replace(/\\\{\{/g, '{{'))
       continue
     }
     const replacement = await getReplacement(fragment, substitutions, numberMapping, config)

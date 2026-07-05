@@ -243,7 +243,16 @@ test('String substitution -- escape substitution chars (\\%1)', () => {
   })
 })
 
-// Repeated, but with "$" instead of "%"
+test('String substitution -- multiple escaped substitution chars all un-escaped', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Score: %1. Escaped: \\%2 and \\%3',
+    substitutions: ['A'],
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe('Score: A. Escaped: %2 and %3')
+  })
+})
 
 test('Simple string $ substitution', () => {
   const expression = {
@@ -680,6 +689,16 @@ test('String substitution -- escape substitution chars (\\{{}}) (Named substitut
   }
   const result = await exp.evaluate(expression)
   expect(result).toBe('Only {{one}} of these should be replaced - this one')
+})
+
+test('String substitution -- multiple escaped named placeholders in a single fragment all un-escaped', async () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Value: {{one}}. Escaped: \\{{two}} and \\{{three}}',
+    substitutions: { one: 'A' },
+  }
+  const result = await exp.evaluate(expression)
+  expect(result).toBe('Value: A. Escaped: {{two}} and {{three}}')
 })
 
 test('Named string substitution with number mapping', async () => {
