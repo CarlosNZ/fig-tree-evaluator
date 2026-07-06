@@ -245,7 +245,7 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 
 | v3 | Alias | vs v2 | Notes |
 |---|---|---|---|
-| `plus` | `+` | **Kept** (PLUS) | keeps the add/concat/merge polymorphism (mode selector renamed away from `type` — settled with parameters); drops `add`, `concat`, `join`, `merge` |
+| `plus` | `+` | **Kept** (PLUS) | keeps the add/concat/merge polymorphism (mode selector renamed `type` → `expect`, settled in its parameter pass); drops `add`, `concat`, `join`, `merge`; `add` reconsidered for verb-consistency with `subtract` / `multiply` / `divide` and rejected (batch-3 pass): `plus` names the polymorphic `+` it mirrors and pairs with its own alias, while `add` promises arithmetic-only and misreads as append on arrays — and the batch was never verb-consistent anyway (`modulo`, `pow`, `floor`, `min`) |
 | `subtract` | `-` | **Kept** (SUBTRACT) | drops `minus`, `takeaway` |
 | `multiply` | `*` | **Kept** (MULTIPLY) | drops `x`, `times` |
 | `divide` | `/` | **Kept** (DIVIDE) | drops `÷` |
@@ -268,8 +268,7 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 | `lower` | — | **New** | |
 | `upper` | — | **New** | |
 | `trim` | — | **New** | |
-| `substring` | — | **New** | |
-| `regex` | — | **Modified** (REGEX) | gains flags and an output mode (test / match / extract); drops `patternMatch`, `regexp`, `matchPattern`; constraint for its parameter pass: v2's numeric-mining use case must stay cleanly expressible (`"15 grams"` → `15` via extract, then `convert`) |
+| `regex` | — | **Modified** (REGEX) | gains `flags` and a result `mode` (test / extract / match); drops `patternMatch`, `regexp`, `matchPattern`; constraint for its parameter pass: v2's numeric-mining use case must stay cleanly expressible (`"15 grams"` → `15` via extract, then `convert`) — discharged there |
 
 #### Arrays & iteration
 
@@ -378,6 +377,7 @@ The converter maps all of these mechanically, but human muscle memory won't — 
 ### Deferred
 
 - **Maybe-later operators**, added on demand: `includes`, `reduce`, `sort`, `reverse`, `flatten`, `unique`, `keys` / `values`.
+- **Possible custom operators** — part-designed, deliberately not core; to build as first-class custom operators once the main package is done: `substring` (cut at the batch-4 review, July 2026 — position-based extraction is rare in config, and `regex` covers string innards; drafted design: `(value, start?, end?)`, zero-indexed, end-exclusive, code-point offsets, negatives counting from the end — the negatives question is [v3-cases-for-review.md](v3-cases-for-review.md) #20, mooted with the cut; full rationale in the batch-4 cut record, [v3-operator-parameters.md](v3-operator-parameters.md)).
 - **Date/duration operators**: separate plugin package — own area, later.
 - **Export grouping** (fat `coreOperators` vs lean core + `mathOperators` / `stringOperators` arrays): Packaging area. Candidate constraint floated for that discussion: the default core should cover everything v2 had post-conversion, so converted v2 expressions run without extra registration.
 
@@ -402,7 +402,7 @@ Naming notes: `$params` is plural for consistency with `$vars`; `$element`/`$ind
 ### Reference grammar
 
 1. **Token rule**: a string is a reference iff it starts with `$<namespace>` (canonical or alias) followed by end-of-string, `.`, or `[`. `"$database"` is inert data — the namespace token is `database`, not `data` or `d`. Case-sensitive.
-2. **Whole-string only**: `"Hello $data.name"` is inert — no interpolation inside strings; embedding is `buildString`'s job.
+2. **Whole-string only**: `"Hello $data.name"` is inert — no interpolation inside strings; embedding is `buildString`'s job. One sanctioned embedding, recorded from the batch-4 pass: inside a **literal** `buildString` template, `{{$data.name}}`-style *reference tokens* are recognized at parse ([v3-operator-parameters.md](v3-operator-parameters.md), batch 4) — a template arriving as runtime data is never scanned for references (rule 4 unaffected).
 3. **Path grammar**: dot-separated keys plus numeric bracket indices — `$data.users[0].name` — the same grammar as the `get` operator (v2's `object-property-extractor` syntax). Keys containing dots or brackets aren't expressible as a reference: use `get`, which takes the path as data.
 4. **Static recognition only**: references are recognized in the expression tree at parse time and **never** in values flowing through at runtime — a string arriving from `$data`, HTTP or a custom operator's result is never re-interpreted as a reference. (v2 violates this: `{{name}}` substitution evaluates content extracted from `data` as an expression — [STRING_SUBSTITUTION/operator.ts:111-114](../src/operators/STRING_SUBSTITUTION/operator.ts#L111-L114) — an injection path this rule kills.)
 5. **Recognized everywhere** in the expression — including strings nested inside plain object/array literals within parameters — except inside `literal`.
@@ -669,7 +669,7 @@ FigTree values are exactly JSON's six types: `string`, `number`, `boolean`, `nul
 
 ### Metadata type vocabulary
 
-v2's `ExpectedType` shape survives ([typeCheck.ts:10-22](../src/typeCheck.ts#L10-L22)) minus `undefined`: the basic types (`string` / `number` / `boolean` / `array` / `object` / `null` / `any`), unions, and literal unions — plus one addition, **`integer`**, a refinement of `number` for parameters like `round`'s `decimals` and substring indices. One table, two moments: `validate()` checks literal parameters against it at parse (most parameters in practice), and the runtime type-check applies the same table to dynamic values as they arrive. `any` admits every domain value (including `null`) plus opaque constants.
+v2's `ExpectedType` shape survives ([typeCheck.ts:10-22](../src/typeCheck.ts#L10-L22)) minus `undefined`: the basic types (`string` / `number` / `boolean` / `array` / `object` / `null` / `any`), unions, and literal unions — plus one addition, **`integer`**, a refinement of `number` for parameters like `round`'s `decimals`. One table, two moments: `validate()` checks literal parameters against it at parse (most parameters in practice), and the runtime type-check applies the same table to dynamic values as they arrive. `any` admits every domain value (including `null`) plus opaque constants.
 
 ### No implicit coercion
 
@@ -746,7 +746,7 @@ Wherever a value must be rendered as text — `buildString` substitutions, `join
 | number | decimal form (JS `String(n)`) |
 | boolean | `"true"` / `"false"` |
 | null | `""` — generalizing the `buildString` rule already agreed in References |
-| array, object | **runtime type error** — v2's `"[object Object]"` ([STRING_SUBSTITUTION/operator.ts:55](../src/operators/STRING_SUBSTITUTION/operator.ts#L55)) dies; drill into the structure or `join` it explicitly |
+| array, object | rendering positions (`buildString`; `join` — confirmed in its pass) render a **placeholder** — `<array>` / `<object>` — self-signaling, never silent nor blocking (the disruption gradient, [v3-operator-parameters.md](v3-operator-parameters.md) § conventions); v2's `"[object Object]"` ([STRING_SUBSTITUTION/operator.ts:55](../src/operators/STRING_SUBSTITUTION/operator.ts#L55)) dies; `convert` `to: 'string'` still **fails** on them — a cast is not a render; drill in or `join` explicitly for real output |
 
 One deliberate distinction: `convert` `to: 'string'` **propagates** null instead of rendering it — `convert` is a value pipe, and keeping the null intact preserves downstream absence tooling (`firstOf` after a `convert` still works). The `""` rendering applies where text *must* be produced: `buildString` has to put something at the substitution site.
 

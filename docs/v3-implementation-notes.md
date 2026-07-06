@@ -36,6 +36,25 @@ The spec makes deep evaluation the only semantics ([v3-api.md → Deep evaluatio
 
 The spec defines FigTree truthiness once and marks the empty-container question for revisiting ([v3-api.md → Truthiness](v3-api.md#truthiness)). The implementation requirement that enables the revisit: a single shared `isTruthy(value)` consumed by *every* truthiness site — `if.condition`, `and`/`or`/`not`, the `filter`/`find`/`some`/`every` predicates, and `convert`'s `to: 'boolean'` target (applied after the `"true"`/`"false"` string carve-out). No operator body re-implements the falsy check inline; refining the falsy set later must be a one-function change that applies globally.
 
+## Ordering is one comparator; rounding is decimal-safe
+
+Two more shared-function requirements from the parameter passes, with the same drift-proofing rationale as `isTruthy()`:
+
+- **One ordering comparator.** The agreed relation (homogeneous `number` | `string` operands, plain codepoint order for strings — [v3-api.md → No implicit coercion](v3-api.md#no-implicit-coercion)) is implemented once and consumed by the four ordering comparisons (batch 2, parameterized by direction and inclusivity) and by `min` / `max` (batch 3, a fold over the same relation). No operator body re-implements `<`.
+- **Decimal-representation rounding.** `round`'s half-away-from-zero ties (batch 3) can't be built on `Math.round` (which rounds half toward +∞, so `Math.round(-2.5)` → `-2`) nor on naive scale-multiply-round float arithmetic (`1.005 * 100` → `100.49999…`): the implementation shifts the decimal *representation* (exponent-string manipulation or equivalent), so `round(1.005, 2)` → `1.01` and negative `decimals` shift the same way. The spec point is only that results match the decimal reading of the input, not float artifacts.
+
+## Text rendering is one function
+
+Same drift-proofing pattern again, from the `buildString` pass (batch 4): the stringification table ([v3-api.md → Stringification](v3-api.md#stringification-one-rendering-table)) is implemented as a single shared renderer consumed by `buildString` (token rendering), `join` (elements), `match` (branch-key comparison), and the scalar rows of `convert` `to: 'string'`. No operator body calls `String(x)` directly — v2's ad-hoc `String(sub)` calls are exactly where `"[object Object]"` leaked from ([STRING_SUBSTITUTION/operator.ts:55](../src/operators/STRING_SUBSTITUTION/operator.ts#L55)) — and the composite-value policy lives in this one function — `<array>` / `<object>` placeholders in rendering positions, a hard failure in `convert` (the one sanctioned fork, Type area).
+
+## String primitives are shared functions too
+
+Three more single-definition requirements from the batch-4 passes, same drift-proofing rationale as `isTruthy()`:
+
+- **One whitespace set.** The `trim` operator, `split`'s per-element `trim` flag and `buildString`'s per-rendered-value `trim` flag strip the same character set (the JS `String.trim` set — WhiteSpace + line terminators) via one shared function; refining the set later moves every site together.
+- **One code-point segmentation.** `split` with an empty delimiter and (batch-5 constraint) `length` on strings count **Unicode code points**, never UTF-16 units — one shared helper (spread/`Array.from` semantics or an index-arithmetic equivalent), so no operator tears a surrogate pair while another counts it as two. A custom `substring` (cut from core — see the possible-custom-operators list) should consume the same helper. Grapheme clusters are recorded as out of scope in the passes; if that ever changes (`Intl.Segmenter`), it changes in one place.
+- **Compiled-pattern reuse for `regex`.** A literal `pattern` compiles once at parse — the same moment `validate()` checks it (ledger #11) — and the compiled `RegExp` rides the compile artifact; dynamic patterns compile per evaluation. Global-scan state (`lastIndex`) must never leak between evaluations — construct or reset per use.
+
 ## Null policies and boundary normalization live in the engine, not operator bodies
 
 Two enforcement points suggested by the Type/coercion area, both engine-level so metadata stays honest (the same argument as `positionalParams` replacing 24 `parseChildren` functions):
