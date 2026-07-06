@@ -10,14 +10,16 @@
 |---|---|
 | Node grammar & reserved keys | **Agreed** — includes `fallback`/kill-switch semantics, `outputType`→`convert`, `//` comments, name legality & opaque-value rules |
 | References & scoping (`$data` / `$vars` / `$params` / `$element`) | **Agreed** — lazy-var mechanism & exotic-key path grammar noted as implementation follow-ups |
-| Alias policy | **Partial** — operator naming & aliases settled under Operators; parameter-name aliases pending the per-operator parameter passes |
-| Type, coercion & null policy | — |
-| Operators | **Agreed** — canonical list, aliases & shorthand faces; per-operator parameters pending |
-| Fragments | — |
-| Extensibility (`defineOperator`, functions) | — |
+| Alias policy | **Partial** — operator naming & aliases settled under Operators; parameter-name aliases proposed (none at all) in [v3-operator-parameters.md](v3-operator-parameters.md) |
+| Type, coercion & null policy | **Agreed** — JSON-only value domain, no implicit coercion, FigTree truthiness (JS-parity, marked for revisit), null-policy vocabulary + null-means-unset optionals, `convert` table, shared stringification |
+| Operators | **Agreed** — canonical list, aliases & shorthand faces; per-operator parameters in progress |
+| Per-operator parameters | **In progress** — own working doc: [v3-operator-parameters.md](v3-operator-parameters.md) (conventions + batch 1 drafted); also hosts the contract-requirements ledger. Ambiguous rulings queued for an end-of-passes group review in [v3-cases-for-review.md](v3-cases-for-review.md) |
+| Fragments | **Agreed** — wrapper definition shape, object-keyed parameter declarations (default-implies-optional, null-means-unset), lazy memoized arguments with an eager dynamic-arguments escape, recursion ban, registration-time validation, opaque tooling `metadata` |
+| Extensibility (`defineOperator`) | **Partial** — single mechanism (the v2 `functions` tier is dropped), first-class principle, naming & aliases, plugin story; the full operator contract is deferred until after the per-operator parameter passes |
 | **Options** (shape, merge semantics, registration) | **Agreed** |
 | Evaluator methods & return shapes | — (partially sketched under Options; `report`/`trace` shapes deferred) |
 | Packaging & exports | — |
+| Migration & conversion (`./convert`, v2→v3) | — |
 
 ---
 
@@ -27,7 +29,7 @@
 
 There is a single `FigTreeOptions` interface, accepted in all three places: the constructor, `updateOptions()`, and per-call as the second argument to `evaluate()`. Instance-level values act as defaults; per-call values override them for that evaluation only.
 
-**One exception class — the invocable registry:** `operators`, `fragments` and `functions` are accepted at construction and via `updateOptions()`, but not per-call. The parsed/normalized form of an expression depends on what's registered (shorthand `$key`s resolve against operator, fragment and function names alike), and the parse cache assumes a stable registry. Fragments and functions are system-level definitions by design — there is no impromptu per-evaluation invocable; per-request state belongs in `data`, read by a function as ordinary arguments. Passing any of the three per-call is a validation error.
+**One exception class — the invocable registry:** `operators` and `fragments` are accepted at construction and via `updateOptions()`, but not per-call. The parsed/normalized form of an expression depends on what's registered (shorthand `$key`s resolve against operator and fragment names alike), and the parse cache assumes a stable registry. Operators and fragments are system-level definitions by design — there is no impromptu per-evaluation invocable; per-request state belongs in `data`, read by an operator as ordinary parameters. Passing either per-call is a validation error.
 
 Per-call options are merged into a frozen per-evaluation context and **never mutate the instance** (fixing the v2 bug class where `evaluate(expr, { httpClient })` permanently reconfigured the evaluator). `updateOptions()` is the one sanctioned mutation path. `getOptions()` returns a snapshot, never live internal references.
 
@@ -39,8 +41,7 @@ new FigTree(options?: FigTreeOptions)
 interface FigTreeOptions {
   // ── Evaluation environment ─────────────────────────────
   data?: Record<string, unknown>
-  functions?: Record<string, CustomFunction | FunctionDefinition> // definition shape: see Extensibility; not per-call (see below)
-  fragments?: Record<string, FragmentDefinition>                  // definition shape: see Fragments; not per-call (see below)
+  fragments?: Record<string, FragmentDefinition> // definition shape: see Fragments; not per-call (see below)
 
   // ── Operator registry ──────────────────────────────────
   operators?: (OperatorDefinition | OperatorDefinition[])[] // flattened one level; default: coreOperators only
@@ -61,7 +62,7 @@ interface FigTreeOptions {
   signal?: AbortSignal // threaded through to HTTP/SQL clients; instance-level = default for all evaluations
 
   // ── Caching ────────────────────────────────────────────
-  useCache?: boolean // blanket default overriding per-operator metadata defaults (a reserved node key, so outside the reach of operatorDefaults)
+  useCache?: boolean // blanket default; full precedence: node key > operatorDefaults > this > operator metadata default
   cache?: { store?: CacheStore; maxSize?: number; maxTime?: number } // CacheStore = { get, set } — pluggable
 
   // ── Type checking ──────────────────────────────────────
@@ -105,8 +106,10 @@ operatorDefaults: {
 
 - Per-node parameters always override.
 - Validated at construction against operator metadata: unknown operator, unknown parameter, or type mismatch is an error.
-- Visible to tooling: `getOperators()` reports the *effective* defaults, so the editor and generated docs stay honest — the crucial difference from v2's invisible global flag.
-- Portability caveat (accepted): an expression can mean something different on a differently-configured instance — but expressions already depend on instance-supplied `fragments`, `functions`, and clients; what matters is that the dependency is declared and machine-readable.
+- **Reserved-modifier defaults** (extension agreed during the parameter passes): an entry may also default the node modifiers **`fallback`** (any constant value) and **`useCache`** (boolean) — unambiguous alongside parameter names because the flat reservation (Node grammar) bars those words as parameter names. `operatorDefaults: { plus: { fallback: 0 } }` makes every `plus` node without its own `fallback` behave as if it carried `fallback: 0`, including counting as "carrying" one for the nearest-enclosing-catch rule and for timeout shielding (constants are static by construction). Constants only, like everything else in this map — an expression-valued default fallback would have no evaluation scope of its own, and would silently un-shield expressions. Per-node keys override wholesale. Motivating case: a host that wants `plus` failures (e.g. the empty-aggregate error) to degrade to `0` opts in per instance, visibly. Boundary, recorded: this catches *failures* only — a `null` operand propagating to a `null` result is success, and no fallback fires (provisional — [v3-cases-for-review.md](v3-cases-for-review.md) #3).
+- `useCache` precedence, full chain: node key → `operatorDefaults` → blanket `useCache` option → operator metadata default.
+- Visible to tooling: `getOperators()` reports the *effective* defaults — parameter and modifier alike — so the editor and generated docs stay honest — the crucial difference from v2's invisible global flag.
+- Portability caveat (accepted): an expression can mean something different on a differently-configured instance — but expressions already depend on instance-supplied `fragments`, custom operators, and clients; what matters is that the dependency is declared and machine-readable.
 
 ### Merge semantics
 
@@ -122,7 +125,6 @@ Consequences, checked against every nested option:
 | `graphQL: { endpoint }` | keeps existing `graphQL.headers` |
 | `cache: { maxSize }` | keeps `store` / `maxTime` |
 | `fragments: { newFrag }` (`updateOptions` only) | adds without clobbering others; re-supplying an existing name replaces that definition wholesale (no stale sub-keys) |
-| `functions: { myFn }` (`updateOptions` only) | same |
 | `data: { user: {…} }` | merges at top-level data keys; a supplied key replaces its whole value |
 
 ### `evaluate` signature
@@ -168,7 +170,7 @@ Deferred to other areas:
 |---|---|---|
 | `data` | **Kept** | Unchanged — per-call via `options.data`, merging over constructor `data` |
 | `objects` | **Deleted** | Deprecated alias of `data` |
-| `functions` | **Modified** | No longer per-call — constructor/`updateOptions` only (registry stability); definition shape revisited in Extensibility |
+| `functions` | **Deleted** | No custom-function tier in v3 — each function re-registers as a first-class custom operator via `defineOperator()`, through the `operators` array (see Extensibility; mechanical wrapper recipe in the migration doc) |
 | `fragments` | **Modified** | No longer per-call — constructor/`updateOptions` only (registry stability); definition shape revisited in Fragments (declared params) |
 | `httpClient` | **Deleted → factory** | `httpOperators(client)` |
 | `graphQLConnection` | **Split** | `httpClient` sub-key deleted (shares the http client); `endpoint`/`headers` → `graphQL` block |
@@ -200,7 +202,7 @@ Deferred to other areas:
 
 ## Operators — **Agreed**
 
-*Canonical list, aliases and shorthand faces only. Per-operator parameters (names, types, defaults, positional order) are **not** covered here — each operator gets its own pass, agreed individually.*
+*Canonical list, aliases and shorthand faces only. Per-operator parameters (names, types, defaults, positional order) are **not** covered here — each operator gets its own pass, agreed individually in [v3-operator-parameters.md](v3-operator-parameters.md).*
 
 ### Naming rules
 
@@ -208,8 +210,8 @@ Deferred to other areas:
 1. **Canonical names are camelCase, case-sensitive, exact-match.** No case folding, no camelCase normalization — `$If`, `PLUS` and `not_equal` are unknown-operator errors. v2's `standardiseOperatorName` machinery and the generated alias table die.
 2. **At most one alias per operator, always symbolic.** The full set: `+` `-` `*` `/` `=` `!=` `>` `>=` `<` `<=` `?` `!`. Word aliases die entirely (v2 shipped ~95 operator-name aliases across 24 operators, before counting the unbounded case/camelCase variants).
 3. **An alias is valid anywhere the canonical name is** — as a shorthand `$key` or as an `operator:` value — and parse normalizes it away: the canonical AST contains only canonical names.
-4. **One invocation namespace, collision-checked at registration.** A fragment or custom operator/function whose name matches any operator name or alias is a registration error ([#136](https://github.com/CarlosNZ/fig-tree-evaluator/issues/136)). No silent precedence.
-5. **Reserved names**, unusable for fragments/functions/custom operators: the reference namespaces `data`, `vars`, `params`, `element`, `index` and their single-character alias forms (`d`, `v`, `p`, `e`, `i`), plus `literal`. (Reserved *node keys* are settled in the Node-grammar area.)
+4. **One invocation namespace, collision-checked at registration.** A fragment or custom operator whose name matches any operator name or alias is a registration error ([#136](https://github.com/CarlosNZ/fig-tree-evaluator/issues/136)). No silent precedence.
+5. **Reserved names**, unusable for fragments and custom operators: the reference namespaces `data`, `vars`, `params`, `element`, `index` and their single-character alias forms (`d`, `v`, `p`, `e`, `i`), plus `literal`. (Reserved *node keys* are settled in the Node-grammar area.)
 
 ### The canonical list
 
@@ -302,13 +304,13 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 | `graphQL` | — | **Modified** (GRAPHQL) | casing deliberately matches the agreed `graphQL` options block (exception to mechanical camelCase); implemented on the `http` core; drops `graphql`, `graphQl`, `gql` |
 | `sql` | — | **Kept** (SQL) | drops `pgSql`, `postgres`, `pg`, `sqLite`, `sqlite`, `mySql` — the injected connection determines the dialect, the name never did |
 
-### Custom functions & operators
+### Custom operators
 
-The CUSTOM_FUNCTIONS operator is deleted. `defineOperator()` definitions and `functions:` entries register into the same operator namespace and are invoked by their own name — canonical `{ operator: 'myFn', ... }`, shorthand `{ $myFn: ... }`. They are one mechanism at two ceremony levels: `defineOperator()` supplies the full metadata contract (typed parameters, positional mapping, cache behaviour — full validation and first-class editor rendering); `functions: { myFn }` wraps a bare JS function into a minimal definition (variadic args, untyped — weakest validation, generic editor face). With the `functionName` indirection gone, dynamically-computed function names are structurally impossible — v2's five-deep lookup chain (a sandbox-integrity hole) dies by construction. Definition shapes are settled in Extensibility.
+The CUSTOM_FUNCTIONS operator is deleted — and so is v2's `functions` option: **there is no custom-function tier in v3** (rationale in Extensibility). `defineOperator()` is the single extension mechanism; definitions register through the `operators` array into the one operator namespace and are invoked by their own name — canonical `{ operator: 'myFn', ... }`, shorthand `{ $myFn: ... }` — first-class and indistinguishable from native operators (Extensibility). With the `functionName` indirection gone, dynamically-computed function names are structurally impossible — v2's five-deep lookup chain (a sandbox-integrity hole) dies by construction. The definition shape is settled in Extensibility.
 
 ### Shorthand grammar
 
-Every registered invocable — operator, fragment, custom function/operator — has exactly one shorthand face: a `$name` key, where `name` is the canonical name or its symbolic alias (`{ "$+": [1, 2] }`, `{ "$?": [...] }`).
+Every registered invocable — operator, fragment or custom operator — has exactly one shorthand face: a `$name` key, where `name` is the canonical name or its symbolic alias (`{ "$+": [1, 2] }`, `{ "$?": [...] }`).
 
 Payload forms are disambiguated by JSON type — no heuristics:
 
@@ -357,7 +359,7 @@ Payload forms are disambiguated by JSON type — no heuristics:
 | **GRAPHQL** (`graphQL`, `graphQl`, `graphql`, `gql`) | `graphQL` | |
 | **BUILD_OBJECT** (`buildObject`, `build`, `object`) | `buildObject` | |
 | **MATCH** (`match`, `switch`) | `match` | |
-| **CUSTOM_FUNCTIONS** (`customFunctions`, `customFunction`, `objectFunctions`, `function`, `functions`, `runFunction`) | *(deleted)* | functions invoked by their registered name |
+| **CUSTOM_FUNCTIONS** (`customFunctions`, `customFunction`, `objectFunctions`, `function`, `functions`, `runFunction`) | *(deleted)* | each v2 function re-registers as a first-class custom operator, invoked by its own name (wrapper recipe in the migration doc) |
 | **PASSTHRU** (`pass`, `_`, `passThru`, `passthru`, `ignore`, `coerce`, `convert`) | *(deleted)* | any value already evaluates; `literal` covers the escape case; its advertised coercion role → the real `convert` operator |
 
 ### Migration hazards — recycled names
@@ -383,7 +385,7 @@ The converter maps all of these mechanically, but human muscle memory won't — 
 
 ## References & scoping — **Agreed**
 
-*The `$` sigil has exactly two jobs: in **key** position it invokes (an operator, fragment or function — see Operators); in **string-value** position it references a named scope. Five namespaces exist, each declaring the value's provenance. Any other `$`-string is inert data with a `validate()` warning (per Operators).*
+*The `$` sigil has exactly two jobs: in **key** position it invokes (an operator or fragment — see Operators); in **string-value** position it references a named scope. Five namespaces exist, each declaring the value's provenance. Any other `$`-string is inert data with a `validate()` warning (per Operators).*
 
 ### Namespaces
 
@@ -402,7 +404,7 @@ Naming notes: `$params` is plural for consistency with `$vars`; `$element`/`$ind
 1. **Token rule**: a string is a reference iff it starts with `$<namespace>` (canonical or alias) followed by end-of-string, `.`, or `[`. `"$database"` is inert data — the namespace token is `database`, not `data` or `d`. Case-sensitive.
 2. **Whole-string only**: `"Hello $data.name"` is inert — no interpolation inside strings; embedding is `buildString`'s job.
 3. **Path grammar**: dot-separated keys plus numeric bracket indices — `$data.users[0].name` — the same grammar as the `get` operator (v2's `object-property-extractor` syntax). Keys containing dots or brackets aren't expressible as a reference: use `get`, which takes the path as data.
-4. **Static recognition only**: references are recognized in the expression tree at parse time and **never** in values flowing through at runtime — a string arriving from `$data`, HTTP or a function result is never re-interpreted as a reference. (v2 violates this: `{{name}}` substitution evaluates content extracted from `data` as an expression — [STRING_SUBSTITUTION/operator.ts:111-114](../src/operators/STRING_SUBSTITUTION/operator.ts#L111-L114) — an injection path this rule kills.)
+4. **Static recognition only**: references are recognized in the expression tree at parse time and **never** in values flowing through at runtime — a string arriving from `$data`, HTTP or a custom operator's result is never re-interpreted as a reference. (v2 violates this: `{{name}}` substitution evaluates content extracted from `data` as an expression — [STRING_SUBSTITUTION/operator.ts:111-114](../src/operators/STRING_SUBSTITUTION/operator.ts#L111-L114) — an injection path this rule kills.)
 5. **Recognized everywhere** in the expression — including strings nested inside plain object/array literals within parameters — except inside `literal`.
 6. **References are values, not nodes**: they can't carry node modifiers like `fallback`. For defaults use `get` or `firstOf`; for type coercion wrap in `convert`.
 7. **Bare namespace**: `"$data"` (or `"$d"`) alone = the whole merged data object; `$element` is bare-or-drilled, `$index` bare only; bare `"$vars"` / `"$params"` = validation error.
@@ -490,13 +492,13 @@ Bound by the iterator operators (`map`, `filter`, `find`, `some`, `every`), alwa
 An expression is any JSON value. Recognition runs **once, at parse** — never against values flowing through at runtime (References §4). Every object in an authored expression classifies as exactly one of:
 
 1. **Operator node** — contains the key `operator`. Its value must be a **literal string** naming a canonical operator or its symbolic alias (normalized away at parse); an unknown name is a hard error (per Operators). Remaining keys: the operator's declared parameters plus the reserved node modifiers (`fallback` / `useCache` / `vars` / `//` — see the reserved-key set, below). Anything else is a hard error.
-2. **Fragment-call node** — contains the key `fragment`. Its value must be a **literal string** naming a registered fragment; an unknown name is a hard error (statically checkable, now that fragments are constructor/`updateOptions`-only — see Options). Arguments live **only** in `parameters` (named-object; fragments have no positional form, per Operators). Legal modifiers per the reserved-key set, below.
-3. **Shorthand node** — contains exactly one **recognized** `$name` key (canonical operator name, symbolic alias, fragment, or custom function/operator name), optionally accompanied by reserved modifier keys (sibling rule, below), and nothing else. Payload disambiguated by JSON type (per Operators). Normalizes at parse into kind 1 or 2.
+2. **Fragment-call node** — contains the key `fragment`. Its value must be a **literal string** naming a registered fragment; an unknown name is a hard error (statically checkable, now that fragments are constructor/`updateOptions`-only — see Options). Arguments live **only** in `parameters` — a named-object map, or a single node computing the whole arguments object (the dynamic-arguments mode, settled in Fragments); fragments have no positional form (per Operators). Legal modifiers per the reserved-key set, below.
+3. **Shorthand node** — contains exactly one **recognized** `$name` key (canonical operator name, symbolic alias, fragment, or custom operator name), optionally accompanied by reserved modifier keys (sibling rule, below), and nothing else. Payload disambiguated by JSON type (per Operators). Normalizes at parse into kind 1 or 2.
 4. **Reference string** — a string value matching the token rule. Fully settled in References; listed for completeness. References are values, not nodes — they carry no modifiers.
 5. **`literal` node** — grammatically an operator node / shorthand face, but a **parse boundary**: contents are never walked, validated or evaluated (per Operators and the implementation notes).
 6. **Plain literal** — every other object, array or primitive. Objects and arrays are traversed per deep evaluation (Options); unrecognized `$` keys/strings are inert with a `validate()` warning. **Reserved modifier keys do not make an object a node**: `{ fallback: 1 }` with no `operator` / `fragment` / recognized `$name` key is plain data. Two deliberate exceptions operate on plain object literals without making them nodes: `vars` (functional & consumed — see [`vars` on plain object literals](#vars-on-plain-object-literals)) and `//` (comments, stripped everywhere — see Comments).
 
-Non-plain objects in JS-authored expressions (class instances, `Date`s, functions) are pending — proposed treatment: opaque constants, never traversed.
+Non-plain objects in JS-authored expressions (class instances, `Date`s, functions) are **opaque constants**, never traversed — settled in [Non-plain-object values](#non-plain-object-values-opaque-constants), below.
 
 ### Static invocation names
 
@@ -541,7 +543,7 @@ The `$typo` contrast stands (per Operators): recognition is driven by *recognize
 - **MATCH branch hoisting** — branch values as arbitrary flat keys on the node, which is why v2 MATCH scans its own node for branch keys ([MATCH/operator.ts:39](../src/operators/MATCH/operator.ts#L39)) and a match value of `"operator"` or `"fallback"` resolves to the node's own reserved property. v3: branches live inside a dedicated parameter (name settled in `match`'s parameter pass).
 - **Fragment-parameter hoisting** — call-site arguments spread flat onto the call node ([evaluate.ts:115](../src/evaluate.ts#L115); defaults are even checked in both places, [evaluate.ts:88-94](../src/evaluate.ts#L88-L94)). v3: arguments only in `parameters`.
 
-Two consequences worth naming: branch keys inside the branches parameter are parameter *data*, outside the node namespace — a branch legitimately named `"operator"` or `"fallback"` is safe for the first time; and a misspelled parameter (`thn:` for `then:`) fails loudly at parse instead of being silently carried, which also buries the `type`-means-three-things overload for good (PLUS's mode selector is renamed, per Operators; `outputType` and its `type` alias are deleted outright — see the reserved-key set).
+Two consequences worth naming: branch keys inside the branches parameter are parameter *data*, outside the node namespace — a branch legitimately named `"operator"` or `"fallback"` is safe for the first time (amended by `match`'s parameter pass: safe from silent misreading, but as a *literal* map key it now fails loud under mode classification — edges and escape recorded in [v3-operator-parameters.md](v3-operator-parameters.md)); and a misspelled parameter (`thn:` for `then:`) fails loudly at parse instead of being silently carried, which also buries the `type`-means-three-things overload for good (PLUS's mode selector is renamed, per Operators; `outputType` and its `type` alias are deleted outright — see the reserved-key set).
 
 ### The reserved-key set
 
@@ -587,7 +589,7 @@ The generating rule: **a modifier that changes how the engine treats a node must
 | Key | Value status |
 |---|---|
 | `operator`, `fragment` | literal strings (per Static invocation names) |
-| `parameters` | structural map — argument *names* static, values expressions |
+| `parameters` | structural map — argument *names* static, values expressions — **or** a single node computing the whole arguments object (the dynamic-arguments mode — see Fragments; statically detectable, call-signature checks move to runtime) |
 | `vars` | structural map — var *names* static, values expressions (per the `vars` sections) |
 | `fallback` | **full expression** — evaluated lazily, only on failure; "fall back to `$data.default`" or a backup `http` call are intended uses; statically-constant fallbacks on root-level nodes additionally shield the evaluation timeout (see `fallback` semantics) |
 | `useCache` | **literal boolean only** — the cache lookup happens *before* evaluation; a dynamic value is incoherent |
@@ -604,7 +606,7 @@ v2's dynamically-evaluated `outputType` ([evaluate.ts:213](../src/evaluate.ts#L2
 | Class | Examples | Raised | `fallback` | Configuration-time detection |
 |---|---|---|---|---|
 | **Static** | unknown operator/fragment name, malformed node, unknown key, unresolved `$vars`/`$params`, fragment cycles, `maxDepth`/`maxNodes` | at parse/validation, before any evaluation begins | never caught | **guaranteed** — `validate()` reports every one |
-| **Runtime** | I/O failure (including a *per-request* timeout), runtime type-check failure, custom-function throw, `strictDataPaths` miss | during evaluation | always follows the fallback process | not possible (data-dependent) |
+| **Runtime** | I/O failure (including a *per-request* timeout), runtime type-check failure, custom-operator throw, `strictDataPaths` miss | during evaluation | always follows the fallback process | not possible (data-dependent) |
 | **Kill switch** | whole-evaluation `timeout`, `signal` | any time | cuts through fallbacks — rule 3's static-root exception only | n/a — caller-level, not expression errors |
 
 The contract: **if validation blesses an expression, no error it later produces can bypass the fallback process.** An error that escapes both `validate()` and `fallback` is by definition an engine bug. (v2 had no such partition — an invalid operator name was a runtime error that `fallback` could catch: [evaluate.ts:121-137](../src/evaluate.ts#L121-L137).)
@@ -637,7 +639,7 @@ The `//` key is a comment, legal anywhere in an authored expression — on nodes
 
 ### Name legality, not name style
 
-Author-chosen names — vars, fragment parameters, `as` bindings, and fragment/function/custom-operator registration names — have **no imposed style**: spaces, kebab-case and unicode are all legal; FigTree's audience shouldn't need to know what a programmer means by "identifier" (a camelCase *convention* may be recommended in docs; the engine doesn't care). One legality rule, shared by all of them and forced by the grammar rather than taste:
+Author-chosen names — vars, fragment parameters, `as` bindings, and fragment / custom-operator registration names — have **no imposed style**: spaces, kebab-case and unicode are all legal; FigTree's audience shouldn't need to know what a programmer means by "identifier" (a camelCase *convention* may be recommended in docs; the engine doesn't care). One legality rule, shared by all of them and forced by the grammar rather than taste:
 
 > A name is any non-empty string that does not contain `.`, `[` or `]` and does not start with `$`.
 
@@ -649,4 +651,297 @@ Considered and rejected: reserving `children` / `type` solely to emit pointed "r
 
 ### Non-plain-object values: opaque constants
 
-A JS-authored expression may contain values with no JSON representation — `Date`s, `Map`s, class instances, functions. Anything that is not a plain object or array is an **opaque constant**: never traversed, never validated, passed through by identity (and classified constant by the compile phase, so opaque-only subtrees take the identity short-circuit). This is an authoring-side rule only; at runtime the question doesn't arise — values *flowing through* an evaluation are never parsed (References §4), so a custom function or `http` client may return a `Date` and it flows through operators untouched, subject only to each operator's runtime type-check policy.
+A JS-authored expression may contain values with no JSON representation — `Date`s, `Map`s, class instances, functions. Anything that is not a plain object or array is an **opaque constant**: never traversed, never validated, passed through by identity (and classified constant by the compile phase, so opaque-only subtrees take the identity short-circuit). This is an authoring-side rule only; at runtime the question doesn't arise — values *flowing through* an evaluation are never parsed (References §4), so a custom operator or `http` client may return a `Date` and it flows through operators untouched, subject only to each operator's runtime type-check policy.
+
+---
+
+## Type, coercion & null policy — **Agreed**
+
+*The value domain, the no-implicit-coercion rule, truthiness, the null-policy vocabulary and its defaults, `convert`'s semantics (deferred here from Operators), and the shared stringification table. Per-parameter null-policy assignments are deferred to the per-operator parameter passes; the vocabulary and defaults they draw from are fixed here.*
+
+### The value domain
+
+FigTree values are exactly JSON's six types: `string`, `number`, `boolean`, `null`, `array`, `object`. Three consequences, each closing a v2 leak:
+
+- **`undefined` is not a value.** It is normalized away at every boundary where JS could produce one, following JSON-serialization semantics: an operator body (native or custom) returning `undefined` yields `null`; in a JS-authored expression `{ a: undefined }` is treated as the key being absent, and `[1, undefined, 3]` as `[1, null, 3]` — exactly what `JSON.stringify` would do. v2's `String(undefined)` → `"undefined"` rendering dies with it, and the `nullEqualsUndefined` machinery (already deleted under Options) loses its subject entirely: with `undefined` gone there is nothing left to equate.
+- **`NaN` and `±Infinity` are not values.** An operation whose result would be one **fails** instead — an ordinary runtime failure, fallback-catchable: division by zero stays an error (as v2 — [DIVIDE/operator.ts:21](../src/operators/DIVIDE/operator.ts#L21)), and numeric overflow (`pow(10, 400)`) or a failed conversion errors rather than emitting a value JSON can't represent. Nothing unrepresentable in JSON ever flows out of an operator.
+- **Opaque constants sit outside the domain** (per Node grammar): they satisfy only the `any` metadata type, so a typed parameter receiving one fails the runtime type-check. Honest cost, recorded: v2's accidental `Date > Date` comparison (working via JS `valueOf` coercion) dies — date comparison is the date plugin's job. `equal`'s treatment of opaque values is settled in its parameter pass.
+
+### Metadata type vocabulary
+
+v2's `ExpectedType` shape survives ([typeCheck.ts:10-22](../src/typeCheck.ts#L10-L22)) minus `undefined`: the basic types (`string` / `number` / `boolean` / `array` / `object` / `null` / `any`), unions, and literal unions — plus one addition, **`integer`**, a refinement of `number` for parameters like `round`'s `decimals` and substring indices. One table, two moments: `validate()` checks literal parameters against it at parse (most parameters in practice), and the runtime type-check applies the same table to dynamic values as they arrive. `any` admits every domain value (including `null`) plus opaque constants.
+
+### No implicit coercion
+
+**A value of the wrong type is a runtime type-check failure — never a guess.** The only cast is the explicit `convert` operator; number-mining belongs to `regex` extract. Where v2 coerced, v3 errors:
+
+| Site | v2 | v3 |
+|---|---|---|
+| `{ $plus: [1, "2"] }` | `"12"` — JS `+` fallthrough ([PLUS/operator.ts:35](../src/operators/PLUS/operator.ts#L35)) | runtime type error: mixed types |
+| arithmetic operands | JS coercion | numbers only |
+| `>` `>=` `<` `<=` | JS relational on anything | operands must be homogeneous — both numbers or both strings (plain codepoint order: deterministic, locale-independent — config files travel); anything else errors |
+| `outputType: 'number'` on `"abc4.5xyz"` | regex-mines `4.5` ([helpers.ts:181-191](../src/helpers.ts#L181-L191)) | deleted with `outputType`; `convert` parses strictly, `regex` extracts |
+| rendering `undefined` / objects into strings | `"undefined"`, `"[object Object]"` | see the stringification table |
+
+**Equality is deliberately total** — the one place "wrong type" is an answer, not an error: `equal` compares any two domain values, deep structural (v2's dequal semantics, key-order-insensitive), and a cross-type comparison returns `false` (`1` ≠ `"1"` — asking is legitimate; the answer is no). No coercion; `caseInsensitive` remains a string-only parameter (details in its pass).
+
+**`and` / `or` / `not` return actual booleans, never operands.** JS-style value-selecting `or` is not carried over — value selection is `firstOf`'s job.
+
+### Truthiness
+
+Condition positions — `if.condition`, `and`/`or`/`not` operands, the `filter`/`find`/`some`/`every` predicates — apply a single named rule, **FigTree truthiness**:
+
+> Falsy: `false`, `null`, `0`, `""`. Everything else — including `[]` and `{}` — is truthy.
+
+That is JS parity restricted to the v3 domain (`undefined` and `NaN` don't exist to be falsy), adopted deliberately and *held loosely*: whether empty containers (`[]`, `{}`) should also read as falsy is **explicitly marked for revisiting** once real v3 usage accumulates. The enabler is an implementation requirement (recorded in the implementation notes): one shared `isTruthy()` consumed by every truthiness site, so a future refinement is a one-function change applied globally.
+
+The design driver, recorded: bare presence conditions must work — `condition: "$data.user.name"`, not `{ operator: 'notEqual', values: [<getData>, null] }` ceremony. This is the payoff of missing-→-null (References) landing in condition position. v2 already used raw JS truthiness ([CONDITIONAL/operator.ts:21](../src/operators/CONDITIONAL/operator.ts#L21), [AND/operator.ts:11](../src/operators/AND/operator.ts#L11)), so this is continuity — the change is that it's now a *defined* rule rather than an accident of the host language.
+
+Known JS-parity gotcha, recorded honestly: `0` is falsy, so a bare numeric condition (`condition: "$data.count"`) reads a genuine zero as false — numeric tests should be written explicitly (`{ $greaterThan: ["$data.count", 0] }`). Part of what the revisit marker is for.
+
+**`firstOf` is deliberately not truthiness-based**: it skips `null` only. Two tools, two questions — `firstOf` asks "is anything there?" (absence), truthiness asks "is it meaningful?" — so `{ $firstOf: ["", "backup"] }` yields `""` while `""` in condition position is falsy.
+
+### Null policy
+
+The reference layer is uniform (References: missing → `null`); how nulls behave *inside* operators is declared per-parameter metadata, drawn from a fixed vocabulary of three policies:
+
+| Policy | Meaning | Typical holders |
+|---|---|---|
+| `propagate` | null input → the node resolves to `null`; the operator body never runs (SQL-style) | value inputs: arithmetic, string operators, `length`, ordering comparisons, `convert` (except `to: 'boolean'`) |
+| `value` | null is an ordinary value, handled by the operator's own declared semantics | `equal`/`notEqual` (comparable), `firstOf` (its whole job), `buildString` (renders `""`), condition positions (falsy), `sql` bind values (SQL `NULL`) |
+| `reject` | null is a runtime type error | inputs with no meaningful degradation: `http.url`, `sql.query` |
+
+**The default for value inputs is `propagate`** — agreed as the starting assumption, with each parameter pass re-confirming or overriding it explicitly. What sells it is the composition gradient: `{ $greaterThan: ["$data.age", 18] }` with `age` missing → `null` → condition falsy → `else` branch; a sum with a missing operand → `null` → `buildString` renders `""`. Absence degrades along one gradient with zero fallback boilerplate; the masking risk is the one already accepted and mitigated in References (`strictDataPaths`, `validate()` against sample data, `trace`).
+
+**`equal`/`notEqual` treat null as a comparable value** — the loud, deliberate asymmetry (SQL propagates on `=` too, which is why it needs `IS NULL`): `null` = `null` → `true`, null vs anything else → `false`. Required by the blessed is-set idiom `{ $notEqual: ["$data.x", null] }`, already used in this spec's own examples.
+
+#### Optional parameters: null means unset
+
+**A null arriving at an optional parameter whose declared type does not include `null` behaves exactly as if the parameter were omitted** — the layered defaults chain applies (per-node value → instance `operatorDefaults` → metadata default). The motivating case: `{ operator: 'round', value: '$data.price', decimals: '$data.settings.precision' }` with the setting unset. Under this rule the declared default applies — the only sensible outcome; under `propagate` a missing *setting* would nullify a present *value*; under `reject` every dynamically-sourced setting needs `{ $firstOf: [..., <restated default>] }` armour, forcing authors to restate library defaults inline — restatements that go stale when metadata defaults or `operatorDefaults` change. Null-means-unset gives dynamic settings the same defaults story as static ones.
+
+**The opt-out is the type declaration**: a parameter whose declared type includes `null` receives it as a value — the deciding question for each parameter pass is simply "is null a valid input *for this parameter*?", and the answer is machine-readable metadata, visible to the editor. Known case needing the opt-out: `get`'s `default` parameter, where `default: null` legitimately means "give me null instead of throwing" under `strictDataPaths: true`.
+
+**Boundary**: this rule governs operator *parameters* only. Reserved node keys are not parameters — `fallback: null` keeps its agreed meaning ("resolve to null on failure"), which timeout shielding already leans on (Node grammar).
+
+### `convert` semantics
+
+The strictness and null handling deferred from Operators. No single generating principle — "lossless conversions only" was considered and rejected as an unnecessary constraint; each target is decided on its merits, and every conversion failure is an ordinary runtime failure (fallback-catchable). Literal `to` validates at parse; dynamic `to` lands on the runtime check (per Operators).
+
+| `to` | Rule | Fails on | Null |
+|---|---|---|---|
+| `number` | number: identity; string: strict full-string numeric parse, surrounding whitespace allowed (`"5.5"` ✓, `" 42 "` ✓, `"5 grams"` ✗ — that's `regex` extract's job); boolean: `true` → `1`, `false` → `0` | non-numeric strings, arrays, objects | propagates |
+| `string` | string: identity; number, boolean: the stringification table | arrays, objects (JSON-stringifying is a different intent — a possible later `to` value) | propagates |
+| `boolean` | **carve-out first**: the strings `"true"` / `"false"` (case-insensitive, trimmed) parse to their named boolean — `"false"` → `false`; everything else: `isTruthy()` | never — total | **consumed**: `null` → `false` |
+| `array` | array: identity; anything else: wrap as `[value]` | never — total | propagates |
+
+The boolean row is the deliberate exception on both axes. It consumes null rather than propagating because truthiness is *defined* on null — there is no null reading of "convert to number" that isn't invention, but null-is-falsy is already the rule everywhere else. And the carve-out exists because stringly-typed booleans are endemic in config-adjacent data (checkbox serializations, query params): pure truthiness would make `convert("false", 'boolean')` return `true` — Python's `bool("False")` footgun, a standing bug-report generator. Cost: one special case, documented as such.
+
+### Stringification: one rendering table
+
+Wherever a value must be rendered as text — `buildString` substitutions, `join` elements, `match` branch-key comparison, and the scalar rows of `convert` `to: 'string'` — one shared rule applies:
+
+| Value | Renders as |
+|---|---|
+| string | itself |
+| number | decimal form (JS `String(n)`) |
+| boolean | `"true"` / `"false"` |
+| null | `""` — generalizing the `buildString` rule already agreed in References |
+| array, object | **runtime type error** — v2's `"[object Object]"` ([STRING_SUBSTITUTION/operator.ts:55](../src/operators/STRING_SUBSTITUTION/operator.ts#L55)) dies; drill into the structure or `join` it explicitly |
+
+One deliberate distinction: `convert` `to: 'string'` **propagates** null instead of rendering it — `convert` is a value pipe, and keeping the null intact preserves downstream absence tooling (`firstOf` after a `convert` still works). The `""` rendering applies where text *must* be produced: `buildString` has to put something at the substitution site.
+
+`match` compares its match value against branch keys via this canonical string form (branch keys are JSON object keys, hence always strings): numbers and booleans match their rendering (`1` matches the key `"1"`), and a null match value matches no branch — what happens then (error vs a default branch) is `match`'s parameter pass. v2 precedent: MATCH already matched via implicit JS key-stringification ([MATCH/operator.ts:32](../src/operators/MATCH/operator.ts#L32)); v3 makes the rule explicit.
+
+### Aggregates and empty input
+
+Restating the assessment's rule as policy: **an empty aggregate input is an error, not an identity value** — v2's roulette (empty PLUS returns `[]`, empty MULTIPLY returns `0`) dies. A literal empty array fails at validation; a dynamically-empty input is a runtime failure. Per-operator specifics (whether any aggregate earns an exception) belong to the parameter passes.
+
+### `runtimeTypeCheck: false` — scope
+
+With strictness now being semantics, the option (Options, default `true`) can only skip the **pre-execution parameter checks** — the validation layer that produces good errors. Semantic type dispatch is not skippable: `plus` still inspects types to choose add/concat/merge, truthiness still applies, equality is still strict. Off means out-of-contract inputs produce undefined behaviour (raw JS results or uglier errors thrown from operator bodies) — it is **not** a v2-compatibility coercion mode; v3 has no coercion mode.
+
+### Deferred
+
+- Per-parameter null-policy assignments (vocabulary and defaults fixed here). Debatable cases flagged for their passes: `http.body` (null = no body, or a literal JSON `null` payload?), null values in `http.query` (omit the param vs `?x=null`), null values in `buildObject` (keep the key vs drop it), `join`'s null elements (render `""` vs skip element and delimiter).
+- `match` behaviour when no branch matches (including the null match value) → `match`'s parameter pass.
+- Opaque values in `equal` (dequal precedent gives sane `Date`/`RegExp` behaviour) → its parameter pass.
+- The empty-container truthiness question (`[]` / `{}` falsy?) — deliberately left open for revisiting once v3 usage accumulates; the shared-function abstraction is the enabler.
+
+---
+
+## Fragments — **Agreed**
+
+*The definition shape, parameter declarations, the two call-site argument modes, evaluation order, recursion policy, registration-time validation, and tooling metadata. Much of the fragment story was settled in other areas and is only cross-referenced here: invocation faces and the named-object-only rule (Operators), the `$params` namespace and sealed scoping (References), call-node modifiers / no-hoisting / static invocation names (Node grammar), registration-only supply and merge semantics (Options).*
+
+### The definition shape
+
+```ts
+fragments: {
+  getCountryData: {
+    expression: {                                           // required — any expression
+      $http: {
+        url: {
+          $buildString: [
+            'https://restcountries.com/v3.1/name/%1?fields=%2',
+            '$params.country',
+            '$params.fields',
+          ],
+        },
+      },
+      fallback: null,
+    },
+    parameters: {                                           // optional — declarations, keyed by name
+      country: { type: 'string' },                          // required parameter (the short spelling)
+      fields: { type: 'string', default: 'name,capital' },  // optional via default
+    },
+    description: 'Fetch a country record from restcountries.com', // optional
+    metadata: { backgroundColor: '#B2E0FF', team: 'config-admins' }, // optional, opaque — see Tooling metadata
+  },
+}
+```
+
+- **The wrapper is mandatory**, even for a zero-parameter fragment (`{ expression: {…} }`). A bare-expression form was considered and rejected: it becomes ambiguous the moment the expression itself contains an `expression` key — the same camouflage trap as v2's `metadata` key living *inside* the fragment expression ([types.ts:113-117](../src/types.ts#L113-L117)). A definition that isn't a wrapper object, or that lacks `expression`, is a registration error — the shape rule is loud.
+- `expression` is any expression — an operator node, fragment call, reference string, or constant.
+- The object-keyed `parameters` form retires the v2 metadata drift (README documented an object keyed by `$`-prefixed names; [types.ts:156-162](../src/types.ts#L156-L162) declared an array of `{ name, … }`). Object-keyed wins: fragments are named-only (per Operators), so an array's ordering was dead weight.
+
+### Parameter declarations
+
+`parameters` is an object keyed by parameter name. Names follow the shared legality rule and the flat reservation of node keys (Node grammar), checked at registration. Each declaration:
+
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| `type` | metadata type vocabulary (Type area — incl. `integer`, unions, literal unions) | `any` | drives parse-time checks on literal arguments and runtime checks on dynamic ones, exactly as for operator parameters |
+| `required` | boolean | `true` | see the optionality rule |
+| `default` | constant value | — | must satisfy the declared type (registration error otherwise); presence implies optional |
+| `description` | string | — | tooling/docs |
+| `metadata` | `Record<string, unknown>` | — | opaque per-parameter tooling bag, mirroring the definition-level `metadata` (§ Tooling metadata) — engine never reads it, `getFragments()` returns it verbatim; added by the parameter passes ([v3-operator-parameters.md](v3-operator-parameters.md) § conventions) |
+
+**Optionality rule: a parameter is required unless it declares a `default` or `required: false`.** The two are not synonyms — optional-without-default is legal and coherent: an omitted (or unset, below) parameter with no default makes `$params.x` yield `null`, exactly like a missing `$data` path, and the body composes with the standard null gradient (`propagate` through value operators, `""` in `buildString`, falsy in conditions, `firstOf` for local defaulting). Declaring `required: true` *and* a `default` is a contradiction (the default could never apply) → registration error, matching the `operatorDefaults` validation posture.
+
+**Null-means-unset applies, same rule as operator parameters** (Type area): a `null` arriving at an *optional* parameter whose declared type does not include `null` behaves as if the parameter were omitted — the default applies, or `null` if there is none. The opt-out is the type declaration (`type: ['string', 'null']` receives null as a value). A null at a *required* parameter whose type excludes it is a runtime type error, as for operators.
+
+The declaration is what licenses the null reading: `$params.x` naming an **undeclared** parameter remains a static registration error (References) — absence semantics apply only to declared-optional parameters.
+
+**`default` is a constant value, not an expression** — visible to tooling verbatim, type-checked at registration, never evaluated. A *computed* default is written in the body: declare the parameter optional with no default and use `{ $firstOf: ['$params.region', <computed>] }`. (The escape has to go through an optional-*without*-default declaration — with a declared default, null-means-unset would substitute it before the body ever saw the null.)
+
+### Call-site semantics: two argument modes
+
+Every call is in exactly one of two modes, decided statically at parse by the standard node-recognition grammar — `validate()` and the editor always know which they're looking at. A `parameters` value that is neither a plain object nor a node (an array, a number) is a hard parse error.
+
+**Static arguments — the default face.** `parameters` is a plain object: argument names static, values expressions (the Node-grammar rule, unchanged for this mode).
+
+- Full static validation of the call signature: a missing required parameter or an unknown argument name is a parse/`validate()` error — typo-catching, matching the no-hoisting posture; literal argument values type-check at parse.
+- Dynamic argument values land on the runtime type check as they arrive, governed by `runtimeTypeCheck` exactly as operator parameters are.
+- **Arguments evaluate lazily, memoized per call instance**: an argument evaluates at most once, on the body's first `$params` reference to it; parallel branches share the one in-flight evaluation; an argument referenced only in an `if` branch that never runs never evaluates at all. The lazy-branch principle extended — same semantics and suggested mechanism as `$vars` (References; implementation notes). Deliberate change from v2's evaluate-all-parameters-up-front ([evaluate.ts:96](../src/evaluate.ts#L96)). Runtime checks on a lazy argument fire at first reference, when its value first exists.
+- **Argument expressions evaluate in the caller's scope** — they are part of the calling expression, so `parameters: { country: '$vars.c' }` reads the *caller's* vars. The sealed boundary (References) is the body: it sees argument *results* via `$params`, never the caller's scope. Laziness doesn't change this — the deferred evaluation closes over the caller's scope.
+- A failing argument surfaces at the body's first reference to it and propagates per `fallback` rule 1 — catchable by a fallback inside the body or on the call node. Rejections memoize like vars (the rule-5 corner applies unchanged).
+
+**Dynamic arguments — the deliberate escape.** `parameters` is itself a node — an operator node, fragment call, shorthand face, or reference string — and the whole arguments object arrives from evaluation: `parameters: '$data.formResponses'`, a `buildObject`, a row from `sql`. This deliberately amends the Node-grammar reserved-key rule (previously structural-map only; the amendment is recorded there) and follows the pattern `convert.to` established: literal validates at parse, dynamic lands on the runtime check. v2 precedent: the whole `parameters` value is already evaluated today ([evaluate.ts:96-99](../src/evaluate.ts#L96-L99)), and the use case is real — a form response or DB row already shaped as the arguments object.
+
+- **Statically detectable.** Disambiguation is sound because declared parameter names cannot start with `$` (name legality) and `operator` / `fragment` are barred as parameter names (flat reservation) — an object in `parameters` position that classifies as a node can only *be* a node; a reference string likewise. The editor can badge dynamic-argument calls.
+- **Call-signature checks move to runtime**: the evaluated result must be an object (else runtime type error); a missing required parameter is a runtime error; type mismatches are runtime type errors; null-at-optional means unset, as always. All ordinary runtime failures, fallback-catchable.
+- **Extra keys are ignored** — a recorded asymmetry vs the static-map hard error, and a principled one: declared parameters define everything a body can read (`$params` must name a declaration), so unread keys are inert; runtime data contains no author typo to catch, and erroring would kill the pass-the-whole-form-response use case.
+- **Evaluation is eager and whole-object** — there is no per-argument expression to lazily address. The one exception to lazy arguments, inherent to the mode.
+
+**Shorthand faces** (extending the payload table in Operators):
+
+| Payload | Meaning |
+|---|---|
+| plain object | static named arguments — `{ $getCountryData: { country: 'NZ' } }` |
+| node object | dynamic arguments — `{ $getCountryData: { $buildObject: […] } }` |
+| anything else — including a reference string | **error** — fragments have no single-value or positional form |
+
+A reference-string payload (`{ $frag: '$data.formValues' }`) stays an error even though it *could* be read as dynamic arguments — it visually resurrects the banned single-value form ("is this the arguments object, or the value of one argument?" is exactly the ambiguity that killed that form). The reference case writes canonical form: `{ fragment: 'getCountryData', parameters: '$data.formValues' }`.
+
+Zero-parameter calls: `{ fragment: 'myFrag' }` (no `parameters` key), or shorthand `{ $myFrag: {} }`.
+
+### Composition & recursion
+
+- Fragments freely reference other fragments (and custom operators — one invocation namespace, per Operators).
+- **Recursion is banned** — recorded as a deliberate decision, not a side effect of the error-partition table: a cycle in the fragment reference graph (any fragment transitively reaching itself) is a **registration error**, which necessarily excludes *guarded* recursion too — a fragment calling itself behind a terminating `if` (a tree-walker, say) cannot be written. Rationale: FigTree is a config-logic sandbox; admitting recursion means runtime depth budgets and a halting story — fragments become a programming language. Marked for revisit only if a concrete use case materializes.
+- The reference graph is fully static regardless of argument mode: fragment *names* are always literal strings (Node grammar), so dynamic arguments don't blunt cycle detection.
+
+### Registration-time validation
+
+Fragments are statically checkable at registration (the registry is stable by construction — Options), so **`new FigTree()` and `updateOptions()` throw on a bad fragment, not the first evaluation that calls it**: unknown operator/fragment names in the body, undeclared `$params` references, malformed nodes, name legality/reservation violations, type-invalid defaults, required+default contradictions, cycles. If registration succeeds, a fragment call can only fail at runtime for data-dependent reasons — the error-partition contract (Node grammar) extended to the registry.
+
+- **Batch semantics**: all fragments supplied in one constructor / `updateOptions()` call validate together — a fragment may reference any fragment in the same batch or already registered, regardless of key order.
+- **Cross-call ordering**: referencing a fragment that will only be registered in a *later* `updateOptions()` call is an error — register dependencies first, or in one batch.
+- **Replacement re-validates the registry**: re-supplying a name (replace-wholesale, per Options) can break dependents or close a cycle through existing fragments, so the whole registry is re-checked. Likewise an `updateOptions()` that changes the `operators` array re-validates all fragment bodies — a body using a now-absent operator fails there, loudly, not at the next `evaluate()`.
+- **Per-call `excludeOperators` edge**, recorded: exclusion is dynamic, so a body using an operator excluded for one call is necessarily a *runtime* failure of that call (fallback-catchable) — registration cannot see it.
+
+### Tooling metadata
+
+- `description` is the one universal top-level field — consumed by generated docs, editor labels and `validate()` messaging.
+- **`metadata?: Record<string, unknown>` is an opaque bag**: the engine never reads it; `getFragments()` returns it verbatim. v2's editor display hints (`textColor` / `backgroundColor` — [types.ts:100-101](../src/types.ts#L100-L101)) move here, becoming keys that [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) defines for itself; hosts can carry anything else the same way (organisational ownership, versioning, category tags). Constraint recorded for Extensibility: custom-operator definitions adopt the same `description` + opaque-`metadata` convention.
+- `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their *effective* optionality and defaults, and the `metadata` bag.
+
+### v2 → v3 disposition
+
+| v2 mechanism | Fate |
+|---|---|
+| Bare `$name` placeholder strings, spread into the merged node ([evaluate.ts:115](../src/evaluate.ts#L115)) | **Deleted** → declared parameters + `$params.name` (References) |
+| `metadata` key camouflaged inside the fragment expression ([types.ts:113-117](../src/types.ts#L113-L117)) | **Deleted** → sibling keys in the wrapper: `{ expression, parameters, description, metadata }` |
+| Parameter metadata: array in types.ts, `$`-keyed object in README (drifted) | **Unified** → object keyed by (unprefixed) name |
+| Root-level parameter hoisting on call nodes | **Deleted** (Node grammar) |
+| Dynamic fragment *names* — the name is itself evaluated ([evaluate.ts:96-99](../src/evaluate.ts#L96-L99)) | **Deleted** → literal strings only (Node grammar) |
+| Whole-`parameters`-object evaluation (same lines) | **Kept, made explicit** → the dynamic-arguments mode: statically detectable, runtime-checked, extras ignored |
+| All parameters evaluated eagerly before substitution | **Redesigned** → lazy + memoized per call instance (static mode) |
+| No recursion guard — self-reference loops forever (assessment §"no recursion guard") | **Fixed** → cycles are registration errors; recursion deliberately banned |
+| Per-call `fragments` option | **Deleted** (Options — registry stability) |
+| `Fragment` definition may be `null` ([types.ts:117](../src/types.ts#L117)) | **Deleted** → definitions are wrapper objects; the shape rule is loud |
+| `textColor` / `backgroundColor` top-level fields | **Moved** → opaque `metadata` bag |
+
+### Deferred
+
+- `getFragments()` exact return shape → Evaluator methods (content fixed here).
+- Fragment-*result* caching (`useCache` on call nodes) → already deferred in Node grammar; adding later is non-breaking.
+- A declared return type (`returns`) for editor/validation use → maybe-later, on demand.
+- Recursion ban → revisit only if a concrete use case appears.
+
+---
+
+## Extensibility — **Partial**
+
+*Agreed here: the single mechanism (the v2 `functions` tier is dropped), the first-class principle, naming & aliases, the plugin story, and the sequencing of what remains. The full operator contract — the `defineOperator()` definition shape and the runtime interface operator bodies are written against — is deliberately deferred until after the per-operator parameter passes (see Sequencing, below).*
+
+### One mechanism: `defineOperator()`
+
+**The v2 `functions` option is deleted with no v3 replacement — there is no custom-function tier.** `defineOperator()` is the only extension API; its output registers through the `operators` array (Options) into the single invocation namespace, under the shared collision, legality and reservation rules.
+
+Rationale, recorded. Custom functions and custom operators were never different in kind — both are host-authored JS baked into the embedding codebase, deliberate holes in the sandbox wall — they differed only in declared contract. The two-tier system bought registration brevity for the host developer, once; it cost a permanent second grammar (positional-only call faces and args-spreading rules), a permanently weak validation tier, and a generic "mystery function" editor face for exactly the audience v3 most serves. With the tier gone, `getOperators()` is total: everything invocable carries full metadata. Strictness cannot be *forced* — a host can still declare a single `any`-typed variadic parameter and spread it into a plain function, rebuilding the sugar in host code — but the paved path is now full declaration; laxity is something a host constructs deliberately, never a sanctioned tier. And regret is asymmetric (the same argument as fragment-result caching): a convenience wrapper could be added later as a pure addition; a shipped weak tier couldn't be removed until v4.
+
+### The first-class principle
+
+A `defineOperator()` operator is **indistinguishable from a native operator** — the core operators are themselves definitions of the same shape, entering through the same array. Consequences:
+
+- Same runtime treatment: the same evaluation context and machinery, the same engine-enforced boundary guarantees (runtime type checks, null-policy enforcement, `undefined` → `null`, the finite-number guard), the same laziness capabilities where the contract declares them.
+- Participation in everything keyed on operator identity, no carve-outs: `operatorDefaults`, `excludeOperators`, `getOperators()`, `useCache` metadata defaults, parse-time `validate()` checking of literal parameters.
+- `defineOperator()` validates at registration that a definition satisfies the full operator contract — malformed definitions fail loudly there, matching the fragment registration posture.
+- Definitions adopt the same `description` + opaque-`metadata` convention as fragments (constraint recorded there).
+
+### Naming & aliases
+
+Registration names follow the shared legality rule and reservation set (Node grammar) and the collision check across the one namespace (Operators §4–5). A custom operator may declare **one alias**, like natives; the single-character-symbolic restriction on the core set is a *convention* for custom operators — encouraged in docs, not enforced. Aliases are collision-checked exactly like names and normalize away at parse: the canonical AST contains only canonical names.
+
+### Plugins need no machinery
+
+A "plugin" is a published array of `defineOperator()` definitions — or a factory function closing over configuration or clients, the `httpOperators(client)` pattern — consumed through the `operators` array. No plugin API, no lifecycle hooks, no registration ceremony beyond the array; the future date/duration package (Operators, deferred) ships this way.
+
+### Taxonomy, recorded
+
+Fragments are **config-level** shortcuts — authored in FigTree itself, by expression authors, registered as expressions. Custom operators are **host-level** capability extensions — authored in JS by the embedding developer. They share the invocation namespace and shorthand grammar but are different kinds of thing. v2's "custom functions" were simply custom operators with an undeclared contract; that tier is gone.
+
+### Migration
+
+The migration doc carries a **prescriptive** wrapper recipe for v2 `functions` users — a defined shape (e.g. a single variadic `args` parameter spread into the wrapped JS function), not a loose suggestion — so the expression converter can mechanically rewrite v2 CUSTOM_FUNCTIONS call sites against it. Per-host improvised naming would make call-site conversion non-mechanical.
+
+### Sequencing: the contract is settled last, by induction
+
+The `defineOperator()` definition shape *is* the engine's core operator specification — every native operator is an instance of it. Rather than being fixed up front, it is settled **after the per-operator parameter passes**, which serve as requirements-gathering: each pass either fits the declaration vocabulary already agreed (metadata types, null policies, positional mapping, layered defaults) or exposes a missing capability. **Contract-ledger discipline**: a capability a pass needs — lazy parameters for `if`'s branches, evaluate-with-bindings for the iterators, evaluation-context access for `get`, abort-signal support and caching for I/O — is recorded as a *contract requirement*, never as that operator's private quirk. The ledger lives in [v3-operator-parameters.md](v3-operator-parameters.md). The Extensibility contract is then written as the codification of the ledger, and the first-class principle is provably honest: the contract is exactly what core needed.
+
+### Deferred
+
+- The full `OperatorDefinition` shape (declarative half) and the operator runtime interface (what an operator body receives: parameters post-checks, context, the lazy-parameter interface) → after the parameter passes, per Sequencing.
+- Whether a declared result type (`returns`) ships in v3.0 or stays maybe-later (gradual return-type inference) → with the contract.
+- `defineOperator()` TypeScript ergonomics (parameter-type inference for the body) → with the contract.

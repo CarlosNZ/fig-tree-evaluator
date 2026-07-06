@@ -14,7 +14,7 @@ The spec makes deep evaluation the only semantics ([v3-api.md → Deep evaluatio
 
 3. **Compile plain literals to constants-with-holes.** A plain object/array literal containing evaluable descendants compiles to a *template*: the constant skeleton plus a list of `(path, compiledNode)` holes. Evaluating the literal = evaluate all holes (concurrently, the way `evaluateArray` already works in v2) and splice the results into a copy of the skeleton. A literal with zero holes — the fully-constant case — evaluates as **identity**: return it as-is without touching it.
 
-4. **Cache the compiled form.** Key the parse cache on input identity (`WeakMap` keyed on the object reference) with a fallback path for fresh/serialized inputs. The dominant real-world pattern (Conforma) is the same config object evaluated many times against different `data` — after the first call, every subsequent evaluation skips recognition entirely. This is also why the spec forbids per-call `operators`, `fragments` and `functions`: the compiled form bakes in registry resolution (which `$key`s invoke, which are inert), so the parse cache is only sound against a stable registry — and why an `updateOptions()` call that changes the invocable registry must invalidate the parse cache.
+4. **Cache the compiled form.** Key the parse cache on input identity (`WeakMap` keyed on the object reference) with a fallback path for fresh/serialized inputs. The dominant real-world pattern (Conforma) is the same config object evaluated many times against different `data` — after the first call, every subsequent evaluation skips recognition entirely. This is also why the spec forbids per-call `operators` and `fragments`: the compiled form bakes in registry resolution (which `$key`s invoke, which are inert), so the parse cache is only sound against a stable registry — and why an `updateOptions()` call that changes the invocable registry must invalidate the parse cache.
 
 ### Cost model
 
@@ -31,6 +31,30 @@ The spec makes deep evaluation the only semantics ([v3-api.md → Deep evaluatio
 - **Per-evaluation context.** Hole evaluation threads the same frozen per-evaluation context (merged options/data, `vars` scope chain, abort signal) as any other node evaluation; a literal's holes are siblings for concurrency purposes, like array elements.
 - **`literal` boundaries.** `literal` contents must be excluded at *parse* (never walked, never validated), not merely skipped at evaluation — otherwise `maxNodes`/unknown-operator checks would fire inside quoted data.
 - **Cache keying for non-identical inputs.** `WeakMap`-on-identity misses when callers rebuild the config object each call (e.g. fresh `JSON.parse` per request). A bounded content-keyed cache layer (hash of the serialized input) could sit behind the identity cache if this proves common; measure before adding.
+
+## Truthiness is one function
+
+The spec defines FigTree truthiness once and marks the empty-container question for revisiting ([v3-api.md → Truthiness](v3-api.md#truthiness)). The implementation requirement that enables the revisit: a single shared `isTruthy(value)` consumed by *every* truthiness site — `if.condition`, `and`/`or`/`not`, the `filter`/`find`/`some`/`every` predicates, and `convert`'s `to: 'boolean'` target (applied after the `"true"`/`"false"` string carve-out). No operator body re-implements the falsy check inline; refining the falsy set later must be a one-function change that applies globally.
+
+## Null policies and boundary normalization live in the engine, not operator bodies
+
+Two enforcement points suggested by the Type/coercion area, both engine-level so metadata stays honest (the same argument as `positionalParams` replacing 24 `parseChildren` functions):
+
+- **Null-policy enforcement from metadata.** Each parameter's declared policy (`propagate` / `value` / `reject`, plus null-means-unset on optionals) can be applied generically by the engine *before* the operator body runs: propagate short-circuits the node to `null`, reject raises the runtime type error, unset substitutes the layered default (per-node → `operatorDefaults` → metadata). Operator bodies then only ever see nulls on parameters declared `value` — hand-coded null checks inside operators should be a smell in review.
+- **Boundary normalization.** `undefined` → `null` normalization happens at the engine's operator-result boundary (JSON-serialization semantics for JS-authored object values and array elements are handled once, at parse). A shared finite-number guard at the same boundary converts would-be `NaN`/`±Infinity` results into proper runtime failures with good messages, instead of each math operator policing its own output.
+
+## Fragment machinery rides existing mechanisms
+
+Two suggestions from the Fragments area ([v3-api.md → Fragments](v3-api.md#fragments--agreed)), both reusing machinery already described above:
+
+- **Lazy arguments are the vars mechanism.** A fragment call instance is a scope object; static-mode arguments enter it as unevaluated thunks alongside the body's own `vars`, with the same promise memoization (the first `$params` reference stores the in-flight Promise; parallel references share it; rejections memoize too, per fallback rule 5's corner). Dynamic-arguments mode degenerates gracefully: the arguments node evaluates eagerly to an object and its keys enter the same scope as already-resolved values, so the body-side `$params` lookup is identical in both modes.
+- **Bodies compile once, at registration.** The parse → compile pass (above) runs over each fragment body when it is registered — registration-time validation *is* that pass, plus the signature checks (declared parameters, defaults vs types, required+default contradictions) and cycle detection over the static fragment-reference graph. A call site then splices a precompiled body; nothing re-parses per call. Replacing a fragment definition or the `operators` array re-runs registry validation and invalidates the parse cache (already required — step 4 above).
+
+## `and` / `or` early resolution: a race with error parking
+
+The parallel-with-cancellation semantics ([v3-operator-parameters.md](v3-operator-parameters.md), batch 1) suggests this shape: evaluate all operands concurrently under a per-node abort scope (an `AbortController` derived from the evaluation signal — the same chain the kill switch already threads). As each operand settles: a **decisive** value (falsy for `and`, truthy for `or`) resolves the node, aborts the scope, and everything still in flight is ignored; a **failure** is *parked*, not raised; a non-decisive value just counts down. If all operands settle without a decider: any parked failure fails the node — deterministically the lowest-*index* parked failure, not the first to arrive — otherwise the identity result (`true` / `false`) returns. This makes the Kleene rule (an operand failure matters only if the result depends on it) fall out of the control flow rather than needing case analysis.
+
+Notes: JS can't preempt a synchronous operator body, so cancellation lands at node boundaries and via the client-threaded signal — which is where the time lives anyway (network). Parked failures that lose the race never surface in `mode: 'report'` (per the spec); `trace` records per-operand status (value / failed-discarded / cancelled). Whether *sibling* parked failures also appear in report output when the node does fail is a report-shape question for the Evaluator-methods area.
 
 ## Timeout shielding rides the compile artifact
 
