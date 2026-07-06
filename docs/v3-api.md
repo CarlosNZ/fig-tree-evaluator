@@ -417,7 +417,7 @@ A missing `$data` path resolves to `null` — absence is not failure. Genuine `n
 |---|---|---|
 | bare reference `"$data.x"` | — (yields `null`) | everyday reads |
 | `firstOf` | `null` **or** missing | defaults across multiple candidates |
-| `get` + `default` param | missing path **only** — a genuine stored `null` passes through unchanged | preserving the null/missing distinction; near-lossless converter target for v2 `getData` + `fallback` (v2's `extractProperty` likewise only threw on *missing*) |
+| `get` + `missingDefault` param (named in its pass, batch 6) | missing path **only** — a genuine stored `null` passes through unchanged | preserving the null/missing distinction; near-lossless converter target for v2 `getData` + `fallback` (v2's `extractProperty` likewise only threw on *missing*) |
 | `fallback` | node **failure** (including missing paths under `strictDataPaths: true`) | operations that actually errored |
 
 **Per-operator null policy**: the reference layer is uniform, and how each operator *treats* null is that operator's declared metadata policy (the cost of nulls-as-ordinary-values, paid explicitly). Recorded now: **`buildString` renders `null` as `""`** — a null from any source (missing data, null API field, `find` with no match) produces `"Phone: "`, never `"Phone: null"`. Other operators' null policies are settled in their parameter passes.
@@ -445,7 +445,7 @@ Replaces v2 alias nodes. Declared in a `vars` block (reserved node key; names ar
 
 ### `$element` / `$index` and `as`
 
-Bound by the iterator operators (`map`, `filter`, `find`, `some`, `every`), always to the **innermost** enclosing iterator. Nested iterators reach an outer binding by naming it: `as: 'order'` renames that iterator's bindings to `$order` (element) and `$orderIndex` (index), and disables `$element`/`$index` for that iterator (one way to refer to each thing). `as` names are validated against the reserved namespaces (long and short forms) and enclosing `as` names.
+Bound by the iterator operators (`map`, `filter`, `find`, `some`, `every`), always to the **innermost** enclosing iterator. Nested iterators reach an outer binding by naming it: `as: 'order'` renames that iterator's bindings to `$order` (element) and `$orderIndex` (index), and disables `$element`/`$index` for that iterator (one way to refer to each thing). `as` names are validated against the reserved namespaces (long and short forms) and enclosing `as` names. The parameter pass ([v3-operator-parameters-2.md](v3-operator-parameters-2.md), batch 5) fixes the binding scope precisely — the iterator's `each` subtree: the iterator's own `input`, and `vars` / `fallback` on the iterator node itself, are outside it.
 
 ```js
 {
@@ -719,7 +719,7 @@ The reference layer is uniform (References: missing → `null`); how nulls behav
 
 **A null arriving at an optional parameter whose declared type does not include `null` behaves exactly as if the parameter were omitted** — the layered defaults chain applies (per-node value → instance `operatorDefaults` → metadata default). The motivating case: `{ operator: 'round', value: '$data.price', decimals: '$data.settings.precision' }` with the setting unset. Under this rule the declared default applies — the only sensible outcome; under `propagate` a missing *setting* would nullify a present *value*; under `reject` every dynamically-sourced setting needs `{ $firstOf: [..., <restated default>] }` armour, forcing authors to restate library defaults inline — restatements that go stale when metadata defaults or `operatorDefaults` change. Null-means-unset gives dynamic settings the same defaults story as static ones.
 
-**The opt-out is the type declaration**: a parameter whose declared type includes `null` receives it as a value — the deciding question for each parameter pass is simply "is null a valid input *for this parameter*?", and the answer is machine-readable metadata, visible to the editor. Known case needing the opt-out: `get`'s `default` parameter, where `default: null` legitimately means "give me null instead of throwing" under `strictDataPaths: true`.
+**The opt-out is the type declaration**: a parameter whose declared type includes `null` receives it as a value — the deciding question for each parameter pass is simply "is null a valid input *for this parameter*?", and the answer is machine-readable metadata, visible to the editor. Known case needing the opt-out: `get`'s `missingDefault` parameter (named in its pass, batch 6), where `missingDefault: null` legitimately means "give me null instead of throwing" under `strictDataPaths: true`.
 
 **Boundary**: this rule governs operator *parameters* only. Reserved node keys are not parameters — `fallback: null` keeps its agreed meaning ("resolve to null on failure"), which timeout shielding already leans on (Node grammar).
 
