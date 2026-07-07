@@ -6,5 +6,23 @@
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended"
+  ],
+  "overrides": [
+    {
+      "files": ["src/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/v2-src", "**/v2-src/**"],
+                "message": "v3 source must not import from the frozen v2 engine (/v2-src). Mine it as data (Phase 15), never wire it in."
+              }
+            ]
+          }
+        ]
+      }
+    }
   ]
 }

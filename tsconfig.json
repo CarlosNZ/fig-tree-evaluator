@@ -69,7 +69,8 @@
     // "skipLibCheck": true /* Skip type checking of declaration files. */,
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file. */
   },
-  // "exclude": ["jest.config.js", "*.test.*"]
-  "files": ["src/index.ts"],
-  "include": ["src/types.ts"]
+  // v3 library source only. /v2-src (the frozen v2 engine) and test/ are excluded
+  // from this build config; the test runners use tsconfig.test.json / tsconfig.v2.json.
+  "include": ["src"],
+  "exclude": ["node_modules", "build", "v2-src", "test"]
 }

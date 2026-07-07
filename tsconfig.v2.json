@@ -1,0 +1,13 @@
+{
+  // Compile context for the frozen v2 corpus (jest.v2.config.js, on demand).
+  // Runs the immutable test/V2 suite against the frozen v2 engine in /v2-src.
+  // ts-jest uses transpile-only here (isolatedModules), so this config just
+  // supplies compiler options — module resolution to /v2-src is done by jest's
+  // moduleNameMapper, keeping every file in test/V2 byte-identical to v2.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["v2-src", "test", "codegen"],
+  "exclude": ["node_modules", "build"]
+}

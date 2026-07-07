@@ -54,13 +54,14 @@
   "scripts": {
     "setup": "yarn install && cd demo && yarn install",
     "test": "jest",
+    "test:v2": "jest --config jest.v2.config.js",
     "generate": "ts-node ./codegen/buildOperatorAliasReference.ts",
     "generateMassiveQuery": "ts-node ./codegen/generateMassiveQuery.ts",
     "getVersion": "ts-node ./codegen/getVersion.ts",
     "lint": "eslint . --ext .ts",
     "build": "rimraf ./build && rollup -c && rimraf ./build/dts",
     "compile": "rimraf ./build && tsc",
-    "prebuild": "yarn generate && yarn getVersion",
+    "prebuild": "yarn getVersion",
     "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || ts-node src/dev/playground.ts",
     "prepublishOnly": "yarn build"
   },

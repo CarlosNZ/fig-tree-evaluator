@@ -8,9 +8,11 @@ With a depth_limit of 30, the resulting expression tree has over 20,000 nodes
 */
 
 import { writeFileSync } from 'fs'
-import { EvaluatorNode, EvaluatorOutput, OperatorNode } from '../src/types'
-import { FigTreeEvaluator } from '../src/'
-import { isOperatorNode } from '../src/helpers'
+// v2-only tooling: reads the frozen v2 engine in /v2-src (the massiveQuery
+// corpus is a v2 asset; v3 has its own benchmark harness in Phase 16).
+import { EvaluatorNode, EvaluatorOutput, OperatorNode } from '../v2-src/types'
+import { FigTreeEvaluator } from '../v2-src/'
+import { isOperatorNode } from '../v2-src/helpers'
 
 const DEPTH_LIMIT = 30
 

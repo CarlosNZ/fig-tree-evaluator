@@ -41,8 +41,8 @@ demo/src/fig-tree-evaluator
 demo/src/expression-builder
 expression-builder/src/fig-tree-evaluator
 
-# Dev playground file
-src/dev/playground.ts
+# Dev playground file (v2 scratch, lives in the frozen v2 engine tree)
+v2-src/dev/playground.ts
 .npmrc
 temp.js
 .vscode/settings.json

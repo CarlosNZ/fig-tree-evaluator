@@ -1,0 +1,22 @@
+name: CI
+
+# Runs the v3 suite only (implementation plan 0.2). The frozen v2 corpus in
+# test/V2 is deliberately not run here — it is exercised on demand against
+# /v2-src via `yarn test:v2`, and never against v3 source.
+on:
+  push:
+    branches: [main, v3.0-dev]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: yarn test
