@@ -9,7 +9,7 @@
 - `reject` disappears from the declared policy vocabulary — it is *derived* (null absent from the type), never declared. A null policy is declared only where the type names `null`, and it is one of two words: `propagate` or `value`.
 - Every `propagate` cell in the passes therefore adds `| null` to its declared type — the tables below already show this, so a type column *without* null is a reject-by-type row.
 - `any` is defined as including `null` throughout, so `value`-policy cells on `any`-typed parameters already conform.
-- Element-wise policies (ledger #8) follow the same rule one level down: the *element* type names `null` where the element policy is `propagate`/`value`, while the parameter's own type omits it (whole-null stays #8's type error) — except the iterators' `input`, the one drafted whole-null `propagate` (#24), whose type honestly becomes `array | null`. The rule makes that provisional call visible in the metadata, which seems like a feature.
+- Element-wise policies (ledger #8) follow the same rule one level down: the *element* type names `null` where the element policy is `propagate`/`value`, while the parameter's own type omits it (whole-null stays #8's type error). The one drafted exception — the iterators' `input`, whole-null `propagate` (#24) — was flipped to reject at the group review, so container parameters are now uniform: whole-null is always a type error.
 
 ### Ruled: option (a) (Carl, 2026-07-07) — fixed point 3 (null-means-unset)
 
@@ -29,7 +29,8 @@ Recorded from Carl's eyeball passes; the entries below are updated to match. Any
 - **Renderers**: `buildString` and `join` gain **`nullValueDefault`** — a null substitution/element renders this value instead of `""`; composites keep the `<array>` / `<object>` placeholders unchanged (localizing those is deferred — another day). A broader `invalidValue` covering composites too was considered (round 2) and withdrawn (round 3): null is *not* invalid, and the two cells shouldn't share a knob.
 - **`not` stays `value`** (resolved): the flip to `propagate` was weighed against the cases in its entry and declined. The #9 family is answered by guidance instead — `validate()` and the docs explicitly point authors at `missingPathDefault` on the getter (or `nullValueDefault` on the comparison) wherever negation meets possibly-missing data.
 - **`pow` gains the alias `^`** (adopted — v3-api.md amended: the full set is now 13 symbols). `%` for `modulo` deliberately does *not* follow — it would promise JS's truncated remainder where v3's `modulo` is floored (and Excel reads `%` as percent), the half-kept-familiarity trap the `regex` naming pass identified. The rename `pow` → **`power`** is confirmed (Carl, 2026-07-07 — plain-word rule; `^` carries the brevity) and folded through the api table, the batch-3 pass and this sheet.
-- **The `fallback`-vs-`…Default` overhead, recorded**: the family asks authors "which do I reach for?" — accepted cost; the mitigation is tooling (editor affordances, `validate()` hints), not collapsing the failure/absence distinction. Fold into the register's headline-question note at the group review.
+- **The `fallback`-vs-`…Default` overhead, recorded**: the family asks authors "which do I reach for?" — accepted cost; the mitigation is tooling (editor affordances, `validate()` hints), not collapsing the failure/absence distinction. Folded into the register's headline-question resolution.
+- **The group review is done** (Carl, 2026-07-07): `fallback` = failure only (headline question settled the drafted way); #3's null-operand `propagate` confirmed (a future flip to reject reserved — the register's one open reservation, with the `length` seam beside it); **#24 flipped to reject** — iterator `input` is `array` only, `nullInputDefault` the softener; #7/#8 confirmed; every register row now agreed. The register ([v3-cases-for-review.md](v3-cases-for-review.md)) is rewritten as the settled reference; this sheet stands as the working record behind it.
 
 ## Legend
 
@@ -121,7 +122,7 @@ Default behaviour: a null operand is replaced by this value before comparison �
 | `expect` | `'number'` \| `'string'` \| `'array'` \| `'object'` | — (mode inferred) | unset |
 
 Suggested default: **`nullValueDefault`** *(adopted round 2 — per-value by name: a whole-null `values` array stays #8's type error)*.
-Default behaviour: any operand that evaluates to `null` is replaced by this value before mode dispatch and the fold — `{ $plus: { values: '$data.scores', nullValueDefault: 0 } }` sums with missing scores as 0. Presence-sensitive: unset → element-wise propagate as drafted. Rides `operatorDefaults` for a host-wide stance. Directly answers #3's "firstOf ceremony" dissent inside fixed points 1–2; if the group review flips #3 globally instead, this parameter is moot.
+Default behaviour: any operand that evaluates to `null` is replaced by this value before mode dispatch and the fold — `{ $plus: { values: '$data.scores', nullValueDefault: 0 } }` sums with missing scores as 0. Presence-sensitive: unset → element-wise propagate as drafted. Rides `operatorDefaults` for a host-wide stance. Directly answers #3's "firstOf ceremony" dissent inside fixed points 1–2 (#3 confirmed at the group review, with its future flip to reject reserved in the register's Open items).
 (Empty input stays as drafted: unmoded → error, `fallback`-catchable — a genuine error, consistent with fallback-means-failure; `expect` pins the identity for the empty case, #11.)
 
 ### `subtract` (alias: `-`) / `divide` (alias: `/`) / `modulo` (no alias)
@@ -233,19 +234,19 @@ Default behaviour: in `mode: 'extract'`, no match → this value instead of `nul
 | --- | --- | --- | --- |
 | `value` | `string` \| `array` \| `null` | *(req)* | `propagate` |
 
-Suggested default: none — follow whatever the iterators' `nullInputDefault` decision (below) implies; `length` is the same "absent collection" cell wearing a scalar result.
+Suggested default: none. Note: `length` keeps `propagate` while the iterators' `input` flipped to reject (#24) — no longer twins; the seam is recorded in the register's Open items, to be decided when next touching `length`.
 
 ### `map` / `filter` / `find` / `some` / `every` (no alias)
 
 | Parameter | Type (incl. null) | Default | Null policy (current) |
 | --- | --- | --- | --- |
-| `input` | `array` \| `null` | *(req)* | `propagate` — a missing collection resolves the node to `null` (**#24 — judgement explicitly reserved**) |
+| `input` | `array` | *(req)* | reject — a null collection is a runtime type error (**#24 — flipped at the group review**); `nullInputDefault` softens |
 | `each` | `any` (expression) | *(req)* | `value` — per-element results judged by the operator: `map` takes any value; predicates are truthiness positions, null falsy |
 | `as` | `string` — literal identifier | — (bind `$element`/`$index`) | structural |
 | `noMatchDefault` (`find` only) | `any` | `null` | `value` — fires on no-match only; a found null passes through (#23) |
 
 Suggested default: `find` **already has `noMatchDefault`**. New for all five: **`nullInputDefault`**.
-Default behaviour: when `input` evaluates to `null`, this value is used as the collection instead (typically `[]`). Presence-sensitive: unset → propagate as drafted, so the quantifier trap (#24's `every`-over-missing → vacuous `true`) stays opt-in rather than default. With `[]`: `map`/`filter` → `[]`, `some` → `false`, `every` → `true`, `find` → its `noMatchDefault`. Via `operatorDefaults: { map: { nullInputDefault: [] } }` a host buys null-as-empty per operator without flipping #24 globally — it resolves both of #24's bad cells (safe default, cheap opt-out for the render pipelines).
+Default behaviour: when `input` evaluates to `null`, this value is used as the collection instead (typically `[]`). Presence-sensitive, applied before the type check: unset → #24's type error; supplied → no error at all. With `[]`: `map`/`filter` → `[]`, `some` → `false`, `every` → `true`, `find` → its `noMatchDefault`. Via `operatorDefaults: { map: { nullInputDefault: [] } }` a host buys null-as-empty per operator — opt-in and visible.
 
 ### `get` (no alias)
 
@@ -335,18 +336,18 @@ Default behaviour: under `shape: 'row'` or `'value'`, an empty result set → th
 | `regex` | `noMatchDefault` | **suggested** | `extract` mode, no match | `null` |
 | `sql` | `noRowDefault` | **suggested** (per #29's note) | `'row'`/`'value'` shape, empty result | `null` |
 | `plus`, `multiply`, `min`, `max` | `nullValueDefault` | **suggested** | a null operand/element | element-wise propagate (#3/#13) |
-| `map`/`filter`/`find`/`some`/`every` | `nullInputDefault` | **suggested** | `input` evaluates to null | propagate (#24) |
+| `map`/`filter`/`find`/`some`/`every` | `nullInputDefault` | **suggested** | `input` evaluates to null | runtime type error (#24, flipped at the group review) |
 | `min`, `max` | `emptyDefault` | candidate (weaker) | empty `values` | runtime failure (`fallback`-catchable) |
 | `http`, `graphQL` | `missingPathDefault` | candidate (deferred) | supplied `returnPath` misses | `null` |
 | ordering comparisons | `nullValueDefault` | **suggested** (round 2) | a null operand | propagate (#10) |
 | `buildString`, `join` | `nullValueDefault` | **suggested** (round 3) | a null substitution/element at render | `""` |
 
-All suggestions are presence-sensitive or default-`null`, so the unadorned drafted behaviour is unchanged; each rides the layered defaults chain (`operatorDefaults`), which is the family's structural advantage over any fallback-flavoured mechanism. **The whole family assumes the headline `fallback` question resolves to failure-only** (as this sheet's premise states); restoring the v2 reading would dissolve most of it.
+All suggestions are presence-sensitive or default-`null`, so the unadorned drafted behaviour is unchanged; each rides the layered defaults chain (`operatorDefaults`), which is the family's structural advantage over any fallback-flavoured mechanism. **The `fallback` question resolved to failure-only at the group review** (July 2026), so the family stands as this sheet's premise assumed.
 
 ## Rows worth a second look
 
 1. **The address-string asymmetry**: `buildString.template`, `regex.pattern` and `get.path` all *propagate* null, while `http.url`, `graphQL.query` and `sql.query` *reject* it. If the boundary is "I/O rejects, pure propagates" it's defensible (an aborted render costs nothing; a request fired at a manufactured address acts on the world) — but `regex.pattern` is authored machinery more than data, and a propagated-null pattern silently nulls the node where a reject would name the real problem. Worth confirming each deliberately.
-2. **`input: array | null`** on the iterators is the one *required* parameter whose type names null — the rule surfaces #24's provisional propagate as visible metadata. If #24 flips to null-as-empty (or `nullInputDefault` covers the need), the type follows.
+2. **Resolved**: #24 flipped to reject at the group review — the iterators' `input` is plain `array`, `nullInputDefault` is the declared softener, and container parameters are uniform (whole-null always a type error). One seam recorded in the register's Open items: `length` still propagates null, no longer the iterators' twin.
 3. **`not.value`** (#9): if the pending flip to `propagate` happens, nothing changes in the type column (`any` already names null) — only the policy word moves. The is-unset idiom breaks either way; #9 is unaffected by this sheet's rule.
 4. **`http.body`**: the batch-8 table types it `any`, but #27's ruling depends on its type *excluding* null (whole-null = unset = no body). Restated above as "JSON value excl. null" — the pass table should say so too, or under rule (b) this cell contradicts itself.
 5. **`convert.value`** stays cleanly declarable under the type-driven rule: null is admitted unconditionally (`any`), and only the *policy* is mode-conditional (ledger #14).
