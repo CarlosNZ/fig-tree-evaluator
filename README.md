@@ -501,7 +501,7 @@ Aliases: `/`, `divide`, `÷`
 - `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second.  (If non-numerical elements are provided, the operator will return `NaN`)
 - `dividend` (or `divide`): (number) -- the number that will be divided
 - `divisor` (or `by`): (number) -- the number to divide `dividend` by
-- `output` (`'quotient' | 'remainder'`) -- by default, the operator returns a floating point value. However, if `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
+- `output` (`'quotient' | 'remainder' | 'decimal'`) -- by default (or if `decimal` is specified), the operator returns a floating point value. If `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
 
 Note that the input values can be provided as *either* a `values` array *or* `dividend`/`divisor` properties. If both are provided, `values` takes precedence.
 

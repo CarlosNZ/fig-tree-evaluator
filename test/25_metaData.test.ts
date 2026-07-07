@@ -230,7 +230,7 @@ test('Metadata -- get operator info', () => {
       parameters: [
         {
           name: 'values',
-          description: 'Array of values - 1st element will be divided by the first',
+          description: 'Array of values - 1st element will be divided by the second',
           aliases: [],
           required: false,
           type: 'array',
@@ -258,9 +258,9 @@ test('Metadata -- get operator info', () => {
           aliases: [],
           required: false,
           type: {
-            literal: ['quotient', 'remainder'],
+            literal: ['quotient', 'remainder', 'decimal'],
           },
-          default: 'quotient',
+          default: 'decimal',
         },
       ],
       parseChildren: expect.objectContaining({ name: 'parseChildren' }),
