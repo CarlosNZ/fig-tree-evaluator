@@ -146,8 +146,8 @@ export class FigTreeEvaluator {
       if (typeof f !== 'function') {
         const { description, argsDefault, inputDefault, textColor, backgroundColor } = f
         if (description) functionMetadata.description = description
-        if (argsDefault) functionMetadata.argsDefault = argsDefault
-        if (inputDefault) functionMetadata.inputDefault = inputDefault
+        if (argsDefault !== undefined) functionMetadata.argsDefault = argsDefault
+        if (inputDefault !== undefined) functionMetadata.inputDefault = inputDefault
         if (textColor) functionMetadata.textColor = textColor
         if (backgroundColor) functionMetadata.backgroundColor = backgroundColor
         return functionMetadata
