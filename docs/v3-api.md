@@ -11,7 +11,7 @@
 | Node grammar & reserved keys | **Agreed** — includes `fallback`/kill-switch semantics, `outputType`→`convert`, `//` comments, name legality & opaque-value rules |
 | References & scoping (`$data` / `$vars` / `$params` / `$element`) | **Agreed** — lazy-var mechanism & exotic-key path grammar noted as implementation follow-ups |
 | Alias policy | **Partial** — operator naming & aliases settled under Operators; parameter-name aliases proposed (none at all) in [v3-operator-parameters.md](v3-operator-parameters.md) |
-| Type, coercion & null policy | **Agreed** — JSON-only value domain, no implicit coercion, FigTree truthiness (JS-parity, marked for revisit), null-policy vocabulary + null-means-unset optionals, `convert` table, shared stringification |
+| Type, coercion & null policy | **Agreed** — JSON-only value domain, no implicit coercion, FigTree truthiness (JS-parity, marked for revisit), null-policy vocabulary (admission type-driven since the null-policy review, July 2026) + null-means-unset optionals, `convert` table, shared stringification |
 | Operators | **Agreed** — canonical list, aliases & shorthand faces; per-operator parameters in progress |
 | Per-operator parameters | **In progress** — own working doc: [v3-operator-parameters.md](v3-operator-parameters.md) (conventions + batch 1 drafted); also hosts the contract-requirements ledger. Ambiguous rulings queued for an end-of-passes group review in [v3-cases-for-review.md](v3-cases-for-review.md) |
 | Fragments | **Agreed** — wrapper definition shape, object-keyed parameter declarations (default-implies-optional, null-means-unset), lazy memoized arguments with an eager dynamic-arguments escape, recursion ban, registration-time validation, opaque tooling `metadata` |
@@ -206,18 +206,18 @@ Deferred to other areas:
 
 ### Naming rules
 
-0. **Plain English over programmer jargon.** FigTree's audience is tech-savvy config authors, not necessarily developers: when a plain-English name is as precise as the established programming term, plain English wins — hence `firstOf`, not SQL's `coalesce` (obscure to non-programmers, and misleading as ordinary English, where it suggests merging). Established math/JS names survive where they're the precise, searchable term with no equally-precise plain alternative (`modulo`, `pow`, `regex`, `map`, `some`, `every`). This is a judgment call, not an algorithm — borderline cases are decided here and the outcome recorded in the table notes.
+0. **Plain English over programmer jargon.** FigTree's audience is tech-savvy config authors, not necessarily developers: when a plain-English name is as precise as the established programming term, plain English wins — hence `firstOf`, not SQL's `coalesce` (obscure to non-programmers, and misleading as ordinary English, where it suggests merging). Established math/JS names survive where they're the precise, searchable term with no equally-precise plain alternative (`modulo`, `regex`, `map`, `some`, `every`). This is a judgment call, not an algorithm — borderline cases are decided here and the outcome recorded in the table notes.
 1. **Canonical names are camelCase, case-sensitive, exact-match.** No case folding, no camelCase normalization — `$If`, `PLUS` and `not_equal` are unknown-operator errors. v2's `standardiseOperatorName` machinery and the generated alias table die.
-2. **At most one alias per operator, always symbolic.** The full set: `+` `-` `*` `/` `=` `!=` `>` `>=` `<` `<=` `?` `!`. Word aliases die entirely (v2 shipped ~95 operator-name aliases across 24 operators, before counting the unbounded case/camelCase variants).
+2. **At most one alias per operator, always symbolic.** The full set: `+` `-` `*` `/` `^` `=` `!=` `>` `>=` `<` `<=` `?` `!`. Word aliases die entirely (v2 shipped ~95 operator-name aliases across 24 operators, before counting the unbounded case/camelCase variants). `^` is the one post-v2 symbol (added at the batch-3 review, July 2026 — see the `power` row); the other new operators stay alias-free.
 3. **An alias is valid anywhere the canonical name is** — as a shorthand `$key` or as an `operator:` value — and parse normalizes it away: the canonical AST contains only canonical names.
 4. **One invocation namespace, collision-checked at registration.** A fragment or custom operator whose name matches any operator name or alias is a registration error ([#136](https://github.com/CarlosNZ/fig-tree-evaluator/issues/136)). No silent precedence.
 5. **Reserved names**, unusable for fragments and custom operators: the reference namespaces `data`, `vars`, `params`, `element`, `index` and their single-character alias forms (`d`, `v`, `p`, `e`, `i`), plus `literal`. (Reserved *node keys* are settled in the Node-grammar area.)
 
 ### The canonical list
 
-42 core + 3 I/O operators, 12 symbolic aliases. Which export array each operator ships in (`coreOperators` vs optional grouped arrays) is a Packaging-area decision — this section locks names and semantics only.
+42 core + 3 I/O operators, 13 symbolic aliases. Which export array each operator ships in (`coreOperators` vs optional grouped arrays) is a Packaging-area decision — this section locks names and semantics only.
 
-The rule that shaped the math batch, and pre-answers every future "why not one operator with a mode?": **a mode parameter is acceptable only when the signature is invariant across modes** — as with `plus`'s add/concat/merge, always `values: [...]`. When modes would change the arity or types of the other parameters (`round(value, decimals)` vs `pow(base, exponent)` vs `min(values[])`), they are separate operators; a mode-switched mega-operator hides per-mode signatures from validation, positional mapping and the editor.
+The rule that shaped the math batch, and pre-answers every future "why not one operator with a mode?": **a mode parameter is acceptable only when the signature is invariant across modes** — as with `plus`'s add/concat/merge, always `values: [...]`. When modes would change the arity or types of the other parameters (`round(value, decimals)` vs `power(base, exponent)` vs `min(values[])`), they are separate operators; a mode-switched mega-operator hides per-mode signatures from validation, positional mapping and the editor.
 
 #### Logic & control
 
@@ -245,12 +245,12 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 
 | v3 | Alias | vs v2 | Notes |
 |---|---|---|---|
-| `plus` | `+` | **Kept** (PLUS) | keeps the add/concat/merge polymorphism (mode selector renamed `type` → `expect`, settled in its parameter pass); drops `add`, `concat`, `join`, `merge`; `add` reconsidered for verb-consistency with `subtract` / `multiply` / `divide` and rejected (batch-3 pass): `plus` names the polymorphic `+` it mirrors and pairs with its own alias, while `add` promises arithmetic-only and misreads as append on arrays — and the batch was never verb-consistent anyway (`modulo`, `pow`, `floor`, `min`) |
+| `plus` | `+` | **Kept** (PLUS) | keeps the add/concat/merge polymorphism (mode selector renamed `type` → `expect`, settled in its parameter pass); drops `add`, `concat`, `join`, `merge`; `add` reconsidered for verb-consistency with `subtract` / `multiply` / `divide` and rejected (batch-3 pass): `plus` names the polymorphic `+` it mirrors and pairs with its own alias, while `add` promises arithmetic-only and misreads as append on arrays — and the batch was never verb-consistent anyway (`modulo`, `power`, `floor`, `min`) |
 | `subtract` | `-` | **Kept** (SUBTRACT) | drops `minus`, `takeaway` |
 | `multiply` | `*` | **Kept** (MULTIPLY) | drops `x`, `times` |
 | `divide` | `/` | **Kept** (DIVIDE) | drops `÷` |
 | `modulo` | — | **New** | |
-| `pow` | — | **New** | |
+| `power` | `^` | **New** | renamed from the drafted `pow` (Carl, July 2026): the plain-word rule — `power` is the spoken form ("2 to the power of 10") where `pow` is C/JS jargon, and the alias carries the brevity; `^` added at the same review — the universal exponent notation (math/Excel), with no XOR in FigTree to collide with; deliberately *not* extended to `modulo` — `%` would promise JS's truncated remainder where v3's `modulo` is floored (and Excel reads `%` as percent) |
 | `round` | — | **New** | |
 | `floor` | — | **New** | |
 | `ceil` | — | **New** | |
@@ -417,7 +417,7 @@ A missing `$data` path resolves to `null` — absence is not failure. Genuine `n
 |---|---|---|
 | bare reference `"$data.x"` | — (yields `null`) | everyday reads |
 | `firstOf` | `null` **or** missing | defaults across multiple candidates |
-| `get` + `missingDefault` param (named in its pass, batch 6) | missing path **only** — a genuine stored `null` passes through unchanged | preserving the null/missing distinction; near-lossless converter target for v2 `getData` + `fallback` (v2's `extractProperty` likewise only threw on *missing*) |
+| `get` + `missingPathDefault` param (named in its pass, batch 6) | missing path **only** — a genuine stored `null` passes through unchanged | preserving the null/missing distinction; near-lossless converter target for v2 `getData` + `fallback` (v2's `extractProperty` likewise only threw on *missing*) |
 | `fallback` | node **failure** (including missing paths under `strictDataPaths: true`) | operations that actually errored |
 
 **Per-operator null policy**: the reference layer is uniform, and how each operator *treats* null is that operator's declared metadata policy (the cost of nulls-as-ordinary-values, paid explicitly). Recorded now: **`buildString` renders `null` as `""`** — a null from any source (missing data, null API field, `find` with no match) produces `"Phone: "`, never `"Phone: null"`. Other operators' null policies are settled in their parameter passes.
@@ -664,7 +664,7 @@ A JS-authored expression may contain values with no JSON representation — `Dat
 FigTree values are exactly JSON's six types: `string`, `number`, `boolean`, `null`, `array`, `object`. Three consequences, each closing a v2 leak:
 
 - **`undefined` is not a value.** It is normalized away at every boundary where JS could produce one, following JSON-serialization semantics: an operator body (native or custom) returning `undefined` yields `null`; in a JS-authored expression `{ a: undefined }` is treated as the key being absent, and `[1, undefined, 3]` as `[1, null, 3]` — exactly what `JSON.stringify` would do. v2's `String(undefined)` → `"undefined"` rendering dies with it, and the `nullEqualsUndefined` machinery (already deleted under Options) loses its subject entirely: with `undefined` gone there is nothing left to equate.
-- **`NaN` and `±Infinity` are not values.** An operation whose result would be one **fails** instead — an ordinary runtime failure, fallback-catchable: division by zero stays an error (as v2 — [DIVIDE/operator.ts:21](../src/operators/DIVIDE/operator.ts#L21)), and numeric overflow (`pow(10, 400)`) or a failed conversion errors rather than emitting a value JSON can't represent. Nothing unrepresentable in JSON ever flows out of an operator.
+- **`NaN` and `±Infinity` are not values.** An operation whose result would be one **fails** instead — an ordinary runtime failure, fallback-catchable: division by zero stays an error (as v2 — [DIVIDE/operator.ts:21](../src/operators/DIVIDE/operator.ts#L21)), and numeric overflow (`power(10, 400)`) or a failed conversion errors rather than emitting a value JSON can't represent. Nothing unrepresentable in JSON ever flows out of an operator.
 - **Opaque constants sit outside the domain** (per Node grammar): they satisfy only the `any` metadata type, so a typed parameter receiving one fails the runtime type-check. Honest cost, recorded: v2's accidental `Date > Date` comparison (working via JS `valueOf` coercion) dies — date comparison is the date plugin's job. `equal`'s treatment of opaque values is settled in its parameter pass.
 
 ### Metadata type vocabulary
@@ -709,9 +709,11 @@ The reference layer is uniform (References: missing → `null`); how nulls behav
 |---|---|---|
 | `propagate` | null input → the node resolves to `null`; the operator body never runs (SQL-style) | value inputs: arithmetic, string operators, `length`, ordering comparisons, `convert` (except `to: 'boolean'`) |
 | `value` | null is an ordinary value, handled by the operator's own declared semantics | `equal`/`notEqual` (comparable), `firstOf` (its whole job), `buildString` (renders `""`), condition positions (falsy), `sql` bind values (SQL `NULL`) |
-| `reject` | null is a runtime type error | inputs with no meaningful degradation: `http.url`, `sql.query` |
+| `reject` | null is a runtime type error — *derived, never declared*: `null` absent from the declared type (type-driven admission, below) | inputs with no meaningful degradation: `http.url`, `sql.query` |
 
 **The default for value inputs is `propagate`** — agreed as the starting assumption, with each parameter pass re-confirming or overriding it explicitly. What sells it is the composition gradient: `{ $greaterThan: ["$data.age", 18] }` with `age` missing → `null` → condition falsy → `else` branch; a sum with a missing operand → `null` → `buildString` renders `""`. Absence degrades along one gradient with zero fallback boilerplate; the masking risk is the one already accepted and mitigated in References (`strictDataPaths`, `validate()` against sample data, `trace`).
+
+**Admission is type-driven** (adopted July 2026 at the null-policy review — [v3-null-policy-review.md](v3-null-policy-review.md), which consolidates every parameter's cell): null is legal at a required parameter, or at an element/value position of a container parameter, only where `null` is a named member of the declared type; a null arriving anywhere else is a runtime type error. `reject` thereby leaves the *declared* vocabulary — a declared policy (`propagate` or `value`) exists exactly where the type names `null`, every `propagate` holder's type gains `| null` explicitly, and a type without `null` *is* the reject declaration, machine-readably. `any` includes `null` throughout. Scope, ruled deliberately (option (a) of the review's question): required parameters and element/value positions only — null at an *optional* parameter keeps the unset reading below, without `| null` noise in its type; a strict everywhere-application would break the unset machinery (`round.decimals`, `http.body`).
 
 **`equal`/`notEqual` treat null as a comparable value** — the loud, deliberate asymmetry (SQL propagates on `=` too, which is why it needs `IS NULL`): `null` = `null` → `true`, null vs anything else → `false`. Required by the blessed is-set idiom `{ $notEqual: ["$data.x", null] }`, already used in this spec's own examples.
 
@@ -719,7 +721,7 @@ The reference layer is uniform (References: missing → `null`); how nulls behav
 
 **A null arriving at an optional parameter whose declared type does not include `null` behaves exactly as if the parameter were omitted** — the layered defaults chain applies (per-node value → instance `operatorDefaults` → metadata default). The motivating case: `{ operator: 'round', value: '$data.price', decimals: '$data.settings.precision' }` with the setting unset. Under this rule the declared default applies — the only sensible outcome; under `propagate` a missing *setting* would nullify a present *value*; under `reject` every dynamically-sourced setting needs `{ $firstOf: [..., <restated default>] }` armour, forcing authors to restate library defaults inline — restatements that go stale when metadata defaults or `operatorDefaults` change. Null-means-unset gives dynamic settings the same defaults story as static ones.
 
-**The opt-out is the type declaration**: a parameter whose declared type includes `null` receives it as a value — the deciding question for each parameter pass is simply "is null a valid input *for this parameter*?", and the answer is machine-readable metadata, visible to the editor. Known case needing the opt-out: `get`'s `missingDefault` parameter (named in its pass, batch 6), where `missingDefault: null` legitimately means "give me null instead of throwing" under `strictDataPaths: true`.
+**The opt-out is the type declaration**: a parameter whose declared type includes `null` receives it as a value — the deciding question for each parameter pass is simply "is null a valid input *for this parameter*?", and the answer is machine-readable metadata, visible to the editor. Known case needing the opt-out: `get`'s `missingPathDefault` parameter (named in its pass, batch 6), where `missingPathDefault: null` legitimately means "give me null instead of throwing" under `strictDataPaths: true`.
 
 **Boundary**: this rule governs operator *parameters* only. Reserved node keys are not parameters — `fallback: null` keeps its agreed meaning ("resolve to null on failure"), which timeout shielding already leans on (Node grammar).
 
