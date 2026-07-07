@@ -344,3 +344,47 @@ test('Inequality -- missing values', async () => {
     '- Missing required property "values" (type: array)'
   )
 })
+
+test('Inequality (nullEqualsUndefined, null vs number)', () => {
+  const expression = {
+    operator: '!=',
+    values: [null, 5],
+    nullEqualsUndefined: true,
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Inequality (nullEqualsUndefined, undefined vs number)', () => {
+  const expression = {
+    operator: '!=',
+    values: [undefined, 'hello'],
+    nullEqualsUndefined: true,
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(true)
+  })
+})
+
+test('Inequality (nullEqualsUndefined, null vs undefined)', () => {
+  const expression = {
+    operator: '!=',
+    values: [null, undefined],
+    nullEqualsUndefined: true,
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
+
+test('Inequality (nullEqualsUndefined, all null/undefined)', () => {
+  const expression = {
+    operator: '!=',
+    values: [null, undefined, null],
+    nullEqualsUndefined: true,
+  }
+  return exp.evaluate(expression).then((result) => {
+    expect(result).toBe(false)
+  })
+})
