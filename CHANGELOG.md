@@ -8,6 +8,12 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 
 - `stringSubstitution`: escaped substitution characters (`\%N` for positional, `\{{name}}` for named) are now un-escaped for every occurrence, not just the first. ([#142](https://github.com/CarlosNZ/fig-tree-evaluator/issues/142))
 
+## [2.23.1]
+
+### Fixed
+
+- `inputDefault` in a custom `FunctionDefinition` now accepts primitive values (previously only object values were valid at the type level). Falsy primitives (`0`, `false`, `""`) are also preserved by `getCustomFunctions()` instead of being silently dropped from the exposed metadata.
+
 ## [2.23.0] - 2026-06-30
 
 ### Added

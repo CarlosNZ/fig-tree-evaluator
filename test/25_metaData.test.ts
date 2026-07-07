@@ -13,6 +13,8 @@ const fig = new FigTreeEvaluator({
     },
     addTwo: { function: (n1: number, n2: number) => n1 + n2, inputDefault: { n1: 10, n2: 10 } },
     fNoArgs: { function: () => 5 * 5, description: 'Returns 10 🤷‍♂️' },
+    increment: { function: (n: number) => n + 1, inputDefault: 5 },
+    isZero: { function: (n: number) => n === 0, inputDefault: 0 },
   },
   fragments: {
     getFlag: {
@@ -863,6 +865,16 @@ test('Metadata -- get customFunction info', () => {
       name: 'fNoArgs',
       numRequiredArgs: 0,
       description: 'Returns 10 🤷‍♂️',
+    },
+    {
+      name: 'increment',
+      numRequiredArgs: 1,
+      inputDefault: 5,
+    },
+    {
+      name: 'isZero',
+      numRequiredArgs: 1,
+      inputDefault: 0,
     },
   ])
 })
