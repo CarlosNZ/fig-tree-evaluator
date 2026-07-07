@@ -105,7 +105,7 @@ export interface FunctionDefinition {
   function: UnknownFunction
   description?: string
   argsDefault?: unknown[]
-  inputDefault?: Record<string, unknown>
+  inputDefault?: unknown
   textColor?: string
   backgroundColor?: string
 }
