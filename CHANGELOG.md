@@ -8,6 +8,12 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 
 - `DIVIDE` operator: `output: 'decimal'` is now accepted (previously rejected by its own type-check, even though decimal division was the runtime fall-through behaviour). The `output` metadata `default` also now correctly reflects the actual runtime default (`'decimal'`). Minor typo fix in the `values` parameter description ("by the first" → "by the second").
 
+## [2.23.1]
+
+### Fixed
+
+- `inputDefault` in a custom `FunctionDefinition` now accepts primitive values (previously only object values were valid at the type level). Falsy primitives (`0`, `false`, `""`) are also preserved by `getCustomFunctions()` instead of being silently dropped from the exposed metadata.
+
 ## [2.23.0] - 2026-06-30
 
 ### Added
