@@ -325,6 +325,7 @@ What earned it a place beyond display metadata — the deciding argument at the 
 6. **`OperatorFailure`** — name and shape of the exported error class (and whether `FigTreeError` itself is simply exposed for throwing).
 7. **The `validate`-hook `helpers` toolbox** — minimum viable set; settled at implementation.
 8. **Client contract finality** — the shapes above are deliberately minimal; confirm `FetchClient`/`AxiosClient` and the SQLite wrapper can all satisfy them before flipping to Agreed.
+9. **`context.trace.note(event)`** — added from the Evaluator-methods close-off (its Q5, July 2026): trace needs a contract-level channel for body-level events (cache hits/misses, effective requests with header names only, placeholder renders); stubbed as a no-op from the first evaluator chunk, lights up with trace. Alternative considered and rejected there: engine-supplied (rather than imported) shared renderers that record implicitly — contradicts "shared primitives are importable", but worth a second look at implementation.
 
 ## Appendix — the evaluation modes on core operators
 

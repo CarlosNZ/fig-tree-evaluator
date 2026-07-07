@@ -17,7 +17,7 @@
 | Fragments | **Agreed** — wrapper definition shape, object-keyed parameter declarations (default-implies-optional, null-means-unset), lazy memoized arguments with an eager dynamic-arguments escape, recursion ban, registration-time validation, opaque tooling `metadata` |
 | Extensibility (`defineOperator`) | **Partial** — single mechanism (the v2 `functions` tier is dropped), first-class principle, naming & aliases, plugin story; the full operator contract is now drafted in [v3-operator-contract.md](v3-operator-contract.md) (provisional until implementation) |
 | **Options** (shape, merge semantics, registration) | **Agreed** |
-| Evaluator methods & return shapes | — (partially sketched under Options; `report`/`trace` shapes deferred) |
+| Evaluator methods & return shapes | **Agreed** — own doc: [v3-evaluator-methods.md](v3-evaluator-methods.md) (signed off July 2026; report-mode intent settled as production resilience, the `report` *name* carries a possibly-improve marker; `related`/`OperatorFailure` finality and `context.trace.note` park with the contract's open list; trace field names settle at implementation) |
 | Packaging & exports | — |
 | Migration & conversion (`./convert`, v2→v3) | — |
 
@@ -82,14 +82,15 @@ The `operators` array is the **only** registration mechanism. Factory functions 
 const fig = new FigTree({
   operators: [
     coreOperators,                          // built-in set, exported as an array (nested arrays are flattened)
-    httpOperators(new FetchClient(fetch)),  // → [http, graphQL] definitions, client baked in
+    httpOperators(),                        // → [http, graphQL] definitions; no argument = new FetchClient() over global fetch
     sqlOperators(pgConnection),             // → [sql]
     myCustomOperator,                       // single definition from defineOperator()
   ],
 })
 ```
 
-- Omitting `operators` defaults to `coreOperators` only — no HTTP, no SQL. Supplying it states the registry exhaustively (include `coreOperators` yourself if wanted). Opt-in by construction: an instance can only reach the network because someone visibly handed it a client.
+- Omitting `operators` defaults to `coreOperators` only — no HTTP, no SQL. Supplying it states the registry exhaustively (include `coreOperators` yourself if wanted). Opt-in by construction: an instance can only reach the network because someone visibly registered the I/O operators.
+- **`httpOperators()` with no argument defaults to `new FetchClient()`** — global fetch, the zero-config path on every modern runtime; no global `fetch` = loud registration error naming the remedy (Packaging ruling, July 2026). Other clients are passed as instances (`httpOperators(new AxiosClient(axios))`); `sqlOperators(connection)` has no default — there is no ambient SQL connection.
 - `excludeOperators` remains for *dynamic* restriction on top of the fixed registry (cheap filter, per-call legal).
 - Clients are not swappable per-call or via `updateOptions` — build a new instance.
 
@@ -106,6 +107,7 @@ operatorDefaults: {
 
 - Per-node parameters always override.
 - Validated at construction against operator metadata: unknown operator, unknown parameter, or type mismatch is an error.
+- **Required parameters may not be targeted** (agreed at the Evaluator-methods close-off, July 2026): an entry naming a *required* parameter is a construction-time error like the three above — required means on-the-node, always, and an instance-wide constant for a semantic core input is a preset node in disguise (presets are **fragments'** job). The boundary is *optionality*, not declared defaults: optional-**without**-default parameters are legitimate targets — the host-wide `nullValueDefault` opt-out depends on exactly that. Full rationale: [v3-evaluator-methods.md](v3-evaluator-methods.md) § The check inventory.
 - **Reserved-modifier defaults** (extension agreed during the parameter passes): an entry may also default the node modifiers **`fallback`** (any constant value) and **`useCache`** (boolean) — unambiguous alongside parameter names because the flat reservation (Node grammar) bars those words as parameter names. `operatorDefaults: { plus: { fallback: 0 } }` makes every `plus` node without its own `fallback` behave as if it carried `fallback: 0`, including counting as "carrying" one for the nearest-enclosing-catch rule and for timeout shielding (constants are static by construction). Constants only, like everything else in this map — an expression-valued default fallback would have no evaluation scope of its own, and would silently un-shield expressions. Per-node keys override wholesale. Motivating case: a host that wants `plus` failures (e.g. the empty-aggregate error) to degrade to `0` opts in per instance, visibly. Boundary, recorded: this catches *failures* only — a `null` operand propagating to a `null` result is success, and no fallback fires (agreed at the group review — [v3-cases-for-review.md](v3-cases-for-review.md) #3; the null-operand tool is `nullValueDefault`, ledger #18).
 - `useCache` precedence, full chain: node key → `operatorDefaults` → blanket `useCache` option → operator metadata default.
 - Visible to tooling: `getOperators()` reports the *effective* defaults — parameter and modifier alike — so the editor and generated docs stay honest — the crucial difference from v2's invisible global flag.
