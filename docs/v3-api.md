@@ -19,7 +19,7 @@
 | **Options** (shape, merge semantics, registration) | **Agreed** |
 | Evaluator methods & return shapes | **Agreed** — own doc: [v3-evaluator-methods.md](v3-evaluator-methods.md) (signed off July 2026; report-mode intent settled as production resilience, the `report` *name* carries a possibly-improve marker; `related`/`OperatorFailure` finality and `context.trace.note` park with the contract's open list; trace field names settle at implementation) |
 | Packaging & exports | — |
-| Migration & conversion (`./convert`, v2→v3) | — |
+| Migration & conversion (`./convert`, v2→v3) | **Drafted** — own doc: [v3-migration.md](v3-migration.md) (first sketch July 2026, awaiting review; v1 dropped, `v2Compat` rejected, converter = pure best-effort function + issue stream; 4 open questions at doc end) |
 
 ---
 
@@ -190,7 +190,7 @@ Deferred to other areas:
 | `useCache` | **Kept** | Same meaning |
 | `maxCacheSize` | **Moved** | → `cache.maxSize` |
 | `maxCacheTime` | **Moved** | → `cache.maxTime` |
-| `supportDeprecatedValueNodes` | **Deleted** | v1 compat lives in `./convert` only |
+| `supportDeprecatedValueNodes` | **Deleted** | v1 support dropped from v3 entirely; v1 holdouts convert via still-published v2 first ([v3-migration.md](v3-migration.md) § v1 ruling) |
 
 **New in v3:** `operators`, `operatorDefaults`, `http` / `graphQL` blocks, `strictDataPaths`, `maxDepth` / `maxNodes` / `timeout` / `signal`, `cache.store`, `mode`, `trace`.
 
@@ -649,7 +649,7 @@ The `.` / `[` / `]` exclusion is disambiguation, not tidiness: drilling into var
 
 ### No v2 tombstone keys
 
-Considered and rejected: reserving `children` / `type` solely to emit pointed "removed in v3" errors. v3 is a clean break — v1/v2 compatibility lives entirely in `./convert`, and `children` was itself a v1 hangover that freshly-authored v2 expressions should never have used. On a node these keys fail as ordinary unknown keys; history is the migration doc's job, not the runtime's. (Informed by v2's own experience carrying v1 relics — `supportDeprecatedValueNodes` — longer than they earned.)
+Considered and rejected: reserving `children` / `type` solely to emit pointed "removed in v3" errors. v3 is a clean break — v2→v3 conversion lives entirely in `./convert` (v1 support dropped — [v3-migration.md](v3-migration.md)), and `children` was itself a v1 hangover that freshly-authored v2 expressions should never have used. On a node these keys fail as ordinary unknown keys; history is the migration doc's job, not the runtime's. (Informed by v2's own experience carrying v1 relics — `supportDeprecatedValueNodes` — longer than they earned.)
 
 ### Non-plain-object values: opaque constants
 

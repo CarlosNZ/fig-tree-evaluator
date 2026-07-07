@@ -101,7 +101,7 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 - The subpath name: `fig-tree-evaluator/convert`.
 - **Isolation**: the root entry never imports from it (lint-enforced); it *may* import from the root (it is built on the parser's normalizer — Phase 15.1) — the dependency arrow points one way.
 - Its exports are functions and types only, same module formats and `.d.ts` treatment as the root.
-- Contents — `convertV2ToV3`, the v3 shorthand round-trip utilities (`toShorthand` / `fromShorthand`, per the evaluator-methods ruling that these are not instance methods), and whatever the v1 story turns out to be — are the **Migration area's** to specify, next.
+- Contents — `convertV2ToV3` (+ its `ConversionResult` / `ConversionIssue` types) and the v3 shorthand round-trip utilities (`toShorthand` / `fromShorthand`, per the evaluator-methods ruling that these are not instance methods) — are fixed by the **Migration area** ([v3-migration.md](v3-migration.md) § module surface). v1 support is **dropped** (no `convertV1ToV2` here — Migration § v1 ruling).
 
 ## `./editor-hints`
 
@@ -205,7 +205,8 @@ Every export of v2's `src/index.ts`, accounted for:
 | `preProcessShorthand` | **Deleted** — normalization is parse-internal; round-trip utilities live in `./convert` |
 | `standardiseOperatorName` | **Deleted** — no case folding, no alias machinery |
 | `truncateString` | **Deleted** — editor-owned display concern |
-| `convertV1ToV2`, `convertToShorthand`, `convertFromShorthand`, `isV1Node` | **Moved & reshaped** → `./convert` (contents: Migration area) |
+| `convertToShorthand`, `convertFromShorthand` | **Moved & reshaped** → `./convert` as `toShorthand` / `fromShorthand` (Migration area § module surface) |
+| `convertV1ToV2`, `isV1Node` | **Deleted** — v1 support dropped from v3; v1 holdouts convert via still-published v2 first (Migration area § v1 ruling) |
 | `dequal` re-export | **Deleted** — principle 4 |
 | `Operator` (name union) | **Replaced** by `OperatorName` |
 | `OperatorAlias` | **Deleted** — aliases are per-definition metadata, not a public type |
