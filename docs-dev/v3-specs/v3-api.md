@@ -323,9 +323,11 @@ Payload forms are disambiguated by JSON type — no heuristics:
 
 | Payload | Meaning | Example |
 |---|---|---|
-| object | named parameters, always (v2's "spread unless a key starts with `$`" guess dies) | `{ $if: { condition: c, then: a, else: b } }` |
+| plain object | named parameters, always (v2's "spread unless a key starts with `$`" guess dies) | `{ $if: { condition: c, then: a, else: b } }` |
 | array | positional parameters, mapped by declarative `positionalParams` metadata | `{ $if: [c, a, b] }` |
-| anything else | a single positional argument | `{ $not: x }`, `{ $http: "https://…" }` |
+| anything else — a node-classifying object included | a single positional argument | `{ $not: x }`, `{ $http: "https://…" }`, `{ $not: { $greaterThan: […] } }` |
+
+*Sharpened at Phase-3 implementation (already implied by the register's row-9 example): an object payload that itself classifies as a node is the single positional argument, not a named-parameter map — sound for the same reason as the fragments disambiguation below: parameter names cannot start with `$`, and `operator`/`fragment` are barred as parameter names.*
 
 - **Fragments take the named-object payload only** — no positional or single-value calls (user-defined parameter lists evolve; positional calls silently re-map — see [v3-assessment.md](v3-assessment.md) §3.1).
 - Shorthand normalizes **once, at parse**: operator faces → `{ operator: … }` nodes, fragment faces → `{ fragment: …, parameters: … }` nodes. Tooling only ever sees canonical form.

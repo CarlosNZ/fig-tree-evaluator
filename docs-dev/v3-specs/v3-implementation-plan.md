@@ -52,7 +52,7 @@
 **3.2 · Parse / normalize / classify.** The single walk: node-kind recognition, shorthand + alias normalization, positional mapping via `positionalParams`, the sibling-key rule, all malformed-node hard errors, `//` stripping, `vars` block structure, `literal` boundaries, reference-token recognition, name legality, constancy classification bottom-up, skeleton + hole extraction, counts. Tests assert artifacts (white-box, internal) *and* the issue stream.
 *Spec: Node grammar, entire; Operators § Shorthand grammar; References §§1–3, 7.*
 
-**3.3 · Static validation + `validate()`.** The metadata-driven layer on the artifact: literal parameter type checks + constraints, missing-required / unknown-key, empty-literal-aggregate, unresolved `$vars`/`$params`/`$element`/`$index`, vars cycles, `as` collisions, `returns` feeding-position check, operator `validate` hooks, all warnings (unrecognized-`$`, shadowing, unreferenced vars, useless modifiers, excluded-operator use), `timeoutShielded` computation. Public `fig.validate()` ships here — the parser's test surface goes black-box from this point.
+**3.3 · Static validation + `validate()`.** The metadata-driven layer on the artifact: literal parameter type checks + constraints, missing-required / unknown-key, empty-literal-aggregate, unresolved `$vars`/`$params`/`$element`/`$index`, vars cycles, `as` collisions, `returns` feeding-position check, operator `validate` hooks, all warnings (unrecognized-`$`, shadowing, unreferenced vars, useless modifiers — the excluded-operator row is retired with `excludeOperators`), `timeoutShielded` computation. Public `fig.validate()` ships here — the parser's test surface goes black-box from this point. *(Built July 2026 as a second parse-time pass over the compiled AST — ruled with Carl at Phase-3 planning: identical asymptotics to the literal single walk for the constant-heavy workloads, since pass 2 never descends into collapsed constants. The empty-literal-aggregate check has no generic trigger yet — whether each aggregate's check is hook-authored or earns a declarative constraint is decided at Phase 4's first aggregate.)*
 *Spec: evaluator-methods § validate (the check inventory table is the test list); contract § validate hook.*
 
 ---
@@ -148,7 +148,7 @@
 
 ## Phase 13 — Introspection & surface completion
 
-**13.1 · `getOperators()` / `getFragments()`** (effective defaults merged, capability flags, snapshots), **`getDependencies()`** (transitive, `dynamic` flag — dependency recording added to the artifact if not already riding Phase 3), **`isEvaluable()`**, `version`. The full v2→v3 method-disposition table becomes a checklist test (deleted methods absent, kept methods present).
+**13.1 · `getOperators()` / `getFragments()`** (effective defaults merged, capability flags, snapshots), **`getDependencies()`** (transitive, `dynamic` flag — dependency recording rides the Phase-3 artifact, forced by validate()'s sample-data check; this method is a read of it, plus fragment transitivity), **`isEvaluable()`**, `version`. The full v2→v3 method-disposition table becomes a checklist test (deleted methods absent, kept methods present).
 *Spec: evaluator-methods §§ Introspection, getDependencies; contract § Introspection.*
 
 ---

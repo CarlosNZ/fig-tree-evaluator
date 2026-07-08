@@ -1,3 +1,14 @@
+/**
+ * MIGRATION STATUS (Phase 3.2, 2026-07-09): v2 alias nodes are deleted in
+ * v3 (References disposition — alias definition → `vars` block, alias
+ * reference → `$vars.name`). The vars-block *structure* cases are
+ * re-authored in test/parse-vars.test.ts; the alias-reference divergence
+ * ('$name' now inert-with-warning) is in test/parse-recognition.test.ts.
+ * The lazy/memoized runtime semantics these tests exercise migrate at
+ * Phase 5.1; expect catalogued divergences in the Phase-15 differential
+ * (v2 evaluated aliases eagerly and leaked unresolved aliases as literal
+ * strings).
+ */
 import fetch from 'node-fetch'
 import { FetchClient } from '../src'
 import { FigTreeEvaluator } from './evaluator'

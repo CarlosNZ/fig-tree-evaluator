@@ -163,7 +163,9 @@ Both `errors` entries and thrown errors are instances of one class (the contract
 ```ts
 class FigTreeError extends Error {
   code: string                    // stable, machine-readable: 'unknown-operator', 'type-check',
-                                  // 'operator-failure', 'timeout', 'aborted', … (vocabulary fixed at implementation)
+                                  // 'operator-failure', 'timeout', 'aborted', … (vocabulary fixed at
+                                  // implementation — the implemented set lives in src/errorCodes.ts,
+                                  // growing additively per phase; Phase 3 added the parse/static set)
   path: (string | number)[]       // the failing node, in the input as authored
   holePath?: (string | number)[]  // report mode: the containing hole that degraded to null — the splice
                                   // point for hosts writing their own in-band markers (see Why the filler is null)

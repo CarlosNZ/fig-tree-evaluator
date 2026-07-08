@@ -26,6 +26,26 @@ export const ErrorCodes = {
   unresolvedVar: 'unresolved-var', // '$vars.foo' referenced but 'foo' isn't defined in scope
   unrecognizedIdentifier: 'unrecognized-identifier', // { $flibble: 1 } — the name after the sigil matches no operator/fragment/namespace (warning)
 
+  // Phase 3 — parse / static validation
+  malformedNode: 'malformed-node', // { operator: 'plus', fragment: 'f' } — a node-grammar hard error
+  unknownFragment: 'unknown-fragment', // { fragment: 'flibble' } — names no registered fragment
+  positionalArity: 'positional-arity', // { $not: [1, 2] } — surplus positional arguments
+  invalidVars: 'invalid-vars', // { vars: [1, 2] } — the vars shape rule (loud)
+  invalidReference: 'invalid-reference', // bare '$vars', drilled '$index' — a recognized namespace used illegally
+  uselessModifier: 'useless-modifier', // fallback / vars / useCache on `literal` — legal but dead (warning)
+  unreferencedVar: 'unreferenced-var', // a vars block declaring names nothing references (warning)
+  missingRequired: 'missing-required', // { $if: [true] } — a required parameter not supplied
+  unresolvedParam: 'unresolved-param', // '$params.x' outside a fragment body, or naming an undeclared parameter
+  unresolvedBinding: 'unresolved-binding', // '$element' outside an iterator's each subtree
+  invalidAs: 'invalid-as', // as: '$data.x' (dynamic), as: 'data' (reserved), nested as collisions
+  maxDepthExceeded: 'max-depth', // the expression nests deeper than options.maxDepth
+  maxNodesExceeded: 'max-nodes', // the expression holds more nodes than options.maxNodes
+  returnsMismatch: 'returns-mismatch', // a boolean-returning node feeding a number-typed parameter
+  operatorValidate: 'operator-validate', // an operator validate-hook finding (regex pattern compile, …)
+  missingDataPath: 'missing-data-path', // sample-data check: a $data path absent from the supplied sample (warning)
+  shadowedVar: 'shadowed-var', // an inner vars block redeclaring an outer name (warning)
+  varCycle: 'var-cycle', // vars: { a: '$vars.b', b: '$vars.a' }
+
   // Phase 2 — registration (defineOperator / registry / construction)
   invalidDefinition: 'invalid-definition', // defineOperator() throw umbrella; also the generic malformed-definition issue
   invalidName: 'invalid-name', // 'foo.bar' — a name violating the shared legality rule

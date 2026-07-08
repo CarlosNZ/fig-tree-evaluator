@@ -1,3 +1,13 @@
+/**
+ * MIGRATION STATUS (Phase 3.2, 2026-07-09): the parse-level cases (payload
+ * forms, nesting, node-as-direct-parameter, named-parameter face, alias
+ * siblings) are re-authored in test/parse-normalization.test.ts and
+ * test/parse-recognition.test.ts — including the "with alias fallback"
+ * divergence (v2 alias-definition sibling → v3 malformed-node error).
+ * Evaluation-result cases migrate with their operators (Phase 4/7);
+ * fragment shorthand cases migrate at Phase 11; custom-function cases are
+ * non-convertible (functions tier deleted — migration doc wrapper recipe).
+ */
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'
 import { FetchClient } from '../src'

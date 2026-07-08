@@ -128,6 +128,8 @@ One field, one mode per parameter. Names provisional — this table is the secti
 | `'perElement'` | `PerElement` handle | evaluated once per element of the `over` sibling, on demand, memoized per index, each in a fresh child scope binding `$element`/`$index` (or the node's `as` renaming) (ledger #12) | the iterators' `each` |
 | `'structural'` | the literal value, verbatim | parse-time data, never evaluated; a dynamic value is a parse error | `as` |
 
+*Scoping generalization, recorded at Phase-3 implementation (needs confirming): the parser treats **any** `perElement` parameter's subtree as a `$element`/`$index` binding scope, and reads the renaming from the structural parameter literally named `as` — so a custom operator gets iterator scoping by declaring the same shapes. If a custom perElement operator should ever bind differently, the hook would be a definition-level field, not a name convention.*
+
 **The degeneration rule rides the delivery layer** (recorded once in the ledger, discharged here): laziness applies to authored expressions. A lazily-declared parameter whose value arrives dynamically (`values: '$data.checks'`) is already data — the engine delivers pre-resolved handles (`LazyValue.evaluate()` returns immediately), so sequencing degenerates to iteration and lazy branches to selection with no body-side special-casing. Same pattern as fragments' dynamic-arguments mode.
 
 ### Constraints (ledger #9)
@@ -334,7 +336,7 @@ What earned it a place beyond display metadata — the deciding argument at the 
 4. **Unset delivery as absent key** — proposed above for the `missingPathDefault` distinction; the alternative (a `Symbol` sentinel) is uglier but destructuring-safe (`const { decimals = …}` picks up JS defaults on absent keys, which could shadow the layered chain — doc line or lint?).
 5. **`requestTimeout` spelling** — **resolved (Carl, July 2026, at Phase-2 implementation)**: the definition-level `timeoutParam: '<name>'` pointer. One field names one parameter, so the at-most-one constraint holds by construction; validation reduces to "names a declared `integer`-typed parameter". The parameter-level `requestTimeout: true` flag is superseded (§ Definition-level fields).
 6. **`OperatorFailure`** — name and shape of the exported error class (and whether `FigTreeError` itself is simply exposed for throwing).
-7. **The `validate`-hook `helpers` toolbox** — minimum viable set; settled at implementation.
+7. **The `validate`-hook `helpers` toolbox** — **resolved (Phase-3 implementation, July 2026)**: one frozen object of the shared primitives — `parsePath`, `resolvePath`, `checkType`, `checkConstraints`, `describeType`, `renderText`, `isTruthy` (src/parse/helpers.ts). Additions are non-breaking; grow on demand.
 8. **Client contract finality** — the shapes above are deliberately minimal; confirm `FetchClient`/`AxiosClient` and the SQLite wrapper can all satisfy them before flipping to Agreed.
 9. **`context.trace.note(event)`** — added from the Evaluator-methods close-off (its Q5, July 2026): trace needs a contract-level channel for body-level events (cache hits/misses, effective requests with header names only, placeholder renders); stubbed as a no-op from the first evaluator chunk, lights up with trace. Alternative considered and rejected there: engine-supplied (rather than imported) shared renderers that record implicitly — contradicts "shared primitives are importable", but worth a second look at implementation.
 
