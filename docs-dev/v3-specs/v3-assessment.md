@@ -27,7 +27,7 @@ V3's theme should be: **one way to say each thing, a real parsing phase, and lex
 
 ### 2.1 Six ways to write one expression
 
-Today a single conditional can be written as: named properties; positional `children`; shorthand-object; shorthand-array; shorthand-single-value; and (for functions) the custom-operator form — plus root-level hoisting variants for `MATCH` branches and fragment parameters. Every operator must ship an imperative `parseChildren` to support the positional form, eight operators import theirs from `../AND/operator` (with a `parseChildrenGET` rename hack in [GET/operator.ts:98](../src/operators/GET/operator.ts#L98) to dodge the name clash), and several `parseChildren` implementations can't even reach all named parameters (SPLIT loses `trimWhiteSpace`/`excludeTrailing`; GET's positional encoding is `[url, [fieldNames], ...values, returnProperty?]`). The `convert/` layer exists almost entirely to paper over this irregularity, and [toShorthand.ts](../src/convert/toShorthand.ts) resorts to regex-scanning stringified JSON to guess fragment parameters.
+Today a single conditional can be written as: named properties; positional `children`; shorthand-object; shorthand-array; shorthand-single-value; and (for functions) the custom-operator form — plus root-level hoisting variants for `MATCH` branches and fragment parameters. Every operator must ship an imperative `parseChildren` to support the positional form, eight operators import theirs from `../AND/operator` (with a `parseChildrenGET` rename hack in [GET/operator.ts:98](../../v2-src/operators/GET/operator.ts#L98) to dodge the name clash), and several `parseChildren` implementations can't even reach all named parameters (SPLIT loses `trimWhiteSpace`/`excludeTrailing`; GET's positional encoding is `[url, [fieldNames], ...values, returnProperty?]`). The `convert/` layer exists almost entirely to paper over this irregularity, and [toShorthand.ts](../../v2-src/convert/toShorthand.ts) resorts to regex-scanning stringified JSON to guess fragment parameters.
 
 ### 2.2 `$` is overloaded four ways
 
@@ -41,27 +41,27 @@ Today a single conditional can be written as: named properties; positional `chil
 
 Operator parameters, node modifiers (`fallback`, `outputType`, `useCache`), alias definitions, and hoisted branch/fragment keys all share one flat object. Concrete casualties:
 
-- **`type` means three things**: alias for `outputType` ([evaluate.ts:210](../src/evaluate.ts#L210)), PLUS's own reduction mode ([PLUS/operator.ts:22-24](../src/operators/PLUS/operator.ts#L22-L24)), and SQL's legacy `queryType` — so a PLUS or SQL result can be double-processed by two different meanings of the same key.
-- **MATCH scans the whole node for branch keys** ([MATCH/operator.ts:39](../src/operators/MATCH/operator.ts#L39)): a match value of `"operator"` or `"fallback"` would resolve to the node's own reserved property.
+- **`type` means three things**: alias for `outputType` ([evaluate.ts:210](../../v2-src/evaluate.ts#L210)), PLUS's own reduction mode ([PLUS/operator.ts:22-24](../../v2-src/operators/PLUS/operator.ts#L22-L24)), and SQL's legacy `queryType` — so a PLUS or SQL result can be double-processed by two different meanings of the same key.
+- **MATCH scans the whole node for branch keys** ([MATCH/operator.ts:39](../../v2-src/operators/MATCH/operator.ts#L39)): a match value of `"operator"` or `"fallback"` would resolve to the node's own reserved property.
 - **Property aliases collide with operator aliases**: `data` is simultaneously an operator alias (→ OBJECT_PROPERTIES) and a property alias in three different operators; likewise `_`, `divide`, `function`, `object`, `replace`.
 
 ### 2.4 Semantics that surprise
 
-- **Alias scoping is timing-dependent.** Resolved aliases are deliberately mutated into a shared config object ([evaluate.ts:149-155](../src/evaluate.ts#L149-L155)) — the comment admits it's a workaround for parallel evaluation. Whether a sibling branch can see your alias depends on which branch's `Promise` resolves first. Fragments get a copied scope; ordinary nodes don't.
+- **Alias scoping is timing-dependent.** Resolved aliases are deliberately mutated into a shared config object ([evaluate.ts:149-155](../../v2-src/evaluate.ts#L149-L155)) — the comment admits it's a workaround for parallel evaluation. Whether a sibling branch can see your alias depends on which branch's `Promise` resolves first. Fragments get a copied scope; ordinary nodes don't.
 - **Eager evaluation everywhere.** All parameters are evaluated (including firing GET/SQL requests) *before* type-checking runs. Issue [#132](https://github.com/CarlosNZ/fig-tree-evaluator/issues/132) ("don't query until variables are populated") is a direct symptom.
-- **JS coercion leaks through.** `{"+": [1, "2"]}` → `"12"`; `outputType: "number"` on `"abc4.5xyz"` extracts `4.5` via regex ([helpers.ts:181-191](../src/helpers.ts#L181-L191)); `String(undefined)` → `"undefined"`.
-- **A confirmed logic bug in NOT_EQUAL** ([NOT_EQUAL/operator.ts:39](../src/operators/NOT_EQUAL/operator.ts#L39)): `value === null && value === undefined` is always false, so with `nullEqualsUndefined` enabled, `notEqual(null, 5)` returns `false`. The EQUAL version uses `||` correctly; this is a copy-paste negation error.
-- **Metadata defaults ≠ runtime defaults, systemically.** Verified worst case: GREATER_THAN/LESS_THAN default `strict = true` at runtime ([GREATER_THAN/operator.ts:10](../src/operators/GREATER_THAN/operator.ts#L10)) while [data.ts](../src/operators/GREATER_THAN/data.ts#L17-L21) and its description promise `false`. Also mismatched: DIVIDE's `output` (docs say quotient, runtime gives decimal — and the documented `'decimal'` literal is actually rejected by the type-check), POST's `useCache`, SPLIT's delimiter, STRING_SUBSTITUTION's `substitutionCharacter`. Since the playground and docs render from `data.ts`, the docs actively lie.
+- **JS coercion leaks through.** `{"+": [1, "2"]}` → `"12"`; `outputType: "number"` on `"abc4.5xyz"` extracts `4.5` via regex ([helpers.ts:181-191](../../v2-src/helpers.ts#L181-L191)); `String(undefined)` → `"undefined"`.
+- **A confirmed logic bug in NOT_EQUAL** ([NOT_EQUAL/operator.ts:39](../../v2-src/operators/NOT_EQUAL/operator.ts#L39)): `value === null && value === undefined` is always false, so with `nullEqualsUndefined` enabled, `notEqual(null, 5)` returns `false`. The EQUAL version uses `||` correctly; this is a copy-paste negation error.
+- **Metadata defaults ≠ runtime defaults, systemically.** Verified worst case: GREATER_THAN/LESS_THAN default `strict = true` at runtime ([GREATER_THAN/operator.ts:10](../../v2-src/operators/GREATER_THAN/operator.ts#L10)) while [data.ts](../../v2-src/operators/GREATER_THAN/data.ts#L17-L21) and its description promise `false`. Also mismatched: DIVIDE's `output` (docs say quotient, runtime gives decimal — and the documented `'decimal'` literal is actually rejected by the type-check), POST's `useCache`, SPLIT's delimiter, STRING_SUBSTITUTION's `substitutionCharacter`. Since the playground and docs render from `data.ts`, the docs actively lie.
 - **No recursion guard**: a fragment that references itself loops forever. No timeout, no AbortSignal, no node budget — notable for a library whose pitch is *sandboxed* logic.
 
 ### 2.5 API surface leaks
 
-- **Per-call options mutate the instance.** `fig.evaluate(expr, { httpClient })` permanently replaces `this.httpClient` ([FigTreeEvaluator.ts:61-69](../src/FigTreeEvaluator.ts#L61-L69)); same for the GraphQL client and cache sizes. A "this evaluation only" override that silently reconfigures the instance is a real bug class.
+- **Per-call options mutate the instance.** `fig.evaluate(expr, { httpClient })` permanently replaces `this.httpClient` ([FigTreeEvaluator.ts:61-69](../../v2-src/FigTreeEvaluator.ts#L61-L69)); same for the GraphQL client and cache sizes. A "this evaluation only" override that silently reconfigures the instance is a real bug class.
 - **`getOptions()`/`getConfig()` return live internal references**; merge semantics differ between `evaluate` (deep for data/functions/fragments/headers) and `updateOptions` (shallow) — subtle and undocumented.
 - **Two `isFigTreeExpression`s** (structural export vs registry-aware method) — documented at length precisely because the duality is confusing.
 - **Editor entanglement**: the single package entry exports `dequal`, `truncateString`, `standardiseOperatorName`, and the whole `convert/` suite, all editor-only. No subpath exports, so every consumer's bundle carries the converter layer.
 - **The alias economy is bankrupt**: case-insensitive names + camelCase normalization + ~5 aliases per operator + ~4 per property = a generated alias map, ordering hacks in `getOperators()`, and a memorization burden with no single "house style" for expression files.
-- **Leftover noise**: `console.log(err.errorData)` ships in FetchClient ([httpClients.ts:87](../src/httpClients.ts#L87), [:112](../src/httpClients.ts#L112)); `FetchClient` calls `response.json()` unconditionally (issue [#120](https://github.com/CarlosNZ/fig-tree-evaluator/issues/120)); the cache key is a `_`-joined stringify that can collide; `setCache()` never rebuilds the LRU queue.
+- **Leftover noise**: `console.log(err.errorData)` ships in FetchClient ([httpClients.ts:87](../../v2-src/httpClients.ts#L87), [:112](../../v2-src/httpClients.ts#L112)); `FetchClient` calls `response.json()` unconditionally (issue [#120](https://github.com/CarlosNZ/fig-tree-evaluator/issues/120)); the cache key is a `_`-joined stringify that can collide; `setCache()` never rebuilds the LRU queue.
 
 ### 2.6 Operator set gaps
 
@@ -75,7 +75,7 @@ There is no `NOT`. No iteration (`map`/`filter`/`find` — issue [#92](https://g
 
 Keep the verbose `{ operator: ... }` node as the **canonical AST**, and keep shorthand — but redefine the relationship:
 
-- **Shorthand is specified sugar, normalized exactly once** at parse time (not per node visit, per evaluation, as [shorthandSyntax.ts](../src/shorthandSyntax.ts) does today). The editor and all tooling operate on canonical form; the normalization is total and lossless by construction.
+- **Shorthand is specified sugar, normalized exactly once** at parse time (not per node visit, per evaluation, as [shorthandSyntax.ts](../../v2-src/shorthandSyntax.ts) does today). The editor and all tooling operate on canonical form; the normalization is total and lossless by construction.
 - **Kill the public `children` form.** Positional parameters survive *only* as the shorthand array form (`{ $if: [cond, a, b] }`), and the mapping becomes **declarative metadata** — `positionalParams: ['condition', 'then', 'else']` in each operator's data — instead of 24 imperative `parseChildren` functions. This single change deletes the AND-imports-everywhere coupling, the `parseChildrenGET` hack, most of `convert/`'s special cases, and the class of "shorthand can't reach parameter X" bugs.
 - **Kill root-level hoisting** in MATCH and fragment nodes. Branches live in `branches`, parameters in `parameters`. One way.
 - **Fragment calls share the operator shorthand face** — `{ $getCapital: { country: 'NZ' } }` — but take **named parameters only**: no positional-array or single-value forms for fragments (continuing v2's stance). The reason is that fragment parameter lists are user-defined and evolve — a positional call silently re-maps when a parameter is added or reordered, and a single-value form becomes ambiguous the moment the value is an object (params map, or the value of the one param?). Operators don't have this problem because their positional order is fixed library metadata. Canonically, fragment shorthand still normalizes to a distinct `{ fragment: ... }` node, so tooling can tell registry sources apart. Registration-time checks keep the shared `$key` invocation namespace safe: a fragment or custom operator whose name collides with an operator is rejected (issue [#136](https://github.com/CarlosNZ/fig-tree-evaluator/issues/136)), as is a fragment parameter named after a reserved key (`fallback`, `vars`, `outputType`).
@@ -213,7 +213,7 @@ Compile-once performance comes for free via internal memoization: the engine cac
 
 ### 3.4 Operator set — drop / merge / fix / add
 
-**Drop** (with converter support): `PASSTHRU` (any value already evaluates; `outputType` can sit on a `literal` wrapper if ever needed), `COUNT` (becomes `length`, working on strings *and* arrays), positional `children`, SQL `queryType`, the GraphQL `graphqlendpoint` sentinel, the `{url, headers}` object-as-url legacy shape, and the five-deep custom-function lookup chain in [CUSTOM_FUNCTIONS/operator.ts:18-28](../src/operators/CUSTOM_FUNCTIONS/operator.ts#L18-L28) (functions resolve from `options.functions`, full stop — today a function can be invoked out of the `data` object, which is a sandbox-integrity problem).
+**Drop** (with converter support): `PASSTHRU` (any value already evaluates; `outputType` can sit on a `literal` wrapper if ever needed), `COUNT` (becomes `length`, working on strings *and* arrays), positional `children`, SQL `queryType`, the GraphQL `graphqlendpoint` sentinel, the `{url, headers}` object-as-url legacy shape, and the five-deep custom-function lookup chain in [CUSTOM_FUNCTIONS/operator.ts:18-28](../../v2-src/operators/CUSTOM_FUNCTIONS/operator.ts#L18-L28) (functions resolve from `options.functions`, full stop — today a function can be invoked out of the `data` object, which is a sandbox-integrity problem).
 
 **Merge GET/POST into a single `http` operator.** The v2 implementations are near-duplicates (POST literally imports GET's `parseChildren`), and the real difference was never the method — it's that `parameters` means query-string params on GET but JSON body on POST: the same property name with different semantics, naming drift in one more costume. The merged operator adds `method` (default `'get'`) and splits the overloaded property into explicit `query` (query string, valid on any method) and `body` (request body; a validation error on body-less methods):
 
@@ -276,13 +276,13 @@ I/O operators become **opt-in by construction** — better security default than
 
 These stand on their own even if v3 takes a while:
 
-1. **NOT_EQUAL `nullEqualsUndefined` bug** — [NOT_EQUAL/operator.ts:39](../src/operators/NOT_EQUAL/operator.ts#L39) (`&&` should be a negated `||`).
+1. **NOT_EQUAL `nullEqualsUndefined` bug** — [NOT_EQUAL/operator.ts:39](../../v2-src/operators/NOT_EQUAL/operator.ts#L39) (`&&` should be a negated `||`).
 2. **`strict` default mismatch** in GREATER_THAN/LESS_THAN (runtime `true`, docs/metadata say `false`) — decide which is intended and align.
 3. **DIVIDE**: documented `'decimal'` output literal is rejected by its own type-check; default output disagrees with metadata.
-4. **`console.log` in FetchClient** ([httpClients.ts:87](../src/httpClients.ts#L87), [:112](../src/httpClients.ts#L112)).
-5. **Per-call `httpClient`/cache options permanently mutating the instance** ([FigTreeEvaluator.ts:61-69](../src/FigTreeEvaluator.ts#L61-L69)).
+4. **`console.log` in FetchClient** ([httpClients.ts:87](../../v2-src/httpClients.ts#L87), [:112](../../v2-src/httpClients.ts#L112)).
+5. **Per-call `httpClient`/cache options permanently mutating the instance** ([FigTreeEvaluator.ts:61-69](../../v2-src/FigTreeEvaluator.ts#L61-L69)).
 6. The metadata-default corrections for POST `useCache`, SPLIT delimiter, STRING_SUBSTITUTION `substitutionCharacter`.
-7. STRING_SUBSTITUTION un-escape only replacing the first occurrence (missing `/g` at [operator.ts:64](../src/operators/STRING_SUBSTITUTION/operator.ts#L64) and [:75](../src/operators/STRING_SUBSTITUTION/operator.ts#L75)).
+7. STRING_SUBSTITUTION un-escape only replacing the first occurrence (missing `/g` at [operator.ts:64](../../v2-src/operators/STRING_SUBSTITUTION/operator.ts#L64) and [:75](../../v2-src/operators/STRING_SUBSTITUTION/operator.ts#L75)).
 
 ## Priority summary
 

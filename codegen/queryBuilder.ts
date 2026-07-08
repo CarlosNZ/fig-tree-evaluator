@@ -1,8 +1,8 @@
 /*
 `generateMassiveQuery` builds an enormous evaluator expression tree using some
-simple, interconnected `baseExpressions`. The resulting expression is output to
-`massiveQuery.json` in the "test" folder and used by the "complexExpressions"
-tests.
+simple, interconnected `baseExpressions`. The resulting expression is output
+to `massiveQuery.json` in the "test" folder and used by the
+"complexExpressions" tests.
 
 With a depth_limit of 30, the resulting expression tree has over 20,000 nodes
 */

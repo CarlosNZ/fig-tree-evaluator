@@ -74,6 +74,7 @@ Use an existing simple operator like [AND](src/operators/AND/operator.ts) as the
 ## Code style
 
 - Prettier (`.prettierrc.js`): **no semicolons**, single quotes, 100-char width, 2-space indent, `trailingComma: 'es5'`. Match this exactly.
+- Comments wrap at **80 chars** (code stays at Prettier's 100). Enforced by ESLint: `//` comments via `comment-length/limit-single-line-comments` (auto-fixable — `yarn lint --fix` reflows them), block-comment lines via `max-len` (wrap by hand). The plugin's multi-line rule is deliberately not used — it corrupts non-JSDoc `/* … */` blocks.
 - TypeScript throughout; ESLint with `@typescript-eslint/recommended`.
 - Operators' `evaluate` methods are `async`. Use `evaluateArray`/`evaluatorFunction` from `evaluate.ts` to recurse into child nodes rather than calling operators directly.
 

@@ -412,7 +412,7 @@ fig.validate({
 //       message: "'thn' is not a parameter of 'if' — did you mean 'then'?" },
 //     { severity: 'error', code: 'unresolved-var', path: ['else'],
 //       message: "'$vars.username': no var 'username' is declared in scope" },
-//     { severity: 'warning', code: 'unrecognized-sigil', path: ['condition'],
+//     { severity: 'warning', code: 'unrecognized-identifier', path: ['condition'],
 //       message: "'$graeterThan' is not a registered operator or fragment and will pass through as data — did you mean '$greaterThan'?" },
 //   ],
 // }

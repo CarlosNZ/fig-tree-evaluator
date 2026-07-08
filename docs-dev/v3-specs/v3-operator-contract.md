@@ -304,14 +304,14 @@ What earned it a place beyond display metadata — the deciding argument at the 
 
 | v2 | v3 |
 |---|---|
-| `OperatorObject` — `{ propertyAliases, operatorData, evaluate, parseChildren }` across three files per operator ([types.ts:130-135](../src/types.ts#L130-L135)) | one flat `defineOperator()` literal; the folder convention becomes a free choice |
+| `OperatorObject` — `{ propertyAliases, operatorData, evaluate, parseChildren }` across three files per operator ([types.ts:130-135](../../v2-src/types.ts#L130-L135)) | one flat `defineOperator()` literal; the folder convention becomes a free choice |
 | `parseChildren`, imperative, per operator | `positionalParams`, declarative (conventions) |
 | `propertyAliases` maps | dead — one name per parameter (conventions § No parameter-name aliases) |
 | `aliases: string[]`, unbounded | `alias`, exactly one (Extensibility) |
 | `parameters` as an array of `{ name, … }` | object keyed by name |
 | `default` as editor seed | runtime `default` only; seeds → the editor-hints module |
 | `type: ExpectedType` incl. `undefined` | metadata vocabulary: no `undefined`, adds `integer`, unions/literal unions kept |
-| body receives raw `expression` + whole `FigTreeConfig` ([types.ts:137-140](../src/types.ts#L137-L140)) | post-everything `params` + scoped `context` (declared options only, composed signal) |
+| body receives raw `expression` + whole `FigTreeConfig` ([types.ts:137-140](../../v2-src/types.ts#L137-L140)) | post-everything `params` + scoped `context` (declared options only, composed signal) |
 | body-side type checks, null handling, `NaN` policing, cache-key assembly | engine layers (§ Engine guarantees, § Caching) |
 | `options.functions` / CUSTOM_FUNCTIONS | deleted — the migration doc's prescriptive wrapper recipe (Extensibility § Migration) re-registers each as a definition with a single variadic `args` parameter spread into the wrapped function |
 

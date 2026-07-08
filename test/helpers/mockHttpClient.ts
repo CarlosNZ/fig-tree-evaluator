@@ -1,10 +1,10 @@
 /**
- * Scripted mock `HttpClient` — one of the two shared test doubles the v3 worked
- * examples assume (docs/v3-worked-examples.md § "Using these as test cases",
- * implementation plan 0.2). Fixed responses, failure + latency switches, and a
- * call counter, so laziness / memoization / effective-request keying become
- * assertable as *counts and call logs* rather than by reaching into engine
- * internals.
+ * Scripted mock `HttpClient` — one of the two shared test doubles the v3
+ * worked examples assume ("Using these as test cases" in
+ * docs-dev/v3-specs/v3-worked-examples.md, implementation plan 0.2). Fixed
+ * responses, failure + latency switches, and a call counter, so laziness /
+ * memoization / effective-request keying become assertable as *counts and call
+ * logs* rather than by reaching into engine internals.
  *
  * Implements the real `HttpClient` contract (src/types.ts) — the same interface
  * `FetchClient` / `AxiosClient` will satisfy in Phase 9, so a test never has to
@@ -20,9 +20,10 @@ export interface MockHttpRequest {
 }
 
 /**
- * Stand-in for the structured failure a real client throws on a non-2xx / non-JSON
- * response. Phase 9's clients throw the exported `OperatorFailure` (Phase 1.2);
- * until that class exists this local error carries the same `errorData` payload.
+ * Stand-in for the structured failure a real client throws on a non-2xx /
+ * non-JSON response. Phase 9's clients throw the exported `OperatorFailure`
+ * (Phase 1.2); until that class exists this local error carries the same
+ * `errorData` payload.
  */
 export class MockHttpFailure extends Error {
   readonly errorData: unknown
@@ -60,9 +61,14 @@ export interface MockHttpClientOptions {
    * still match a base); set `exactMatch` to require identity.
    */
   responses?: Record<string, unknown>
-  /** Returned when no `responses` key matches. Defaults to `null` (a 204-style empty success). */
+  /**
+   * Returned when no `responses` key matches. Defaults to `null` (a 204-style
+   * empty success).
+   */
   defaultResponse?: unknown
-  /** Require exact URL equality instead of substring matching (default false). */
+  /**
+   * Require exact URL equality instead of substring matching (default false).
+   */
   exactMatch?: boolean
   /** When true, every request rejects — the failure switch. */
   fail?: boolean
@@ -70,7 +76,10 @@ export interface MockHttpClientOptions {
   failMessage?: string
   /** `errorData` payload attached to the thrown failure. */
   failData?: unknown
-  /** Artificial latency (ms) applied before each response resolves/rejects — the latency switch. */
+  /**
+   * Artificial latency (ms) applied before each response resolves/rejects —
+   * the latency switch.
+   */
   latencyMs?: number
 }
 
@@ -97,7 +106,10 @@ export class MockHttpClient implements HttpClient {
     this.latencyMs = options.latencyMs ?? 0
   }
 
-  /** How many requests have been made — the fetch-count assertion the examples use. */
+  /**
+   * How many requests have been made — the fetch-count assertion the examples
+   * use.
+   */
   get callCount(): number {
     return this.calls.length
   }

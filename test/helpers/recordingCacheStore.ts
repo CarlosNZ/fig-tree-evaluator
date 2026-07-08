@@ -1,9 +1,9 @@
 /**
- * Recording `CacheStore` — the second shared test double (docs/v3-worked-examples.md
- * § "Using these as test cases", implementation plan 0.2). A plain in-memory
- * `{ get, set }` that logs every key it sees, so cache behaviour — hits vs
- * misses, effective-request keying, invalidation — is assertable from the log
- * without reaching into engine internals.
+ * Recording `CacheStore` — the second shared test double ("Using these as test
+ * cases" in docs-dev/v3-specs/v3-worked-examples.md, implementation plan 0.2).
+ * A plain in-memory `{ get, set }` that logs every key it sees, so cache
+ * behaviour — hits vs misses, effective-request keying, invalidation — is
+ * assertable from the log without reaching into engine internals.
  *
  * Implements the real `CacheStore` contract (src/types.ts).
  */

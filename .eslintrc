@@ -1,12 +1,20 @@
 {
   "root": true,
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
+  "plugins": ["@typescript-eslint", "comment-length"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/eslint-recommended",
     "plugin:@typescript-eslint/recommended"
   ],
+  "rules": {
+    // `//` comments: enforced + auto-fixable (reflow) via plugin. Its
+    // multi-line sibling is NOT used — it mangles non-JSDoc /* blocks.
+    "comment-length/limit-single-line-comments": ["error", { "maxLength": 80 }],
+    // Block-comment lines: enforced (not auto-fixable) via core max-len.
+    // `code` is set high so Prettier (100) stays the authority on code width.
+    "max-len": ["error", { "code": 200, "comments": 80, "ignoreUrls": true }]
+  },
   "overrides": [
     {
       "files": ["src/**/*.ts"],

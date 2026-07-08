@@ -9,9 +9,9 @@ with `yarn generate`).
 Result is saved to `v2-src/operators/operatorAliases.ts`
 
 NOTE (v3): this is v2-only tooling — v3 deletes the alias machinery (see
-docs/v3-implementation-plan.md Phase 0). It reads and writes the frozen v2
-engine in /v2-src so the v2 engine stays coherent; it is no longer part of the
-v3 `prebuild`.
+docs-dev/v3-specs/v3-implementation-plan.md Phase 0). It reads and writes the
+frozen v2 engine in /v2-src so the v2 engine stays coherent; it is no longer
+part of the v3 `prebuild`.
 */
 
 import { writeFileSync } from 'fs'

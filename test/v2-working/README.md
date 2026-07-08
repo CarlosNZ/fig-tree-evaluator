@@ -14,4 +14,4 @@ Both start byte-identical. Keep the *oracle* (`test/V2/`) untouched so the Phase
 
 To see live v2 behaviour while migrating, run the frozen copy: `yarn test:v2 <file>` (it executes against the frozen v2 engine in `/v2-src`).
 
-Migration workflow (per [implementation plan](../../docs/v3-implementation-plan.md) working rule 1): for each chunk, author the v3 tests at the `test/` top level — hand-migrated from here where v2 coverage exists (never converter-generated), plus new tests for new semantics. Tick files off here as you go.
+Migration workflow (per [implementation plan](../../docs-dev/v3-specs/v3-implementation-plan.md) working rule 1): for each chunk, author the v3 tests at the `test/` top level — hand-migrated from here where v2 coverage exists (never converter-generated), plus new tests for new semantics. Tick files off here as you go.

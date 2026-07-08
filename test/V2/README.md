@@ -1,12 +1,12 @@
 # Frozen v2 corpus
 
-This folder is the **immutable record of v2 behaviour** — the current v2 test suite copied verbatim at the start of the v3 rebuild (implementation plan [Phase 0.1](../../docs/v3-implementation-plan.md)). It is our most valuable conversion asset: a large body of real expression trees paired with known-correct results, and the oracle for the Phase-15 V2→V3 converter differential.
+This folder is the **immutable record of v2 behaviour** — the current v2 test suite copied verbatim at the start of the v3 rebuild (implementation plan [Phase 0.1](../../docs-dev/v3-specs/v3-implementation-plan.md)). It is our most valuable conversion asset: a large body of real expression trees paired with known-correct results, and the oracle for the Phase-15 V2→V3 converter differential.
 
 > **This is the pristine copy — do not edit it.** For the editable working set you hand-migrate from, use [`test/v2-working/`](../v2-working/) (byte-identical at the freeze; annotate/delete there as you go). Keeping this copy clean is what lets the Phase-15 differential always compare against an untouched v2 record.
 
 ## Rules
 
-- **Never edit anything in this folder.** Expected-output changes for new v3 rules go on the differential/converter tests (Phase 15), never on this historical record ([testing strategy](../../docs/v3-testing-strategy.md), guardrails; implementation plan working rule 4).
+- **Never edit anything in this folder.** Expected-output changes for new v3 rules go on the differential/converter tests (Phase 15), never on this historical record ([testing strategy](../../docs-dev/v3-specs/v3-testing-strategy.md), guardrails; implementation plan working rule 4).
 - **It never runs against v3 source.** It runs only against the frozen v2 engine in [`/v2-src`](../../v2-src), on demand — not in v3 CI.
 - Files here are **byte-identical to their v2 originals.** They still import from `../src`, `../codegen`, `./database/…` and `./massiveQuery.json` exactly as before the freeze. Rather than touch the record, [`jest.v2.config.js`](../../jest.v2.config.js) remaps those specifiers (`../src` → `/v2-src`; shared assets, kept at the `test/` top level, back to their real locations). ts-jest runs transpile-only here, so TypeScript resolution never has to agree with the runtime mapping.
 

@@ -4,7 +4,7 @@
 
 ## Deep evaluation without a runtime traversal cost
 
-The spec makes deep evaluation the only semantics ([v3-api.md → Deep evaluation](v3-api.md#deep-evaluation)). The naive reading — walk the whole input on every `evaluate()` call looking for nodes — is exactly what v2's `evaluateFullObject` does ([evaluate.ts:59](../src/evaluate.ts#L59)), and it re-pays the full traversal on every evaluation. The suggested v3 mechanism moves all recognition to a one-time parse so the per-evaluation cost is proportional to the number of *evaluable* nodes, not the size of the input.
+The spec makes deep evaluation the only semantics ([v3-api.md → Deep evaluation](v3-api.md#deep-evaluation)). The naive reading — walk the whole input on every `evaluate()` call looking for nodes — is exactly what v2's `evaluateFullObject` does ([evaluate.ts:59](../../v2-src/evaluate.ts#L59)), and it re-pays the full traversal on every evaluation. The suggested v3 mechanism moves all recognition to a one-time parse so the per-evaluation cost is proportional to the number of *evaluable* nodes, not the size of the input.
 
 ### Parse → compile → evaluate
 
@@ -47,7 +47,7 @@ Two more shared-function requirements from the parameter passes, with the same d
 
 ## Text rendering is one function
 
-Same drift-proofing pattern again, from the `buildString` pass (batch 4): the stringification table ([v3-api.md → Stringification](v3-api.md#stringification-one-rendering-table)) is implemented as a single shared renderer consumed by `buildString` (token rendering), `join` (elements), `match` (branch-key comparison), and the scalar rows of `convert` `to: 'string'`. No operator body calls `String(x)` directly — v2's ad-hoc `String(sub)` calls are exactly where `"[object Object]"` leaked from ([STRING_SUBSTITUTION/operator.ts:55](../src/operators/STRING_SUBSTITUTION/operator.ts#L55)) — and the composite-value policy lives in this one function — `<array>` / `<object>` placeholders in rendering positions, a hard failure in `convert` (the one sanctioned fork, Type area).
+Same drift-proofing pattern again, from the `buildString` pass (batch 4): the stringification table ([v3-api.md → Stringification](v3-api.md#stringification-one-rendering-table)) is implemented as a single shared renderer consumed by `buildString` (token rendering), `join` (elements), `match` (branch-key comparison), and the scalar rows of `convert` `to: 'string'`. No operator body calls `String(x)` directly — v2's ad-hoc `String(sub)` calls are exactly where `"[object Object]"` leaked from ([STRING_SUBSTITUTION/operator.ts:55](../../v2-src/operators/STRING_SUBSTITUTION/operator.ts#L55)) — and the composite-value policy lives in this one function — `<array>` / `<object>` placeholders in rendering positions, a hard failure in `convert` (the one sanctioned fork, Type area).
 
 ## String primitives are shared functions too
 
