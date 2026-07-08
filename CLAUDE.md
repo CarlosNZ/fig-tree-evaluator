@@ -10,20 +10,25 @@ Entry point and public API surface: [src/index.ts](src/index.ts). The main class
 
 ## Commands
 
+The package manager is **pnpm** (version pinned in `package.json#packageManager`; migrated from yarn classic July 2026 — there is no yarn.lock). Scripts run TypeScript via **tsx** (ts-node is gone). Node floor is 22 (`engines`).
+
 ```bash
-yarn test                 # Jest, full suite (see testing gotchas below)
-yarn test <substring>     # run test files matching substring, e.g. `yarn test string`
-yarn lint                 # eslint over .ts
-yarn build                # clean + rollup bundle (cjs + esm + .d.ts) into build/
-yarn compile              # tsc only (no bundling)
-yarn generate             # regenerate src/operators/operatorAliases.ts
-yarn getVersion           # regenerate src/version.ts from package.json
-yarn dev                  # run src/dev/playground.ts for ad-hoc experimentation
+pnpm test                 # Jest, v3 suite only (see testing gotchas below)
+pnpm test <substring>     # run test files matching substring, e.g. `pnpm test string`
+pnpm test:v2              # frozen v2 corpus (test/V2) against /v2-src — on demand, never CI
+pnpm lint                 # eslint (flat config, eslint.config.mjs)
+pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
+pnpm compile              # tsc only (typecheck + emit, no bundling)
+pnpm generate             # regenerate v2-src/operators/operatorAliases.ts (v2-only tooling)
+pnpm getVersion           # regenerate src/version.ts from package.json
+pnpm dev                  # run src/dev/playground.ts for ad-hoc experimentation
 ```
 
-There is no watch/dev-server — this is a library. `prebuild` runs `generate` + `getVersion` automatically, so a normal `yarn build` keeps generated files current.
+There is no watch/dev-server — this is a library. Note pnpm does not run implicit pre/post hooks: `build` chains `getVersion` explicitly.
 
-The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `yarn dev` against `src/dev/playground.ts`.
+The package is **ESM-only** (`"type": "module"`, single `build/index.js` bundle — packaging ruling, docs-dev/v3-specs/v3-packaging.md). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
+
+The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`.
 
 ## Architecture
 
@@ -57,24 +62,24 @@ Use an existing simple operator like [AND](src/operators/AND/operator.ts) as the
 1. Create the three files in a new `src/operators/<NAME>/` folder.
 2. Add `export * from './<NAME>'` to [src/operators/index.ts](src/operators/index.ts).
 3. Add the canonical name to the `Operators` list in [src/types.ts](src/types.ts).
-4. Run `yarn generate` to rebuild the alias map.
+4. Run `pnpm generate` to rebuild the alias map.
 5. Add a numbered test file in `test/` and document the operator in README.md.
 
 ### Generated files — do not hand-edit
 
-- **`src/operators/operatorAliases.ts`** — built by `codegen/buildOperatorAliasReference.ts`. Edit aliases in the operator's `data.ts`, then run `yarn generate`.
-- **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `yarn getVersion`).
+- **`src/operators/operatorAliases.ts`** — built by `codegen/buildOperatorAliasReference.ts`. Edit aliases in the operator's `data.ts`, then run `pnpm generate`.
+- **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`).
 
 ### Things easy to get wrong
 
 - The `convert/` folder and several extra exports in `index.ts` exist only for the external [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) editor (the package that now hosts the demo/playground) — they are not part of the evaluation path. Don't assume an export is "internal-only."
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
-- `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `yarn dev`) — never commit it.
+- `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.
 
 ## Code style
 
 - Prettier (`.prettierrc.js`): **no semicolons**, single quotes, 100-char width, 2-space indent, `trailingComma: 'es5'`. Match this exactly.
-- Comments wrap at **80 chars** (code stays at Prettier's 100). Enforced by ESLint: `//` comments via `comment-length/limit-single-line-comments` (auto-fixable — `yarn lint --fix` reflows them), block-comment lines via `max-len` (wrap by hand). The plugin's multi-line rule is deliberately not used — it corrupts non-JSDoc `/* … */` blocks.
+- Comments wrap at **80 chars** (code stays at Prettier's 100). Enforced by ESLint: `//` comments via `comment-length/limit-single-line-comments` (auto-fixable — `pnpm lint --fix` reflows them), block-comment lines via `max-len` (wrap by hand). The plugin's multi-line rule is deliberately not used — it corrupts non-JSDoc `/* … */` blocks.
 - TypeScript throughout; ESLint with `@typescript-eslint/recommended`.
 - Operators' `evaluate` methods are `async`. Use `evaluateArray`/`evaluatorFunction` from `evaluate.ts` to recurse into child nodes rather than calling operators directly.
 
@@ -86,4 +91,4 @@ Two suites need external resources:
 - **HTTP operators** (GET/POST/GraphQL) require an internet connection.
 - **SQL operators** require a local Postgres with the [Northwind](https://github.com/pthom/northwind_psql) database installed.
 
-When neither is available, scope your run with `yarn test <name>` to the relevant files.
+When neither is available, scope your run with `pnpm test <name>` to the relevant files.

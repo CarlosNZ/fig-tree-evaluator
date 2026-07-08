@@ -11,12 +11,12 @@
 // (isolatedModules), so TypeScript module resolution never has to agree with
 // these runtime mappings.
 //
-// Run with:  yarn test:v2            (whole corpus)
-//            yarn test:v2 <substr>   (matching files)
+// Run with:  pnpm test:v2            (whole corpus)
+//            pnpm test:v2 <substr>   (matching files)
 // HTTP tests use the axios / node-fetch mocks in test/__mocks__ (offline).
 // SQL tests (12_database) and the massiveQuery case (17) need a local Northwind
 // Postgres — env-gated, skipped when unavailable.
-module.exports = {
+export default {
   roots: ['<rootDir>/test'],
   testMatch: ['<rootDir>/test/V2/**/?(*.)+(spec|test).+(ts|tsx|js)'],
   transform: {

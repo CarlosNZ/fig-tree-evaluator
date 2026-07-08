@@ -24,7 +24,14 @@ export type { FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'
 
 // Phase 1.3 — type vocabulary & checker
-export { checkType, checkConstraints, describeType, isLiteralType } from './typeCheck'
+export {
+  checkType,
+  checkConstraints,
+  describeType,
+  isLiteralType,
+  isExpectedType,
+  validateConstraintsShape,
+} from './typeCheck'
 export type {
   BasicType,
   LiteralType,
@@ -33,6 +40,28 @@ export type {
   TypeDeclaration,
   TypeCheckResult,
 } from './typeCheck'
+
+// Phase 2.1 — operator definitions. The brand symbol itself stays internal:
+// `defineOperator()` is the only mint, `isValidatedOperator` the only probe.
+export { defineOperator } from './defineOperator'
+export { EvaluationData, isValidatedOperator } from './operatorDefinition'
+
+// Phase 2.2 — the instance shell. Registry machinery stays internal.
+export { FigTree } from './FigTree'
+export type { FigTreeOptions, FragmentDefinition } from './options'
+export type {
+  OperatorDefinition,
+  ParameterDeclaration,
+  ValidatedOperatorDefinition,
+  ValidatedParameter,
+  EvaluationMode,
+  NullPolicy,
+  NullPolicyValue,
+  ConditionalNullPolicy,
+  CompiledNullPolicy,
+  OperatorEvaluate,
+  OperatorValidate,
+} from './operatorDefinition'
 
 // Phase 1.1 — shared primitives (author-facing helpers). Final subpath /
 // editor-hints packaging is deferred to Phase 14; the main barrel carries them

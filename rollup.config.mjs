@@ -1,27 +1,32 @@
 import typescript from '@rollup/plugin-typescript'
+import terser from '@rollup/plugin-terser'
 import dts from 'rollup-plugin-dts'
 import sizes from 'rollup-plugin-sizes'
 import bundleSize from 'rollup-plugin-bundle-size'
-import { terser } from 'rollup-plugin-terser'
 
 export default [
   {
     input: 'src/index.ts',
+    // ESM-only (docs-dev/v3-specs/v3-packaging.md, open Q1 resolved July
+    // 2026): a CJS copy riding along can dual-load in one process and break
+    // the identity machinery (brand symbol, EvaluationData sentinel,
+    // instanceof FigTreeError). CJS consumers on Node >=20.19 use
+    // require(esm); older consumers stay on v2.
     output: [
       {
-        file: 'build/index.cjs.js',
-        format: 'cjs',
-      },
-      {
-        file: 'build/index.esm.js',
+        file: 'build/index.js',
         format: 'esm',
       },
     ],
-    plugins: [typescript({ module: 'ESNext', target: 'es2020' }), terser(), bundleSize(), sizes()],
-    external: ['object-property-extractor', 'dequal/lite'],
+    // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
+    // the single source of truth; no inline overrides
+    plugins: [typescript(), terser(), bundleSize(), sizes()],
+    // dequal is v3's one runtime dependency (docs-dev/v3-specs/v3-packaging.md)
+    external: ['dequal', 'dequal/lite'],
   },
   {
-    // path to your declaration files root
+    // Bundle the per-file declarations (build/dts, emitted by the pass above)
+    // into the single published index.d.ts
     input: './build/dts/index.d.ts',
     output: [{ file: 'build/index.d.ts', format: 'es' }],
     plugins: [dts()],

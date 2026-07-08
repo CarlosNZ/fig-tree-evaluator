@@ -1,4 +1,12 @@
-import { checkType, checkConstraints, describeType, isLiteralType, type Constraints } from '../src'
+import {
+  checkType,
+  checkConstraints,
+  describeType,
+  isLiteralType,
+  isExpectedType,
+  validateConstraintsShape,
+  type Constraints,
+} from '../src'
 
 describe('checkType — basic tokens', () => {
   it('matches string / number / boolean / array / object / null', () => {
@@ -126,5 +134,83 @@ describe('checkConstraints — empty constraints', () => {
   it('is a no-op regardless of value', () => {
     expect(checkConstraints('anything', {}).ok).toBe(true)
     expect(checkConstraints(42, {}).ok).toBe(true)
+  })
+})
+
+describe('isExpectedType — validating type expressions (Phase 2)', () => {
+  it('accepts every basic token', () => {
+    for (const token of [
+      'any',
+      'string',
+      'number',
+      'boolean',
+      'array',
+      'object',
+      'null',
+      'integer',
+    ]) {
+      expect(isExpectedType(token)).toBe(true)
+    }
+  })
+
+  it('accepts unions of basic tokens and literal sets', () => {
+    expect(isExpectedType(['number', 'null'])).toBe(true)
+    expect(isExpectedType({ literal: ['a', 1, true] })).toBe(true)
+  })
+
+  it('rejects unknown tokens, empty forms and malformed members', () => {
+    expect(isExpectedType('text')).toBe(false)
+    expect(isExpectedType(['number', 'text'])).toBe(false)
+    expect(isExpectedType([])).toBe(false) // an empty union means nothing
+    expect(isExpectedType({ literal: [] })).toBe(false) // an empty literal set admits nothing
+    expect(isExpectedType({ literal: ['a', null] })).toBe(false)
+    expect(isExpectedType({ literal: 'a' })).toBe(false)
+    expect(isExpectedType(5)).toBe(false)
+    expect(isExpectedType(undefined)).toBe(false)
+  })
+})
+
+describe('validateConstraintsShape — validating constraint declarations (Phase 2)', () => {
+  it('accepts each documented constraint', () => {
+    expect(validateConstraintsShape({ length: 2 }).ok).toBe(true)
+    expect(validateConstraintsShape({ homogeneous: ['number', 'string'] }).ok).toBe(true)
+    expect(
+      validateConstraintsShape({
+        elementShape: {
+          key: { type: 'string' },
+          value: { type: 'any' },
+          note: { type: 'string', required: false },
+        },
+      }).ok
+    ).toBe(true)
+    expect(validateConstraintsShape({}).ok).toBe(true)
+  })
+
+  it('rejects non-objects, unknown keys and malformed values', () => {
+    expect(validateConstraintsShape('nope').ok).toBe(false)
+    expect(validateConstraintsShape({ arity: 2 }).ok).toBe(false) // unknown key
+    expect(validateConstraintsShape({ length: 'two' }).ok).toBe(false)
+    expect(validateConstraintsShape({ length: -1 }).ok).toBe(false)
+    expect(validateConstraintsShape({ length: 1.5 }).ok).toBe(false)
+    expect(validateConstraintsShape({ homogeneous: [] }).ok).toBe(false)
+    expect(validateConstraintsShape({ homogeneous: ['text'] }).ok).toBe(false)
+    expect(validateConstraintsShape({ elementShape: [] }).ok).toBe(false)
+    expect(validateConstraintsShape({ elementShape: { key: { type: 'text' } } }).ok).toBe(false)
+    expect(validateConstraintsShape({ elementShape: { key: { required: 'yes' } } }).ok).toBe(false)
+  })
+
+  it('recurses through nested elementShape constraints', () => {
+    const nested = {
+      elementShape: {
+        rows: { type: 'array', constraints: { homogeneous: ['number'] } },
+      },
+    }
+    expect(validateConstraintsShape(nested).ok).toBe(true)
+    const badNested = {
+      elementShape: {
+        rows: { type: 'array', constraints: { length: 'two' } },
+      },
+    }
+    expect(validateConstraintsShape(badNested).ok).toBe(false)
   })
 })

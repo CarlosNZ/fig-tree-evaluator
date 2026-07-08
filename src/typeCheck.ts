@@ -100,6 +100,41 @@ export const isLiteralType = (expected: ExpectedType): expected is LiteralType =
   !Array.isArray(expected) &&
   'literal' in expected
 
+const BASIC_TYPES: ReadonlySet<string> = new Set([
+  'any',
+  'string',
+  'number',
+  'boolean',
+  'array',
+  'object',
+  'null',
+  'integer',
+])
+
+/**
+ * Validate a type *expression* (a declaration's `type` / `returns` value),
+ * as opposed to checking a value against one. Registration-time (Phase 2):
+ * declared types must be drawn from the vocabulary. Empty unions and empty
+ * literal sets are rejected — they admit nothing and mean nothing.
+ */
+export const isExpectedType = (expression: unknown): expression is ExpectedType => {
+  if (typeof expression === 'string') return BASIC_TYPES.has(expression)
+  if (Array.isArray(expression))
+    return (
+      expression.length > 0 &&
+      expression.every((t) => typeof t === 'string' && BASIC_TYPES.has(t))
+    )
+  if (isPlainObject(expression) && 'literal' in expression) {
+    const members = (expression as { literal: unknown }).literal
+    return (
+      Array.isArray(members) &&
+      members.length > 0 &&
+      members.every((m) => ['string', 'number', 'boolean'].includes(typeof m))
+    )
+  }
+  return false
+}
+
 /** Check a single value against a declared type. */
 export const checkType = (value: unknown, expected: ExpectedType): TypeCheckResult => {
   if (isLiteralType(expected)) {
@@ -146,6 +181,50 @@ export const checkConstraints = (value: unknown, constraints: Constraints): Type
     for (let i = 0; i < value.length; i++) {
       const result = checkElementShape(value[i], constraints.elementShape)
       if (!result.ok) return result
+    }
+  }
+
+  return OK
+}
+
+const CONSTRAINT_KEYS = ['length', 'homogeneous', 'elementShape']
+
+/**
+ * Validate a `constraints` *declaration* (Phase 2 registration), as opposed
+ * to checking a value against one. Unknown keys are rejected — a typo'd
+ * constraint silently checking nothing is the failure mode this exists to
+ * prevent. `elementShape` declarations may carry extra descriptive fields;
+ * only the three the checker reads (`type` / `required` / `constraints`) are
+ * validated.
+ */
+export const validateConstraintsShape = (declaration: unknown): TypeCheckResult => {
+  if (!isPlainObject(declaration)) return fail('a constraints object', declaration)
+
+  for (const key of Object.keys(declaration)) {
+    if (!CONSTRAINT_KEYS.includes(key))
+      return { ok: false, expected: `one of ${CONSTRAINT_KEYS.join(', ')}`, actual: key }
+  }
+
+  const { length, homogeneous, elementShape } = declaration
+
+  if (length !== undefined && (!Number.isInteger(length) || (length as number) < 0))
+    return fail('a non-negative integer length', length)
+
+  if (homogeneous !== undefined && (!Array.isArray(homogeneous) || !isExpectedType(homogeneous)))
+    return fail('a non-empty array of basic types', homogeneous)
+
+  if (elementShape !== undefined) {
+    if (!isPlainObject(elementShape)) return fail('an object of declarations', elementShape)
+    for (const [key, entry] of Object.entries(elementShape)) {
+      if (!isPlainObject(entry)) return fail(`a declaration for "${key}"`, entry)
+      if (entry.type !== undefined && !isExpectedType(entry.type))
+        return fail(`a vocabulary type for "${key}"`, entry.type)
+      if (entry.required !== undefined && typeof entry.required !== 'boolean')
+        return fail(`a boolean "required" for "${key}"`, entry.required)
+      if (entry.constraints !== undefined) {
+        const nested = validateConstraintsShape(entry.constraints)
+        if (!nested.ok) return nested
+      }
     }
   }
 

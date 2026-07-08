@@ -2,7 +2,7 @@ name: CI
 
 # Runs the v3 suite only (implementation plan 0.2). The frozen v2 corpus in
 # test/V2 is deliberately not run here — it is exercised on demand against
-# /v2-src via `yarn test:v2`, and never against v3 source.
+# /v2-src via `pnpm test:v2`, and never against v3 source.
 on:
   push:
     branches: [main, v3.0-dev]
@@ -13,10 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Reads the pnpm version from package.json's packageManager field
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: yarn
-      - run: yarn install --frozen-lockfile
-      - run: yarn lint
-      - run: yarn test
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm test

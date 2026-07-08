@@ -1,6 +1,6 @@
 /**
  * AUTO-GENERATED — do not edit by hand.
- * Last generated: 2026-07-07T22:44:17.900Z
+ * Last generated: 2026-07-08T05:08:28.766Z
  *
  * Written by codegen/getVersion.ts (`yarn getVersion`) from the `version`
  * field of package.json; `prebuild` regenerates it before every build. The

@@ -33,7 +33,7 @@ The honesty check, maintained as the contract evolves: every ledger entry names 
 | 12 | Per-element bindings evaluation | `evaluation: 'perElement'` + `over: '<sibling>'` → `PerElement` handle |
 | 13 | Evaluation-data access | the `EvaluationData` sentinel as a parameter `default` |
 | 14 | Mode-conditional null policy | a `nullPolicy` function of the definition's single literal-union parameter, compiled to a policy table at registration |
-| 15 | Per-request abort composition | `requestTimeout: true` on the timeout parameter; composition lands in `context.signal` |
+| 15 | Per-request abort composition | definition-level `timeoutParam: '<name>'` pointing at the timeout parameter; composition lands in `context.signal` |
 | 16 | I/O result caching, effective-request keys | `cache: 'manual'` + `context.cache.memo()` (§ Caching) |
 | 17 | Declared options access | definition-level `readsOptions` → `context.options` |
 | 18 | Null-replacement default | `replacesNullAt: ['<target>', …]` on the replacement parameter |
@@ -93,6 +93,7 @@ const ifOperator = defineOperator({
 | `useCache` | boolean | — (default `false`) | the metadata default at the bottom of the settled chain (node key → `operatorDefaults` → blanket option → this) |
 | `cache` | `'auto'` \| `'manual'` | — (default `'auto'`) | how caching is keyed when effective `useCache` is true — § Caching |
 | `readsOptions` | `string[]` | — | option blocks the body reads (ledger #17); the named blocks arrive frozen on `context.options`; anything unnamed is invisible to the body |
+| `timeoutParam` | string | — | names the declared `integer` parameter whose resolved value joins the abort composition on `context.signal` (ledger #15); its expiry surfaces as an **ordinary runtime failure** (fallback-catchable), distinct from the kill switch; one field names one parameter, so at-most-one holds by construction (open Q5 resolution — Carl, July 2026) |
 | `validate` | function | — | the static hook (ledger #11), § Registration & validation |
 | `evaluate` | function | ✓ | the body, § Runtime interface |
 | `returns` | metadata type | — (reads as `any`) | declared result type — drives the static feeding-position check, § `returns` |
@@ -110,7 +111,6 @@ The fragment declaration table (Fragments § Parameter declarations) is the base
 | `elementNullPolicy` | same vocabulary | — | 8 | container parameters only: the policy applied per element (arrays) / per value (objects); the parameter *itself* going null is governed by `nullPolicy`/type as usual |
 | `constraints` | object, § below | — | 9 | array-shape constraints beyond the type table |
 | `replacesNullAt` | `string[]` | — | 18 | marks a `…Default` parameter as the engine-side null replacement for the named sibling target(s); requires `evaluation: 'lazy'`, optional, **no `default`** (presence-sensitive by construction — unset leaves the target's declared policy untouched); granularity follows the target: per element/value where the target declares `elementNullPolicy`, whole-value otherwise; replacement runs in the engine's null-policy layer, before the target's own type check (the batch-5 `nullInputDefault` ordering) and before mode dispatch/comparison/rendering — the body never sees any of it; where several slots go null at once (two null operands in one `values`), the memoized-lazy guarantee means the authored replacement evaluates **once** and splices into each — the concrete multi-consumer behind `lazy`'s at-most-once rule |
-| `requestTimeout` | boolean | `false` | 15 | one `integer` parameter per definition may declare it: its resolved value joins the abort composition on `context.signal`, and its expiry surfaces as an **ordinary runtime failure** (fallback-catchable), distinct from the kill switch |
 
 **Optionality and unset delivery.** The fragments rule transfers: required unless `default` or `required: false`; null-means-unset applies engine-side to optionals whose type excludes `null` (Type area) — no declaration needed. An optional parameter that is unset *and has no default* is delivered to the body as an **absent key** on `params` — not `null` — so a body can distinguish "unset" from "explicitly null" where its type admits both (`get.missingPathDefault` is the case that forces this: `missingPathDefault: null` under `strictDataPaths` legitimately means "give me null instead of throwing", which an unset parameter must not mean).
 
@@ -186,7 +186,7 @@ interface Settlement {
 // a 'race' parameter arrives as AsyncIterable<Settlement> & { length: number }
 
 interface OperatorContext {
-  signal: AbortSignal                   // caller signal + evaluation timeout + enclosing early-resolution scopes + declared requestTimeout (ledger #15)
+  signal: AbortSignal                   // caller signal + evaluation timeout + enclosing early-resolution scopes + declared timeoutParam (ledger #15)
   options: Readonly<Record<string, unknown>>  // only the blocks named in readsOptions; frozen per evaluation (ledger #17)
   cache: { memo<T>(key: unknown, fn: () => Promise<T>): Promise<T> }  // § Caching; identity passthrough when caching is off
 }
@@ -252,7 +252,16 @@ Header values never echo (the batch-8 rule): `errorData` and `trace` render head
 
 ## Registration & validation
 
-`defineOperator()` validates the definition in isolation, at build time, loudly (malformed = throw, matching fragments): name/alias legality and the reservation set; parameter-name legality and the flat reservation; declared types drawn from the metadata vocabulary; `default` values satisfying their declared types; `required: true` + `default` contradiction; `positionalParams` entries naming declared parameters, rest-entry last only; `nullPolicy` only where the type names `null`; conditional `nullPolicy` functions require exactly one literal-union parameter in the definition (zero, or several, is a registration error), and are enumerated over its members into a total compiled table (any non-policy return is a registration error); `over` naming a sibling array parameter; `replacesNullAt` holders lazy, optional, carrying no `default`, and naming real siblings; at most one `requestTimeout` parameter, `integer`-typed; the sentinel only in `default` position. Instance registration re-runs the cross-registry half: name/alias collisions across the one namespace, `excludeOperators`/`operatorDefaults` references resolving.
+`defineOperator()` validates the definition in isolation, at build time, loudly (malformed = throw, matching fragments): name/alias legality and the reservation set; parameter-name legality and the flat reservation; declared types drawn from the metadata vocabulary; `default` values satisfying their declared types; `required: true` + `default` contradiction; `positionalParams` entries naming declared parameters, rest-entry last only; `nullPolicy` only where the type names `null`; conditional `nullPolicy` functions require exactly one literal-union parameter in the definition (zero, or several, is a registration error), and are enumerated over its members into a total compiled table (any non-policy return is a registration error); `over` naming a sibling array parameter; `replacesNullAt` holders lazy, optional, carrying no `default`, and naming real siblings; `timeoutParam` naming a declared `integer`-typed parameter; the sentinel only in `default` position. Instance registration re-runs the cross-registry half: name/alias collisions across the one namespace, `operatorDefaults` references resolving.
+
+Rulings recorded at Phase-2 implementation (Carl, July 2026), refining the list above:
+
+- **`defineOperator()` is the mandatory entry point.** The `operators` array accepts only definitions it has branded — a plain object literal, even a flawlessly valid one, is a construction error whose message names the remedy. The registry trusts the brand wholesale and never re-validates; there is no second validation path.
+- **Additions to the checklist**, all surely-intended: duplicate `positionalParams` entries are an error; a `replacesNullAt` target may not be the holder itself; a conditional `nullPolicy` function that **throws** during compilation is a registration error (naming the offending union member).
+- **`elementNullPolicy`** admits the plain vocabulary only (`'propagate'` / `'value'`) — the conditional form is not admitted there — and is legal only on container-typed parameters (a type naming `array`, `object` or `any`).
+- **The sentinel skips the default-fits-type check**: `default: EvaluationData` is accepted regardless of the declared type, since the delivered value is the merged evaluation data, not the constant (`get.from` declares `['object', 'array']` and holds the sentinel happily).
+- **Error shape**: all violations in one definition are collected and thrown together as one `FigTreeError` — code `invalid-definition`, `operator` set where the name is a string, `issues` carrying one entry per violation with a **path into the authored literal** (`['parameters', 'value', 'nullPolicy']`), specific codes per class (`invalid-name`, `reserved-name`, `invalid-null-policy`, `type-check`). Only a structural gate (not an object; `name`/`description`/`parameters`/`evaluate` missing or mistyped) fails fast, since nothing else is checkable without it.
+- **Normalization posture**: the validated definition fills every documented default (`type: 'any'`, `required` computed once, `evaluation: 'eager'`, `truthiness: false`, `nullPolicy: 'propagate'`, `useCache: false`, `cache: 'auto'`, `readsOptions: []`, `returns: 'any'`), derives `restParam`/`timeoutParam`, replaces the conditional-policy function with its compiled table, and is returned deep-frozen with the input literal untouched. `metadata` bags and `default` values stay by reference, unfrozen — host-owned.
 
 The definition-level **`validate` hook** (ledger #11) is the operator-semantics extension of the same posture, run at parse/`validate()` over **literal** parameter values only, never at evaluation:
 
@@ -290,6 +299,8 @@ The warning-severity flavour is batch 8's mutation lint: a literal `sql.query` o
 
 Returns the declarative half, verbatim and total: `name`, `alias`, `description`, `metadata`, `parameters` (every field of every declaration, compiled conditional null-policy tables and constraints included — the editor renders from this), `positionalParams`, `useCache` metadata default, `readsOptions`, `returns` — with instance-effective `operatorDefaults` (parameter and modifier alike) merged visibly, per Options. Function-valued fields are reported as capability flags (`hasValidate: true`, `cache: 'manual'`), never as functions. Nothing invocable lacks an entry — the totality the functions-tier deletion bought.
 
+"Total" is served by the normalization posture recorded under Registration & validation (Phase-2 implementation): validated definitions carry every documented default filled in, so `getOperators()` reports the *effective* declaration (`evaluation: 'eager'` explicit, `required` computed, compiled policy tables in place) rather than echoing authored sparseness.
+
 ## TypeScript ergonomics
 
 `defineOperator()` is generic over the literal definition, and the body's `params` type is **derived from the declarations** — the declared `type` maps to its TS type (`'string'` → `string`, `['number', 'null']` → `number | null`, literal unions → literal unions, `integer` → `number`, `any` → `unknown`), then the delivery layers adjust it: `propagate` **removes `null`** from the body-visible type (the engine short-circuits before the body), `truthiness: true` makes it `boolean`, `lazy` wraps in `LazyValue<T>`, `perElement` in `PerElement<T>`, optionals without defaults become optional keys. The worked examples above typecheck with no annotations and no `as const`. Cost recorded honestly: this is a non-trivial conditional-type stack; if inference proves brittle at implementation, the fallback is an explicit generic parameter (`defineOperator<MyParams>({ … })`) — the declarations stay the single source either way.
@@ -321,7 +332,7 @@ What earned it a place beyond display metadata — the deciding argument at the 
 2. **The caching split** (`'auto'`/`'manual'` + `memo`) — flagged in its section; most likely to move at implementation.
 3. **`returns` in v3.0** — **resolved (Carl, July 2026)**: ships, with the static feeding-position check (§ `returns`).
 4. **Unset delivery as absent key** — proposed above for the `missingPathDefault` distinction; the alternative (a `Symbol` sentinel) is uglier but destructuring-safe (`const { decimals = …}` picks up JS defaults on absent keys, which could shadow the layered chain — doc line or lint?).
-5. **`requestTimeout` spelling** — parameter-level flag (proposed) vs a definition-level `timeoutParam: 'timeout'` pointer.
+5. **`requestTimeout` spelling** — **resolved (Carl, July 2026, at Phase-2 implementation)**: the definition-level `timeoutParam: '<name>'` pointer. One field names one parameter, so the at-most-one constraint holds by construction; validation reduces to "names a declared `integer`-typed parameter". The parameter-level `requestTimeout: true` flag is superseded (§ Definition-level fields).
 6. **`OperatorFailure`** — name and shape of the exported error class (and whether `FigTreeError` itself is simply exposed for throwing).
 7. **The `validate`-hook `helpers` toolbox** — minimum viable set; settled at implementation.
 8. **Client contract finality** — the shapes above are deliberately minimal; confirm `FetchClient`/`AxiosClient` and the SQLite wrapper can all satisfy them before flipping to Agreed.

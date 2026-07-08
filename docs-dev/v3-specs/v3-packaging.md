@@ -76,7 +76,7 @@ The export-grouping question deferred from Operators (fat `coreOperators` vs lea
 - The floated constraint — the default core must cover everything v2 had post-conversion, so converted v2 expressions run without extra registration — is satisfied trivially: converted v2 trees can only need core operators (I/O conversion necessarily involves handing over a client, which is registration).
 - Regret is asymmetric, as usual: grouped arrays are plain `OperatorDefinition[]` values and can be *added* later without breaking anything (`coreOperators` would simply be their concatenation); a shipped grouping can never be re-fattened without breaking lean consumers.
 
-**Per-operator named exports** (`import { round } from …`) are also rejected: the canonical names are author-facing words, not JS-facing ones — `if` is a reserved word outright, and `get`, `not`, `map`, `join` are collision bait in any host module — so individual exports would need a renaming scheme (`ifOperator`, …) that forfeits the one thing individual exports are for. A host wanting a minimal registry filters the array (`coreOperators.filter(…)`) or uses `excludeOperators`; both are supported surface.
+**Per-operator named exports** (`import { round } from …`) are also rejected: the canonical names are author-facing words, not JS-facing ones — `if` is a reserved word outright, and `get`, `not`, `map`, `join` are collision bait in any host module — so individual exports would need a renaming scheme (`ifOperator`, …) that forfeits the one thing individual exports are for. A host wanting a minimal registry filters the array (`coreOperators.filter(…)`) — the supported surface (`excludeOperators` removed from v3: Options ruling, July 2026).
 
 ### Ruling: engine-parity helpers export from the root
 
@@ -131,9 +131,9 @@ The assessment floated `./internal` for the editor's leftover needs. Examined it
 
 ## Module format & platform floor
 
-- **Dual ESM + CJS**, ESM primary (`"type": "module"`, CJS artifacts as `.cjs`). The consumer base skews toward long-lived back-end config systems where CJS still walks; the marginal cost is one extra rollup output per entry. ESM-only is a live alternative — arguments recorded in open Q1.
+- **ESM-only** (`"type": "module"`, no CJS artifacts — **ruled, Carl, July 2026**, resolving open Q1; supersedes this doc's earlier dual sketch). The deciding argument was not bundle weight but the **dual-load hazard being fatal to v3's identity machinery**: if one process loads both copies (one dependency `require`s, another `import`s), the `defineOperator()` brand symbol, the `EvaluationData` sentinel and `instanceof FigTreeError` all fail across the copy boundary — a class of "impossible" consumer bugs a CJS artifact invites and ESM-only makes structurally impossible. CJS consumers on Node ≥20.19 use native `require(esm)`; older consumers stay on v2.
 - **`sideEffects: false`** — kept, and now verified (principle 5). All three entries must be side-effect-free at import time; nothing registers, connects, or mutates globals on import (registration is explicit, per Options).
-- **Node floor: `engines: { "node": ">=20" }`** (open Q5 for 20 vs 22). Advisory (npm warns, doesn't block); the real commitments are: language target **ES2022**, no down-leveled output, no polyfills, and **no assumed globals beyond the ES standard + `AbortSignal`/`AbortController`**. The one sanctioned global probe is the no-arg `httpOperators()` / `FetchClient()` default reading global `fetch` — at registration, failing loudly there if absent (ruling above). The engine and core operators never touch it, which is what keeps the package runtime-agnostic (Node, Deno, Bun, browsers) without a compatibility matrix: a host without global fetch passes a client.
+- **Node floor: `engines: { "node": ">=22" }`** (**ruled, Carl, July 2026**, resolving open Q5 — Node 20 went EOL April 2026, so 22 is the oldest supported LTS; it also guarantees `require(esm)` for the CJS consumers above). Advisory (npm warns, doesn't block); the real commitments are: language target **ES2022**, no down-leveled output, no polyfills, and **no assumed globals beyond the ES standard + `AbortSignal`/`AbortController`**. The one sanctioned global probe is the no-arg `httpOperators()` / `FetchClient()` default reading global `fetch` — at registration, failing loudly there if absent (ruling above). The engine and core operators never touch it, which is what keeps the package runtime-agnostic (Node, Deno, Bun, browsers) without a compatibility matrix: a host without global fetch passes a client.
 - **Runtime dependencies: `dequal` only** (likely `dequal/lite`, external as today). `object-property-extractor` is retired: the v3 path resolver is a new in-repo primitive with deliberately different semantics (null drill-through by default, `[*]` projection, own-enumerable-only — References §3) — depending on the old package would mean overriding most of it. HTTP/SQL client libraries remain dev-only, injected by consumers, never bundled.
 
 Sketch of the resulting manifest (mechanics, not contract — final paths are implementation detail):
@@ -144,35 +144,34 @@ Sketch of the resulting manifest (mechanics, not contract — final paths are im
   "version": "3.0.0",
   "type": "module",
   "sideEffects": false,
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=22" },
   "files": ["build"],
-  "main": "./build/index.cjs",          // legacy-resolver fallback only
+  "main": "./build/index.js",           // legacy-resolver fallback only
   "types": "./build/index.d.ts",
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
-      "import": "./build/index.js",
-      "require": "./build/index.cjs"
+      "default": "./build/index.js"
     },
     "./convert": {
       "types": "./build/convert/index.d.ts",
-      "import": "./build/convert/index.js",
-      "require": "./build/convert/index.cjs"
+      "default": "./build/convert/index.js"
     },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
-      "import": "./build/editor-hints/index.js",
-      "require": "./build/editor-hints/index.cjs"
+      "default": "./build/editor-hints/index.js"
     }
   }
 }
 ```
 
+The root-entry half of this manifest is live in the repo already (July 2026, the toolchain-modernization pass): `type: module`, `engines >=22`, the ESM-only exports map, and the single-bundle rollup output. The `./convert` / `./editor-hints` subpaths still land at their owning phases.
+
 ## Build & CI mechanics
 
 Implementation notes for Phase 14, not contract — free to reshape provided the published surface above holds:
 
-- **Rollup stays** (three inputs, six bundles + three `.d.ts` rollups); no reason to switch tooling for its own sake.
+- **Rollup stays** (three inputs, three ESM bundles + three `.d.ts` rollups — halved by the ESM-only ruling); no reason to switch tooling for its own sake. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
 - **Two CI checks**, added at Phase 14 and kept forever:
   1. *Tree-shake fixture*: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, `./convert`, or `./editor-hints` code (marker-identifier scan). This is principle 5 made executable.
   2. *Size budget*: bundle-size assertion on the root ESM entry. The number is set from measurement at Phase 14; the check existing is the contract, the number is maintenance.
@@ -223,10 +222,10 @@ Every export of v2's `src/index.ts`, accounted for:
 
 ## Open questions
 
-1. **ESM-only instead of dual?** For: one artifact per entry, no dual-package hazard, Node ≥20.17 can `require()` sync ESM anyway, and 2026 ecosystem momentum is firmly ESM. Against: the embedded-config-system consumer base is exactly where old CJS toolchains linger, and a major version asking for expression rewrites *plus* a module-system change is two migrations in one. Sketch above says dual; genuinely Carl's call on ecosystem posture.
+1. **ESM-only instead of dual?** — **resolved (Carl, July 2026): ESM-only.** The clincher was the dual-load hazard against v3's identity machinery (brand symbol, `EvaluationData` sentinel, `instanceof FigTreeError` — see Module format & platform floor); the "two migrations in one" concern was accepted as the cost of a major that already asks for expression rewrites. `require(esm)` on Node ≥20.19 covers CJS consumers.
 2. **SQL wrapper names.** `SQLNodePostgres`/`SQLite` are v2 oddities; proposed `PostgresConnection` / `SQLiteConnection` (matching the `SqlConnection` contract they implement). Also: confirm both wrappers still earn their place in-package vs living in README recipes. And one spelling for construction across all four wrappers — v2's are plain factories (`AxiosClient(axios)`), the v3 examples currently say `new FetchClient()`; class or factory, one wins at implementation (plan chunk 9.2, which ports the v2 wrappers as starting points).
 3. **The engine-parity helper list.** Proposed: `isTruthy`, `compareValues`, `renderText`, `resolvePath` — confirm names, and whether any of the finer primitives (whitespace set, code-point segmentation, decimal rounding) deserve export too.
 4. **The public name of the expression-input type.** v2's `EvaluatorNode` is accurate but engine-flavoured; `FigTreeExpression` reads better in host code (`const expr: FigTreeExpression = …`). One name only, whichever it is.
-5. **Node floor: 20 or 22?** 20 is the conservative advisory floor (18 is EOL); 22 buys `require(esm)` universality if Q1 lands ESM-only. Pure signalling either way given the no-polyfill/ES2022 commitments.
+5. **Node floor: 20 or 22?** — **resolved (Carl, July 2026): `>=22`.** Node 20 went EOL April 2026, so 22 is the oldest supported LTS; it also buys `require(esm)` universality for Q1's ESM-only ruling.
 6. **Publish automation.** v2 publishes manually via `prepublishOnly`. Worth moving to CI trusted publishing (provenance attestation, tag-triggered) as part of Phase 14, or keep manual? Low stakes, decide once.
 7. **`next`-tag pre-releases for the editor.** The sketch assumes the editor integrates against `3.0.0-next.*` pre-releases during Phases 13–15 — confirm that workflow suits the editor repo, or whether a workspace/link setup replaces it.

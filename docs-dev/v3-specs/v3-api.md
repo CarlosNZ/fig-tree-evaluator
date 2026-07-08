@@ -45,7 +45,6 @@ interface FigTreeOptions {
 
   // ── Operator registry ──────────────────────────────────
   operators?: (OperatorDefinition | OperatorDefinition[])[] // flattened one level; default: coreOperators only
-  excludeOperators?: OperatorName[]                         // canonical names, case-sensitive; per-call legal
   operatorDefaults?: { [operator: OperatorName]: { [param: string]: unknown } }
 
   // ── I/O configuration ──────────────────────────────────
@@ -91,8 +90,15 @@ const fig = new FigTree({
 
 - Omitting `operators` defaults to `coreOperators` only — no HTTP, no SQL. Supplying it states the registry exhaustively (include `coreOperators` yourself if wanted). Opt-in by construction: an instance can only reach the network because someone visibly registered the I/O operators.
 - **`httpOperators()` with no argument defaults to `new FetchClient()`** — global fetch, the zero-config path on every modern runtime; no global `fetch` = loud registration error naming the remedy (Packaging ruling, July 2026). Other clients are passed as instances (`httpOperators(new AxiosClient(axios))`); `sqlOperators(connection)` has no default — there is no ambient SQL connection.
-- `excludeOperators` remains for *dynamic* restriction on top of the fixed registry (cheap filter, per-call legal).
+- There is no `excludeOperators` (**removed — Carl, July 2026, at Phase-2 implementation**, superseding the assessment's keep-for-dynamic-restriction call): registration *is* the restriction mechanism. A host wanting a smaller registry filters the array (`coreOperators.filter(…)`) or builds a second instance — the registry states what an instance can do, exhaustively, with no second subtractive layer to reason about.
 - Clients are not swappable per-call or via `updateOptions` — build a new instance.
+
+Rulings recorded at Phase-2 implementation (Carl, July 2026):
+
+- **`defineOperator()` is the mandatory entry point**: every `operators` entry must carry its brand — a plain definition object, even a valid one, is a construction error naming the remedy (and an entry that is a *function* gets the dedicated message: factories must be called). The registry trusts the brand and never re-validates.
+- **Identity duplicates error**: the same definition or pack included twice is a collision like any distinct-definition collision — one rule, "no silent precedence" read strictly. Relaxing to dedupe-by-identity later would be non-breaking; the reverse would not.
+- **`operatorDefaults` keyed by an alias** is a construction error with a use-the-canonical-name hint (keys are canonical, matching everything else keyed on operator identity).
+- **`fallback` modifier defaults**: the constants-only rule is enforced structurally at Phase 3 (constancy classification is the parser's); construction validates the key and stores the value. `useCache` modifier defaults are boolean-checked at construction.
 
 ### `operatorDefaults`
 
@@ -186,7 +192,7 @@ Deferred to other areas:
 | `noShorthand` | **Deleted** | Moot — shorthand normalizes once at parse |
 | `skipRuntimeTypeCheck` | **Renamed** | → `runtimeTypeCheck?: boolean`, default `true` (positive name, no double negative) |
 | `evaluateFullObject` | **Deleted** | Deep evaluation is the only semantics — see [Deep evaluation](#deep-evaluation); no `evaluateDeep` method either |
-| `excludeOperators` | **Modified** | Canonical names only, case-sensitive |
+| `excludeOperators` | **Deleted** | Registration is the restriction mechanism — filter the `operators` array instead (ruled July 2026, Phase-2 implementation) |
 | `useCache` | **Kept** | Same meaning |
 | `maxCacheSize` | **Moved** | → `cache.maxSize` |
 | `maxCacheTime` | **Moved** | → `cache.maxTime` |
@@ -872,8 +878,7 @@ Fragments are statically checkable at registration (the registry is stable by co
 
 - **Batch semantics**: all fragments supplied in one constructor / `updateOptions()` call validate together — a fragment may reference any fragment in the same batch or already registered, regardless of key order.
 - **Cross-call ordering**: referencing a fragment that will only be registered in a *later* `updateOptions()` call is an error — register dependencies first, or in one batch.
-- **Replacement re-validates the registry**: re-supplying a name (replace-wholesale, per Options) can break dependents or close a cycle through existing fragments, so the whole registry is re-checked. Likewise an `updateOptions()` that changes the `operators` array re-validates all fragment bodies — a body using a now-absent operator fails there, loudly, not at the next `evaluate()`.
-- **Per-call `excludeOperators` edge**, recorded: exclusion is dynamic, so a body using an operator excluded for one call is necessarily a *runtime* failure of that call (fallback-catchable) — registration cannot see it.
+- **Replacement re-validates the registry**: re-supplying a name (replace-wholesale, per Options) can break dependents or close a cycle through existing fragments, so the whole registry is re-checked. Likewise an `updateOptions()` that changes the `operators` array re-validates all fragment bodies — a body using a now-absent operator fails there, loudly, not at the next `evaluate()`. (This rule also absorbs the former per-call-`excludeOperators` edge: with `excludeOperators` removed — Options ruling, July 2026 — registry changes are the *only* way an operator disappears from under a fragment body, and they always re-validate.)
 
 ### Tooling metadata
 
@@ -921,7 +926,7 @@ Rationale, recorded. Custom functions and custom operators were never different 
 A `defineOperator()` operator is **indistinguishable from a native operator** — the core operators are themselves definitions of the same shape, entering through the same array. Consequences:
 
 - Same runtime treatment: the same evaluation context and machinery, the same engine-enforced boundary guarantees (runtime type checks, null-policy enforcement, `undefined` → `null`, the finite-number guard), the same laziness capabilities where the contract declares them.
-- Participation in everything keyed on operator identity, no carve-outs: `operatorDefaults`, `excludeOperators`, `getOperators()`, `useCache` metadata defaults, parse-time `validate()` checking of literal parameters.
+- Participation in everything keyed on operator identity, no carve-outs: `operatorDefaults`, `getOperators()`, `useCache` metadata defaults, parse-time `validate()` checking of literal parameters.
 - `defineOperator()` validates at registration that a definition satisfies the full operator contract — malformed definitions fail loudly there, matching the fragment registration posture.
 - Definitions adopt the same `description` + opaque-`metadata` convention as fragments (constraint recorded there).
 

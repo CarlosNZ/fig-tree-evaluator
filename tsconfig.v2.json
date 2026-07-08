@@ -6,7 +6,14 @@
   // moduleNameMapper, keeping every file in test/V2 byte-identical to v2.
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "."
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "types": ["node", "jest"],
+    "rootDir": ".",
+    // The frozen v2 engine predates the stricter v3 checks — never fix it
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false
   },
   "include": ["v2-src", "test", "codegen"],
   "exclude": ["node_modules", "build"]

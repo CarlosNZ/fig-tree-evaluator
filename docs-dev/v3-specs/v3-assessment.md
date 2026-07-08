@@ -253,7 +253,7 @@ Make the operator registry explicit and tree-shakable:
 new FigTree({ operators: [...coreOperators, httpOperators(fetchClient), sqlOperators(pgClient)] })
 ```
 
-I/O operators become **opt-in by construction** — better security default than today's opt-out `excludeOperators` (keep `excludeOperators` for dynamic restriction), and bundlers drop what you don't register. Per §3.4, `httpOperators(client)` exports exactly two operators — `http` and `graphQL` — sharing one client and one request core, down from three near-duplicate implementations.
+I/O operators become **opt-in by construction** — better security default than today's opt-out `excludeOperators` (keep `excludeOperators` for dynamic restriction — *superseded: `excludeOperators` removed from v3 entirely, Options ruling, July 2026*), and bundlers drop what you don't register. Per §3.4, `httpOperators(client)` exports exactly two operators — `http` and `graphQL` — sharing one client and one request core, down from three near-duplicate implementations.
 
 ### 3.6 API surface and packaging
 

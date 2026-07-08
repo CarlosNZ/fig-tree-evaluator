@@ -181,6 +181,8 @@ class FigTreeError extends Error {
 
 The two-level path story (call-site `path` + `fragmentPath`) is forced by fragments: a failure inside a registered body has no single location in the input expression, and the editor needs both ends of the pointer.
 
+**Registration-error shape** (recorded at Phase-2 implementation, July 2026): errors thrown by `defineOperator()` and `new FigTree()` reuse this class with a path convention of their own — there is no expression, so `path` points into the **authored literal** (`['parameters', 'value', 'nullPolicy']` into a definition; `['operators', 1]` / `['operatorDefaults', 'equal', 'caseInsensitive']` into the options object). The throw-level `code` is a predictable umbrella (`'invalid-definition'` from `defineOperator`, `'invalid-options'` from construction); specificity lives in `issues[*].code` (`'invalid-name'`, `'reserved-name'`, `'invalid-null-policy'`, `'duplicate-operator'`, `'type-check'`, `'unknown-operator'`), with all violations collected into one throw — `message` is the first issue plus a `(+ N more issues)` tail.
+
 ### Worked example
 
 ```js
@@ -350,7 +352,7 @@ interface Issue {
 
 - **`validate()` never throws on expression content** — reporting is its entire job; even hard "parse errors" come back as `severity: 'error'` issues. (It throws only on misuse of the method itself, e.g. per-call `operators`.)
 - **Synchronous by construction**: the parse pass touches no I/O, and the contract's operator `validate` hooks are sync functions returning `Issue[]`. Editors get keystroke-rate validation with no async ceremony.
-- It accepts per-call options under the standard merge (minus the barred `operators`/`fragments`) because options legitimately affect static checking: `maxDepth`/`maxNodes` are structural checks, `excludeOperators` drives a warning (below), `data` enables the sample-data check (below).
+- It accepts per-call options under the standard merge (minus the barred `operators`/`fragments`) because options legitimately affect static checking: `maxDepth`/`maxNodes` are structural checks, `data` enables the sample-data check (below).
 - Calling it warms the parse cache as a side effect — a host that validates at config-save time gets its first `evaluate()` pre-parsed for free. No public `parse`/`compile` method exists; the pipeline stays engine architecture (assessment § 3.3), and this side effect is the only "pre-warm" anyone needs.
 - Relationship to `evaluate()`: the same pass with the same checks runs (cached) inside every evaluation — `validate()` adds nothing evaluation doesn't already know; it just returns the stream instead of acting on it. Warnings never block evaluation and are *only* visible through `validate()` (and the trace echo) — the no-console principle.
 
@@ -386,7 +388,7 @@ One clarification the missing-required row forces, **agreed** (exposed at review
 | `$not` over a propagate-family node (recommends `missingPathDefault` / `nullValueDefault`) | cases #9 |
 | `buildObject` duplicate literal keys | batch 6 |
 | I/O lints: literal `sql.query` opening with a write verb; the injection lints | batch 8 |
-| Use of an operator excluded by *instance-level* `excludeOperators` — statically knowable certain-failure, but per-call exclusion can differ, hence warning not error | **new here — agreed at close-off** |
+| ~~Use of an operator excluded by *instance-level* `excludeOperators`~~ — row retired: `excludeOperators` removed from v3 (Options ruling — Carl, July 2026, Phase-2 implementation); an unregistered operator is already the unknown-operator error row | **retired** |
 | **Sample-data check** (only when `data` is supplied to `validate`): `$data` paths absent from the supplied object | **agreed at close-off** — see below |
 
 **Hints**: the `buildString` positional renumber hint (case #17); vocabulary open for more.
@@ -445,7 +447,7 @@ interface Dependencies {
 
 ## Introspection & housekeeping methods
 
-**`getOperators()`** — content and posture fixed in the [contract](v3-operator-contract.md#introspection-getoperators) (declarative half verbatim; effective `operatorDefaults` merged visibly; function-valued fields as capability flags). Method shape settled here: returns a fresh array of plain objects (snapshot, never live definitions — mutating the return must not touch the registry), in **registration order** (the `operators` array order — stable and author-controlled; v2's alias-table sort dies with the alias table). Reflects instance-level `excludeOperators`.
+**`getOperators()`** — content and posture fixed in the [contract](v3-operator-contract.md#introspection-getoperators) (declarative half verbatim; effective `operatorDefaults` merged visibly; function-valued fields as capability flags). Method shape settled here: returns a fresh array of plain objects (snapshot, never live definitions — mutating the return must not touch the registry), in **registration order** (the `operators` array order — stable and author-controlled; v2's alias-table sort dies with the alias table).
 
 **`getFragments()`** — content fixed in Fragments (name, `description`, parameter declarations with effective optionality and defaults, `metadata` verbatim). Same snapshot posture, registration order. The body `expression` is deliberately **not** returned — fragments are the host's own registrations (it has them), and the editor consumes the declaration surface, not the implementation.
 

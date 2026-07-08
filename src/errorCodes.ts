@@ -25,4 +25,12 @@ export const ErrorCodes = {
   unknownNodeKey: 'unknown-node-key', // { $plus: {...}, colour: 'red' } — 'colour' isn't a declared property
   unresolvedVar: 'unresolved-var', // '$vars.foo' referenced but 'foo' isn't defined in scope
   unrecognizedIdentifier: 'unrecognized-identifier', // { $flibble: 1 } — the name after the sigil matches no operator/fragment/namespace (warning)
+
+  // Phase 2 — registration (defineOperator / registry / construction)
+  invalidDefinition: 'invalid-definition', // defineOperator() throw umbrella; also the generic malformed-definition issue
+  invalidName: 'invalid-name', // 'foo.bar' — a name violating the shared legality rule
+  reservedName: 'reserved-name', // an operator named 'data', a parameter named 'fallback'
+  invalidNullPolicy: 'invalid-null-policy', // nullPolicy on a null-free type, a bad conditional policy, truthiness conflicts
+  duplicateOperator: 'duplicate-operator', // two registrations claiming one name/alias
+  invalidOptions: 'invalid-options', // new FigTree() throw umbrella; also generic bad-options issues
 } as const

@@ -37,10 +37,10 @@
 
 ## Phase 2 — Definitions & registry (still no evaluation)
 
-**2.1 · `defineOperator()`.** Definition validation in isolation: name/alias legality + reservation set, parameter declarations, `positionalParams` rules, nullPolicy declarability (type-driven admission), **conditional nullPolicy compilation** (enumerate the literal union → policy table), `replacesNullAt` constraints, `requestTimeout`, `returns`, the `EvaluationData` sentinel. Fixture-based tests: every registration error in the contract's validation list gets a fixture that triggers it.
+**2.1 · `defineOperator()`.** Definition validation in isolation: name/alias legality + reservation set, parameter declarations, `positionalParams` rules, nullPolicy declarability (type-driven admission), **conditional nullPolicy compilation** (enumerate the literal union → policy table), `replacesNullAt` constraints, `timeoutParam` (contract Q5 resolved: definition-level pointer), `returns`, the `EvaluationData` sentinel. Fixture-based tests: every registration error in the contract's validation list gets a fixture that triggers it.
 *Spec: contract §§ Definition shape → Registration & validation.*
 
-**2.2 · Registry assembly.** Building the instance registry from the `operators` array: flattening, cross-registry collision checks (one namespace), alias map, `excludeOperators` / `operatorDefaults` validation against metadata — including the **required-parameter ban** (evaluator-methods open Q12, assuming sign-off). `new FigTree()` exists as a shell that registers and throws on bad input; no `evaluate` yet.
+**2.2 · Registry assembly.** Building the instance registry from the `operators` array: flattening, cross-registry collision checks (one namespace), alias map, `operatorDefaults` validation against metadata — including the **required-parameter ban** (evaluator-methods Q12, signed off). `new FigTree()` exists as a shell that registers and throws on bad input; no `evaluate` yet. (`excludeOperators` removed from v3 — Options ruling, July 2026, at Phase-2 planning.)
 *Spec: Options § Operator registration, § operatorDefaults; Operators §4–5.*
 
 ---
@@ -101,7 +101,7 @@
 
 ## Phase 8 — The instance layer, completed
 
-**8.1 · Full options semantics.** The two-level merge rule (all the consequence-table cases), frozen per-evaluation context, never-mutate-the-instance, `updateOptions` + registry re-validation, `operatorDefaults` application (parameter + modifier defaults, incl. default-`fallback` participation in catch/shielding), `excludeOperators` as runtime restriction, `getOptions` snapshot.
+**8.1 · Full options semantics.** The two-level merge rule (all the consequence-table cases), frozen per-evaluation context, never-mutate-the-instance, `updateOptions` + registry re-validation, `operatorDefaults` application (parameter + modifier defaults, incl. default-`fallback` participation in catch/shielding), `getOptions` snapshot.
 *Spec: Options, entire.*
 
 **8.2 · The parse cache.** Two layers (identity `WeakMap` + bounded content LRU, re-register-on-content-hit, opaque-constant identity-only guard), invalidation by exactly `operators`/`fragments`/`operatorDefaults`. Observable via a spy `validate` hook counting compiles — no internals in assertions.

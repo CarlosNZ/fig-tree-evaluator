@@ -2,8 +2,12 @@
   // Compile context for the v3 jest suite (jest.config.js): v3 source + the v3
   // tests and shared test doubles. The frozen v2 corpus (test/V2) is excluded —
   // it runs only under tsconfig.v2.json via `yarn test:v2`.
+  // ts-jest transforms to CommonJS for jest's runtime, hence the overrides.
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node10",
+    "types": ["node", "jest"],
     "rootDir": ".",
     "noEmit": true
   },
