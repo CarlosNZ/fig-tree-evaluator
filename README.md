@@ -988,7 +988,7 @@ Aliases: `split`, `arraySplit`
 #### Properties
 
 - `value` (or `string`)<sup>*</sup>: (string) -- string to be split
-- `delimiter` (or `separator`): (string) -- substring to split `value` on (Default: `" "` (space)) 
+- `delimiter` (or `separator`): (string) -- substring to split `value` on (Default: `" "` (space)). The whitespace escape sequences `\n`, `\t` and `\r` may be written literally (e.g. `"\n"` to split on line breaks), which is convenient when authoring the delimiter in an input field that can't hold a real control character. 
 - `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of resulting substrings 
 - `excludeTrailing` (or `removeTrailing`, `excludeTrailingDelimiter`): (boolean, default `true`) -- if `false`, if the input string ends with the delimiter, the last member of the output array will be an empty string.  
   i.e. `this, that, another,` (delimiter `","`) => `["this", "that", "another", ""]`

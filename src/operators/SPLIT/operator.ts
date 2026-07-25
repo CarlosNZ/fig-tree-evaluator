@@ -5,6 +5,13 @@ import operatorData, { propertyAliases } from './data'
 
 const DEFAULT_DELIMITER = ' '
 
+// Allow common whitespace escape sequences to be expressed literally in the
+// delimiter (e.g. a `\n` typed into an editor field), since single-line inputs
+// can't hold real control characters. A genuine control character has no
+// backslash to replace, so it passes through untouched.
+const unescapeDelimiter = (delimiter: string) =>
+  delimiter.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r')
+
 const evaluate: EvaluateMethod = async (expression, config) => {
   const [value, delimiter, trimWhiteSpace, excludeTrailing] = (await evaluateArray(
     [
@@ -25,7 +32,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     })
   )
 
-  let splitValues = value.split(delimiter)
+  let splitValues = value.split(unescapeDelimiter(delimiter))
   if (trimWhiteSpace) splitValues = splitValues.map((val) => val.trim())
   if (excludeTrailing && splitValues[splitValues.length - 1] === '') splitValues.pop()
 
