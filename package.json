@@ -1,6 +1,6 @@
 {
   "name": "fig-tree-evaluator",
-  "version": "2.23.0",
+  "version": "2.23.1",
   "description": "Module to evaluate JSON-structured expression trees",
   "main": "build/index.cjs.js",
   "module": "build/index.esm.js",
@@ -33,7 +33,7 @@
     "axios": "^1.7.2",
     "dotenv": "^16.0.1",
     "eslint": "^8.53.0",
-    "fig-tree-evaluator": "^2.21.3",
+    "fig-tree-evaluator": "^2.23.1",
     "jest": "^29.7.0",
     "node-fetch": "2.7.0",
     "pg": "^8.11.3",
