@@ -2,19 +2,15 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [2.23.1]
 
 ### Fixed
 
 - `stringSubstitution`: escaped substitution characters (`\%N` for positional, `\{{name}}` for named) are now un-escaped for every occurrence, not just the first. ([#142](https://github.com/CarlosNZ/fig-tree-evaluator/issues/142))
 - `DIVIDE` operator: `output: 'decimal'` is now accepted (previously rejected by its own type-check, even though decimal division was the runtime fall-through behaviour). The `output` metadata `default` also now correctly reflects the actual runtime default (`'decimal'`). Minor typo fix in the `values` parameter description ("by the first" → "by the second"). ([#141](https://github.com/CarlosNZ/fig-tree-evaluator/issues/141))
-
-## [2.23.1]
-
-### Fixed
-
 - `inputDefault` in a custom `FunctionDefinition` now accepts primitive values (previously only object values were valid at the type level). Falsy primitives (`0`, `false`, `""`) are also preserved by `getCustomFunctions()` instead of being silently dropped from the exposed metadata.
 - `notEqual` (`!=`, `ne`) with `nullEqualsUndefined: true` no longer always returns `false` when the first value is `null` or `undefined`. The check now correctly returns `true` when any value falls outside the null/undefined equivalence class ([#140](https://github.com/CarlosNZ/fig-tree-evaluator/issues/140)).
+- `split` operator: the `delimiter` now interprets the whitespace escape sequences `\n`, `\t` and `\r` when written literally, so a delimiter typed as `\n` (backslash + `n`) splits on real line breaks. This is convenient when authoring the delimiter in an input field that can't hold a real control character. Genuine control characters and other delimiters (including a single backslash) are unaffected.
 
 ## [2.23.0] - 2026-06-30
 
