@@ -14,21 +14,29 @@ which operator would actually consume it), mirroring the existing
 here because it only ever walks the expression tree, never `options.data`.
 */
 
-import { EvaluatorNode, FigTreeConfig, OperatorNode } from './types'
+import { EvaluatorNode, FigTreeConfig, OperatorNode, OperatorObject } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
   isObject,
   isOperatorNode,
   isFragmentNode,
+  isAliasString,
   mapPropertyAliases,
   getOperatorName,
   replaceCustomOperatorSync,
 } from './helpers'
 
 const COMPILED_MARKER = Symbol('figTreeCompiled')
+// Precomputed list of this node's `$alias` property keys -- the key *set* is
+// static (only the values need evaluating), so `evaluateNodeAliases` can skip
+// re-scanning `Object.keys()` with a regex on every evaluate() call.
+export const ALIAS_KEYS = Symbol('figTreeAliasKeys')
 
 export const isCompiledNode = (node: unknown): boolean =>
   isObject(node) && (node as Record<symbol, unknown>)[COMPILED_MARKER] === true
+
+export const getCompiledAliasKeys = (node: unknown): string[] | undefined =>
+  isObject(node) ? (node as Record<symbol, string[]>)[ALIAS_KEYS] : undefined
 
 export const compileNode = (node: EvaluatorNode, config: FigTreeConfig): EvaluatorNode => {
   if (Array.isArray(node)) return node.map((child) => compileNode(child, config))
@@ -47,12 +55,25 @@ export const compileNode = (node: EvaluatorNode, config: FigTreeConfig): Evaluat
 
   if (isOperatorNode(expr)) expr = replaceCustomOperatorSync(expr as OperatorNode, config)
 
+  let operatorObject: OperatorObject | undefined
+
   if (isOperatorNode(expr)) {
     const operatorKey = getOperatorName((expr as OperatorNode).operator, config.operatorAliases)
     if (operatorKey && config.operators[operatorKey]) {
+      operatorObject = config.operators[operatorKey]
       expr = {
-        ...mapPropertyAliases(config.operators[operatorKey].propertyAliases, expr as OperatorNode),
+        ...mapPropertyAliases(operatorObject.propertyAliases, expr as OperatorNode),
         operator: operatorKey,
+      }
+
+      // `parseChildren` is a pure structural remap (positional `children`
+      // array -> the operator's named properties) with no data dependency,
+      // so it's safe to run once now instead of on every evaluate() call --
+      // but only when `children` is already a literal array; if it's itself
+      // an expression node, its shape isn't known until runtime.
+      if (Array.isArray((expr as OperatorNode).children)) {
+        expr = operatorObject.parseChildren(expr as OperatorNode, config)
+        delete (expr as OperatorNode).children
       }
     }
   }
@@ -66,5 +87,9 @@ export const compileNode = (node: EvaluatorNode, config: FigTreeConfig): Evaluat
       isFragment && key === 'fragment' ? value : compileNode(value as EvaluatorNode, config)
   }
   Object.defineProperty(compiled, COMPILED_MARKER, { value: true, enumerable: false })
+  if (operatorObject) {
+    const aliasKeys = Object.keys(compiled).filter(isAliasString)
+    Object.defineProperty(compiled, ALIAS_KEYS, { value: aliasKeys, enumerable: false })
+  }
   return compiled as EvaluatorNode
 }

@@ -9,10 +9,11 @@ import {
   OutputType,
   OperatorNode,
   FragmentNode,
+  Operator,
 } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import { fallbackOrError } from './FigTreeError'
-import { isCompiledNode } from './compile'
+import { isCompiledNode, getCompiledAliasKeys } from './compile'
 import {
   convertOutputMethods,
   parseIfJson,
@@ -127,7 +128,11 @@ export const evaluatorFunction = async (
 
   const operatorExpression = expression as OperatorNode
 
-  const operator = getOperatorName(operatorExpression.operator, operatorAliases)
+  // Already resolved to a canonical name at compile time -- skip re-deriving
+  // it via camelCase conversion + alias lookup
+  const operator = isPreCompiled
+    ? (operatorExpression.operator as Operator)
+    : getOperatorName(operatorExpression.operator, operatorAliases)
 
   if (!operator)
     return fallbackOrError({
@@ -155,8 +160,15 @@ export const evaluatorFunction = async (
     : (mapPropertyAliases(propertyAliases, operatorExpression) as OperatorNode)
 
   // Evaluate any alias nodes defined at this level and save them in "config"
-  // object so they get accumulated as we progress down the tree.
-  const newAliasNodes = await evaluateNodeAliases(finalOperatorExpression, config)
+  // object so they get accumulated as we progress down the tree. The key
+  // *set* is static, so a pre-compiled node carries a cached list and skips
+  // the regex re-scan of `Object.keys()`.
+  const precomputedAliasKeys = isPreCompiled ? getCompiledAliasKeys(operatorExpression) : undefined
+  const newAliasNodes = await evaluateNodeAliases(
+    finalOperatorExpression,
+    config,
+    precomputedAliasKeys
+  )
   if (!isFragment)
     // It is important to mutate this object in place rather than create a
     // shallow copy, or else we can end up with different versions replacing
@@ -250,8 +262,12 @@ export const evaluateArray = async (
 Identify any properties in the expression that represent "alias" nodes (i.e of
 the form `$alias`) and evaluate their values
 */
-export const evaluateNodeAliases = async (expression: OperatorNode, config: FigTreeConfig) => {
-  const aliasKeys = Object.keys(expression).filter(isAliasString)
+export const evaluateNodeAliases = async (
+  expression: OperatorNode,
+  config: FigTreeConfig,
+  precomputedAliasKeys?: string[]
+) => {
+  const aliasKeys = precomputedAliasKeys ?? Object.keys(expression).filter(isAliasString)
   if (aliasKeys.length === 0) return {}
 
   const evaluations: Promise<EvaluatorOutput>[] = []

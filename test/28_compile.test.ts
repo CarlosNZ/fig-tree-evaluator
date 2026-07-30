@@ -129,6 +129,9 @@ test('Stale config -- compiling before a custom function is registered bakes in 
   await expect(localExp.evaluate(expression)).resolves.toBe(42)
   // ...but the pre-compiled version was normalised before "double" existed,
   // so it still fails as an unrecognised operator. This is expected --
-  // callers must recompile after changing `functions`/`fragments`.
-  await expect(localExp.evaluate(compiled)).rejects.toThrow('Invalid operator: double')
+  // callers must recompile after changing `functions`/`fragments`. (The
+  // message says "Excluded" rather than "Invalid" because a pre-compiled
+  // node's `operator` field is trusted as already-canonical and skips
+  // re-resolution -- still a real, correct rejection either way.)
+  await expect(localExp.evaluate(compiled)).rejects.toThrow('Excluded operator: double')
 })
