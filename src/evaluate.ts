@@ -38,17 +38,20 @@ export const evaluatorFunction = async (
 
   let isPreCompiled = isCompiledNode(expression)
 
-  const functionNames = Object.keys(config.options?.functions ?? {})
+  // Computed lazily -- a pre-compiled, non-fragment node never needs it
+  let functionNames: string[] | undefined
 
   // Convert any shorthand syntax into standard expression structure (already
   // done if this node was pre-processed by `FigTreeEvaluator.compile()`)
-  if (!isPreCompiled)
+  if (!isPreCompiled) {
+    functionNames = Object.keys(config.options?.functions ?? {})
     expression = preProcessShorthand(
       expression,
       config.options?.fragments,
       functionNames,
       !options.noShorthand
     )
+  }
 
   // If an array, we evaluate each item in the array
   if (Array.isArray(expression)) {
@@ -107,7 +110,7 @@ export const evaluatorFunction = async (
     const fragmentReplacement = preProcessShorthand(
       options?.fragments?.[fragment],
       options.fragments,
-      functionNames,
+      functionNames ?? (functionNames = Object.keys(config.options?.functions ?? {})),
       !options.noShorthand
     )
     if (fragmentReplacement === undefined)
