@@ -12,6 +12,7 @@ import {
 } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import { fallbackOrError } from './FigTreeError'
+import { isCompiledNode } from './compile'
 import {
   convertOutputMethods,
   parseIfJson,
@@ -34,15 +35,19 @@ export const evaluatorFunction = async (
 
   let expression = options?.allowJSONStringInput ? parseIfJson(input) : input
 
+  let isPreCompiled = isCompiledNode(expression)
+
   const functionNames = Object.keys(config.options?.functions ?? {})
 
-  // Convert any shorthand syntax into standard expression structure
-  expression = preProcessShorthand(
-    expression,
-    config.options?.fragments,
-    functionNames,
-    !options.noShorthand
-  )
+  // Convert any shorthand syntax into standard expression structure (already
+  // done if this node was pre-processed by `FigTreeEvaluator.compile()`)
+  if (!isPreCompiled)
+    expression = preProcessShorthand(
+      expression,
+      config.options?.fragments,
+      functionNames,
+      !options.noShorthand
+    )
 
   // If an array, we evaluate each item in the array
   if (Array.isArray(expression)) {
@@ -52,7 +57,8 @@ export const evaluatorFunction = async (
   const isOperator = isOperatorNode(expression)
   const isFragment = isFragmentNode(expression)
 
-  if (isOperator) expression = await replaceCustomOperator(expression as OperatorNode, config)
+  if (isOperator && !isPreCompiled)
+    expression = await replaceCustomOperator(expression as OperatorNode, config)
 
   // If "evaluateFullObject" option is on, dive deep into objects to find
   // Operator Nodes
@@ -114,6 +120,9 @@ export const evaluatorFunction = async (
       return replaceAliasNodeValues(fragmentReplacement, config)
     expression = { ...fragmentExpression, ...(fragmentReplacement as OperatorNode), ...parameters }
     delete (expression as OperatorNode).fragment
+    // The merged fragment expression is a fresh object, never itself
+    // pre-compiled -- its operator name/property aliases still need resolving
+    isPreCompiled = false
   }
 
   const operatorExpression = expression as OperatorNode
@@ -138,10 +147,12 @@ export const evaluatorFunction = async (
 
   const { propertyAliases, evaluate, parseChildren } = operators[operator]
 
-  let finalOperatorExpression = mapPropertyAliases(
-    propertyAliases,
-    operatorExpression
-  ) as OperatorNode
+  // Property names are already canonical if pre-compiled, but this must still
+  // be a fresh shallow copy -- `finalOperatorExpression` gets mutated below,
+  // and a compiled node may be reused across many evaluations
+  let finalOperatorExpression = isPreCompiled
+    ? ({ ...operatorExpression } as OperatorNode)
+    : (mapPropertyAliases(propertyAliases, operatorExpression) as OperatorNode)
 
   // Evaluate any alias nodes defined at this level and save them in "config"
   // object so they get accumulated as we progress down the tree.

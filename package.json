@@ -58,6 +58,7 @@
     "generateMassiveQuery": "ts-node ./codegen/generateMassiveQuery.ts",
     "getVersion": "ts-node ./codegen/getVersion.ts",
     "lint": "eslint . --ext .ts",
+    "benchmark": "ts-node benchmark/run.ts",
     "build": "rimraf ./build && rollup -c && rimraf ./build/dts",
     "compile": "rimraf ./build && tsc",
     "prebuild": "yarn generate && yarn getVersion",
