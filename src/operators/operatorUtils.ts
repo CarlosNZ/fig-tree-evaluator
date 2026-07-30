@@ -4,7 +4,7 @@ Functions used specifically by various operators
 
 import extractProperty from 'object-property-extractor'
 import { isObject } from '../helpers'
-import { typeCheck, TypeCheckInput, isLiteralType } from '../typeCheck'
+import { typeCheck, TypeCheckInput, ExpectedType, isLiteralType } from '../typeCheck'
 import { OperatorParameterMetadata } from '../types'
 
 // Generate property data for each operator from "operatorData.parameters"
@@ -18,22 +18,45 @@ export const getPropertyAliases = (
   return propertyAliases
 }
 
+// The `expectedType` shape (everything except the runtime `value`) only
+// depends on each operator's static `parameterDefinitions` -- the same array
+// reference on every call for a given operator -- so it's memoized here
+// rather than rebuilt on every evaluate() call.
+const parameterShapeCache = new WeakMap<
+  OperatorParameterMetadata[],
+  { name: string; expectedType: ExpectedType }[]
+>()
+
+const getParameterShape = (parameterDefinitions: OperatorParameterMetadata[]) => {
+  const cached = parameterShapeCache.get(parameterDefinitions)
+  if (cached) return cached
+
+  const shape = parameterDefinitions.map(({ name, required, type }) => {
+    if (isLiteralType(type)) {
+      const literal = [...type.literal]
+      if (!required) literal.push(undefined)
+      return { name, expectedType: { literal } }
+    }
+
+    const allTypes = Array.isArray(type) ? [...type] : [type]
+    if (!required) allTypes.push('undefined')
+    const expectedType = allTypes.length === 1 ? allTypes[0] : allTypes
+    return { name, expectedType }
+  })
+
+  parameterShapeCache.set(parameterDefinitions, shape)
+  return shape
+}
+
 export const getTypeCheckInput = (
   parameterDefinitions: OperatorParameterMetadata[],
   params: Record<string, unknown>
 ) =>
-  parameterDefinitions.map(({ name, required, type }) => {
-    if (isLiteralType(type)) {
-      const literal = [...type.literal]
-      if (!required) literal.push(undefined)
-      return { name, value: params[name], expectedType: { literal } }
-    }
-
-    const allTypes = Array.isArray(type) ? type : [type]
-    if (!required) allTypes.push('undefined')
-    const expectedType = allTypes.length === 1 ? allTypes[0] : allTypes
-    return { name, value: params[name], expectedType }
-  })
+  getParameterShape(parameterDefinitions).map(({ name, expectedType }) => ({
+    name,
+    value: params[name],
+    expectedType,
+  }))
 
 /*
 "Zips" two arrays into an object, where the first array provides 

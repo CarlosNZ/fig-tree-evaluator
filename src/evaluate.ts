@@ -13,7 +13,7 @@ import {
 } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import { fallbackOrError } from './FigTreeError'
-import { isCompiledNode, getCompiledAliasKeys } from './compile'
+import { isCompiledNode, getCompiledAliasKeys, getCompiledOutputType } from './compile'
 import {
   convertOutputMethods,
   parseIfJson,
@@ -233,7 +233,11 @@ export const evaluatorFunction = async (
   const outputType = finalOperatorExpression?.outputType ?? finalOperatorExpression?.type
   if (!outputType) return result
 
-  const evaluatedOutputType = (await evaluatorFunction(outputType, config)) as OutputType
+  // A pre-compiled literal (non-alias) outputType/type skips the round trip
+  // through evaluatorFunction entirely
+  const precomputedOutputType = isPreCompiled ? getCompiledOutputType(operatorExpression) : undefined
+  const evaluatedOutputType =
+    precomputedOutputType ?? ((await evaluatorFunction(outputType, config)) as OutputType)
 
   // Output type conversion
   if (!(evaluatedOutputType in convertOutputMethods))
@@ -295,8 +299,17 @@ export const evaluateObject = async (
   input: EvaluatorNode,
   config: FigTreeConfig
 ): Promise<EvaluatorOutput> => {
-  const functionNames = Object.keys(config.options?.functions ?? {})
-  const fullNode = preProcessShorthand(input, config.options?.fragments, functionNames)
+  // Shorthand/alias resolution is already baked in for a pre-compiled node --
+  // still need a *fresh copy* though (not the compiled node itself), since
+  // this function deletes alias keys from `fullNode` in place below, and a
+  // compiled node may be reused across many evaluations
+  let fullNode: EvaluatorNode
+  if (isCompiledNode(input)) {
+    fullNode = isObject(input) ? { ...(input as object) } : input
+  } else {
+    const functionNames = Object.keys(config.options?.functions ?? {})
+    fullNode = preProcessShorthand(input, config.options?.fragments, functionNames)
+  }
 
   if (!isObject(fullNode)) return input
 

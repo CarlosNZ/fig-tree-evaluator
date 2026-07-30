@@ -14,7 +14,7 @@ which operator would actually consume it), mirroring the existing
 here because it only ever walks the expression tree, never `options.data`.
 */
 
-import { EvaluatorNode, FigTreeConfig, OperatorNode, OperatorObject } from './types'
+import { EvaluatorNode, FigTreeConfig, OperatorNode, OperatorObject, OutputType } from './types'
 import { preProcessShorthand } from './shorthandSyntax'
 import {
   isObject,
@@ -31,12 +31,20 @@ const COMPILED_MARKER = Symbol('figTreeCompiled')
 // static (only the values need evaluating), so `evaluateNodeAliases` can skip
 // re-scanning `Object.keys()` with a regex on every evaluate() call.
 export const ALIAS_KEYS = Symbol('figTreeAliasKeys')
+// Precomputed `outputType`/`type` value, when it's a plain literal string
+// (the common case) rather than a node needing evaluation. Not set when the
+// value is itself an alias reference (e.g. `$myType`) -- alias resolution is
+// data-dependent per evaluate() call, so that case must stay dynamic.
+export const RESOLVED_OUTPUT_TYPE = Symbol('figTreeResolvedOutputType')
 
 export const isCompiledNode = (node: unknown): boolean =>
   isObject(node) && (node as Record<symbol, unknown>)[COMPILED_MARKER] === true
 
 export const getCompiledAliasKeys = (node: unknown): string[] | undefined =>
   isObject(node) ? (node as Record<symbol, string[]>)[ALIAS_KEYS] : undefined
+
+export const getCompiledOutputType = (node: unknown): OutputType | undefined =>
+  isObject(node) ? (node as Record<symbol, OutputType>)[RESOLVED_OUTPUT_TYPE] : undefined
 
 export const compileNode = (node: EvaluatorNode, config: FigTreeConfig): EvaluatorNode => {
   if (Array.isArray(node)) return node.map((child) => compileNode(child, config))
@@ -90,6 +98,14 @@ export const compileNode = (node: EvaluatorNode, config: FigTreeConfig): Evaluat
   if (operatorObject) {
     const aliasKeys = Object.keys(compiled).filter(isAliasString)
     Object.defineProperty(compiled, ALIAS_KEYS, { value: aliasKeys, enumerable: false })
+
+    const outputTypeValue = compiled.outputType ?? compiled.type
+    if (typeof outputTypeValue === 'string' && !isAliasString(outputTypeValue)) {
+      Object.defineProperty(compiled, RESOLVED_OUTPUT_TYPE, {
+        value: outputTypeValue as OutputType,
+        enumerable: false,
+      })
+    }
   }
   return compiled as EvaluatorNode
 }
