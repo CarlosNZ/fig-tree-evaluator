@@ -838,3 +838,75 @@ test('String substitution - named replacement with figTree expressions as replac
       )
     })
 })
+
+// Nullish substitution values
+
+test('String substitution - null and undefined named replacements render as empty string', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Hello, {{name}}! You are {{age}} years old.',
+    replacements: { name: null, age: undefined },
+  }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe('Hello, ! You are  years old.')
+  })
+})
+
+test('String substitution - null and undefined positional replacements render as empty string', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Hello, %1! You are %2 years old.',
+    replacements: [null, undefined],
+  }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe('Hello, ! You are  years old.')
+  })
+})
+
+test('String substitution - null from "data" object renders as empty string', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'The winner is {{user.nickname}}!',
+  }
+  return exp
+    .evaluate(expression, { data: { user: { name: 'Bruce', nickname: null } } })
+    .then((result) => {
+      expect(result).toBe('The winner is !')
+    })
+})
+
+test('String substitution - null returned by a child expression renders as empty string', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'The winner is {{winner}}!',
+    replacements: { winner: { operator: 'getData', property: 'user.nickname' } },
+  }
+  return exp
+    .evaluate(expression, { data: { user: { name: 'Bruce', nickname: null } } })
+    .then((result) => {
+      expect(result).toBe('The winner is !')
+    })
+})
+
+test('String substitution - nullish values render as empty string with trimWhiteSpace off', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Hello, {{name}}! You are {{age}} years old.',
+    replacements: { name: null, age: undefined },
+    trimWhiteSpace: false,
+  }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe('Hello, ! You are  years old.')
+  })
+})
+
+test('String substitution - false and zero are still rendered', () => {
+  const expression = {
+    operator: 'stringSubstitution',
+    string: 'Complete: {{done}}, Remaining: {{count}}',
+    replacements: { done: false, count: 0 },
+  }
+  return evaluateExpression(expression).then((result) => {
+    expect(result).toBe('Complete: false, Remaining: 0')
+  })
+})

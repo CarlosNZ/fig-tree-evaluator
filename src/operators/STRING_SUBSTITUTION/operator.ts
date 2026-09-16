@@ -52,7 +52,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
     const uniqueParameters = new Set(parameters)
     const replacementsObj = zipArraysToObject(
       Array.from(uniqueParameters),
-      substitutions.map((sub) => (trimWhiteSpace ? String(sub).trim() : sub))
+      substitutions.map((sub) => formatSubstitution(sub, trimWhiteSpace))
     )
 
     return (
@@ -76,7 +76,7 @@ const evaluate: EvaluateMethod = async (expression, config) => {
       continue
     }
     const replacement = await getReplacement(fragment, substitutions, numberMapping, config)
-    replaced.push(trimWhiteSpace ? String(replacement).trim() : replacement)
+    replaced.push(formatSubstitution(replacement, trimWhiteSpace))
   }
 
   return replaced.join('')
@@ -92,6 +92,19 @@ export const STRING_SUBSTITUTION: OperatorObject = {
   operatorData,
   evaluate,
   parseChildren,
+}
+
+/*
+Converts a substituted value to the string that gets inserted into the output.
+Nullish values become an empty string, matching what a substitution key that
+isn't present in the data resolves to -- the text "null" is never a useful
+thing to show a reader. `false` and `0` are real values, so they're rendered as
+"false" and "0".
+*/
+const formatSubstitution = (value: unknown, trimWhiteSpace: boolean): string => {
+  if (value === null || value === undefined) return ''
+  const stringValue = String(value)
+  return trimWhiteSpace ? stringValue.trim() : stringValue
 }
 
 interface NumberMap {

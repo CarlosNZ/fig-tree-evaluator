@@ -800,6 +800,12 @@ Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 - `substitutionCharacter` (or `subCharacter`, `subChar`): (`"%"` or `"$"`) -- by default, when using positional replacement, it looks for the `%` token (i.e `%1, %2, etc`), but this can be changed to `$` (i.e. `$1, $2, $3, etc`) by setting this property to `$`.
 - `numberMapping` (or `numMap`, `numberMap`, `pluralisation`, `pluralization`, `plurals`): (object) -- when replacing with named properties and you have replacement values that are numbers, it's possible to map values or ranges to specific string outputs. This can be used to produce correct pluralisation, for example. [See below](#named-property-replacement) for more details.
 
+#### Missing and `null` values
+
+A substitution value of `null` or `undefined` is rendered as an empty string, as is a named parameter with no matching value in `substitutions` or the [`data` object](#available-options). So `"Hello, {{name}}!"` with `{ name: null }` gives `"Hello, !"` rather than `"Hello, null!"`. Note that `false` and `0` are values in their own right, so they're rendered as `"false"` and `"0"`.
+
+If you need a placeholder other than an empty string, provide it with a [CONDITIONAL](#conditional) (or a [MATCH](#match)) in the substitution value itself.
+
 Substitution can be done using either **positional** replacement, or with **named properties**:
 
 #### Positional replacement
