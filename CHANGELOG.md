@@ -2,6 +2,12 @@
 
 The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.23.2]
+
+### Changed
+
+- `stringSubstitution`: a substitution value of `null` or `undefined` is rendered as an empty string instead of the text `"null"`/`"undefined"`. This matches what a named parameter with no matching value in `substitutions` or the `data` object already resolved to, and applies to both positional (`%1`) and named (`{{name}}`) substitutions, regardless of `trimWhiteSpace`. `false` and `0` are unaffected -- they're still rendered as `"false"` and `"0"`. ([#138](https://github.com/CarlosNZ/fig-tree-evaluator/issues/138))
+
 ## [2.23.1]
 
 ### Fixed
