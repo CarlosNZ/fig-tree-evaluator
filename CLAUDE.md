@@ -29,6 +29,8 @@ There is no watch/dev-server — this is a library. Note pnpm does not run impli
 
 `pnpm build` ends with a size report (minified / gzip / brotli / types, plus a per-module breakdown) from `codegen/bundleSize.mjs`. **At the close of each v3 phase, record the numbers in the bundle-size table in [docs-dev/v3-specs/v3-implementation-plan.md](docs-dev/v3-specs/v3-implementation-plan.md)** — working rule 6 there. The build is also a CI step, so it has to stay green even while the engine is incomplete.
 
+Every PR that can move the bundle gets a size-diff comment automatically (`.github/workflows/pr-bundle-size.yml`): it builds both sides and posts one sticky comment rendered by `codegen/formatSizeDiff.mjs`. Both sides are measured by the PR's own copy of `codegen/bundleSize.mjs --json`, so the PR comment and the local report are the same measurement by construction — change what a size means in that one file and everything follows.
+
 The package is **ESM-only** (`"type": "module"`, single `build/index.js` bundle — packaging ruling, docs-dev/v3-specs/v3-packaging.md). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 
 The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`.

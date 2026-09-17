@@ -9,7 +9,12 @@
  *    `printBundleSize()` the second, once both output files exist.
  *  - running this file directly (`pnpm size`) re-reports the sizes of whatever
  *    is already in build/ without rebuilding — the numbers recorded per phase
- *    in docs-dev/v3-specs/v3-implementation-plan.md.
+ *    in docs-dev/v3-specs/v3-implementation-plan.md. With `--json` it emits
+ *    machine-readable sizes instead, which is what the PR bundle-size workflow
+ *    measures both sides of a pull request with.
+ *
+ * Every path that reports a size goes through `measure()` here, so the figure
+ * in a PR comment is the same figure `pnpm build` prints, by construction.
  *
  * Plain JS with no dependencies: rollup loads the config as ESM, so it cannot
  * import a .ts helper.
@@ -20,6 +25,16 @@ import { relative } from 'node:path'
 
 const BUNDLE = 'build/index.js'
 const TYPES = 'build/index.d.ts'
+
+/**
+ * What a size report covers, in report order. Phase 14 adds the `./convert`
+ * and `./editor-hints` subpath bundles (v3-packaging.md) — they join this
+ * list and every consumer of it follows.
+ */
+const TRACKED = [
+  { path: BUNDLE, label: 'index.js (ESM, minified)' },
+  { path: TYPES, label: 'index.d.ts (types)' },
+]
 
 /** Bytes in kB to 2dp, the convention npm and bundlephobia report in. */
 const kB = (bytes) => `${(bytes / 1000).toFixed(2)} kB`
@@ -81,6 +96,18 @@ const formatReport = ({ bundle, types, modules }) =>
 
 const sizesOf = (path) => (existsSync(path) ? compressedSizes(readFileSync(path)) : undefined)
 
+/**
+ * Machine-readable sizes of every tracked file. A file that isn't there is
+ * reported as `missing` rather than omitted or fatal: the PR workflow measures
+ * a base commit that may predate a bundle's existence, and "new file" is a
+ * real answer there, not a failure.
+ */
+export const measure = () =>
+  TRACKED.map(({ path, label }) => {
+    const sizes = sizesOf(path)
+    return sizes ? { path, label, ...sizes } : { path, label, missing: true }
+  })
+
 /** Carried from the ESM pass to the .d.ts pass, which reports for both. */
 let collected
 
@@ -112,9 +139,13 @@ export const printBundleSize = () => ({
 
 /** CLI: report on the existing build output, no rebuild. */
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {
-  if (!existsSync(BUNDLE)) {
+  if (process.argv.includes('--json')) {
+    // Tolerates a missing build on purpose — see `measure()`
+    console.log(JSON.stringify(measure(), null, 2))
+  } else if (!existsSync(BUNDLE)) {
     console.error(`No ${BUNDLE} — run \`pnpm build\` first.`)
     process.exit(1)
+  } else {
+    console.log(formatReport({ bundle: sizesOf(BUNDLE), types: sizesOf(TYPES) }))
   }
-  console.log(formatReport({ bundle: sizesOf(BUNDLE), types: sizesOf(TYPES) }))
 }

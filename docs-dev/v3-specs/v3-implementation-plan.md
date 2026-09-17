@@ -196,6 +196,8 @@ I/O excluded or zero-latency mocked (network variance would swamp the signal). O
 
 Bundle size is a v3 goal in its own right ([v3-packaging.md](v3-packaging.md)), so it is tracked as the engine is built rather than discovered at Phase 14. `pnpm build` prints the numbers below plus a per-module table; `pnpm size` re-prints them without rebuilding. **Recorded at the close of each phase** (working rule 6), measured on the phase's last commit.
 
+Per-PR movement is caught without anyone remembering to look: `.github/workflows/pr-bundle-size.yml` builds both sides of a pull request and posts the difference as a sticky comment, so growth is attributable to the change that caused it rather than noticed a phase later. It shares the measuring code with the report above. Phase 14's *size budget* (packaging, Build & CI mechanics) is a separate check still to come — a threshold assertion, once there is a number worth asserting.
+
 `minified` is the published `build/index.js` — ESM, terser, tree-shaken from `src/index.ts`, `dequal` external. `brotli` is the figure that matters for a browser consumer; `types` is the rolled-up `index.d.ts`, uncompressed.
 
 **What the figure is, and is not.** It is the whole public surface reachable from the main entry point — a ceiling, not a per-consumer cost. Because the package is ESM with `sideEffects: false`, a consumer's own bundler shakes the single published file down to what they actually import. Measured against the Phase-3 build by rolling up a consumer entry per import subset:
