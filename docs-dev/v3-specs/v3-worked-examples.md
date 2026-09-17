@@ -72,7 +72,7 @@ await fig.evaluate(dashboard, { mode: 'report', data })
 
 Walking the five fates:
 
-1. **`displayName` — success via the null gradient.** `user.last` is a missing path → `null` → `buildString` renders `''` (References, agreed) → `'Ada '` with a trailing space. No error, no fallback involvement — absence is not failure. `trace` records the null render; the opt-out, if `'Ada '` offends, is `nullValueDefault` on the node (register #18), not `fallback`.
+1. **`displayName` — success via the null gradient.** `user.last` is a missing path → `null` → `buildString` renders `''` (References, agreed) → `'Ada '` with a trailing space. No error, no fallback involvement — absence is not failure. `trace` records the null render; the opt-out, if `'Ada '` offends, is `nullValueDefault` on the node (register #18) or `closeGaps: true` to swallow the space the empty render left — not `fallback`.
 2. **`avatar` — designed degradation.** The API is down; the node's own `fallback` catches (rule 1). Success in both modes, **nothing in `errors`** — the author designed this path. The catch is visible only in `trace`.
 3. **`total` — plain success.** `10 + 0 = 10`.
 4. **`summary` — deep uncaught failure.** `10 / 0` fails (finite-number guard); no `fallback` anywhere between the `divide` and the hole root, so the failure escapes: the *hole* `['stats','summary']` resolves to `null`, and the error is tagged with the deep failing node's `path` plus the `holePath`. Note the sibling `total` inside the same `stats` literal is untouched — `stats` is plain structure; the holes are independent.
