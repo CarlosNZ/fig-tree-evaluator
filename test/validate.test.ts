@@ -51,6 +51,17 @@ test('issues come back as plain Issues in tree order', () => {
   expect(errors[0]).not.toHaveProperty('order')
 })
 
+test("a rest slice's own issue leads the issues from its elements", () => {
+  // A positional surplus compiles to a synthetic container, which is still
+  // the parent of the elements it holds: its constraint failure sorts ahead
+  // of the warning from element 0
+  const result = fig.validate({ '$>': ['$notANamespace', 1, 2] })
+  const parent = result.issues.findIndex((issue) => issue.code === 'type-check')
+  const element = result.issues.findIndex((issue) => issue.code === 'unrecognized-identifier')
+  expect(parent).toBeGreaterThanOrEqual(0)
+  expect(element).toBeGreaterThan(parent)
+})
+
 test('the evaluator-methods worked example: typo key, unresolved var, inert operator', () => {
   const result = fig.validate({
     operator: 'if',

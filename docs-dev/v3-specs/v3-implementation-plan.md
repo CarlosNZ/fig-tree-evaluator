@@ -93,7 +93,7 @@
 **7.1 · Data & objects.** `get` (path resolver reuse, `missingPathDefault`, `from` + the `EvaluationData` sentinel), `buildObject` (duplicate-key semantics + warning).
 *Register rows: 25, 26. Batch 6.*
 
-**7.2 · Renderers & regex.** `buildString` (token engine, literal-face validate hook, unbound-token rendering), `join`, `regex` (modes, compiled-literal-pattern reuse, `noMatchDefault`), `literal` (mostly parse-side already — confirm end to end).
+**7.2 · Renderers & regex.** `buildString` (token engine, literal-face validate hook, unbound-token rendering, `closeGaps` over the segment list), `join`, `regex` (modes, compiled-literal-pattern reuse, `noMatchDefault`), `literal` (mostly parse-side already — confirm end to end).
 *Register rows: 15–19, 21, 22. Batch 4.*
 
 **Milestone: all 42 core operators live; the bulk of hand-migrated v2 expression tests pass.** Worked examples 1 (minus http) becomes a passing test here.

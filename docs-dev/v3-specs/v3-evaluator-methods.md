@@ -247,7 +247,7 @@ The passes and areas have already committed `trace` to specific content; collect
 | Which holes contributed real values vs static fallbacks on a shielded timeout | Node grammar rule 3 |
 | References that resolved to `null` | assessment § 3.2 mitigations |
 | Unrecognized-`$` inert data encountered | Operators § Unrecognized `$` |
-| `buildString`: literally-rendered (unbound) tokens, placeholder renders, null renders | batch 4; case #15 |
+| `buildString`: literally-rendered (unbound) tokens, placeholder renders, null renders, `closeGaps` closures | batch 4; case #15 |
 | `join`: placeholder and null renders | batch 4 |
 | `buildObject`: runtime duplicate-key overwrites | batch 6 |
 | Cache hits and misses | ledger #16 |
