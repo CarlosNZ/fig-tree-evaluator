@@ -9,10 +9,12 @@ export default tseslint.config(
     // byte-identical; test/v2-working holds v2-syntax migration source, not
     // v3 code). test/__mocks__ is v2-only HTTP mock infrastructure used by
     // `pnpm test:v2`; v3 tests use the injected MockHttpClient double
-    // (test/helpers) instead.
+    // (test/helpers) instead. `.claude` holds agent worktrees — each one a
+    // full checkout of this repo, build output and all.
     ignores: [
       'node_modules',
       'build',
+      '.claude',
       'v2-src',
       'test/V2',
       'test/v2-working',

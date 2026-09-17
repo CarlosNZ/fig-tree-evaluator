@@ -45,6 +45,8 @@
   },
   // v3 library source only. /v2-src (the frozen v2 engine) and test/ are excluded
   // from this build config; the test runners use tsconfig.test.json / tsconfig.v2.json.
+  // src/dev/playground.ts is gitignored scratch — whatever state it is in must
+  // never break `pnpm compile` or the build.
   "include": ["src"],
-  "exclude": ["node_modules", "build", "v2-src", "test"]
+  "exclude": ["node_modules", "build", "v2-src", "test", "src/dev/playground.ts"]
 }

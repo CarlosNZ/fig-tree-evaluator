@@ -38,7 +38,8 @@
     "lint": "eslint .",
     "build": "pnpm getVersion && rimraf ./build && rollup -c && rimraf ./build/dts",
     "compile": "rimraf ./build && tsc",
-    "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts || tsx src/dev/playground.ts",
+    "dev": "cp -n src/dev/playground_example.ts src/dev/playground.ts; tsx src/dev/playground.ts",
+    "dev:examples": "tsx src/dev/examples.ts",
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {

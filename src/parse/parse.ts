@@ -15,6 +15,54 @@
  * author-named reference strings, so *recognition* — and with it constancy
  * classification — depends on the enclosing `as` frames. `as` values are
  * structural (parse-time literals), which is what keeps this static.
+ *
+ * The steps, in order — 1–12 run per value visited (the walk recurses),
+ * 13–16 once it returns:
+ *
+ *  1. Stamp the preorder `order`, count the node, track the max depth.
+ *  2. Nullish, numeric and boolean values compile straight to constants.
+ *  3. Opaque values (Date, Map, class instance, function) become constants
+ *     too, and mark the artifact `identityOnly`.
+ *  4. Strings go through the reference token rule: plain text is a
+ *     constant, a `$namespace` token a reference (aliases normalized away),
+ *     an illegal namespace use an error.
+ *  5. An unrecognized `$token` is matched against the enclosing `as`
+ *     bindings before being warned about and passed through as data.
+ *  6. A `$data` reference records its path — a bare `$data` instead flags
+ *     the read-set as not statically enumerable.
+ *  7. Objects are classified by their keys: `operator`, `fragment`, one
+ *     `$name` shorthand, or a plain literal. Ambiguous combinations (two
+ *     invocations, canonical beside shorthand) are hard errors.
+ *  8. An operator name resolves through the alias map — unknown names error
+ *     with a nearest-name suggestion. `literal` takes its content verbatim,
+ *     unwalked: the parse boundary.
+ *  9. Reserved modifiers compile first: `fallback`, `useCache` (a literal
+ *     boolean only), `vars` (names legality-checked, values walked).
+ * 10. Parameters are gathered — named keys checked against the definition,
+ *     a shorthand payload disambiguated by JSON type into positional slots
+ *     (leading, then the rest slice), named arguments, or one
+ *     first-position value.
+ * 11. They then walk in a fixed order: the structural `as` validated first,
+ *     ordinary parameters next, `perElement` subtrees last under the
+ *     binding frame — the scope concern above.
+ * 12. A fragment call checks its name against the lookup and fixes its
+ *     argument mode statically: a plain object is the named map, a node or
+ *     reference the dynamic form.
+ * 13. Containers assemble: `//` keys and `undefined` values drop out, a
+ *     `vars` block is consumed, stray `$keys` warn as inert, constant
+ *     children fold into the skeleton and evaluable ones become holes (a
+ *     nested template flattens in unless it carries its own vars). No
+ *     holes at all collapses the container to one constant — the raw value
+ *     by identity where nothing changed.
+ * 14. The root's maximal evaluable nodes become the artifact's holes: the
+ *     root itself, or each hole of a vars-free root template. A constant
+ *     root has none.
+ * 15. Each hole takes its shielding precompute — a constant `fallback`,
+ *     authored or from `operatorDefaults`. Every hole shielded makes the
+ *     artifact `shielded`.
+ * 16. The issue stream is sorted into tree order (stably, so several issues
+ *     on one node keep their emission order), and the counts and dependency
+ *     lists ride out with the tree.
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Severity } from '../issues'
@@ -530,6 +578,10 @@ const finalizeParams = (
 
 const walkPending = (state: WalkState, entry: PendingParam, depth: number): CompiledNode => {
   if (entry.kind === 'value') return walk(state, entry.value, entry.path, depth + 1)
+  // The synthetic container the slice compiles to takes its `order` before
+  // its elements walk: it is their parent, and `order` is a preorder
+  // position (obligation A3) — the sort key the issue stream relies on.
+  const order = state.order++
   const children = entry.elements.map((element, j) => ({
     key: j as string | number,
     rawChild: element === undefined ? null : element,
@@ -549,7 +601,7 @@ const walkPending = (state: WalkState, entry: PendingParam, depth: number): Comp
     changed,
     undefined,
     entry.basePath,
-    state.order++
+    order
   )
 }
 

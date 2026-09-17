@@ -11,7 +11,8 @@
  * declaration, per the contract.
  */
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
-import type { Issue } from './issues'
+import type { Severity } from './issues'
+import type { ValidateHelpers } from './parse/helpers'
 
 /**
  * The delivery-mode vocabulary ("Evaluation modes" in the contract).
@@ -69,12 +70,27 @@ export const EvaluationData: unique symbol = Symbol('fig-tree:EvaluationData')
 export type OperatorEvaluate = (params: Record<string, any>, context?: any) => unknown
 
 /**
- * The static validation hook (contract ledger #11). Runs at parse (Phase 3);
- * registration only checks it is a function. The `helpers` toolbox shape is
- * contract open Q7, settled at Phase-3 implementation.
+ * One finding from a `validate` hook. The hook classifies and describes; the
+ * engine supplies the `code` (`operator-validate`) and the `path` — the
+ * named parameter's, where `parameter` names one, else the operator node's —
+ * to complete the `Issue` it appends to the stream.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type OperatorValidate = (literalParams: Record<string, unknown>, helpers: any) => Issue[]
+export interface ValidateFinding {
+  severity: Severity
+  message: string
+  /** A declared parameter the finding is about; anchors its path. */
+  parameter?: string
+}
+
+/**
+ * The static validation hook (contract ledger #11). Runs at parse (Phase 3);
+ * registration only checks it is a function. The `helpers` toolbox is the
+ * frozen primitives object of src/parse/helpers.ts (contract Q7).
+ */
+export type OperatorValidate = (
+  literalParams: Record<string, unknown>,
+  helpers: ValidateHelpers
+) => ValidateFinding[]
 
 /** A parameter declaration as authored ("Parameter declarations", contract). */
 export interface ParameterDeclaration extends TypeDeclaration {
