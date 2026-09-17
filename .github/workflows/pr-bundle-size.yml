@@ -60,9 +60,13 @@ jobs:
           path: base
           ref: ${{ github.event.pull_request.base.sha }}
 
-      # Reads the pnpm version from package.json's packageManager field, as
-      # ci.yml does
+      # Reads the pnpm version from packageManager, as ci.yml does — but the
+      # two checkouts above leave no package.json at the workspace root, so
+      # the action has to be pointed at one. The PR's, to match the rest of
+      # this job: the version under review is the version used.
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: pr/package.json
 
       - uses: actions/setup-node@v4
         with:
