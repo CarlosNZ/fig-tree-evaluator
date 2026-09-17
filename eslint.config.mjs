@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import commentLength from 'eslint-plugin-comment-length'
+import globals from 'globals'
 
 export default tseslint.config(
   {
@@ -23,6 +24,13 @@ export default tseslint.config(
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Build tooling written as plain ESM (rollup config, size report) runs in
+    // Node. TS files get their globals from `types: ["node"]` in tsconfig,
+    // which no-undef can't see — typescript-eslint disables the rule there.
+    files: ['**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
   {
     plugins: { 'comment-length': commentLength },
     rules: {

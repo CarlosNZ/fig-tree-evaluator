@@ -1,8 +1,7 @@
 import typescript from '@rollup/plugin-typescript'
 import terser from '@rollup/plugin-terser'
 import dts from 'rollup-plugin-dts'
-import sizes from 'rollup-plugin-sizes'
-import bundleSize from 'rollup-plugin-bundle-size'
+import { collectBundleSize, printBundleSize } from './codegen/bundleSize.mjs'
 
 export default [
   {
@@ -20,7 +19,7 @@ export default [
     ],
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides
-    plugins: [typescript(), terser(), bundleSize(), sizes()],
+    plugins: [typescript(), terser(), collectBundleSize()],
     // dequal is v3's one runtime dependency (docs-dev/v3-specs/v3-packaging.md)
     external: ['dequal', 'dequal/lite'],
   },
@@ -29,6 +28,7 @@ export default [
     // into the single published index.d.ts
     input: './build/dts/index.d.ts',
     output: [{ file: 'build/index.d.ts', format: 'es' }],
-    plugins: [dts()],
+    // The size report runs last, so it can weigh the declarations too
+    plugins: [dts(), printBundleSize()],
   },
 ]
