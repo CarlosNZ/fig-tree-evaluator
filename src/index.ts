@@ -26,6 +26,7 @@ import {
 } from './types'
 import { GraphQLConnection } from './operators'
 import { preProcessShorthand } from './shorthandSyntax'
+import { isCompiledNode } from './compile'
 import { BasicType, LiteralType, ExpectedType } from './typeCheck'
 import {
   isAliasString,
@@ -57,6 +58,7 @@ export {
   isOperatorNode,
   isObject,
   preProcessShorthand,
+  isCompiledNode,
   standardiseOperatorName,
   truncateString,
   isFigTreeExpression,

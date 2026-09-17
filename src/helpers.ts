@@ -118,7 +118,10 @@ e.g. {
     "param2": "another"
   }}
 */
-export const replaceCustomOperator = async (expression: OperatorNode, config: FigTreeConfig) => {
+export const replaceCustomOperatorSync = (
+  expression: OperatorNode,
+  config: FigTreeConfig
+): OperatorNode => {
   if (!(expression.operator in (config.options?.functions ?? {}))) return expression
 
   const { operator, fallback, outputType, type, useCache, input, args, ...rest } = expression
@@ -136,6 +139,9 @@ export const replaceCustomOperator = async (expression: OperatorNode, config: Fi
 
   return modifiedExpression
 }
+
+export const replaceCustomOperator = async (expression: OperatorNode, config: FigTreeConfig) =>
+  replaceCustomOperatorSync(expression, config)
 
 /*
 Mostly we can just merge the options objects, but for "data", "functions",

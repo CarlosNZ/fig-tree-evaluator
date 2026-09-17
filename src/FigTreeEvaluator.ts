@@ -12,6 +12,7 @@ import {
   FragmentMetadata,
 } from './types'
 import { evaluatorFunction } from './evaluate'
+import { compileNode } from './compile'
 import { typeCheck, TypeCheckInput } from './typeCheck'
 import { operatorAliases } from './operators/operatorAliases'
 import * as operators from './operators'
@@ -84,6 +85,16 @@ export class FigTreeEvaluator {
       graphQLClient: this.graphQLClient,
       httpClient: this.httpClient,
     })
+  }
+
+  // Pre-processes an expression's static structure (shorthand syntax,
+  // operator/property aliases, custom-function normalisation) so that
+  // repeated `evaluate()` calls against the same expression (with different
+  // `data`) can skip that work. The result is bound to this instance's
+  // current operators/fragments/functions -- if those change afterward via
+  // `updateOptions()`, recompile.
+  public compile(expression: EvaluatorNode): EvaluatorNode {
+    return compileNode(expression, this.getConfig())
   }
 
   // Registry-aware check for whether an expression is worth evaluating with
