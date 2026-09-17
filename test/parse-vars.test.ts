@@ -5,7 +5,7 @@
  * Scope resolution (unresolved vars, cycles, shadowing) is chunk 3.3.
  */
 import { parseExpression } from '../src/parse'
-import type { ParseArtifact, OperatorNode, TemplateNode } from '../src/parse'
+import type { ParseArtifact, OperatorNode, SkeletonNode } from '../src/parse'
 import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
@@ -70,8 +70,8 @@ test('vars on a plain object literal scope the subtree and are consumed', () => 
     title: { $format: ['Hi %1', '$vars.name'] },
     footer: 'constant',
   })
-  expect(artifact.root.kind).toBe('template')
-  const root = artifact.root as TemplateNode
+  expect(artifact.root.kind).toBe('skeleton')
+  const root = artifact.root as SkeletonNode
   expect(root.vars).toBeDefined()
   const skeleton = root.skeleton as Record<string, unknown>
   expect('vars' in skeleton).toBe(false)
@@ -96,5 +96,5 @@ test('a vars-carrying plain literal with holes stays its own evaluable unit', ()
   // The vars-carrying literal is the maximal evaluable node, not its hole
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['outer'])
-  expect(artifact.holes[0].node.kind).toBe('template')
+  expect(artifact.holes[0].node.kind).toBe('skeleton')
 })

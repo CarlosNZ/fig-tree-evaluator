@@ -94,7 +94,7 @@ const visit = (state: CheckState, node: CompiledNode) => {
     case 'reference':
       visitReference(state, node)
       return
-    case 'template': {
+    case 'skeleton': {
       const frame = pushVars(state, node.vars, node.path)
       for (const hole of node.holes) visit(state, hole.node)
       popVars(state, frame)

@@ -56,7 +56,7 @@ interface FigTreeOptions {
 
   // ── Resource limits ────────────────────────────────────
   maxDepth?: number  // structural, enforced at parse/validate
-  maxNodes?: number  // structural, enforced at parse/validate
+  maxNodes?: number  // structural, enforced at parse/validate — counts EVALUABLE nodes (ruled Sept 2026, provisional)
   timeout?: number   // ms, whole evaluation — strict: deadline includes fallback evaluation; only timeout shielding (static root-level fallbacks) can shape a timed-out result (see Node grammar)
   signal?: AbortSignal // threaded through to HTTP/SQL clients; instance-level = default for all evaluations
 

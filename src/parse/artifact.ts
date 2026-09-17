@@ -109,27 +109,29 @@ export interface FragmentCallNode extends CompiledBase {
 
 /**
  * A plain object/array literal containing evaluable descendants (B1): the
- * constant skeleton plus its holes. A literal with zero holes compiles to a
- * ConstantNode instead — the identity short-circuit unit. `//` keys and
- * consumed plain-literal `vars` blocks are already stripped from the
- * skeleton (C6).
+ * constant shape (the `skeleton`) plus its holes. Named for that shape, and
+ * unrelated to `buildString.template` — an ordinary string parameter, which
+ * is the collision the name `TemplateNode` used to carry. A literal with
+ * zero holes compiles to a ConstantNode instead — the identity
+ * short-circuit unit. `//` keys and consumed plain-literal `vars` blocks
+ * are already stripped from the skeleton (C6).
  */
-export interface TemplateNode extends CompiledBase {
-  kind: 'template'
+export interface SkeletonNode extends CompiledBase {
+  kind: 'skeleton'
   skeleton: unknown
-  holes: TemplateHole[]
+  holes: SkeletonHole[]
   /** A plain-literal vars block scoping this subtree (consumed — C6). */
   vars?: Record<string, CompiledNode>
 }
 
 /**
- * A hole inside a template. `path` is absolute from the input root (the
- * as-authored path, A2 — what errors are tagged with); `at` is the splice
- * position relative to the template's own value. They usually agree modulo
- * the template's prefix, but diverge for synthetic containers (a rest-slice
- * positional payload), so both are stored.
+ * A hole inside a skeleton node. `path` is absolute from the input root
+ * (the as-authored path, A2 — what errors are tagged with); `at` is the
+ * splice position relative to the skeleton's own value. They usually agree
+ * modulo the skeleton's prefix, but diverge for synthetic containers (a
+ * rest-slice positional payload), so both are stored.
  */
-export interface TemplateHole {
+export interface SkeletonHole {
   path: NodePath
   at: NodePath
   node: CompiledNode
@@ -152,7 +154,7 @@ export type CompiledNode =
   | ReferenceNode
   | OperatorNode
   | FragmentCallNode
-  | TemplateNode
+  | SkeletonNode
   | InvalidNode
 
 /**

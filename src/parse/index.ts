@@ -26,6 +26,6 @@ export type {
   ReferenceNamespace,
   ReferenceNode,
   SequencedIssue,
-  TemplateHole,
-  TemplateNode,
+  SkeletonHole,
+  SkeletonNode,
 } from './artifact'

@@ -23,6 +23,7 @@ import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
 import type { PathSegment } from '../primitives'
 import { buildRegistry } from '../registry'
+import { isPlainDataObject } from '../utils'
 import {
   parseExpression,
   renderSegments,
@@ -31,6 +32,7 @@ import {
   type CompiledNode,
   type NodePath,
   type ParseArtifact,
+  type SkeletonHole,
 } from '../parse'
 import { demoOperators } from './demoOperators'
 
@@ -53,6 +55,41 @@ const preview = (value: unknown, max = 48): string => {
   } catch {
     text = String(value)
   }
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
+}
+
+const HOLE = '<hole>'
+
+/**
+ * Render a skeleton with its empty slots marked. A skeleton reserves each
+ * hole's position without filling it: an array slot is left unassigned
+ * (sparse) and an object key is simply absent — so plain `JSON.stringify`
+ * would print a sparse slot as `null`, indistinguishable from a null the
+ * author actually wrote. Top-level hole keys are marked too, to show the
+ * container's full shape.
+ */
+const renderSkeleton = (skeleton: unknown, holes: SkeletonHole[], max = 44): string => {
+  const holeKeys = new Set(
+    holes.filter((hole) => hole.at.length === 1).map((hole) => String(hole.at[0]))
+  )
+  const render = (value: unknown, top: boolean): string => {
+    if (Array.isArray(value)) {
+      const slots: string[] = []
+      for (let i = 0; i < value.length; i++) slots.push(i in value ? render(value[i], false) : HOLE)
+      return `[${slots.join(',')}]`
+    }
+    if (isPlainDataObject(value)) {
+      const parts = Object.entries(value).map(
+        ([key, child]) => `${JSON.stringify(key)}:${render(child, false)}`
+      )
+      if (top)
+        for (const key of holeKeys)
+          if (!(key in value)) parts.push(`${JSON.stringify(key)}:${HOLE}`)
+      return `{${parts.join(',')}}`
+    }
+    return preview(value, 24)
+  }
+  const text = render(skeleton, true)
   return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
@@ -94,9 +131,9 @@ const describeNode = (node: CompiledNode): string => {
     }
     case 'fragmentCall':
       return `fragment  ${node.name}  (${node.argumentsMode} arguments)`
-    case 'template': {
+    case 'skeleton': {
       const holes = `${node.holes.length} hole${node.holes.length === 1 ? '' : 's'}`
-      return `template  ${holes}  skeleton: ${preview(node.skeleton)}`
+      return `skeleton  ${holes}  shape: ${renderSkeleton(node.skeleton, node.holes)}`
     }
     case 'invalid':
       return `invalid   ${preview(node.raw)}`
@@ -123,10 +160,10 @@ const childrenOf = (node: CompiledNode): Child[] => {
       ))
         children.push({ label: name, node: argument })
   }
-  if (node.kind === 'template')
+  if (node.kind === 'skeleton')
     for (const hole of node.holes)
       children.push({ label: `at ${renderPath(hole.at)}`, node: hole.node })
-  if (node.kind === 'operator' || node.kind === 'fragmentCall' || node.kind === 'template')
+  if (node.kind === 'operator' || node.kind === 'fragmentCall' || node.kind === 'skeleton')
     if (node.vars !== undefined)
       for (const [name, definition] of Object.entries(node.vars))
         children.push({ label: `vars.${name}`, node: definition })

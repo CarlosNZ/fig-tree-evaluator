@@ -68,6 +68,19 @@ const formatOp = defineOperator({
   evaluate: noop,
 })
 
+/** Constraints (arity + homogeneity) on a rest-only aggregate. */
+const greaterThanOp = defineOperator({
+  name: 'greaterThan',
+  alias: '>',
+  description: 'Strict ordering comparison',
+  parameters: {
+    values: { type: 'array', constraints: { length: 2, homogeneous: ['number', 'string'] } },
+  },
+  positionalParams: ['...values'],
+  returns: 'boolean',
+  evaluate: noop,
+})
+
 /** Optional trailing slots carrying defaults, and a `number` receiver. */
 const clampOp = defineOperator({
   name: 'clamp',
@@ -165,6 +178,7 @@ export const demoOperators = (): ValidatedOperatorDefinition[] => [
   ifOp,
   notOp,
   plusOp,
+  greaterThanOp,
   formatOp,
   clampOp,
   getOp,

@@ -6,7 +6,7 @@
  * docs-dev/v3-specs/v3-operator-parameters.md).
  */
 import { parseExpression } from '../src/parse'
-import type { ParseArtifact, OperatorNode, ReferenceNode, TemplateNode } from '../src/parse'
+import type { ParseArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/parse'
 import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
@@ -197,9 +197,9 @@ test('a fully-constant unchanged input is kept by reference', () => {
   expect((artifact.root as { value?: unknown }).value).toBe(input)
 })
 
-test('templates share constant subtrees with the input', () => {
+test('skeletons share constant subtrees with the input', () => {
   const constantBranch = { deep: [1, 2, 3] }
   const artifact = parse({ keep: constantBranch, hole: { $plus: [1, 2] } })
-  const skeleton = (artifact.root as TemplateNode).skeleton as Record<string, unknown>
+  const skeleton = (artifact.root as SkeletonNode).skeleton as Record<string, unknown>
   expect(skeleton.keep).toBe(constantBranch)
 })

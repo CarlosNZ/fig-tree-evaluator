@@ -34,9 +34,9 @@ test('an operator node root is the single hole at path []', () => {
   expect(artifact.holes[0].path).toEqual([])
 })
 
-test('a plain-literal root with an embedded node compiles to a template', () => {
+test('a plain-literal root with an embedded node compiles to a skeleton', () => {
   const artifact = parse({ a: { $plus: [1, 2] }, b: 'inert' })
-  expect(artifact.root.kind).toBe('template')
+  expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['a'])
   expect(artifact.holes[0].node.kind).toBe('operator')

@@ -15,10 +15,10 @@ import { inspect } from './inspect'
 inspect({ name: 'Iron Man', suit: { mark: 42 } }, { label: '1 · a fully constant input' })
 
 // One reference inside an object literal: the object compiles to a
-// template — a constant skeleton plus the hole to splice into.
+// skeleton node — the constant shape plus the hole to splice into.
 inspect(
   { greeting: 'Hello', name: '$data.user.name' },
-  { label: '2 · a literal with one hole (template)' }
+  { label: '2 · a literal with one hole (a skeleton node)' }
 )
 
 // A canonical node: `operator` key plus named parameters.

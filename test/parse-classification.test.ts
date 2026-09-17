@@ -29,7 +29,7 @@ test('worked example 1 shape: constant shells are not holes, deep holes are', ()
     },
   }
   const artifact = parse(dashboard)
-  expect(artifact.root.kind).toBe('template')
+  expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes.map((h) => h.path)).toEqual([
     ['user', 'displayName'],
     ['user', 'avatar'],
@@ -37,14 +37,14 @@ test('worked example 1 shape: constant shells are not holes, deep holes are', ()
   ])
 })
 
-test('nested plain literals flatten into the enclosing template', () => {
+test('nested plain literals flatten into the enclosing skeleton', () => {
   const artifact = parse({ a: { b: { c: { $plus: [1, 2] } } } })
-  expect(artifact.root.kind).toBe('template')
+  expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['a', 'b', 'c'])
 })
 
-test('a plain literal inside an operator parameter compiles as a template', () => {
+test('a plain literal inside an operator parameter compiles as a skeleton', () => {
   const artifact = parse({
     operator: 'http',
     url: 'https://x.test',
@@ -54,12 +54,12 @@ test('a plain literal inside an operator parameter compiles as a template', () =
   const root = artifact.holes[0].node
   expect(root.kind).toBe('operator')
   const query = (root as { params?: Record<string, { kind: string }> }).params!.query
-  expect(query.kind).toBe('template')
+  expect(query.kind).toBe('skeleton')
 })
 
-test('arrays with evaluable elements are templates too', () => {
+test('arrays with evaluable elements are skeletons too', () => {
   const artifact = parse([1, { $plus: [1, 2] }, 3])
-  expect(artifact.root.kind).toBe('template')
+  expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual([1])
 })

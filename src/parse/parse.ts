@@ -10,6 +10,36 @@
  * `invalid` placeholder. The metadata-driven check layer (chunk 3.3,
  * staticChecks.ts) runs as a second pass over the compiled AST.
  *
+ * Vocabulary, which the rest of this file assumes:
+ *
+ * - **artifact** — what `parseExpression` returns: everything derivable
+ *   from the input alone (the compiled tree, its holes, the static issues,
+ *   the precomputes). It depends on no `data` and on no option but the
+ *   registry-affecting three, which is what makes it reusable across
+ *   evaluations. Binding contract: v3-artifact-obligations.md.
+ * - **compile** — turn one raw input value into one `CompiledNode`
+ *   (constant, reference, operator, fragmentCall, skeleton, invalid).
+ *   `{ operator: '+', values: [1, '$d.x'] }` becomes an operator node
+ *   carrying the canonical name `plus`, its registry entry, and its
+ *   parameters under their declared names. Recognition happens once, here,
+ *   so evaluation reads facts instead of re-deriving them per visit.
+ * - **hole** — an evaluable node with constant structure around it. The
+ *   artifact records the outermost ones, so evaluating a large config
+ *   costs its holes rather than its whole input. Holes are also what
+ *   errors are tagged against, and what shielding is computed per.
+ * - **container** — a plain array or object: structure, not an
+ *   invocation. One with no evaluable descendant compiles to a single
+ *   constant; one with holes compiles to a **skeleton** node — the constant
+ *   shape plus the holes to splice into it. (Not to be confused with
+ *   `buildString.template`, which is an ordinary string parameter.)
+ * - **order** — a node's position in the walk, parents before children.
+ *   The two check passes emit issues independently, and sorting by `order`
+ *   returns them to the order a reader sees in the document.
+ * - **shielding** — a hole whose `fallback` is constant can be filled
+ *   without evaluating anything. When every hole has one the expression is
+ *   `shielded`: a timeout becomes constant assembly, and the editor gets
+ *   its `timeoutShielded` badge.
+ *
  * One scope concern lives here rather than in the check layer: iterator
  * `as` renaming. Renamed bindings (`$order`, `$orderIndex`) are
  * author-named reference strings, so *recognition* — and with it constancy
@@ -19,44 +49,48 @@
  * The steps, in order — 1–12 run per value visited (the walk recurses),
  * 13–16 once it returns:
  *
- *  1. Stamp the preorder `order`, count the node, track the max depth.
+ *  1. Number the node (see `order` above), count it, track the max depth.
  *  2. Nullish, numeric and boolean values compile straight to constants.
  *  3. Opaque values (Date, Map, class instance, function) become constants
- *     too, and mark the artifact `identityOnly`.
+ *     too, and flag the artifact `identityOnly` — they don't survive
+ *     serialization, so the content-keyed cache layer must never serve it.
  *  4. Strings go through the reference token rule: plain text is a
  *     constant, a `$namespace` token a reference (aliases normalized away),
  *     an illegal namespace use an error.
  *  5. An unrecognized `$token` is matched against the enclosing `as`
  *     bindings before being warned about and passed through as data.
- *  6. A `$data` reference records its path — a bare `$data` instead flags
- *     the read-set as not statically enumerable.
+ *  6. A `$data` reference records its path in the dependency list — a bare
+ *     `$data` instead flags that list as incomplete, since an expression
+ *     handed the whole data object can read anything in it.
  *  7. Objects are classified by their keys: `operator`, `fragment`, one
  *     `$name` shorthand, or a plain literal. Ambiguous combinations (two
  *     invocations, canonical beside shorthand) are hard errors.
  *  8. An operator name resolves through the alias map — unknown names error
- *     with a nearest-name suggestion. `literal` takes its content verbatim,
- *     unwalked: the parse boundary.
+ *     with a nearest-name suggestion. `literal` is where parsing stops
+ *     descending: its content is taken verbatim, never walked, classified
+ *     or counted, however node-like it looks.
  *  9. Reserved modifiers compile first: `fallback`, `useCache` (a literal
  *     boolean only), `vars` (names legality-checked, values walked).
  * 10. Parameters are gathered — named keys checked against the definition,
  *     a shorthand payload disambiguated by JSON type into positional slots
  *     (leading, then the rest slice), named arguments, or one
  *     first-position value.
- * 11. They then walk in a fixed order: the structural `as` validated first,
- *     ordinary parameters next, `perElement` subtrees last under the
- *     binding frame — the scope concern above.
+ * 11. They then walk in a fixed order: an iterator's `as` first (it renames
+ *     the element bindings, and is a parse-time literal precisely so the
+ *     walk can read it), ordinary parameters next, and the per-element
+ *     subtrees last, under the binding it named — the scope concern above.
  * 12. A fragment call checks its name against the lookup and fixes its
  *     argument mode statically: a plain object is the named map, a node or
  *     reference the dynamic form.
  * 13. Containers assemble: `//` keys and `undefined` values drop out, a
  *     `vars` block is consumed, stray `$keys` warn as inert, constant
  *     children fold into the skeleton and evaluable ones become holes (a
- *     nested template flattens in unless it carries its own vars). No
+ *     nested skeleton flattens in unless it carries its own vars). No
  *     holes at all collapses the container to one constant — the raw value
  *     by identity where nothing changed.
- * 14. The root's maximal evaluable nodes become the artifact's holes: the
- *     root itself, or each hole of a vars-free root template. A constant
- *     root has none.
+ * 14. The outermost evaluable nodes become the artifact's holes: the root
+ *     itself where it is one, or each hole of a vars-free root skeleton.
+ *     A constant root has none.
  * 15. Each hole takes its shielding precompute — a constant `fallback`,
  *     authored or from `operatorDefaults`. Every hole shielded makes the
  *     artifact `shielded`.
@@ -78,8 +112,8 @@ import type {
   NodePath,
   OperatorNode,
   ParseArtifact,
-  TemplateHole,
-  TemplateNode,
+  SkeletonHole,
+  SkeletonNode,
 } from './artifact'
 
 /**
@@ -1139,7 +1173,7 @@ const assembleContainer = (
   path: NodePath,
   order: number
 ): CompiledNode => {
-  const holes: TemplateHole[] = []
+  const holes: SkeletonHole[] = []
   const skeleton: Record<string | number, unknown> = isArray
     ? (new Array(entries.length) as unknown as Record<string | number, unknown>)
     : {}
@@ -1152,9 +1186,9 @@ const assembleContainer = (
       continue
     }
     changed = true
-    // Nested plain literals flatten into the enclosing template — unless
+    // Nested plain literals flatten into the enclosing skeleton — unless
     // they carry a vars block, which makes them their own evaluable unit
-    if (node.kind === 'template' && node.vars === undefined) {
+    if (node.kind === 'skeleton' && node.vars === undefined) {
       skeleton[key] = node.skeleton
       holes.push(...node.holes.map((hole) => ({ ...hole, at: [key, ...hole.at] })))
       continue
@@ -1178,16 +1212,16 @@ const assembleContainer = (
     return constant(changed || vars !== undefined ? skeleton : raw, path, order)
   }
 
-  const template: TemplateNode = { kind: 'template', skeleton, holes, path, order }
-  if (vars !== undefined) template.vars = vars
-  return template
+  const node: SkeletonNode = { kind: 'skeleton', skeleton, holes, path, order }
+  if (vars !== undefined) node.vars = vars
+  return node
 }
 
 // ── Artifact-level holes and shielding ──────────────────────────────
 
 const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
   if (root.kind === 'constant') return []
-  if (root.kind === 'template' && root.vars === undefined)
+  if (root.kind === 'skeleton' && root.vars === undefined)
     return root.holes.map((hole) => ({
       path: hole.path,
       node: hole.node,
