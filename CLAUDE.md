@@ -18,6 +18,7 @@ pnpm test <substring>     # run test files matching substring, e.g. `pnpm test s
 pnpm test:v2              # frozen v2 corpus (test/V2) against /v2-src — on demand, never CI
 pnpm lint                 # eslint (flat config, eslint.config.mjs)
 pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
+pnpm size                 # re-print the bundle-size report for the existing build/
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm generate             # regenerate v2-src/operators/operatorAliases.ts (v2-only tooling)
 pnpm getVersion           # regenerate src/version.ts from package.json
@@ -25,6 +26,10 @@ pnpm dev                  # run src/dev/playground.ts for ad-hoc experimentation
 ```
 
 There is no watch/dev-server — this is a library. Note pnpm does not run implicit pre/post hooks: `build` chains `getVersion` explicitly.
+
+`pnpm build` ends with a size report (minified / gzip / brotli / types, plus a per-module breakdown) from `codegen/bundleSize.mjs`. **At the close of each v3 phase, record the numbers in the bundle-size table in [docs-dev/v3-specs/v3-implementation-plan.md](docs-dev/v3-specs/v3-implementation-plan.md)** — working rule 6 there. The build is also a CI step, so it has to stay green even while the engine is incomplete.
+
+Every PR that can move the bundle gets a size-diff comment automatically (`.github/workflows/pr-bundle-size.yml`): it builds both sides and posts one sticky comment rendered by `codegen/formatSizeDiff.mjs`. Both sides are measured by the PR's own copy of `codegen/bundleSize.mjs --json`, so the PR comment and the local report are the same measurement by construction — change what a size means in that one file and everything follows.
 
 The package is **ESM-only** (`"type": "module"`, single `build/index.js` bundle — packaging ruling, docs-dev/v3-specs/v3-packaging.md). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 

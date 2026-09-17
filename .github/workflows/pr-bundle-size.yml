@@ -1,0 +1,118 @@
+name: PR Bundle Size
+
+# Builds both sides of a pull request and posts the difference as a single
+# sticky comment. Adapted from the equivalent workflow in
+# CarlosNZ/json-edit-react, reduced to this package's one bundle.
+#
+# Bundle size is a v3 goal in its own right (docs-dev/v3-specs/v3-packaging.md),
+# and the per-phase table in the implementation plan records where it has got
+# to. This is the same measurement applied per PR, so growth is attributable to
+# the change that caused it rather than noticed a phase later.
+
+on:
+  pull_request:
+    # Default activity types (opened, synchronize, reopened) — synchronize fires
+    # on every push to the PR branch, so reruns are automatic.
+
+concurrency:
+  group: pr-bundle-size-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      affects_bundle: ${{ steps.filter.outputs.bundle }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # This repo is docs-heavy (the whole v3 spec set) and most PRs cannot
+          # move the bundle at all. Anything that can is listed here.
+          filters: |
+            bundle:
+              - 'src/**'
+              - 'rollup.config.mjs'
+              - 'tsconfig.json'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'codegen/bundleSize.mjs'
+
+  size:
+    needs: detect
+    if: needs.detect.outputs.affects_bundle == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR HEAD
+        uses: actions/checkout@v4
+        with:
+          path: pr
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Checkout base
+        uses: actions/checkout@v4
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.sha }}
+
+      # Reads the pnpm version from packageManager, as ci.yml does — but the
+      # two checkouts above leave no package.json at the workspace root, so
+      # the action has to be pointed at one. The PR's, to match the rest of
+      # this job: the version under review is the version used.
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: pr/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            pr/pnpm-lock.yaml
+            base/pnpm-lock.yaml
+
+      - name: Install (PR)
+        working-directory: pr
+        run: pnpm install --frozen-lockfile
+
+      - name: Build PR
+        working-directory: pr
+        run: pnpm build
+
+      - name: Measure PR
+        working-directory: pr
+        run: node codegen/bundleSize.mjs --json > ../pr-sizes.json
+
+      - name: Install (base)
+        working-directory: base
+        run: pnpm install --frozen-lockfile
+
+      # A base that cannot build must not fail the PR's size report — the
+      # comment reports every row as new instead, which is the honest outcome
+      - name: Build base
+        id: base_build
+        continue-on-error: true
+        working-directory: base
+        run: pnpm build
+
+      # Deliberately the PR's copy of the measuring script, run against the
+      # base's build output: both sides are then measured by one definition of
+      # "bundle size", the one under review
+      - name: Measure base
+        if: steps.base_build.outcome == 'success'
+        working-directory: base
+        run: node ../pr/codegen/bundleSize.mjs --json > ../base-sizes.json
+
+      - name: Format comment
+        run: node pr/codegen/formatSizeDiff.mjs base-sizes.json pr-sizes.json > comment.md
+
+      - name: Post sticky comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: pr-bundle-size
+          path: comment.md

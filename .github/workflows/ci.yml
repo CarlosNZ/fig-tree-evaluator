@@ -22,3 +22,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm test
+      # The build has to stay green from Phase 0 on: it typechecks the whole
+      # library source and prints the bundle-size report recorded per phase in
+      # docs-dev/v3-specs/v3-implementation-plan.md
+      - run: pnpm build

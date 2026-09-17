@@ -9,6 +9,7 @@
 3. **Interfaces early, features behind them.** Cross-cutting interfaces (`OperatorContext` with `signal` / `cache.memo` / `trace.note`) exist as working stubs from the first evaluator chunk, so operator bodies are written in final shape once and features (caching, tracing, abort) light up behind stable interfaces later — no retrofit passes over 42 operator bodies.
 4. **The frozen `V2/` corpus is never edited** and never runs against v3 source — it is a record and the converter's oracle (Phase 12), nothing else.
 5. **No chunk starts until the previous one is validated whole** — the discrete-chunks requirement. Chunks within a phase are sequential unless marked parallel-safe.
+6. **Every phase closes with a build and a size reading.** Run `pnpm build` (it must be green — CI runs it too) and add the phase's row to the [bundle-size table](#bundle-size-by-phase). Growth is watched as it happens, not audited at Phase 14.
 
 ---
 
@@ -194,6 +195,37 @@ I/O excluded or zero-latency mocked (network variance would swamp the signal). O
 | M5 | Phase 13 | feature-complete engine, whole method surface |
 | M6 | Phase 15 | converter + differential green — migration-ready |
 | M7 | Phase 16 | ship with a measured performance story — and `/v2-src` retired |
+
+## Bundle size by phase
+
+Bundle size is a v3 goal in its own right ([v3-packaging.md](v3-packaging.md)), so it is tracked as the engine is built rather than discovered at Phase 14. `pnpm build` prints the numbers below plus a per-module table; `pnpm size` re-prints them without rebuilding. **Recorded at the close of each phase** (working rule 6), measured on the phase's last commit.
+
+Per-PR movement is caught without anyone remembering to look: `.github/workflows/pr-bundle-size.yml` builds both sides of a pull request and posts the difference as a sticky comment, so growth is attributable to the change that caused it rather than noticed a phase later. It shares the measuring code with the report above. Phase 14's *size budget* (packaging, Build & CI mechanics) is a separate check still to come — a threshold assertion, once there is a number worth asserting.
+
+`minified` is the published `build/index.js` — ESM, terser, tree-shaken from `src/index.ts`, `dequal` external. `brotli` is the figure that matters for a browser consumer; `types` is the rolled-up `index.d.ts`, uncompressed.
+
+**What the figure is, and is not.** It is the whole public surface reachable from the main entry point — a ceiling, not a per-consumer cost. Because the package is ESM with `sideEffects: false`, a consumer's own bundler shakes the single published file down to what they actually import. Measured against the Phase-3 build by rolling up a consumer entry per import subset:
+
+| A consumer importing… | raw | brotli |
+|---|---|---|
+| `version` only | 0.21 kB | 0.14 kB |
+| two primitives (`isTruthy`, `resolvePath`) | 1.96 kB | 0.84 kB |
+| `FigTree` | 30.38 kB | 8.92 kB |
+| `FigTree` + `defineOperator` | 43.41 kB | 11.75 kB |
+| everything (`import * as`) | 44.57 kB | 12.24 kB |
+
+Two caveats the figure cannot carry: `dequal` is external, so from Phase 7 the table understates a real install by that dependency's weight; and the HTTP/SQL clients are deliberately consumer-supplied ([v3-packaging.md](v3-packaging.md)), so anyone using `GET`/`SQL` pays for `axios`/`pg` on top — both dwarf the engine.
+
+| After | minified | gzip | brotli | types | Largest contributors (pre-minify share) |
+|---|---|---|---|---|---|
+| Phase 0 — skeleton | 0.04 kB | 0.06 kB | 0.04 kB | 0.66 kB | `version.ts` only |
+| Phase 1 — foundations | 5.70 kB | 2.31 kB | 2.11 kB | 4.42 kB | `path` 34%, `typeCheck` 33%, `FigTreeError` 15% |
+| Phase 2 — definitions & registry | 22.48 kB | 6.99 kB | 6.29 kB | 9.10 kB | `defineOperator` 50%, `registry` 14%, `typeCheck` 14% |
+| Phase 3 — parser + `validate()` | 44.17 kB | 13.43 kB | 12.10 kB | 10.43 kB | `parse` 30%, `defineOperator` 25%, `staticChecks` 12% |
+
+Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). Nothing so far pulls in the one runtime dependency — `dequal` is expected to arrive with Phase 7's `EQUAL`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
+
+Two things to watch, not yet act on. `defineOperator.ts` is a quarter of the bundle while registering zero operators — today it shakes off cleanly (13 kB of the 43 kB gap between the `FigTree` and `FigTree + defineOperator` rows above), but it stops being optional the moment `coreOperators` is itself built with it, which is Phase 7. And `parse` + `staticChecks` is 42% of the bundle: authoring-time machinery that a consumer who only evaluates still pays for, since it is reachable from the class. Whether either splits out is a **Phase 14** packaging decision — the numbers accumulated here are its evidence.
 
 ## Standing dependencies & flags
 
