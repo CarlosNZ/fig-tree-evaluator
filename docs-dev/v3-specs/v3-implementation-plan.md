@@ -205,8 +205,8 @@ Bundle size is a v3 goal in its own right ([v3-packaging.md](v3-packaging.md)), 
 | `version` only | 0.21 kB | 0.14 kB |
 | two primitives (`isTruthy`, `resolvePath`) | 1.96 kB | 0.84 kB |
 | `FigTree` | 30.38 kB | 8.92 kB |
-| `FigTree` + `defineOperator` | 43.40 kB | 11.75 kB |
-| everything (`import * as`) | 44.57 kB | 12.23 kB |
+| `FigTree` + `defineOperator` | 43.41 kB | 11.75 kB |
+| everything (`import * as`) | 44.57 kB | 12.24 kB |
 
 Two caveats the figure cannot carry: `dequal` is external, so from Phase 7 the table understates a real install by that dependency's weight; and the HTTP/SQL clients are deliberately consumer-supplied ([v3-packaging.md](v3-packaging.md)), so anyone using `GET`/`SQL` pays for `axios`/`pg` on top — both dwarf the engine.
 
@@ -215,7 +215,7 @@ Two caveats the figure cannot carry: `dequal` is external, so from Phase 7 the t
 | Phase 0 — skeleton | 0.04 kB | 0.06 kB | 0.04 kB | 0.66 kB | `version.ts` only |
 | Phase 1 — foundations | 5.70 kB | 2.31 kB | 2.11 kB | 4.42 kB | `path` 34%, `typeCheck` 33%, `FigTreeError` 15% |
 | Phase 2 — definitions & registry | 22.48 kB | 6.99 kB | 6.29 kB | 9.10 kB | `defineOperator` 50%, `registry` 14%, `typeCheck` 14% |
-| Phase 3 — parser + `validate()` | 44.16 kB | 13.43 kB | 12.10 kB | 9.75 kB | `parse` 30%, `defineOperator` 25%, `staticChecks` 12% |
+| Phase 3 — parser + `validate()` | 44.17 kB | 13.43 kB | 12.10 kB | 10.43 kB | `parse` 30%, `defineOperator` 25%, `staticChecks` 12% |
 
 Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). Nothing so far pulls in the one runtime dependency — `dequal` is expected to arrive with Phase 7's `EQUAL`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
 
