@@ -32,7 +32,7 @@ const TYPES = 'build/index.d.ts'
  * list and every consumer of it follows.
  */
 const TRACKED = [
-  { path: BUNDLE, label: 'index.js (ESM, minified)' },
+  { path: BUNDLE, label: 'index.js (ESM, terser-minified)' },
   { path: TYPES, label: 'index.d.ts (types)' },
 ]
 

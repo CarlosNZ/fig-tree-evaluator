@@ -74,7 +74,10 @@ for (const row of pr) {
   // number no consumer ever downloads
   const isTypes = row.path.endsWith('.d.ts')
   const metrics = isTypes ? ['raw'] : ['raw', 'gzip', 'brotli']
-  const names = { raw: isTypes ? 'uncompressed' : 'minified', gzip: 'gzip', brotli: 'brotli' }
+  // All three metrics describe the same already-minified artifact at
+  // different transfer encodings — naming the first one "minified" invites
+  // reading it as the only minified figure
+  const names = { raw: 'uncompressed', gzip: 'gzip', brotli: 'brotli' }
   metrics.forEach((metric, index) => {
     const had = before && !before.missing ? before[metric] : undefined
     lines.push(
