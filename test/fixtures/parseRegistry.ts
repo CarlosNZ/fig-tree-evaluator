@@ -113,7 +113,10 @@ export const mapOp = () =>
     evaluate: noop,
   })
 
-/** `greaterThan` — constraints (length + homogeneous), boolean returns. */
+/**
+ * `greaterThan` — constraints (length + homogeneous), element-wise
+ * propagate, boolean returns.
+ */
 export const greaterThanOp = () =>
   defineOperator({
     name: 'greaterThan',
@@ -122,11 +125,25 @@ export const greaterThanOp = () =>
     parameters: {
       values: {
         type: 'array',
+        elementNullPolicy: 'propagate',
         constraints: { length: 2, homogeneous: ['number', 'string'] },
       },
     },
     positionalParams: ['...values'],
     returns: 'boolean',
+    evaluate: noop,
+  })
+
+/** `strictNumbers` — a homogeneity constraint with NO element null policy. */
+export const strictNumbersOp = () =>
+  defineOperator({
+    name: 'strictNumbers',
+    description: 'Homogeneous numbers, nulls not admitted per element',
+    parameters: {
+      values: { type: 'array', constraints: { homogeneous: ['number'] } },
+    },
+    positionalParams: ['...values'],
+    returns: 'number',
     evaluate: noop,
   })
 
@@ -180,6 +197,7 @@ export const parseOps = (): ValidatedOperatorDefinition[] => [
   httpOp(),
   mapOp(),
   greaterThanOp(),
+  strictNumbersOp(),
   hookOp(),
 ]
 

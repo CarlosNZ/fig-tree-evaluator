@@ -150,12 +150,7 @@ export interface InvalidNode extends CompiledBase {
 }
 
 export type CompiledNode =
-  | ConstantNode
-  | ReferenceNode
-  | OperatorNode
-  | FragmentCallNode
-  | SkeletonNode
-  | InvalidNode
+  ConstantNode | ReferenceNode | OperatorNode | FragmentCallNode | SkeletonNode | InvalidNode
 
 /**
  * A top-level hole: a maximal evaluable node (A2). `staticFallback` is the
@@ -214,8 +209,18 @@ export interface ParseArtifact {
   issues: SequencedIssue[]
   /** True iff every hole carries a static fallback (B2). */
   shielded: boolean
-  /** Measured on the walked input; `literal` contents uncounted (B4). */
+  /**
+   * The number of evaluable nodes — operator, fragment-call, reference and
+   * invalid placeholders (B4, amended September 2026). Constants and plain
+   * containers are structure, not work, and are not counted; `literal`
+   * contents are never walked. What `maxNodes` compares against.
+   */
   nodeCount: number
+  /**
+   * Measured nesting of the walked input, containers included, capped by
+   * the walk's built-in ceiling (src/parse/probe.ts). What `maxDepth`
+   * compares against.
+   */
   maxDepth: number
   dependencies: ArtifactDependencies
   /**

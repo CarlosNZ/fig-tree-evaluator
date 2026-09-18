@@ -35,6 +35,7 @@ import {
   type SkeletonHole,
 } from '../parse'
 import { demoOperators } from './demoOperators'
+import { coreOperators } from '../operators'
 
 const WIDTH = 78
 /** Column the `#order  path` annotations start at. */
@@ -232,7 +233,7 @@ const printIssues = (heading: string, issues: Issue[]) => {
  */
 export const inspect = (expression: unknown, options: InspectOptions = {}): void => {
   const { label, ...figOptions } = options
-  const operators = figOptions.operators ?? [demoOperators()]
+  const operators = figOptions.operators ?? [coreOperators, demoOperators()]
   const registry = buildRegistry({
     operators,
     ...(figOptions.operatorDefaults !== undefined

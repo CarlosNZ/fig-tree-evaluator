@@ -1,10 +1,10 @@
 /**
- * A gallery of expressions run through the inspector — `pnpm dev:examples`.
+ * A gallery of expressions run through the inspector — `pnpm dev examples`.
  * Each block is one `inspect()` call: comment out the ones you don't want,
  * or copy a block into the playground and edit it.
  *
- * The registry is the demo operator set (src/dev/demoOperators.ts) until
- * `coreOperators` lands in Phase 4.
+ * The registry is `coreOperators` plus the demo stand-ins for shapes core
+ * does not yet hold (src/dev/demoOperators.ts).
  */
 import { inspect } from './inspect'
 

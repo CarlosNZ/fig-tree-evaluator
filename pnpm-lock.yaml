@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      dequal:
-        specifier: ^2.0.3
-        version: 2.0.3
     devDependencies:
       '@eslint/js':
         specifier: ^9.0.0

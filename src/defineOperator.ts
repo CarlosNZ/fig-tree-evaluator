@@ -26,6 +26,7 @@ import {
   checkType,
   isExpectedType,
   isLiteralType,
+  typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
 } from './typeCheck'
@@ -38,7 +39,9 @@ import {
   type EvaluationMode,
   type NullPolicyValue,
   type OperatorDefinition,
+  type OperatorEvaluate,
   type ParameterDeclaration,
+  type ParameterDeclarations,
   type ValidatedOperatorDefinition,
   type ValidatedParameter,
 } from './operatorDefinition'
@@ -59,13 +62,6 @@ const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
 
 /** The rest marker on a `positionalParams` entry (`'...values'`). */
 const REST_PREFIX = '...'
-
-/** Does a declared type admit `null` (type-driven admission)? */
-const typeNamesNull = (type: ExpectedType): boolean => {
-  if (type === 'null' || type === 'any') return true
-  if (Array.isArray(type)) return type.includes('null') || type.includes('any')
-  return false
-}
 
 /** Does a declared type admit an array (the `over` target requirement)? */
 const typeAdmitsArray = (type: ExpectedType): boolean => {
@@ -96,8 +92,8 @@ const throwDefinitionError = (issues: Issue[], operator?: string): never => {
   })
 }
 
-export const defineOperator = (
-  definition: OperatorDefinition | ValidatedOperatorDefinition
+export const defineOperator = <const P extends ParameterDeclarations>(
+  definition: OperatorDefinition<P> | ValidatedOperatorDefinition
 ): ValidatedOperatorDefinition => {
   // Idempotence: a validated definition is already the artifact
   if (isValidatedOperator(definition)) return definition
@@ -122,7 +118,7 @@ export const defineOperator = (
     addIssue(ErrorCodes.invalidDefinition, 'a definition must be a plain object', [])
     throwDefinitionError(issues)
   }
-  const def = definition as OperatorDefinition & Record<string, unknown>
+  const def = definition as unknown as OperatorDefinition & Record<string, unknown>
 
   if (typeof def.name !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'name' is required and must be a string", ['name'])
@@ -629,7 +625,7 @@ export const defineOperator = (
     useCache: def.useCache ?? false,
     cache: def.cache ?? 'auto',
     readsOptions: [...(def.readsOptions ?? [])],
-    evaluate: def.evaluate,
+    evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
   if (def.alias !== undefined) validated.alias = def.alias
@@ -643,8 +639,8 @@ export const defineOperator = (
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {
   if (typeof type === 'string') return type
-  if (Array.isArray(type)) return [...type]
-  return { literal: [...type.literal] }
+  if (isLiteralType(type)) return { literal: [...type.literal] }
+  return [...type]
 }
 
 /** Plain-data deep clone for owned declaration structures (constraints). */

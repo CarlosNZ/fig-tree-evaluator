@@ -10,6 +10,7 @@
 4. **The frozen `V2/` corpus is never edited** and never runs against v3 source — it is a record and the converter's oracle (Phase 12), nothing else.
 5. **No chunk starts until the previous one is validated whole** — the discrete-chunks requirement. Chunks within a phase are sequential unless marked parallel-safe.
 6. **Every phase closes with a build and a size reading.** Run `pnpm build` (it must be green — CI runs it too) and add the phase's row to the [bundle-size table](#bundle-size-by-phase). Growth is watched as it happens, not audited at Phase 14.
+7. **Every phase closes with a runnable showcase** (Carl, September 2026): `src/dev/phase<N>_showcase.ts`, run with `pnpm dev phase<N>_showcase` — a range of expressions exercising the phase's features, printing each expression and its result or error. Not a test (the suites are the assertions); a reading of the phase for humans, and the seed material for release notes. First instance: `phase4_showcase.ts`. TO-DO: retroactive showcases for Phases 1–3 (primitives and errors; definitions and registry; the parser and `validate()`).
 
 ---
 
@@ -62,12 +63,15 @@
 
 **4.0 · Carried from Phase 3 — the recursion ceiling (defect, found September 2026).** `maxDepth` is measured during the walk and compared afterwards, so a deep input throws `RangeError: Maximum call stack size exceeded` out of the walk before the check can report: with `maxDepth: 50` set, depth 1,000 reports `max-depth` but depth 1,500 throws — breaking `validate()`'s never-throws-on-content invariant, and defeating the one rationale that clearly justifies a depth limit (stack safety, which applies to inert data as much as to expressions). Add a built-in, option-independent ceiling inside `walk()` (conservative, ~500 — environments differ), emitting an error issue and refusing to descend; the user's `maxDepth` stays the per-call check against the measured depth. The Phase-4 constancy probe (implementation notes) recurses too and carries the same ceiling. Tests: a 5,000-deep input reports instead of throwing, through both `validate()` and `evaluate()`.
 Same chunk, same root cause: **`nodeCount` narrows to count *evaluable* nodes only** (ruled September 2026, Carl — *provisional, up for further refinement*), so inert data stops tripping a limit meant for runaway logic, and a built-in mid-walk ceiling bounds walk cost on untrusted input instead. Tests: a 200-entry options list no longer trips `maxNodes: 500`; an expression with 600 operators does.
+*Built (September 2026): evaluable = operator, fragment-call, reference and invalid nodes — constants and plain containers are structure, not work (Carl's ruling at Phase-4 planning). The ceiling is `DEPTH_CEILING = 500` in `src/parse/probe.ts`, reported as code `depth-ceiling`; the probe is the shared `probeConstant`, its shipping property `probe(x).constant === (parse(x).root is a constant holding x itself)` — stricter than the notes' `holes.length === 0`, since a `//` key, a `vars` block or an `undefined` value normalizes the value without adding a hole. Also carried here: the static layer type-checked literal nulls before applying null policy, so register rows 13 and 14 failed `validate()` — fixed to mirror the runtime order (unset at optionals, element policy before constraints).*
 *Spec: obligations B4 (amended); implementation notes § `maxDepth` cannot currently do its job; evaluator-methods § validate() — the process.*
 
 **4.1 · The dispatch + engine layers.** The four-kind recursive evaluation (constant / reference / node / skeleton + splice), eager parameter resolution, runtime type checks, engine-side null-policy enforcement (propagate short-circuit, type-driven admission, null-means-unset, `replacesNullAt`), boundary normalization (`undefined`→`null`, finite guard, escaped-handle guard), **fallback rules 1–2 and 4–6**, `evaluate()` with minimal per-call merge, `mode: 'throw'`. `OperatorContext` lands with working `signal` passthrough and **stub** `cache.memo` (identity) and `trace.note` (no-op) — rule 3 above.
+*Built (September 2026): `operatorDefaults` **parameter defaults and the default-`fallback` catch land here, not in 8.1** — the unset chain needs the defaults, and the parser already counts a default fallback toward shielding, so the runtime catch must honour it; the `replacesNullAt` holder is an internal evaluate-once thunk (`once()` in src/utils.ts) that Phase 5 wraps into the body-facing `LazyValue`; the two-level option merge is implemented as `mergeOptions` (src/evaluate/context.ts), leaving 8.1 `updateOptions`/`getOptions`/re-validation; the probe fast path runs before the parse (off when `trace` is requested); contract Q6 resolved as the exported `OperatorFailure(message, { code?, errorData? })`. Options owned by later phases (`mode: 'report'`, `trace`, `timeout`, `useCache`, `cache`) are accepted and inert.*
 *Spec: evaluator-methods § One spine; Node grammar § fallback; Type § Null policy; contract § Engine guarantees.*
 
 **4.2 · First operator batch: the eager set.** Arithmetic (`plus` and friends), comparisons, simple strings (`lower`/`upper`/`trim`/`split`/`length`), `convert` (conditional nullPolicy's proof), `equal`/`notEqual`. Tests: hand-migrated v2 math/comparison/string suites + new null-gradient and no-coercion tests.
+*Built (September 2026): 24 definitions as flat `defineOperator()` literals under `src/operators/` (`math`, `comparison`, `string`, `array`, `convert`; `coreOperators` in `index.ts`); `dequal` **vendored** as `src/primitives/deepEqual.ts` (Carl — zero runtime dependencies); the body-params TypeScript inference built here too (`defineOperator<const P>`, `src/inference.ts` — Carl's call to pull it forward); the empty-literal-aggregate check is validate-hook-authored (`src/operators/shared.ts`), with one known edge: a literal `[]` beside a *dynamic* `expect` reports the error, since hooks see literals only. Test files are feature-named (`test/operators-*.test.ts`, `test/null-gradient.test.ts`, `test/inference.test.ts`).*
 *Register rows: 2, 3, 10, 11, 12, 13, 14. Parameter passes: batches 2–4 (eager subset).*
 
 ---
@@ -106,7 +110,7 @@ Same chunk, same root cause: **`nodeCount` narrows to count *evaluable* nodes on
 
 ## Phase 8 — The instance layer, completed
 
-**8.1 · Full options semantics.** The two-level merge rule (all the consequence-table cases), frozen per-evaluation context, never-mutate-the-instance, `updateOptions` + registry re-validation, `operatorDefaults` application (parameter + modifier defaults, incl. default-`fallback` participation in catch/shielding), `getOptions` snapshot.
+**8.1 · Full options semantics.** The two-level merge rule (all the consequence-table cases — the merge itself landed in 4.1 as `mergeOptions`; this chunk proves every table row), frozen per-evaluation context, never-mutate-the-instance, `updateOptions` + registry re-validation, the `useCache` modifier default (parameter defaults and the default-`fallback` catch landed in 4.1), `getOptions` snapshot.
 *Spec: Options, entire.*
 
 **8.2 · The parse cache.** Two layers (identity `WeakMap` + bounded content LRU, re-register-on-content-hit, opaque-constant identity-only guard), invalidation by exactly `operators`/`fragments`/`operatorDefaults`. Observable via a spy `validate` hook counting compiles — no internals in assertions.
@@ -202,7 +206,7 @@ Bundle size is a v3 goal in its own right ([v3-packaging.md](v3-packaging.md)), 
 
 Per-PR movement is caught without anyone remembering to look: `.github/workflows/pr-bundle-size.yml` builds both sides of a pull request and posts the difference as a sticky comment, so growth is attributable to the change that caused it rather than noticed a phase later. It shares the measuring code with the report above. Phase 14's *size budget* (packaging, Build & CI mechanics) is a separate check still to come — a threshold assertion, once there is a number worth asserting.
 
-`minified` is the published `build/index.js` — ESM, terser, tree-shaken from `src/index.ts`, `dequal` external. `brotli` is the figure that matters for a browser consumer; `types` is the rolled-up `index.d.ts`, uncompressed.
+`minified` is the published `build/index.js` — ESM, terser, tree-shaken from `src/index.ts`; there are no external runtime dependencies (`dequal` is vendored as `deepEqual` from Phase 4). `brotli` is the figure that matters for a browser consumer; `types` is the rolled-up `index.d.ts`, uncompressed.
 
 **What the figure is, and is not.** It is the whole public surface reachable from the main entry point — a ceiling, not a per-consumer cost. Because the package is ESM with `sideEffects: false`, a consumer's own bundler shakes the single published file down to what they actually import. Measured against the Phase-3 build by rolling up a consumer entry per import subset:
 
@@ -214,7 +218,7 @@ Per-PR movement is caught without anyone remembering to look: `.github/workflows
 | `FigTree` + `defineOperator` | 43.41 kB | 11.75 kB |
 | everything (`import * as`) | 44.57 kB | 12.24 kB |
 
-Two caveats the figure cannot carry: `dequal` is external, so from Phase 7 the table understates a real install by that dependency's weight; and the HTTP/SQL clients are deliberately consumer-supplied ([v3-packaging.md](v3-packaging.md)), so anyone using `GET`/`SQL` pays for `axios`/`pg` on top — both dwarf the engine.
+One caveat the figure cannot carry: the HTTP/SQL clients are deliberately consumer-supplied ([v3-packaging.md](v3-packaging.md)), so anyone using `GET`/`SQL` pays for `axios`/`pg` on top — both dwarf the engine.
 
 | After | minified | gzip | brotli | types | Largest contributors (pre-minify share) |
 |---|---|---|---|---|---|
@@ -222,8 +226,9 @@ Two caveats the figure cannot carry: `dequal` is external, so from Phase 7 the t
 | Phase 1 — foundations | 5.70 kB | 2.31 kB | 2.11 kB | 4.42 kB | `path` 34%, `typeCheck` 33%, `FigTreeError` 15% |
 | Phase 2 — definitions & registry | 22.48 kB | 6.99 kB | 6.29 kB | 9.10 kB | `defineOperator` 50%, `registry` 14%, `typeCheck` 14% |
 | Phase 3 — parser + `validate()` | 44.17 kB | 13.43 kB | 12.10 kB | 10.43 kB | `parse` 30%, `defineOperator` 25%, `staticChecks` 12% |
+| Phase 4 — evaluator core + 24 eager operators | 62.69 kB | 19.07 kB | 17.07 kB | 14.56 kB | `parse` 21%, `defineOperator` 18%, `staticChecks` 9%, `math` 6%, `params` 6% |
 
-Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). Nothing so far pulls in the one runtime dependency — `dequal` is expected to arrive with Phase 7's `EQUAL`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
+Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). The package has no runtime dependency to understate: `dequal` was vendored into the bundle with Phase 4's `equal`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
 
 Two things to watch, not yet act on. `defineOperator.ts` is a quarter of the bundle while registering zero operators — today it shakes off cleanly (13 kB of the 43 kB gap between the `FigTree` and `FigTree + defineOperator` rows above), but it stops being optional the moment `coreOperators` is itself built with it, which is Phase 7. And `parse` + `staticChecks` is 42% of the bundle: authoring-time machinery that a consumer who only evaluates still pays for, since it is reachable from the class. Whether either splits out is a **Phase 14** packaging decision — the numbers accumulated here are its evidence.
 

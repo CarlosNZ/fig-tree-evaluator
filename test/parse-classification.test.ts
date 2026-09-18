@@ -106,10 +106,11 @@ test('a fully-constant expression is vacuously shielded', () => {
 // ── Counts ──────────────────────────────────────────────────────────
 
 test('nodeCount and maxDepth are measured and stored as numbers', () => {
-  const artifact = parse({ a: { b: [1, 2] } })
+  // nodeCount counts evaluable nodes (the reference here), not walked values
+  const artifact = parse({ a: { b: [1, '$data.x'] } })
   expect(typeof artifact.nodeCount).toBe('number')
   expect(typeof artifact.maxDepth).toBe('number')
-  expect(artifact.nodeCount).toBeGreaterThan(0)
+  expect(artifact.nodeCount).toBe(1)
 
   const deeper = parse({ a: { b: { c: { d: { e: 1 } } } } })
   expect(deeper.maxDepth).toBeGreaterThan(artifact.maxDepth)

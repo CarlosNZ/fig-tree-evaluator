@@ -21,7 +21,7 @@
 | # | Case | No `fallback` | With `fallback: F` | Status |
 |---|---|---|---|---|
 | 1 | `{ $if: { condition: false, then: X } }` — no `else` | `null` | `null` — success; fallback ignored | agreed — "value when unmet" is what `else` is for |
-| 2 | `{ $plus: [] }` — empty aggregate, no mode pinned | error | `F` | agreed — remedies: pin the mode (row 11) or `operatorDefaults: { plus: { fallback: 0 } }` |
+| 2 | `{ $plus: [] }` — empty aggregate, no mode pinned | error | `F` | agreed — remedies: pin the mode (row 11) or `operatorDefaults: { plus: { fallback: 0 } }`. *Clarified at Phase 4 (September 2026): a **literal** `[]` is a static `validate()` error, which the gate refuses before any fallback exists (rule 2) — the `F` cell is the dynamically-empty case, which is where the `operatorDefaults` remedy applies* |
 | 3 | `{ $plus: [null, 5] }` — null operand (e.g. a missing `$data` path) | `null` — propagate; success | `null` — fallback ignored | agreed — `nullValueDefault` is the opt-out (ledger #18); future flip to reject reserved (Open items) |
 | 4 | `{ $and: [] }` / `{ $or: [] }` | `true` / `false` — vacuous identity | same — success | agreed — quantifier identities, matching `every` / `some` |
 | 5 | `firstOf` — all candidates `null`, or empty input | `null` | `null` — success | agreed — the absence tool's contract is total |

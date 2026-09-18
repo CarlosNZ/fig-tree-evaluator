@@ -22,7 +22,8 @@ pnpm size                 # re-print the bundle-size report for the existing bui
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm generate             # regenerate v2-src/operators/operatorAliases.ts (v2-only tooling)
 pnpm getVersion           # regenerate src/version.ts from package.json
-pnpm dev                  # run src/dev/playground.ts for ad-hoc experimentation
+pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
+pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
 ```
 
 There is no watch/dev-server — this is a library. Note pnpm does not run implicit pre/post hooks: `build` chains `getVersion` explicitly.
@@ -33,7 +34,7 @@ Every PR that can move the bundle gets a size-diff comment automatically (`.gith
 
 The package is **ESM-only** (`"type": "module"`, single `build/index.js` bundle — packaging ruling, docs-dev/v3-specs/v3-packaging.md). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 
-The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`.
+The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`, and `pnpm dev phase<N>_showcase` to see a phase's features run (one showcase file per phase, written at the phase's close).
 
 ## Architecture
 
@@ -57,18 +58,9 @@ src/
 
 ### The operator pattern (most common change)
 
-Every operator lives in `src/operators/<NAME>/` (e.g. `AND`, `OBJECT_PROPERTIES`) and is exactly three files:
+**v3 (the live `src/`):** an operator is one flat `defineOperator()` literal — metadata (`name`, `alias`, `description`, `parameters` with types / null policies / delivery modes / constraints, `positionalParams`, `returns`), an optional `validate` hook over literal parameter values, and the `evaluate` body, whose `params` type is inferred from the declarations. Definitions live grouped by batch in `src/operators/` (`math.ts`, `comparison.ts`, `string.ts`, `array.ts`, `convert.ts`) and are listed in canonical-list order in `src/operators/index.ts` as `coreOperators`. The engine owns type checks, null policy, truthiness, defaults, the result boundary and `fallback`, so a body contains only its own logic and throws `OperatorFailure` for structured failures. Use [plus](src/operators/math.ts) or [convert](src/operators/convert.ts) as templates; the contract is docs-dev/v3-specs/v3-operator-contract.md. To add an operator: write the definition, add it to `coreOperators`, write its tests (`test/operators-<group>.test.ts`) and its README entry. There is no alias table to regenerate and no `types.ts` list to extend.
 
-- **`data.ts`** — metadata: `description`, `aliases`, and a `parameters` array (`OperatorParameterMetadata[]`). Exports `propertyAliases` (built via `getPropertyAliases`) and the `operatorData` default export. This metadata drives both runtime type-checking and the public `getOperators()` introspection method.
-- **`operator.ts`** — the logic: an `evaluate` method, an optional `parseChildren` method (maps a positional `children` array onto named properties), and the assembled `OperatorObject`.
-- **`index.ts`** — re-exports the operator object under its canonical name.
-
-Use an existing simple operator like [AND](src/operators/AND/operator.ts) as the template. To **add an operator**:
-1. Create the three files in a new `src/operators/<NAME>/` folder.
-2. Add `export * from './<NAME>'` to [src/operators/index.ts](src/operators/index.ts).
-3. Add the canonical name to the `Operators` list in [src/types.ts](src/types.ts).
-4. Run `pnpm generate` to rebuild the alias map.
-5. Add a numbered test file in `test/` and document the operator in README.md.
+**v2 (the frozen `/v2-src`, reference only):** every operator was a folder of three files — `data.ts` (metadata + `propertyAliases`), `operator.ts` (`evaluate` + `parseChildren`), `index.ts` — plus an entry in `src/types.ts` and a regenerated alias map. That layout is never edited; the converter (Phase 15) mines it as data.
 
 ### Generated files — do not hand-edit
 

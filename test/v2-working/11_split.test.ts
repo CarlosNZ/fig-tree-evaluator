@@ -1,3 +1,10 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): hand-migrated to test/operators-string.test.ts.
+ * Divergences: aliases arraySplit/SPLIT, `string`/`separator`/`trimWhiteSpace`
+ * spellings die (`value`/`delimiter`/`trim`); `excludeTrailing` dies — a
+ * trailing delimiter keeps its empty piece; the `pass` + `outputType` delimiter
+ * case is respelled with a literal delimiter.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator()

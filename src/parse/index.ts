@@ -29,3 +29,5 @@ export type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
+export { probeConstant, DEPTH_CEILING } from './probe'
+export type { ProbeResult } from './probe'
