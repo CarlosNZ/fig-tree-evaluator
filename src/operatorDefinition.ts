@@ -153,7 +153,12 @@ export interface OperatorDefinition {
   useCache?: boolean
   /** How caching is keyed when effective `useCache` is true. */
   cache?: 'auto' | 'manual'
-  /** Option blocks the body reads; they arrive frozen on `context.options`. */
+  /**
+   * Option blocks the body reads; they arrive frozen on `context.options`,
+   * and blocks a definition does not name are absent from it. Self-declared,
+   * so this records access rather than restricting it — whether the
+   * declaration earns its keep is contract open Q10.
+   */
   readsOptions?: string[]
   validate?: OperatorValidate
   evaluate: OperatorEvaluate
