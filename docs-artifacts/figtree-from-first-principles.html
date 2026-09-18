@@ -1,0 +1,937 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FigTree From First Principles</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #faf9f7;
+    --surface: #ffffff;
+    --sunk: #f3f0f2;
+    --ink: #241e28;
+    --ink-soft: #574f5c;
+    --ink-faint: #837b88;
+    --fig: #6e2b52;
+    --fig-soft: #8d4370;
+    --leaf: #41654a;
+    --rule: #e3dde1;
+    --rule-firm: #cfc6cd;
+
+    --display: 'Spectral', 'Iowan Old Style', Georgia, serif;
+    --body: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --ground: #17141a;
+      --surface: #1f1b23;
+      --sunk: #262029;
+      --ink: #ece7ee;
+      --ink-soft: #b7aebc;
+      --ink-faint: #8e8593;
+      --fig: #dd93b9;
+      --fig-soft: #c8799f;
+      --leaf: #93b899;
+      --rule: #322b37;
+      --rule-firm: #453c4a;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --ground: #17141a;
+    --surface: #1f1b23;
+    --sunk: #262029;
+    --ink: #ece7ee;
+    --ink-soft: #b7aebc;
+    --ink-faint: #8e8593;
+    --fig: #dd93b9;
+    --fig-soft: #c8799f;
+    --leaf: #93b899;
+    --rule: #322b37;
+    --rule-firm: #453c4a;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16.5px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 47rem;
+    margin: 0 auto;
+    padding-block: clamp(2.5rem, 6vw, 4.5rem) 5rem;
+    padding-left: max(1.25rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1.25rem, env(safe-area-inset-right, 0px));
+  }
+
+  h1, h2, h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    text-wrap: balance;
+    line-height: 1.2;
+  }
+
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 3rem);
+    letter-spacing: -0.015em;
+    margin: 0 0 0.6rem;
+  }
+
+  .standfirst {
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    max-width: 34rem;
+    margin: 0 0 1.5rem;
+  }
+
+  .byline {
+    font-family: var(--mono);
+    font-size: 0.775rem;
+    color: var(--ink-faint);
+    letter-spacing: 0.02em;
+    border-top: 1px solid var(--rule);
+    padding-top: 0.9rem;
+    margin: 0;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--fig);
+    margin: 0 0 0.4rem;
+  }
+
+  .route {
+    margin: 3rem 0 0;
+    padding: 1.5rem 1.6rem;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+  }
+
+  .route h2 {
+    font-size: 1rem;
+    font-family: var(--mono);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    margin: 0 0 1rem;
+  }
+
+  .route ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .route li {
+    display: grid;
+    grid-template-columns: 2.1rem 1fr;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+  }
+
+  .route .num {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--fig);
+    padding-top: 0.22rem;
+  }
+
+  .route a {
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule-firm);
+  }
+
+  .route a:hover { border-bottom-color: var(--fig); }
+
+  section.stage {
+    margin-top: 3.75rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  section.stage > h2 {
+    font-size: clamp(1.45rem, 3.6vw, 1.9rem);
+    margin: 0 0 1.1rem;
+  }
+
+  h3 {
+    font-size: 1.1rem;
+    margin: 2rem 0 0.5rem;
+  }
+
+  p { margin: 0 0 1.05rem; }
+  p:last-child { margin-bottom: 0; }
+
+  a { color: var(--fig); }
+
+  strong { font-weight: 600; }
+
+  em.term {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--fig);
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--sunk);
+    padding: 0.1em 0.32em;
+    color: var(--ink);
+  }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    padding: 1rem 1.1rem;
+    overflow-x: auto;
+    margin: 0 0 1.05rem;
+  }
+
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  .cue {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.11em;
+    color: var(--ink-faint);
+    margin: 1.6rem 0 0.35rem;
+  }
+
+  .in-code {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    border-left: 2px solid var(--leaf);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin: 1.4rem 0 0;
+  }
+
+  .in-code b {
+    color: var(--leaf);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    display: block;
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+
+  .pipeline .step {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 2px solid var(--fig);
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .pipeline .step h4 {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    margin: 0 0 0.5rem;
+    color: var(--fig);
+  }
+
+  .pipeline .step p {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    margin: 0 0 0.45rem;
+    color: var(--ink-soft);
+  }
+
+  .pipeline .step p:last-child { margin: 0; }
+
+  .pipeline .step b { color: var(--ink); font-weight: 600; }
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin: 1.5rem 0;
+  }
+
+  .panels figure {
+    margin: 0;
+    background: var(--sunk);
+    border: 1px solid var(--rule);
+    padding: 0.85rem 0.9rem;
+  }
+
+  .panels figcaption {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--ink-faint);
+    margin-bottom: 0.5rem;
+  }
+
+  .panels pre {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.76rem;
+  }
+
+  .hole { color: var(--fig); font-weight: 500; }
+  .filled { color: var(--leaf); font-weight: 500; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+    margin: 1.5rem 0;
+  }
+
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    font-weight: 500;
+    border-bottom-color: var(--rule-firm);
+  }
+
+  .scroller { overflow-x: auto; }
+  .scroller table { min-width: 34rem; }
+
+  ul.plain {
+    margin: 0 0 1.05rem;
+    padding-left: 1.15rem;
+  }
+
+  ul.plain li { margin-bottom: 0.4rem; }
+
+  .aside {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    padding: 1.1rem 1.2rem;
+    margin: 1.6rem 0;
+    font-size: 0.93rem;
+  }
+
+  .aside .cue { margin-top: 0; }
+
+  .aside p:last-child { margin-bottom: 0; }
+
+  .status {
+    border-left: 2px solid var(--fig);
+    padding-left: 1rem;
+    margin: 1.6rem 0;
+    font-size: 0.93rem;
+    color: var(--ink-soft);
+  }
+
+  footer {
+    margin-top: 4.5rem;
+    border-top: 1px solid var(--rule);
+    padding-top: 1.2rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 40rem) {
+    .pipeline, .panels { grid-template-columns: 1fr; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<div class="page">
+
+  <header>
+    <p class="eyebrow">fig-tree-evaluator · the model</p>
+    <h1>FigTree From First Principles</h1>
+    <p class="standfirst">Every piece of machinery in the evaluator, derived in order from the problem that forces it. No prior vocabulary assumed.</p>
+    <p class="byline">Nothing here is new design. It is the existing v3 design re-derived forwards, so the parts arrive in the order that explains them.</p>
+  </header>
+
+  <nav class="route">
+    <h2>The route</h2>
+    <ol>
+      <li><span class="num">00</span><a href="#start">The thing we actually want</a></li>
+      <li><span class="num">01</span><a href="#naive">The twenty-line evaluator</a></li>
+      <li><span class="num">02</span><a href="#recognition">Recognition is the hidden cost</a></li>
+      <li><span class="num">03</span><a href="#mould">Most of a config is not logic</a></li>
+      <li><span class="num">04</span><a href="#validity">When are the notes still true?</a></li>
+      <li><span class="num">05</span><a href="#checking">Finding mistakes before 2am</a></li>
+      <li><span class="num">06</span><a href="#delivery">Not every argument should be computed</a></li>
+      <li><span class="num">07</span><a href="#naming">Reaching the data, and naming things</a></li>
+      <li><span class="num">08</span><a href="#failure">Absence, failure, and being cut off</a></li>
+      <li><span class="num">09</span><a href="#repeat">The same work twice</a></li>
+      <li><span class="num">10</span><a href="#editor">The editor comes free</a></li>
+      <li><span class="num">11</span><a href="#assembled">The model, assembled</a></li>
+      <li><span class="num">12</span><a href="#worked">One expression, end to end</a></li>
+      <li><span class="num">13</span><a href="#price">What it cost</a></li>
+    </ol>
+  </nav>
+
+  <section class="stage" id="start">
+    <p class="eyebrow">Stage 00</p>
+    <h2>The thing we actually want</h2>
+
+    <p>Start with the situation, not the software. You are building an application whose behaviour has to be configurable by people who are not you: which form fields show, when a field is required, what a status badge says, which approver a request routes to. These rules change often, they differ per customer, and they are edited by administrators long after you have stopped looking at the code.</p>
+
+    <p>So the rules cannot live in the code. They have to live in data — a database row, a JSON file — where they can be edited, versioned and shipped without a deploy.</p>
+
+    <p>But rules are not static values. "Required if the applicant is under 18 and the country is not New Zealand" is a <em>computation</em>. So we need a way to store a computation as data, and later run it against whatever the situation is.</p>
+
+    <p>The obvious move — store a snippet of JavaScript and <code>eval</code> it — is out, and it is worth being precise about why, because those reasons shape everything that follows:</p>
+
+    <ul class="plain">
+      <li><strong>It is a code-execution hole.</strong> Anything that can write to that database row owns your server.</li>
+      <li><strong>It cannot be inspected.</strong> You cannot ask a string of JavaScript "which data fields do you read?" or "is this still valid after I renamed that field?" without running it.</li>
+      <li><strong>It cannot be edited safely by a non-programmer.</strong> There is no way to build a form-based editor over arbitrary code, and no way to tell an administrator what they broke before it breaks.</li>
+    </ul>
+
+    <p>Which gives the shape of the thing we want: <strong>a computation expressed as ordinary data</strong> — JSON, storable, diffable, shippable — that a library can evaluate with no code execution at all, and that a tool can read, describe and check without running it.</p>
+
+    <p>That is the entire premise. Everything else in this document is the consequence of taking it seriously.</p>
+
+    <p class="in-code"><b>in the code</b>The library is <code>fig-tree-evaluator</code>. An expression is JSON; the evaluator never calls <code>eval</code>, <code>new Function</code>, or anything equivalent.</p>
+  </section>
+
+  <section class="stage" id="naive">
+    <p class="eyebrow">Stage 01</p>
+    <h2>The twenty-line evaluator</h2>
+
+    <p>Represent a computation as a nested object: an operation name plus its arguments, where an argument may itself be an operation.</p>
+
+<pre><code>{ operator: 'greaterThan',
+  values: [ { operator: 'plus', values: ['$data.order.total', '$data.order.shipping'] },
+            100 ] }</code></pre>
+
+    <p>Two conventions are doing work there. An object with an <code>operator</code> key is an operation. A string beginning <code>$data.</code> is a request to look something up in whatever data we are evaluating against, rather than the literal text.</p>
+
+    <p>Now the evaluator, in full:</p>
+
+<pre><code>function evaluate(thing, data) {
+  if (isOperation(thing)) {
+    const args = evaluateEachArgument(thing, data)   // recurse
+    return operators[thing.operator](args)
+  }
+  if (isReference(thing)) return lookUp(thing, data)
+  if (Array.isArray(thing)) return thing.map(x => evaluate(x, data))
+  if (isObject(thing)) return mapValues(thing, x => evaluate(x, data))
+  return thing                                        // a plain value
+}</code></pre>
+
+    <p>This works. It is recursive, it is short, and for a long time it is the right answer. Version 2 of this library was, in essence, this — and it ran in production for years.</p>
+
+    <p>So every complication after this point has to earn its place by naming a problem this version genuinely has. That is the discipline for the rest of the document: <strong>no mechanism without a wound.</strong></p>
+
+    <p class="in-code"><b>in the code</b>The v2 engine is still in the repo at <code>/v2-src</code>, kept runnable as a reference and as the oracle for the v3 test corpus.</p>
+  </section>
+
+  <section class="stage" id="recognition">
+    <p class="eyebrow">Stage 02</p>
+    <h2>Recognition is the hidden cost</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>Look at what the twenty-line version spends its time on. Before it can do any arithmetic, it must work out <em>what each piece of the input is</em>. Is this object an operation, or is it just an object? Is <code>plus</code> a real operation, or a typo? Is <code>'$data.total'</code> a reference, or a string that happens to start with a dollar sign? Does this operation spell its arguments the long way (<code>{ operator: 'plus', values: [...] }</code>) or the short way (<code>{ $plus: [...] }</code>)? Is <code>+</code> an alias for <code>plus</code>?</p>
+
+    <p>Call that work <em class="term">recognition</em>: deciding what each value in the document <em>means</em>, as opposed to computing anything. It is proportional to the size of the whole document, and — this is the important part — the twenty-line evaluator does it <strong>again on every evaluation</strong>.</p>
+
+    <p>Now look at how these expressions are actually used. The dominant pattern is one configuration object evaluated over and over against changing data: a form being re-validated on every keystroke, a page of fifty fields whose visibility rules all re-run when one answer changes, a list of a thousand rows each rendering the same template. The configuration is fixed. Only the data moves.</p>
+
+    <p>So we are re-deciding "is this an operation?" for two thousand values, hundreds of times, and getting the same answer every time. The recognition is pure waste after the first pass.</p>
+
+    <p class="cue">The idea</p>
+
+    <p><strong>Separate recognising from computing.</strong> Walk the input once, decide everything decidable, and write the answers down. Then evaluate by reading the notes instead of re-interrogating the input.</p>
+
+    <p>What goes in the notes, for each piece of the document:</p>
+
+    <ul class="plain">
+      <li><strong>What kind of thing it is</strong> — a plain value, a data reference, an operation, a piece of structure.</li>
+      <li><strong>If it is an operation:</strong> which one, resolved through aliases and spellings to a single canonical name, with each argument stored under the name the operation actually uses, whatever spelling the author chose.</li>
+      <li><strong>If it is a reference:</strong> the path it reads, already parsed into segments.</li>
+      <li><strong>Where it came from</strong> — its position in the document as the author wrote it, so we can point at it later.</li>
+    </ul>
+
+    <p>This is the single most consequential decision in the design, and everything downstream is a consequence of it: once the notes exist, all sorts of things become cheap that were previously impossible.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>One extra pass over the input, once. A second representation to keep in sync with the first. And a new obligation: the notes are only useful if they stay valid, which we have to think about — that is stage 04.</p>
+
+    <p class="in-code"><b>in the code</b>The notes are the <strong>parse artifact</strong>. The one-pass walk that builds it is <code>parseExpression()</code> in <code>src/parse/parse.ts</code>; the resulting shape is <code>ParseArtifact</code> in <code>src/parse/artifact.ts</code>. Each recognised piece is a <strong>compiled node</strong>, and there are six kinds: constant, reference, operator, fragment call, skeleton, invalid.</p>
+  </section>
+
+  <section class="stage" id="mould">
+    <p class="eyebrow">Stage 03</p>
+    <h2>Most of a config is not logic</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>Real configurations are not expressions with a bit of structure around them. They are large structures with a little logic sprinkled in. A page definition might be two thousand lines of titles, labels, orderings and layout hints, with nine dynamic values in it.</p>
+
+    <p>The twenty-line evaluator treats that document as one giant expression: it walks all two thousand lines, copying every title and label into a new object, in order to discover that only nine positions actually needed computing. Every single time.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>While recognising, also record <strong>what is constant</strong>. A piece of the document is constant if it contains no operation and no reference anywhere inside it — nothing that could produce a different answer on a different day.</p>
+
+    <p>That lets us split any structure into two things:</p>
+
+    <div class="panels">
+      <figure>
+        <figcaption>the authored input</figcaption>
+<pre><code>{
+  label: 'Shipping',
+  message: {$if: …}
+}</code></pre>
+      </figure>
+      <figure>
+        <figcaption>the mould</figcaption>
+<pre><code>{
+  label: 'Shipping',
+  message: <span class="hole">·reserved·</span>
+}</code></pre>
+      </figure>
+      <figure>
+        <figcaption>one filled copy</figcaption>
+<pre><code>{
+  label: 'Shipping',
+  message: <span class="filled">'Free shipping'</span>
+}</code></pre>
+      </figure>
+    </div>
+
+    <p>The middle one is a <em class="term">mould</em>: the constant shape, with the dynamic positions left empty rather than filled. Alongside it we keep a list of those empty positions, each paired with the recognised operation that belongs there.</p>
+
+    <p>Now evaluation costs <strong>the number of dynamic positions</strong>, not the size of the document. Nine values get computed; the other two thousand lines are copied structure that was already decided. A document with <em>no</em> dynamic positions does not get evaluated at all — it is returned exactly as it came in.</p>
+
+    <p>Two details fall straight out of this, and both matter later:</p>
+
+    <p><strong>The empty position must be distinguishable from an authored <code>null</code>.</strong> If the mould filled dynamic slots with <code>null</code> as a placeholder, we could no longer tell "compute something here" from "the author wrote null here". So the slot is left genuinely absent — an unassigned array index, a missing object key.</p>
+
+    <p><strong>The mould must never be written to.</strong> It belongs to the notes, and the notes are reused by every future evaluation of that expression. If evaluation filled the mould in place, the second evaluation would inherit the first one's answers. So evaluation fills a <em>copy</em> of the mould, and the mould itself is permanently read-only.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>A second concept — mould plus filled copy — and a contract the caller has to respect. We deliberately do <em>not</em> deep-clone everything on the way out: the whole point was to stop touching two thousand lines per evaluation, and a deep clone per call would hand that cost straight back. So a result may share structure with the notes and with your original input, and the documented rule is that <strong>results are read-only</strong>. Mutate one and you corrupt the next evaluation. That was a deliberate trade, chosen over three heavier alternatives (clone everything, freeze everything, copy-on-write).</p>
+
+    <p class="in-code"><b>in the code</b>The mould is the <strong>skeleton</strong>, an empty position is a <strong>hole</strong>, and a structure carrying both is a <strong>skeleton</strong> node — renamed from <code>template</code> in September 2026, because <code>buildString.template</code> already had the word. A structure with no holes collapses to a <strong>constant</strong> node and is returned by identity. The read-only rule is the "Result immutability" ruling in <code>docs-dev/v3-specs/v3-evaluator-methods.md</code>.</p>
+  </section>
+
+  <section class="stage" id="validity">
+    <p class="eyebrow">Stage 04</p>
+    <h2>When are the notes still true?</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>Notes are only worth keeping if we know when they expire. So: what could change that would make a recognition decision wrong?</p>
+
+    <p>Recognition asked questions like "is <code>$foo</code> an operation, or inert data?" — and the answer depends on <strong>which operations are registered</strong>. Register a <code>foo</code> operation and the same document means something different. That is a real dependency.</p>
+
+    <p>What about the data? If any recognition decision depended on the data, the notes could not be reused across evaluations with different data — which was the whole purpose. So the notes must be <strong>data-independent</strong>, by construction, not by luck.</p>
+
+    <p>Same for settings. If the notes baked in "the maximum allowed depth is 20", then changing that setting per call would silently use stale notes. So the notes must also be <strong>setting-independent</strong> — with the exception of the handful of settings that define the vocabulary itself.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>State it as a rule and hold to it: <strong>the notes may depend on the registered vocabulary and nothing else.</strong> Three settings define that vocabulary — the registered operations, the registered reusable snippets, and the per-instance default arguments for operations. Change any of those and the notes are discarded. Nothing else invalidates them, ever.</p>
+
+    <p>Anything genuinely setting-dependent is therefore kept <em>out</em> of the notes and computed per call instead. "Is this expression deeper than the limit?" is answered by storing the measured depth in the notes and comparing it to the limit at call time. Same for "does the sample data contain the paths this expression reads?" — the notes carry the list of paths; the comparison happens per call.</p>
+
+    <p>And now the notes can be cached. Two layers, each for a real usage pattern:</p>
+
+    <ul class="plain">
+      <li><strong>Keyed by object identity.</strong> The same configuration object, evaluated repeatedly — a form re-validating per keystroke. Looking that up is a pointer comparison, which is as cheap as it gets.</li>
+      <li><strong>Keyed by content, behind it.</strong> Hosts that rebuild the object each time — a React component recreating it every render, a server loading fresh objects per request — would miss on identity forever. So a second, bounded layer hashes the serialized input; a hit re-registers the notes under the new object's identity, so that host pays one hash and is back to pointer speed.</li>
+    </ul>
+
+    <p>Content-keying alone would not do, for two reasons worth knowing: it costs a full serialize on <em>every</em> call, which throws away the cost model from stage 03; and it is unsafe for expressions containing values that do not survive serialization — a function, a <code>Date</code>, a <code>Map</code> — because two different expressions can serialize identically and you would splice one's values into the other. Those expressions are flagged during recognition and served only from the identity layer.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>A discipline that has to be actively maintained — every new feature has to be checked against "does this smuggle a setting or a piece of data into the notes?" — and a second contract for the caller: <strong>do not mutate an expression object after evaluating it</strong>, because the identity cache will hand back notes describing the old shape.</p>
+
+    <p class="in-code"><b>in the code</b>The three invalidators are <code>operators</code>, <code>fragments</code> and <code>operatorDefaults</code>. The unsafe-to-hash flag is <code>identityOnly</code>. The cache is designed but not yet built — it is Phase 8.2, and the seam it wraps is the <code>parseExpression</code> call inside <code>FigTree.validate()</code>.</p>
+  </section>
+
+  <section class="stage" id="checking">
+    <p class="eyebrow">Stage 05</p>
+    <h2>Finding mistakes before 2am</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>Go back to who writes these expressions: an administrator, in a web form, editing a rule that will run inside somebody's form submission next Tuesday. When they mistype an operation name or forget a required argument, the twenty-line evaluator finds out at the worst possible moment — mid-request, in production, in front of a user.</p>
+
+    <p>What we want instead is to find it when they press Save. But at Save time there is no data to evaluate against, and no user whose request we could make network calls for. So we cannot simply run the expression to see if it works.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>Notice what the notes already contain. Recognition had to resolve every operation name, match up every argument, and parse every reference. That means an enormous amount is already known <em>without any data at all</em>:</p>
+
+    <ul class="plain">
+      <li>an operation name that matches nothing registered — and, since we have the list, the nearest name we can suggest instead;</li>
+      <li>a required argument that was never supplied;</li>
+      <li>an argument key the operation does not have (a typo like <code>thn</code> for <code>then</code>);</li>
+      <li>a literal value of the wrong type — <code>'not a number'</code> handed to something that needs a number;</li>
+      <li>a reference to a named value that is never defined anywhere in its scope;</li>
+      <li>an operation whose result type could never satisfy the argument it feeds — a yes/no value flowing into a position that only accepts numbers;</li>
+      <li>things that are legal but pointless, worth a warning rather than an error: a name defined and never used, a <code>$something</code> that resolves to nothing and will silently pass through as text.</li>
+    </ul>
+
+    <p>So expose exactly that: <strong>a check-only mode</strong> that runs recognition and returns the list of findings, with no evaluation, no data and no network. It is almost free, because recognition was happening anyway — and it draws the line the whole design rests on: <em>everything knowable without data is reported at authoring time; only the genuinely data-dependent failures wait for runtime.</em></p>
+
+    <p>Two practical wrinkles, and both shape the code:</p>
+
+    <p><strong>The checking naturally splits in two.</strong> Some findings are about <em>shape</em> — this is not a well-formed operation at all, two operations in one object, an <code>operator</code> key whose value is not a string. Those have to be caught during the walk, because there is nothing coherent to inspect afterwards. The rest are about <em>meaning</em> — does this operation accept these arguments, of these types — and those need the whole operation assembled first, so they run as a second pass over the finished notes. The second pass is also much cheaper than it sounds, because it never descends into anything already marked constant.</p>
+
+    <p><strong>Two passes must produce one ordered list.</strong> A reader expects findings in the order things appear in their document, not grouped by which internal pass found them. So every piece of the notes is stamped with a position number as the walk reaches it — parents before children — and both passes attach that number to their findings. Sorting at the end reconstructs document order.</p>
+
+    <p>And one invariant that this stage forces on everything: <strong>a broken expression must never crash the checker.</strong> If a malformed piece of input threw, an editor could not show the author what is wrong. So recognition never throws on expression content — a malformed piece becomes a placeholder marked invalid, an error finding is recorded, and the walk carries on to find the author's other mistakes too.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>Two passes to maintain rather than one, and a rule that every check must know which side of the data line it lives on.</p>
+
+    <p class="in-code"><b>in the code</b>Check-only mode is <code>fig.validate()</code>. The shape pass is inside <code>parse.ts</code>; the meaning pass is <code>runStaticChecks()</code> in <code>src/parse/staticChecks.ts</code>. The position number is <code>order</code>, a finding is an <code>Issue</code>, and the placeholder is an <code>invalid</code> node.</p>
+  </section>
+
+  <section class="stage" id="delivery">
+    <p class="eyebrow">Stage 06</p>
+    <h2>Not every argument should be computed</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>The twenty-line evaluator computes every argument before calling the operation. For <code>plus</code> that is correct. For <code>if</code> it is wrong — and not merely wasteful:</p>
+
+<pre><code>{ $if: [ isAdmin, deleteEverything, doNothing ] }</code></pre>
+
+    <p>Computing all three arguments runs both branches. If a branch makes a network call, you made it needlessly. If a branch fails, you get a failure from a branch that was never taken. Worse in practice: a branch that reads a field which only exists in the other case will blow up on data that is perfectly valid.</p>
+
+    <p>The same shape recurs everywhere once you look: a fallback value that should only be computed if the main thing failed; "the first of these that works", which must stop at the first success; a <em>list</em> of things where the same subexpression has to run once per element with a different element each time, which the eager rule cannot express at all.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>Stop treating "compute the arguments, then call the operation" as a law. Let each operation <strong>declare, per argument, how it wants that argument delivered</strong>. Each kind of delivery exists because some operation cannot be written without it:</p>
+
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Delivery</th><th>Means</th><th>Exists because</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>computed up front</td><td>the value, already worked out</td><td>the common case — <code>plus</code>, comparisons</td></tr>
+          <tr><td>deferred</td><td>a handle the operation chooses whether to force</td><td><code>if</code>, and every "…or else this" default</td></tr>
+          <tr><td>first to finish</td><td>several computed at once, settle early</td><td><code>and</code> / <code>or</code>: one false answer decides it</td></tr>
+          <tr><td>once per element</td><td>the same subexpression run against each item</td><td><code>map</code>, <code>filter</code>, <code>find</code></td></tr>
+          <tr><td>needed while reading</td><td>must be a fixed value in the document, not computed</td><td>see stage 07 — the engine itself has to read it</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>Now a second, larger consequence of declaring things. Once an operation states what arguments it takes, what types they accept, which are required and what it returns, that description is useful to <em>three</em> different readers:</p>
+
+    <ul class="plain">
+      <li>the engine, to deliver arguments correctly and to check them at runtime;</li>
+      <li>the checker from stage 05, to do all its work centrally instead of each of forty operations hand-rolling its own validation — which is exactly how the previous version drifted, with every operation checking slightly differently and its documentation slowly diverging from its behaviour;</li>
+      <li>an editor, which can now offer a real form for an operation it has never heard of.</li>
+    </ul>
+
+    <p>So the declaration is not bureaucracy; it is the single source of truth that makes stages 05 and 10 possible at all.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>Every operation is now a declaration plus a body, and the declaration has to be validated too — loudly, at registration, because a wrong declaration is a programming error, not a user error. It also means the engine, not the operation, owns argument handling: more machinery in the middle, less in each operation.</p>
+
+    <p class="in-code"><b>in the code</b>Operations are registered through <code>defineOperator()</code>, which validates the declaration and refuses to build a broken one. The delivery kinds are the <code>evaluation</code> modes: <code>eager</code>, <code>lazy</code>, <code>race</code>, <code>perElement</code>, <code>structural</code>. <code>src/dev/demoOperators.ts</code> has small worked examples of each.</p>
+  </section>
+
+  <section class="stage" id="naming">
+    <p class="eyebrow">Stage 07</p>
+    <h2>Reaching the data, and naming things</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>An expression needs to reach into the data it is evaluated against, and JSON gives us no syntax to invent. We only have objects, arrays, strings, numbers, booleans and null. Everything expressive has to be encoded in one of those.</p>
+
+    <p>Strings are the only practical carrier for "read this field", so a marked string it is: <code>'$data.user.name'</code>. Which immediately raises the question a marked string always raises — what about text that legitimately starts with the marker? And then two harder problems:</p>
+
+    <p><strong>Repetition.</strong> If the same subexpression appears three times in one rule, writing it three times means computing it three times, and editing it in three places.</p>
+
+    <p><strong>Nesting.</strong> Inside a list operation, the current element needs a name. Inside a list <em>within</em> a list, both elements need names — and if the inner one simply shadows the outer, the outer one is unreachable.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>For references: a precise rule rather than a guess. A string is a reference only if it starts with <code>$</code> followed by one of a small fixed set of words, ended by the string or by <code>.</code> or <code>[</code>. So <code>'$data.x'</code> is a reference, <code>'$5 off'</code> is text, and <code>'$notAThing'</code> is text — though the author probably meant something, so it earns a warning rather than silence. Recognition resolves the path once, into segments, and records which data paths the expression reads. That list is then free to reuse: it is how "your sample data is missing a field this expression needs" gets answered without evaluating.</p>
+
+    <p>For repetition: let a node define <strong>named local values</strong> for its subtree. Each is computed at most once, the first time something asks for it, and not at all if nothing does.</p>
+
+    <p>For nesting: let a list operation <strong>rename its element binding</strong> — say the name is <code>order</code>, and inside that subtree the element is <code>$order</code> and its position <code>$orderIndex</code>. An inner list picks a different name, and both remain reachable.</p>
+
+    <p>That rename is where an interesting constraint appears, and it explains the fifth delivery kind from stage 06. To recognise <code>'$order'</code> as a reference rather than text, the <em>reader</em> — recognition, running long before any data exists — must already know that the name <code>order</code> is in play. Which means the rename cannot itself be computed: it has to be a fixed string sitting in the document. Hence a delivery kind meaning "the engine reads this while parsing", and hence a rule in the walk: read the rename first, then walk the per-element subtree with that name in scope, then drop it again on the way out.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>Recognition is no longer purely local — a string's meaning can depend on an enclosing rename, so the walk has to carry a small scope stack. That is the one piece of scope handling that cannot be deferred to the later checking pass, and it is why it lives in the walk.</p>
+
+    <p class="in-code"><b>in the code</b>References are <code>$data</code> (aliasable to <code>$d</code>), <code>$vars</code>, <code>$params</code>, <code>$element</code>, <code>$index</code>; the rule is in <code>src/parse/references.ts</code>. Named local values are <code>vars</code>. The rename is the <code>as</code> parameter, declared <code>structural</code>.</p>
+  </section>
+
+  <section class="stage" id="failure">
+    <p class="eyebrow">Stage 08</p>
+    <h2>Absence, failure, and being cut off</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>These expressions read from databases and HTTP endpoints, against data assembled from user input. Things will be missing and things will break, and the twenty-line evaluator's answer to both is the same: throw. That is too blunt, in two directions.</p>
+
+    <p>First, <strong>a missing field is usually not an error</strong>. An applicant with no middle name is not a failure; it is an applicant with no middle name. If absence throws, every optional field needs defensive ceremony and the whole config becomes noise.</p>
+
+    <p>Second, <strong>some failures are expected and should be designed for</strong>. If a currency API is down, a dashboard should show a stale rate or a dash, not a blank page.</p>
+
+    <p>And a third problem specific to what we are building: if evaluation is <strong>cut off by a deadline</strong> — the whole thing has a timeout, because one hanging HTTP call should not hold a request forever — what do we return? Half an object is worse than nothing.</p>
+
+    <p class="cue">The idea</p>
+
+    <p><strong>Separate absence from failure.</strong> A missing field resolves to nothing — <code>null</code> — and carries on. Failure is a distinct category, raised only when something genuinely went wrong: an operation that cannot do its job, a request that errored, a division by zero.</p>
+
+    <p><strong>Give any node a safety net.</strong> A node may carry a value to use if it fails. Reach for it and the failure is handled, as the author designed — not silently swallowed, because it is still recorded for anyone who asks what happened.</p>
+
+    <p>Then the deadline problem, which has a neat answer once the notes exist. Remember that every dynamic position in the document is known ahead of time, and so is whether its safety net is a plain constant. So during recognition, work out one fact per dynamic position — <em>could this position be filled without evaluating anything?</em> — and one fact for the document as a whole: <strong>do all of them have that property?</strong></p>
+
+    <p>If they do, a timeout is no longer a disaster. Take the mould, splice in whatever finished in time, use the constant safety nets for the rest, and return a complete, correctly-shaped answer with no evaluation after the deadline. If they do not, the deadline has to be an error, because there is nothing honest to return.</p>
+
+    <p>That single fact is worth surfacing to the author, too: an editor can show it as a badge — <em>this expression is guaranteed to produce something</em> — which turns a runtime property into something you can see while writing.</p>
+
+    <p>One more thing failure needs: <strong>a location</strong>. "Cannot divide by zero" is useless on its own. So every piece of the notes remembers where it came from in the document <em>as the author wrote it</em> — not where it ended up after aliases and shorthand were normalised away — and errors carry both the failing spot and the dynamic position it belonged to.</p>
+
+    <p class="cue">What it costs</p>
+
+    <p>Two more things precomputed into the notes (which is why per-instance argument defaults invalidate them — a default safety net changes the answer), and an extra concept for the author to learn.</p>
+
+    <p class="in-code"><b>in the code</b>The safety net is <code>fallback</code>. The precomputed facts are each hole's <code>staticFallback</code> and the artifact-level <code>shielded</code> flag, surfaced as <code>timeoutShielded</code>. Failures are <code>FigTreeError</code>, carrying <code>path</code> and <code>holePath</code>.</p>
+  </section>
+
+  <section class="stage" id="repeat">
+    <p class="eyebrow">Stage 09</p>
+    <h2>The same work twice</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>A page configuration might reference the same exchange rate in four places, or ask the same database question for every row in a list. The notes cache from stage 04 does nothing for this: that one avoids re-<em>recognising</em> the document. This is about not re-<em>doing</em> the same work within or across evaluations.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>A second cache, and it has to be second because it keys on something completely different. The notes cache keys on <strong>what the author wrote</strong>, before any data exists. This one keys on <strong>what actually got computed</strong> — an operation plus its resolved arguments, or for a network call, the request as finally assembled.</p>
+
+    <p>The cross-cases show why one cache could never serve both. One expression evaluated against two different data sets shares its notes but must not share results. Two differently-written expressions that assemble the same HTTP request should share the result but have different notes. Their lifetimes differ accordingly: notes are dropped only when the vocabulary changes, whereas results need expiry, a size bound and a pluggable store, because they are about the outside world.</p>
+
+    <p>There is one honest synergy, and it is only about assembling keys, not sharing them: since recognition already knows which arguments are fixed, it can pre-build most of a result key at parse time, leaving evaluation to slot in the parts that vary.</p>
+
+    <p class="in-code"><b>in the code</b>Per-node result caching is the <code>useCache</code> option and the <code>cache</code> store; the pre-built key is the artifact's <code>precomputed</code> slot. Phase 9.</p>
+  </section>
+
+  <section class="stage" id="editor">
+    <p class="eyebrow">Stage 10</p>
+    <h2>The editor comes free</h2>
+
+    <p class="cue">The problem</p>
+
+    <p>Back to stage 00: these expressions are edited by people who are not programmers. That needs a real editor — one that offers the available operations, shows what arguments each takes, and says what is wrong with the current draft. If building that editor requires the engine to grow a parallel description of itself, the two will drift apart, and the editor will confidently describe behaviour the engine no longer has.</p>
+
+    <p class="cue">The idea</p>
+
+    <p>Nothing new is required. The pieces are already there for other reasons:</p>
+
+    <ul class="plain">
+      <li><strong>What operations exist and what they accept</strong> — the declarations from stage 06, exposed for reading.</li>
+      <li><strong>What is wrong with this draft</strong> — check-only mode from stage 05, which needs no data and no network, so it can run on every keystroke in a browser.</li>
+      <li><strong>Will this survive a timeout</strong> — the precomputed fact from stage 08.</li>
+      <li><strong>Which data fields does this touch</strong> — the path list from stage 07, which also answers "will this still work if I rename that field".</li>
+    </ul>
+
+    <p>This is the real dividend of doing recognition once and writing it down. Three quite different products — evaluation, authoring-time checking, and an editing UI — turn out to be three views over one artifact, rather than three implementations that must be kept in agreement.</p>
+
+    <p class="in-code"><b>in the code</b><code>getOperators()</code> reports the declarations; the editor itself lives in a separate package, <code>fig-tree-editor-react</code>. Some exports in <code>src/index.ts</code> exist only for it.</p>
+  </section>
+
+  <section class="stage" id="assembled">
+    <p class="eyebrow">Stage 11</p>
+    <h2>The model, assembled</h2>
+
+    <p>Everything above collapses into three stages with a strict division of knowledge. That division is the model.</p>
+
+    <div class="pipeline">
+      <div class="step">
+        <h4>1 · Recognise</h4>
+        <p><b>Knows:</b> the document, the registered vocabulary.</p>
+        <p><b>Never knows:</b> the data, the per-call settings.</p>
+        <p><b>Produces:</b> the notes — a tree of recognised pieces, the list of dynamic positions, the moulds, the findings, the precomputed facts.</p>
+      </div>
+      <div class="step">
+        <h4>2 · Check</h4>
+        <p><b>Knows:</b> the notes, the declarations.</p>
+        <p><b>Never knows:</b> the data.</p>
+        <p><b>Produces:</b> more findings, merged into document order with the first stage's.</p>
+      </div>
+      <div class="step">
+        <h4>3 · Evaluate</h4>
+        <p><b>Knows:</b> the notes, the data, the settings.</p>
+        <p><b>Adds:</b> nothing to the notes — it only reads them.</p>
+        <p><b>Produces:</b> the answer, filled into copies of the moulds.</p>
+      </div>
+    </div>
+
+    <p>Stages 1 and 2 run once per document and are cached. Stage 3 runs per evaluation and costs the dynamic positions, not the document. Stages 1 and 2 together are what check-only mode exposes; all three are what evaluation does.</p>
+
+    <h3>The six kinds of recognised piece</h3>
+
+    <p>The vocabulary of the notes, which is just the list of distinct things recognition can conclude:</p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th>Kind</th><th>Means</th><th>At evaluation</th></tr></thead>
+        <tbody>
+          <tr><td>constant</td><td>nothing inside can vary</td><td>returned as-is, untouched</td></tr>
+          <tr><td>reference</td><td>read this path out of the data</td><td>looked up</td></tr>
+          <tr><td>operator</td><td>this operation, these arguments</td><td>arguments delivered per declaration, then the body runs</td></tr>
+          <tr><td>skeleton</td><td>constant structure with dynamic positions</td><td>copy the mould, fill the positions</td></tr>
+          <tr><td>fragment call</td><td>a reusable expression, invoked</td><td>its pre-recognised body is spliced in</td></tr>
+          <tr><td>invalid</td><td>malformed — the finding is already recorded</td><td>never reached; evaluation refused earlier</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The invariants</h3>
+
+    <ul class="plain">
+      <li><strong>Recognition never throws on document content.</strong> Every malformed thing becomes a finding plus a placeholder, so an editor can always show the author everything that is wrong.</li>
+      <li><strong>The notes are immutable and reusable.</strong> No data in them, no per-call settings in them, never written to during evaluation.</li>
+      <li><strong>The input is never modified.</strong> Results may share structure with it; nobody rewrites it.</li>
+      <li><strong>Recognition happens exactly once, in one place.</strong> No value is re-interpreted at evaluation, and data that arrives at runtime is never re-read as an expression — a string that looks like a reference but came from the database is just a string.</li>
+      <li><strong>Absence is not failure.</strong> Missing resolves to nothing and carries on; failure is its own category with its own handling.</li>
+    </ul>
+  </section>
+
+  <section class="stage" id="worked">
+    <p class="eyebrow">Stage 12</p>
+    <h2>One expression, end to end</h2>
+
+    <p>A small configuration with a three-deep computation inside it:</p>
+
+<pre><code>{ label: 'Shipping',
+  message: { operator: 'if',
+    condition: { '$&gt;': [ { $plus: ['$data.order.total', '$data.order.shipping'] }, 100 ] },
+    then: 'Free shipping',
+    else: { $format: ['Standard: %1', '$data.order.total'] } } }</code></pre>
+
+    <p class="cue">After recognition</p>
+
+    <p>Printed by the repo's dev inspector. Each line is one recognised piece; <code>#n</code> is its position number and the right-hand column is where it sits in the document as authored.</p>
+
+<pre><code>skeleton  1 hole  shape: {"label":"Shipping","message":&lt;hole&gt;}   #0  (root)
+  at message: operator  if                                        #2  message
+    condition: operator  greaterThan                              #3  message.condition
+      values: skeleton  1 hole  shape: [&lt;hole&gt;,100]                #4  message.condition.$&gt;
+        at [0]: operator  plus                                    #5  message.condition.$&gt;[0]
+          values: skeleton  2 holes  shape: [&lt;hole&gt;,&lt;hole&gt;]         #6  …$plus
+            at [0]: reference $data.order.total                   #7  …$plus[0]
+            at [1]: reference $data.order.shipping                #8  …$plus[1]
+    then: constant  "Free shipping"                               #10  message.then
+    else: operator  format                                        #11  message.else
+      template: constant  "Standard: %1"                          #12  …$format[0]
+      substitutions: skeleton  1 hole  shape: [&lt;hole&gt;]             #13  message.else.$format
+        at [0]: reference $data.order.total                       #14  …$format[1]
+
+dynamic positions: 1  →  message
+reads: order.total, order.shipping     survives a timeout: no</code></pre>
+
+    <p>Things to notice, because each one is a stage above doing its job. The shorthand <code>$&gt;</code> and the alias <code>&gt;</code> are gone — the operation is <code>greaterThan</code>, and its positional arguments now sit under the name it declared, <code>values</code> (stage 02). The whole document has exactly <strong>one</strong> dynamic position, <code>message</code>; the label is constant structure (stage 03). The moulds show reserved slots as <code>&lt;hole&gt;</code>, distinct from a written <code>null</code> (stage 03). The reads are listed (stage 07). The timeout answer is "no", because that <code>if</code> has no constant safety net (stage 08).</p>
+
+    <p class="cue">Then checking</p>
+
+    <p>The second pass walks those pieces and finds nothing here: <code>100</code> and <code>'Standard: %1'</code> satisfy their declared types, nothing required is missing, no name is unresolved, and <code>greaterThan</code>'s two-argument constraint is met. Had the author typed <code>thn:</code>, or handed a yes/no value to something needing a number, this is where it would surface — with the document position of the mistake, before any data existed.</p>
+
+    <p class="cue">Then evaluation, against <code>{ order: { total: 80, shipping: 15 } }</code></p>
+
+    <ol>
+      <li>The root is a mould with one position. Copy <code>{ label: 'Shipping' }</code>; the label is never computed, it is already an answer.</li>
+      <li>Fill the <code>message</code> position: that is the <code>if</code>. Its declaration says the condition is computed up front and both branches are deferred — so only the condition runs now.</li>
+      <li><code>greaterThan</code>'s argument list is a mould: copy <code>[·, 100]</code>, fill position 0 by evaluating <code>plus</code>.</li>
+      <li><code>plus</code>'s argument list is a mould too: copy <code>[·, ·]</code>, fill both by reading the data — <code>80</code> and <code>15</code> — giving <code>[80, 15]</code>, which the body turns into <strong>95</strong>.</li>
+      <li><code>95</code> fills the reserved slot: <code>[95, 100]</code> → the body answers <strong>false</strong>.</li>
+      <li><code>if</code> forces exactly one deferred branch — the <code>else</code>. The <code>then</code> branch is never computed, though it was recognised and checked.</li>
+      <li><code>format</code>'s substitutions are a mould: copy <code>[·]</code>, fill by reading the data → <code>[80]</code> → <strong><code>'Standard: 80'</code></strong>.</li>
+      <li>That fills the reserved <code>message</code> key: <strong><code>{ label: 'Shipping', message: 'Standard: 80' }</code></strong>.</li>
+    </ol>
+
+    <p>Read that list again and two things stand out. Every mould filled along the way except the last one is an <em>argument list</em>, not output — only the outermost is the shape of the answer. And control ran downwards while values came back upwards: a parent cannot finish until the children it actually asked for have finished. Where a template has several positions, they are filled concurrently, so "upwards" describes the dependency order, not a serial sweep.</p>
+
+    <div class="status">
+      <p class="cue">What exists today</p>
+      <p>Stages 1 and 2 are built and tested: recognition, the notes, the moulds, both checking passes, and check-only mode. Stage 3 is designed in detail and not yet written — there is no <code>evaluate()</code> in v3 yet, and the caches of stages 04 and 09 come with it. The evaluation walkthrough above is therefore the design, not observed behaviour; everything before it is real output.</p>
+    </div>
+  </section>
+
+  <section class="stage" id="price">
+    <p class="eyebrow">Stage 13</p>
+    <h2>What it cost</h2>
+
+    <p>An honest ledger, since every stage above added something.</p>
+
+    <p><strong>A cost on the very first call.</strong> Recognition is real work — measured on this repo, roughly half a microsecond per piece of document, so about 2.5 ms for a five-thousand-piece expression, and about 2 µs for a small one. For an expression evaluated once, that work is not repaid by any cache; it is repaid only by the fact that the old evaluator did the same recognition inline, on every evaluation. The case that could genuinely lose is a tiny expression evaluated exactly once, and that is on the list to be measured against the old engine before release rather than assumed away.</p>
+
+    <p><strong>Two contracts the caller has to keep.</strong> Do not modify a result; do not modify an expression object after evaluating it. Both are documentation, not enforcement — the alternatives all cost more than the bug they prevent.</p>
+
+    <p><strong>Caches belong to an instance.</strong> The notes bake in a particular registered vocabulary, so they cannot be shared between instances with different vocabularies. Which makes one long-lived evaluator the intended pattern, and a fresh evaluator per request the way to get no caching at all.</p>
+
+    <p><strong>More machinery in the middle.</strong> The engine now owns argument delivery, type checking, absence handling and failure handling, so each operation is smaller but the engine is bigger. That was the explicit trade: the previous version's forty-odd operations each did their own checking, and drifted.</p>
+
+    <p><strong>Everything is asynchronous.</strong> Once an operation may make a network call, and arguments may be deferred or raced, a synchronous path would be a second engine rather than a flag. There is no synchronous evaluation.</p>
+
+    <p><strong>Two representations to keep honest.</strong> The notes are derived from the document, and every future feature has to be checked against the division of knowledge in stage 11 — is this fact allowed in the notes, or does it depend on data or settings? Get that wrong and you get stale results that are very hard to diagnose.</p>
+
+    <h3>The one-paragraph version</h3>
+
+    <p>Store logic as data so it can be edited, shipped and inspected without running code. Interrogate that data once to find out what everything means, and write the answers down. The answers reveal that most of a document is constant, so keep the constant shape whole and remember only the positions that need filling — which makes evaluating a large configuration cost its handful of dynamic values rather than its size. The same answers reveal almost every authoring mistake without any data at all, so hand those back at authoring time instead of at 2am. Let each operation declare how it wants its arguments so that branches which should not run do not run, and so that one central description serves the engine, the checker and the editor at once. Keep the answers strictly free of data and settings so they can be reused for the lifetime of the document, and precompute from them the one fact — can every dynamic position be filled without computing anything — that lets a timed-out evaluation still return a complete answer.</p>
+  </section>
+
+  <footer>
+    <p>fig-tree-evaluator · the design behind v3 · this page re-derives, it does not re-decide</p>
+    <p>Specifications: <code>docs-dev/v3-specs/</code> — the binding contract for the notes is <code>v3-artifact-obligations.md</code>, the mechanisms are <code>v3-implementation-notes.md</code>, the method surface is <code>v3-evaluator-methods.md</code>. To see any of this on a real expression: <code>pnpm dev:examples</code>.</p>
+  </footer>
+
+</div>
+
+</body></html>

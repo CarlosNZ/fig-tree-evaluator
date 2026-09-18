@@ -1,0 +1,735 @@
+<title>FigTree v3 Operators</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --ground: #f7f6f8;
+    --surface: #ffffff;
+    --rule: #e4e0e8;
+    --rule-soft: #eeebf1;
+    --ink: #1d1922;
+    --ink-2: #565062;
+    --ink-3: #8b8598;
+    --fig: #8e2f5c;
+    --fig-soft: #f6eaf0;
+    --type: #2b5c70;
+    --type-soft: #e9f1f4;
+    --leaf: #37674c;
+    --ochre: #7d5a12;
+    --ochre-soft: #f6eedb;
+    --focus: #8e2f5c;
+    --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --ground: #141218;
+      --surface: #1c1921;
+      --rule: #322d3a;
+      --rule-soft: #262230;
+      --ink: #eeeaf1;
+      --ink-2: #aca4b8;
+      --ink-3: #7a7386;
+      --fig: #e894b7;
+      --fig-soft: #2e1c27;
+      --type: #85c2d8;
+      --type-soft: #182830;
+      --leaf: #7cc297;
+      --ochre: #d7b25f;
+      --ochre-soft: #2b2415;
+      --focus: #e894b7;
+    }
+  }
+
+  :root[data-theme='dark'] {
+    --ground: #141218;
+    --surface: #1c1921;
+    --rule: #322d3a;
+    --rule-soft: #262230;
+    --ink: #eeeaf1;
+    --ink-2: #aca4b8;
+    --ink-3: #7a7386;
+    --fig: #e894b7;
+    --fig-soft: #2e1c27;
+    --type: #85c2d8;
+    --type-soft: #182830;
+    --leaf: #7cc297;
+    --ochre: #d7b25f;
+    --ochre-soft: #2b2415;
+    --focus: #e894b7;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 0;
+  }
+
+  /* ── Masthead ─────────────────────────────────────────────── */
+
+  header.masthead { padding-block: 48px 28px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fig);
+    margin: 0 0 14px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.1rem, 6vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+
+  h1 em { font-style: italic; color: var(--fig); }
+
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(1.02rem, 2.4vw, 1.2rem);
+    line-height: 1.5;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 24px;
+  }
+
+  .tally {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    border-top: 1px solid var(--rule);
+    padding-top: 14px;
+  }
+
+  .tally b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ── Toolbar ──────────────────────────────────────────────── */
+
+  .toolbar {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    background: color-mix(in srgb, var(--ground) 92%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .toolbar-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .search {
+    position: relative;
+    flex: 1 1 210px;
+    min-width: 0;
+  }
+
+  .search input {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 7px 10px 7px 28px;
+  }
+
+  .search input::placeholder { color: var(--ink-3); }
+  .search input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  .search .sigil {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fig);
+    pointer-events: none;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .chip {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--ink-2);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 5px 11px;
+    cursor: pointer;
+  }
+
+  .chip:hover { border-color: var(--ink-3); color: var(--ink); }
+  .chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+  .chip[aria-pressed='true'] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--ground);
+  }
+
+  .chip .n {
+    font-family: var(--mono);
+    font-size: 10px;
+    opacity: 0.65;
+    margin-left: 5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Group sections ───────────────────────────────────────── */
+
+  section.group { padding-block: 34px 6px; }
+
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 7px;
+    margin-bottom: 4px;
+  }
+
+  .group-head h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.3rem;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+
+  .group-head .count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .group-head .note {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-left: auto;
+    text-align: right;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 0 34px;
+    align-items: start;
+  }
+
+  /* ── Operator entry ───────────────────────────────────────── */
+
+  article.op {
+    border-top: 1px solid var(--rule);
+    padding-block: 18px 22px;
+    scroll-margin-top: 92px;
+  }
+
+  .op-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+
+  .op-name {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 1.14rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .op-name:hover { color: var(--fig); }
+  .op-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .alias {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--fig);
+    background: var(--fig-soft);
+    border-radius: 5px;
+    padding: 2px 7px;
+  }
+
+  .status {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .status .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--leaf);
+  }
+
+  .status.pending .dot { background: transparent; border: 1.5px solid var(--ochre); }
+  .status.pending { color: var(--ochre); }
+
+  .op-desc {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--ink-2);
+    margin: 0 0 12px;
+    max-width: 52ch;
+  }
+
+  .shape {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule-soft);
+    border-left: 2px solid var(--fig);
+    border-radius: 0 6px 6px 0;
+    padding: 8px 11px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .shape .sig { color: var(--fig); font-weight: 700; }
+  .shape .slot { color: var(--ink-2); font-style: italic; }
+  .shape .punc { color: var(--ink-3); }
+
+  .ret {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-3);
+    margin-bottom: 14px;
+  }
+
+  .ret span { color: var(--type); }
+
+  /* ── Parameters ───────────────────────────────────────────── */
+
+  .params { display: flex; flex-direction: column; gap: 11px; }
+
+  .param {
+    display: grid;
+    grid-template-columns: 5px 1fr;
+    gap: 0 11px;
+  }
+
+  .param::before {
+    content: '';
+    grid-row: 1 / -1;
+    border-radius: 999px;
+    background: var(--rule);
+  }
+
+  .param.req::before { background: var(--fig); }
+
+  .p-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+  }
+
+  .p-name {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--ink);
+  }
+
+  .p-type {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--type);
+  }
+
+  .p-def {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  .tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+
+  .tag {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+
+  .tag.lazy { color: var(--ochre); background: var(--ochre-soft); }
+  .tag.named { color: var(--ink-2); background: var(--rule-soft); }
+  .tag.truth { color: var(--type); background: var(--type-soft); }
+  .tag.pres { color: var(--ink-2); background: var(--rule-soft); }
+
+  .p-desc {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    margin-top: 1px;
+    max-width: 50ch;
+  }
+
+  /* ── Empty state, notes, footer ───────────────────────────── */
+
+  .empty {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    color: var(--ink-2);
+    padding: 50px 0;
+    text-align: center;
+  }
+
+  .empty code { font-family: var(--mono); font-size: 0.9em; color: var(--fig); }
+
+  .legend {
+    border-top: 1px solid var(--rule);
+    padding-block: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 12px 30px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+
+  .legend div { display: flex; gap: 8px; align-items: baseline; }
+  .legend .k { flex: none; }
+  .legend .k .tag, .legend .k .alias { position: relative; top: -1px; }
+
+  .legend .bar {
+    display: inline-block;
+    width: 5px;
+    height: 13px;
+    border-radius: 999px;
+    background: var(--fig);
+    position: relative;
+    top: 2px;
+  }
+
+  .legend .bar.opt { background: var(--rule); }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    padding-block: 26px 52px;
+  }
+
+  footer h3 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 1.05rem;
+    margin: 0 0 10px;
+  }
+
+  footer ul {
+    margin: 0 0 20px;
+    padding-left: 18px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink-2);
+    max-width: 78ch;
+  }
+
+  footer li { margin-bottom: 6px; }
+
+  footer code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+
+  .flag {
+    border-left: 2px solid var(--ochre);
+    background: var(--ochre-soft);
+    border-radius: 0 6px 6px 0;
+    padding: 11px 13px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 78ch;
+    margin-bottom: 20px;
+  }
+
+  .flag b { color: var(--ink); }
+
+  .colophon {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    line-height: 1.7;
+  }
+
+  @media (max-width: 560px) {
+    header.masthead { padding-block: 30px 22px; }
+    .grid { gap: 0 20px; }
+    .search { flex-basis: 100%; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<header class="masthead wrap">
+  <p class="eyebrow">fig-tree-evaluator · v3 spec</p>
+  <h1>Every v3 operator, <em>its aliases and parameters</em></h1>
+  <p class="standfirst">The whole operator surface on one page: the shorthand call shape, every parameter with its type, default and delivery mode, and what each returns. Compiled from the v3 spec docs and read back out of the definitions themselves.</p>
+  <div class="tally" id="tally"></div>
+</header>
+
+<div class="toolbar">
+  <div class="toolbar-inner">
+    <label class="search">
+      <span class="sigil" aria-hidden="true">$</span>
+      <input id="q" type="search" placeholder="filter operators, aliases, parameters…" aria-label="Filter operators" autocomplete="off">
+    </label>
+    <div class="chips" id="chips" role="group" aria-label="Filter by group"></div>
+  </div>
+</div>
+
+<main class="wrap" id="out"></main>
+
+<div class="wrap">
+  <div class="legend">
+    <div><span class="k"><span class="bar"></span></span><span>Required parameter — the bar runs solid alongside it</span></div>
+    <div><span class="k"><span class="bar opt"></span></span><span>Optional parameter</span></div>
+    <div><span class="k"><span class="tag named">named</span></span><span>Named face only — never travels positionally</span></div>
+    <div><span class="k"><span class="tag lazy">lazy</span></span><span>Evaluated only if and when it is needed</span></div>
+    <div><span class="k"><span class="tag truth">truthiness</span></span><span>A truthiness position: <code>false</code>, <code>null</code>, <code>0</code>, <code>""</code> are falsy</span></div>
+    <div><span class="k"><span class="tag pres">presence-sensitive</span></span><span>Unsupplied and supplied-as-null differ; no runtime default</span></div>
+  </div>
+</div>
+
+<footer class="wrap">
+  <h3>What this page leaves out</h3>
+  <ul>
+    <li><b>Null policies.</b> Every parameter has one, and they are decided per parameter — <code>propagate</code>, <code>value</code>, or reject-by-type. The consolidated view is the null-policy review sheet; a second copy here would fall out of sync on its first edit.</li>
+    <li><b>Node-level reserved keys</b>, which are not parameters: <code>fallback</code>, <code>vars</code>, <code>useCache</code>, and the <code>//</code> comment key.</li>
+    <li><b>Candidate parameters</b> not yet adopted: <code>emptyDefault</code> on <code>min</code>/<code>max</code>, and <code>missingPathDefault</code> on <code>http</code>/<code>graphQL</code>.</li>
+    <li><b>Parameter-name aliases</b> — they do not exist in v3, so each name shown is the only spelling.</li>
+  </ul>
+
+  <h3>Two count discrepancies in the source docs</h3>
+  <div class="flag">
+    <b>The canonical list heads itself “42 core + 3 I/O operators” over a table of 41 core rows</b>, and the M3 milestone in the implementation plan likewise says “all 42 core operators”. Both are consistent with <code>substring</code> having been cut from core during the string batch without the headline counts following. The 13 symbolic aliases are correct as stated.
+  </div>
+
+  <p class="colophon">
+    <span id="stamp"></span>
+    Names, aliases and grouping from the canonical list in v3-api.md · parameters, types, defaults and positional faces from the batch 1–8 parameter passes · types shown post-review, per the type-driven admission rule that adds <code>| null</code> to every propagate holder · descriptions, delivery modes and return types read out of the live definitions in src/operators · pending operators carry the implementation-plan phase that lands them.
+  </p>
+</footer>
+
+<script>
+  // Injected by codegen/buildOperatorReference.ts: { groups, ops, meta }.
+  // Registered operators are described by their own definitions; the rest
+  // come from the generator's PENDING table.
+  const DATA = __PAGE_DATA__;
+  const GROUPS = DATA.groups;
+  const OPS = DATA.ops;
+  const LIVE = 'live';
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const callShape = (op) => {
+    const sig = `<span class="sig">$${esc(op.n)}</span>`;
+    const byName = Object.fromEntries(op.p.map((p) => [p.n, p]));
+    const slot = (t) => `<span class="slot">${esc(t)}</span>`;
+    if (!op.pos.length) return `{ ${sig}: ${slot('<content>')} }`;
+    const parts = op.pos.map((entry) => {
+      if (entry.startsWith('...')) return slot('...' + entry.slice(3));
+      const p = byName[entry];
+      return slot(entry + (p && !p.r ? '?' : ''));
+    });
+    if (op.pos.length === 1 && !op.pos[0].startsWith('...')) return `{ ${sig}: ${parts[0]} }`;
+    return `{ ${sig}: <span class="punc">[</span>${parts.join('<span class="punc">, </span>')}<span class="punc">]</span> }`;
+  };
+
+  const paramEl = (p, positionalNames) => {
+    const tags = [];
+    if (!positionalNames.has(p.n)) tags.push('<span class="tag named">named</span>');
+    if (p.ev === 'lazy') tags.push('<span class="tag lazy">lazy</span>');
+    else if (p.ev) tags.push(`<span class="tag lazy">${esc(p.ev)}</span>`);
+    if (p.tr) tags.push('<span class="tag truth">truthiness</span>');
+    if (!p.r && p.def === undefined) tags.push('<span class="tag pres">presence-sensitive</span>');
+    return `<div class="param ${p.r ? 'req' : ''}">
+      <div>
+        <div class="p-line">
+          <span class="p-name">${esc(p.n)}</span>
+          <span class="p-type">${esc(p.t)}</span>
+          ${p.def !== undefined && p.def !== null ? `<span class="p-def">= ${esc(p.def)}</span>` : ''}
+          <span class="tags">${tags.join('')}</span>
+        </div>
+        ${p.d ? `<p class="p-desc">${esc(p.d)}</p>` : ''}
+      </div>
+    </div>`;
+  };
+
+  const opEl = (op) => {
+    const positionalNames = new Set(op.pos.map((e) => (e.startsWith('...') ? e.slice(3) : e)));
+    const live = op.st === LIVE;
+    const statusLabel = live ? 'live' : op.st === 'grammar' ? 'grammar' : 'phase ' + op.st;
+    return `<article class="op" id="op-${esc(op.n)}">
+      <div class="op-head">
+        <a class="op-name" href="#op-${esc(op.n)}">${esc(op.n)}</a>
+        ${op.a ? `<span class="alias">${esc(op.a)}</span>` : ''}
+        <span class="status ${live ? '' : 'pending'}"><span class="dot"></span>${esc(statusLabel)}</span>
+      </div>
+      <p class="op-desc">${esc(op.d)}</p>
+      <div class="shape">${callShape(op)}</div>
+      <p class="ret">returns <span>${esc(op.ret)}</span></p>
+      <div class="params">${op.p.map((p) => paramEl(p, positionalNames)).join('')}</div>
+    </article>`;
+  };
+
+  const out = document.getElementById('out');
+  const chips = document.getElementById('chips');
+  const q = document.getElementById('q');
+  let activeGroup = null;
+
+  const matches = (op, term) => {
+    if (!term) return true;
+    const hay = [op.n, op.a || '', op.d, op.ret, ...op.p.map((p) => p.n + ' ' + p.t + ' ' + (p.d || ''))]
+      .join(' ')
+      .toLowerCase();
+    return hay.includes(term);
+  };
+
+  const render = () => {
+    const term = q.value.trim().toLowerCase();
+    const shown = OPS.filter((op) => matches(op, term) && (!activeGroup || op.g === activeGroup));
+    if (!shown.length) {
+      out.innerHTML = `<p class="empty">No operator matches <code>${esc(q.value.trim())}</code>.</p>`;
+      return;
+    }
+    out.innerHTML = GROUPS.map(([key, label, note]) => {
+      const ops = shown.filter((op) => op.g === key);
+      if (!ops.length) return '';
+      return `<section class="group">
+        <div class="group-head">
+          <h2>${esc(label)}</h2>
+          <span class="count">${ops.length}</span>
+          ${note ? `<span class="note">${note}</span>` : ''}
+        </div>
+        <div class="grid">${ops.map(opEl).join('')}</div>
+      </section>`;
+    }).join('');
+  };
+
+  const buildChips = () => {
+    const all = document.createElement('button');
+    all.className = 'chip';
+    all.type = 'button';
+    all.innerHTML = 'All<span class="n">' + OPS.length + '</span>';
+    all.setAttribute('aria-pressed', 'true');
+    all.onclick = () => setGroup(null);
+    chips.appendChild(all);
+    GROUPS.forEach(([key, label]) => {
+      const n = OPS.filter((o) => o.g === key).length;
+      const b = document.createElement('button');
+      b.className = 'chip';
+      b.type = 'button';
+      b.dataset.group = key;
+      b.innerHTML = esc(label) + '<span class="n">' + n + '</span>';
+      b.setAttribute('aria-pressed', 'false');
+      b.onclick = () => setGroup(key);
+      chips.appendChild(b);
+    });
+  };
+
+  const setGroup = (key) => {
+    activeGroup = key;
+    [...chips.children].forEach((c) => c.setAttribute('aria-pressed', String((c.dataset.group || null) === key)));
+    render();
+  };
+
+  const tally = () => {
+    const core = OPS.filter((o) => o.g !== 'io').length;
+    const io = OPS.length - core;
+    const live = OPS.filter((o) => o.st === LIVE).length;
+    const aliases = OPS.filter((o) => o.a).length;
+    const params = OPS.reduce((n, o) => n + o.p.length, 0);
+    document.getElementById('tally').innerHTML = [
+      `<b>${core}</b> core operators`,
+      `<b>${io}</b> I/O`,
+      `<b>${aliases}</b> symbolic aliases`,
+      `<b>${params}</b> parameters`,
+      `<b>${live}</b> registered today`,
+    ].map((s) => `<span>${s}</span>`).join('');
+  };
+
+  document.getElementById('stamp').innerHTML =
+    `Generated from the definitions on ${esc(DATA.meta.generated)} — ` +
+    `${DATA.meta.live} operators read from their own metadata, ` +
+    `${DATA.meta.pending} still spec-sourced. Rebuild with <code>pnpm generate:operators</code>.<br>`;
+
+  buildChips();
+  tally();
+  render();
+
+  q.addEventListener('input', render);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== q) {
+      e.preventDefault();
+      q.focus();
+    }
+    if (e.key === 'Escape' && document.activeElement === q) {
+      q.value = '';
+      render();
+      q.blur();
+    }
+  });
+</script>
