@@ -149,6 +149,32 @@ describe('defineOperator — the validated artifact', () => {
   })
 })
 
+describe('defineOperator — the `…Default` naming family', () => {
+  it('rejects a family-named parameter left in eager delivery', () => {
+    const definition = validDefinition()
+    definition.parameters = {
+      value: { type: ['number', 'null'] },
+      nullValueDefault: { type: 'number', required: false },
+    }
+    expect(() => defineOperator(definition)).toThrow(/must declare evaluation: 'lazy'/)
+  })
+
+  it('accepts a body-read family member — lazy, no replacesNullAt', () => {
+    const definition = validDefinition()
+    definition.parameters = {
+      value: { type: 'number' },
+      noMatchDefault: { type: 'any', required: false, evaluation: 'lazy' },
+    }
+    expect(() => defineOperator(definition)).not.toThrow()
+  })
+
+  it('leaves the bare word `default` outside the pattern (match.default)', () => {
+    const definition = validDefinition()
+    definition.parameters = { value: { type: 'any' }, default: { type: 'any' } }
+    expect(() => defineOperator(definition)).not.toThrow()
+  })
+})
+
 describe('defineOperator — conditional null-policy compilation', () => {
   it('compiles the function to the policy table, in union-member order', () => {
     const validated = defineOperator(convertLike())

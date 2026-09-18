@@ -48,6 +48,14 @@ import {
 
 type Path = (string | number)[]
 
+/**
+ * The `…Default` naming family (contract, Registration & validation). The
+ * suffix is a convention for readers, so the check keyed off it reads the
+ * name alone; the bare word `default` sits outside the pattern
+ * deliberately — `match.default` is an established term.
+ */
+const DEFAULT_FAMILY = /[a-z]Default$/
+
 const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'eager',
   'race',
@@ -513,6 +521,19 @@ export const defineOperator = <const P extends ParameterDeclarations>(
           paramName
         )
     })
+  }
+
+  // A `…Default`-named parameter left in eager delivery defaults nothing:
+  // it resolves as ordinary data the body ignores, and the node silently
+  // does the un-defaulted thing
+  for (const [paramName, d] of Object.entries(declarations)) {
+    if (!DEFAULT_FAMILY.test(paramName) || d.evaluation === 'lazy') continue
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      `'${paramName}' is named for the '…Default' family, so it must declare evaluation: 'lazy' — add 'replacesNullAt', read it as a LazyValue in the body, or rename it`,
+      ['parameters', paramName, 'evaluation'],
+      paramName
+    )
   }
 
   // Conditional null policies: exactly one literal-union selector in the
