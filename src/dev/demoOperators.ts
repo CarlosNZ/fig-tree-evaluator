@@ -1,7 +1,7 @@
 /**
  * Stand-in operators for the dev playground, registered beside
  * `coreOperators` (src/dev/inspect.ts). They model the shapes core does not
- * yet hold: lazy and perElement delivery, the `as` renaming hook, the
+ * yet hold: perElement delivery, the `as` renaming hook, the
  * `EvaluationData` sentinel, a `timeoutParam`, a leading-plus-rest
  * positional list, and a `validate` hook. Canonical names match the real
  * core set where a real operator is being modelled; the bodies are no-ops.
@@ -12,31 +12,6 @@ import { defineOperator, EvaluationData } from '../index'
 import type { ValidateFinding, ValidatedOperatorDefinition } from '../index'
 
 const noop = async () => null
-
-/** Alias, truthiness, lazy branches, three positional slots. */
-const ifOp = defineOperator({
-  name: 'if',
-  alias: '?',
-  description: 'Conditional branching',
-  parameters: {
-    condition: { type: 'any', truthiness: true },
-    then: { type: 'any', evaluation: 'lazy' },
-    else: { type: 'any', evaluation: 'lazy', default: null },
-  },
-  positionalParams: ['condition', 'then', 'else'],
-  evaluate: noop,
-})
-
-/** A single positional slot, and a narrow `returns` for the feeding check. */
-const notOp = defineOperator({
-  name: 'not',
-  alias: '!',
-  description: 'Boolean negation',
-  parameters: { value: { type: 'any', truthiness: true } },
-  positionalParams: ['value'],
-  returns: 'boolean',
-  evaluate: noop,
-})
 
 /** Leading slot plus rest — the buildString shape. */
 const formatOp = defineOperator({
@@ -145,8 +120,6 @@ const regexOp = defineOperator({
 })
 
 export const demoOperators = (): ValidatedOperatorDefinition[] => [
-  ifOp,
-  notOp,
   formatOp,
   clampOp,
   getOp,

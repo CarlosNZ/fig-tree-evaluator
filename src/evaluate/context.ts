@@ -20,7 +20,16 @@ export interface EvaluationContext {
   options: FigTreeOptions
   /** The merged evaluation data; frozen at the top level (our object). */
   data: Readonly<Record<string, unknown>>
+  /** This node's effective signal: the caller's, plus enclosing scopes. */
   signal: AbortSignal
+  /**
+   * The kill switch alone — the caller's `signal` and (Phase 10) the
+   * evaluation deadline, with no enclosing node scope mixed in. The two
+   * are told apart because they mean opposite things: a scope abort is
+   * silent and its branch is simply abandoned, while a kill-switch abort
+   * is the caller's decision and cuts through every fallback.
+   */
+  rootSignal: AbortSignal
   strictDataPaths: boolean
   runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
@@ -49,13 +58,50 @@ export const mergeOptions = (instance: FigTreeOptions, call: FigTreeOptions): Fi
   return merged as FigTreeOptions
 }
 
-export const createEvaluationContext = (merged: FigTreeOptions): EvaluationContext => ({
-  options: merged,
-  data: Object.freeze({ ...(merged.data ?? {}) }),
-  signal: merged.signal ?? new AbortController().signal,
-  strictDataPaths: merged.strictDataPaths ?? false,
-  runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
-})
+export const createEvaluationContext = (merged: FigTreeOptions): EvaluationContext => {
+  const signal = merged.signal ?? new AbortController().signal
+  return {
+    options: merged,
+    data: Object.freeze({ ...(merged.data ?? {}) }),
+    signal,
+    rootSignal: signal,
+    strictDataPaths: merged.strictDataPaths ?? false,
+    runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
+  }
+}
+
+/**
+ * A node's own abort scope: a controller chained to the enclosing signal,
+ * which the node wrapper aborts once its body settles. "Resolution is
+ * cancellation" — anything the body did not wait for stops.
+ *
+ * Chained by hand rather than with `AbortSignal.any`: that is Node 22 and
+ * a much more recent browser floor (Chrome 116, Safari 17.4) than this
+ * package should ask for. The listener is removed on settle, so a
+ * long-lived caller signal does not accumulate one per node evaluated.
+ *
+ * Honest about reach: JS cannot interrupt code already running, so an
+ * abandoned subtree runs to completion and has its result discarded. What
+ * the abort does reliably is stop work that has not *started*, and stop
+ * anything holding the signal — which is the I/O clients, and where the
+ * time actually lives.
+ */
+export const childScope = (parent: AbortSignal): { signal: AbortSignal; settle: () => void } => {
+  const controller = new AbortController()
+  if (parent.aborted) controller.abort(parent.reason)
+  const forward = () => controller.abort(parent.reason)
+  parent.addEventListener('abort', forward, { once: true })
+  return {
+    signal: controller.signal,
+    settle: () => {
+      parent.removeEventListener('abort', forward)
+      controller.abort(SCOPE_SETTLED)
+    },
+  }
+}
+
+/** The reason a scope abort carries, distinguishing it from a kill switch. */
+export const SCOPE_SETTLED = 'fig-tree:scope-settled'
 
 const noop = () => {}
 

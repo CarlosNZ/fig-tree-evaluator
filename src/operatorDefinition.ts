@@ -219,6 +219,12 @@ export interface ValidatedOperatorDefinition {
   positionalParams?: string[]
   /** Derived: the rest-marked positional parameter's name, or null. */
   restParam: string | null
+  /**
+   * Derived: does any parameter reach the body as a handle rather than a
+   * value? Only such a node can still have work in flight once its body
+   * has settled, so only such a node needs an abort scope of its own.
+   */
+  deliversLazily: boolean
   /** Normalized `timeoutParam`: the declared name, or null. */
   timeoutParam: string | null
   useCache: boolean

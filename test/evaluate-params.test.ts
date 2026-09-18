@@ -325,7 +325,16 @@ describe('delivery modes', () => {
     await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
     const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
     expect(typeof branch.evaluate).toBe('function')
-    expect(await branch.evaluate()).toBe(1)
+  })
+
+  test('a handle demanded after its body returned is refused, not honoured', async () => {
+    // The node's abort scope closes when the body settles, so a handle kept
+    // past that point evaluates nothing — the runtime half of the rule the
+    // escaped-handle guard enforces at the boundary
+    const spy = spyOp('lazyish', { branch: { type: 'any', evaluation: 'lazy' } })
+    await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
+    const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
+    await expect(branch.evaluate()).rejects.toThrow(/cancelled/)
   })
 
   test('a mode the engine has not built is loud, not silent', async () => {

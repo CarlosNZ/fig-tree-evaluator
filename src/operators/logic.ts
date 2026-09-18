@@ -12,7 +12,39 @@
 import { defineOperator } from '../defineOperator'
 import { OperatorFailure } from '../OperatorFailure'
 import { renderText } from '../primitives'
+import type { Settlement, SettlementStream } from '../runtimeInterface'
 import { emptyAggregateWarning } from './shared'
+
+/**
+ * `and` and `or` are one algorithm run at two settings. Operands start
+ * together and settle in whatever order they finish; the first DECIDING
+ * value answers the node at once, and everything still in flight is
+ * cancelled by the engine when this body returns.
+ *
+ * Failures are parked rather than raised — Kleene's strong logic, and here
+ * it is just control flow: a decider returns before the parked pile is ever
+ * looked at, so a failure that did not matter never surfaces. Only when no
+ * operand decides does the result actually depend on the failures, and then
+ * the LOWEST-INDEX one is raised, not the first to arrive. That is what
+ * makes the outcome independent of completion order: timing changes how
+ * much work gets cancelled, never the answer.
+ *
+ * With no operands at all, the identity: `and: []` is true, `or: []` is
+ * false. Vacuous truth, and it matches `every` / `some`.
+ */
+const decide = async (values: SettlementStream, decider: boolean): Promise<boolean> => {
+  const parked: Settlement[] = []
+  for await (const settled of values) {
+    // `truthiness` is declared, so the engine has already judged the value
+    if (settled.ok && settled.value === decider) return decider
+    if (!settled.ok) parked.push(settled)
+  }
+  if (parked.length > 0) {
+    parked.sort((a, b) => a.index - b.index)
+    throw parked[0].error
+  }
+  return !decider
+}
 
 /**
  * Exported as `ifOperator` — `if` is a reserved word. The canonical
@@ -106,4 +138,54 @@ export const firstOf = defineOperator({
     // All-null and empty alike: absence in, absence out
     return null
   },
+})
+
+export const and = defineOperator({
+  name: 'and',
+  description: 'True when every value is truthy — operands run in parallel',
+  parameters: {
+    values: {
+      type: 'array',
+      truthiness: true,
+      evaluation: 'race',
+      description: 'Operands, judged by FigTree truthiness; null is falsy',
+    },
+  },
+  positionalParams: ['...values'],
+  returns: 'boolean',
+  validate: emptyAggregateWarning,
+  evaluate: ({ values }) => decide(values, false),
+})
+
+export const or = defineOperator({
+  name: 'or',
+  description: 'True when any value is truthy — operands run in parallel',
+  parameters: {
+    values: {
+      type: 'array',
+      truthiness: true,
+      evaluation: 'race',
+      description: 'Operands, judged by FigTree truthiness; null is falsy',
+    },
+  },
+  positionalParams: ['...values'],
+  returns: 'boolean',
+  validate: emptyAggregateWarning,
+  evaluate: ({ values }) => decide(values, true),
+})
+
+export const not = defineOperator({
+  name: 'not',
+  alias: '!',
+  description: 'Negate the truthiness of a value',
+  parameters: {
+    value: {
+      type: 'any',
+      truthiness: true,
+      description: 'Judged by FigTree truthiness; null is falsy, so not(null) is true',
+    },
+  },
+  positionalParams: ['value'],
+  returns: 'boolean',
+  evaluate: ({ value }) => !value,
 })

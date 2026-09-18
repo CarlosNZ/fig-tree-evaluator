@@ -192,3 +192,230 @@ describe('firstOf', () => {
     expect(issues.map((issue) => issue.severity)).toContain('warning')
   })
 })
+
+// ── and / or / not ──────────────────────────────────────────────────
+
+describe('and / or', () => {
+  test('return actual booleans, never an operand', async () => {
+    // JS-style value-selecting `or` is not carried over — that is firstOf
+    expect(await ev({ $or: ['', 'something'] })).toBe(true)
+    expect(await ev({ $and: ['a', 'b'] })).toBe(true)
+  })
+
+  test('judge by FigTree truthiness, with null falsy', async () => {
+    expect(await ev({ $and: [1, 'x', [], {}] })).toBe(true)
+    expect(await ev({ $and: [1, ''] })).toBe(false)
+    expect(await ev({ $and: [1, '$data.missing'] })).toBe(false)
+    expect(await ev({ $or: [0, '', false] })).toBe(false)
+    expect(await ev({ $or: [0, '$data.missing', 'x'] })).toBe(true)
+  })
+
+  test('compose with the comparisons', async () => {
+    expect(
+      await ev({
+        $and: [{ $equal: [{ $plus: [7.5, 19] }, 26.5] }, { $notEqual: ['five', 'four'] }],
+      })
+    ).toBe(true)
+  })
+
+  test('a single operand is just its own truthiness', async () => {
+    expect(await ev({ operator: 'and', values: ['x'] })).toBe(true)
+    expect(await ev({ operator: 'or', values: [null] })).toBe(false)
+  })
+})
+
+describe('not', () => {
+  test('negates truthiness', async () => {
+    expect(await ev({ $not: true })).toBe(false)
+    expect(await ev({ $not: '' })).toBe(true)
+    expect(await ev({ $not: 'x' })).toBe(false)
+    // An array payload maps POSITIONALLY, so `[]` is zero arguments, not
+    // an empty-array value — the named face is how you pass a literal array
+    expect(await ev({ operator: 'not', value: [] })).toBe(false)
+  })
+
+  test('null is falsy, so it is the idiomatic "is this unset?" test', async () => {
+    expect(await ev({ $not: '$data.user.disabled' })).toBe(true)
+    expect(await ev({ $not: '$data.user.disabled' }, { user: { disabled: true } })).toBe(false)
+  })
+
+  test('the alias is `!`, reassigned from v2 where it meant notEqual', async () => {
+    expect(await ev({ '$!': false })).toBe(true)
+  })
+
+  test('over a node that propagated null, negation affirms (register row 9)', async () => {
+    // The recorded trap: `age` is missing, the comparison propagates null,
+    // null is falsy, so `not` reports "is NOT over 18" from absent data.
+    // The runtime behaviour is agreed; the authoring-time lint is deferred
+    expect(await ev({ $not: { $greaterThan: ['$data.age', 18] } })).toBe(true)
+    // The recommended remedies both work today
+    expect(await ev({ $not: { $greaterThan: ['$data.age', 18], fallback: false } })).toBe(true)
+    expect(
+      await ev({ $not: { $greaterThan: { values: ['$data.age', 18], nullValueDefault: 99 } } })
+    ).toBe(false)
+  })
+})
+
+// ── hand-migrated from the frozen v2 suite ──────────────────────────
+
+describe('hand-migrated: v2 6_conditional', () => {
+  test('basic conditional, both faces', async () => {
+    expect(await ev({ '$?': [true, 'A', 'B'] })).toBe('A')
+    expect(await ev({ operator: 'if', condition: 'YES', then: 'YES', else: 'NO' })).toBe('YES')
+    expect(await ev({ operator: 'if', condition: 0, then: 'YES', else: 'NO' })).toBe('NO')
+  })
+
+  test('conditional with arithmetic in the condition', async () => {
+    expect(
+      await ev({
+        operator: 'if',
+        condition: { $equal: [{ $plus: [7.5, 19] }, 26.5] },
+        then: 'Correct',
+        else: 'Wrong',
+      })
+    ).toBe('Correct')
+  })
+
+  test('conditional over a false logical expression', async () => {
+    expect(
+      await ev({
+        '$?': [
+          { $or: [{ $equal: [{ $plus: [7, 19] }, 26.5] }, { $notEqual: ['five', 'five'] }] },
+          'Expression is True',
+          'Expression is False',
+        ],
+      })
+    ).toBe('Expression is False')
+  })
+
+  test('missing parameters fail statically, before evaluation', async () => {
+    // v2 reported these at runtime, where a `fallback` could swallow them;
+    // in v3 a missing required parameter is a static error by construction
+    const issues = fig.validate({ operator: 'if' }).issues
+    expect(issues.map((issue) => issue.code)).toContain('missing-required')
+    expect((await failure({ operator: 'if' })).code).toBe('missing-required')
+    // `then` is required, `else` is not
+    expect(
+      fig.validate({ operator: 'if', condition: 'YES', else: 'NO' }).issues.map((i) => i.code)
+    ).toContain('missing-required')
+    expect(fig.validate({ operator: 'if', condition: 'YES', then: 'YES' }).valid).toBe(true)
+  })
+})
+
+describe('hand-migrated: v2 20_match — the card-game decision tree', () => {
+  /**
+   * v2's version leaned on four things v3 has retired: alias nodes
+   * (`$difficultyYounger`), root-hoisted branch keys, a magic `fallback`
+   * key *inside* the branches object, and `strict: false` on the
+   * comparisons. The v3 rewrite puts each on its replacement — `vars`, the
+   * `branches` parameter, the `default` parameter, and
+   * `greaterThanOrEqual` — which makes this the phase's end-to-end case:
+   * scoping, lazy branch selection and nested dispatch in one expression.
+   */
+  const decisionTree = {
+    vars: {
+      difficultyYounger: {
+        $match: [
+          '$data.preferredDifficulty',
+          { easy: 'Go Fish', challenging: 'Rummy', hard: 'Rummy' },
+        ],
+      },
+      difficultyOlder: {
+        $match: ['$data.preferredDifficulty', { easy: 'Rummy', challenging: '500', hard: '500' }],
+      },
+    },
+    operator: 'match',
+    value: '$data.numberOfPlayers',
+    branches: {
+      1: {
+        $if: [
+          { $greaterThanOrEqual: ['$data.ageOfYoungestPlayer', 7] },
+          'Solitaire',
+          'No recommendations 😔',
+        ],
+      },
+    },
+    default: {
+      $if: [
+        { $greaterThanOrEqual: ['$data.ageOfYoungestPlayer', 5] },
+        {
+          $if: [
+            { $lessThan: ['$data.ageOfYoungestPlayer', 8] },
+            'Go Fish',
+            {
+              $if: [
+                { $lessThan: ['$data.ageOfYoungestPlayer', 12] },
+                '$vars.difficultyYounger',
+                {
+                  $if: [
+                    { $lessThan: ['$data.ageOfYoungestPlayer', 16] },
+                    '$vars.difficultyOlder',
+                    {
+                      operator: 'match',
+                      value: '$data.numberOfPlayers',
+                      branches: {
+                        4: {
+                          $if: [
+                            { $equal: ['$data.preferredDifficulty', 'hard'] },
+                            'Bridge',
+                            '$vars.difficultyOlder',
+                          ],
+                        },
+                      },
+                      default: '$vars.difficultyOlder',
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        'Snap',
+      ],
+    },
+  }
+
+  const play = (players: number, age: number, difficulty: string) =>
+    ev(decisionTree, {
+      numberOfPlayers: players,
+      ageOfYoungestPlayer: age,
+      preferredDifficulty: difficulty,
+    })
+
+  test.each([
+    ['single player, 7+', 1, 12, 'easy', 'Solitaire'],
+    ['single player, under 7', 1, 5, 'easy', 'No recommendations 😔'],
+    ['multiple players, some under 5', 3, 4, 'easy', 'Snap'],
+    ['multiple players, 5-8', 2, 5, 'easy', 'Go Fish'],
+    ['multiple players, 8-12, challenging', 2, 9, 'challenging', 'Rummy'],
+    ['multiple players, 12-16, easy', 4, 12, 'easy', 'Rummy'],
+    ['3 players, 16+, challenging', 3, 18, 'challenging', '500'],
+    ['4 players, 16+, challenging', 4, 16, 'challenging', '500'],
+    ['4 players, 16+, hard', 4, 16, 'hard', 'Bridge'],
+  ])('%s', async (_label, players, age, difficulty, expected) => {
+    expect(await play(players as number, age as number, difficulty as string)).toBe(expected)
+  })
+
+  test('an unrecognized difficulty reaches a match with no branch and no default', async () => {
+    const error = await rejection<FigTreeError>(play(4, 16, 'other'))
+    expect(error.code).toBe('operator-failure')
+    expect(error.message).toContain('other')
+  })
+
+  test('the branch not taken costs nothing — neither difficulty var evaluates', async () => {
+    const { calls, fig: tracking } = tracked()
+    const tree = {
+      vars: { younger: { $track: 'younger' }, older: { $track: 'older' } },
+      operator: 'match',
+      value: '$data.numberOfPlayers',
+      branches: { 1: 'Solitaire' },
+      default: { $if: [true, '$vars.younger', '$vars.older'] },
+    }
+    expect(await tracking.evaluate(tree, { data: { numberOfPlayers: 1 } })).toBe('Solitaire')
+    expect(calls).toEqual([])
+  })
+
+  test('a non-object branches value is a type error', async () => {
+    expect((await failure({ $match: ['three', 'not an object'] })).code).toBe('type-check')
+  })
+})

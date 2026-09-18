@@ -21,3 +21,24 @@ export const internalError = (message: string): Error => {
 /** True for an engine-bug error: never caught, never wrapped, never shaped. */
 export const isInternalError = (error: unknown): boolean =>
   error instanceof Error && (error as unknown as Record<PropertyKey, unknown>)[INTERNAL] === true
+
+/**
+ * The abandonment marker: a node declined to start because its scope was
+ * cancelled — a sibling operand already decided the result, or the body
+ * that asked for this work has settled.
+ *
+ * Cancellation is not failure. Nobody is waiting on an abandoned branch,
+ * so this must never be wrapped into a FigTreeError, never reach a
+ * `fallback`, and never surface under `mode: 'report'`. It travels the same
+ * bail-out as an engine bug for that reason, and for no other.
+ */
+const CANCELLED: unique symbol = Symbol('fig-tree:cancelled')
+
+export const cancellation = (): Error => {
+  const error = new Error('[fig-tree] evaluation cancelled')
+  ;(error as unknown as Record<PropertyKey, unknown>)[CANCELLED] = true
+  return error
+}
+
+export const isCancellation = (error: unknown): boolean =>
+  error instanceof Error && (error as unknown as Record<PropertyKey, unknown>)[CANCELLED] === true

@@ -52,6 +52,7 @@ import { isPlainObject, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { internalError } from './internal'
+import { raceStream, settledStream } from './race'
 import { pushVars } from './scope'
 
 export interface ResolvedParameters {
@@ -116,6 +117,7 @@ export const resolveParams = async (
         break
       case 'lazyElements':
       case 'lazyEntries':
+      case 'race':
         if (supplied === undefined) break
         if (containerHandles(supplied, declared, ctx, name, resolved)) {
           delivered.add(name)
@@ -314,6 +316,10 @@ const containerHandles = (
     )
     return true
   }
+  if (declared.evaluation === 'race' && supplied.kind === 'elements') {
+    resolved[name] = raceStream(supplied.nodes, ctx, (value) => vetElement(value, declared))
+    return true
+  }
   if (declared.evaluation === 'lazyEntries' && supplied.kind === 'entries') {
     // A vars block on the map scopes its branches, as on any plain literal
     const scoped = pushVars(ctx, supplied.vars)
@@ -338,6 +344,8 @@ const wrapDelivery = (
 ): unknown => {
   if (degenerating === 'lazyElements')
     return (value as unknown[]).map((element) => settledHandle(vetElement(element, declared)))
+  if (degenerating === 'race')
+    return settledStream(value as unknown[], (element) => vetElement(element, declared))
   if (degenerating === 'lazyEntries') {
     const entries: Record<string, LazyValue> = {}
     for (const [key, element] of Object.entries(value as Record<string, unknown>))

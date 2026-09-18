@@ -16,11 +16,29 @@ import { internalError } from './internal'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
+import { FigTreeError } from '../FigTreeError'
+import { ErrorCodes } from '../errorCodes'
+import { cancellation } from './internal'
+
+const abandon = (ctx: EvaluationContext, node: CompiledNode): Error =>
+  ctx.rootSignal.aborted
+    ? new FigTreeError({
+        code: ErrorCodes.aborted,
+        message: 'evaluation was aborted by the caller',
+        path: node.path,
+      })
+    : cancellation()
 
 export const evaluateNode = async (
   node: CompiledNode,
   ctx: EvaluationContext
 ): Promise<unknown> => {
+  // The node boundary is where cancellation lands: no new work starts once
+  // the enclosing scope is gone. A kill switch is the caller's decision and
+  // surfaces as an ordinary failure that cuts through fallbacks; a scope
+  // abort means a sibling already decided the answer, so this branch is
+  // simply abandoned and raises nothing anyone will see
+  if (ctx.signal.aborted) throw abandon(ctx, node)
   switch (node.kind) {
     case 'constant':
       return node.value
