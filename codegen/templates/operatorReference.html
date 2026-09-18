@@ -1,3 +1,12 @@
+<!-- The artifact runtime injects charset and viewport when this page is
+     published. They are declared here as well so the built file is also
+     correct served straight from the repo, where nothing wraps it: without
+     the viewport it lays out at desktop width on a phone, and without the
+     charset it depends on the server sending one for its em-dashes and
+     multiplication signs to survive. A duplicate meta is harmless — the
+     first declaration wins. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FigTree v3 Operators</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
