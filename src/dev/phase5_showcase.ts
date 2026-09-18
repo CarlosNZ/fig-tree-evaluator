@@ -41,6 +41,28 @@ const work = defineOperator({
 
 const fig = new FigTree({ operators: [coreOperators, work] })
 
+/**
+ * JSON for reading: compact while it fits on a line, pretty-printed when it
+ * does not, with every line after the first aligned to `pad`.
+ *
+ * The threshold is WIDTH, not nesting depth — measured against these two
+ * files' own expressions, depth turned out not to discriminate. An operator
+ * call with an array payload is already depth 2, so anything with one
+ * operator inside another is depth 4 before it has said anything: a depth
+ * rule expands `{"$or":[{"$work":["slow",200]},{"$work":["quick",5]}]}`
+ * into sixteen lines, and still misses the 110-character node beside it.
+ * Depth is forced by the notation here; width tracks how much there is to
+ * read.
+ */
+const WIDTH = 80
+
+const block = (value: unknown, pad = '      '): string => {
+  const compact = JSON.stringify(value)
+  if (compact === undefined) return String(value)
+  if (compact.length <= WIDTH) return compact
+  return JSON.stringify(value, null, 2).split('\n').join(`\n${pad}`)
+}
+
 const show = async (
   label: string,
   expression: unknown,
@@ -49,7 +71,7 @@ const show = async (
   runs = []
   let outcome: string
   try {
-    outcome = `→ ${JSON.stringify(await fig.evaluate(expression, options))}`
+    outcome = `→ ${block(await fig.evaluate(expression, options))}`
   } catch (error) {
     outcome = isFigTreeError(error)
       ? `✗ ${error.code}${error.operator ? ` (${error.operator})` : ''}: ${error.message}`
@@ -58,13 +80,24 @@ const show = async (
   // Let any abort land before the tally is read
   await new Promise((resolve) => setTimeout(resolve, 15))
   const tally = runs.length === 0 ? 'nothing ran' : `ran: ${runs.join(', ')}`
-  console.log(`  ${label}\n      ${JSON.stringify(expression)}\n    ${outcome}   [${tally}]\n`)
+  console.log(`  ${label}\n      ${block(expression)}\n    ${outcome}   [${tally}]\n`)
 }
 
 const section = (title: string) =>
   console.log(`── ${title} ${'─'.repeat(Math.max(0, 60 - title.length))}\n`)
 
 const main = async () => {
+  console.log(
+    `  Reading this: \`$work\` stands in for something expensive. It records that
+` +
+      `  it ran and RETURNS ITS OWN LABEL, so \`{"$work":"taken"}\` evaluates to the
+` +
+      `  string "taken" — the node is evaluated like any other, the result just
+` +
+      `  resembles it. The [tally] after each result is what actually executed;
+` +
+      `  \`✂\` marks an operand cancelled mid-flight.\n`
+  )
   section('vars — lexical, lazy, memoized')
   await show('referenced twice, evaluated once', {
     vars: { token: { $work: 'fetch-token' } },
@@ -151,11 +184,7 @@ const main = async () => {
       value: '$data.players',
       branches: { 1: 'Solitaire' },
       default: {
-        $if: [
-          { $lessThan: ['$data.age', 12] },
-          '$vars.younger',
-          '$vars.older',
-        ],
+        $if: [{ $lessThan: ['$data.age', 12] }, '$vars.younger', '$vars.older'],
       },
     },
     { data: { players: 4, age: 12, difficulty: 'easy' } }
