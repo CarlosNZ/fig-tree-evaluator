@@ -15,6 +15,7 @@ import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
 import type { ValidatedParameter } from '../operatorDefinition'
 import { validateHelpers } from './helpers'
+import { renamedBinding } from './artifact'
 import type {
   CompiledNode,
   NodePath,
@@ -50,6 +51,8 @@ interface VarsFrame {
 /** An iterator's binding scope: `as` name, or null for $element/$index. */
 interface IteratorFrame {
   as: string | null
+  /** Set when a reference inside the subtree resolved against this frame. */
+  referenced: boolean
 }
 
 interface CheckState {
@@ -169,21 +172,27 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
     else visit(state, supplied)
   }
   if (perElement.length > 0) {
-    state.iteratorFrames.push({ as: renamedBinding(node) })
+    const iterator: IteratorFrame = { as: renamedBinding(node), referenced: false }
+    state.iteratorFrames.push(iterator)
     for (const [, supplied] of perElement) visit(state, supplied)
     state.iteratorFrames.pop()
+    // The dead-binding lint, sibling of the unreferenced-vars warning: an
+    // `each` that reads none of its own bindings computes the same thing
+    // for every element. Conceivable on purpose, almost always a mistyped
+    // reference or a payload nested one level off
+    if (!iterator.referenced)
+      emit(
+        state,
+        'warning',
+        ErrorCodes.deadBinding,
+        `'${node.name}' binds ${iterator.as === null ? '$element / $index' : `$${iterator.as}`} but its 'each' references neither`,
+        node.path,
+        node.order,
+        { operator: node.name }
+      )
   }
 
   popVars(state, frame)
-}
-
-/** The literal `as` name on this node, when declared and usable. */
-const renamedBinding = (node: OperatorNode): string | null => {
-  const declared = node.entry.definition.parameters.as
-  if (declared?.evaluation !== 'structural') return null
-  const supplied = node.params.as
-  if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
-  return null
 }
 
 const checkSuppliedParam = (
@@ -413,7 +422,10 @@ const resolveBinding = (state: CheckState, node: ReferenceNode) => {
       : `${frame.as ?? ''}Index` === node.binding
   }
   for (let i = state.iteratorFrames.length - 1; i >= 0; i--) {
-    if (matches(state.iteratorFrames[i])) return
+    if (matches(state.iteratorFrames[i])) {
+      state.iteratorFrames[i].referenced = true
+      return
+    }
   }
   emit(
     state,

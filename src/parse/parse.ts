@@ -153,6 +153,19 @@ interface WalkState {
   fragmentNames: Set<string>
   identityOnly: boolean
   renamedBindings: BindingFrame[]
+  /**
+   * Every binding name any `as` in the expression declares, element and
+   * derived index form alike — the material for the out-of-scope upgrade
+   * below. Collected across the whole walk, not just the active frames.
+   */
+  asNames: Set<string>
+  /**
+   * `$`-tokens warned as unrecognized, with where their issue landed. A
+   * token naming a binding declared ANYWHERE is not unrecognized, it is
+   * out of scope, and the walk cannot know that at the time: a depth-first
+   * walk meets an iterator's `input` before its `as`.
+   */
+  unrecognized: { token: string; issueIndex: number; raw: string }[]
 }
 
 /** Parse an expression into its compile artifact. Never throws on content. */
@@ -174,8 +187,11 @@ export const parseExpression = (
     fragmentNames: new Set(),
     identityOnly: false,
     renamedBindings: [],
+    asNames: new Set(),
+    unrecognized: [],
   }
   const root = walk(state, input, [], 0)
+  upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
   // Stable sort — issues from one node keep their emission order
   state.issues.sort((a, b) => a.order - b.order)
@@ -193,6 +209,39 @@ export const parseExpression = (
       fragments: [...state.fragmentNames],
     },
     identityOnly: state.identityOnly,
+  }
+}
+
+/**
+ * Turn "unrecognized `$`" into "out of scope" wherever the token names a
+ * binding the expression actually declares.
+ *
+ * The grammar's default for a `$`-string it does not know is inert data
+ * with a warning, which is right for `$typo` — it might just be data. It
+ * is wrong for `$order` in the `input` of the very iterator that declares
+ * `as: 'order'`: the author plainly meant the binding, and batch 5 says
+ * references to an iterator's own bindings from outside its `each` subtree
+ * are errors. `$element` is already an error there, because it is a
+ * reserved namespace the walk recognizes everywhere; an `as` name is only
+ * a namespace inside its own scope, which is exactly why this second look
+ * is needed to treat the two alike.
+ *
+ * Replaced in place, so the issue keeps its emission order.
+ */
+const upgradeOutOfScopeBindings = (state: WalkState) => {
+  if (state.asNames.size === 0) return
+  for (const { token, issueIndex, raw } of state.unrecognized) {
+    if (!state.asNames.has(token)) continue
+    const sequenced = state.issues[issueIndex]
+    state.issues[issueIndex] = {
+      order: sequenced.order,
+      issue: {
+        ...sequenced.issue,
+        severity: 'error',
+        code: ErrorCodes.unresolvedBinding,
+        message: `'${raw}' names an iterator binding, but no enclosing iterator binds it here`,
+      },
+    }
   }
 }
 
@@ -312,6 +361,9 @@ const walkString = (
         path,
         order
       )
+      const sigil = splitSigilToken(raw)
+      if (sigil !== null)
+        state.unrecognized.push({ token: sigil.token, issueIndex: state.issues.length - 1, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
@@ -842,6 +894,7 @@ const buildBindingFrame = (
         return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
     }
   }
+  for (const name of names) state.asNames.add(name)
   return { element: value, index: `${value}Index` }
 }
 

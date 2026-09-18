@@ -38,9 +38,9 @@ import {
   type NullPolicyValue,
   type ValidatedParameter,
 } from '../operatorDefinition'
-import type { CompiledNode, OperatorNode } from '../parse'
+import { renamedBinding, type CompiledNode, type OperatorNode } from '../parse'
 import { isTruthy } from '../primitives'
-import { LAZY_HANDLE, type LazyValue } from '../runtimeInterface'
+import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
 import {
   checkConstraintsUnderPolicy,
   checkType,
@@ -52,7 +52,8 @@ import { isPlainObject, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { internalError } from './internal'
-import { raceStream, settledStream } from './race'
+import { pushBinding } from './bindings'
+import { indexedStream, raceStream, settledStream } from './race'
 import { pushVars } from './scope'
 
 export interface ResolvedParameters {
@@ -132,9 +133,15 @@ export const resolveParams = async (
         degenerate[name] = declared.evaluation
         break
       case 'perElement':
-        throw notYet(node, name, declared, 'Phase 6')
+        // Nothing starts here: the handle needs its `over` sibling
+        // VETTED, so it is built in pass 2 once that parameter's own
+        // layers have run (see layerOrder)
+        break
       default:
-        throw notYet(node, name, declared, 'Phase 5')
+        // Every delivery mode is handled above, and this is what keeps
+        // that true: an eighth mode added to the union fails the BUILD
+        // here rather than reaching a node as a runtime surprise
+        declared.evaluation satisfies never
     }
   }
 
@@ -146,8 +153,15 @@ export const resolveParams = async (
   // ── Pass 2: the layers ────────────────────────────────────────────
   const params: Record<string, unknown> = {}
 
-  for (const [name, declared] of declarations) {
+  for (const [name, declared] of layerOrder(declarations)) {
     if (declared.replacesNullAt !== undefined) continue // holders never reach the body
+    if (declared.evaluation === 'perElement') {
+      const supplied = node.params[name]
+      // Unsupplied is a missing-required static error; nothing to deliver
+      if (supplied !== undefined)
+        params[name] = perElementHandle(supplied, params, node, name, declared, ctx)
+      continue
+    }
     if (delivered.has(name)) {
       // Delivered as a handle in pass 1: its layers run on demand, and
       // there is no whole value here for the unset chain to test
@@ -283,6 +297,92 @@ const vet = (
 }
 
 /**
+ * The `perElement` delivery: one compiled subtree stamped over the elements
+ * of its `over` sibling, each in a fresh binding scope, memoized per index.
+ *
+ * Unlike the container-lazy modes, the declared type here describes the
+ * ELEMENT RESULT rather than a container — `over` names the container — so
+ * the full vet runs per index, exactly as it does for a `lazy` handle: type
+ * check, constraints and truthiness. That is what lets `filter` and the
+ * deciders read plain booleans.
+ *
+ * `settle()` builds a fresh stream each call rather than memoizing one: a
+ * settlement stream is consumed as it is iterated, so a shared one would be
+ * empty the second time. Nothing is evaluated twice regardless, because the
+ * per-index memo below is what the streams are built over.
+ */
+const perElementHandle = (
+  supplied: CompiledNode,
+  params: Record<string, unknown>,
+  node: OperatorNode,
+  name: string,
+  declared: ValidatedParameter,
+  ctx: EvaluationContext
+): PerElement => {
+  if (declared.over === undefined)
+    throw internalError(`parameter '${name}' of '${node.name}' declares perElement without 'over'`)
+  const target = params[declared.over]
+  // Type-checked by the target's own layers, except under
+  // `runtimeTypeCheck: false`, where a non-array iterates over nothing
+  const collection = Array.isArray(target) ? target : []
+  const as = renamedBinding(node)
+  const memo = new Map<number, Promise<unknown>>()
+
+  const evaluate = (index: number): Promise<unknown> => {
+    const existing = memo.get(index)
+    if (existing !== undefined) return existing
+    const started = (async () =>
+      vet(
+        await evaluateNode(supplied, pushBinding(ctx, as, collection[index], index)),
+        node,
+        name,
+        declared,
+        ctx
+      ))()
+    // Attached where the promise is created, which is the only point early
+    // enough: a body that demands an index and then resolves without
+    // awaiting it must not leave an unhandled rejection behind. A later
+    // awaiter still sees the rejection — this only marks it handled
+    started.catch(() => {})
+    memo.set(index, started)
+    return started
+  }
+
+  return {
+    [LAZY_HANDLE]: true,
+    evaluate,
+    settle: () => indexedStream(collection.length, evaluate, (value) => value),
+  }
+}
+
+/**
+ * Declaration order, with every `over` target ahead of the `perElement`
+ * parameter that iterates it. The handle closes over the target's vetted
+ * value, so the target's layers must already have run — including
+ * `nullInputDefault`'s replacement, which is the whole reason a null
+ * `input` can become `[]` before the derived reject sees it.
+ */
+const layerOrder = (
+  declarations: [string, ValidatedParameter][]
+): [string, ValidatedParameter][] => {
+  if (!declarations.some(([, declared]) => declared.evaluation === 'perElement'))
+    return declarations
+  const byName = new Map(declarations)
+  const ordered: [string, ValidatedParameter][] = []
+  const seen = new Set<string>()
+  const emit = (name: string, declared: ValidatedParameter) => {
+    if (seen.has(name)) return
+    seen.add(name)
+    const over = declared.evaluation === 'perElement' ? declared.over : undefined
+    const target = over === undefined ? undefined : byName.get(over)
+    if (over !== undefined && target !== undefined) emit(over, target)
+    ordered.push([name, declared])
+  }
+  for (const [name, declared] of declarations) emit(name, declared)
+  return ordered
+}
+
+/**
  * One element or entry of a container-lazy parameter. The declared type
  * describes the *container* (`array`, `object`) and the language has no
  * element-type declaration, so the only layer with anything to say here is
@@ -355,11 +455,6 @@ const wrapDelivery = (
   if (declared.evaluation === 'lazy') return settledHandle(value)
   return value
 }
-
-const notYet = (node: OperatorNode, name: string, declared: ValidatedParameter, phase: string) =>
-  internalError(
-    `parameter '${name}' of '${node.name}' declares evaluation '${declared.evaluation}', which lands in ${phase}`
-  )
 
 const typeError = (
   node: OperatorNode,

@@ -19,13 +19,20 @@
  * protection the other namespaces can have, which is a reason to extend it
  * to them rather than withhold it. One strict-path rule, four namespaces.
  *
- * `$params`, `$element` and `$index` arrive with their scoping phases.
+ * `$element` / `$index`: the innermost enclosing binding frame, found by
+ * the same match rule the static checker used, so an `as`-renamed frame
+ * does not answer to the default names. `$element` drills like the rest;
+ * `$index` is bare-only by grammar and needs no resolution beyond the
+ * frame.
+ *
+ * `$params` arrives with fragments (Phase 11).
  */
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { resolvePath, type PathSegment } from '../primitives'
 import type { ReferenceNode } from '../parse'
 import type { EvaluationContext } from './context'
+import { lookupBinding } from './bindings'
 import { internalError } from './internal'
 import { lookupVar } from './scope'
 
@@ -41,6 +48,9 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
       return resolveData(node, ctx)
     case 'vars':
       return resolveVar(node, ctx)
+    case 'element':
+    case 'index':
+      return resolveBinding(node, ctx)
     default:
       throw internalError(`'${node.raw}': the $${node.namespace} namespace is not evaluable yet`)
   }
@@ -71,6 +81,18 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
  * `fallback` catches like any other, references being unable to carry one
  * themselves.
  */
+const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
+  const namespace = node.namespace as 'element' | 'index'
+  const frame = lookupBinding(ctx.bindings, namespace, node.binding)
+  if (frame === undefined)
+    throw internalError(
+      `'${node.raw}': no enclosing iterator binds it — the static gate should have refused it`
+    )
+  if (namespace === 'index') return frame.index
+  if (node.segments.length === 0) return normalize(frame.element)
+  return drill(frame.element, node.segments, node, ctx, `is absent from '${node.raw.split('.')[0]}'`)
+}
+
 const drill = (
   source: unknown,
   segments: PathSegment[],

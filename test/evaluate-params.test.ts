@@ -5,7 +5,7 @@
  * reached the body, whether it ran at all, and what the node produced.
  */
 import { FigTree, FigTreeError, EvaluationData } from '../src'
-import type { FigTreeOptions } from '../src'
+import type { FigTreeOptions, PerElement } from '../src'
 import { boomOp, echoOp, spyOp, type Spy } from './fixtures/evalOperators'
 
 const rejection = async (promise: Promise<unknown>): Promise<FigTreeError> => {
@@ -337,13 +337,21 @@ describe('delivery modes', () => {
     await expect(branch.evaluate()).rejects.toThrow(/cancelled/)
   })
 
-  test('a mode the engine has not built is loud, not silent', async () => {
+  test('perElement delivers a handle over the vetted `over` sibling', async () => {
+    // Every delivery mode now ships, so there is no unbuilt mode left to
+    // assert a loud failure for — the switch in src/evaluate/params.ts is
+    // exhaustive by `satisfies never`, which makes an eighth mode a BUILD
+    // error rather than something a test could reach
     const spy = spyOp('iterish', {
       input: { type: 'array' },
       each: { type: 'any', evaluation: 'perElement', over: 'input' },
     })
-    await expect(
-      figWith([spy]).evaluate({ $iterish: { input: [1], each: 1 } })
-    ).rejects.toThrow(/Phase 6/)
+    await figWith([spy]).evaluate({ $iterish: { input: ['a', 'b'], each: 1 } })
+    const each = spy.calls[0].each as PerElement
+    expect(typeof each.evaluate).toBe('function')
+    expect(typeof each.settle).toBe('function')
+    // Demanded after the body returned, so the node's abort scope has
+    // closed — the same rule as the lazy handle above
+    await expect(each.evaluate(1)).rejects.toThrow(/cancelled/)
   })
 })

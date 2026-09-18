@@ -30,7 +30,7 @@ import {
   max,
 } from './math'
 import { lower, upper, trim, split } from './string'
-import { length } from './array'
+import { length, map, filter, find, some, every } from './array'
 import { convert } from './convert'
 import { and, or, not, ifOperator, match, firstOf } from './logic'
 
@@ -67,8 +67,13 @@ export const coreOperators: ValidatedOperatorDefinition[] = [
   lower,
   upper,
   trim,
-  // Arrays & iteration — the iterators arrive Phase 6
+  // Arrays & iteration
   length,
+  map,
+  filter,
+  find,
+  some,
+  every,
   // Data & objects — Phase 7.1
   // Special
   convert,

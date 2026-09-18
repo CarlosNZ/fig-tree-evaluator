@@ -5,7 +5,7 @@ import { copyFileSync, existsSync, readdirSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
 const DEV_DIR = 'src/dev'
-const HIDDEN = new Set(['inspect', 'demoOperators', 'playground_example'])
+const HIDDEN = new Set(['inspect', 'demoOperators', 'playground_example', 'showcase'])
 
 const available = () =>
   readdirSync(DEV_DIR)
