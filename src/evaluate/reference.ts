@@ -1,32 +1,92 @@
 /**
  * Reference resolution at evaluation ("References & scoping" in
- * docs-dev/v3-specs/v3-api.md). Phase 4 resolves `$data` only: bare → the
- * merged data object by reference; drilled → the shared path resolver, a
- * miss yielding `null` (absence is not failure) unless `strictDataPaths`
- * turns it into an ordinary, fallback-catchable runtime failure. `$vars`,
+ * docs-dev/v3-specs/v3-api.md).
+ *
+ * `$data`: bare → the merged data object by reference; drilled → the shared
+ * path resolver, a miss yielding `null` (absence is not failure) unless
+ * `strictDataPaths` turns it into an ordinary, fallback-catchable runtime
+ * failure.
+ *
+ * `$vars`: the first segment names the var, the rest drills into whatever
+ * it evaluated to, on the same rules.
+ *
+ * `strictDataPaths` governs every namespace's drill, not just `$data`
+ * (ruled September 2026). The reasoning is the assessment's own ranking of
+ * the three typo mitigations: checking paths against a schema or sample
+ * data at authoring time is the strongest, and it is available for `$data`
+ * alone — a var, element or param holds the output of the author's own
+ * expression, which no schema describes. So the runtime throw is the only
+ * protection the other namespaces can have, which is a reason to extend it
+ * to them rather than withhold it. One strict-path rule, four namespaces.
+ *
  * `$params`, `$element` and `$index` arrive with their scoping phases.
  */
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
-import { resolvePath } from '../primitives'
+import { resolvePath, type PathSegment } from '../primitives'
 import type { ReferenceNode } from '../parse'
 import type { EvaluationContext } from './context'
 import { internalError } from './internal'
+import { lookupVar } from './scope'
 
+/**
+ * Returns the value, or a promise of it for a namespace that has to await
+ * something. The one caller is `evaluateNode`, which is async and so
+ * settles either shape — and a synchronous `$data` read stays free of a
+ * microtask hop, which matters at the rate references are resolved.
+ */
 export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
-  if (node.namespace !== 'data')
-    throw internalError(`'${node.raw}': the $${node.namespace} namespace is not evaluable yet`)
-  if (node.segments.length === 0) return ctx.data
-  const result = resolvePath(ctx.data, node.segments)
-  if (!result.found) {
-    if (ctx.strictDataPaths)
-      throw new FigTreeError({
-        code: ErrorCodes.missingDataPath,
-        message: `'${node.raw}' is absent from the evaluation data (strictDataPaths)`,
-        path: node.path,
-      })
-    return null
+  switch (node.namespace) {
+    case 'data':
+      return resolveData(node, ctx)
+    case 'vars':
+      return resolveVar(node, ctx)
+    default:
+      throw internalError(`'${node.raw}': the $${node.namespace} namespace is not evaluable yet`)
   }
-  // A stored undefined is not a value — JSON semantics at the read boundary
-  return result.value === undefined ? null : result.value
 }
+
+const resolveData = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
+  if (node.segments.length === 0) return ctx.data
+  return drill(ctx.data, node.segments, node, ctx, 'is absent from the evaluation data')
+}
+
+const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
+  const [name, ...rest] = node.segments
+  // The var name is the first segment; the grammar admits nothing but an
+  // identifier there, and an unresolvable one is a static error
+  const thunk = typeof name === 'string' ? lookupVar(ctx.scope, name) : undefined
+  if (typeof name !== 'string' || thunk === undefined)
+    throw internalError(
+      `'${node.raw}': no var named '${String(name)}' is in scope — the static gate should have refused it`
+    )
+  const value = await thunk()
+  if (rest.length === 0) return normalize(value)
+  return drill(value, rest as PathSegment[], node, ctx, `is absent from the value of '$vars.${name}'`)
+}
+
+/**
+ * Resolve a drill path, with the one absence rule: `null`, unless
+ * `strictDataPaths` makes it an ordinary runtime failure — which a
+ * `fallback` catches like any other, references being unable to carry one
+ * themselves.
+ */
+const drill = (
+  source: unknown,
+  segments: PathSegment[],
+  node: ReferenceNode,
+  ctx: EvaluationContext,
+  absence: string
+): unknown => {
+  const result = resolvePath(source, segments)
+  if (result.found) return normalize(result.value)
+  if (!ctx.strictDataPaths) return null
+  throw new FigTreeError({
+    code: ErrorCodes.missingDataPath,
+    message: `'${node.raw}' ${absence} (strictDataPaths)`,
+    path: node.path,
+  })
+}
+
+/** A stored `undefined` is not a value — JSON semantics at the boundary. */
+const normalize = (value: unknown): unknown => (value === undefined ? null : value)

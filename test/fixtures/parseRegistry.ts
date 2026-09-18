@@ -188,7 +188,59 @@ export const hookOp = () =>
     evaluate: noop,
   })
 
+/** `or` — the `race` delivery: element-addressable, truthiness per element. */
+export const orOp = () =>
+  defineOperator({
+    name: 'or',
+    description: 'Boolean disjunction, resolved as operands settle',
+    parameters: { values: { type: 'array', truthiness: true, evaluation: 'race' } },
+    positionalParams: ['...values'],
+    returns: 'boolean',
+    evaluate: noop,
+  })
+
+/** `firstOf` — `lazyElements`: one demandable handle per element. */
+export const firstOfOp = () =>
+  defineOperator({
+    name: 'firstOf',
+    description: 'The first candidate that is not null',
+    parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
+    positionalParams: ['...values'],
+    evaluate: noop,
+  })
+
+/** `pick` — a leading position before a `race` rest slice (the index trap). */
+export const pickOp = () =>
+  defineOperator({
+    name: 'pick',
+    description: 'A leading position ahead of an element-addressable rest slice',
+    parameters: {
+      label: { type: 'string' },
+      values: { type: 'array', evaluation: 'lazyElements' },
+    },
+    positionalParams: ['label', '...values'],
+    evaluate: noop,
+  })
+
+/** `match` — the `lazyEntries` delivery, and its two-mode `branches`. */
+export const matchOp = () =>
+  defineOperator({
+    name: 'match',
+    description: 'Dispatch on a value',
+    parameters: {
+      value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
+      branches: { type: 'object', evaluation: 'lazyEntries' },
+      default: { type: 'any', required: false, evaluation: 'lazy' },
+    },
+    positionalParams: ['value', 'branches', 'default'],
+    evaluate: noop,
+  })
+
 export const parseOps = (): ValidatedOperatorDefinition[] => [
+  orOp(),
+  firstOfOp(),
+  pickOp(),
+  matchOp(),
   ifOp(),
   notOp(),
   plusOp(),

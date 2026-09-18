@@ -13,6 +13,7 @@ import type { FigTreeOptions } from '../options'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { OperatorContext } from '../runtimeInterface'
 import { isPlainObject } from '../utils'
+import type { Scope } from './scope'
 
 export interface EvaluationContext {
   /** The merged instance + per-call options. */
@@ -22,6 +23,8 @@ export interface EvaluationContext {
   signal: AbortSignal
   strictDataPaths: boolean
   runtimeTypeCheck: boolean
+  /** The innermost enclosing `vars` scope; absent at the root (./scope). */
+  scope?: Scope
 }
 
 /**

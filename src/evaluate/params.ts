@@ -38,8 +38,9 @@ import {
   type NullPolicyValue,
   type ValidatedParameter,
 } from '../operatorDefinition'
-import type { OperatorNode } from '../parse'
+import type { CompiledNode, OperatorNode } from '../parse'
 import { isTruthy } from '../primitives'
+import { LAZY_HANDLE, type LazyValue } from '../runtimeInterface'
 import {
   checkConstraintsUnderPolicy,
   checkType,
@@ -51,6 +52,7 @@ import { isPlainObject, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { internalError } from './internal'
+import { pushVars } from './scope'
 
 export interface ResolvedParameters {
   params: Record<string, unknown>
@@ -72,6 +74,10 @@ export const resolveParams = async (
   const pending: Promise<unknown>[] = []
   const resolved: Record<string, unknown> = {}
   const holders: Record<string, Thunk> = {}
+  /** Names already delivered as handles — the layers ran inside them. */
+  const delivered = new Set<string>()
+  /** Names whose eagerly-resolved value still has to become handles. */
+  const degenerate: Record<string, string> = {}
 
   for (const [name, declared] of declarations) {
     const supplied = node.params[name]
@@ -86,8 +92,7 @@ export const resolveParams = async (
         if (supplied?.kind === 'constant') resolved[name] = supplied.value
         break
       case 'lazy':
-        if (declared.replacesNullAt === undefined) throw notYet(node, name, declared, 'Phase 5')
-        {
+        if (declared.replacesNullAt !== undefined) {
           // A holder supplied on the node, else its instance-wide default
           // (the same chain as any parameter; holders carry no metadata
           // default by registration rule)
@@ -99,7 +104,30 @@ export const resolveParams = async (
                 : undefined
           if (thunk !== undefined)
             for (const target of declared.replacesNullAt) holders[target] = thunk
+          break
         }
+        // An ordinary lazy parameter: the body holds the handle and decides
+        // whether to demand it. Unsupplied falls to the default chain in
+        // pass 2, which wraps the default in a pre-resolved handle
+        if (supplied !== undefined) {
+          resolved[name] = demand(supplied, node, name, declared, ctx)
+          delivered.add(name)
+        }
+        break
+      case 'lazyElements':
+      case 'lazyEntries':
+        if (supplied === undefined) break
+        if (containerHandles(supplied, declared, ctx, name, resolved)) {
+          delivered.add(name)
+          break
+        }
+        // Degeneration: the value arrives dynamically, so it is already
+        // data. Resolve it eagerly through the ordinary layers, then hand
+        // the body pre-resolved handles — sequencing becomes iteration and
+        // branch selection becomes lookup, with no body-side special case
+        pendingNames.push(name)
+        pending.push(evaluateNode(supplied, ctx))
+        degenerate[name] = declared.evaluation
         break
       case 'perElement':
         throw notYet(node, name, declared, 'Phase 6')
@@ -117,7 +145,13 @@ export const resolveParams = async (
   const params: Record<string, unknown> = {}
 
   for (const [name, declared] of declarations) {
-    if (declared.evaluation === 'lazy') continue // holders never reach the body
+    if (declared.replacesNullAt !== undefined) continue // holders never reach the body
+    if (delivered.has(name)) {
+      // Delivered as a handle in pass 1: its layers run on demand, and
+      // there is no whole value here for the unset chain to test
+      params[name] = resolved[name]
+      continue
+    }
     let value = resolved[name]
 
     // 1. unset → the default chain, else absent
@@ -137,11 +171,20 @@ export const resolveParams = async (
     const holder = holders[name]
     if (holder !== undefined) value = await replaceNulls(value, declared, holder)
 
-    // 3. whole-value null policy
+    // 3. whole-value null policy. `propagate` is inert on a lazily
+    //    delivered parameter and MUST be skipped, not merely unused: it
+    //    means "resolve the node without running the body", and the body
+    //    is the thing that demands a handle. Letting it fire would make
+    //    `{ $if: [true, 'yes'] }` resolve null — the unset `else` takes
+    //    its declared default of null, which is a whole value reaching
+    //    this layer, and the node would short-circuit before the taken
+    //    branch was ever demanded. The derived reject below still applies:
+    //    a null container at a degenerating parameter is a type error
+    const lazily = declared.evaluation !== 'eager' && declared.evaluation !== 'structural'
     if (value === null) {
       if (typeNamesNull(declared.type)) {
-        const policy = effectivePolicy(node, declared, resolved)
-        if (policy === 'propagate') return { params, propagate: true }
+        if (!lazily && effectivePolicy(node, declared, resolved) === 'propagate')
+          return { params, propagate: true }
       } else if (ctx.runtimeTypeCheck) {
         throw typeError(node, name, checkType(value, declared.type))
       }
@@ -168,10 +211,141 @@ export const resolveParams = async (
     // 6. truthiness
     if (declared.truthiness) value = applyTruthiness(value, declared.type)
 
-    params[name] = value
+    // 7. the lazy family's delivery, over a value the layers have passed:
+    //    an unsupplied lazy parameter's default, and the degeneration rule
+    params[name] = wrapDelivery(value, declared, degenerate[name])
   }
 
   return { params, propagate: false }
+}
+
+// ── The lazy family: handles, and the layers they carry ─────────────
+
+/**
+ * An engine handle. `once()` is the whole of the at-most-once, shared and
+ * rejection-memoized guarantee; the brand is what the escaped-handle guard
+ * reads at the result boundary.
+ */
+const handleOf = (evaluate: () => Promise<unknown>): LazyValue => ({
+  [LAZY_HANDLE]: true,
+  evaluate: once(evaluate),
+})
+
+/** A handle over a value that already exists — the degeneration shape. */
+const settledHandle = (value: unknown): LazyValue => ({
+  [LAZY_HANDLE]: true,
+  evaluate: () => Promise.resolve(value),
+})
+
+/**
+ * A lazily-delivered whole value: evaluated on demand, then put through the
+ * same type check, constraints and truthiness an eager parameter passes
+ * before delivery. The engine's promise that a body never sees an unvetted
+ * value holds for every mode — it is only the *moment* that moves.
+ *
+ * Null policy is the one layer that cannot come along: `propagate` means
+ * "resolve the node without running the body", and by the time a handle is
+ * demanded the body is already running. Both readings coincide in practice
+ * — every holder of a lazy parameter hands a null straight back — so the
+ * setting is inert here rather than an error (ruled September 2026).
+ */
+const demand = (
+  supplied: CompiledNode,
+  node: OperatorNode,
+  name: string,
+  declared: ValidatedParameter,
+  ctx: EvaluationContext
+): LazyValue =>
+  handleOf(async () => vet(await evaluateNode(supplied, ctx), node, name, declared, ctx))
+
+const vet = (
+  value: unknown,
+  node: OperatorNode,
+  name: string,
+  declared: ValidatedParameter,
+  ctx: EvaluationContext
+): unknown => {
+  if (ctx.runtimeTypeCheck) {
+    const typed = checkType(value, declared.type)
+    if (!typed.ok) throw typeError(node, name, typed)
+    if (declared.constraints !== undefined) {
+      const constrained = checkConstraintsUnderPolicy(
+        value,
+        declared.constraints,
+        declared.elementNullPolicy !== undefined
+      )
+      if (!constrained.ok) throw typeError(node, name, constrained)
+    }
+  }
+  return declared.truthiness ? applyTruthiness(value, declared.type) : value
+}
+
+/**
+ * One element or entry of a container-lazy parameter. The declared type
+ * describes the *container* (`array`, `object`) and the language has no
+ * element-type declaration, so the only layer with anything to say here is
+ * truthiness — which is exactly the contract's note that a `race`
+ * settlement arrives already boolean where the declaration asks for it.
+ *
+ * Recorded honestly: a `homogeneous` or `elementShape` constraint needs the
+ * whole set and so goes unchecked on a *literal* container at one of these
+ * modes. `length` is checked statically against the element count, and the
+ * dynamic path below runs every constraint on the real value. No core
+ * operator declares the other two on a lazy container.
+ */
+const vetElement = (value: unknown, declared: ValidatedParameter): unknown =>
+  declared.truthiness ? isTruthy(value) : value
+
+/**
+ * Handles straight off a literal container — the authored shape the parser
+ * kept element- and entry-addressable. Returns false when the supplied node
+ * is anything else, leaving the caller to take the degeneration path.
+ */
+const containerHandles = (
+  supplied: CompiledNode,
+  declared: ValidatedParameter,
+  ctx: EvaluationContext,
+  name: string,
+  resolved: Record<string, unknown>
+): boolean => {
+  if (declared.evaluation === 'lazyElements' && supplied.kind === 'elements') {
+    resolved[name] = supplied.nodes.map((element) =>
+      handleOf(async () => vetElement(await evaluateNode(element, ctx), declared))
+    )
+    return true
+  }
+  if (declared.evaluation === 'lazyEntries' && supplied.kind === 'entries') {
+    // A vars block on the map scopes its branches, as on any plain literal
+    const scoped = pushVars(ctx, supplied.vars)
+    const entries: Record<string, LazyValue> = {}
+    for (const [key, value] of Object.entries(supplied.entries))
+      entries[key] = handleOf(async () => vetElement(await evaluateNode(value, scoped), declared))
+    resolved[name] = entries
+    return true
+  }
+  return false
+}
+
+/**
+ * The delivery a value still owes after the ordinary layers: an unsupplied
+ * lazy parameter's default, and the degeneration rule's pre-resolved
+ * handles. A parameter with nothing to owe passes through untouched.
+ */
+const wrapDelivery = (
+  value: unknown,
+  declared: ValidatedParameter,
+  degenerating: string | undefined
+): unknown => {
+  if (degenerating === 'lazyElements')
+    return (value as unknown[]).map((element) => settledHandle(vetElement(element, declared)))
+  if (degenerating === 'lazyEntries') {
+    const entries: Record<string, LazyValue> = {}
+    for (const [key, element] of Object.entries(value as Record<string, unknown>))
+      entries[key] = settledHandle(vetElement(element, declared))
+    return entries
+  }
+  if (declared.evaluation === 'lazy') return settledHandle(value)
+  return value
 }
 
 const notYet = (node: OperatorNode, name: string, declared: ValidatedParameter, phase: string) =>

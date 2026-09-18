@@ -32,9 +32,13 @@ import {
 import { lower, upper, trim, split } from './string'
 import { length } from './array'
 import { convert } from './convert'
+import { ifOperator, match, firstOf } from './logic'
 
 export const coreOperators: ValidatedOperatorDefinition[] = [
-  // Logic & control — Phase 5
+  // Logic & control — and / or / not arrive with the race delivery, 5.3
+  ifOperator,
+  match,
+  firstOf,
   // Comparison
   equal,
   notEqual,

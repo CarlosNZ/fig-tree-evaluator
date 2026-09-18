@@ -4,7 +4,7 @@
  * ("operatorDefaults" in the Options area). Rule 3 (the kill switch) is
  * Phase 10; rule 5 (vars scope) is Phase 5.
  */
-import { FigTree, FigTreeError } from '../src'
+import { defineOperator, FigTree, FigTreeError } from '../src'
 import { boomOp, echoOp, spyOp } from './fixtures/evalOperators'
 
 const rejection = async (promise: Promise<unknown>): Promise<FigTreeError> => {
@@ -107,5 +107,39 @@ describe('operatorDefaults fallback — the instance-wide catch', () => {
     expect(await fig.evaluate({ $boom: 1 })).toBe('default-fb')
     expect(await fig.evaluate({ $boom: 1, fallback: 'mine' })).toBe('mine')
     expect(fig.validate({ $boom: 1 }).timeoutShielded).toBe(true)
+  })
+})
+
+describe('engine bugs are not expression failures', () => {
+  // A fallback catches what the expression did wrong; an internal error is
+  // what the ENGINE did wrong. Without the bail, the node wrapper would
+  // wrap one into a FigTreeError, serve the author's placeholder, and the
+  // bug would be invisible — including every "lands in a later phase"
+  // branch reached from a parameter subtree.
+  const notYet = defineOperator({
+    name: 'notYet',
+    description: 'Declares a delivery mode the engine has not built',
+    parameters: {
+      input: { type: 'array' },
+      each: { type: 'any', evaluation: 'perElement', over: 'input' },
+    },
+    evaluate: () => null,
+  })
+  const fig = new FigTree({ operators: [notYet, echoOp()] })
+
+  test('an internal error cuts through the node’s own fallback', async () => {
+    const error = await rejection(
+      fig.evaluate({ $notYet: { input: [1], each: 1 }, fallback: 'masked' })
+    )
+    expect(error).not.toBeInstanceOf(FigTreeError)
+    expect(error.message).toContain('[fig-tree internal]')
+  })
+
+  test('and through an enclosing fallback too', async () => {
+    const error = await rejection(
+      fig.evaluate({ $echo: { $notYet: { input: [1], each: 1 } }, fallback: 'masked' })
+    )
+    expect(error).not.toBeInstanceOf(FigTreeError)
+    expect(error.message).toContain('[fig-tree internal]')
   })
 })

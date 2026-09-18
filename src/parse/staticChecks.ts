@@ -110,10 +110,25 @@ const visit = (state: CheckState, node: CompiledNode) => {
       popVars(state, frame)
       return
     }
+    case 'elements':
+      for (const element of node.nodes) visit(state, element)
+      return
+    case 'entries': {
+      const frame = pushVars(state, node.vars, node.path)
+      for (const value of Object.values(node.entries)) visit(state, value)
+      popVars(state, frame)
+      return
+    }
     case 'operator':
       visitOperator(state, node)
       return
   }
+  // Exhaustive by construction: a new node kind must say how it is
+  // traversed. `visit` is the only resolver of $vars / $params / $element /
+  // $index and the only builder of the vars cycle graph, so a kind that
+  // slips through loses scope checking silently — and a cycle routed
+  // through it hangs at runtime instead of failing validation.
+  return node satisfies never
 }
 
 const isCompiledNode = (value: object): value is CompiledNode =>
@@ -216,6 +231,25 @@ const checkSuppliedParam = (
           { operator: node.name, parameter: name }
         )
     }
+    return
+  }
+  // An element-addressable parameter has no whole value — not here and not
+  // at runtime, since the engine never assembles one. Its arity is known
+  // statically all the same, so the `length` constraint is checked against
+  // the element count; `homogeneous` and `elementShape` need element values
+  // and are checked per element as each is demanded (Phase 5.2).
+  if (supplied.kind === 'elements') {
+    const length = declared.constraints?.length
+    if (length !== undefined && supplied.nodes.length !== length)
+      emit(
+        state,
+        'error',
+        ErrorCodes.typeCheck,
+        `'${node.name}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
+        supplied.path,
+        supplied.order,
+        { operator: node.name, parameter: name }
+      )
     return
   }
   if (declared.evaluation === 'structural' && name !== 'as') {

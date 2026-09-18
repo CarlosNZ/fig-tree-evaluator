@@ -15,6 +15,7 @@ import type { EvaluationContext } from './context'
 import { internalError } from './internal'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
+import { pushVars } from './scope'
 
 export const evaluateNode = async (
   node: CompiledNode,
@@ -33,6 +34,11 @@ export const evaluateNode = async (
       throw internalError(
         `fragment call '${node.name}' reached evaluation — fragments land in Phase 11`
       )
+    case 'elements':
+    case 'entries':
+      throw internalError(
+        `a '${node.kind}' parameter value reached the node dispatch — parameter resolution consumes these, and nothing else may hold one`
+      )
     case 'invalid':
       throw internalError(
         'an invalid node reached evaluation — the static gate should have refused it'
@@ -41,9 +47,11 @@ export const evaluateNode = async (
 }
 
 const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Promise<unknown> => {
-  if (node.vars !== undefined)
-    throw internalError('vars scoping on plain literals lands in Phase 5')
-  const values = await Promise.all(node.holes.map((hole) => evaluateNode(hole.node, ctx)))
+  // `vars` is functional and consumed on a plain object literal, scoping
+  // the whole subtree — and the parser has already stripped the key, so
+  // the scope is all that is left to apply
+  const scoped = pushVars(ctx, node.vars)
+  const values = await Promise.all(node.holes.map((hole) => evaluateNode(hole.node, scoped)))
   return splice(node.skeleton, node.holes, values)
 }
 

@@ -20,21 +20,34 @@ import type { CompiledNode, OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
 import { createOperatorContext, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
+import { isInternalError } from './internal'
 import { resolveParams } from './params'
+import { pushVars } from './scope'
 
 export const evaluateOperator = async (
   node: OperatorNode,
   ctx: EvaluationContext
 ): Promise<unknown> => {
+  // One scope over both the attempt and the fallback: rule 5 — a fallback
+  // evaluates in its node's own scope, so the node's vars are visible to
+  // it, memoized rejections included
+  const scoped = pushVars(ctx, node.vars)
   try {
-    return await attempt(node, ctx)
+    return await attempt(node, scoped)
   } catch (error) {
+    // An engine bug is not an expression failure — it cuts through the
+    // fallback process untouched rather than being served back to the
+    // caller as the author's placeholder
+    if (isInternalError(error)) throw error
     const failure = wrapFailure(error, node)
     const fallback = fallbackOf(node)
     if (fallback === undefined) throw failure
     try {
-      return fallback.kind === 'constant' ? fallback.value : await evaluateNode(fallback.node, ctx)
+      return fallback.kind === 'constant'
+        ? fallback.value
+        : await evaluateNode(fallback.node, scoped)
     } catch (fallbackError) {
+      if (isInternalError(fallbackError)) throw fallbackError
       const wrapped = wrapFailure(fallbackError, node)
       if (wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped

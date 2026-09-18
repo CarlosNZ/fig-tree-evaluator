@@ -109,6 +109,8 @@ import type {
   ArtifactHole,
   CompiledNode,
   ConstantNode,
+  ElementsNode,
+  EntriesNode,
   FragmentCallNode,
   NodePath,
   OperatorNode,
@@ -241,8 +243,16 @@ const walk = (state: WalkState, raw: unknown, path: NodePath, depth: number): Co
 
   const node = compileValue(state, raw, path, depth, order)
   // nodeCount is the evaluable-node count (obligation B4): the nodes
-  // evaluation visits. Constants and skeletons are structure around them.
-  if (node.kind !== 'constant' && node.kind !== 'skeleton') state.nodeCount++
+  // evaluation visits. Named positively, so a new node kind is structure
+  // until it is deliberately counted — constants, skeletons and the
+  // element/entry parameter shapes are all structure around the work.
+  if (
+    node.kind === 'operator' ||
+    node.kind === 'fragmentCall' ||
+    node.kind === 'reference' ||
+    node.kind === 'invalid'
+  )
+    state.nodeCount++
   return node
 }
 
@@ -630,32 +640,60 @@ const finalizeParams = (
 
   for (const entry of pending) {
     if (perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, depth)
+    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
   }
   if (frame !== undefined) state.renamedBindings.push(frame)
   for (const entry of pending) {
     if (!perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, depth)
+    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
   }
   if (frame !== undefined) state.renamedBindings.pop()
 }
 
-const walkPending = (state: WalkState, entry: PendingParam, depth: number): CompiledNode => {
+/** The delivery mode declared for a parameter, when it is a declared one. */
+const mode = (
+  definition: RegistryEntry['definition'],
+  name: string
+): string | undefined => definition.parameters[name]?.evaluation
+
+const walkPending = (
+  state: WalkState,
+  entry: PendingParam,
+  evaluation: string | undefined,
+  depth: number
+): CompiledNode => {
+  // The element- and entry-addressable modes keep a literal payload out of
+  // the enclosing skeleton, whose maximal holes cannot express "one
+  // demandable unit per element". Both return null when the supplied value
+  // is not the literal shape, leaving the ordinary walk to compile it and
+  // the runtime degeneration rule to hand the body pre-resolved handles.
+  if (evaluation === 'lazyElements' || evaluation === 'race') {
+    const elements = walkElementsParam(state, entry, depth)
+    if (elements !== null) return elements
+  }
+  if (evaluation === 'lazyEntries') {
+    const entries = walkEntriesParam(state, entry, depth)
+    if (entries !== null) return entries
+  }
   if (entry.kind === 'value') return walk(state, entry.value, entry.path, depth + 1)
-  // The synthetic container the slice compiles to takes its `order` before
-  // its elements walk: it is their parent, and `order` is a preorder
-  // position (obligation A3) — the sort key the issue stream relies on.
-  const order = state.order++
-  const children = entry.elements.map((element, j) => ({
-    key: j as string | number,
-    rawChild: element === undefined ? null : element,
-    node: walk(
-      state,
-      element === undefined ? null : element,
-      [...entry.basePath, entry.offset + j],
-      depth + 1
-    ),
-  }))
+  return walkSlice(state, entry, depth)
+}
+
+/**
+ * A rest-slice payload as an ordinary container. The synthetic container
+ * takes its `order` before its elements walk — it is their parent, and
+ * `order` is a preorder position (obligation A3), the sort key the issue
+ * stream relies on — and occupies a depth level of its own, so an
+ * expression measures the same `maxDepth` through its shorthand face as
+ * through its canonical one.
+ */
+const walkSlice = (
+  state: WalkState,
+  entry: Extract<PendingParam, { kind: 'slice' }>,
+  depth: number
+): CompiledNode => {
+  const { order, containerDepth } = openSynthetic(state, depth)
+  const children = sliceChildren(state, entry.elements, entry.basePath, entry.offset, containerDepth)
   const changed = entry.elements.some((element) => element === undefined)
   return assembleContainer(
     state,
@@ -667,6 +705,108 @@ const walkPending = (state: WalkState, entry: PendingParam, depth: number): Comp
     entry.basePath,
     order
   )
+}
+
+/** Take a synthetic container's preorder position and its depth level. */
+const openSynthetic = (state: WalkState, depth: number): { order: number; containerDepth: number } => {
+  const order = state.order++
+  const containerDepth = depth + 1
+  if (containerDepth > state.maxDepth) state.maxDepth = containerDepth
+  return { order, containerDepth }
+}
+
+const sliceChildren = (
+  state: WalkState,
+  elements: unknown[],
+  basePath: NodePath,
+  offset: number,
+  containerDepth: number
+): ContainerEntry[] =>
+  elements.map((element, j) => ({
+    key: j as string | number,
+    rawChild: element === undefined ? null : element,
+    node: walk(
+      state,
+      element === undefined ? null : element,
+      [...basePath, offset + j],
+      containerDepth + 1
+    ),
+  }))
+
+/**
+ * A `lazyElements` / `race` parameter supplied as a literal array: one
+ * compiled node per element, indexed by position in `nodes` (the
+ * parameter-relative index the body's ordering obligations are about —
+ * never the authored path's tail, which a leading positional shifts).
+ *
+ * An all-constant array falls through to ordinary assembly, yielding a
+ * ConstantNode: the runtime degeneration rule turns it back into handles,
+ * and it stays visible to `validate` hooks, which see constant parameters
+ * only — that is what keeps the dead-expression warnings on `{ $and: [] }`
+ * and `{ $firstOf: [] }` working.
+ */
+const walkElementsParam = (
+  state: WalkState,
+  entry: PendingParam,
+  depth: number
+): CompiledNode | null => {
+  const raw = entry.kind === 'slice' ? entry.elements : entry.value
+  if (!Array.isArray(raw)) return null
+  const basePath = entry.kind === 'slice' ? entry.basePath : entry.path
+  const offset = entry.kind === 'slice' ? entry.offset : 0
+
+  const { order, containerDepth } = openSynthetic(state, depth)
+  const children = sliceChildren(state, raw, basePath, offset, containerDepth)
+
+  if (children.every((child) => child.node.kind === 'constant')) {
+    const changed = raw.some((element) => element === undefined)
+    return assembleContainer(state, raw, children, true, changed, undefined, basePath, order)
+  }
+  const node: ElementsNode = {
+    kind: 'elements',
+    nodes: children.map((child) => child.node),
+    path: basePath,
+    order,
+  }
+  return node
+}
+
+/**
+ * A `lazyEntries` parameter supplied as a literal map: static keys mapping
+ * to individually-demandable expressions. The literal-vs-dynamic decision
+ * is the standard node classification, so a map that reads as a node takes
+ * the dynamic face instead — which is what makes a branch key named
+ * `operator` the loud malformed-node error the passes record, and a
+ * single-`$name` map a shorthand node. Key handling is shared with every
+ * other plain object: `//` stripped, `undefined` values dropped, a `vars`
+ * block consumed and carried, stray `$name` keys warned.
+ */
+const walkEntriesParam = (
+  state: WalkState,
+  entry: PendingParam,
+  depth: number
+): CompiledNode | null => {
+  if (entry.kind !== 'value') return null
+  const raw = entry.value
+  if (!isPlainDataObject(raw) || classifiesAsNode(state, raw)) return null
+
+  const { order, containerDepth } = openSynthetic(state, depth)
+  const { entries, vars, changed } = collectPlainObject(
+    state,
+    raw,
+    entry.path,
+    containerDepth,
+    order
+  )
+
+  if (entries.every((child) => child.node.kind === 'constant'))
+    return assembleContainer(state, raw, entries, false, changed, vars, entry.path, order)
+
+  const compiled: Record<string, CompiledNode> = {}
+  for (const { key, node } of entries) compiled[String(key)] = node
+  const node: EntriesNode = { kind: 'entries', entries: compiled, path: entry.path, order }
+  if (vars !== undefined) node.vars = vars
+  return node
 }
 
 /**
@@ -1150,6 +1290,23 @@ const walkPlainObject = (
   depth: number,
   order: number
 ): CompiledNode => {
+  const { entries, vars, changed } = collectPlainObject(state, raw, path, depth, order)
+  return assembleContainer(state, raw, entries, false, changed, vars, path, order)
+}
+
+/**
+ * The plain-object walk, short of assembly: consumed keys stripped, stray
+ * `$name` keys warned, every remaining value compiled. Shared with the
+ * `lazyEntries` parameter path, so a branch map's keys obey exactly the
+ * rules every other plain object's keys obey.
+ */
+const collectPlainObject = (
+  state: WalkState,
+  raw: Record<string, unknown>,
+  path: NodePath,
+  depth: number,
+  order: number
+): { entries: ContainerEntry[]; vars?: Record<string, CompiledNode>; changed: boolean } => {
   let vars: Record<string, CompiledNode> | undefined
   let changed = false
   const entries: ContainerEntry[] = []
@@ -1186,7 +1343,7 @@ const walkPlainObject = (
     }
     entries.push({ key, rawChild: value, node: walk(state, value, [...path, key], depth + 1) })
   }
-  return assembleContainer(state, raw, entries, false, changed, vars, path, order)
+  return { entries, vars, changed }
 }
 
 // ── Container assembly: constancy, skeleton, holes ──────────────────
@@ -1255,7 +1412,13 @@ const assembleContainer = (
 
 const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
   if (root.kind === 'constant') return []
-  if (root.kind === 'skeleton' && root.vars === undefined)
+  // A plain-literal root shields per hole, each embedded expression
+  // declaring its own static fallback (fallback rule 3). A `vars` block on
+  // that root does not change the accounting: on a timeout no hole is
+  // demanded, so no var is ever evaluated, and the constant skeleton
+  // splices around the holes exactly as it would without one. The scope
+  // itself stays on the root node, which is where evaluation reads it.
+  if (root.kind === 'skeleton')
     return root.holes.map((hole) => ({
       path: hole.path,
       node: hole.node,
