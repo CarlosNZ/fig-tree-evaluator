@@ -310,7 +310,7 @@ describe('truthiness delivery (ledger #4)', () => {
   })
 })
 
-describe('delivery modes in Phase 4', () => {
+describe('delivery modes', () => {
   test('structural parameters arrive as their literal value', async () => {
     const spy = spyOp('struct', {
       input: { type: 'array' },
@@ -320,8 +320,30 @@ describe('delivery modes in Phase 4', () => {
     expect(spy.calls).toEqual([{ input: [1], as: 'row' }])
   })
 
-  test('a plain lazy parameter (no replacesNullAt) is not yet supported — loud, not silent', async () => {
+  test('a plain lazy parameter arrives as a handle, not a value', async () => {
     const spy = spyOp('lazyish', { branch: { type: 'any', evaluation: 'lazy' } })
-    await expect(figWith([spy]).evaluate({ $lazyish: { branch: 1 } })).rejects.toThrow(/Phase 5/)
+    await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
+    const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
+    expect(typeof branch.evaluate).toBe('function')
+  })
+
+  test('a handle demanded after its body returned is refused, not honoured', async () => {
+    // The node's abort scope closes when the body settles, so a handle kept
+    // past that point evaluates nothing — the runtime half of the rule the
+    // escaped-handle guard enforces at the boundary
+    const spy = spyOp('lazyish', { branch: { type: 'any', evaluation: 'lazy' } })
+    await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
+    const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
+    await expect(branch.evaluate()).rejects.toThrow(/cancelled/)
+  })
+
+  test('a mode the engine has not built is loud, not silent', async () => {
+    const spy = spyOp('iterish', {
+      input: { type: 'array' },
+      each: { type: 'any', evaluation: 'perElement', over: 'input' },
+    })
+    await expect(
+      figWith([spy]).evaluate({ $iterish: { input: [1], each: 1 } })
+    ).rejects.toThrow(/Phase 6/)
   })
 })

@@ -33,6 +33,8 @@
     "test": "jest",
     "test:v2": "jest --config jest.v2.config.js",
     "generate": "tsx codegen/buildOperatorAliasReference.ts",
+    "generate:operators": "tsx codegen/buildOperatorReference.ts",
+    "artifacts:fetch": "node codegen/fetchArtifacts.mjs",
     "generateMassiveQuery": "tsx codegen/generateMassiveQuery.ts",
     "getVersion": "tsx codegen/getVersion.ts",
     "lint": "eslint .",

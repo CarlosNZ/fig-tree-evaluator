@@ -642,6 +642,9 @@ export const defineOperator = <const P extends ParameterDeclarations>(
     description: def.description,
     parameters: validatedParameters,
     restParam,
+    deliversLazily: Object.values(validatedParameters).some(
+      (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
+    ),
     timeoutParam: def.timeoutParam ?? null,
     useCache: def.useCache ?? false,
     cache: def.cache ?? 'auto',

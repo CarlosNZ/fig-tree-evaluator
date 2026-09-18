@@ -48,3 +48,19 @@ test('an operatorDefaults modifier fallback counts as a static fallback', () => 
   // The same expression on the plain instance is unshielded
   expect(fig.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(false)
 })
+
+test('a vars block on a plain-literal root does not un-shield it', () => {
+  // Phase-5 correction: the root skeleton was treated as a single hole when
+  // it carried vars, and a skeleton has no fallback of its own — so an
+  // expression whose every hole was shielded reported false
+  const shared = {
+    vars: { base: 'https://api.example.com' },
+    offers: { $http: { url: '$vars.base' }, fallback: [] },
+    banner: { $http: { url: '$vars.base' }, fallback: 'none' },
+  }
+  expect(fig.validate(shared).timeoutShielded).toBe(true)
+
+  // Still all-or-nothing, vars or not
+  const partial = { ...shared, banner: { $http: { url: '$vars.base' } } }
+  expect(fig.validate(partial).timeoutShielded).toBe(false)
+})

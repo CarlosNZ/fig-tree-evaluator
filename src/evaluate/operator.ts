@@ -18,27 +18,63 @@ import { ErrorCodes } from '../errorCodes'
 import { isOperatorFailure } from '../OperatorFailure'
 import type { CompiledNode, OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
-import { createOperatorContext, type EvaluationContext } from './context'
+import { childScope, createOperatorContext, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
+import { isCancellation, isInternalError } from './internal'
 import { resolveParams } from './params'
+import { pushVars } from './scope'
 
 export const evaluateOperator = async (
   node: OperatorNode,
   ctx: EvaluationContext
 ): Promise<unknown> => {
+  // One scope over both the attempt and the fallback: rule 5 — a fallback
+  // evaluates in its node's own scope, so the node's vars are visible to
+  // it, memoized rejections included
+  const scoped = pushVars(ctx, node.vars)
+  // The ABORT scope is deliberately narrower than the vars scope: it covers
+  // the attempt only. A fallback runs *after* the body settled, so a
+  // fallback evaluated under this node's own signal would be refused at its
+  // first node boundary
+  const scope = node.entry.definition.deliversLazily ? childScope(scoped.signal) : undefined
+  const attempted = scope === undefined ? scoped : { ...scoped, signal: scope.signal }
   try {
-    return await attempt(node, ctx)
+    return await attemptScoped(node, attempted, scope)
   } catch (error) {
+    // Neither an engine bug nor a cancellation is an expression failure:
+    // both cut through the fallback process untouched, rather than being
+    // served back to the caller as the author's placeholder
+    if (isInternalError(error) || isCancellation(error)) throw error
     const failure = wrapFailure(error, node)
     const fallback = fallbackOf(node)
     if (fallback === undefined) throw failure
     try {
-      return fallback.kind === 'constant' ? fallback.value : await evaluateNode(fallback.node, ctx)
+      return fallback.kind === 'constant'
+        ? fallback.value
+        : await evaluateNode(fallback.node, scoped)
     } catch (fallbackError) {
+      if (isInternalError(fallbackError)) throw fallbackError
       const wrapped = wrapFailure(fallbackError, node)
       if (wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped
     }
+  }
+}
+
+/**
+ * Settle the node's abort scope the moment the body settles, not when the
+ * whole wrapper returns — a fallback evaluating afterwards must not be
+ * caught by the abort that ended the attempt.
+ */
+const attemptScoped = async (
+  node: OperatorNode,
+  ctx: EvaluationContext,
+  scope: { settle: () => void } | undefined
+): Promise<unknown> => {
+  try {
+    return await attempt(node, ctx)
+  } finally {
+    scope?.settle()
   }
 }
 

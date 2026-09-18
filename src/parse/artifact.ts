@@ -138,6 +138,47 @@ export interface SkeletonHole {
 }
 
 /**
+ * An element-addressable parameter value: the compiled nodes of a literal
+ * array supplied to a `lazyElements` or `race` parameter, kept whole
+ * rather than flattened into a skeleton. Those modes hand the body one
+ * individually-demandable handle per element, which a skeleton's maximal
+ * holes cannot express — a partly-constant element dissolves into the
+ * enclosing shape and stops being a node at all.
+ *
+ * Only ever a parameter value: never a root, never a container child, and
+ * never dispatched by `evaluateNode` (resolveParams consumes it). Built
+ * only when at least one element is non-constant — an all-constant literal
+ * stays a ConstantNode and reaches the body through the degeneration rule,
+ * which is what keeps literal arrays visible to `validate` hooks (they see
+ * constant parameters only).
+ *
+ * An element's index is its position in `nodes`, which is
+ * parameter-relative. It is not derivable from the element's `path`: a
+ * positional payload that bound leading parameters before the rest slice
+ * shifts every authored index, and the body's index-ordered obligations
+ * (race's lowest-index failure rule) are about the parameter.
+ */
+export interface ElementsNode extends CompiledBase {
+  kind: 'elements'
+  nodes: CompiledNode[]
+}
+
+/**
+ * An entry-addressable parameter value: the compiled values of a literal
+ * object supplied to a `lazyEntries` parameter — static data keys mapping
+ * to individually-demandable expressions. The shape `match`'s branch map
+ * needs, and the same shape a `vars` block compiles to.
+ *
+ * The same placement and construction rules as ElementsNode.
+ */
+export interface EntriesNode extends CompiledBase {
+  kind: 'entries'
+  entries: Record<string, CompiledNode>
+  /** A vars block on the map, consumed as on any plain object literal. */
+  vars?: Record<string, CompiledNode>
+}
+
+/**
  * A subtree whose grammar failed (malformed node, unknown operator) — the
  * error-severity issue is already in the stream; this placeholder keeps the
  * artifact well-formed. Classified evaluable, never constant: a malformed
@@ -150,7 +191,14 @@ export interface InvalidNode extends CompiledBase {
 }
 
 export type CompiledNode =
-  ConstantNode | ReferenceNode | OperatorNode | FragmentCallNode | SkeletonNode | InvalidNode
+  | ConstantNode
+  | ReferenceNode
+  | OperatorNode
+  | FragmentCallNode
+  | SkeletonNode
+  | ElementsNode
+  | EntriesNode
+  | InvalidNode
 
 /**
  * A top-level hole: a maximal evaluable node (A2). `staticFallback` is the

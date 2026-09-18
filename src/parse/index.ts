@@ -18,6 +18,8 @@ export type {
   ArtifactHole,
   CompiledNode,
   ConstantNode,
+  ElementsNode,
+  EntriesNode,
   FragmentCallNode,
   InvalidNode,
   NodePath,

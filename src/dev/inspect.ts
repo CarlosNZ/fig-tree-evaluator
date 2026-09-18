@@ -136,6 +136,10 @@ const describeNode = (node: CompiledNode): string => {
       const holes = `${node.holes.length} hole${node.holes.length === 1 ? '' : 's'}`
       return `skeleton  ${holes}  shape: ${renderSkeleton(node.skeleton, node.holes)}`
     }
+    case 'elements':
+      return `elements  ${node.nodes.length} element${node.nodes.length === 1 ? '' : 's'}`
+    case 'entries':
+      return `entries   ${Object.keys(node.entries).join(', ')}`
     case 'invalid':
       return `invalid   ${preview(node.raw)}`
   }
@@ -164,7 +168,17 @@ const childrenOf = (node: CompiledNode): Child[] => {
   if (node.kind === 'skeleton')
     for (const hole of node.holes)
       children.push({ label: `at ${renderPath(hole.at)}`, node: hole.node })
-  if (node.kind === 'operator' || node.kind === 'fragmentCall' || node.kind === 'skeleton')
+  if (node.kind === 'elements')
+    node.nodes.forEach((element, i) => children.push({ label: `[${i}]`, node: element }))
+  if (node.kind === 'entries')
+    for (const [key, value] of Object.entries(node.entries))
+      children.push({ label: key, node: value })
+  if (
+    node.kind === 'operator' ||
+    node.kind === 'fragmentCall' ||
+    node.kind === 'skeleton' ||
+    node.kind === 'entries'
+  )
     if (node.vars !== undefined)
       for (const [name, definition] of Object.entries(node.vars))
         children.push({ label: `vars.${name}`, node: definition })

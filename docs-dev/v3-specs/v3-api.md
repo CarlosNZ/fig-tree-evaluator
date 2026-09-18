@@ -52,7 +52,7 @@ interface FigTreeOptions {
   graphQL?: { endpoint?: string; headers?: Record<string, string> }
 
   // ── Reference semantics ────────────────────────────────
-  strictDataPaths?: boolean // default false: missing $data path resolves to null; true: throws
+  strictDataPaths?: boolean // default false: a missing reference path resolves to null; true: throws
 
   // ── Resource limits ────────────────────────────────────
   maxDepth?: number  // structural, enforced at parse/validate
@@ -231,12 +231,18 @@ The rule that shaped the math batch, and pre-answers every future "why not one o
 
 | v3 | Alias | vs v2 | Notes |
 |---|---|---|---|
-| `and` | — | **Kept** (AND) | drops `&`, `&&` |
-| `or` | — | **Kept** (OR) | drops `\|`, `\|\|` |
+| `and` | — *(open — see below)* | **Kept** (AND) | drops `&`, `&&` |
+| `or` | — *(open — see below)* | **Kept** (OR) | drops `\|`, `\|\|` |
 | `not` | `!` | **New** | `!` is reassigned — it meant NOT_EQUAL in v2 |
 | `if` | `?` | **Modified** (CONDITIONAL) | new canonical name (v2 had only `?` / `conditional` / `ifThen`) |
 | `match` | — | **Kept** (MATCH) | drops `switch` |
 | `firstOf` | — | **New** | first non-null (SQL's `COALESCE`, renamed per rule 0 — README + `description` metadata keep the SQL name for searchability); the essential companion to null-on-missing `$data` references |
+
+**Raised and parked (September 2026, Carl, at Phase-5 implementation): should `and` / `or` get a symbolic alias after all?** The rows above record an outcome but not an argument, so the question was re-opened and answered. What naming rule 2 bars is what v2 shipped — `&` *and* `&&`, `|` *and* `||`, two aliases apiece — so both pairs died together rather than by any judgement about symbols for these two operators.
+
+**Parked: they stay alias-free.** Three reasons, in the order they carry weight. (1) *Reversibility* — adding an alias after 1.0 is non-breaking, removing one is breaking, so alias-free is the direction that can be undone if real usage asks. (2) *The symbol set is not "one each"* — `+ - * / ^ = != > >= < <=` is mathematical notation, `?` the ternary, `!` negation: thirteen marks borrowed from one coherent tradition, granted to operators that *have* a universally recognised one. `match` and `firstOf` are alias-free for the same reason, so `and` / `or` are not anomalous, which is where the consistency argument was thought to lie. (3) *Rule 0* — `and` and `or` are already the shortest, plainest words available, and the audience the rule names is config authors rather than programmers.
+
+Recorded for whoever reopens it: the one strong argument *for* a symbol is frequency — boolean composition is the most common thing in real config logic — and it points at **`&&` / `||`, not `&` / `|`**. In the tradition the symbols are borrowed from, the single characters are *bitwise*; using them for logical and/or mis-borrows exactly the distinction the doubled forms exist to make. Rule 2 bars having two aliases, not a two-character one. Flipping this touches the alias count in "The canonical list", rule 2's permitted set, these two rows, the definitions and one converter line.
 
 #### Comparison
 
@@ -406,6 +412,8 @@ The converter maps all of these mechanically, but human muscle memory won't — 
 | `$params.…` | `$p` | the parameters supplied by this fragment's caller | use outside a fragment body, or naming an undeclared parameter = **registration/validation error** |
 | `$element` | `$e` | the innermost enclosing iterator (current element; supports path drilling) | use outside an iterator = **validation error** |
 | `$index` | `$i` | the innermost enclosing iterator (current index; bare only) | use outside an iterator = **validation error** |
+
+**`strictDataPaths` governs every namespace's drill, not only `$data`** (ruled September 2026, Carl, at Phase-5 implementation). Drilling into a `$vars` result — and, when they arrive, into `$element` and `$params` — obeys the same rule: a miss is `null`, unless the option turns it into an ordinary, fallback-catchable runtime failure. The reasoning is the assessment's own ranking of the three typo mitigations for null-on-missing: checking paths against a schema or sample data **at authoring time** is the strongest, and it is available for `$data` alone — a var, element or param holds the output of the author's own expression, which no schema describes and `getDependencies()` cannot enumerate. So the runtime throw is the only protection those namespaces can have, which argues for extending it rather than withholding it. Half the hazard is already gone for them regardless: an unresolvable *name* (`$vars.typo`) is a hard validation error, which `$data.typo` can never be — only the drill is exposed. *Follow-up: the option name and the error code `missing-data-path` now both under-describe their scope; renaming (`strictPaths` / `missing-path`) is cheap while v3 is unreleased.*
 
 Naming notes: `$params` is plural for consistency with `$vars`; `$element`/`$index` were chosen over v2-assessment's `$item` (which would have collided with `$index` over the `$i` alias). Every namespace has exactly one single-character alias; like operator symbols, aliases normalize to the canonical form at parse — the canonical AST only ever contains `$data.…` etc. The distinction between recognized-but-unresolvable (error) and unrecognized (inert) is deliberate: `$vars`/`$params`/`$element`/`$index` resolution is statically known, so failures there are authoring errors; `$typo.x` might just be data.
 

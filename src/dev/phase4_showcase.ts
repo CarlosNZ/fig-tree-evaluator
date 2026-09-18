@@ -11,6 +11,28 @@ import { FigTree, defineOperator, OperatorFailure, isFigTreeError } from '../ind
 
 const fig = new FigTree({ data: { org: 'Acme' } })
 
+/**
+ * JSON for reading: compact while it fits on a line, pretty-printed when it
+ * does not, with every line after the first aligned to `pad`.
+ *
+ * The threshold is WIDTH, not nesting depth — measured against these two
+ * files' own expressions, depth turned out not to discriminate. An operator
+ * call with an array payload is already depth 2, so anything with one
+ * operator inside another is depth 4 before it has said anything: a depth
+ * rule expands `{"$or":[{"$work":["slow",200]},{"$work":["quick",5]}]}`
+ * into sixteen lines, and still misses the 110-character node beside it.
+ * Depth is forced by the notation here; width tracks how much there is to
+ * read.
+ */
+const WIDTH = 80
+
+const block = (value: unknown, pad = '      '): string => {
+  const compact = JSON.stringify(value)
+  if (compact === undefined) return String(value)
+  if (compact.length <= WIDTH) return compact
+  return JSON.stringify(value, null, 2).split('\n').join(`\n${pad}`)
+}
+
 const show = async (
   label: string,
   expression: unknown,
@@ -19,14 +41,12 @@ const show = async (
 ) => {
   try {
     const result = await instance.evaluate(expression, options)
-    console.log(
-      `  ${label}\n      ${JSON.stringify(expression)}\n    → ${JSON.stringify(result)}\n`
-    )
+    console.log(`  ${label}\n      ${block(expression)}\n    → ${block(result)}\n`)
   } catch (error) {
     const detail = isFigTreeError(error)
       ? `${error.code}${error.operator ? ` (${error.operator})` : ''} at ${JSON.stringify(error.path)}: ${error.message}`
       : String(error)
-    console.log(`  ${label}\n      ${JSON.stringify(expression)}\n    ✗ ${detail}\n`)
+    console.log(`  ${label}\n      ${block(expression)}\n    ✗ ${detail}\n`)
   }
 }
 

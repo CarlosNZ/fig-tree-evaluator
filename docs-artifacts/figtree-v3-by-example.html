@@ -1,0 +1,1418 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>FigTree v3 by Example</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #F3F5F0;
+    --surface:     #FFFFFF;
+    --code-bg:     #FBFCFA;
+    --ink:         #171B15;
+    --muted:       #5C6656;
+    --faint:       #8A937F;
+    --line:        #DCE1D6;
+    --line-soft:   #E8EBE4;
+
+    --fig:         #8A2C56;
+    --fig-soft:    #F5E6ED;
+    --leaf:        #33684A;
+    --leaf-soft:   #E4EEE6;
+    --amber:       #8A5A0E;
+    --amber-soft:  #F6EDDC;
+    --slate:       #345574;
+
+    --code-punct:  #78826F;
+    --code-str:    #4C5647;
+
+    --shadow:      0 1px 2px rgba(23, 27, 21, .05), 0 8px 24px -16px rgba(23, 27, 21, .22);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:     #121510;
+      --surface:    #1A1E17;
+      --code-bg:    #15190F;
+      --ink:        #E7EBE1;
+      --muted:      #9BA592;
+      --faint:      #77816E;
+      --line:       #2C3227;
+      --line-soft:  #242A20;
+
+      --fig:        #EE93B7;
+      --fig-soft:   #331A25;
+      --leaf:       #7DC791;
+      --leaf-soft:  #17291C;
+      --amber:      #DCA751;
+      --amber-soft: #2B2314;
+      --slate:      #93B7D9;
+
+      --code-punct: #79856F;
+      --code-str:   #B3BCA9;
+
+      --shadow:     0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:     #121510;
+    --surface:    #1A1E17;
+    --code-bg:    #15190F;
+    --ink:        #E7EBE1;
+    --muted:      #9BA592;
+    --faint:      #77816E;
+    --line:       #2C3227;
+    --line-soft:  #242A20;
+
+    --fig:        #EE93B7;
+    --fig-soft:   #331A25;
+    --leaf:       #7DC791;
+    --leaf-soft:  #17291C;
+    --amber:      #DCA751;
+    --amber-soft: #2B2314;
+    --slate:      #93B7D9;
+
+    --code-punct: #79856F;
+    --code-str:   #B3BCA9;
+
+    --shadow:     0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 0 96px;
+  }
+
+  .prose { max-width: 66ch; }
+
+  h1, h2, h3, h4, .num, .chip, .plabel, .eyebrow {
+    font-family: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  h1 {
+    font-size: clamp(2.1rem, 6vw, 3.2rem);
+    font-weight: 700;
+    letter-spacing: -.028em;
+    line-height: 1.04;
+    margin: 0 0 .5rem;
+    text-wrap: balance;
+  }
+
+  h2 {
+    font-size: clamp(1.35rem, 3.3vw, 1.75rem);
+    font-weight: 600;
+    letter-spacing: -.018em;
+    line-height: 1.16;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  h3 {
+    font-size: 1.03rem;
+    font-weight: 600;
+    letter-spacing: -.008em;
+    margin: 0 0 .5rem;
+  }
+
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+
+  a { color: var(--fig); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+  .eyebrow {
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* -- masthead ---------------------------------------- */
+
+  header.masthead {
+    padding-block: 72px 44px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 44px;
+  }
+
+  .lede {
+    font-size: 1.16rem;
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 1.1rem 0 0;
+  }
+
+  .standfirst {
+    margin-top: 1.7rem;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line-soft);
+    font-size: .93rem;
+    color: var(--faint);
+    max-width: 68ch;
+    line-height: 1.55;
+  }
+
+  /* -- primer ------------------------------------------- */
+
+  .primer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 40px;
+  }
+
+  .primer > div {
+    background: var(--surface);
+    padding: 20px 22px 22px;
+  }
+
+  .primer h3 { color: var(--ink); }
+  .primer p { font-size: .93rem; color: var(--muted); line-height: 1.55; }
+
+  /* -- legend ------------------------------------------- */
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 22px;
+    align-items: baseline;
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 52px;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    font-size: .76rem;
+  }
+
+  .legend b {
+    font-weight: 600;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: .68rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-right: 4px;
+  }
+
+  .legend span em { font-style: normal; color: var(--faint); }
+
+  /* -- ladder contents ---------------------------------- */
+
+  .ladder { margin-bottom: 64px; }
+
+  .ladder ol {
+    list-style: none;
+    margin: 18px 0 0;
+    padding: 0;
+    border-top: 1px solid var(--line-soft);
+  }
+
+  .ladder li {
+    display: grid;
+    grid-template-columns: 2.6rem 1fr;
+    gap: 4px 14px;
+    padding: 11px 2px;
+    border-bottom: 1px solid var(--line-soft);
+    align-items: baseline;
+  }
+
+  .ladder .r {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .8rem;
+    color: var(--fig);
+    font-weight: 500;
+  }
+
+  .ladder a { color: var(--ink); text-decoration: none; font-weight: 600; font-size: .98rem; }
+  .ladder a:hover { color: var(--fig); }
+  .ladder .g {
+    grid-column: 2;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: .74rem;
+    color: var(--faint);
+    line-height: 1.5;
+  }
+
+  /* -- rungs -------------------------------------------- */
+
+  .rung { padding-block: 0 72px; scroll-margin-top: 16px; }
+
+  .rung-head {
+    display: grid;
+    grid-template-columns: 4.2rem 1fr;
+    gap: 0 18px;
+    align-items: start;
+    padding-top: 26px;
+    border-top: 2px solid var(--ink);
+    margin-bottom: 24px;
+  }
+
+  .num {
+    font-size: clamp(2.4rem, 7vw, 3.4rem);
+    font-weight: 700;
+    line-height: .82;
+    color: var(--fig);
+    letter-spacing: -.04em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rung-head .sub {
+    margin: .55rem 0 0;
+    color: var(--muted);
+    font-size: 1.02rem;
+    max-width: 62ch;
+  }
+
+  .chips {
+    grid-column: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 14px;
+  }
+
+  .chip {
+    font-size: .7rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+    padding: 3px 9px;
+    border-radius: 2px;
+    background: var(--fig-soft);
+    color: var(--fig);
+    white-space: nowrap;
+  }
+
+  .rung-body { display: flex; flex-direction: column; gap: 22px; }
+
+  /* -- panels ------------------------------------------- */
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .plabel {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    padding: 9px 16px;
+    font-size: .66rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line-soft);
+    background: var(--surface);
+  }
+
+  .plabel .note {
+    font-family: "Source Serif 4", serif;
+    font-size: .8rem;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 400;
+    color: var(--faint);
+  }
+
+  .panel[data-role="data"]   .plabel { color: var(--slate); }
+  .panel[data-role="expr"]   .plabel { color: var(--fig); }
+  .panel[data-role="result"] .plabel { color: var(--leaf); }
+  .panel[data-role="setup"]  .plabel { color: var(--amber); }
+
+  .panel[data-role="result"] { border-color: color-mix(in srgb, var(--leaf) 26%, var(--line)); }
+
+  pre {
+    margin: 0;
+    padding: 16px 18px 18px;
+    overflow-x: auto;
+    background: var(--code-bg);
+  }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .795rem;
+    line-height: 1.72;
+    color: var(--code-punct);
+    white-space: pre;
+    tab-size: 2;
+  }
+
+  p code, li code, td code, .legend code {
+    white-space: normal;
+    font-size: .82em;
+    color: var(--ink);
+    background: var(--line-soft);
+    padding: .08em .34em;
+    border-radius: 2px;
+  }
+
+  /* token classes */
+  .tk-op   { color: var(--fig);   font-weight: 600; }
+  .tk-ref  { color: var(--leaf); }
+  .tk-tok  { color: var(--leaf); font-weight: 600; }
+  .tk-res  { color: var(--amber); font-weight: 500; }
+  .tk-key  { color: var(--ink); }
+  .tk-str  { color: var(--code-str); }
+  .tk-lit  { color: var(--slate); }
+  .tk-kw   { color: var(--muted); font-weight: 600; }
+  .tk-com  { color: var(--faint); font-style: italic; }
+
+  /* -- notes -------------------------------------------- */
+
+  .notes { margin: 4px 0 0; padding: 0; list-style: none; max-width: 72ch; }
+
+  .notes li {
+    position: relative;
+    padding-left: 20px;
+    margin-bottom: .78rem;
+    font-size: .955rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .notes li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: .66em;
+    width: 9px;
+    height: 1px;
+    background: var(--fig);
+  }
+
+  .notes li:last-child { margin-bottom: 0; }
+  .notes strong { color: var(--ink); font-weight: 600; }
+
+  /* -- tables ------------------------------------------- */
+
+  .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 3px; background: var(--surface); }
+
+  table { border-collapse: collapse; width: 100%; font-size: .87rem; }
+
+  th {
+    text-align: left;
+    font-family: "Bricolage Grotesque", sans-serif;
+    font-size: .66rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--faint);
+    font-weight: 600;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--muted);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: 0; }
+  td:first-child { color: var(--ink); white-space: nowrap; }
+
+  /* -- aside -------------------------------------------- */
+
+  .aside {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 14px 18px;
+    border-radius: 0 3px 3px 0;
+    font-size: .93rem;
+    color: var(--muted);
+    max-width: 74ch;
+  }
+
+  .aside strong { color: var(--ink); }
+
+  /* -- closing ------------------------------------------ */
+
+  .sheet { padding-top: 26px; border-top: 2px solid var(--ink); }
+
+  .sheet-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 22px;
+    margin-top: 26px;
+  }
+
+  .sheet-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 18px 20px 20px;
+  }
+
+  .sheet-card h3 {
+    color: var(--faint);
+    font-size: .66rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .sheet-card ul { margin: 0; padding-left: 18px; }
+  .sheet-card li { font-size: .9rem; color: var(--muted); margin-bottom: .5rem; line-height: 1.55; }
+  .sheet-card li:last-child { margin-bottom: 0; }
+
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; font-size: .86rem; }
+  .kv dt { font-family: "IBM Plex Mono", monospace; font-size: .8rem; color: var(--leaf); }
+  .kv dd { margin: 0; color: var(--muted); }
+
+  footer.colophon {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: .84rem;
+    color: var(--faint);
+    max-width: 72ch;
+  }
+
+  @media (max-width: 560px) {
+    body { font-size: 16px; }
+    .rung-head { grid-template-columns: 1fr; gap: 6px; }
+    .chips { grid-column: 1; }
+    .ladder li { grid-template-columns: 2.2rem 1fr; }
+    code { font-size: .74rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+
+  :focus-visible { outline: 2px solid var(--fig); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">FigTree v3 &middot; specification companion</p>
+    <h1>FigTree v3 by Example</h1>
+    <p class="lede">Nine expressions, each one step harder than the last &#8212; from reading a name out of a form to evaluating a whole dashboard config with per-hole degradation and a shielded timeout.</p>
+    <p class="standfirst">Every expression here follows the <strong>Agreed</strong> areas of the v3 spec: operator and parameter names, the shorthand grammar, reference namespaces, the reserved-key set and the null policy. Following the working docs' own convention: <em>behaviours are binding, encodings are illustrative</em> &#8212; result values and which errors occur are the spec; issue codes, error message wording and HTTP response bodies are dressed for the page.</p>
+  </header>
+
+  <section class="prose" style="margin-bottom:30px">
+    <h2>Three rules, then the ladder</h2>
+  </section>
+
+  <div class="primer">
+    <div>
+      <h3>An expression is any JSON</h3>
+      <p><code>fig.evaluate(config, { data })</code> walks the whole value. Recognised nodes evaluate in place; everything else passes through untouched. Deep evaluation is the only semantics &#8212; there is no shallow mode and no second method.</p>
+    </div>
+    <div>
+      <h3><code>$</code> has exactly two jobs</h3>
+      <p>In <strong>key</strong> position it invokes an operator or fragment: <code>{ $if: &#8230; }</code>. In <strong>string-value</strong> position it reads a named scope: <code>'$data.user.name'</code>. Any other <code>$</code> is inert data that <code>validate()</code> warns about.</p>
+    </div>
+    <div>
+      <h3>Every node has two faces</h3>
+      <p>Canonical <code>{ operator: 'if', condition, then, else }</code> and shorthand <code>{ $if: [c, t, e] }</code>. An array payload is positional, a plain object is named, anything else is one argument. Shorthand normalises away at parse.</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <b>Colour</b>
+    <span class="tk-op">$operator</span><span><em>invokes</em></span>
+    <span class="tk-ref">'$data.path'</span><span><em>reads</em></span>
+    <span class="tk-res">fallback</span><span><em>reserved key</em></span>
+    <span class="tk-str">'plain'</span><span><em>value</em></span>
+  </div>
+
+  <section class="ladder prose">
+    <p class="eyebrow">The ladder</p>
+    <ol>
+      <li><span class="r">01</span><a href="#r1">Read a value, render a sentence</a><span class="g">references &middot; buildString &middot; the three faces</span></li>
+      <li><span class="r">02</span><a href="#r2">Decide something</a><span class="g">if &middot; comparisons &middot; symbol aliases &middot; lazy branches</span></li>
+      <li><span class="r">03</span><a href="#r3">When the data isn't there</a><span class="g">firstOf &middot; missingPathDefault &middot; fallback &middot; literal roots</span></li>
+      <li><span class="r">04</span><a href="#r4">More than two ways to go</a><span class="g">match &middot; branch keys &middot; lookup tables</span></li>
+      <li><span class="r">05</span><a href="#r5">Work on a list</a><span class="g">map / filter / some &middot; $element &middot; [*] projection &middot; join</span></li>
+      <li><span class="r">06</span><a href="#r6">Name the repeated thing</a><span class="g">vars &middot; lazy memoisation &middot; // comments</span></li>
+      <li><span class="r">07</span><a href="#r7">Reach outside the config</a><span class="g">http &middot; returnPath &middot; registration &middot; caching</span></li>
+      <li><span class="r">08</span><a href="#r8">Package a pattern</a><span class="g">fragments &middot; $params &middot; registration-time validation</span></li>
+      <li><span class="r">09</span><a href="#r9">Run a whole config, safely</a><span class="g">report mode &middot; validate() &middot; timeout shielding</span></li>
+    </ol>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 1 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r1">
+    <div class="rung-head">
+      <div class="num">01</div>
+      <div>
+        <h2>Read a value, render a sentence</h2>
+        <p class="sub">The smallest useful expression: pull a couple of fields out of the evaluation data and render them into text.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">$data references</span>
+        <span class="chip">buildString</span>
+        <span class="chip">shorthand vs canonical</span>
+        <span class="chip">null renders empty</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="data">
+        <div class="plabel">Data</div>
+        <pre><code>{
+  user: { firstName: 'Steve', lastName: 'Rogers', title: 'The First Avenger' },
+  organisation: { name: 'The Avengers' },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression <span class="note">the one-liner &#8212; reference tokens, no substitutions object at all</span></div>
+        <pre><code>{ $buildString: 'Hello {{$d.user.firstName}} &#8212; {{$d.user.title}}, {{$d.organisation.name}}' }</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result</div>
+        <pre><code>'Hello Steve &#8212; The First Avenger, The Avengers'</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Same operator, other two faces</div>
+        <pre><code>// positional: an array payload maps onto ['template', '...substitutions']
+{ $buildString: ['%1 %2', '$data.user.firstName', '$data.user.lastName'] }
+// &#8594; 'Steve Rogers'
+
+// canonical + named substitutions: an object payload means named tokens
+{
+  operator: 'buildString',
+  template: 'Dear {{first}} {{last}}',
+  substitutions: { first: '$data.user.firstName', last: '$data.user.lastName' },
+}
+// &#8594; 'Dear Steve Rogers'</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>One operator, three faces.</strong> The <code>$name</code> key is shorthand; its payload type picks the calling convention &#8212; array is positional, plain object is named, anything else is a single argument. Parse normalises all of it into the canonical form, so tooling and the evaluator only ever see <code>{ operator: 'buildString', &#8230; }</code>.</li>
+        <li><strong>Two token styles, one per payload shape.</strong> <code>%1</code>-style tokens pair with an array; <code>{{name}}</code>-style tokens pair with an object. A token whose body is itself a reference &#8212; <code>{{$d.user.title}}</code> &#8212; <em>is</em> that reference, so the one-liner needs no substitutions at all. <code>$d</code> is the alias for <code>$data</code>; both normalise to <code>$data</code>.</li>
+        <li><strong>A missing path is <code>null</code>, and <code>buildString</code> renders <code>null</code> as the empty string.</strong> <code>{{$d.user.middleName}}</code> produces nothing &#8212; never the text <code>"null"</code>. Absence is not failure.</li>
+        <li><strong>An unbound token renders itself.</strong> <code>'%3'</code> with two substitutions comes out as the literal text <code>%3</code>: the end user sees slightly odd output and keeps working, the admin they report it to sees exactly what is wrong &#8212; and <code>validate()</code> flagged it at authoring time, with a renumber hint.</li>
+        <li>Reference tokens are recognised in <strong>literal templates only</strong>. A template arriving from <code>$data</code> or an API is runtime data and is never scanned for references &#8212; it can never mint itself a data read.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 2 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r2">
+    <div class="rung-head">
+      <div class="num">02</div>
+      <div>
+        <h2>Decide something</h2>
+        <p class="sub">A cinema's entry rule: the filmgoer must meet the film's age rating &#8212; unless a parent is with them, in which case 13 is enough.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">if</span>
+        <span class="chip">greaterThanOrEqual</span>
+        <span class="chip">symbol aliases</span>
+        <span class="chip">lazy branches</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="data">
+        <div class="plabel">Data</div>
+        <pre><code>{
+  film:   { title: 'Deadpool &amp; Wolverine', minAgeRating: 17 },
+  patron: { age: 12, isParentAttending: true },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression</div>
+        <pre><code>{
+  $if: {
+    condition: '$data.patron.isParentAttending',
+    then: { $greaterThanOrEqual: ['$data.patron.age', 13] },
+    else: { $greaterThanOrEqual: ['$data.patron.age', '$data.film.minAgeRating'] },
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">a parent is attending, but 12 is still under 13</span></div>
+        <pre><code>false</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">The same rule, terse <span class="note">every alias is symbolic; there are thirteen in total</span></div>
+        <pre><code>{
+  '$?': [
+    '$d.patron.isParentAttending',
+    { '$&gt;=': ['$d.patron.age', 13] },
+    { '$&gt;=': ['$d.patron.age', '$d.film.minAgeRating'] },
+  ],
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Exactly one branch evaluates.</strong> <code>then</code> and <code>else</code> are lazy parameters &#8212; declared in metadata, not hand-rolled &#8212; so a branch holding an HTTP call never fires when the condition goes the other way. The same laziness governs <code>match</code> branches, <code>vars</code> and fragment arguments.</li>
+        <li><strong><code>else</code> is optional, and omitting it means <code>null</code>.</strong> That is success-with-null, not failure: a <code>fallback</code> will not stand in for a missing <code>else</code>, because <code>fallback</code> catches failures only. "Value when the condition isn't met" is precisely what <code>else</code> is for.</li>
+        <li><strong>Comparisons take exactly two operands</strong>, both numbers or both strings &#8212; no implicit coercion anywhere in v3. <code>greaterThan</code> is strictly greater; <code>greaterThanOrEqual</code> is its own operator rather than a <code>strict: false</code> flag.</li>
+        <li>A <code>null</code> operand <strong>propagates</strong>: the comparison resolves to <code>null</code>, which reads falsy in the condition above. Where absence must be distinguished from a real comparison, test for it &#8212; <code>{ $notEqual: ['$data.patron.age', null] }</code>.</li>
+        <li>Word aliases are gone. Canonical names are camelCase and exact-match: <code>$If</code>, <code>PLUS</code> and <code>not_equal</code> are unknown-operator errors, caught at parse.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 3 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r3">
+    <div class="rung-head">
+      <div class="num">03</div>
+      <div>
+        <h2>When the data isn't there</h2>
+        <p class="sub">A profile card assembled from patchy data. Note the root: it is an ordinary object with expressions embedded in it, not a single node.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">plain-literal root</span>
+        <span class="chip">firstOf</span>
+        <span class="chip">get + missingPathDefault</span>
+        <span class="chip">fallback</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="data">
+        <div class="plabel">Data <span class="note">no nickname key at all; phone is a stored null</span></div>
+        <pre><code>{
+  user: { name: 'Mohini', phone: null, prefs: { locale: 'en-NZ' } },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression</div>
+        <pre><code>{
+  card: 'profile',
+  displayName: { $firstOf: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
+  contact: { $buildString: 'Phone: {{$d.user.phone}}' },
+  timezone: { $get: { path: 'user.prefs.timezone', missingPathDefault: 'Pacific/Auckland' } },
+  locale: '$data.user.prefs.locale',
+  avatar: {
+    $http: 'https://api.example.com/avatar/mohini',
+    fallback: 'https://cdn.example.com/avatar/default.png',
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">the avatar API is returning 503</span></div>
+        <pre><code>{
+  card: 'profile',
+  displayName: 'Mohini',
+  contact: 'Phone: ',
+  timezone: 'Pacific/Auckland',
+  locale: 'en-NZ',
+  avatar: 'https://cdn.example.com/avatar/default.png',
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="setup">
+        <div class="plabel">Three tools, three different triggers</div>
+        <pre><code>'$data.user.x'                              // &#8594; null. The everyday read.
+{ $firstOf: [a, b, 'default'] }             // fires on null OR missing
+{ $get: { path: 'a.b', missingPathDefault: 'x' } }  // fires on a MISSING path only
+{ &#8230;, fallback: 'x' }                        // fires when the node actually FAILED</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Absence is not failure.</strong> A missing <code>$data</code> path resolves to <code>null</code> and composes onward; only an operation that genuinely broke &#8212; a 503, a type miss, a division by zero &#8212; is a failure, and only failures reach <code>fallback</code>. Everything above hangs off that one distinction.</li>
+        <li><strong><code>user.phone</code> is a genuine stored <code>null</code></strong>, which is why <code>missingPathDefault</code> would <em>not</em> fire on it &#8212; that parameter triggers on a missing path only, preserving the null/missing distinction that a bare reference deliberately erases. <code>firstOf</code> treats both the same.</li>
+        <li><strong><code>firstOf</code> evaluates candidates in order and stops.</strong> The sequencing is semantics, not optimisation: a backup HTTP call placed second must not fire when the first candidate answered. It skips <em>only</em> <code>null</code> &#8212; <code>""</code>, <code>0</code> and <code>false</code> are answers.</li>
+        <li><strong><code>card</code> is a constant and <code>locale</code> is a bare reference.</strong> Constant subtrees are classified at parse and returned by identity &#8212; there is no traversal cost per evaluation. A reference is a value, not a node, so it carries no modifiers: for a default, use <code>get</code> or <code>firstOf</code>.</li>
+        <li>Shorthand nodes may carry reserved sibling keys &#8212; <code>{ $http: '&#8230;', fallback: &#8230; }</code> is legal, and so are <code>useCache</code>, <code>vars</code> and <code>//</code>. Any <em>other</em> sibling key is a hard parse error.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 4 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r4">
+    <div class="rung-head">
+      <div class="num">04</div>
+      <div>
+        <h2>More than two ways to go</h2>
+        <p class="sub">A card-game recommender: branch on player count, then on preferred difficulty. <code>match</code> is how a decision tree stays readable past the second <code>if</code>.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">match</span>
+        <span class="chip">branch keys are strings</span>
+        <span class="chip">lazy branches</span>
+        <span class="chip">dynamic lookup tables</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="data">
+        <div class="plabel">Data</div>
+        <pre><code>{ numberOfPlayers: 3, ageOfYoungestPlayer: 12, preferredDifficulty: 'easy' }</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression</div>
+        <pre><code>{
+  $match: {
+    value: '$data.numberOfPlayers',
+    branches: {
+      1: 'Solitaire',
+      2: { $if: [{ $lessThan: ['$data.ageOfYoungestPlayer', 10] }, 'Go Fish', 'Cribbage'] },
+    },
+    default: {
+      $match: {
+        value: '$data.preferredDifficulty',
+        branches: { easy: 'Uno', challenging: '500' },
+        default: 'Cheat',
+      },
+    },
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">3 players matches no branch &#8594; default &#8594; 'easy'</span></div>
+        <pre><code>'Uno'</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">The other mode <span class="note">a computed branch map &#8212; the everyday lookup table</span></div>
+        <pre><code>{
+  $match: {
+    value: '$data.status',
+    branches: '$data.statusLabels',   // evaluated whole, eagerly; the matched value returns verbatim
+    default: 'Unknown',
+  },
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Matching is by canonical string form.</strong> Branch keys are JSON object keys, so they are always strings: the number <code>1</code> matches the key <code>"1"</code>, <code>true</code> matches <code>"true"</code>. A <code>null</code> match value matches no branch and falls through to <code>default</code>.</li>
+        <li><strong>Only the matched branch evaluates.</strong> The other branches are structure, not work &#8212; the compiled node holds each branch as a deferred handle, and constant branches are pre-resolved.</li>
+        <li><strong>No match and no <code>default</code> is a runtime failure</strong>, catchable by <code>fallback</code> like any other. v2's magic <code>fallback</code> key <em>inside</em> the branch map is gone; the default branch is a declared parameter now.</li>
+        <li><strong>Branches live in their own parameter.</strong> v2 let branch values hang off the node as flat keys, which meant a branch called <code>"operator"</code> resolved to the node's own property. In v3 the map is parameter data &#8212; though a <em>literal</em> map whose keys collide with the node grammar (<code>operator</code>, <code>fragment</code>) fails loudly at parse. Supply such a map dynamically instead; a built object's keys are runtime data and are never classified.</li>
+        <li>Mode is decided <strong>statically at parse</strong> &#8212; a plain object is the branch map, a node or reference supplies the map at runtime &#8212; so <code>validate()</code> and the editor always know which they are looking at, and can badge the dynamic ones.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 5 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r5">
+    <div class="rung-head">
+      <div class="num">05</div>
+      <div>
+        <h2>Work on a list</h2>
+        <p class="sub">A picking slip from an order. Iteration is first-class in v3 &#8212; the gap that v2 filled host-side with custom functions.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">[*] projection</span>
+        <span class="chip">map / filter / some</span>
+        <span class="chip">$element &middot; $index</span>
+        <span class="chip">join &middot; length &middot; arithmetic</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="data">
+        <div class="plabel">Data</div>
+        <pre><code>{
+  order: {
+    id: 'A-1042',
+    lines: [
+      { sku: 'FIG-01', name: 'Fig sapling',    qty: 2, unitPrice: 24.95 },
+      { sku: 'POT-11', name: 'Terracotta pot', qty: 2, unitPrice: 18.5 },
+      { sku: 'GLV-02', name: 'Pruning gloves', qty: 0, unitPrice: 12 },
+    ],
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression</div>
+        <pre><code>{
+  reference: '$data.order.id',
+  allSkus: '$data.order.lines[*].sku',
+  itemCount: { $length: { $filter: ['$data.order.lines', { $greaterThan: ['$element.qty', 0] }] } },
+  summary: {
+    $join: {
+      values: {
+        $map: {
+          input: { $filter: ['$data.order.lines', { $greaterThan: ['$element.qty', 0] }] },
+          each: { $buildString: '{{$e.qty}} &#215; {{$e.name}}' },
+        },
+      },
+      delimiter: '; ',
+    },
+  },
+  total: {
+    $round: [
+      { $plus: { $map: ['$data.order.lines', { $multiply: ['$element.qty', '$element.unitPrice'] }] } },
+      2,
+    ],
+  },
+  anyBackordered: { $some: ['$data.order.lines', { $equal: ['$element.qty', 0] }] },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result</div>
+        <pre><code>{
+  reference: 'A-1042',
+  allSkus: ['FIG-01', 'POT-11', 'GLV-02'],
+  itemCount: 2,
+  summary: '2 &#215; Fig sapling; 2 &#215; Terracotta pot',
+  total: 86.9,
+  anyBackordered: true,
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong><code>[*]</code> is a projection segment in the shared path grammar</strong> &#8212; it belongs to references, <code>get.path</code> and <code>returnPath</code> alike. <code>lines[*].sku</code> applies the rest of the path to every element and collects the results in order. Without it, <code>lines.sku</code> is an honest miss: <code>name</code> is not a key of an array. v2 projected implicitly; v3 makes you write it.</li>
+        <li><strong>Inside <code>each</code>, <code>$element</code> and <code>$index</code> name the current element and position</strong> (aliases <code>$e</code> and <code>$i</code>; <code>$index</code> is zero-based, bare only). Nest iterators and name the outer one &#8212; <code>as: 'order'</code> binds <code>$order</code> and <code>$orderIndex</code> and turns off <code>$element</code> for that iterator, so there is one way to refer to each thing.</li>
+        <li><strong>Elements evaluate in parallel, always.</strong> <code>map</code> and <code>filter</code> need every element; <code>find</code>, <code>some</code> and <code>every</code> resolve at the first decider and cancel the rest. A failure the decision does not depend on is discarded with the cancelled work.</li>
+        <li><strong>Empty input never errors</strong>: <code>map</code>/<code>filter</code> &#8594; <code>[]</code>, <code>some</code> &#8594; <code>false</code>, <code>every</code> &#8594; <code>true</code>, <code>find</code> &#8594; <code>null</code>. A <em>null</em> input is a different matter &#8212; that's a runtime type error, and the softener is <code>nullInputDefault: []</code>, opt-in per node or host-wide via <code>operatorDefaults</code>.</li>
+        <li><strong>A node can supply a whole array parameter.</strong> <code>{ $plus: { $map: [&#8230;] } }</code> is a single non-array payload, which binds the rest parameter dynamically &#8212; that's how the line totals get summed without an intermediate.</li>
+        <li>The filter is written twice. Rung 06 fixes that.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 6 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r6">
+    <div class="rung-head">
+      <div class="num">06</div>
+      <div>
+        <h2>Name the repeated thing</h2>
+        <p class="sub">The same picking slip with a <code>vars</code> block &#8212; and a comment, which is legal anywhere in an authored expression.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">vars on a plain literal</span>
+        <span class="chip">$vars &middot; $v</span>
+        <span class="chip">lazy + memoised</span>
+        <span class="chip">// comments</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression <span class="note">same data as rung 05</span></div>
+        <pre><code>{
+  '//': 'Picking-slip block. Backordered lines are excluded &#8212; see CONF-412.',
+  vars: {
+    picked: { $filter: ['$data.order.lines', { $greaterThan: ['$element.qty', 0] }] },
+  },
+  reference: '$data.order.id',
+  itemCount: { $length: '$vars.picked' },
+  firstSku: '$vars.picked[0].sku',
+  summary: {
+    $join: {
+      values: { $map: ['$v.picked', { $buildString: '{{$e.qty}} &#215; {{$e.name}}' }] },
+      delimiter: '; ',
+    },
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">both vars and // are consumed &#8212; neither appears in the output</span></div>
+        <pre><code>{
+  reference: 'A-1042',
+  itemCount: 2,
+  firstSku: 'FIG-01',
+  summary: '2 &#215; Fig sapling; 2 &#215; Terracotta pot',
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong><code>vars</code> is functional on a plain object literal</strong>, not only on nodes. That is what makes the whole-config case work: with no identity operator to hang a block on, and no wish to nest every config under a <code>$let</code>-style wrapper, the block goes directly on the object it scopes. The key is consumed and never appears in the output.</li>
+        <li><strong>Lazy and memoised.</strong> <code>picked</code> evaluates at most once per scope instance per evaluation, on first reference &#8212; three references, one filter. A var referenced only inside a branch that never runs never evaluates at all, so a var holding an HTTP call costs nothing on the paths that don't need it. Parallel branches share the one in-flight evaluation.</li>
+        <li><strong>Lexical, and drillable.</strong> A var is visible to its object and every descendant, and you can path into its result &#8212; <code>'$vars.picked[0].sku'</code>, or <code>'$vars.country[0].name.common'</code> for an API record. v2's alias nodes could do neither.</li>
+        <li><strong>Fragment bodies are sealed.</strong> A fragment called from inside this scope sees its own <code>vars</code> and its <code>$params</code> &#8212; never the caller's. Pass what it needs as arguments.</li>
+        <li><strong><code>//</code> is a comment key</strong>, legal on nodes, inside <code>vars</code> and <code>parameters</code> maps, and on plain data objects. Its value is any JSON, never parsed or evaluated, and stripped everywhere at parse. One per object, since JSON keys are unique.</li>
+        <li>Var names are plain identifiers with no <code>$</code> prefix, so they cannot collide with operators, fragments or data keys. Cycles are a validation error; shadowing an outer name is legal but draws a warning, as does declaring a var nothing references.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 7 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r7">
+    <div class="rung-head">
+      <div class="num">07</div>
+      <div>
+        <h2>Reach outside the config</h2>
+        <p class="sub">The classic dependent dropdown: pick a country, get its cities. The list comes from an online database, and the field still has to render when that call fails.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">http</span>
+        <span class="chip">returnPath</span>
+        <span class="chip">visible wiring</span>
+        <span class="chip">result caching</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="setup">
+        <div class="plabel">Instance</div>
+        <pre><code>import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
+
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators()],   // no argument &#8594; FetchClient over global fetch
+  data: { api: 'https://countriesnow.space/api/v0.1' },
+  cache: { maxSize: 200 },
+})</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Expression</div>
+        <pre><code>{
+  vars: {
+    cities: {
+      $http: {
+        url: { $buildString: '{{$d.api}}/countries/cities' },
+        method: 'post',
+        body: { country: '$data.form.country' },
+        returnPath: 'data',
+        timeout: 4000,
+      },
+      fallback: ['Loading&#8230;'],
+    },
+  },
+  label: { $buildString: 'Cities in {{$d.form.country}}' },
+  options: '$vars.cities',
+  count: { $length: '$vars.cities' },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">evaluated with { data: { form: { country: 'India' } } }</span></div>
+        <pre><code>{
+  label: 'Cities in India',
+  options: ['Abohar', 'Abrama', 'Achalpur', 'Achhnera', '&#8230;'],
+  count: 4176,
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>I/O operators exist only when they are registered.</strong> On an instance without <code>httpOperators()</code>, <code>{ $http: &#8230; }</code> is an unknown-operator error at parse &#8212; the author's toolchain catches it, not the end user's runtime. There is no ambient network capability: v2's silent browser <code>fetch</code> fallback is gone, and the convenience survives one level down, in <code>FetchClient()</code> itself.</li>
+        <li><strong><code>returnPath</code> uses the shared path grammar</strong>, <code>[*]</code> included. <code>returnPath: 'data[*].name'</code> would project one field out of a list of objects with no <code>map</code> &#8212; which is what v2's single-key-object collapse was reaching for, without dispatching on how many columns happened to come back.</li>
+        <li><strong>Caching keys on the resolved request.</strong> <code>useCache</code> defaults to <code>true</code> for I/O operators; the key is built from the effective request, not the authored spelling, so switching country forks the entry naturally and re-evaluating with the same country makes no call. The stored value is the <em>whole</em> response &#8212; <code>returnPath</code> applies after the cache.</li>
+        <li><strong>Two timeouts, deliberately different.</strong> <code>timeout</code> on the node is a per-request limit whose expiry is an ordinary runtime failure, so the node's own <code>fallback</code> catches it &#8212; the network-flakiness guard, applied per node. The <code>timeout</code> <em>option</em> is a hard bound on the whole evaluation; that's rung 09.</li>
+        <li><strong>The fallback is an array because the consumer is a dropdown.</strong> Only the author knows both the right placeholder and its <em>type</em> &#8212; options degrade to a list, a label to a string. That is exactly why degradation lives in the expression rather than in options.</li>
+        <li>Nulls at the wire follow the target: a JSON body, <code>graphQL.variables</code> and <code>sql</code> bind values carry <code>null</code> through; a URL query parameter or header with a null value has its pair omitted, which gives the optional-filter idiom for free.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 8 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r8">
+    <div class="rung-head">
+      <div class="num">08</div>
+      <div>
+        <h2>Package a pattern</h2>
+        <p class="sub">A fragment is a named, parameterised expression registered on the instance &#8212; the unit of reuse for config authors who are not writing code.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">fragments</span>
+        <span class="chip">$params</span>
+        <span class="chip">registration-time validation</span>
+        <span class="chip">segments-array paths</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="setup">
+        <div class="plabel">Registration <span class="note">the body is compiled and validated here, not at first call</span></div>
+        <pre><code>const fig = new FigTree({
+  operators: [coreOperators, httpOperators()],
+  fragments: {
+    countryField: {
+      description: 'One field from the restcountries record for a country',
+      parameters: {
+        country: { type: 'string' },                 // required: no default, no required: false
+        field: { type: 'string', default: 'region' },
+      },
+      expression: {
+        $http: {
+          url: {
+            $buildString: [
+              'https://restcountries.com/v3.1/name/%1?fields=%2',
+              '$params.country',
+              '$params.field',
+            ],
+          },
+          returnPath: [0, '$params.field'],           // segments array: numbers index, strings are keys
+        },
+        fallback: null,
+      },
+      metadata: { backgroundColor: '#B2E0FF' },       // opaque &#8212; the engine never reads it
+    },
+  },
+})</code></pre>
+      </div>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">Call sites <span class="note">named arguments only &#8212; fragments have no positional form</span></div>
+        <pre><code>{
+  region: { $countryField: { country: 'New Zealand' } },
+  population: { $countryField: { country: '$data.form.country', field: 'population' } },
+  capital: {
+    fragment: 'countryField',
+    parameters: { country: '$data.form.country', field: 'capital' },
+    fallback: 'unknown',
+  },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Result <span class="note">evaluated with { data: { form: { country: 'Fiji' } } }</span></div>
+        <pre><code>{
+  region: 'Oceania',
+  population: 896444,
+  capital: ['Suva'],
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Registration is the fragment's parse moment.</strong> An unknown operator in the body, an undeclared <code>$params</code> reference, a malformed node, a type-invalid default or a cycle throws from <code>new FigTree()</code> &#8212; not from the first evaluation that happens to call it. If registration succeeds, a call can only fail for data-dependent reasons.</li>
+        <li><strong>Arguments are lazy, memoised per call, and evaluated in the <em>caller's</em> scope</strong> &#8212; <code>parameters: { country: '$vars.c' }</code> reads the caller's vars. The body is sealed: it sees argument results through <code>$params</code> and nothing else. An argument referenced only in a branch that never runs never evaluates.</li>
+        <li><strong>A parameter is required unless it declares a <code>default</code> or <code>required: false</code></strong> &#8212; and those are not synonyms. Optional-without-default is coherent: <code>$params.x</code> yields <code>null</code>, exactly like a missing data path, and composes down the same null gradient. A computed default is written in the body with <code>firstOf</code>, since a declared <code>default</code> is a constant, visible to tooling and never evaluated.</li>
+        <li><strong><code>parameters</code> can also be one node.</strong> <code>parameters: '$data.formResponses'</code> hands over the whole arguments object at runtime &#8212; a form response or a database row already shaped correctly. Signature checks move to runtime for that mode, and extra keys are ignored.</li>
+        <li><strong>Recursion is banned.</strong> A fragment that transitively reaches itself is a registration error, guarded recursion included &#8212; FigTree is a config-logic sandbox, and admitting recursion means depth budgets and a halting story.</li>
+        <li>When composition isn't enough, <code>defineOperator()</code> is the other extension point: a custom operator registers through the same <code>operators</code> array into the same namespace and is invoked exactly like a built-in &#8212; <code>{ $clamp: [x, 0, 100] }</code>. v2's <code>customFunctions</code> tier, and its dynamically-computed function names, are gone. <em>(The operator contract is still Draft.)</em></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; 9 &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="rung" id="r9">
+    <div class="rung-head">
+      <div class="num">09</div>
+      <div>
+        <h2>Run a whole config, safely</h2>
+        <p class="sub">The capstone: an ops dashboard evaluated as one config object, checked before it ever sees data, then run in report mode with something genuinely broken &#8212; and finally given a deadline it can survive.</p>
+      </div>
+      <div class="chips">
+        <span class="chip">validate()</span>
+        <span class="chip">mode: 'report'</span>
+        <span class="chip">per-hole degradation</span>
+        <span class="chip">timeout shielding</span>
+      </div>
+    </div>
+
+    <div class="rung-body">
+      <div class="panel" data-role="expr">
+        <div class="plabel">The config <span class="note">with one deliberate authoring slip</span></div>
+        <pre><code>const dashboard = {
+  '//': 'Ops dashboard &#8212; evaluated server-side on every page load.',
+  meta: { schemaVersion: 3, renderer: 'dash@3.0' },
+  header: { $buildString: ['Good %1, %2', '$data.partOfDay'] },
+  quota: {
+    $round: [{ $multiply: [{ $divide: ['$data.usage.used', '$data.usage.limit'] }, 100] }, 1],
+  },
+  incidents: {
+    $http: { url: 'https://status.example.com/api/incidents', returnPath: 'items[*].title' },
+    fallback: [],
+  },
+}</code></pre>
+      </div>
+
+      <h3 style="margin:8px 0 0">Beat one &#8212; check it before the data exists</h3>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">fig.validate(dashboard) <span class="note">synchronous, no I/O &#8212; an editor can run this at keystroke rate</span></div>
+        <pre><code>{
+  valid: false,
+  issues: [
+    {
+      severity: 'error',
+      code: 'unbound-token',
+      path: ['header'],
+      operator: 'buildString',
+      parameter: 'template',
+      message: "Template token '%2' has no substitution &#8212; 1 supplied. Did you mean '%1'?",
+    },
+  ],
+  timeoutShielded: false,
+}</code></pre>
+      </div>
+
+      <h3 style="margin:8px 0 0">Beat two &#8212; fix the template, then run it against hostile data</h3>
+
+      <div class="panel" data-role="data">
+        <div class="plabel">Data <span class="note">usage.limit is zero; the status API is down</span></div>
+        <pre><code>// header is now: { $buildString: 'Good {{$d.partOfDay}}, {{$d.user.first}}' }
+
+const data = { partOfDay: 'evening', user: { first: 'Ada' }, usage: { used: 812, limit: 0 } }</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">await fig.evaluate(dashboard, { data, mode: 'report' })</div>
+        <pre><code>{
+  result: {
+    meta: { schemaVersion: 3, renderer: 'dash@3.0' },   // constant subtree &#8212; returned by identity
+    header: 'Good evening, Ada',
+    quota: null,                                        // degraded: nothing caught the failure
+    incidents: [],                                      // the node's own fallback caught the 503
+  },
+  errors: [
+    FigTreeError {
+      code: 'operator-failure',
+      operator: 'divide',
+      path: ['quota', '$round', 0, '$multiply', 0],     // the failing node, as authored
+      holePath: ['quota'],                              // the unit that degraded to null
+      message: 'divide &#8211; division by zero',
+    },
+  ],
+}</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>Report mode never throws, and degradation is per hole.</strong> Each maximal evaluable node in the config degrades independently &#8212; <code>header</code> and <code>incidents</code> are untouched by <code>quota</code>'s failure, and the constant <code>meta</code> subtree never entered the evaluation at all.</li>
+        <li><strong><code>incidents</code> produced no error.</strong> Its <code>fallback</code> caught the 503, which is the path the author designed; only <em>uncaught</em> failures are reported. Caught fallbacks are visible through <code>trace: true</code>, which is the channel for "what actually happened".</li>
+        <li><strong>Two paths per error.</strong> <code>path</code> points at the node that failed, deep inside the expression as authored; <code>holePath</code> points at the unit that degraded to <code>null</code>. A failure inside a fragment body carries both ends of that pointer instead &#8212; <code>path</code> for the call site, <code>fragment</code> + <code>fragmentPath</code> for the location in the body.</li>
+        <li><strong><code>errors</code> is in deterministic tree order</strong>, not completion order. The same call in throw mode would reject with whichever uncaught failure occurred first &#8212; and discard the three healthy values along with it.</li>
+      </ul>
+
+      <h3 style="margin:8px 0 0">Beat three &#8212; give every hole a static fallback</h3>
+
+      <div class="panel" data-role="expr">
+        <div class="plabel">The shielded config</div>
+        <pre><code>const dashboard = {
+  '//': 'Ops dashboard &#8212; evaluated server-side on every page load.',
+  meta: { schemaVersion: 3, renderer: 'dash@3.0' },
+  header: { $buildString: 'Good {{$d.partOfDay}}, {{$d.user.first}}', fallback: 'Welcome' },
+  quota: { $round: [{ $multiply: [{ $divide: [&#8230;] }, 100] }, 1], fallback: null },
+  incidents: { $http: { &#8230; }, fallback: [] },
+}</code></pre>
+      </div>
+
+      <div class="panel" data-role="result">
+        <div class="plabel">Badge, then a deadline it survives</div>
+        <pre><code>fig.validate(dashboard)
+// &#8594; { valid: true, issues: [], timeoutShielded: true }
+
+await fig.evaluate(dashboard, { data, timeout: 50 })
+// returns &#8212; in THROW mode, without throwing:
+// { meta: {&#8230;}, header: 'Good evening, Ada', quota: null, incidents: [] }</code></pre>
+      </div>
+
+      <ul class="notes">
+        <li><strong>An expression is timeout-shielded iff every hole carries a statically constant <code>fallback</code>.</strong> On the deadline, holes that finished contribute their real values, unfinished holes contribute their static fallbacks, and the constant skeleton is spliced around them. No expression work of any kind runs past the deadline, so the bound holds exactly.</li>
+        <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that <code>validate()</code> can badge it. Unshielded, a timeout throws regardless of how many holes happened to finish.</li>
+        <li><strong>The badge is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. Watch for <code>timeoutShielded</code> flipping to <code>false</code>.</li>
+        <li><strong><code>signal</code> is never shaped by a fallback.</strong> A timeout is the expression's problem to degrade around; an abort means the caller cancelled and nobody is waiting.</li>
+        <li><code>validate()</code> warms the parse cache as a side effect, so a host that validates at config-save time gets its first <code>evaluate()</code> pre-parsed for free. There is no public parse or compile method &#8212; this is the only pre-warm anyone needs.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; cheat sheet &#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552;&#9552; -->
+  <section class="sheet">
+    <p class="eyebrow">Reference</p>
+    <h2>The grammar in one screen</h2>
+
+    <div class="sheet-grid">
+      <div class="sheet-card">
+        <h3>Reference namespaces</h3>
+        <dl class="kv">
+          <dt>$data &#183; $d</dt><dd>merged evaluation data; missing &#8594; <code>null</code></dd>
+          <dt>$vars &#183; $v</dt><dd>nearest enclosing <code>vars</code> block</dd>
+          <dt>$params &#183; $p</dt><dd>this fragment's arguments</dd>
+          <dt>$element &#183; $e</dt><dd>innermost iterator's current element</dd>
+          <dt>$index &#183; $i</dt><dd>its position, zero-based, bare only</dd>
+        </dl>
+        <ul style="margin-top:14px">
+          <li>A string is a reference only if it <em>starts</em> with a namespace token. <code>"$database"</code> is data; <code>"Hello $data.name"</code> is data.</li>
+          <li>Recognised once, at parse. A string arriving from data or an API is never re-read as a reference.</li>
+        </ul>
+      </div>
+
+      <div class="sheet-card">
+        <h3>Node kinds</h3>
+        <ul>
+          <li><strong>Operator node</strong> &#8212; has an <code>operator</code> key, a literal string.</li>
+          <li><strong>Fragment call</strong> &#8212; has a <code>fragment</code> key; arguments only in <code>parameters</code>.</li>
+          <li><strong>Shorthand node</strong> &#8212; exactly one recognised <code>$name</code> key, plus reserved siblings.</li>
+          <li><strong><code>literal</code> node</strong> &#8212; a parse boundary; contents are never walked, validated or evaluated.</li>
+          <li><strong>Plain literal</strong> &#8212; everything else. Reserved keys alone do not make an object a node.</li>
+        </ul>
+      </div>
+
+      <div class="sheet-card">
+        <h3>The seven reserved keys</h3>
+        <ul>
+          <li><code>operator</code> &#183; <code>fragment</code> &#183; <code>parameters</code> &#8212; what to invoke, and with what.</li>
+          <li><code>fallback</code> &#8212; a full expression, lazy, evaluated once, on failure only.</li>
+          <li><code>useCache</code> &#8212; a literal boolean; the lookup happens before evaluation.</li>
+          <li><code>vars</code> &#8212; a structural map of static names to expressions.</li>
+          <li><code>//</code> &#8212; a comment; any value, stripped at parse.</li>
+        </ul>
+      </div>
+
+      <div class="sheet-card">
+        <h3>Shorthand payloads</h3>
+        <dl class="kv">
+          <dt>{ $op: {&#8230;} }</dt><dd>named parameters</dd>
+          <dt>{ $op: [&#8230;] }</dt><dd>positional, per <code>positionalParams</code></dd>
+          <dt>{ $op: x }</dt><dd>one positional argument</dd>
+          <dt>{ $frag: {&#8230;} }</dt><dd>named arguments &#8212; the only fragment face</dd>
+        </dl>
+        <ul style="margin-top:14px">
+          <li>Aliases are symbolic only, and valid anywhere the canonical name is: <code>+ - * / ^ = != &gt; &gt;= &lt; &lt;= ? !</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tbl-wrap" style="margin-top:22px">
+      <table>
+        <thead>
+          <tr><th>When you want</th><th>Reach for</th><th>It fires on</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>null</code> and carry on</td><td>a bare reference</td><td>nothing &#8212; absence just resolves to <code>null</code></td></tr>
+          <tr><td>a default across candidates</td><td><code>firstOf</code></td><td><code>null</code> or missing, in order, stopping at the first answer</td></tr>
+          <tr><td>to keep null and missing apart</td><td><code>get</code> + <code>missingPathDefault</code></td><td>a missing path only &#8212; a stored <code>null</code> passes through</td></tr>
+          <tr><td>to catch something that broke</td><td><code>fallback</code></td><td>runtime failure in the node or anything inside it</td></tr>
+          <tr><td>a host-wide stance</td><td><code>operatorDefaults</code></td><td>every node of that operator without its own value</td></tr>
+          <tr><td>every static mistake, now</td><td><code>validate()</code></td><td>parse time &#8212; before data exists</td></tr>
+          <tr><td>partial results instead of a throw</td><td><code>mode: 'report'</code></td><td>every uncaught failure, collected in tree order</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="aside" style="margin-top:24px">
+      <strong>One line to remember.</strong> <code>fallback</code> means <em>this broke</em>; <code>null</code> means <em>this isn't here</em>. Nearly every v3 design question about defaults, empty inputs and degraded output resolves by asking which of the two you are looking at.
+    </div>
+  </section>
+
+  <footer class="colophon">
+    <p>Companion to the v3 specification: <code>v3-api.md</code> for the grammar, <code>v3-operator-parameters.md</code> and <code>-2.md</code> for per-operator parameters, <code>v3-evaluator-methods.md</code> for <code>evaluate()</code>, <code>validate()</code> and the return shapes, and <code>v3-worked-examples.md</code> for the machinery traced end to end.</p>
+    <p style="margin-bottom:0">Behaviours shown here are binding; encodings are not. Issue codes, error message wording, <code>TraceNode</code> field names and cache-key spellings settle at implementation. Custom operators via <code>defineOperator()</code> remain Draft.</p>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  var RESERVED = ['operator', 'fragment', 'parameters', 'fallback', 'useCache', 'vars']
+  var KEYWORDS = ['const', 'new', 'await', 'import', 'from', 'export', 'return', 'function', 'let']
+  var LITERALS = ['true', 'false', 'null', 'undefined']
+  var NS = /^\$(data|d|vars|v|params|p|element|e|index|i)(?:[.[]|$)/
+
+  function esc(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  }
+
+  function marks(inner) {
+    return inner.replace(/(\{\{[^{}]*\}\}|%\d+)/g, '<span class="tk-tok">$1</span>')
+  }
+
+  function wrap(cls, text) {
+    return '<span class="' + cls + '">' + text + '</span>'
+  }
+
+  function highlight(src) {
+    var re = /('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|(\/\/[^\n]*)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)|(\s+)|([\s\S])/g
+    var toks = []
+    var m
+    while ((m = re.exec(src)) !== null) {
+      if (m[1] !== undefined) toks.push({ t: 'str', v: m[1] })
+      else if (m[2] !== undefined) toks.push({ t: 'com', v: m[2] })
+      else if (m[3] !== undefined) toks.push({ t: 'num', v: m[3] })
+      else if (m[4] !== undefined) toks.push({ t: 'id', v: m[4] })
+      else if (m[5] !== undefined) toks.push({ t: 'ws', v: m[5] })
+      else toks.push({ t: 'p', v: m[6] })
+    }
+
+    function nextSig(i) {
+      for (var j = i + 1; j < toks.length; j++) {
+        if (toks[j].t !== 'ws' && toks[j].t !== 'com') return j
+      }
+      return -1
+    }
+    function prevSig(i) {
+      for (var j = i - 1; j >= 0; j--) {
+        if (toks[j].t !== 'ws' && toks[j].t !== 'com') return j
+      }
+      return -1
+    }
+
+    var out = ''
+    for (var i = 0; i < toks.length; i++) {
+      var tk = toks[i]
+      var e = esc(tk.v)
+
+      if (tk.t === 'ws' || tk.t === 'p') { out += e; continue }
+      if (tk.t === 'com') { out += wrap('tk-com', e); continue }
+      if (tk.t === 'num') { out += wrap('tk-lit', e); continue }
+
+      var n = nextSig(i)
+      var isKey = n !== -1 && toks[n].v === ':'
+
+      if (tk.t === 'id') {
+        if (LITERALS.indexOf(tk.v) !== -1) { out += wrap('tk-lit', e); continue }
+        if (isKey) {
+          out += wrap(
+            tk.v.charAt(0) === '$' ? 'tk-op' : (RESERVED.indexOf(tk.v) !== -1 ? 'tk-res' : 'tk-key'),
+            e
+          )
+          continue
+        }
+        if (KEYWORDS.indexOf(tk.v) !== -1) { out += wrap('tk-kw', e); continue }
+        out += e
+        continue
+      }
+
+      // string token
+      var body = tk.v.slice(1, -1)
+
+      if (isKey) {
+        var cls = 'tk-key'
+        if (body.charAt(0) === '$') cls = 'tk-op'
+        else if (body === '//' || RESERVED.indexOf(body) !== -1) cls = 'tk-res'
+        out += wrap(cls, e)
+        continue
+      }
+
+      // an operator/fragment NAME: the string right after `operator:` or `fragment:`
+      var p = prevSig(i)
+      if (p !== -1 && toks[p].v === ':') {
+        var pp = prevSig(p)
+        if (pp !== -1 && (toks[pp].v === 'operator' || toks[pp].v === 'fragment')) {
+          out += wrap('tk-op', e)
+          continue
+        }
+      }
+
+      out += wrap(NS.test(body) ? 'tk-ref' : 'tk-str', marks(e))
+    }
+    return out
+  }
+
+  var blocks = document.querySelectorAll('pre > code')
+  for (var k = 0; k < blocks.length; k++) {
+    blocks[k].innerHTML = highlight(blocks[k].textContent)
+  }
+})()
+</script>
+
+</body></html>

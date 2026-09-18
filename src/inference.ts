@@ -72,21 +72,35 @@ type Truthy<P> = P extends { type: 'array' }
     ? Record<string, boolean>
     : boolean
 
-/** What one declaration delivers to the body. */
-export type ParamValue<P> = P extends { truthiness: true }
-  ? Truthy<P>
-  : P extends { evaluation: 'structural' }
-    ? TypeOf<DeclaredType<P>>
-    : P extends { evaluation: 'lazy' }
-      ? LazyValue<Delivered<P>>
-      : P extends { evaluation: 'perElement' }
-        ? PerElement<Delivered<P>>
-        : P extends { evaluation: 'lazyElements' }
-          ? LazyValue<Delivered<P>>[]
-          : P extends { evaluation: 'lazyEntries' }
-            ? Record<string, LazyValue<Delivered<P>>>
-            : P extends { evaluation: 'race' }
-              ? SettlementStream
+/**
+ * What one declaration delivers to the body.
+ *
+ * The delivery mode is tested FIRST, and truthiness only after: a `race`
+ * parameter declares `type: 'array'` and `truthiness: true` together, and
+ * what reaches the body is a settlement stream whose per-element values are
+ * boolean — not the `boolean[]` that reading truthiness first would
+ * promise.
+ *
+ * The container-lazy modes deliver `LazyValue<unknown>`, not
+ * `LazyValue<Delivered<P>>`: the declared type describes the *container*
+ * (`array`, `object`), so `Delivered<P>` would type every `firstOf`
+ * candidate as an array. The language has no element-type declaration to
+ * do better with — adding one would be the honest fix, and a separate one.
+ */
+export type ParamValue<P> = P extends { evaluation: 'structural' }
+  ? TypeOf<DeclaredType<P>>
+  : P extends { evaluation: 'race' }
+    ? SettlementStream
+    : P extends { evaluation: 'lazyElements' }
+      ? LazyValue[]
+      : P extends { evaluation: 'lazyEntries' }
+        ? Record<string, LazyValue>
+        : P extends { evaluation: 'perElement' }
+          ? PerElement<Delivered<P>>
+          : P extends { evaluation: 'lazy' }
+            ? LazyValue<Delivered<P>>
+            : P extends { truthiness: true }
+              ? Truthy<P>
               : Delivered<P>
 
 type IsHolder<P> = P extends { replacesNullAt: readonly string[] } ? true : false

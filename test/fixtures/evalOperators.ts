@@ -91,3 +91,53 @@ export const spyOp = (
   })
   return { definition, calls, contexts }
 }
+
+/**
+ * A latency-scripted operator: resolves (or fails) after `ms`, and honours
+ * the abort signal. The instrument for completion-order and cancellation
+ * assertions — the outcome of a race must not depend on which operand
+ * happens to finish first, and the only way to show that is to script the
+ * order and permute it.
+ */
+export interface LatencySpy {
+  definition: ValidatedOperatorDefinition
+  /** Values whose work began, in start order. */
+  started: unknown[]
+  /** Values whose wait ran to completion, in completion order. */
+  finished: unknown[]
+  /** Values cut short by the signal. */
+  aborted: unknown[]
+}
+
+export const latencyOp = (name = 'slow'): LatencySpy => {
+  const started: unknown[] = []
+  const finished: unknown[] = []
+  const aborted: unknown[] = []
+  const definition = defineOperator({
+    name,
+    description: 'Answer after a scripted delay',
+    parameters: {
+      value: { type: 'any', nullPolicy: 'value' },
+      ms: { type: 'integer', default: 0 },
+      fail: { type: 'boolean', default: false },
+    },
+    positionalParams: ['value', 'ms', 'fail'],
+    evaluate: ({ value, ms, fail }, context: OperatorContext) =>
+      new Promise((resolve, reject) => {
+        started.push(value)
+        const onAbort = () => {
+          clearTimeout(timer)
+          aborted.push(value)
+          reject(new Error(`aborted: ${String(value)}`))
+        }
+        const timer = setTimeout(() => {
+          context.signal.removeEventListener('abort', onAbort)
+          finished.push(value)
+          if (fail) reject(new OperatorFailure(`scripted failure: ${String(value)}`))
+          else resolve(value)
+        }, ms as number)
+        context.signal.addEventListener('abort', onAbort, { once: true })
+      }),
+  })
+  return { definition, started, finished, aborted }
+}
