@@ -1,3 +1,11 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): hand-migrated to test/operators-comparison.test.ts.
+ * Divergences: word aliases (eq/equals/ne/NOT_EQUAL) and `children` die
+ * (converter work); the global `caseInsensitive` option becomes
+ * `operatorDefaults: { equal: { caseInsensitive: true } }`, stated per
+ * operator; `!` now means `not`, so the "!" inequality case is spelled `!=`;
+ * `caseSensitive: true` was never a real parameter and is an unknown-key error.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator()

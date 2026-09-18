@@ -1,15 +1,12 @@
 /**
- * Stand-in operators for the dev playground. Core operators arrive with
- * Phase 4 (`DEFAULT_OPERATORS` in src/FigTree.ts is the swap point) — until
- * then an instance has an empty registry, so there is nothing for the
- * parser to recognize. These model the shapes the parser cares about:
- * aliases, positional payloads, lazy and perElement delivery, the `as`
- * renaming hook, the `EvaluationData` sentinel, a `timeoutParam`, and a
- * `validate` hook. Canonical names match the real core set where a real
- * operator is being modelled; the bodies are all no-ops (nothing evaluates
- * until Phase 4).
- *
- * Delete this file when `coreOperators` lands.
+ * Stand-in operators for the dev playground, registered beside
+ * `coreOperators` (src/dev/inspect.ts). They model the shapes core does not
+ * yet hold: lazy and perElement delivery, the `as` renaming hook, the
+ * `EvaluationData` sentinel, a `timeoutParam`, a leading-plus-rest
+ * positional list, and a `validate` hook. Canonical names match the real
+ * core set where a real operator is being modelled; the bodies are no-ops.
+ * Each entry is deleted when its real operator lands (Phases 5–9); the file
+ * goes with the last of them.
  */
 import { defineOperator, EvaluationData } from '../index'
 import type { ValidateFinding, ValidatedOperatorDefinition } from '../index'
@@ -41,20 +38,6 @@ const notOp = defineOperator({
   evaluate: noop,
 })
 
-/** Rest-only positional mapping — the variadic aggregate shape. */
-const plusOp = defineOperator({
-  name: 'plus',
-  alias: '+',
-  description: 'Add things together',
-  parameters: {
-    values: { type: 'array' },
-    expect: { type: { literal: ['number', 'string', 'array'] }, required: false },
-  },
-  positionalParams: ['...values'],
-  returns: ['number', 'string', 'array', 'object', 'null'],
-  evaluate: noop,
-})
-
 /** Leading slot plus rest — the buildString shape. */
 const formatOp = defineOperator({
   name: 'format',
@@ -65,19 +48,6 @@ const formatOp = defineOperator({
   },
   positionalParams: ['template', '...substitutions'],
   returns: 'string',
-  evaluate: noop,
-})
-
-/** Constraints (arity + homogeneity) on a rest-only aggregate. */
-const greaterThanOp = defineOperator({
-  name: 'greaterThan',
-  alias: '>',
-  description: 'Strict ordering comparison',
-  parameters: {
-    values: { type: 'array', constraints: { length: 2, homogeneous: ['number', 'string'] } },
-  },
-  positionalParams: ['...values'],
-  returns: 'boolean',
   evaluate: noop,
 })
 
@@ -177,8 +147,6 @@ const regexOp = defineOperator({
 export const demoOperators = (): ValidatedOperatorDefinition[] => [
   ifOp,
   notOp,
-  plusOp,
-  greaterThanOp,
   formatOp,
   clampOp,
   getOp,

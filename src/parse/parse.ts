@@ -104,6 +104,7 @@ import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
+import { DEPTH_CEILING, probeConstant } from './probe'
 import type {
   ArtifactHole,
   CompiledNode,
@@ -220,9 +221,38 @@ const emit = (
 
 const walk = (state: WalkState, raw: unknown, path: NodePath, depth: number): CompiledNode => {
   const order = state.order++
-  state.nodeCount++
   if (depth > state.maxDepth) state.maxDepth = depth
 
+  // The built-in ceiling: option-independent stack safety. Descent stops
+  // here with an error issue; the user's `maxDepth` is a separate, per-call
+  // comparison against the measured depth (FigTree.validate / evaluate)
+  if (depth > DEPTH_CEILING) {
+    emit(
+      state,
+      'error',
+      ErrorCodes.depthCeiling,
+      `the expression nests deeper than the engine's ceiling of ${DEPTH_CEILING} levels — descent stopped here`,
+      path,
+      order
+    )
+    state.nodeCount++
+    return invalid(raw, path, order)
+  }
+
+  const node = compileValue(state, raw, path, depth, order)
+  // nodeCount is the evaluable-node count (obligation B4): the nodes
+  // evaluation visits. Constants and skeletons are structure around them.
+  if (node.kind !== 'constant' && node.kind !== 'skeleton') state.nodeCount++
+  return node
+}
+
+const compileValue = (
+  state: WalkState,
+  raw: unknown,
+  path: NodePath,
+  depth: number,
+  order: number
+): CompiledNode => {
   // undefined is not a value — JSON semantics (object keys are filtered by
   // the container walks; array elements and stray roots normalize to null)
   if (raw === undefined || raw === null) return constant(raw ?? null, path, order)
@@ -838,7 +868,11 @@ const collectPositional = (
   for (let i = 0; i < boundLeading; i++) {
     pending.push({ name: leading[i], kind: 'value', value: payload[i], path: [...payloadPath, i] })
   }
-  if (rest !== null && payload.length > leading.length) {
+  // The rest slice binds whenever the payload is an array — an empty
+  // payload binds an empty array ({ $and: [] } → values: []), which is the
+  // vacuous-identity / empty-aggregate case the passes define, not an
+  // omission
+  if (rest !== null && payload.length >= leading.length) {
     pending.push({
       name: rest,
       kind: 'slice',
@@ -1253,28 +1287,16 @@ const staticFallbackFor = (
     return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
   if (node.kind === 'operator') {
     const defaults = node.entry.instanceDefaults
-    if (defaults !== undefined && 'fallback' in defaults && isConstantValue(state, defaults.fallback))
+    // The registry stores operatorDefaults fallbacks unclassified — the
+    // shared probe answers constancy for them (src/parse/probe.ts)
+    if (
+      defaults !== undefined &&
+      'fallback' in defaults &&
+      probeConstant(defaults.fallback, state.registry, state.fragments).constant
+    )
       return { value: defaults.fallback }
   }
   return undefined
-}
-
-/**
- * Recognition-only constancy probe for raw (uncompiled) values — used on
- * `operatorDefaults` fallbacks, which the registry stores unclassified.
- */
-const isConstantValue = (state: WalkState, value: unknown): boolean => {
-  if (typeof value === 'string') {
-    const kind = recognizeReference(value).kind
-    return kind === 'plain' || kind === 'unrecognized'
-  }
-  if (Array.isArray(value)) return value.every((element) => isConstantValue(state, element))
-  if (isPlainDataObject(value)) {
-    if ('operator' in value || 'fragment' in value || 'vars' in value) return false
-    if (recognizedShorthandKeys(state, value).length > 0) return false
-    return Object.values(value).every((element) => isConstantValue(state, element))
-  }
-  return true
 }
 
 /** Every invocable name — operators, aliases, fragments — for suggestions. */

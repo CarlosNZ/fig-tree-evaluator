@@ -8,10 +8,13 @@
  * `inspect()` prints every intermediate form of one expression: the
  * compiled tree, the artifact's precomputations, the two check passes, and
  * the public `validate()` result. See src/dev/inspect.ts for what each
- * section means, and `pnpm dev:examples` for a gallery of worked cases.
+ * section means, `pnpm dev examples` for a gallery of worked cases, and
+ * `pnpm dev phase4_showcase` (one per phase) for the features running.
  *
- * Nothing evaluates until Phase 4 — there is no `evaluate()` yet, and the
- * demo operators (src/dev/demoOperators.ts) have no-op bodies.
+ * The registry is `coreOperators` plus the demo stand-ins for shapes core
+ * does not yet hold (src/dev/demoOperators.ts, no-op bodies). `evaluate()`
+ * exists from Phase 4 — try `new FigTree().evaluate(expression, { data })`
+ * beside the inspector.
  */
 import { inspect } from './inspect'
 

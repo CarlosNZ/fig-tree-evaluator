@@ -1,3 +1,12 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): respelled in test/operators-convert.test.ts.
+ * Divergences: the `outputType`/`type` modifier dies — each case wraps in a
+ * `convert` node; implicit number-mining ("46 inside here" → 46, no numeric
+ * content → 0) is deleted — those inputs now FAIL (regex extract + convert is
+ * the sanctioned pipeline, Phase 7); `to: "string"` fails on composites and
+ * propagates null; `pass`/passThru cases have no v3 equivalent (deleted
+ * operator — any value evaluates); the `bool` spelling is `boolean`.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator()

@@ -26,6 +26,12 @@ export const ErrorCodes = {
   unresolvedVar: 'unresolved-var', // '$vars.foo' referenced but 'foo' isn't defined in scope
   unrecognizedIdentifier: 'unrecognized-identifier', // { $flibble: 1 } — the name after the sigil matches no operator/fragment/namespace (warning)
 
+  // Phase 4 — evaluation
+  depthCeiling: 'depth-ceiling', // input nests deeper than the engine's built-in walk ceiling (option-independent)
+  nonFiniteResult: 'non-finite-result', // { $divide: [1, 0] } — a body produced NaN / ±Infinity
+  escapedHandle: 'escaped-handle', // a body returned a LazyValue / PerElement handle instead of demanding it
+  emptyAggregate: 'empty-aggregate', // { $plus: [] } with no mode pinned, { $min: [] } — no identity to return
+
   // Phase 3 — parse / static validation
   malformedNode: 'malformed-node', // { operator: 'plus', fragment: 'f' } — a node-grammar hard error
   unknownFragment: 'unknown-fragment', // { fragment: 'flibble' } — names no registered fragment

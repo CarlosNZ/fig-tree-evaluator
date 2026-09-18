@@ -125,7 +125,7 @@ const parseBracket = (path: string, start: number): { segment: PathSegment; next
 const invalidPath = (path: string, detail: string): Error =>
   new Error(`Invalid path "${path}": ${detail}`)
 
-const normalizePath = (path: string | Array<string | number>): PathSegment[] =>
+const normalizePath = (path: string | PathSegment[]): PathSegment[] =>
   Array.isArray(path) ? path.slice() : parsePath(path)
 
 /**
@@ -134,7 +134,7 @@ const normalizePath = (path: string | Array<string | number>): PathSegment[] =>
  */
 export const resolvePath = (
   source: unknown,
-  path: string | Array<string | number>
+  path: string | PathSegment[]
 ): ResolveResult => resolveSegments(source, normalizePath(path), 0)
 
 const resolveSegments = (

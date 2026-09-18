@@ -83,3 +83,24 @@ export {
   WILDCARD,
 } from './primitives'
 export type { PathSegment, Wildcard, ResolveResult } from './primitives'
+
+// Phase 4.1 — the evaluator's author-facing surface: the body-side failure
+// class and the runtime interface types. The evaluator itself is internal;
+// `FigTree.evaluate()` is its face.
+export { OperatorFailure, isOperatorFailure } from './OperatorFailure'
+export type { OperatorFailureInit } from './OperatorFailure'
+export type {
+  OperatorContext,
+  LazyValue,
+  PerElement,
+  Settlement,
+  SettlementStream,
+  TraceEvent,
+} from './runtimeInterface'
+export type { ResolvedParams, ParamValue, TypeOf } from './inference'
+export type { ParameterDeclarations } from './operatorDefinition'
+
+// Phase 4.2 — the core operators (the eager set so far; later phases add
+// their groups) and the deep-equality primitive `equal` is specified by.
+export { coreOperators } from './operators'
+export { deepEqual } from './primitives'

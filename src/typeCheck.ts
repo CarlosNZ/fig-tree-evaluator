@@ -27,16 +27,16 @@ export type BasicType =
   | 'integer' // a refinement of number (e.g. round's `decimals`)
 
 /** A closed set of allowed literal values (e.g. convert's `to`). */
-export type LiteralType = { literal: Array<string | number | boolean> }
+export type LiteralType = { literal: readonly (string | number | boolean)[] }
 
 /** A single basic type, a closed literal set, or a union of basic types. */
-export type ExpectedType = BasicType | LiteralType | BasicType[]
+export type ExpectedType = BasicType | LiteralType | readonly BasicType[]
 
 export interface Constraints {
   /** Exact array arity. */
   length?: number
   /** All elements are one basic type, drawn from this allowed list. */
-  homogeneous?: BasicType[]
+  homogeneous?: readonly BasicType[]
   /**
    * Each element is an object of this shape (fragment-style, required by
    * default).
@@ -94,6 +94,17 @@ const matchesBasic = (value: unknown, type: BasicType): boolean => {
   }
 }
 
+/**
+ * Does a declared type admit `null`? The type-driven admission question
+ * ("Null policy" in docs-dev/v3-specs/v3-api.md): a type without `null` IS
+ * the reject declaration. `any` names null. Literal unions never do.
+ */
+export const typeNamesNull = (type: ExpectedType): boolean => {
+  if (type === 'null' || type === 'any') return true
+  if (Array.isArray(type)) return type.includes('null') || type.includes('any')
+  return false
+}
+
 export const isLiteralType = (expected: ExpectedType): expected is LiteralType =>
   typeof expected === 'object' &&
   expected !== null &&
@@ -143,11 +154,8 @@ export const checkType = (value: unknown, expected: ExpectedType): TypeCheckResu
     return fail(`one of ${allowed}`, value)
   }
 
-  if (Array.isArray(expected)) {
-    return expected.some((t) => matchesBasic(value, t)) ? OK : fail(expected.join(' | '), value)
-  }
-
-  return matchesBasic(value, expected) ? OK : fail(expected, value)
+  if (typeof expected === 'string') return matchesBasic(value, expected) ? OK : fail(expected, value)
+  return expected.some((t) => matchesBasic(value, t)) ? OK : fail(expected.join(' | '), value)
 }
 
 /** Check an array value against array-shape constraints. */
@@ -294,16 +302,46 @@ export const typesIntersect = (a: ExpectedType, b: ExpectedType): boolean => {
 
 const normalizeForIntersection = (
   expected: ExpectedType
-): { any: boolean; basics: BasicType[]; literals?: Array<string | number | boolean> } => {
+): {
+  any: boolean
+  basics: readonly BasicType[]
+  literals?: readonly (string | number | boolean)[]
+} => {
   if (isLiteralType(expected)) return { any: false, basics: [], literals: expected.literal }
-  const basics = Array.isArray(expected) ? expected : [expected]
+  const basics: readonly BasicType[] = typeof expected === 'string' ? [expected] : expected
   return { any: basics.includes('any'), basics }
 }
 
-const literalMatches = (member: string | number | boolean, basics: BasicType[]): boolean => {
+const literalMatches = (
+  member: string | number | boolean,
+  basics: readonly BasicType[]
+): boolean => {
   if (typeof member === 'string') return basics.includes('string')
   if (typeof member === 'boolean') return basics.includes('boolean')
-  return (
-    basics.includes('number') || (Number.isInteger(member) && basics.includes('integer'))
+  return basics.includes('number') || (Number.isInteger(member) && basics.includes('integer'))
+}
+
+/**
+ * Constraints on a container whose declaration carries an element null
+ * policy: null elements belong to that policy, not to the constraints, so
+ * `length` still counts every slot (a null occupies its position) while
+ * `homogeneous` / `elementShape` see the null-free view. Without an element
+ * policy the value is checked as-is. Shared by the static layer (literal
+ * containers) and the runtime layer (resolved ones).
+ */
+export const checkConstraintsUnderPolicy = (
+  value: unknown,
+  constraints: Constraints,
+  elementPolicyDeclared: boolean
+): TypeCheckResult => {
+  if (!elementPolicyDeclared || !Array.isArray(value)) return checkConstraints(value, constraints)
+  const { length, ...elementWise } = constraints
+  if (length !== undefined) {
+    const arity = checkConstraints(value, { length })
+    if (!arity.ok) return arity
+  }
+  return checkConstraints(
+    value.filter((element) => element !== null),
+    elementWise
   )
 }

@@ -13,6 +13,8 @@
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
 import type { ValidateHelpers } from './parse/helpers'
+import type { OperatorContext } from './runtimeInterface'
+import type { ResolvedParams } from './inference'
 
 /**
  * The delivery-mode vocabulary ("Evaluation modes" in the contract).
@@ -62,12 +64,12 @@ export interface CompiledNullPolicy {
 export const EvaluationData: unique symbol = Symbol('fig-tree:EvaluationData')
 
 /**
- * The operator body. Loosely typed until Phase 4 lands `OperatorContext` and
- * the resolved-params shapes — the contract's TS-inference stack is deferred
- * until real bodies exist to exercise it.
+ * The operator body as the engine calls it: post-everything params in, a
+ * value (or a promise of one) out. The authored form is typed from its
+ * declarations (`OperatorDefinition.evaluate`); this is the erased shape a
+ * validated definition carries.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type OperatorEvaluate = (params: Record<string, any>, context?: any) => unknown
+export type OperatorEvaluate = (params: Record<string, unknown>, context: OperatorContext) => unknown
 
 /**
  * One finding from a `validate` hook. The hook classifies and describes; the
@@ -125,11 +127,18 @@ export interface ParameterDeclaration extends TypeDeclaration {
    * named sibling target(s). Requires `evaluation: 'lazy'`, optional, no
    * `default`.
    */
-  replacesNullAt?: string[]
+  replacesNullAt?: readonly string[]
 }
 
-/** A definition as authored, before it passes through `defineOperator()`. */
-export interface OperatorDefinition {
+/** The `parameters` map of a definition, keyed by parameter name. */
+export type ParameterDeclarations = Record<string, ParameterDeclaration>
+
+/**
+ * A definition as authored, before it passes through `defineOperator()`.
+ * Generic over its own `parameters` so the body's `params` is typed from
+ * them (src/inference.ts).
+ */
+export interface OperatorDefinition<P extends ParameterDeclarations = ParameterDeclarations> {
   /** Shared legality rule + reservation set; collision-checked on registry. */
   name: string
   /** Exactly one, like natives; same legality/collision rules as `name`. */
@@ -138,12 +147,12 @@ export interface OperatorDefinition {
   /** Opaque; engine never reads it; returned verbatim by `getOperators()`. */
   metadata?: Record<string, unknown>
   /** Keyed by parameter name; ordering lives in `positionalParams`. */
-  parameters: Record<string, ParameterDeclaration>
+  parameters: P
   /**
    * Ordered names; the last entry may be rest-marked (`'...values'`); every
    * entry names a declared parameter. Omitted ⇒ named-face only.
    */
-  positionalParams?: string[]
+  positionalParams?: readonly string[]
   /**
    * Names the declared `integer` parameter whose resolved value joins the
    * abort composition on `context.signal` (ledger #15; Q5 resolution).
@@ -153,10 +162,16 @@ export interface OperatorDefinition {
   useCache?: boolean
   /** How caching is keyed when effective `useCache` is true. */
   cache?: 'auto' | 'manual'
-  /** Option blocks the body reads; they arrive frozen on `context.options`. */
-  readsOptions?: string[]
+  /**
+   * Option blocks the body reads; they arrive frozen on `context.options`,
+   * and blocks a definition does not name are absent from it. Self-declared,
+   * so this records access rather than restricting it — whether the
+   * declaration earns its keep is contract open Q10.
+   */
+  readsOptions?: readonly string[]
   validate?: OperatorValidate
-  evaluate: OperatorEvaluate
+  /** The body, its `params` typed from the declarations above. */
+  evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
   /** Declared result type — drives the static feeding-position check. */
   returns?: ExpectedType
 }

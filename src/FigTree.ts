@@ -4,27 +4,26 @@
  * instance registry via `buildRegistry()` and throws `FigTreeError` (code
  * `invalid-options`) on any bad input — the loud-at-registration posture.
  *
- * Phase 3 adds `validate()` — the parser's public face. No evaluation until
- * Phase 4; `updateOptions` and the full options merge semantics land in
- * Phase 8 (validate()'s per-call merge is a shallow spread until then); the
- * parse cache wraps the `parseExpression` call in Phase 8.2.
+ * `validate()` and `evaluate()` share one spine: the same compile (parse +
+ * static checks) and the same per-call limit checks; `validate()` returns
+ * the issue stream, `evaluate()` refuses on the first error-severity issue
+ * and evaluates the holes otherwise. `updateOptions`, `getOptions` and the
+ * parse cache land in Phase 8 (the cache wraps `compile()`); `mode:
+ * 'report'` and `trace` in Phase 12; `timeout` in Phase 10; the result
+ * cache in Phase 9 — those options are accepted and inert until then.
  */
 import type { FigTreeOptions } from './options'
-import type { ValidatedOperatorDefinition } from './operatorDefinition'
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry } from './registry'
-import { parseExpression, runStaticChecks } from './parse'
+import { parseExpression, probeConstant, runStaticChecks, type ParseArtifact } from './parse'
+import { createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
+import { coreOperators } from './operators'
 
-/**
- * The registry when `operators` is omitted. NOTE Phase 4: becomes
- * `coreOperators` — the spec default is "coreOperators only", which does not
- * exist until the first operator batch lands. This constant is the one swap
- * point.
- */
-const DEFAULT_OPERATORS: ValidatedOperatorDefinition[] = []
+/** No fragments are registrable until Phase 11. */
+const NO_FRAGMENTS: ReadonlyMap<string, unknown> = new Map()
 
 export class FigTree {
   private readonly registry: OperatorRegistry
@@ -32,12 +31,12 @@ export class FigTree {
 
   constructor(options: FigTreeOptions = {}) {
     this.registry = buildRegistry({
-      operators: options.operators ?? [DEFAULT_OPERATORS],
+      // Omitted `operators` means the core set only — no HTTP, no SQL
+      operators: options.operators ?? [coreOperators],
       ...(options.operatorDefaults !== undefined
         ? { operatorDefaults: options.operatorDefaults }
         : {}),
     })
-    // Per-key shallow snapshot; the two-level merge semantics are Phase 8
     this.options = { ...options }
   }
 
@@ -49,41 +48,12 @@ export class FigTree {
    * (per-call `operators`/`fragments`, which are constructor-only).
    */
   validate(expression: unknown, options: FigTreeOptions = {}): ValidationResult {
-    if ('operators' in options || 'fragments' in options)
-      throw new FigTreeError({
-        code: ErrorCodes.invalidOptions,
-        message:
-          "'operators' and 'fragments' are not per-call options — register them at construction or via updateOptions()",
-        path: [],
-      })
+    rejectPerCallRegistry(options)
+    const artifact = this.compile(expression)
+    const merged = mergeOptions(this.options, options)
+    const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
 
-    // Uncached until Phase 8.2 — the parse cache wraps exactly this seam
-    const artifact = parseExpression(expression, this.registry)
-    runStaticChecks(artifact)
-
-    const merged = { ...this.options, ...options }
-    const issues: Issue[] = []
-
-    // The two option-dependent checks — never stored in the artifact
-    // (option-independence): limits compare against the stored counts…
-    if (merged.maxDepth !== undefined && artifact.maxDepth > merged.maxDepth)
-      issues.push({
-        severity: 'error',
-        code: ErrorCodes.maxDepthExceeded,
-        message: `the expression nests ${artifact.maxDepth} levels deep — maxDepth is ${merged.maxDepth}`,
-        path: [],
-      })
-    if (merged.maxNodes !== undefined && artifact.nodeCount > merged.maxNodes)
-      issues.push({
-        severity: 'error',
-        code: ErrorCodes.maxNodesExceeded,
-        message: `the expression holds ${artifact.nodeCount} nodes — maxNodes is ${merged.maxNodes}`,
-        path: [],
-      })
-
-    issues.push(...artifact.issues.map((sequenced) => sequenced.issue))
-
-    // …and the sample-data check walks the stored dependency list
+    // The sample-data check walks the stored dependency list
     if (merged.data !== undefined) {
       for (const dataPath of artifact.dependencies.dataPaths) {
         if (!resolvePath(merged.data, dataPath).found)
@@ -102,4 +72,95 @@ export class FigTree {
       timeoutShielded: artifact.shielded,
     }
   }
+
+  /**
+   * The one evaluation method ("evaluate() return shapes" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md). Throw mode: the first
+   * static error, or the first uncaught runtime failure, rejects the call
+   * with a `FigTreeError`; otherwise the bare result value.
+   *
+   * Inert input skips the parse entirely: the constancy probe recognizes a
+   * value with nothing to evaluate or normalize and returns it by identity
+   * (the user's `maxDepth` still applies to its measured depth). The skip is
+   * off when `trace` is requested — a skipped parse has no nodes for the
+   * trace to echo.
+   */
+  async evaluate(expression: unknown, options: FigTreeOptions = {}): Promise<unknown> {
+    rejectPerCallRegistry(options)
+    const merged = mergeOptions(this.options, options)
+
+    if (merged.trace !== true) {
+      const probe = probeConstant(expression, this.registry, NO_FRAGMENTS)
+      if (probe.constant) {
+        if (merged.maxDepth !== undefined && probe.depth > merged.maxDepth)
+          throw staticError(depthIssue(probe.depth, merged.maxDepth), [])
+        return expression
+      }
+    }
+
+    const artifact = this.compile(expression)
+    const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
+    const firstError = issues.find((issue) => issue.severity === 'error')
+    if (firstError !== undefined) throw staticError(firstError, issues)
+
+    return evaluateNode(artifact.root, createEvaluationContext(merged))
+  }
+
+  /**
+   * The shared compile seam: parse + the metadata-driven static checks.
+   * Uncached until Phase 8.2 — the parse cache wraps exactly this method.
+   */
+  private compile(expression: unknown): ParseArtifact {
+    const artifact = parseExpression(expression, this.registry, NO_FRAGMENTS)
+    runStaticChecks(artifact)
+    return artifact
+  }
 }
+
+const rejectPerCallRegistry = (options: FigTreeOptions) => {
+  if ('operators' in options || 'fragments' in options)
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message:
+        "'operators' and 'fragments' are not per-call options — register them at construction or via updateOptions()",
+      path: [],
+    })
+}
+
+/**
+ * The two option-dependent checks, run per call against the artifact's
+ * stored counts — never stored in the artifact (option-independence).
+ */
+const limitIssues = (artifact: ParseArtifact, merged: FigTreeOptions): Issue[] => {
+  const issues: Issue[] = []
+  if (merged.maxDepth !== undefined && artifact.maxDepth > merged.maxDepth)
+    issues.push(depthIssue(artifact.maxDepth, merged.maxDepth))
+  if (merged.maxNodes !== undefined && artifact.nodeCount > merged.maxNodes)
+    issues.push({
+      severity: 'error',
+      code: ErrorCodes.maxNodesExceeded,
+      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${merged.maxNodes}`,
+      path: [],
+    })
+  return issues
+}
+
+const depthIssue = (measured: number, limit: number): Issue => ({
+  severity: 'error',
+  code: ErrorCodes.maxDepthExceeded,
+  message: `the expression nests ${measured} levels deep — maxDepth is ${limit}`,
+  path: [],
+})
+
+/**
+ * The static-error gate's throw: the first error-severity issue in tree
+ * order, the full stream attached as `issues` so nothing is hidden.
+ */
+const staticError = (issue: Issue, issues: Issue[]): FigTreeError =>
+  new FigTreeError({
+    code: issue.code,
+    message: issue.message,
+    path: issue.path,
+    ...(issue.operator !== undefined ? { operator: issue.operator } : {}),
+    issues,
+  })

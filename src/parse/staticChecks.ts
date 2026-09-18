@@ -12,7 +12,7 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
-import { checkType, checkConstraints, typesIntersect } from '../typeCheck'
+import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
 import type { ValidatedParameter } from '../operatorDefinition'
 import { validateHelpers } from './helpers'
 import type {
@@ -180,7 +180,12 @@ const checkSuppliedParam = (
 ) => {
   // Literal values: the parse moment of the one type table. 'as' is owned
   // by the walk (invalid-as); other structural params must be literal too.
+  // Null policy runs BEFORE the type check, mirroring the runtime layers:
+  // a null at an optional parameter whose type excludes null is unset (the
+  // default applies), and null elements under a declared elementNullPolicy
+  // are the policy's business, not the constraints'.
   if (supplied.kind === 'constant') {
+    if (supplied.value === null && !declared.required && !typeNamesNull(declared.type)) return
     const typed = checkType(supplied.value, declared.type)
     if (!typed.ok) {
       emit(
@@ -195,7 +200,11 @@ const checkSuppliedParam = (
       return
     }
     if (declared.constraints !== undefined) {
-      const constrained = checkConstraints(supplied.value, declared.constraints)
+      const constrained = checkConstraintsUnderPolicy(
+        supplied.value,
+        declared.constraints,
+        declared.elementNullPolicy !== undefined
+      )
       if (!constrained.ok)
         emit(
           state,

@@ -65,9 +65,7 @@ describe('missing required / unknown parameter', () => {
 describe('unresolved references', () => {
   test('$vars must resolve in lexical scope', () => {
     expect(errorCodes({ $plus: ['$vars.nope'] })).toContain('unresolved-var')
-    expect(
-      errorCodes({ operator: 'plus', vars: { a: 1 }, values: ['$vars.a'] })
-    ).toHaveLength(0)
+    expect(errorCodes({ operator: 'plus', vars: { a: 1 }, values: ['$vars.a'] })).toHaveLength(0)
   })
 
   test('vars resolve through enclosing scopes, plain-literal blocks included', () => {
@@ -92,12 +90,12 @@ describe('unresolved references', () => {
     expect(errorCodes({ operator: 'map', input: '$element', each: 1 })).toContain(
       'unresolved-binding'
     )
-    expect(
-      errorCodes({ operator: 'map', input: [1], each: 1, fallback: '$element' })
-    ).toContain('unresolved-binding')
-    expect(
-      errorCodes({ operator: 'map', input: [1], each: 1, vars: { x: '$index' } })
-    ).toContain('unresolved-binding')
+    expect(errorCodes({ operator: 'map', input: [1], each: 1, fallback: '$element' })).toContain(
+      'unresolved-binding'
+    )
+    expect(errorCodes({ operator: 'map', input: [1], each: 1, vars: { x: '$index' } })).toContain(
+      'unresolved-binding'
+    )
   })
 
   test("a nested iterator's input sees the outer bindings", () => {
@@ -146,9 +144,9 @@ describe('as renaming', () => {
   })
 
   test('a dynamic as is a parse error — structural means literal', () => {
-    expect(
-      errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })
-    ).toContain('invalid-as')
+    expect(errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })).toContain(
+      'invalid-as'
+    )
   })
 
   test('as may not collide with reserved namespaces, long or short form', () => {
@@ -175,9 +173,9 @@ describe('vars cycles, shadowing, unreferenced', () => {
     expect(
       errorCodes({ operator: 'plus', vars: { a: '$vars.b', b: '$vars.a' }, values: ['$vars.a'] })
     ).toContain('var-cycle')
-    expect(
-      errorCodes({ operator: 'plus', vars: { a: '$vars.a' }, values: ['$vars.a'] })
-    ).toContain('var-cycle')
+    expect(errorCodes({ operator: 'plus', vars: { a: '$vars.a' }, values: ['$vars.a'] })).toContain(
+      'var-cycle'
+    )
   })
 
   test('a same-block chain without a loop is fine', () => {
@@ -222,9 +220,41 @@ describe('maxDepth / maxNodes — per call, from stored counts', () => {
     expect(fig.validate(deep).valid).toBe(true)
   })
 
-  test('maxNodes', () => {
-    const result = fig.validate(deep, { maxNodes: 3 })
+  test('maxNodes counts evaluable nodes — the one operator here', () => {
+    expect(fig.validate(deep, { maxNodes: 1 }).valid).toBe(true)
+    const result = fig.validate(deep, { maxNodes: 0 })
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
+  })
+})
+
+describe('the static layer applies null policy before the type check', () => {
+  test('a literal null at an optional parameter whose type excludes null is unset (row 14)', () => {
+    // clamp.min is `number` with a default — null means "use the default"
+    expect(errorCodes({ $clamp: [5, null] })).toHaveLength(0)
+    expect(errorCodes({ $clamp: { value: 5, max: null } })).toHaveLength(0)
+  })
+
+  test('a literal null at a required parameter whose type excludes null stays a type error', () => {
+    expect(errorCodes({ $format: { template: null } })).toContain('type-check')
+  })
+
+  test('a literal null at a required parameter whose type names null is admitted', () => {
+    expect(errorCodes({ $clamp: [null] })).toHaveLength(0)
+  })
+
+  test('null elements are excluded from homogeneity where elementNullPolicy is declared (row 13)', () => {
+    expect(errorCodes({ '$>': [1, null] })).toHaveLength(0)
+    expect(errorCodes({ '$>': [null, null] })).toHaveLength(0)
+    // the arity constraint still counts every slot
+    expect(errorCodes({ '$>': [1, null, 3] })).toContain('type-check')
+    // mixed non-null elements remain a violation
+    expect(errorCodes({ '$>': [1, 'a'] })).toContain('type-check')
+  })
+
+  test('null elements without a declared element policy are still constraint-checked', () => {
+    // strictNumbers.values is homogeneous ['number'] with no elementNullPolicy
+    expect(errorCodes({ $strictNumbers: [1, null] })).toContain('type-check')
+    expect(errorCodes({ $strictNumbers: [1, 2] })).toHaveLength(0)
   })
 })
 
@@ -266,7 +296,9 @@ describe('operator validate hooks', () => {
   })
 
   test('dynamic values are absent from literalParams — runtime never lints', () => {
-    expect(issuesOf({ $pattern: ['$data.p'] }).filter((i) => i.code === 'operator-validate')).toHaveLength(0)
+    expect(
+      issuesOf({ $pattern: ['$data.p'] }).filter((i) => i.code === 'operator-validate')
+    ).toHaveLength(0)
   })
 })
 

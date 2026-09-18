@@ -137,9 +137,12 @@ test('literal contents are never walked, validated or counted', () => {
   const rootValue = (artifact.root as { value?: unknown }).value
   expect(rootValue).toBe(quoted)
 
-  const bare = parse({ deep: { nesting: { here: [1, 2, 3] } } })
-  const viaLiteral = parse({ $literal: { deep: { nesting: { here: [1, 2, 3] } } } })
-  expect(viaLiteral.nodeCount).toBeLessThan(bare.nodeCount)
+  const bare = parse({ deep: { nesting: { here: [1, '$data.x', { $plus: [1, 2] }] } } })
+  const viaLiteral = parse({
+    $literal: { deep: { nesting: { here: [1, '$data.x', { $plus: [1, 2] }] } } },
+  })
+  expect(bare.nodeCount).toBe(2)
+  expect(viaLiteral.nodeCount).toBe(0)
 })
 
 test('shorthand literal payload is never disambiguated by JSON type', () => {
