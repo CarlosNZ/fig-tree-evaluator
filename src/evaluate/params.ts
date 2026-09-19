@@ -138,8 +138,8 @@ export const resolveParams = async (
       }
       case 'perElement':
         // Nothing starts here: the handle needs its `over` sibling
-        // VETTED, so it is built in pass 2 once that parameter's own
-        // layers have run (see layerOrder)
+        // VETTED, so it is built after pass 2, once every parameter's
+        // layers have run
         break
       default:
         // Every delivery mode is handled above, and this is what keeps
@@ -176,15 +176,9 @@ export const resolveParams = async (
   // ── Pass 2: the layers ────────────────────────────────────────────
   const params: Record<string, unknown> = {}
 
-  for (const [name, declared] of layerOrder(declarations)) {
-    if (declared.replacesNullAt !== undefined) continue // holders never reach the body
-    if (declared.evaluation === 'perElement') {
-      const supplied = node.params[name]
-      // Unsupplied is a missing-required static error; nothing to deliver
-      if (supplied !== undefined)
-        params[name] = perElementHandle(supplied, params, node, name, declared, ctx)
-      continue
-    }
+  for (const [name, declared] of declarations) {
+    // Holders never reach the body; per-element handles are built below
+    if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
     if (delivered.has(name)) {
       // Delivered as a handle in pass 1: its layers run on demand, and
       // there is no whole value here for the unset chain to test
@@ -227,6 +221,23 @@ export const resolveParams = async (
     // 7. the lazy family's delivery, over a value the layers have passed:
     //    an unsupplied lazy parameter's default, and the degeneration rule
     params[name] = wrapDelivery(value, declared)
+  }
+
+  // ── The per-element handles, over their vetted `over` siblings ────
+  // Built last: each handle closes over the target's VETTED value, so the
+  // target's layers must already have run — including `nullInputDefault`'s
+  // replacement, which is the whole reason a null `input` can become `[]`
+  // before the derived reject sees it
+  for (const [name, declared] of declarations) {
+    if (declared.evaluation !== 'perElement') continue
+    if (declared.over === undefined)
+      throw internalError(
+        `parameter '${name}' of '${node.name}' declares perElement without 'over'`
+      )
+    const supplied = node.params[name]
+    // Unsupplied is a missing-required static error; nothing to deliver
+    if (supplied !== undefined)
+      params[name] = perElementHandle(supplied, params[declared.over], node, name, declared, ctx)
   }
 
   return { params, propagate: false }
@@ -317,15 +328,12 @@ const vet = (
  */
 const perElementHandle = (
   supplied: CompiledNode,
-  params: Record<string, unknown>,
+  target: unknown,
   node: OperatorNode,
   name: string,
   declared: ValidatedParameter,
   ctx: EvaluationContext
 ): PerElement => {
-  if (declared.over === undefined)
-    throw internalError(`parameter '${name}' of '${node.name}' declares perElement without 'over'`)
-  const target = params[declared.over]
   // Type-checked by the target's own layers, except under
   // `runtimeTypeCheck: false`, where a non-array iterates over nothing
   const collection = Array.isArray(target) ? target : []
@@ -357,33 +365,6 @@ const perElementHandle = (
     evaluate,
     settle: () => indexedStream(collection.length, evaluate, (value) => value),
   }
-}
-
-/**
- * Declaration order, with every `over` target ahead of the `perElement`
- * parameter that iterates it. The handle closes over the target's vetted
- * value, so the target's layers must already have run — including
- * `nullInputDefault`'s replacement, which is the whole reason a null
- * `input` can become `[]` before the derived reject sees it.
- */
-const layerOrder = (
-  declarations: [string, ValidatedParameter][]
-): [string, ValidatedParameter][] => {
-  if (!declarations.some(([, declared]) => declared.evaluation === 'perElement'))
-    return declarations
-  const byName = new Map(declarations)
-  const ordered: [string, ValidatedParameter][] = []
-  const seen = new Set<string>()
-  const emit = (name: string, declared: ValidatedParameter) => {
-    if (seen.has(name)) return
-    seen.add(name)
-    const over = declared.evaluation === 'perElement' ? declared.over : undefined
-    const target = over === undefined ? undefined : byName.get(over)
-    if (over !== undefined && target !== undefined) emit(over, target)
-    ordered.push([name, declared])
-  }
-  for (const [name, declared] of declarations) emit(name, declared)
-  return ordered
 }
 
 /**
