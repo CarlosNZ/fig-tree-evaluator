@@ -374,6 +374,7 @@ The value of this section is consolidation — these are all already agreed in t
 | Literal parameter values vs declared types, `constraints` included | Type area; contract #9 |
 | Literal empty aggregate input (where no identity is defined) | Type § Aggregates |
 | Unresolved `$vars` in lexical scope; `$params` outside a body or undeclared; `$element`/`$index` outside an iterator; bare `$vars`/`$params` | References |
+| An **`as`-renamed binding used outside its `each` subtree** (`$order` in the `input` of the iterator that declares `as: 'order'`) | batch 5 — *row added at Phase-6 implementation: the prose already required it ("references to the node's own bindings from any of these are validation errors"), but a renamed binding is only a namespace inside its own scope, so out of scope it was falling through to the generic unrecognized-`$` warning and passing through as a string. Now an `unresolved-binding` error, like `$element` in the same position* |
 | `vars` shape rule violations; var cycles; `as` legality/collisions | References; Node grammar |
 | `fragment` `parameters` value neither plain object nor node | Fragments |
 | `maxDepth` / `maxNodes` exceeded | Options |
@@ -388,6 +389,7 @@ One clarification the missing-required row forces, **agreed** (exposed at review
 |---|---|
 | Unrecognized `$`-shaped keys and strings (inert data — the `$typo` class, with did-you-mean) | Operators |
 | Var shadowing; unreferenced vars (the misread-data signature) | References; Node grammar |
+| **Dead bindings**: an `each` referencing none of its own iterator's bindings | batch 5 — *row added at Phase-6 implementation (September 2026): batch 5 commits to this lint in prose, but the inventory, which calls itself "exactly this list", had no row for it. Built as `dead-binding`, the unreferenced-vars pattern's sibling* |
 | Useless modifier combinations (`vars` / `fallback` on `literal`) | Node grammar; fallback rule 6 |
 | `$not` over a propagate-family node (recommends `missingPathDefault` / `nullValueDefault`) | cases #9 |
 | `buildObject` duplicate literal keys | batch 6 |

@@ -10,15 +10,14 @@
  * their phases: the static gate refuses every error-severity issue before
  * evaluation starts.
  */
+import { ErrorCodes } from '../errorCodes'
+import { FigTreeError } from '../FigTreeError'
 import type { CompiledNode, SkeletonHole, SkeletonNode } from '../parse'
 import type { EvaluationContext } from './context'
-import { internalError } from './internal'
+import { cancellation, internalError } from './internal'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
-import { FigTreeError } from '../FigTreeError'
-import { ErrorCodes } from '../errorCodes'
-import { cancellation } from './internal'
 
 const abandon = (ctx: EvaluationContext, node: CompiledNode): Error =>
   ctx.rootSignal.aborted

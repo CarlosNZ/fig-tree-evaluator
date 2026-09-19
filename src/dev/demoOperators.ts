@@ -1,10 +1,10 @@
 /**
  * Stand-in operators for the dev playground, registered beside
  * `coreOperators` (src/dev/inspect.ts). They model the shapes core does not
- * yet hold: perElement delivery, the `as` renaming hook, the
- * `EvaluationData` sentinel, a `timeoutParam`, a leading-plus-rest
- * positional list, and a `validate` hook. Canonical names match the real
- * core set where a real operator is being modelled; the bodies are no-ops.
+ * yet hold: the `EvaluationData` sentinel, a `timeoutParam`, a
+ * leading-plus-rest positional list, and a `validate` hook. Canonical
+ * names match the real core set where a real operator is being modelled;
+ * the bodies are no-ops.
  * Each entry is deleted when its real operator lands (Phases 5–9); the file
  * goes with the last of them.
  */
@@ -68,20 +68,6 @@ const httpOp = defineOperator({
   evaluate: noop,
 })
 
-/** The iterator shape: perElement `each` over `input`, structural `as`. */
-const mapOp = defineOperator({
-  name: 'map',
-  description: 'Transform each element of an array',
-  parameters: {
-    input: { type: 'array' },
-    each: { type: 'any', evaluation: 'perElement', over: 'input' },
-    as: { type: 'string', required: false, evaluation: 'structural' },
-  },
-  positionalParams: ['input', 'each'],
-  returns: 'array',
-  evaluate: noop,
-})
-
 /** A `validate` hook — operator-specific linting of literal parameters. */
 const regexOp = defineOperator({
   name: 'regex',
@@ -124,6 +110,5 @@ export const demoOperators = (): ValidatedOperatorDefinition[] => [
   clampOp,
   getOp,
   httpOp,
-  mapOp,
   regexOp,
 ]

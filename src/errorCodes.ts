@@ -43,6 +43,7 @@ export const ErrorCodes = {
   missingRequired: 'missing-required', // { $if: [true] } — a required parameter not supplied
   unresolvedParam: 'unresolved-param', // '$params.x' outside a fragment body, or naming an undeclared parameter
   unresolvedBinding: 'unresolved-binding', // '$element' outside an iterator's each subtree
+  deadBinding: 'dead-binding', // an `each` referencing none of its own iterator's bindings (warning)
   invalidAs: 'invalid-as', // as: '$data.x' (dynamic), as: 'data' (reserved), nested as collisions
   maxDepthExceeded: 'max-depth', // the expression nests deeper than options.maxDepth
   maxNodesExceeded: 'max-nodes', // the expression holds more nodes than options.maxNodes

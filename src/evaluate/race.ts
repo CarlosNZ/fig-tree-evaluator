@@ -22,26 +22,38 @@ import { evaluateNode } from './evaluate'
 /** What each element's value passes through before the body sees it. */
 type Vet = (value: unknown) => unknown
 
+/**
+ * The general shape: `count` units of work, each addressed by index,
+ * started at once. Every caller below is a way of naming what `run` does.
+ *
+ * It is the engine that starts them, not the body, and that is the whole
+ * point — the non-rejecting settlement wrapper has to go on at the moment
+ * each promise is created (see the file header), which only the creator
+ * can guarantee.
+ */
+export const indexedStream = (
+  count: number,
+  run: (index: number) => Promise<unknown>,
+  vet: Vet
+): SettlementStream =>
+  streamOf(
+    Array.from({ length: count }, (_, index) => settlement(index, () => run(index), vet)),
+    count
+  )
+
 /** Start every element of an authored list concurrently. */
 export const raceStream = (
   nodes: CompiledNode[],
   ctx: EvaluationContext,
   vet: Vet
-): SettlementStream =>
-  streamOf(
-    nodes.map((node, index) => settlement(index, () => evaluateNode(node, ctx), vet)),
-    nodes.length
-  )
+): SettlementStream => indexedStream(nodes.length, (index) => evaluateNode(nodes[index], ctx), vet)
 
 /**
  * The degenerate case: the list arrived as data, so every value is already
  * known. Completion order is index order, and the body cannot tell.
  */
 export const settledStream = (values: unknown[], vet: Vet): SettlementStream =>
-  streamOf(
-    values.map((value, index) => settlement(index, () => Promise.resolve(value), vet)),
-    values.length
-  )
+  indexedStream(values.length, (index) => Promise.resolve(values[index]), vet)
 
 const settlement = async (
   index: number,

@@ -259,7 +259,6 @@ const PENDING: Record<string, PendingEntry> = {
       },
     ],
   },
-  ...iterators(),
   get: {
     n: 'get',
     st: '7.1',
@@ -475,106 +474,6 @@ const PENDING: Record<string, PendingEntry> = {
       { n: 'timeout', t: 'integer (ms)', r: false, ev: null, tr: false, d: 'Per-request bound' },
     ],
   },
-}
-
-/** The five iterators share one contract, so their entries are generated. */
-function iterators(): Record<string, PendingEntry> {
-  const common = (extra: string): PageParam[] => [
-    {
-      n: 'input',
-      t: 'array',
-      r: true,
-      ev: null,
-      tr: false,
-      d: `The collection${extra}; a null input is a type error unless nullInputDefault is supplied`,
-    },
-    {
-      n: 'each',
-      t: 'any',
-      r: true,
-      ev: 'perElement',
-      tr: false,
-      d: 'Evaluated once per element, with $element and $index bound',
-    },
-    {
-      n: 'as',
-      t: 'string',
-      r: false,
-      ev: null,
-      tr: false,
-      d: "Rename the bindings: as: 'row' gives $row and $rowIndex",
-    },
-    {
-      n: 'nullInputDefault',
-      t: 'array',
-      r: false,
-      ev: 'lazy',
-      tr: false,
-      d: 'Used as the collection when input evaluates to null — typically []',
-    },
-  ]
-
-  /** The four predicate iterators read `each` as a truthiness position. */
-  const predicate = (params: PageParam[]): PageParam[] =>
-    params.map((p) =>
-      p.n === 'each'
-        ? { ...p, tr: true, d: 'The predicate, per element — a truthiness position' }
-        : p
-    )
-
-  const find = predicate(common(' searched, in order'))
-  find.push({
-    n: 'noMatchDefault',
-    t: 'any',
-    r: false,
-    def: 'null',
-    ev: 'lazy',
-    tr: false,
-    d: 'Fires on no-match only — a found null element passes through unchanged',
-  })
-
-  return {
-    map: {
-      n: 'map',
-      st: '6.1',
-      ret: 'array',
-      pos: ['input', 'each'],
-      d: 'Apply an expression to every element — results in input order, same length',
-      p: common(''),
-    },
-    filter: {
-      n: 'filter',
-      st: '6.1',
-      ret: 'array',
-      pos: ['input', 'each'],
-      d: 'Keep the original elements whose predicate is truthy',
-      p: predicate(common('')),
-    },
-    find: {
-      n: 'find',
-      st: '6.1',
-      ret: 'any',
-      pos: ['input', 'each'],
-      d: 'The first element whose predicate is truthy — the element, never its index',
-      p: find,
-    },
-    some: {
-      n: 'some',
-      st: '6.1',
-      ret: 'boolean',
-      pos: ['input', 'each'],
-      d: "True when any element's predicate is truthy — or, with the list factored into data",
-      p: predicate(common('; empty input is false, the quantifier identity')),
-    },
-    every: {
-      n: 'every',
-      st: '6.1',
-      ret: 'boolean',
-      pos: ['input', 'each'],
-      d: "True when every element's predicate is truthy — and, with the list factored into data",
-      p: predicate(common('; empty input is true, the quantifier identity')),
-    },
-  }
 }
 
 /**

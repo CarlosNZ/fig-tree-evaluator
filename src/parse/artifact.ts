@@ -277,3 +277,36 @@ export interface ParseArtifact {
    */
   identityOnly: boolean
 }
+
+/**
+ * The `as` name this iterator binds under, or null for the default
+ * `$element` / `$index` pair. The one definition of the convention the
+ * contract's scoping generalization describes — a structural parameter
+ * literally named `as` — read identically by the static checker and by the
+ * runtime that builds the binding frames.
+ */
+export const renamedBinding = (node: OperatorNode): string | null => {
+  const declared = node.entry.definition.parameters.as
+  if (declared?.evaluation !== 'structural') return null
+  const supplied = node.params.as
+  if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
+  return null
+}
+
+/**
+ * Whether an iterator frame binding `as` (null for the default pair)
+ * answers a reference written under `binding`: undefined for a bare
+ * `$element` / `$index`, else the `as` name or its `Index` counterpart.
+ * A renamed frame does NOT bind the default names — one way to refer to
+ * each thing. The static checker and the runtime both resolve through
+ * this one predicate, which is what makes the static `unresolved-binding`
+ * error true of the runtime.
+ */
+export const bindsReference = (
+  as: string | null,
+  namespace: 'element' | 'index',
+  binding: string | undefined
+): boolean =>
+  binding === undefined
+    ? as === null
+    : (namespace === 'element' ? as : `${as ?? ''}Index`) === binding

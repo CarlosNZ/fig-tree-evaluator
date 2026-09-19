@@ -52,7 +52,7 @@ export type TypeOf<T> = T extends 'string'
 type DeclaredType<P> = P extends { type: infer T } ? T : 'any'
 
 /** Does the body see `null` at this position? */
-type KeepsNull<P> = P extends { truthiness: true } | { nullPolicy: 'value' }
+type KeepsNull<P> = P extends { nullPolicy: 'value' }
   ? true
   : P extends { nullPolicy: NullPolicyValue }
     ? false
@@ -86,6 +86,11 @@ type Truthy<P> = P extends { type: 'array' }
  * (`array`, `object`), so `Delivered<P>` would type every `firstOf`
  * candidate as an array. The language has no element-type declaration to
  * do better with — adding one would be the honest fix, and a separate one.
+ *
+ * A `perElement` declaration describes each ELEMENT'S result, and
+ * truthiness judges that whole result to one boolean, so a truthiness
+ * position delivers `PerElement<boolean>` — never `Truthy<P>`, which would
+ * read a container type as per-element booleans.
  */
 export type ParamValue<P> = P extends { evaluation: 'structural' }
   ? TypeOf<DeclaredType<P>>
@@ -96,7 +101,7 @@ export type ParamValue<P> = P extends { evaluation: 'structural' }
       : P extends { evaluation: 'lazyEntries' }
         ? Record<string, LazyValue>
         : P extends { evaluation: 'perElement' }
-          ? PerElement<Delivered<P>>
+          ? PerElement<P extends { truthiness: true } ? boolean : Delivered<P>>
           : P extends { evaluation: 'lazy' }
             ? LazyValue<Delivered<P>>
             : P extends { truthiness: true }

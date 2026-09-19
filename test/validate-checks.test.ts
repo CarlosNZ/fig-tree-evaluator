@@ -155,6 +155,38 @@ describe('as renaming', () => {
     }
   })
 
+  test('a binding used outside its each subtree is an error, not inert data', () => {
+    // `$element` is already an error there because the walk knows the
+    // namespace everywhere. An `as` name is a namespace only inside its
+    // own scope, so without the second look it would fall through to the
+    // generic unrecognized-$ warning and pass through as a string
+    const expression = {
+      operator: 'map',
+      input: '$order.items',
+      as: 'order',
+      each: '$order.name',
+    }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('the derived index form is caught out of scope too', () => {
+    const expression = { operator: 'map', input: [1], as: 'row', each: 1, fallback: '$rowIndex' }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('a binding name used after its iterator has closed is an error', () => {
+    const expression = {
+      $format: ['%1 %2', { operator: 'map', input: [1], as: 'row', each: '$row' }, '$row'],
+    }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('an unrelated $-string is still inert data with a warning', () => {
+    const expression = { operator: 'map', input: ['$typo'], as: 'row', each: '$row' }
+    expect(warningCodes(expression)).toContain('unrecognized-identifier')
+    expect(errorCodes(expression)).not.toContain('unresolved-binding')
+  })
+
   test('as may not collide with enclosing as names, derived forms included', () => {
     const nested = (innerAs: string) => ({
       operator: 'map',
@@ -323,5 +355,47 @@ describe('useless modifiers on literal', () => {
     const dead = result.issues.filter((issue) => issue.code === 'useless-modifier')
     expect(dead).toHaveLength(2)
     expect(result.valid).toBe(true)
+  })
+})
+
+describe('dead bindings', () => {
+  test("an each referencing none of its iterator's bindings warns", () => {
+    expect(warningCodes({ operator: 'map', input: [1, 2], each: 'constant' })).toContain(
+      'dead-binding'
+    )
+  })
+
+  test('referencing either binding clears it', () => {
+    expect(warningCodes({ operator: 'map', input: [1], each: '$element' })).not.toContain(
+      'dead-binding'
+    )
+    expect(warningCodes({ operator: 'map', input: [1], each: '$index' })).not.toContain(
+      'dead-binding'
+    )
+  })
+
+  test('a renamed iterator is judged on its own names', () => {
+    expect(
+      warningCodes({ operator: 'map', input: [1], as: 'row', each: '$row' })
+    ).not.toContain('dead-binding')
+    expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: 1 })).toContain(
+      'dead-binding'
+    )
+  })
+
+  test('an inner iterator reading only the OUTER binding leaves the inner dead', () => {
+    const expression = {
+      operator: 'map',
+      input: [1],
+      as: 'outer',
+      each: { operator: 'map', input: [2], each: '$outer' },
+    }
+    // The outer frame is referenced; the inner one binds $element/$index
+    // and nothing reads them
+    expect(warningCodes(expression).filter((code) => code === 'dead-binding')).toHaveLength(1)
+  })
+
+  test('it is a warning, so the expression still evaluates', () => {
+    expect(errorCodes({ operator: 'map', input: [1], each: 'constant' })).toHaveLength(0)
   })
 })

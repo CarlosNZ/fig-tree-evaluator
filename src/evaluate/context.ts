@@ -13,6 +13,7 @@ import type { FigTreeOptions } from '../options'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { OperatorContext } from '../runtimeInterface'
 import { isPlainObject } from '../utils'
+import type { Bindings } from './bindings'
 import type { Scope } from './scope'
 
 export interface EvaluationContext {
@@ -34,6 +35,12 @@ export interface EvaluationContext {
   runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
   scope?: Scope
+  /**
+   * The innermost enclosing iterator binding; absent outside any `each`
+   * subtree (./bindings). A separate chain from `scope`, because a binding
+   * frame lives for one element where a vars scope lives for a node.
+   */
+  bindings?: Bindings
 }
 
 /**

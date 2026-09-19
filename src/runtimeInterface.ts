@@ -24,12 +24,6 @@ export interface LazyValue<T = unknown> {
   evaluate(): Promise<T>
 }
 
-/** A per-element parameter: a fresh scope per index, memoized per index. */
-export interface PerElement<T = unknown> {
-  readonly [LAZY_HANDLE]: true
-  evaluate(index: number): Promise<T>
-}
-
 /** One element's outcome in a `race` stream — parked, never thrown. */
 export interface Settlement {
   index: number
@@ -42,6 +36,22 @@ export interface Settlement {
 export type SettlementStream = AsyncIterable<Settlement> & {
   readonly [LAZY_HANDLE]: true
   length: number
+}
+
+/** A per-element parameter: a fresh scope per index, memoized per index. */
+export interface PerElement<T = unknown> {
+  readonly [LAZY_HANDLE]: true
+  evaluate(index: number): Promise<T>
+  /**
+   * Every index at once, as settlements in completion order — the same
+   * stream a `race` parameter arrives as, which is how the deciding
+   * iterators (`find` / `some` / `every`) reuse `and` / `or`'s control
+   * flow unchanged. Shares the per-index memo with `evaluate`, so
+   * demanding both, or calling `settle()` twice, starts nothing twice;
+   * each call is a fresh stream, since a stream is consumed as it is
+   * iterated.
+   */
+  settle(): SettlementStream
 }
 
 /** True when a value is an engine handle: `LazyValue`, `PerElement`, stream. */

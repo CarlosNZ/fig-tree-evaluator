@@ -15,6 +15,7 @@ import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
 import type { ValidatedParameter } from '../operatorDefinition'
 import { validateHelpers } from './helpers'
+import { bindsReference, renamedBinding } from './artifact'
 import type {
   CompiledNode,
   NodePath,
@@ -50,6 +51,8 @@ interface VarsFrame {
 /** An iterator's binding scope: `as` name, or null for $element/$index. */
 interface IteratorFrame {
   as: string | null
+  /** Set when a reference inside the subtree resolved against this frame. */
+  referenced: boolean
 }
 
 interface CheckState {
@@ -169,21 +172,27 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
     else visit(state, supplied)
   }
   if (perElement.length > 0) {
-    state.iteratorFrames.push({ as: renamedBinding(node) })
+    const iterator: IteratorFrame = { as: renamedBinding(node), referenced: false }
+    state.iteratorFrames.push(iterator)
     for (const [, supplied] of perElement) visit(state, supplied)
     state.iteratorFrames.pop()
+    // The dead-binding lint, sibling of the unreferenced-vars warning: an
+    // `each` that reads none of its own bindings computes the same thing
+    // for every element. Conceivable on purpose, almost always a mistyped
+    // reference or a payload nested one level off
+    if (!iterator.referenced)
+      emit(
+        state,
+        'warning',
+        ErrorCodes.deadBinding,
+        `'${node.name}' binds ${iterator.as === null ? '$element / $index' : `$${iterator.as}`} but its 'each' references neither`,
+        node.path,
+        node.order,
+        { operator: node.name }
+      )
   }
 
   popVars(state, frame)
-}
-
-/** The literal `as` name on this node, when declared and usable. */
-const renamedBinding = (node: OperatorNode): string | null => {
-  const declared = node.entry.definition.parameters.as
-  if (declared?.evaluation !== 'structural') return null
-  const supplied = node.params.as
-  if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
-  return null
 }
 
 const checkSuppliedParam = (
@@ -340,7 +349,7 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node)
+      resolveBinding(state, node, node.namespace)
       return
   }
 }
@@ -405,15 +414,17 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
  * iterator frame binding the name used. A renamed frame does not bind the
  * default names ("one way to refer to each thing").
  */
-const resolveBinding = (state: CheckState, node: ReferenceNode) => {
-  const matches = (frame: IteratorFrame): boolean => {
-    if (node.binding === undefined) return frame.as === null
-    return node.namespace === 'element'
-      ? frame.as === node.binding
-      : `${frame.as ?? ''}Index` === node.binding
-  }
+const resolveBinding = (
+  state: CheckState,
+  node: ReferenceNode,
+  namespace: 'element' | 'index'
+) => {
   for (let i = state.iteratorFrames.length - 1; i >= 0; i--) {
-    if (matches(state.iteratorFrames[i])) return
+    const frame = state.iteratorFrames[i]
+    if (bindsReference(frame.as, namespace, node.binding)) {
+      frame.referenced = true
+      return
+    }
   }
   emit(
     state,

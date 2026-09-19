@@ -100,11 +100,12 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Severity } from '../issues'
+import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
-import { DEPTH_CEILING, probeConstant } from './probe'
+import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
 import type {
   ArtifactHole,
   CompiledNode,
@@ -115,6 +116,7 @@ import type {
   NodePath,
   OperatorNode,
   ParseArtifact,
+  SequencedIssue,
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
@@ -153,6 +155,19 @@ interface WalkState {
   fragmentNames: Set<string>
   identityOnly: boolean
   renamedBindings: BindingFrame[]
+  /**
+   * Every binding name any `as` in the expression declares, element and
+   * derived index form alike — the material for the out-of-scope upgrade
+   * below. Collected across the whole walk, not just the active frames.
+   */
+  asNames: Set<string>
+  /**
+   * `$`-tokens warned as unrecognized, each with the issue it raised. A
+   * token naming a binding declared ANYWHERE is not unrecognized, it is
+   * out of scope, and the walk cannot know that at the time: a depth-first
+   * walk meets an iterator's `input` before its `as`.
+   */
+  unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
 }
 
 /** Parse an expression into its compile artifact. Never throws on content. */
@@ -174,8 +189,11 @@ export const parseExpression = (
     fragmentNames: new Set(),
     identityOnly: false,
     renamedBindings: [],
+    asNames: new Set(),
+    unrecognized: [],
   }
   const root = walk(state, input, [], 0)
+  upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
   // Stable sort — issues from one node keep their emission order
   state.issues.sort((a, b) => a.order - b.order)
@@ -196,6 +214,35 @@ export const parseExpression = (
   }
 }
 
+/**
+ * Turn "unrecognized `$`" into "out of scope" wherever the token names a
+ * binding the expression actually declares.
+ *
+ * The grammar's default for a `$`-string it does not know is inert data
+ * with a warning, which is right for `$typo` — it might just be data. It
+ * is wrong for `$order` in the `input` of the very iterator that declares
+ * `as: 'order'`: the author plainly meant the binding, and batch 5 says
+ * references to an iterator's own bindings from outside its `each` subtree
+ * are errors. `$element` is already an error there, because it is a
+ * reserved namespace the walk recognizes everywhere; an `as` name is only
+ * a namespace inside its own scope, which is exactly why this second look
+ * is needed to treat the two alike.
+ *
+ * Rewritten on the issue record itself, so it keeps its emission order.
+ */
+const upgradeOutOfScopeBindings = (state: WalkState) => {
+  if (state.asNames.size === 0) return
+  for (const { token, issue: sequenced, raw } of state.unrecognized) {
+    if (!state.asNames.has(token)) continue
+    sequenced.issue = {
+      ...sequenced.issue,
+      severity: 'error',
+      code: ErrorCodes.unresolvedBinding,
+      message: `'${raw}' names an iterator binding, but no enclosing iterator binds it here`,
+    }
+  }
+}
+
 // ── Issue emission ──────────────────────────────────────────────────
 
 const emit = (
@@ -206,8 +253,8 @@ const emit = (
   path: NodePath,
   order: number,
   operator?: string
-) => {
-  state.issues.push({
+): SequencedIssue => {
+  const sequenced: SequencedIssue = {
     issue: {
       severity,
       code,
@@ -216,7 +263,9 @@ const emit = (
       ...(operator !== undefined ? { operator } : {}),
     },
     order,
-  })
+  }
+  state.issues.push(sequenced)
+  return sequenced
 }
 
 // ── The walk ────────────────────────────────────────────────────────
@@ -304,7 +353,7 @@ const walkString = (
     case 'unrecognized': {
       const renamed = recognizeRenamedBinding(state, raw, path, order)
       if (renamed !== null) return renamed
-      emit(
+      const issue = emit(
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
@@ -312,6 +361,8 @@ const walkString = (
         path,
         order
       )
+      const sigil = splitSigilToken(raw)
+      if (sigil !== null) state.unrecognized.push({ token: sigil.token, issue, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
@@ -389,15 +440,9 @@ const walkArray = (
 
 /** The `$name` keys of an object that resolve against what's known. */
 const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] =>
-  Object.keys(raw).filter((key) => {
-    if (!key.startsWith('$')) return false
-    const name = key.slice(1)
-    return (
-      name === 'literal' ||
-      resolveOperator(state.registry, name) !== undefined ||
-      state.fragments.has(name)
-    )
-  })
+  Object.keys(raw).filter(
+    (key) => key.startsWith('$') && isRecognizedShorthand(state, key.slice(1))
+  )
 
 /** Would this value classify as a node (kinds 1–3, 5)? */
 const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
@@ -640,26 +685,22 @@ const finalizeParams = (
 
   for (const entry of pending) {
     if (perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
+    const evaluation = definition.parameters[entry.name]?.evaluation
+    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
   if (frame !== undefined) state.renamedBindings.push(frame)
   for (const entry of pending) {
     if (!perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
+    const evaluation = definition.parameters[entry.name]?.evaluation
+    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
   if (frame !== undefined) state.renamedBindings.pop()
 }
 
-/** The delivery mode declared for a parameter, when it is a declared one. */
-const mode = (
-  definition: RegistryEntry['definition'],
-  name: string
-): string | undefined => definition.parameters[name]?.evaluation
-
 const walkPending = (
   state: WalkState,
   entry: PendingParam,
-  evaluation: string | undefined,
+  evaluation: EvaluationMode | undefined,
   depth: number
 ): CompiledNode => {
   // The element- and entry-addressable modes keep a literal payload out of
@@ -842,6 +883,7 @@ const buildBindingFrame = (
         return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
     }
   }
+  for (const name of names) state.asNames.add(name)
   return { element: value, index: `${value}Index` }
 }
 
