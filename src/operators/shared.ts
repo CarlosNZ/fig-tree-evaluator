@@ -115,19 +115,15 @@ export const decide = async (values: SettlementStream, decider: boolean): Promis
  * wait on elements whose outcome cannot change the answer.
  */
 export const collectAll = async (values: SettlementStream): Promise<unknown[]> => {
-  const results = new Array<unknown>(values.length)
-  const failed = new Map<number, unknown>()
-  const settledIndexes = new Set<number>()
+  const outcomes = new Array<Settlement | undefined>(values.length)
   /** The lowest index whose outcome is not yet known; only ever advances. */
   let cursor = 0
   for await (const settled of values) {
-    if (settled.ok) results[settled.index] = settled.value
-    else failed.set(settled.index, settled.error)
-    settledIndexes.add(settled.index)
-    while (cursor < values.length && settledIndexes.has(cursor)) {
-      if (failed.has(cursor)) throw failed.get(cursor)
+    outcomes[settled.index] = settled
+    for (let known = outcomes[cursor]; known !== undefined; known = outcomes[cursor]) {
+      if (!known.ok) throw known.error
       cursor += 1
     }
   }
-  return results
+  return outcomes.map((settled) => settled?.value)
 }
