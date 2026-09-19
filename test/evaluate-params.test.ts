@@ -142,6 +142,26 @@ describe('the conditional null policy (ledger #14)', () => {
     expect(error.code).toBe('type-check')
     expect(error.message).toContain("'to'")
   })
+
+  test('an unsupplied selector is read through the same default chain as any parameter', async () => {
+    const defaulted = () =>
+      spyOp(
+        'conv',
+        {
+          value: { type: 'any', nullPolicy: (to: string) => (to === 'b' ? 'value' : 'propagate') },
+          to: { type: { literal: ['a', 'b'] }, default: 'b' },
+        },
+        { positionalParams: ['value', 'to'] }
+      )
+    const spy = defaulted()
+    expect(await figWith([spy]).evaluate({ $conv: [null] })).toBe('ok')
+    expect(spy.calls).toEqual([{ value: null, to: 'b' }])
+    // operatorDefaults outranks the metadata default here too
+    const overridden = defaulted()
+    const fig = figWith([overridden], { operatorDefaults: { conv: { to: 'a' } } })
+    expect(await fig.evaluate({ $conv: [null] })).toBe(null)
+    expect(overridden.calls).toHaveLength(0)
+  })
 })
 
 describe('replacesNullAt — the engine-side null replacement (ledger #18)', () => {

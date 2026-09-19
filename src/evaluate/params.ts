@@ -1,7 +1,7 @@
 /**
  * Parameter resolution — the engine layers a body relies on ("Engine
  * guarantees" in docs-dev/v3-specs/v3-operator-contract.md; "Null policy"
- * in docs-dev/v3-specs/v3-api.md). Two passes over the declarations:
+ * in docs-dev/v3-specs/v3-api.md). Three passes over the declarations:
  *
  * Pass 1 starts every eager parameter's evaluation concurrently, delivers
  * structural values verbatim, and turns `replacesNullAt` holders into
@@ -9,11 +9,16 @@
  * awaited together, so a failing operand fails the node before any null is
  * considered: failure beats propagation.
  *
+ * The defaults pass resolves every unset parameter — absent, or null at an
+ * optional parameter whose type excludes null — through the layered
+ * default chain (operatorDefaults → metadata default, the EvaluationData
+ * sentinel delivering the merged data), or removes it when nothing declares
+ * a default. It runs before any layer so that a layer reading a SIBLING (a
+ * conditional null policy's selector) sees the same defaulted value the
+ * sibling's own layers will.
+ *
  * Pass 2 applies the layers to each declared parameter, in this order:
- *  1. unset detection — absent, or null at an optional parameter whose type
- *     excludes null → the layered default chain (operatorDefaults →
- *     metadata default, the EvaluationData sentinel delivering the merged
- *     data) → or an ABSENT key when nothing declares a default;
+ *  1. absence — a parameter the defaults pass removed delivers no key;
  *  2. `replacesNullAt` — a null at a target is replaced by the holder's
  *     once-evaluated value, per element/value where the target declares an
  *     element policy, whole-value otherwise;
@@ -150,6 +155,25 @@ export const resolveParams = async (
     resolved[name] = settled[i]
   })
 
+  // ── The defaults pass: the layered chain, else removal ────────────
+  for (const [name, declared] of declarations) {
+    // Holders and per-element handles carry no whole value; a handle
+    // delivered in pass 1 runs its layers on demand
+    if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
+    if (delivered.has(name)) continue
+    const value = resolved[name]
+    const unset =
+      value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
+    if (!unset) continue
+    if (instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)) {
+      resolved[name] = instanceDefaults[name]
+    } else if ('default' in declared) {
+      resolved[name] = declared.default === EvaluationData ? ctx.data : declared.default
+    } else {
+      delete resolved[name]
+    }
+  }
+
   // ── Pass 2: the layers ────────────────────────────────────────────
   const params: Record<string, unknown> = {}
 
@@ -170,18 +194,8 @@ export const resolveParams = async (
     }
     let value = resolved[name]
 
-    // 1. unset → the default chain, else absent
-    const unset =
-      value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
-    if (unset) {
-      if (instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)) {
-        value = instanceDefaults[name]
-      } else if ('default' in declared) {
-        value = declared.default === EvaluationData ? ctx.data : declared.default
-      } else {
-        continue
-      }
-    }
+    // 1. absent: nothing supplied and nothing declared a default
+    if (value === undefined) continue
 
     // 2. replacesNullAt
     const holder = holders[name]
@@ -194,27 +208,25 @@ export const resolveParams = async (
     //    `{ $if: [true, 'yes'] }` resolve null — the unset `else` takes
     //    its declared default of null, which is a whole value reaching
     //    this layer, and the node would short-circuit before the taken
-    //    branch was ever demanded. The derived reject below still applies:
-    //    a null container at a degenerating parameter is a type error
+    //    branch was ever demanded. The derived reject (layer 5) still
+    //    applies: a null container at a degenerating parameter is a type
+    //    error
     const lazily = declared.evaluation !== 'eager' && declared.evaluation !== 'structural'
-    if (value === null) {
-      if (typeNamesNull(declared.type)) {
-        if (!lazily && effectivePolicy(node, declared, resolved) === 'propagate')
-          return { params, propagate: true }
-      } else if (ctx.runtimeTypeCheck) {
-        throw typeError(node, name, checkType(value, declared.type))
-      }
+    if (value === null && typeNamesNull(declared.type) && !lazily) {
+      if (effectivePolicy(node, declared, resolved) === 'propagate')
+        return { params, propagate: true }
     }
 
     // 4. element-wise null policy
     if (declared.elementNullPolicy === 'propagate' && containsNull(value))
       return { params, propagate: true }
 
-    // 5. the type check + constraints
-    if (ctx.runtimeTypeCheck && value !== null) {
+    // 5. the type check + constraints. A null at a type that does not name
+    //    null fails the type check: the derived reject
+    if (ctx.runtimeTypeCheck) {
       const typed = checkType(value, declared.type)
       if (!typed.ok) throw typeError(node, name, typed)
-      if (declared.constraints !== undefined) {
+      if (value !== null && declared.constraints !== undefined) {
         const constrained = checkConstraintsUnderPolicy(
           value,
           declared.constraints,
@@ -459,18 +471,23 @@ const wrapDelivery = (
 const typeError = (
   node: OperatorNode,
   name: string,
-  result: { ok: false; expected: string; actual: string } | { ok: true }
+  result: { ok: false; expected: string; actual: string }
 ): FigTreeError => {
-  const detail = result.ok ? '' : `: expected ${result.expected}, received ${result.actual}`
   return new FigTreeError({
     code: ErrorCodes.typeCheck,
-    message: `${node.name} – parameter '${name}'${detail}`,
+    message: `${node.name} – parameter '${name}': expected ${result.expected}, received ${result.actual}`,
     path: node.path,
     operator: node.name,
   })
 }
 
-/** The declared policy, or the compiled table read through its selector. */
+/**
+ * The declared policy, or the compiled table read through its selector. The
+ * selector is read after the defaults pass, so it is the value its own
+ * layers will see. Its type is checked here whatever `runtimeTypeCheck`
+ * says: the table is semantics, and needs a member of the literal type as
+ * its key.
+ */
 const effectivePolicy = (
   node: OperatorNode,
   declared: ValidatedParameter,
@@ -479,26 +496,15 @@ const effectivePolicy = (
   if (typeof declared.nullPolicy === 'string') return declared.nullPolicy
   const compiled: CompiledNullPolicy = declared.nullPolicy
   const selectorDeclared = node.entry.definition.parameters[compiled.selector]
-  const selectorValue = effectiveSelectorValue(node, compiled.selector, resolved)
+  const selectorValue = resolved[compiled.selector]
   const typed = checkType(selectorValue, selectorDeclared.type)
   if (!typed.ok) throw typeError(node, compiled.selector, typed)
+  // The table has a row per member of the literal type, and the type check
+  // is membership, so a miss here is a compiler defect
   const row = compiled.table.find((entry) => entry.value === selectorValue)
-  if (row === undefined) throw typeError(node, compiled.selector, checkType(selectorValue, 'null'))
+  if (row === undefined)
+    throw internalError(`no null-policy row for ${node.name}.${compiled.selector}`)
   return row.policy
-}
-
-/** A selector's value through the same default chain as any parameter. */
-const effectiveSelectorValue = (
-  node: OperatorNode,
-  selector: string,
-  resolved: Record<string, unknown>
-): unknown => {
-  const value = resolved[selector]
-  if (value !== undefined && value !== null) return value
-  const defaults = node.entry.instanceDefaults
-  if (defaults !== undefined && Object.hasOwn(defaults, selector)) return defaults[selector]
-  const declared = node.entry.definition.parameters[selector]
-  return 'default' in declared ? declared.default : value
 }
 
 const replaceNulls = async (
