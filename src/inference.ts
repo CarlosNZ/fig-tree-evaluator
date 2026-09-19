@@ -52,7 +52,7 @@ export type TypeOf<T> = T extends 'string'
 type DeclaredType<P> = P extends { type: infer T } ? T : 'any'
 
 /** Does the body see `null` at this position? */
-type KeepsNull<P> = P extends { truthiness: true } | { nullPolicy: 'value' }
+type KeepsNull<P> = P extends { nullPolicy: 'value' }
   ? true
   : P extends { nullPolicy: NullPolicyValue }
     ? false
