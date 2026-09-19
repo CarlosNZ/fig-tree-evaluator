@@ -4,10 +4,9 @@
  * docs-dev/v3-specs/v3-api.md; naming rules 1-5 in its Operators area).
  *
  * `buildRegistry()` is a pure function of the registry-affecting options:
- * `new FigTree()` calls it at construction, and Phase 8's `updateOptions`
- * re-runs it on merged options and swaps the result atomically — one path,
- * validated identically. Fragments join the same input and the same
- * one-namespace collision domain in Phase 11.
+ * construction and `updateOptions` both call it and swap the result
+ * atomically — one path, validated identically. Fragments join the same
+ * input and the same one-namespace collision domain in Phase 11.
  *
  * The brand is the entry ticket (ruled July 2026): every flattened entry
  * must be a `defineOperator()`-validated definition, trusted wholesale —

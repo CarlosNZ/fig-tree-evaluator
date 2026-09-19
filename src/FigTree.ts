@@ -7,10 +7,10 @@
  * `validate()` and `evaluate()` share one spine: the same compile (parse +
  * static checks) and the same per-call limit checks; `validate()` returns
  * the issue stream, `evaluate()` refuses on the first error-severity issue
- * and evaluates the holes otherwise. The parse cache lands in Phase 8.2
- * (it wraps `compile()`); `mode: 'report'` and `trace` in Phase 12;
- * `timeout` in Phase 10; the result cache in Phase 9 — those options are
- * accepted and inert until then.
+ * and evaluates the holes otherwise, with the parse cache wrapping that
+ * shared compile. `mode: 'report'` and `trace` land in Phase 12,
+ * `timeout` in Phase 10 and the result cache in Phase 9 — those options
+ * are accepted and inert until then.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the parse cache are
@@ -21,7 +21,13 @@
 import type { FigTreeOptions, FragmentDefinition } from './options'
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry, type RegistryInput } from './registry'
-import { parseExpression, probeConstant, runStaticChecks, type ParseArtifact } from './parse'
+import {
+  ParseCache,
+  parseExpression,
+  probeConstant,
+  runStaticChecks,
+  type ParseArtifact,
+} from './parse'
 import { copyOptions, createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
@@ -49,7 +55,30 @@ interface InstanceState {
   options: FigTreeOptions
   source: RegistrySource
   registry: OperatorRegistry
+  /**
+   * Built with the registry and discarded with it. An artifact bakes in
+   * registry resolution, so a cache that outlived its registry would serve
+   * stale classifications — which is exactly why `operators`, `fragments`
+   * and `operatorDefaults` are the whole invalidation set, and why
+   * invalidation is this field being replaced rather than a method call.
+   */
+  parseCache: ParseCache
 }
+
+/**
+ * The three options the compile artifact consumes, and so the whole
+ * invalidation set: an artifact bakes in registry resolution, and a
+ * modifier default bakes into the precomputed shielding.
+ *
+ * Tested by presence, not by whether the value actually differs. Deciding
+ * that would mean structurally comparing `operatorDefaults` for no
+ * correctness gain, and a redundant rebuild costs a recompile, never a
+ * wrong answer.
+ */
+const touchesRegistry = (update: FigTreeOptions): boolean =>
+  update.operators !== undefined ||
+  update.fragments !== undefined ||
+  update.operatorDefaults !== undefined
 
 /**
  * Build a whole state from the previous one and an update — the single
@@ -59,6 +88,10 @@ interface InstanceState {
  * Validate-before-swap is structural rather than guarded: `buildRegistry`
  * throws from in here, so a caller that assigns the return value can only
  * ever assign a complete, valid record.
+ *
+ * An update naming none of the registry-affecting options carries the
+ * registry and the parse cache across untouched. Nothing about either
+ * could have changed, so rebuilding would only throw away artifacts.
  */
 const buildState = (previous: InstanceState | null, update: FigTreeOptions): InstanceState => {
   // Merged with the registry keys present, so `fragments` gets the same
@@ -77,7 +110,23 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
       ? { operatorDefaults: options.operatorDefaults }
       : {}),
   }
-  return { options, source, registry: buildRegistry(registryInput) }
+  if (previous !== null && !touchesRegistry(update))
+    return { options, source, registry: previous.registry, parseCache: previous.parseCache }
+
+  const registry = buildRegistry(registryInput)
+  return {
+    options,
+    source,
+    registry,
+    parseCache: new ParseCache({
+      compile: (expression) => {
+        const artifact = parseExpression(expression, registry, NO_FRAGMENTS)
+        runStaticChecks(artifact)
+        return artifact
+      },
+      probe: (expression) => probeConstant(expression, registry, NO_FRAGMENTS),
+    }),
+  }
 }
 
 /** The stored options with the registry keys put back, for merging. */
@@ -173,16 +222,21 @@ export class FigTree {
     rejectPerCallRegistry(options)
     const merged = mergeOptions(this.state.options, options)
 
-    if (merged.trace !== true) {
-      const probe = probeConstant(expression, this.state.registry, NO_FRAGMENTS)
-      if (probe.constant) {
-        if (merged.maxDepth !== undefined && probe.depth > merged.maxDepth)
-          throw staticError(depthIssue(probe.depth, merged.maxDepth), [])
-        return expression
-      }
+    // An inert input is returned by identity without being parsed. The
+    // verdict is memoized in the cache's identity layer, so a repeated
+    // constant container costs a pointer lookup rather than another walk.
+    // Under `trace` the skip is off: a skipped parse has no nodes to echo.
+    const resolved =
+      merged.trace === true
+        ? ({ kind: 'artifact', artifact: this.compile(expression) } as const)
+        : this.state.parseCache.resolve(expression)
+    if (resolved.kind === 'inert') {
+      if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth)
+        throw staticError(depthIssue(resolved.depth, merged.maxDepth), [])
+      return expression
     }
 
-    const artifact = this.compile(expression)
+    const { artifact } = resolved
     const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
     const firstError = issues.find((issue) => issue.severity === 'error')
     if (firstError !== undefined) throw staticError(firstError, issues)
@@ -191,13 +245,17 @@ export class FigTree {
   }
 
   /**
-   * The shared compile seam: parse + the metadata-driven static checks.
-   * Uncached until Phase 8.2 — the parse cache wraps exactly this method.
+   * The shared compile seam: parse + the metadata-driven static checks,
+   * behind the parse cache. `validate()` calls it directly and so warms
+   * the cache for the next `evaluate()`, which is the only pre-warm the
+   * surface offers.
+   *
+   * It always yields an artifact, never a probe verdict: an inert input
+   * can still earn an unrecognized-`$` warning, and reporting is
+   * `validate()`'s whole job.
    */
   private compile(expression: unknown): ParseArtifact {
-    const artifact = parseExpression(expression, this.state.registry, NO_FRAGMENTS)
-    runStaticChecks(artifact)
-    return artifact
+    return this.state.parseCache.artifact(expression)
   }
 }
 
