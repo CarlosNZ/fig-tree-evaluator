@@ -100,6 +100,7 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Severity } from '../issues'
+import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
@@ -686,26 +687,22 @@ const finalizeParams = (
 
   for (const entry of pending) {
     if (perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
+    const evaluation = definition.parameters[entry.name]?.evaluation
+    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
   if (frame !== undefined) state.renamedBindings.push(frame)
   for (const entry of pending) {
     if (!perElement.has(entry.name)) continue
-    node.params[entry.name] = walkPending(state, entry, mode(definition, entry.name), depth)
+    const evaluation = definition.parameters[entry.name]?.evaluation
+    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
   if (frame !== undefined) state.renamedBindings.pop()
 }
 
-/** The delivery mode declared for a parameter, when it is a declared one. */
-const mode = (
-  definition: RegistryEntry['definition'],
-  name: string
-): string | undefined => definition.parameters[name]?.evaluation
-
 const walkPending = (
   state: WalkState,
   entry: PendingParam,
-  evaluation: string | undefined,
+  evaluation: EvaluationMode | undefined,
   depth: number
 ): CompiledNode => {
   // The element- and entry-addressable modes keep a literal payload out of
