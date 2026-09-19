@@ -96,53 +96,43 @@ export const plus = defineOperator({
   },
 })
 
-const binary = (
-  name: string,
-  alias: string | undefined,
-  description: string,
-  second: string,
-  secondDescription: string,
-  compute: (a: number, b: number) => number
-) =>
-  defineOperator({
-    name,
-    ...(alias !== undefined ? { alias } : {}),
-    description,
-    parameters: {
-      value: { type: ['number', 'null'], description: 'The main operand' },
-      [second]: { type: ['number', 'null'], description: secondDescription },
-    },
-    positionalParams: ['value', second],
-    returns: 'number',
-    evaluate: (params) => compute(params.value as number, params[second] as number),
-  })
+export const subtract = defineOperator({
+  name: 'subtract',
+  alias: '-',
+  description: 'Subtract one number from another',
+  parameters: {
+    value: { type: ['number', 'null'], description: 'The main operand' },
+    minus: { type: ['number', 'null'], description: 'The amount subtracted from value' },
+  },
+  positionalParams: ['value', 'minus'],
+  returns: 'number',
+  evaluate: ({ value, minus }) => value - minus,
+})
 
-export const subtract = binary(
-  'subtract',
-  '-',
-  'Subtract one number from another',
-  'minus',
-  'The amount subtracted from value',
-  (a, b) => a - b
-)
+export const divide = defineOperator({
+  name: 'divide',
+  alias: '/',
+  description: 'Divide one number by another — true division; zero divisors fail',
+  parameters: {
+    value: { type: ['number', 'null'], description: 'The main operand' },
+    by: { type: ['number', 'null'], description: 'The divisor' },
+  },
+  positionalParams: ['value', 'by'],
+  returns: 'number',
+  evaluate: ({ value, by }) => value / by,
+})
 
-export const divide = binary(
-  'divide',
-  '/',
-  'Divide one number by another — true division; zero divisors fail',
-  'by',
-  'The divisor',
-  (a, b) => a / b
-)
-
-export const modulo = binary(
-  'modulo',
-  undefined,
-  'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
-  'mod',
-  'The modulus',
-  (a, b) => ((a % b) + b) % b
-)
+export const modulo = defineOperator({
+  name: 'modulo',
+  description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
+  parameters: {
+    value: { type: ['number', 'null'], description: 'The main operand' },
+    mod: { type: ['number', 'null'], description: 'The modulus' },
+  },
+  positionalParams: ['value', 'mod'],
+  returns: 'number',
+  evaluate: ({ value, mod }) => ((value % mod) + mod) % mod,
+})
 
 export const multiply = defineOperator({
   name: 'multiply',
