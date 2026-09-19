@@ -120,9 +120,11 @@ export const resolveParams = async (
         break
       case 'lazyElements':
       case 'lazyEntries':
-      case 'race':
+      case 'race': {
         if (supplied === undefined) break
-        if (containerHandles(supplied, declared, ctx, name, resolved)) {
+        const handles = containerHandles(supplied, declared, ctx)
+        if (handles !== undefined) {
+          resolved[name] = handles
           delivered.add(name)
           break
         }
@@ -133,6 +135,7 @@ export const resolveParams = async (
         pendingNames.push(name)
         pending.push(evaluateNode(supplied, ctx))
         break
+      }
       case 'perElement':
         // Nothing starts here: the handle needs its `over` sibling
         // VETTED, so it is built in pass 2 once that parameter's own
@@ -401,36 +404,29 @@ const vetElement = (value: unknown, declared: ValidatedParameter): unknown =>
 
 /**
  * Handles straight off a literal container — the authored shape the parser
- * kept element- and entry-addressable. Returns false when the supplied node
- * is anything else, leaving the caller to take the degeneration path.
+ * kept element- and entry-addressable. Undefined when the supplied node is
+ * anything else, leaving the caller to take the degeneration path.
  */
 const containerHandles = (
   supplied: CompiledNode,
   declared: ValidatedParameter,
-  ctx: EvaluationContext,
-  name: string,
-  resolved: Record<string, unknown>
-): boolean => {
-  if (declared.evaluation === 'lazyElements' && supplied.kind === 'elements') {
-    resolved[name] = supplied.nodes.map((element) =>
+  ctx: EvaluationContext
+): unknown => {
+  if (declared.evaluation === 'lazyElements' && supplied.kind === 'elements')
+    return supplied.nodes.map((element) =>
       handleOf(async () => vetElement(await evaluateNode(element, ctx), declared))
     )
-    return true
-  }
-  if (declared.evaluation === 'race' && supplied.kind === 'elements') {
-    resolved[name] = raceStream(supplied.nodes, ctx, (value) => vetElement(value, declared))
-    return true
-  }
+  if (declared.evaluation === 'race' && supplied.kind === 'elements')
+    return raceStream(supplied.nodes, ctx, (value) => vetElement(value, declared))
   if (declared.evaluation === 'lazyEntries' && supplied.kind === 'entries') {
     // A vars block on the map scopes its branches, as on any plain literal
     const scoped = pushVars(ctx, supplied.vars)
     const entries: Record<string, LazyValue> = {}
     for (const [key, value] of Object.entries(supplied.entries))
       entries[key] = handleOf(async () => vetElement(await evaluateNode(value, scoped), declared))
-    resolved[name] = entries
-    return true
+    return entries
   }
-  return false
+  return undefined
 }
 
 /**
