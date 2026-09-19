@@ -7,16 +7,22 @@
  * `validate()` and `evaluate()` share one spine: the same compile (parse +
  * static checks) and the same per-call limit checks; `validate()` returns
  * the issue stream, `evaluate()` refuses on the first error-severity issue
- * and evaluates the holes otherwise. `updateOptions`, `getOptions` and the
- * parse cache land in Phase 8 (the cache wraps `compile()`); `mode:
- * 'report'` and `trace` in Phase 12; `timeout` in Phase 10; the result
- * cache in Phase 9 — those options are accepted and inert until then.
+ * and evaluates the holes otherwise. The parse cache lands in Phase 8.2
+ * (it wraps `compile()`); `mode: 'report'` and `trace` in Phase 12;
+ * `timeout` in Phase 10; the result cache in Phase 9 — those options are
+ * accepted and inert until then.
+ *
+ * An instance's whole mutable world is one `InstanceState` record, swapped
+ * atomically. The registry, the options and (from 8.2) the parse cache are
+ * derived from each other, so they may only change together: an artifact
+ * bakes in registry resolution, and a cache built against one registry
+ * must never answer against another.
  */
-import type { FigTreeOptions } from './options'
+import type { FigTreeOptions, FragmentDefinition } from './options'
 import type { Issue, ValidationResult } from './issues'
-import { buildRegistry, type OperatorRegistry } from './registry'
+import { buildRegistry, type OperatorRegistry, type RegistryInput } from './registry'
 import { parseExpression, probeConstant, runStaticChecks, type ParseArtifact } from './parse'
-import { createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
+import { copyOptions, createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
@@ -25,19 +31,97 @@ import { coreOperators } from './operators'
 /** No fragments are registrable until Phase 11. */
 const NO_FRAGMENTS: ReadonlyMap<string, unknown> = new Map()
 
+/**
+ * What the registry is built from. Held apart from the stored options so
+ * that the definitions — and the clients closed inside them — are not
+ * reachable through `context.options`, which every operator body
+ * receives whole. `getOptions()` excludes the same two keys, so the
+ * instance and its introspection agree.
+ */
+interface RegistrySource {
+  operators: NonNullable<FigTreeOptions['operators']>
+  fragments?: Record<string, FragmentDefinition>
+}
+
+/** Everything an instance may swap, and may only swap together. */
+interface InstanceState {
+  /** The stored options, registry keys removed. */
+  options: FigTreeOptions
+  source: RegistrySource
+  registry: OperatorRegistry
+}
+
+/**
+ * Build a whole state from the previous one and an update — the single
+ * path shared by construction (from no previous state) and
+ * `updateOptions`, so both validate identically.
+ *
+ * Validate-before-swap is structural rather than guarded: `buildRegistry`
+ * throws from in here, so a caller that assigns the return value can only
+ * ever assign a complete, valid record.
+ */
+const buildState = (previous: InstanceState | null, update: FigTreeOptions): InstanceState => {
+  // Merged with the registry keys present, so `fragments` gets the same
+  // two-level treatment as any other block and `operators`, an array,
+  // replaces. They are split back out immediately afterwards.
+  const base = previous === null ? {} : withSource(previous.options, previous.source)
+  const { operators, fragments, ...options } = copyOptions(mergeOptions(base, update))
+  const source: RegistrySource = {
+    // Omitted `operators` means the core set only — no HTTP, no SQL
+    operators: operators ?? [coreOperators],
+    ...(fragments !== undefined ? { fragments } : {}),
+  }
+  const registryInput: RegistryInput = {
+    operators: source.operators,
+    ...(options.operatorDefaults !== undefined
+      ? { operatorDefaults: options.operatorDefaults }
+      : {}),
+  }
+  return { options, source, registry: buildRegistry(registryInput) }
+}
+
+/** The stored options with the registry keys put back, for merging. */
+const withSource = (options: FigTreeOptions, source: RegistrySource): FigTreeOptions => ({
+  ...options,
+  operators: source.operators,
+  ...(source.fragments !== undefined ? { fragments: source.fragments } : {}),
+})
+
 export class FigTree {
-  private readonly registry: OperatorRegistry
-  private readonly options: FigTreeOptions
+  private state: InstanceState
 
   constructor(options: FigTreeOptions = {}) {
-    this.registry = buildRegistry({
-      // Omitted `operators` means the core set only — no HTTP, no SQL
-      operators: options.operators ?? [coreOperators],
-      ...(options.operatorDefaults !== undefined
-        ? { operatorDefaults: options.operatorDefaults }
-        : {}),
-    })
-    this.options = { ...options }
+    this.state = buildState(null, options)
+  }
+
+  /**
+   * The one sanctioned mutation path ("The method surface at a glance" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md). Merges by the same rule as
+   * per-call options, re-validates the whole registry, and swaps.
+   *
+   * Re-validation is unconditional. A merged `operatorDefaults` has to be
+   * re-checked against a new operator set in any case — an entry naming an
+   * operator the new set no longer registers is an error reachable no
+   * other way — and the converse holds too, so there is no update for
+   * which skipping the check would be sound.
+   */
+  updateOptions(options: FigTreeOptions = {}): void {
+    this.state = buildState(this.state, options)
+  }
+
+  /**
+   * A snapshot, never live internals: mutating what comes back cannot
+   * reach the instance. The registry keys are excluded — `getOperators()`
+   * and `getFragments()` are their richer home, and the closures inside a
+   * definition do not snapshot meaningfully.
+   *
+   * Options are reported **as supplied**, not as effective: no default is
+   * materialized into the result. That is deliberately the opposite of
+   * `getOperators()`, which reports effective defaults, because the
+   * question here is "what was I configured with".
+   */
+  getOptions(): FigTreeOptions {
+    return copyOptions(this.state.options)
   }
 
   /**
@@ -50,7 +134,7 @@ export class FigTree {
   validate(expression: unknown, options: FigTreeOptions = {}): ValidationResult {
     rejectPerCallRegistry(options)
     const artifact = this.compile(expression)
-    const merged = mergeOptions(this.options, options)
+    const merged = mergeOptions(this.state.options, options)
     const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
 
     // The sample-data check walks the stored dependency list
@@ -87,10 +171,10 @@ export class FigTree {
    */
   async evaluate(expression: unknown, options: FigTreeOptions = {}): Promise<unknown> {
     rejectPerCallRegistry(options)
-    const merged = mergeOptions(this.options, options)
+    const merged = mergeOptions(this.state.options, options)
 
     if (merged.trace !== true) {
-      const probe = probeConstant(expression, this.registry, NO_FRAGMENTS)
+      const probe = probeConstant(expression, this.state.registry, NO_FRAGMENTS)
       if (probe.constant) {
         if (merged.maxDepth !== undefined && probe.depth > merged.maxDepth)
           throw staticError(depthIssue(probe.depth, merged.maxDepth), [])
@@ -111,14 +195,20 @@ export class FigTree {
    * Uncached until Phase 8.2 — the parse cache wraps exactly this method.
    */
   private compile(expression: unknown): ParseArtifact {
-    const artifact = parseExpression(expression, this.registry, NO_FRAGMENTS)
+    const artifact = parseExpression(expression, this.state.registry, NO_FRAGMENTS)
     runStaticChecks(artifact)
     return artifact
   }
 }
 
+/**
+ * Registry keys are constructor/`updateOptions` only. Tested by value, not
+ * by key presence, because the merge rule ignores an `undefined` value —
+ * so `{ operators: config.operators }` with nothing configured means "not
+ * supplied", exactly as it would for any other option.
+ */
 const rejectPerCallRegistry = (options: FigTreeOptions) => {
-  if ('operators' in options || 'fragments' in options)
+  if (options.operators !== undefined || options.fragments !== undefined)
     throw new FigTreeError({
       code: ErrorCodes.invalidOptions,
       message:

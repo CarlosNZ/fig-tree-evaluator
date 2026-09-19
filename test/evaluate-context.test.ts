@@ -58,6 +58,22 @@ test('every body in one evaluation shares the one frozen options object', async 
   expect(outer.contexts[0].options).toBe(inner.contexts[0].options)
 })
 
+test('options are frozen at the block level too, but not below it', async () => {
+  const user = { name: 'Ada' }
+  const spy = spyOp('frozen', {})
+  await new FigTree({
+    operators: [spy.definition],
+    http: { baseEndpoint: 'https://x.test' },
+    data: { user },
+  }).evaluate({ $frozen: {} })
+  const { options } = spy.contexts[0]
+  expect(Object.isFrozen(options)).toBe(true)
+  expect(Object.isFrozen(options.http)).toBe(true)
+  // A level deeper is the caller's own object — freezing it would reach
+  // outside the library, so results may share it and it stays writable
+  expect(Object.isFrozen(options.data?.user)).toBe(false)
+})
+
 test('cache.memo is an identity passthrough until Phase 9', async () => {
   const spy = spyOp('memo', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $memo: {} })

@@ -4,14 +4,21 @@
  * runtime interface" in docs-dev/v3-specs/v3-operator-contract.md).
  *
  * Options merge by the one two-level rule: by key at the top level, and
- * again by key one level down inside object-valued options; anything deeper
- * is replaced wholesale, arrays always replace, keys set to `undefined` are
- * ignored. The merged result is frozen for the call and never written back
- * to the instance.
+ * again by key one level down inside plain-data-object-valued options;
+ * anything deeper is replaced wholesale, keys set to `undefined` are
+ * ignored. Only plain data objects merge — an array, a class instance, an
+ * `AbortSignal` or a `CacheStore` replaces as a unit, because merging one
+ * key-by-key would spread away everything that makes it what it is.
+ *
+ * Two levels is also the depth at which options are copied and frozen, so
+ * the three operations agree: `copyOptions` makes every block the
+ * instance's own, `mergeOptions` never hands back a caller's block, and
+ * the freeze in `createEvaluationContext` can therefore reach every block
+ * without ever touching an object the host still owns.
  */
 import type { FigTreeOptions } from '../options'
 import type { OperatorContext } from '../runtimeInterface'
-import { isPlainObject } from '../utils'
+import { isPlainDataObject } from '../utils'
 import type { Bindings } from './bindings'
 import type { Scope } from './scope'
 
@@ -44,36 +51,72 @@ export interface EvaluationContext {
 
 /**
  * The two-level merge rule, shared by `evaluate()`, `validate()` and
- * Phase 8's `updateOptions()`.
+ * `updateOptions()` — one rule, so an option means the same thing
+ * wherever it is supplied.
+ *
+ * An incoming block is always rebuilt rather than stored by reference,
+ * even where the instance has no counterpart to merge it with: the result
+ * gets frozen per evaluation, and freezing an object the caller still
+ * holds would reach outside the library.
  */
 export const mergeOptions = (instance: FigTreeOptions, call: FigTreeOptions): FigTreeOptions => {
   const merged: Record<string, unknown> = { ...instance }
   for (const [key, value] of Object.entries(call)) {
     if (value === undefined) continue
-    const existing = merged[key]
-    if (isPlainObject(value) && isPlainObject(existing)) {
-      const block: Record<string, unknown> = { ...existing }
-      for (const [innerKey, innerValue] of Object.entries(value)) {
-        if (innerValue !== undefined) block[innerKey] = innerValue
-      }
-      merged[key] = block
-    } else {
+    if (!isPlainDataObject(value)) {
       merged[key] = value
+      continue
     }
+    const existing = merged[key]
+    const block: Record<string, unknown> = isPlainDataObject(existing) ? { ...existing } : {}
+    for (const [innerKey, innerValue] of Object.entries(value)) {
+      if (innerValue !== undefined) block[innerKey] = innerValue
+    }
+    merged[key] = block
   }
   return merged as FigTreeOptions
+}
+
+/**
+ * A defensive copy at the merge rule's depth: a fresh top level and a
+ * fresh copy of every plain data block, so nothing the instance holds is
+ * still reachable from the object a caller passed in (or gets back).
+ *
+ * Level three and below is shared by reference, deliberately. A caller's
+ * `data` values are theirs and results may share structure with them, and
+ * an `AbortSignal` or a `CacheStore` cannot be cloned at all.
+ */
+export const copyOptions = (options: FigTreeOptions): FigTreeOptions => {
+  const copy: Record<string, unknown> = { ...options }
+  for (const [key, value] of Object.entries(copy)) {
+    if (isPlainDataObject(value)) copy[key] = { ...value }
+  }
+  return copy as FigTreeOptions
 }
 
 export const createEvaluationContext = (merged: FigTreeOptions): EvaluationContext => {
   const signal = merged.signal ?? new AbortController().signal
   return {
-    options: Object.freeze(merged),
+    options: freezeOptions(merged),
     data: Object.freeze({ ...(merged.data ?? {}) }),
     signal,
     rootSignal: signal,
     strictDataPaths: merged.strictDataPaths ?? false,
     runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
   }
+}
+
+/**
+ * Frozen at the merge rule's depth, matching the copy above: the object
+ * and each of its blocks. Every block is instance-owned by the time this
+ * runs, so the freeze never reaches a caller's object. A caller's `data`
+ * values sit a level deeper and stay writable.
+ */
+const freezeOptions = (options: FigTreeOptions): FigTreeOptions => {
+  for (const value of Object.values(options)) {
+    if (isPlainDataObject(value)) Object.freeze(value)
+  }
+  return Object.freeze(options)
 }
 
 /**
