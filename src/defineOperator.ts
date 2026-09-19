@@ -153,13 +153,6 @@ export const defineOperator = <const P extends ParameterDeclarations>(
     addIssue(ErrorCodes.invalidDefinition, "'useCache' must be a boolean", ['useCache'])
   if (def.cache !== undefined && def.cache !== 'auto' && def.cache !== 'manual')
     addIssue(ErrorCodes.invalidDefinition, "'cache' must be 'auto' or 'manual'", ['cache'])
-  if (
-    def.readsOptions !== undefined &&
-    (!Array.isArray(def.readsOptions) || def.readsOptions.some((o) => typeof o !== 'string'))
-  )
-    addIssue(ErrorCodes.invalidDefinition, "'readsOptions' must be an array of option-block names", [
-      'readsOptions',
-    ])
   if (def.metadata !== undefined && !isPlainObject(def.metadata))
     addIssue(ErrorCodes.invalidDefinition, "'metadata' must be a plain object", ['metadata'])
   if (
@@ -648,7 +641,6 @@ export const defineOperator = <const P extends ParameterDeclarations>(
     timeoutParam: def.timeoutParam ?? null,
     useCache: def.useCache ?? false,
     cache: def.cache ?? 'auto',
-    readsOptions: [...(def.readsOptions ?? [])],
     evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
@@ -701,7 +693,6 @@ const deepFreezeArtifact = (
   Object.freeze(validated.parameters)
   if (typeof validated.returns !== 'string') Object.freeze(validated.returns)
   if (validated.positionalParams !== undefined) Object.freeze(validated.positionalParams)
-  Object.freeze(validated.readsOptions)
   return Object.freeze(validated)
 }
 

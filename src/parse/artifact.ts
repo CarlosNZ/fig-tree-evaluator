@@ -273,7 +273,10 @@ export interface ParseArtifact {
   dependencies: ArtifactDependencies
   /**
    * True when the input contains opaque constants — such artifacts must
-   * never be served from the content-keyed cache layer (C5; Phase 8.2).
+   * never be served from the content-keyed cache layer (C5). The key
+   * serializer refuses them too, and is the stronger of the two guards:
+   * a `literal` payload is never walked, so an opaque value inside one
+   * leaves this flag `false`.
    */
   identityOnly: boolean
 }

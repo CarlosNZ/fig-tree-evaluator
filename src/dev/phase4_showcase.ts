@@ -256,13 +256,12 @@ const main = async () => {
   })
   const greet = defineOperator({
     name: 'greet',
-    description: 'Greet someone, reading the http block for a base URL',
+    description: 'Greet someone, reading the options http block for a base URL',
     parameters: {
       name: { type: 'string' },
       shout: { type: 'any', truthiness: true, required: false },
     },
     positionalParams: ['name'],
-    readsOptions: ['http'],
     returns: 'string',
     evaluate: ({ name, shout }, context) => {
       if (name === 'nobody')
@@ -287,7 +286,7 @@ const main = async () => {
     {},
     custom
   )
-  await show('greet reads its declared option block', { $greet: 'Ada' }, {}, custom)
+  await show('greet reads the http option block', { $greet: 'Ada' }, {}, custom)
   await show(
     'a truthiness position delivers a boolean',
     { $greet: { name: 'Ada', shout: 'yes' } },

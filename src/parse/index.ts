@@ -33,4 +33,6 @@ export type {
 } from './artifact'
 export { bindsReference, renamedBinding } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
+export { ParseCache, CONTENT_LAYER_SIZE } from './parseCache'
+export type { CacheEntry, ParseCacheDeps } from './parseCache'
 export type { ProbeResult } from './probe'

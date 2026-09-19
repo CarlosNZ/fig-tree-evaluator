@@ -1,7 +1,7 @@
 /**
  * Chunk 4.1 — `OperatorContext` in final shape with stubs behind it
  * ("The runtime interface" in docs-dev/v3-specs/v3-operator-contract.md;
- * working rule 3): signal passthrough, `readsOptions` delivery, identity
+ * working rule 3): signal passthrough, options delivery, identity
  * `cache.memo`, no-op `trace.note`.
  */
 import { FigTree } from '../src'
@@ -25,8 +25,8 @@ test('without a caller signal there is still a live, unaborted signal', async ()
   expect(spy.contexts[0].signal.aborted).toBe(false)
 })
 
-test('context.options is exactly the readsOptions blocks, frozen, merged per call', async () => {
-  const spy = spyOp('opts', {}, { readsOptions: ['http'] })
+test('context.options is the whole merged option set, frozen, merged per call', async () => {
+  const spy = spyOp('opts', {})
   const fig = new FigTree({
     operators: [spy.definition],
     http: { baseEndpoint: 'https://x.test', headers: { a: '1' } },
@@ -34,18 +34,44 @@ test('context.options is exactly the readsOptions blocks, frozen, merged per cal
   })
   await fig.evaluate({ $opts: {} }, { http: { headers: { b: '2' } } })
   const { options } = spy.contexts[0]
-  expect(Object.keys(options)).toEqual(['http'])
+  // Blocks the body never declared an interest in are there all the same
   expect(options.http).toEqual({ baseEndpoint: 'https://x.test', headers: { b: '2' } })
+  expect(options.graphQL).toEqual({ endpoint: 'https://g.test' })
   expect(Object.isFrozen(options)).toBe(true)
 })
 
-test('an operator declaring no readsOptions sees an empty, frozen options object', async () => {
-  const spy = spyOp('none', {})
-  await new FigTree({ operators: [spy.definition], http: { baseEndpoint: 'x' } }).evaluate({
-    $none: {},
+test('the per-call merge never writes back to the instance', async () => {
+  const spy = spyOp('writeback', {})
+  const fig = new FigTree({ operators: [spy.definition], http: { baseEndpoint: 'https://x.test' } })
+  await fig.evaluate({ $writeback: {} }, { http: { baseEndpoint: 'https://call.test' } })
+  await fig.evaluate({ $writeback: {} })
+  expect(spy.contexts[0].options.http?.baseEndpoint).toBe('https://call.test')
+  expect(spy.contexts[1].options.http?.baseEndpoint).toBe('https://x.test')
+})
+
+test('every body in one evaluation shares the one frozen options object', async () => {
+  const outer = spyOp('outer', { value: { type: 'any' } })
+  const inner = spyOp('inner', {})
+  await new FigTree({ operators: [outer.definition, inner.definition] }).evaluate({
+    $outer: { value: { $inner: {} } },
   })
-  expect(spy.contexts[0].options).toEqual({})
-  expect(Object.isFrozen(spy.contexts[0].options)).toBe(true)
+  expect(outer.contexts[0].options).toBe(inner.contexts[0].options)
+})
+
+test('options are frozen at the block level too, but not below it', async () => {
+  const user = { name: 'Ada' }
+  const spy = spyOp('frozen', {})
+  await new FigTree({
+    operators: [spy.definition],
+    http: { baseEndpoint: 'https://x.test' },
+    data: { user },
+  }).evaluate({ $frozen: {} })
+  const { options } = spy.contexts[0]
+  expect(Object.isFrozen(options)).toBe(true)
+  expect(Object.isFrozen(options.http)).toBe(true)
+  // A level deeper is the caller's own object — freezing it would reach
+  // outside the library, so results may share it and it stays writable
+  expect(Object.isFrozen(options.data?.user)).toBe(false)
 })
 
 test('cache.memo is an identity passthrough until Phase 9', async () => {

@@ -70,7 +70,6 @@ export const spyOp = (
   parameters: Record<string, ParameterDeclaration>,
   extra: {
     positionalParams?: string[]
-    readsOptions?: string[]
     returns?: 'string'
     result?: unknown
   } = {}
@@ -82,7 +81,6 @@ export const spyOp = (
     description: `spy ${name}`,
     parameters,
     ...(extra.positionalParams !== undefined ? { positionalParams: extra.positionalParams } : {}),
-    ...(extra.readsOptions !== undefined ? { readsOptions: extra.readsOptions } : {}),
     evaluate: (params, context) => {
       calls.push(params)
       contexts.push(context)
@@ -90,6 +88,42 @@ export const spyOp = (
     },
   })
   return { definition, calls, contexts }
+}
+
+/**
+ * A compile counter: an operator whose `validate` hook counts how many
+ * times it has been run.
+ *
+ * The hook runs inside the compile seam, once per node of this operator
+ * per compile, and not at all when the parse cache answers — so with one
+ * such node in an expression the count IS the number of compiles. That is
+ * how cache behaviour is asserted without any engine internal appearing
+ * in a test.
+ *
+ * The hook must not throw: a throwing hook becomes an error issue, which
+ * would stop the expression evaluating at all.
+ */
+export interface CompileSpy {
+  definition: ValidatedOperatorDefinition
+  /** How many compiles this operator has been walked by. */
+  compiles: () => number
+  reset: () => void
+}
+
+export const compileSpyOp = (name = 'counted'): CompileSpy => {
+  let count = 0
+  const definition = defineOperator({
+    name,
+    description: `compile counter ${name}`,
+    parameters: { value: { type: 'any', required: false, default: null } },
+    positionalParams: ['value'],
+    validate: () => {
+      count += 1
+      return []
+    },
+    evaluate: ({ value }) => value,
+  })
+  return { definition, compiles: () => count, reset: () => (count = 0) }
 }
 
 /**

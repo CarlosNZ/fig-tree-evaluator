@@ -16,6 +16,7 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { isOperatorFailure } from '../OperatorFailure'
+import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
 import { childScope, createOperatorContext, type EvaluationContext } from './context'
@@ -80,9 +81,32 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const { params, propagate } = await resolveParams(node, ctx)
   if (propagate) return null
   const { definition } = node.entry
-  const result = await definition.evaluate(params, createOperatorContext(ctx, definition))
+  const result = await definition.evaluate(params, createOperatorContext(ctx))
   return normalizeResult(result, node)
 }
+
+/**
+ * Effective `useCache`, the settled four-step chain ("Caching" in
+ * docs-dev/v3-specs/v3-operator-contract.md): the node's own key, then
+ * the operator's `operatorDefaults` modifier, then the blanket option,
+ * then the definition's metadata default.
+ *
+ * Total by construction, so it never falls off the end: the authored key
+ * reaches the node only as a literal boolean (the parser rejects anything
+ * else), the modifier default is boolean-checked at registration, and
+ * `defineOperator` normalizes the metadata default to a boolean. A
+ * fragment call cannot carry the key at all, so the domain is operator
+ * nodes alone.
+ *
+ * The result cache that consumes this arrives in Phase 9.1; the chain is
+ * written here because it is options semantics, and it is the one part of
+ * the Options area with no caller yet.
+ */
+export const effectiveUseCache = (node: OperatorNode, options: FigTreeOptions): boolean =>
+  node.useCache ??
+  (node.entry.instanceDefaults?.useCache as boolean | undefined) ??
+  options.useCache ??
+  node.entry.definition.useCache
 
 /** The node's own fallback, else the operator's instance-wide default. */
 const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {

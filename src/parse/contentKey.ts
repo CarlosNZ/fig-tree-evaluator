@@ -1,0 +1,99 @@
+/**
+ * The content-layer key ("Cache keying for non-identical inputs" in
+ * docs-dev/v3-specs/v3-implementation-notes.md).
+ *
+ * Deliberately not `JSON.stringify`. That would throw on a cycle, honour a
+ * `toJSON` method, drop `undefined` and functions, and flatten `NaN`,
+ * `±Infinity`, `-0`, `Date`s and `Map`s — and every one of those either
+ * crashes the lookup or makes two different inputs serialize alike, which
+ * in a cache means serving the wrong artifact.
+ *
+ * The grammar is self-delimiting and length-prefixes strings, so it needs
+ * no escaping pass and no delimiter can collide. It is never parsed back;
+ * the only property that matters is injectivity over the inputs it
+ * accepts, and a refusal is always safe because it just skips the layer.
+ *
+ * Key order is preserved rather than sorted: two spellings of the same
+ * object are a deliberate miss, not something to canonicalize.
+ */
+import { isPlainDataObject } from '../utils'
+import { DEPTH_CEILING } from './probe'
+
+/**
+ * The serialized form, or `undefined` where the input holds something
+ * that cannot be keyed by content.
+ *
+ * The refusal IS the non-plain-value guard, and it is the load-bearing
+ * half of the pair: the parser's `identityOnly` flag only sees values it
+ * walks, and a `literal` payload is never walked, so an opaque value
+ * inside one would slip past it. This walks the raw input instead.
+ */
+export const serializeInput = (value: unknown): string | undefined => {
+  const out: string[] = []
+  return write(value, 0, out) ? out.join('') : undefined
+}
+
+/**
+ * The key material. Separated from the serializer so the choice of what
+ * to key on is one line: the serialized string itself, exact and
+ * collision-free.
+ *
+ * Hashing was considered and rejected. It does not replace serialization,
+ * it follows it, so it is strictly more work at both insert and lookup;
+ * and a `Map` keyed on a string already hashes natively and then verifies
+ * with full equality, where a hand-rolled digest would replace a verified
+ * hash with an unverified one. All it buys is a smaller retained key,
+ * which the LRU's bound already bounds.
+ */
+export const contentKey = (serialized: string): string => serialized
+
+const write = (value: unknown, depth: number, out: string[]): boolean => {
+  if (depth > DEPTH_CEILING) return false
+
+  if (value === null) return push(out, 'n')
+  if (value === undefined) return push(out, 'u')
+  switch (typeof value) {
+    case 'boolean':
+      return push(out, value ? 't' : 'f')
+    case 'number':
+      return writeNumber(value, out)
+    case 'string':
+      return push(out, `s${value.length}:${value}`)
+    case 'object':
+      break
+    default:
+      // function, symbol, bigint — outside the value domain entirely
+      return false
+  }
+
+  if (Array.isArray(value)) {
+    out.push('[')
+    for (const element of value) if (!write(element, depth + 1, out)) return false
+    return push(out, ']')
+  }
+  if (!isPlainDataObject(value)) return false
+  out.push('{')
+  for (const [key, child] of Object.entries(value)) {
+    out.push(`s${key.length}:${key}`)
+    if (!write(child, depth + 1, out)) return false
+  }
+  return push(out, '}')
+}
+
+/**
+ * The three numbers JSON cannot spell get their own tokens, and negative
+ * zero is kept distinct from zero: flattening either pair would let two
+ * different expressions share a key.
+ */
+const writeNumber = (value: number, out: string[]): boolean => {
+  if (Number.isNaN(value)) return push(out, 'N')
+  if (value === Infinity) return push(out, 'I')
+  if (value === -Infinity) return push(out, 'J')
+  if (Object.is(value, -0)) return push(out, '#-0')
+  return push(out, `#${String(value)}`)
+}
+
+const push = (out: string[], token: string): boolean => {
+  out.push(token)
+  return true
+}

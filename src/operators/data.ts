@@ -57,7 +57,6 @@ export const get = defineOperator({
     },
   },
   positionalParams: ['path', 'missingPathDefault'],
-  readsOptions: ['strictDataPaths'],
   returns: 'any',
   validate: ({ path }) => {
     if (typeof path !== 'string') return []

@@ -13,7 +13,9 @@
  * reading rule.
  */
 import { FigTree, FigTreeError } from '../src'
+import { coreOperators } from '../src/operators'
 import { rejection } from './helpers/rejection'
+import { compileSpyOp } from './fixtures/evalOperators'
 
 const fig = new FigTree()
 
@@ -83,5 +85,84 @@ test('the sibling hole inside the same literal is independent — stats is plain
     meta: { generated: 'v3-example', version: 3 },
     user: { displayName: 'Ada ' },
     stats: { total: 10, summary: null },
+  })
+})
+
+/**
+ * Worked example 2 — the full lifecycle, as far as Phase 8 can carry it
+ * (docs-dev/v3-specs/v3-worked-examples.md § 2).
+ *
+ * The example runs two expressions across one instance and asserts two
+ * things per step: how many times the parse cache compiled, and how many
+ * times the mock client fetched. Only the first half is reachable here —
+ * the clients and the I/O operators are Phase 9, which is where the fetch
+ * counts and the M4 milestone live. So the `http` node is stood in for by
+ * a counted operator, and the steps are read for cache behaviour alone.
+ *
+ * Run as one sequence rather than independent cases, because the point of
+ * the example is the state carried from step to step.
+ */
+describe('lifecycle — two expressions, one instance, the parse half', () => {
+  const spy = compileSpyOp('rate')
+  const fig = new FigTree({
+    operators: [coreOperators, spy.definition],
+    data: { org: 'Acme' },
+    operatorDefaults: { join: { delimiter: ', ' } },
+  })
+
+  const exprA = {
+    greeting: { $buildString: ['Welcome to %1', '$data.org'] },
+    team: { $join: '$data.team[*].name' },
+    rate: { $rate: '$data.currency' },
+  }
+  const dataA = { currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
+  const exprB = { $rate: '$data.tier' }
+  const exprB2 = JSON.parse(JSON.stringify(exprB)) as typeof exprB
+
+  it('step 1 — first evaluation of A compiles once', async () => {
+    expect(await fig.evaluate(exprA, { data: dataA })).toEqual({
+      greeting: 'Welcome to Acme',
+      team: 'Ada, Grace',
+      rate: 'NZD',
+    })
+    expect(spy.compiles()).toBe(1)
+  })
+
+  it('step 2 — a structurally different expression compiles once more', async () => {
+    spy.reset()
+    expect(await fig.evaluate(exprB, { data: { tier: 'silver' } })).toBe('silver')
+    expect(spy.compiles()).toBe(1)
+  })
+
+  it('step 3 — A again, same instance and data: an identity hit', async () => {
+    spy.reset()
+    await fig.evaluate(exprA, { data: dataA })
+    expect(spy.compiles()).toBe(0)
+  })
+
+  it('step 4 — B as a fresh object of the same content: a content hit', async () => {
+    spy.reset()
+    expect(await fig.evaluate(exprB2, { data: { tier: 'silver' } })).toBe('silver')
+    expect(spy.compiles()).toBe(0)
+  })
+
+  it('step 5 — both again with different data: still no compile', async () => {
+    spy.reset()
+    expect(await fig.evaluate(exprA, { data: { currency: 'AUD', team: [{ name: 'Alan' }] } })).toEqual(
+      { greeting: 'Welcome to Acme', team: 'Alan', rate: 'AUD' }
+    )
+    expect(await fig.evaluate(exprB2, { data: { tier: 'gold' } })).toBe('gold')
+    expect(spy.compiles()).toBe(0)
+  })
+
+  it('step 6 — an operatorDefaults change recompiles, and is in force', async () => {
+    spy.reset()
+    fig.updateOptions({ operatorDefaults: { join: { delimiter: ' | ' } } })
+    expect(await fig.evaluate(exprA, { data: dataA })).toEqual({
+      greeting: 'Welcome to Acme',
+      team: 'Ada | Grace',
+      rate: 'NZD',
+    })
+    expect(spy.compiles()).toBe(1)
   })
 })

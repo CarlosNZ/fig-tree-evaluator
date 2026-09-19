@@ -123,7 +123,7 @@ operatorDefaults: {
 
 One rule, uniform across `updateOptions()` and per-call options:
 
-> Merge by key at the top level, and again by key one level down inside object-valued options; anything deeper is replaced wholesale. Arrays always replace. Keys set to `undefined` are ignored (to *remove* something, supply the parent block in full).
+> Merge by key at the top level, and again by key one level down inside **plain-data**-object-valued options; anything deeper is replaced wholesale. Arrays always replace, as do class instances, `Date`s, an `AbortSignal` and a `CacheStore` — only plain data objects merge. Keys set to `undefined` are ignored, so an unset variable falls back to the instance value rather than clearing it.
 
 Consequences, checked against every nested option:
 
@@ -134,6 +134,9 @@ Consequences, checked against every nested option:
 | `cache: { maxSize }` | keeps `store` / `maxTime` |
 | `fragments: { newFrag }` (`updateOptions` only) | adds without clobbering others; re-supplying an existing name replaces that definition wholesale (no stale sub-keys) |
 | `data: { user: {…} }` | merges at top-level data keys; a supplied key replaces its whole value |
+| `operatorDefaults: { join: {…} }` | merges at the operator-name level; that operator's block replaces wholesale, other operators' entries survive |
+
+**Removal, stated honestly.** Merging by key means a *top-level* key cannot be removed, only overwritten — `undefined` is ignored by the rule above, and `null` is a first-class value here rather than a gap. In practice this strands very little: a `data` key set to `null` behaves exactly as an absent one (both resolve to `null`, and both throw identically under `strictDataPaths`), and a level-2 block such as `http.headers` is cleared by supplying it in full, since second-level values replace as a unit. What remains unreachable is deregistering a fragment, dropping an `operatorDefaults` entry, and unsetting `baseEndpoint` / `endpoint` / `cache.store` — all instance reconfiguration, for which the existing answer is the clients ruling above: build a new instance. A dedicated exported sentinel is the non-breaking addition if demand appears ([issue #157](https://github.com/CarlosNZ/fig-tree-evaluator/issues/157)).
 
 ### `evaluate` signature
 
@@ -680,6 +683,8 @@ A JS-authored expression may contain values with no JSON representation — `Dat
 ### The value domain
 
 FigTree values are exactly JSON's six types: `string`, `number`, `boolean`, `null`, `array`, `object`. Three consequences, each closing a v2 leak:
+
+**Scope — what this section governs, and what it does not.** The domain is about *expressions*: what an authored expression may spell, what flows between operators, and what evaluation returns. It is **not** a constraint on the host's own objects. `data` and the options object are ordinary JavaScript and may hold whatever the host holds — `Date`s, class instances, `Map`s, an `AbortSignal`, a `CacheStore`, functions. Such values enter evaluation as *opaque constants* (below) and are carried by identity rather than normalized, which is precisely why `equal` and the comparisons can be given a `Date`. In particular the `undefined` rule below is a rule about expression content and operator results; it says nothing about options, where an `undefined` key means "not supplied" under the merge rule ("Merge semantics" in the Options area above).
 
 - **`undefined` is not a value.** It is normalized away at every boundary where JS could produce one, following JSON-serialization semantics: an operator body (native or custom) returning `undefined` yields `null`; in a JS-authored expression `{ a: undefined }` is treated as the key being absent, and `[1, undefined, 3]` as `[1, null, 3]` — exactly what `JSON.stringify` would do. v2's `String(undefined)` → `"undefined"` rendering dies with it, and the `nullEqualsUndefined` machinery (already deleted under Options) loses its subject entirely: with `undefined` gone there is nothing left to equate.
 - **`NaN` and `±Infinity` are not values.** An operation whose result would be one **fails** instead — an ordinary runtime failure, fallback-catchable: division by zero stays an error (as v2 — [DIVIDE/operator.ts:21](../../v2-src/operators/DIVIDE/operator.ts#L21)), and numeric overflow (`power(10, 400)`) or a failed conversion errors rather than emitting a value JSON can't represent. Nothing unrepresentable in JSON ever flows out of an operator.
