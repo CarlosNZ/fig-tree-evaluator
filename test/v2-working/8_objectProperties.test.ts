@@ -1,3 +1,20 @@
+/**
+ * MIGRATION STATUS (Phase 7.1, 2026-09-19): hand-migrated to
+ * test/operators-data.test.ts. Divergences: every operator alias dies
+ * (objectProperties / getProperty / get_obj_prop / objProps / getData /
+ * data), `property` / `propertyName` / `path` collapse to `path`;
+ * **a missing path no longer throws** — it yields null, so the tests that
+ * paired a miss with `fallback` become `missingPathDefault` cases and the
+ * thrown-message assertion has no successor; `additionalData` (and its
+ * aliases additional / objects / data / additionalObjects) becomes
+ * `from`, and **replaces rather than merges** — the array-valued
+ * additionalData case converts to a `from` holding the array;
+ * `object-property-extractor`'s implicit array projection becomes an
+ * explicit `[*]`, and its prototype-chain `in` lookup becomes
+ * own-enumerable-only. v2's second positional child, smuggled into
+ * `fallback`, is v3's declared `missingPathDefault` — the same spelling,
+ * made honest.
+ */
 import { FigTreeEvaluator } from './evaluator'
 
 const exp = new FigTreeEvaluator({

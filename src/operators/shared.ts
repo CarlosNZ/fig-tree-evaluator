@@ -44,6 +44,31 @@ export const emptyAggregateWarning = emptyArrayWarning('values')
 /** An iterator's literal empty `input`: a dead loop. */
 export const emptyInputWarning = emptyArrayWarning('input')
 
+/** `buildObject`'s literal empty `entries`: the result is always `{}`. */
+export const emptyEntriesWarning = emptyArrayWarning('entries')
+
+/**
+ * A renderer's literal element that is statically a composite: it can only
+ * ever render as the `<array>` / `<object>` placeholder, so unlike a
+ * data-driven composite it is an authoring slip with no reading behind it.
+ */
+export const compositeElementErrors = (
+  literalParams: Record<string, unknown>,
+  parameter: string
+): ValidateFinding[] => {
+  const values = literalParams[parameter]
+  if (!Array.isArray(values)) return []
+  return values.some((value) => value !== null && typeof value === 'object')
+    ? [
+        {
+          severity: 'error',
+          parameter,
+          message: `a composite element renders as a placeholder, never as text — drill in, or join it explicitly`,
+        },
+      ]
+    : []
+}
+
 /** A literal `values` with fewer than two elements on a comparison. */
 export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): ValidateFinding[] =>
   Array.isArray(literalParams.values) && literalParams.values.length < 2

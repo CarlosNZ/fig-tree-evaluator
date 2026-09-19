@@ -5,7 +5,7 @@
  * set where a real operator is being modelled, but the definitions are
  * test-local and deliberately minimal.
  */
-import { defineOperator } from '../../src'
+import { defineOperator, EvaluationData } from '../../src'
 import { buildRegistry, type OperatorRegistry } from '../../src/registry'
 import type { ValidatedOperatorDefinition } from '../../src'
 
@@ -236,6 +236,20 @@ export const matchOp = () =>
     evaluate: noop,
   })
 
+/** `get` — the parser records its literal paths as data dependencies. */
+export const getOp = () =>
+  defineOperator({
+    name: 'get',
+    description: 'Read a path out of the evaluation data',
+    parameters: {
+      path: { type: ['string', 'array', 'null'] },
+      from: { type: 'any', nullPolicy: 'value', default: EvaluationData },
+      missingPathDefault: { type: 'any', required: false, evaluation: 'lazy' },
+    },
+    positionalParams: ['path', 'missingPathDefault'],
+    evaluate: noop,
+  })
+
 export const parseOps = (): ValidatedOperatorDefinition[] => [
   orOp(),
   firstOfOp(),
@@ -251,6 +265,7 @@ export const parseOps = (): ValidatedOperatorDefinition[] => [
   greaterThanOp(),
   strictNumbersOp(),
   hookOp(),
+  getOp(),
 ]
 
 /** A fresh registry over the stand-in set, optional operatorDefaults. */

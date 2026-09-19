@@ -29,8 +29,9 @@ import {
   min,
   max,
 } from './math'
-import { lower, upper, trim, split } from './string'
+import { buildString, join, lower, upper, trim, split, regex } from './string'
 import { length, map, filter, find, some, every } from './array'
+import { get, buildObject } from './data'
 import { convert } from './convert'
 import { and, or, not, ifOperator, match, firstOf } from './logic'
 
@@ -62,11 +63,14 @@ export const coreOperators: ValidatedOperatorDefinition[] = [
   abs,
   min,
   max,
-  // String — buildString, join, regex arrive Phase 7.2
+  // String
+  buildString,
   split,
+  join,
   lower,
   upper,
   trim,
+  regex,
   // Arrays & iteration
   length,
   map,
@@ -74,7 +78,9 @@ export const coreOperators: ValidatedOperatorDefinition[] = [
   find,
   some,
   every,
-  // Data & objects — Phase 7.1
+  // Data & objects
+  get,
+  buildObject,
   // Special
   convert,
 ]

@@ -1,3 +1,17 @@
+/**
+ * MIGRATION STATUS (Phase 7.1, 2026-09-19): hand-migrated to
+ * test/operators-data.test.ts. Divergences: the aliases build / object
+ * die, and `properties` / `values` / `keyValPairs` / `keyValuePairs`
+ * collapse to `entries`; **the alternating flat form dies** (`['a', 1,
+ * 'b', 2]`), with it v2's runtime shape-sniffing and its odd-length
+ * throw; **malformed entries are a type error** where v2 silently
+ * filtered them out, so the "handling erroneous input" case inverts; the
+ * two exact-message type-error assertions have no successor (v3 asserts
+ * codes, never wording). Unchanged: string / number / boolean keys, a
+ * null key rejecting, and null-valued entries keeping their key. New in
+ * v3: the duplicate-key warning and the runtime overwrite note — v2 had
+ * last-wins too, but no test covered it.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator({

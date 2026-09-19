@@ -111,9 +111,22 @@ describe('null and the selector', () => {
     expect(fig.validate({ $convert: 5 }).issues.map((i) => i.code)).toContain('missing-required')
   })
 
-  test('the number-mining respelling: regex extract lands in Phase 7; a failed cast is catchable', async () => {
+  test('a failed cast is catchable, and the mining respelling now runs', async () => {
     expect(await ev({ $convert: ['$data.w', 'number'], fallback: null }, { w: '15 grams' })).toBe(
       null
     )
+    // The sanctioned pipeline the Operators table promised: extract, then
+    // cast. Its own assertions live in test/operators-regex.test.ts
+    expect(
+      await ev(
+        {
+          $convert: {
+            value: { $regex: { value: '$data.w', pattern: '\\d+', mode: 'extract' } },
+            to: 'number',
+          },
+        },
+        { w: '15 grams' }
+      )
+    ).toBe(15)
   })
 })

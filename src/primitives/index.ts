@@ -7,7 +7,7 @@
 export { isTruthy } from './truthiness'
 export { compareValues } from './ordering'
 export { renderText, ARRAY, OBJECT } from './renderText'
-export { trim, toCodePoints } from './strings'
+export { trim, toCodePoints, stripLeadingRun, stripTrailingRun } from './strings'
 export { roundDecimal } from './rounding'
 export { parsePath, resolvePath, WILDCARD } from './path'
 export type { PathSegment, Wildcard, ResolveResult } from './path'
