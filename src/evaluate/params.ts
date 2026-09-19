@@ -217,23 +217,9 @@ export const resolveParams = async (
     if (declared.elementNullPolicy === 'propagate' && containsNull(value))
       return { params, propagate: true }
 
-    // 5. the type check + constraints. A null at a type that does not name
-    //    null fails the type check: the derived reject
-    if (ctx.runtimeTypeCheck) {
-      const typed = checkType(value, declared.type)
-      if (!typed.ok) throw typeError(node, name, typed)
-      if (value !== null && declared.constraints !== undefined) {
-        const constrained = checkConstraintsUnderPolicy(
-          value,
-          declared.constraints,
-          declared.elementNullPolicy !== undefined
-        )
-        if (!constrained.ok) throw typeError(node, name, constrained)
-      }
-    }
-
-    // 6. truthiness
-    if (declared.truthiness) value = applyTruthiness(value, declared.type)
+    // 5–6. the type check + constraints, then truthiness. A null at a type
+    //    that does not name null fails the type check: the derived reject
+    value = vet(value, node, name, declared, ctx)
 
     // 7. the lazy family's delivery, over a value the layers have passed:
     //    an unsupplied lazy parameter's default, and the degeneration rule
@@ -282,6 +268,11 @@ const demand = (
 ): LazyValue =>
   handleOf(async () => vet(await evaluateNode(supplied, ctx), node, name, declared, ctx))
 
+/**
+ * Layers 5 and 6 — the type check with its constraints, then truthiness —
+ * as one implementation: pass 2 runs it over a whole value in place, and a
+ * handle runs it at the moment of demand.
+ */
 const vet = (
   value: unknown,
   node: OperatorNode,
@@ -292,7 +283,9 @@ const vet = (
   if (ctx.runtimeTypeCheck) {
     const typed = checkType(value, declared.type)
     if (!typed.ok) throw typeError(node, name, typed)
-    if (declared.constraints !== undefined) {
+    // Constraints describe a container's shape; a null that the type admits
+    // has none to check
+    if (value !== null && declared.constraints !== undefined) {
       const constrained = checkConstraintsUnderPolicy(
         value,
         declared.constraints,
