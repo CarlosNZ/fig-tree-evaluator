@@ -82,8 +82,6 @@ export const resolveParams = async (
   const holders: Record<string, Thunk> = {}
   /** Names already delivered as handles — the layers ran inside them. */
   const delivered = new Set<string>()
-  /** Names whose eagerly-resolved value still has to become handles. */
-  const degenerate: Record<string, string> = {}
 
   for (const [name, declared] of declarations) {
     const supplied = node.params[name]
@@ -134,7 +132,6 @@ export const resolveParams = async (
         // branch selection becomes lookup, with no body-side special case
         pendingNames.push(name)
         pending.push(evaluateNode(supplied, ctx))
-        degenerate[name] = declared.evaluation
         break
       case 'perElement':
         // Nothing starts here: the handle needs its `over` sibling
@@ -240,7 +237,7 @@ export const resolveParams = async (
 
     // 7. the lazy family's delivery, over a value the layers have passed:
     //    an unsupplied lazy parameter's default, and the degeneration rule
-    params[name] = wrapDelivery(value, declared, degenerate[name])
+    params[name] = wrapDelivery(value, declared)
   }
 
   return { params, propagate: false }
@@ -448,23 +445,23 @@ const containerHandles = (
  * lazy parameter's default, and the degeneration rule's pre-resolved
  * handles. A parameter with nothing to owe passes through untouched.
  */
-const wrapDelivery = (
-  value: unknown,
-  declared: ValidatedParameter,
-  degenerating: string | undefined
-): unknown => {
-  if (degenerating === 'lazyElements')
-    return (value as unknown[]).map((element) => settledHandle(vetElement(element, declared)))
-  if (degenerating === 'race')
-    return settledStream(value as unknown[], (element) => vetElement(element, declared))
-  if (degenerating === 'lazyEntries') {
-    const entries: Record<string, LazyValue> = {}
-    for (const [key, element] of Object.entries(value as Record<string, unknown>))
-      entries[key] = settledHandle(vetElement(element, declared))
-    return entries
+const wrapDelivery = (value: unknown, declared: ValidatedParameter): unknown => {
+  switch (declared.evaluation) {
+    case 'lazyElements':
+      return (value as unknown[]).map((element) => settledHandle(vetElement(element, declared)))
+    case 'race':
+      return settledStream(value as unknown[], (element) => vetElement(element, declared))
+    case 'lazyEntries': {
+      const entries: Record<string, LazyValue> = {}
+      for (const [key, element] of Object.entries(value as Record<string, unknown>))
+        entries[key] = settledHandle(vetElement(element, declared))
+      return entries
+    }
+    case 'lazy':
+      return settledHandle(value)
+    default:
+      return value
   }
-  if (declared.evaluation === 'lazy') return settledHandle(value)
-  return value
 }
 
 const typeError = (

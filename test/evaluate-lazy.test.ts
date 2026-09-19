@@ -212,6 +212,22 @@ describe('lazyElements', () => {
     ).toEqual([1, 2, 3])
   })
 
+  test('an unsupplied parameter with a default delivers handles over the default', async () => {
+    const defaulted = defineOperator({
+      name: 'firstTwoOr',
+      description: 'firstTwo, with a fallback list',
+      parameters: {
+        values: { type: 'array', evaluation: 'lazyElements', default: [7, 8, 9] },
+      },
+      evaluate: async ({ values }) => [
+        await values[0].evaluate(),
+        await values[1].evaluate(),
+        values.length,
+      ],
+    })
+    expect(await figWith([defaulted]).evaluate({ $firstTwoOr: {} })).toEqual([7, 8, 3])
+  })
+
   test('degeneration still applies the whole-value layers first', async () => {
     const error = await rejection<FigTreeError>(
       figWith([firstTwo()]).evaluate({ $firstTwo: '$data.nope' })
