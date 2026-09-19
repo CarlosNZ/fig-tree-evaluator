@@ -15,7 +15,7 @@ import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
 import type { ValidatedParameter } from '../operatorDefinition'
 import { validateHelpers } from './helpers'
-import { renamedBinding } from './artifact'
+import { bindsReference, renamedBinding } from './artifact'
 import type {
   CompiledNode,
   NodePath,
@@ -349,7 +349,7 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node)
+      resolveBinding(state, node, node.namespace)
       return
   }
 }
@@ -414,16 +414,15 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
  * iterator frame binding the name used. A renamed frame does not bind the
  * default names ("one way to refer to each thing").
  */
-const resolveBinding = (state: CheckState, node: ReferenceNode) => {
-  const matches = (frame: IteratorFrame): boolean => {
-    if (node.binding === undefined) return frame.as === null
-    return node.namespace === 'element'
-      ? frame.as === node.binding
-      : `${frame.as ?? ''}Index` === node.binding
-  }
+const resolveBinding = (
+  state: CheckState,
+  node: ReferenceNode,
+  namespace: 'element' | 'index'
+) => {
   for (let i = state.iteratorFrames.length - 1; i >= 0; i--) {
-    if (matches(state.iteratorFrames[i])) {
-      state.iteratorFrames[i].referenced = true
+    const frame = state.iteratorFrames[i]
+    if (bindsReference(frame.as, namespace, node.binding)) {
+      frame.referenced = true
       return
     }
   }

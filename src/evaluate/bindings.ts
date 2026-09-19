@@ -10,11 +10,10 @@
  * spans a node's parameters and its fallback, while a binding frame exists
  * only for one element of one `each` subtree.
  *
- * The match rule mirrors the static checker exactly
- * (src/parse/staticChecks.ts), which is what makes its `unresolved-binding`
- * errors true of the runtime: a frame that was renamed with `as` does NOT
- * bind the default names — one way to refer to each thing.
+ * Which frame answers a reference is `bindsReference` (src/parse/artifact),
+ * the same predicate the static checker resolves through.
  */
+import { bindsReference } from '../parse'
 import type { EvaluationContext } from './context'
 
 export interface Bindings {
@@ -43,13 +42,7 @@ export const lookupBinding = (
   namespace: 'element' | 'index',
   binding: string | undefined
 ): Bindings | undefined => {
-  for (let current = bindings; current !== undefined; current = current.parent) {
-    if (binding === undefined) {
-      if (current.as === null) return current
-      continue
-    }
-    const name = namespace === 'element' ? current.as : `${current.as ?? ''}Index`
-    if (name === binding) return current
-  }
+  for (let current = bindings; current !== undefined; current = current.parent)
+    if (bindsReference(current.as, namespace, binding)) return current
   return undefined
 }
