@@ -9,6 +9,7 @@
  * segmentation and one renderer throughout (src/primitives).
  */
 import { defineOperator } from '../defineOperator'
+import type { ValidateFinding } from '../operatorDefinition'
 import { OperatorFailure } from '../OperatorFailure'
 import {
   renderText,
@@ -18,7 +19,7 @@ import {
   trim as trimText,
 } from '../primitives'
 import { scanTemplate } from '../templateTokens'
-import { compositeElementErrors, emptyAggregateWarning } from './shared'
+import { emptyAggregateWarning } from './shared'
 
 const normalizer = (name: string, description: string, transform: (value: string) => string) =>
   defineOperator({
@@ -71,6 +72,23 @@ export const split = defineOperator({
 
 /** A value that renders to a `<array>` / `<object>` placeholder. */
 const isComposite = (value: unknown): boolean => value !== null && typeof value === 'object'
+
+/**
+ * A literal `values` element that is statically a composite: it can only
+ * ever render as the placeholder, so unlike a data-driven composite it is
+ * an authoring slip with no reading behind it.
+ */
+const compositeValuesErrors = (literalParams: Record<string, unknown>): ValidateFinding[] =>
+  Array.isArray(literalParams.values) && literalParams.values.some(isComposite)
+    ? [
+        {
+          severity: 'error',
+          parameter: 'values',
+          message:
+            'a composite element renders as a placeholder, never as text — drill in, or join it explicitly',
+        },
+      ]
+    : []
 
 /** One rendered piece of the output: template text, or a token site. */
 interface Part {
@@ -222,7 +240,7 @@ export const join = defineOperator({
   returns: 'string',
   validate: (literalParams) => [
     ...emptyAggregateWarning(literalParams),
-    ...compositeElementErrors(literalParams, 'values'),
+    ...compositeValuesErrors(literalParams),
   ],
   // A null element renders "" and KEEPS its delimiter: a positional
   // record must not shift its later columns. The skip reading is one
@@ -230,14 +248,11 @@ export const join = defineOperator({
   evaluate: ({ values, delimiter }, context) =>
     values
       .map((value, index) => {
-        const rendered = renderText(value)
-        if (isComposite(value) || value === null)
-          context.trace.note({
-            type: 'render',
-            token: `[${index}]`,
-            rendered: value === null ? 'empty' : 'placeholder',
-          })
-        return rendered
+        const token = `[${index}]`
+        if (value === null) context.trace.note({ type: 'render', token, rendered: 'empty' })
+        else if (isComposite(value))
+          context.trace.note({ type: 'render', token, rendered: 'placeholder' })
+        return renderText(value)
       })
       .join(delimiter),
 })
@@ -299,17 +314,17 @@ export const regex = defineOperator({
   returns: ['boolean', 'string', 'array', 'null'],
   validate: ({ pattern, flags }) => {
     const findings = []
-    if (typeof flags === 'string') {
-      const problem = checkFlags(flags)
-      if (problem !== undefined)
-        findings.push({ severity: 'error' as const, parameter: 'flags', message: problem })
-    }
+    const problem = typeof flags === 'string' ? checkFlags(flags) : undefined
+    if (problem !== undefined)
+      findings.push({ severity: 'error' as const, parameter: 'flags', message: problem })
     // A dynamic pattern simply isn't present, so the guard doubles as the
     // mode check: the overwhelming case is a literal, compiled here so a
-    // malformed regex is an authoring error
+    // malformed regex is an authoring error. Flags that failed their own
+    // check are left out of the compile, so a flag problem is reported
+    // once, as a flag problem
     if (typeof pattern === 'string') {
       try {
-        new RegExp(pattern, typeof flags === 'string' ? flags.replace(/[^imsu]/g, '') : '')
+        new RegExp(pattern, typeof flags === 'string' && problem === undefined ? flags : '')
       } catch (error) {
         findings.push({
           severity: 'error' as const,

@@ -58,10 +58,10 @@ export const get = defineOperator({
   },
   positionalParams: ['path', 'missingPathDefault'],
   returns: 'any',
-  validate: ({ path }, { parsePath: parse }) => {
+  validate: ({ path }) => {
     if (typeof path !== 'string') return []
     try {
-      parse(path)
+      parsePath(path)
       return []
     } catch (error) {
       return [{ severity: 'error', parameter: 'path', message: (error as Error).message }]

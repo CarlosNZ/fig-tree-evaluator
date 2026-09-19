@@ -843,21 +843,25 @@ const reportTemplateFace = (
 
   if (face.mode === 'array') {
     const used = new Set<number>()
+    let unbound = false
     for (const token of tokens) {
       if (token.kind !== 'positional') continue
       if (token.index >= 1 && token.index <= face.length) {
         used.add(token.index)
         continue
       }
+      unbound = true
       warn(ErrorCodes.unboundToken, `'${token.raw}' binds to nothing and renders as its own text`)
     }
     const spare = []
     for (let i = 1; i <= face.length; i++) if (!used.has(i)) spare.push(i)
     for (const index of spare)
       warn(ErrorCodes.unusedSubstitution, `substitution ${index} is never named by the template`)
-    // A gap plus a spare slot is the quick-edit slip strict indexing is
-    // designed to make visible rather than silently mis-bind
-    if (spare.length > 0 && used.size < tokens.filter((t) => t.kind === 'positional').length)
+    // An unbound token plus a spare slot is the quick-edit slip strict
+    // indexing is designed to make visible rather than silently mis-bind.
+    // A repeated token leaves no slot spare on its own account, so it never
+    // trips this
+    if (spare.length > 0 && unbound)
       warn(
         ErrorCodes.tokenRenumber,
         `the tokens skip a number — renumber them to ${[...Array(face.length).keys()]
