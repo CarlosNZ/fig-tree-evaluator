@@ -22,29 +22,27 @@ export const emptyAggregateError = (literalParams: Record<string, unknown>): Val
       ]
     : []
 
-/** A literal empty `values` where an identity exists: a dead expression. */
-export const emptyAggregateWarning = (literalParams: Record<string, unknown>): ValidateFinding[] =>
-  Array.isArray(literalParams.values) && literalParams.values.length === 0
-    ? [
-        {
-          severity: 'warning',
-          parameter: 'values',
-          message: 'an empty values array is a dead expression — the result is always the identity',
-        },
-      ]
-    : []
+/** A literal empty array at `parameter` where an identity exists: dead. */
+const emptyArrayWarning =
+  (parameter: string) =>
+  (literalParams: Record<string, unknown>): ValidateFinding[] => {
+    const value = literalParams[parameter]
+    return Array.isArray(value) && value.length === 0
+      ? [
+          {
+            severity: 'warning',
+            parameter,
+            message: `an empty ${parameter} array is a dead expression — the result is always the identity`,
+          },
+        ]
+      : []
+  }
 
-/** A literal empty `input` on an iterator: an identity, so a dead loop. */
-export const emptyInputWarning = (literalParams: Record<string, unknown>): ValidateFinding[] =>
-  Array.isArray(literalParams.input) && literalParams.input.length === 0
-    ? [
-        {
-          severity: 'warning',
-          parameter: 'input',
-          message: 'an empty input array is a dead expression — the result is always the identity',
-        },
-      ]
-    : []
+/** An aggregate's literal empty `values`: the result is always the identity. */
+export const emptyAggregateWarning = emptyArrayWarning('values')
+
+/** An iterator's literal empty `input`: a dead loop. */
+export const emptyInputWarning = emptyArrayWarning('input')
 
 /** A literal `values` with fewer than two elements on a comparison. */
 export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): ValidateFinding[] =>
