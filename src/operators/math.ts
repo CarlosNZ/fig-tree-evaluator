@@ -203,7 +203,12 @@ export const floor = unary('floor', 'Round down toward negative infinity', Math.
 export const ceil = unary('ceil', 'Round up toward positive infinity', Math.ceil)
 export const abs = unary('abs', 'The absolute value', Math.abs)
 
-const extremum = (name: string, description: string, wins: (comparison: number) => boolean) =>
+const extremum = (
+  name: string,
+  label: string,
+  description: string,
+  wins: (comparison: number) => boolean
+) =>
   defineOperator({
     name,
     description,
@@ -227,18 +232,20 @@ const extremum = (name: string, description: string, wins: (comparison: number) 
     validate: emptyAggregateError,
     evaluate: ({ values }) => {
       const candidates = values as (number | string)[]
-      if (candidates.length === 0) throw emptyAggregateFailure(`the ${name}imum`)
+      if (candidates.length === 0) throw emptyAggregateFailure(label)
       return candidates.reduce((best, value) => (wins(compareValues(value, best)) ? value : best))
     },
   })
 
 export const min = extremum(
   'min',
+  'the minimum',
   'The smallest of the values — numbers numerically, strings in codepoint order',
   (comparison) => comparison < 0
 )
 export const max = extremum(
   'max',
+  'the maximum',
   'The largest of the values — numbers numerically, strings in codepoint order',
   (comparison) => comparison > 0
 )
