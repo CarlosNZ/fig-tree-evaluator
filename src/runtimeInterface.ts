@@ -46,8 +46,10 @@ export interface PerElement<T = unknown> {
    * Every index at once, as settlements in completion order — the same
    * stream a `race` parameter arrives as, which is how the deciding
    * iterators (`find` / `some` / `every`) reuse `and` / `or`'s control
-   * flow unchanged. Shares the per-index memo with `evaluate`, and is
-   * itself memoized, so demanding both starts nothing twice.
+   * flow unchanged. Shares the per-index memo with `evaluate`, so
+   * demanding both, or calling `settle()` twice, starts nothing twice;
+   * each call is a fresh stream, since a stream is consumed as it is
+   * iterated.
    */
   settle(): SettlementStream
 }
