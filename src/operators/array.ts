@@ -21,6 +21,7 @@
  */
 import { defineOperator } from '../defineOperator'
 import { toCodePoints } from '../primitives'
+import type { Settlement } from '../runtimeInterface'
 import { collectAll, decide, emptyInputWarning } from './shared'
 
 export const length = defineOperator({
@@ -141,23 +142,18 @@ export const find = defineOperator({
   positionalParams: ['input', 'each'],
   validate: emptyInputWarning,
   evaluate: async ({ input, each, noMatchDefault }) => {
-    const matched = new Map<number, boolean>()
-    const failed = new Map<number, unknown>()
+    const outcomes = new Array<Settlement | undefined>(input.length)
     /** The lowest index whose outcome is not yet known; only ever advances. */
     let cursor = 0
-
     for await (const settled of each.settle()) {
-      // `truthiness` is declared, so the engine has already judged it
-      if (settled.ok) matched.set(settled.index, settled.value === true)
-      else failed.set(settled.index, settled.error)
-      // Walk forward over everything now known and non-deciding. The scan
-      // stops at the first index still out, because that one comes first
-      // and could still be the answer
-      while (cursor < input.length) {
-        if (failed.has(cursor)) throw failed.get(cursor)
-        const judged = matched.get(cursor)
-        if (judged === undefined) break
-        if (judged) return input[cursor]
+      outcomes[settled.index] = settled
+      // Walk forward over everything now known. The scan stops at the
+      // first index still out, because that one comes first and could
+      // still be the answer
+      for (let known = outcomes[cursor]; known !== undefined; known = outcomes[cursor]) {
+        if (!known.ok) throw known.error
+        // `truthiness` is declared, so the engine has already judged it
+        if (known.value === true) return input[cursor]
         cursor += 1
       }
     }
