@@ -492,6 +492,12 @@ describe('buildString — literal-face findings are warnings, never errors', () 
     expect(result.issues.map((issue) => issue.code)).toContain('token-renumber')
   })
 
+  test('a repeated token with a spare substitution is not a renumbering slip', () => {
+    const result = fig.validate({ $buildString: ['%1 and %1', 'a', 'b'] })
+    expect(result.valid).toBe(true)
+    expect(result.issues.map((issue) => issue.code)).toEqual(['unused-substitution'])
+  })
+
   test('an unbound named token warns', () => {
     expect(
       codes({
