@@ -104,6 +104,8 @@ import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
+import { parsePath, type PathSegment } from '../primitives'
+import { scanTemplate, type TemplateSegment } from '../templateTokens'
 import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
 import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
 import type {
@@ -695,6 +697,221 @@ const finalizeParams = (
     node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
   if (frame !== undefined) state.renamedBindings.pop()
+
+  recordGetDependency(state, node)
+  compileTemplate(state, node)
+}
+
+// ── buildString: the template scan ──────────────────────────────────
+
+/** What the authored `substitutions` face is, as far as it is knowable. */
+type SubstitutionFace =
+  | { mode: 'absent' }
+  | { mode: 'array'; length: number }
+  | { mode: 'object'; keys: Set<string> }
+  | { mode: 'dynamic' }
+
+const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
+  if (supplied === undefined) return { mode: 'absent' }
+  if (supplied.kind === 'constant') {
+    if (Array.isArray(supplied.value)) return { mode: 'array', length: supplied.value.length }
+    if (isPlainDataObject(supplied.value))
+      return { mode: 'object', keys: new Set(Object.keys(supplied.value)) }
+    return { mode: 'dynamic' }
+  }
+  if (supplied.kind === 'skeleton') {
+    const { skeleton, holes } = supplied
+    if (Array.isArray(skeleton)) return { mode: 'array', length: skeleton.length }
+    if (isPlainDataObject(skeleton)) {
+      // A hole's key is absent from the skeleton — the two halves together
+      // are the authored key set
+      const keys = new Set(Object.keys(skeleton))
+      for (const hole of holes) keys.add(String(hole.at[0]))
+      return { mode: 'object', keys }
+    }
+  }
+  return { mode: 'dynamic' }
+}
+
+/**
+ * `buildString`'s parse-time half, and the one place a template is ever
+ * scanned for references (References rule 4's sanctioned embedding): a
+ * LITERAL template is authored tree, so `{{$data.x}}` in one IS that
+ * reference, while a template arriving as data can never mint itself a
+ * data read.
+ *
+ * A recognized reference desugars into `substitutions` under the token's
+ * own text as its key — collision-free by construction, since a
+ * reference-shaped token is always resolved as a reference and a
+ * well-formed NAMED token body must be a plain identifier, which
+ * `$d.first` is not. The template is left byte-unchanged, and the body
+ * then needs no reference machinery at all: it looks the token body up in
+ * `substitutions` exactly as it does for `{{name}}`.
+ *
+ * The desugar needs an object to grow, so it reaches the named face and
+ * the no-substitutions face only; beside an array or a dynamically
+ * supplied map a reference token is not recognized, renders itself, and
+ * draws a warning here (ruled with Carl, September 2026).
+ *
+ * The literal-face findings live here rather than in a `validate` hook
+ * for the same reason: the injection turns `substitutions` into a
+ * skeleton, and hooks see constant parameters only.
+ */
+const compileTemplate = (state: WalkState, node: OperatorNode) => {
+  if (node.name !== 'buildString') return
+  const template = node.params.template
+  if (template?.kind !== 'constant' || typeof template.value !== 'string') return
+
+  const segments = scanTemplate(template.value)
+  const tokens = segments.filter((segment) => segment.kind !== 'text')
+  if (tokens.length === 0) return
+
+  const supplied = node.params.substitutions
+  const face = readFace(supplied)
+  reportTemplateFace(state, node, template, tokens, face)
+
+  if (face.mode !== 'absent' && face.mode !== 'object') return
+
+  const holes: SkeletonHole[] = []
+  const bound = new Set<string>()
+  for (const segment of tokens) {
+    if (segment.kind !== 'named' || !segment.body.startsWith('$')) continue
+    // Repeats share one evaluation — the same key, bound once
+    if (bound.has(segment.body)) continue
+    const compiled = walkString(state, segment.body, template.path, state.order++)
+    if (compiled.kind !== 'reference') continue
+    state.nodeCount++
+    bound.add(segment.body)
+    holes.push({ path: template.path, at: [segment.body], node: compiled })
+  }
+  if (holes.length === 0) return
+
+  node.params.substitutions = growSubstitutions(state, node, supplied, holes)
+}
+
+/** The authored map plus the desugared references, as one skeleton. */
+const growSubstitutions = (
+  state: WalkState,
+  node: OperatorNode,
+  supplied: CompiledNode | undefined,
+  injected: SkeletonHole[]
+): SkeletonNode => {
+  const base: SkeletonNode =
+    supplied?.kind === 'skeleton'
+      ? { ...supplied, skeleton: { ...(supplied.skeleton as object) }, holes: [...supplied.holes] }
+      : {
+          kind: 'skeleton',
+          // The authored object is copied, never mutated (obligation C4)
+          skeleton: supplied?.kind === 'constant' ? { ...(supplied.value as object) } : {},
+          holes: [],
+          path: supplied?.path ?? [...node.path, 'substitutions'],
+          order: supplied?.order ?? state.order++,
+        }
+  base.holes.push(...injected)
+  return base
+}
+
+/**
+ * The literal-face findings, all warnings: the runtime behaviour they
+ * describe is defined and graceful (an unbound token renders its own
+ * text), so an error — which would refuse the expression outright — would
+ * also refuse a percent-encoded URL in a positional template, the case
+ * the no-escape design leans on.
+ *
+ * Cross-style tokens draw nothing: they are deliberately inert, which is
+ * what makes generating a Mustache template positional mode's job.
+ */
+const reportTemplateFace = (
+  state: WalkState,
+  node: OperatorNode,
+  template: ConstantNode,
+  tokens: Exclude<TemplateSegment, { kind: 'text' }>[],
+  face: SubstitutionFace
+) => {
+  const warn = (code: string, message: string, severity: Severity = 'warning') =>
+    emit(state, severity, code, message, template.path, template.order, node.name)
+
+  if (face.mode === 'array' || face.mode === 'dynamic') {
+    if (tokens.some((token) => token.kind === 'named' && token.body.startsWith('$')))
+      warn(
+        ErrorCodes.inertReferenceToken,
+        `a reference token needs the named face — beside ${
+          face.mode === 'array' ? 'positional substitutions' : 'a dynamically supplied map'
+        } it is not recognized and renders as its own text`
+      )
+  }
+
+  if (face.mode === 'array') {
+    const used = new Set<number>()
+    let unbound = false
+    for (const token of tokens) {
+      if (token.kind !== 'positional') continue
+      if (token.index >= 1 && token.index <= face.length) {
+        used.add(token.index)
+        continue
+      }
+      unbound = true
+      warn(ErrorCodes.unboundToken, `'${token.raw}' binds to nothing and renders as its own text`)
+    }
+    const spare = []
+    for (let i = 1; i <= face.length; i++) if (!used.has(i)) spare.push(i)
+    for (const index of spare)
+      warn(ErrorCodes.unusedSubstitution, `substitution ${index} is never named by the template`)
+    // An unbound token plus a spare slot is the quick-edit slip strict
+    // indexing is designed to make visible rather than silently mis-bind.
+    // A repeated token leaves no slot spare on its own account, so it never
+    // trips this
+    if (spare.length > 0 && unbound)
+      warn(
+        ErrorCodes.tokenRenumber,
+        `the tokens skip a number — renumber them to ${[...Array(face.length).keys()]
+          .map((i) => `%${i + 1}`)
+          .join(', ')}`,
+        'hint'
+      )
+    return
+  }
+
+  if (face.mode === 'object') {
+    const used = new Set<string>()
+    for (const token of tokens) {
+      if (token.kind !== 'named') continue
+      if (face.keys.has(token.body)) {
+        used.add(token.body)
+        continue
+      }
+      // A reference token binds through the desugar, not the map
+      if (token.body.startsWith('$')) continue
+      warn(ErrorCodes.unboundToken, `'${token.raw}' binds to nothing and renders as its own text`)
+    }
+    for (const key of face.keys)
+      if (!used.has(key))
+        warn(ErrorCodes.unusedSubstitution, `substitution '${key}' is never named by the template`)
+  }
+}
+
+/**
+ * `get` reads `$data` too, so its paths belong in the dependency list
+ * (obligation B6) on exactly the sugar equivalence that defines the
+ * operator: `{ $get: 'a.b' }` ≡ `"$data.a.b"`. A literal path joins the
+ * list as written, projections included; a computed one makes the
+ * read-set unenumerable, which is what `dynamic` is for. A supplied
+ * `from` contributes neither — the read is not against `$data` at all.
+ */
+const recordGetDependency = (state: WalkState, node: OperatorNode) => {
+  if (node.name !== 'get' || node.params.from !== undefined) return
+  const path = node.params.path
+  if (path === undefined) return
+  if (path.kind !== 'constant') {
+    state.dynamic = true
+    return
+  }
+  try {
+    const segments = typeof path.value === 'string' ? parsePath(path.value) : path.value
+    if (Array.isArray(segments)) state.dataPaths.add(renderSegments(segments as PathSegment[]))
+  } catch {
+    // A malformed literal path is the validate hook's finding to report
+  }
 }
 
 const walkPending = (

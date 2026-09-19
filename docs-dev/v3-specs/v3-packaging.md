@@ -34,7 +34,7 @@ The complete value-export inventory. Types are inventoried separately below.
 |---|---|---|
 | `FigTree` | class | Options; [evaluator-methods](v3-evaluator-methods.md) |
 | `defineOperator` | function | [operator contract](v3-operator-contract.md) |
-| `coreOperators` | `OperatorDefinition[]` — all 42 core operators | Operators § canonical list |
+| `coreOperators` | `OperatorDefinition[]` — all 40 core operator definitions (`literal` is grammar, so it has none) | Operators § canonical list |
 | `httpOperators` | `(client?: HttpClient) => OperatorDefinition[]` — `[http, graphQL]`; no argument defaults to `new FetchClient()` over global fetch (ruling below) | Options; contract § client contracts |
 | `sqlOperators` | `(connection: SqlConnection) => OperatorDefinition[]` — `[sql]` | Options; contract § client contracts |
 | `FetchClient`, `AxiosClient` | `HttpClient` wrappers | contract § client contracts |
@@ -70,7 +70,7 @@ const fig = new FigTree({
 
 ### Ruling: one `coreOperators` array — no grouped arrays, no per-operator exports
 
-The export-grouping question deferred from Operators (fat `coreOperators` vs lean core + `mathOperators` / `stringOperators`): **fat**. All 42 core operators ship in the one array.
+The export-grouping question deferred from Operators (fat `coreOperators` vs lean core + `mathOperators` / `stringOperators`): **fat**. All 40 core operator definitions ship in the one array.
 
 - The weight argument fails on arithmetic: the core operators are small pure functions — the entire set is a rounding error next to any host application, and the only genuinely heavy things (I/O, Intl/dates) are already outside `coreOperators` by construction. Grouping would tax every consumer with registration ceremony (and every doc with "which array is `round` in?") to serve a bundle-size case that doesn't exist.
 - The floated constraint — the default core must cover everything v2 had post-conversion, so converted v2 expressions run without extra registration — is satisfied trivially: converted v2 trees can only need core operators (I/O conversion necessarily involves handing over a client, which is registration).

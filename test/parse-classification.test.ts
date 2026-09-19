@@ -139,6 +139,43 @@ test('a bare $data reference flips the dynamic flag', () => {
   expect(artifact.dependencies.dynamic).toBe(true)
 })
 
+test('a literal get path joins the list — the sugar equivalence', () => {
+  const artifact = parse({
+    a: { $get: 'user.name' },
+    b: { $get: { path: 'orders[*].total' } },
+    c: { $get: ['letters[0]', 'fallback value'] },
+  })
+  expect(artifact.dependencies.dataPaths.sort()).toEqual([
+    'letters[0]',
+    'orders[*].total',
+    'user.name',
+  ])
+  expect(artifact.dependencies.dynamic).toBe(false)
+})
+
+test('a get path spelled as segments joins the list in the shared grammar', () => {
+  const artifact = parse({ a: { $get: { path: ['users', 0, 'name'] } } })
+  expect(artifact.dependencies.dataPaths).toEqual(['users[0].name'])
+})
+
+test('a computed get path flips the dynamic flag instead', () => {
+  const artifact = parse({ a: { $get: '$data.chosen' } })
+  expect(artifact.dependencies.dynamic).toBe(true)
+  // The reference supplying the path is itself a known read
+  expect(artifact.dependencies.dataPaths).toEqual(['chosen'])
+})
+
+test('a get with `from` reads no $data path at all', () => {
+  const artifact = parse({ a: { $get: { path: 'name', from: { $plus: [1, 2] } } } })
+  expect(artifact.dependencies.dataPaths).toEqual([])
+  expect(artifact.dependencies.dynamic).toBe(false)
+})
+
+test('a malformed literal get path records nothing and does not throw', () => {
+  const artifact = parse({ a: { $get: 'a[' } })
+  expect(artifact.dependencies.dataPaths).toEqual([])
+})
+
 test('invoked operators and called fragments are recorded by canonical name', () => {
   const artifact = parse({
     a: { '$+': [1, 2] },

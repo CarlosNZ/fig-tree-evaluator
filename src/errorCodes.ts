@@ -53,6 +53,12 @@ export const ErrorCodes = {
   shadowedVar: 'shadowed-var', // an inner vars block redeclaring an outer name (warning)
   varCycle: 'var-cycle', // vars: { a: '$vars.b', b: '$vars.a' }
 
+  // Phase 7 — buildString's literal-face token checks
+  unboundToken: 'unbound-token', // { $buildString: ['Hi %2', 'there'] } — a token with nothing to bind to (warning)
+  unusedSubstitution: 'unused-substitution', // a literal substitution the literal template never names (warning)
+  tokenRenumber: 'token-renumber', // 'My %1 is %3' with two substitutions — the gap wants renumbering (hint)
+  inertReferenceToken: 'inert-reference-token', // {{$data.x}} beside array or dynamic substitutions — not recognized (warning)
+
   // Phase 2 — registration (defineOperator / registry / construction)
   invalidDefinition: 'invalid-definition', // defineOperator() throw umbrella; also the generic malformed-definition issue
   invalidName: 'invalid-name', // 'foo.bar' — a name violating the shared legality rule

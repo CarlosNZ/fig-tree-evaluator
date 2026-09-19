@@ -1,30 +1,16 @@
 /**
  * Stand-in operators for the dev playground, registered beside
  * `coreOperators` (src/dev/inspect.ts). They model the shapes core does not
- * yet hold: the `EvaluationData` sentinel, a `timeoutParam`, a
- * leading-plus-rest positional list, and a `validate` hook. Canonical
- * names match the real core set where a real operator is being modelled;
- * the bodies are no-ops.
+ * yet hold: optional trailing slots carrying defaults, and a
+ * `timeoutParam`. Canonical names match the real core set where a real
+ * operator is being modelled; the bodies are no-ops.
  * Each entry is deleted when its real operator lands (Phases 5–9); the file
  * goes with the last of them.
  */
-import { defineOperator, EvaluationData } from '../index'
-import type { ValidateFinding, ValidatedOperatorDefinition } from '../index'
+import { defineOperator } from '../index'
+import type { ValidatedOperatorDefinition } from '../index'
 
 const noop = async () => null
-
-/** Leading slot plus rest — the buildString shape. */
-const formatOp = defineOperator({
-  name: 'format',
-  description: 'Render a template with substitutions',
-  parameters: {
-    template: { type: 'string' },
-    substitutions: { type: 'array', required: false },
-  },
-  positionalParams: ['template', '...substitutions'],
-  returns: 'string',
-  evaluate: noop,
-})
 
 /** Optional trailing slots carrying defaults, and a `number` receiver. */
 const clampOp = defineOperator({
@@ -37,19 +23,6 @@ const clampOp = defineOperator({
   },
   positionalParams: ['value', 'min', 'max'],
   returns: 'number',
-  evaluate: noop,
-})
-
-/** The `EvaluationData` sentinel in `default` position. */
-const getOp = defineOperator({
-  name: 'get',
-  alias: 'getData',
-  description: 'Read a path out of the evaluation data',
-  parameters: {
-    path: { type: 'string' },
-    from: { type: ['object', 'array'], default: EvaluationData },
-  },
-  positionalParams: ['path'],
   evaluate: noop,
 })
 
@@ -68,47 +41,4 @@ const httpOp = defineOperator({
   evaluate: noop,
 })
 
-/** A `validate` hook — operator-specific linting of literal parameters. */
-const regexOp = defineOperator({
-  name: 'regex',
-  description: 'Test a string against a pattern',
-  parameters: {
-    pattern: { type: 'string' },
-    flags: { type: 'string', required: false },
-  },
-  positionalParams: ['pattern', 'flags'],
-  returns: 'boolean',
-  validate: ({ pattern, flags }) => {
-    const findings: ValidateFinding[] = []
-    if (typeof pattern === 'string') {
-      try {
-        new RegExp(pattern, typeof flags === 'string' ? flags : '')
-      } catch (error) {
-        findings.push({
-          severity: 'error',
-          parameter: 'pattern',
-          message: `Pattern does not compile: ${(error as Error).message}`,
-        })
-      }
-    }
-    if (typeof flags === 'string') {
-      const bad = [...flags].filter((flag) => !'dgimsuvy'.includes(flag))
-      if (bad.length > 0)
-        findings.push({
-          severity: 'error',
-          parameter: 'flags',
-          message: `Unknown regex flag${bad.length === 1 ? '' : 's'}: ${bad.join(', ')}`,
-        })
-    }
-    return findings
-  },
-  evaluate: noop,
-})
-
-export const demoOperators = (): ValidatedOperatorDefinition[] => [
-  formatOp,
-  clampOp,
-  getOp,
-  httpOp,
-  regexOp,
-]
+export const demoOperators = (): ValidatedOperatorDefinition[] => [clampOp, httpOp]

@@ -44,6 +44,9 @@ export const emptyAggregateWarning = emptyArrayWarning('values')
 /** An iterator's literal empty `input`: a dead loop. */
 export const emptyInputWarning = emptyArrayWarning('input')
 
+/** `buildObject`'s literal empty `entries`: the result is always `{}`. */
+export const emptyEntriesWarning = emptyArrayWarning('entries')
+
 /** A literal `values` with fewer than two elements on a comparison. */
 export const fewerThanTwoWarning = (literalParams: Record<string, unknown>): ValidateFinding[] =>
   Array.isArray(literalParams.values) && literalParams.values.length < 2

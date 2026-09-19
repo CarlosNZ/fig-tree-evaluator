@@ -118,12 +118,16 @@ Same chunk, same root cause: **`nodeCount` narrows to count *evaluable* nodes on
 ## Phase 7 — Remaining core operators (core-complete milestone)
 
 **7.1 · Data & objects.** `get` (path resolver reuse, `missingPathDefault`, `from` + the `EvaluationData` sentinel), `buildObject` (duplicate-key semantics + warning).
+*Built (September 2026): both in `src/operators/data.ts`. Almost nothing in the engine had to move — the `EvaluationData` sentinel, the `replacesNullAt` layer, the `lazy` handle and the `elementShape` constraint were all already load-bearing elsewhere, and `get`'s whole path grammar (quoted segments, the segments array, `[*]`) had shipped with the Phase-1 resolver. Two things were genuinely new. `get` reads `strictDataPaths` through **`readsOptions`**, which is the only channel a body has to an option, so the sugar contract's "same strictness response" became a declaration rather than a coincidence; and the parser gained **`get`'s dependency recording** (obligation B6), which was specified but never built — a literal `path` with no `from` joins `dataPaths`, a computed one sets `dynamic`, a supplied `from` contributes neither. Batch 6's three unruled `[*]` sub-questions all closed on the built resolver rather than by decision: chained projections nest, `missingPathDefault` fires on a whole-path miss only (a per-element miss is already a `null` slot in a found result), and the segments-array form cannot spell a projection at all. `from` declares `any`, not the contract example's `['object', 'array']` — its `value` policy is declarable only where the type names null.*
 *Register rows: 25, 26. Batch 6.*
 
 **7.2 · Renderers & regex.** `buildString` (token engine, literal-face validate hook, unbound-token rendering, `closeGaps` over the segment list), `join`, `regex` (modes, compiled-literal-pattern reuse, `noMatchDefault`), `literal` (mostly parse-side already — confirm end to end).
+*Built (September 2026): the token grammar is one scanner in `src/templateTokens.ts` with two consumers — the parser and the body — so it cannot drift. Four rulings shaped it. **Reference tokens desugar into `substitutions`** (Carl): a literal `{{$d.first}}` adds the compiled reference to the substitutions object under the token's own text, leaving the template byte-unchanged, which means the body needs no reference machinery at all and `nullValueDefault`, the static scope walk and dependency recording all reach reference-token values for free. It needs an object to grow, so it was **narrowed to the named and no-substitutions faces**; beside a literal array or a dynamic map the token is unrecognized, renders itself, and warns. **The literal-face findings are warnings, not the errors the pass drafted** — an error refuses the expression, which would have made a percent-encoded URL in a positional template unevaluable and stopped register row 15's own example from rendering. And they are emitted by the **parser**, not a `validate` hook, because the desugar turns `substitutions` into a skeleton and hooks see constant parameters only. `regex` came out as a pure rename of v2 plus everything new, with **artifact obligation B5 deferred**: nothing can write the precompute slot, and a `RegExp` the engine already caches by source and flags is not worth a definition-level hook — constructing per use is also the only `lastIndex` story that needs no care. `closeGaps` runs over the segment list with the run stripped in place, which is what makes "each run consumed at most once" fall out instead of needing bookkeeping. One wording correction went back to the pass: zero-length matches advance one UTF-16 unit, and one code point only under `u` — "the JS `matchAll` rule" and "advance one code point" are the same thing only when the flag is set, and the batch's code-point unit ruling does not reach inside a pattern. `literal` needed no code: Phase 3 had built the boundary, and what Phase 7 added is the evaluation-level proof that a quoted payload comes back by identity and nothing downstream re-captures it.*
 *Register rows: 15–19, 21, 22. Batch 4.*
 
-**Milestone: all 42 core operators live; the bulk of hand-migrated v2 expression tests pass.** Worked examples 1 (minus http) becomes a passing test here.
+*Review note (September 2026): `buildString` and `get` are the first operator names hard-coded into `src/parse/parse.ts` — each a hook the walk calls unconditionally that bails on a name check. Accepted on the same grounds as the deferred regex precompute slot: a definition-level hook is more machinery than two call sites buy. A third such hook should prompt a dispatch table keyed by operator name rather than a third bail-out.*
+
+**Milestone: all 41 core operators live — 40 definitions plus `literal` as grammar; the bulk of hand-migrated v2 expression tests pass.** Worked examples 1 (minus http) becomes a passing test here.
 
 ---
 
@@ -213,7 +217,7 @@ I/O excluded or zero-latency mocked (network variance would swamp the signal). O
 |---|---|---|
 | M1 | Phase 3 | `validate()` any expression — the editor's static half works with zero evaluation capability |
 | M2 | Phase 4 | evaluate eager expressions end to end, throw mode |
-| M3 | Phase 7 | run all 42 core operators — bulk of migrated v2 tests green |
+| M3 | Phase 7 | run all 41 core operators — bulk of migrated v2 tests green |
 | M4 | Phase 9 | full I/O with caching — the lifecycle example passes with observable fetch counts |
 | M5 | Phase 13 | feature-complete engine, whole method surface |
 | M6 | Phase 15 | converter + differential green — migration-ready |
@@ -229,13 +233,15 @@ Per-PR movement is caught without anyone remembering to look: `.github/workflows
 
 **What the figure is, and is not.** It is the whole public surface reachable from the main entry point — a ceiling, not a per-consumer cost. Because the package is ESM with `sideEffects: false`, a consumer's own bundler shakes the single published file down to what they actually import. Measured against the Phase-3 build by rolling up a consumer entry per import subset:
 
-| A consumer importing… | raw | brotli |
-|---|---|---|
-| `version` only | 0.21 kB | 0.14 kB |
-| two primitives (`isTruthy`, `resolvePath`) | 1.96 kB | 0.84 kB |
-| `FigTree` | 30.38 kB | 8.92 kB |
-| `FigTree` + `defineOperator` | 43.41 kB | 11.75 kB |
-| everything (`import * as`) | 44.57 kB | 12.24 kB |
+| A consumer importing… | raw | brotli | *(Phase 3, for contrast)* |
+|---|---|---|---|
+| `version` only | 0.04 kB | 0.05 kB | 0.21 kB |
+| two primitives (`isTruthy`, `resolvePath`) | 1.75 kB | 0.77 kB | 1.96 kB |
+| `FigTree` | 82.52 kB | 22.31 kB | 30.38 kB |
+| `FigTree` + `defineOperator` | 82.54 kB | 22.31 kB | 43.41 kB |
+| everything (`import * as`) | 85.62 kB | 22.83 kB | 44.57 kB |
+
+*Re-measured at Phase 7 on the same method (a consumer entry per import subset, rolled up from `src/index.ts` with `moduleSideEffects: false`, which is what the package's `sideEffects: false` tells a consumer's bundler). The two ends of the range still hold — a consumer who imports a primitive still pays for a primitive — but the middle has collapsed into one figure, which is the finding below.*
 
 One caveat the figure cannot carry: the HTTP/SQL clients are deliberately consumer-supplied ([v3-packaging.md](v3-packaging.md)), so anyone using `GET`/`SQL` pays for `axios`/`pg` on top — both dwarf the engine.
 
@@ -248,10 +254,11 @@ One caveat the figure cannot carry: the HTTP/SQL clients are deliberately consum
 | Phase 4 — evaluator core + 24 eager operators | 62.69 kB | 19.07 kB | 17.07 kB | 14.56 kB | `parse` 21%, `defineOperator` 18%, `staticChecks` 9%, `math` 6%, `params` 6% |
 | Phase 5 — scoping & laziness + 6 logic operators | 71.05 kB | 21.39 kB | 19.16 kB | 14.57 kB | `parse` 21%, `defineOperator` 16%, `staticChecks` 8%, `params` 7%, `math` 5% |
 | Phase 6 — iterators + 5 operators | 75.59 kB | 22.66 kB | 20.30 kB | 14.64 kB | `parse` 20%, `defineOperator` 15%, `params` 8%, `staticChecks` 8%, `typeCheck` 5% |
+| Phase 7 — remaining core operators (core-complete) | 85.64 kB | 25.66 kB | 22.86 kB | 14.87 kB | `parse` 21%, `defineOperator` 13%, `staticChecks` 7%, `params` 6%, `string` 6% |
 
 Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). The package has no runtime dependency to understate: `dequal` was vendored into the bundle with Phase 4's `equal`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
 
-Two things to watch, not yet act on. `defineOperator.ts` is a quarter of the bundle while registering zero operators — today it shakes off cleanly (13 kB of the 43 kB gap between the `FigTree` and `FigTree + defineOperator` rows above), but it stops being optional the moment `coreOperators` is itself built with it, which is Phase 7. And `parse` + `staticChecks` is 42% of the bundle: authoring-time machinery that a consumer who only evaluates still pays for, since it is reachable from the class. Whether either splits out is a **Phase 14** packaging decision — the numbers accumulated here are its evidence.
+Two things to watch, not yet act on. **`defineOperator` has stopped being optional, and it happened earlier than this plan predicted.** The Phase-3 note said it would stop shaking off "the moment `coreOperators` is itself built with it, which is Phase 7" — but `coreOperators` has been built with it since **Phase 4**, and the measurement confirms the gap between the `FigTree` and `FigTree + defineOperator` rows was already 0.02 kB at Phase 6, where at Phase 3 it was 13 kB. Importing the class now brings the whole registration validator, because the core definitions run through it at module scope. And `parse` + `staticChecks` is 28% of the bundle (down from 42% in share, up in absolute terms): authoring-time machinery that a consumer who only evaluates still pays for, since it is reachable from the class. Whether either splits out is a **Phase 14** packaging decision — the numbers accumulated here are its evidence, and the first of the two now has a measured cost rather than a predicted one.
 
 ## Standing dependencies & flags
 

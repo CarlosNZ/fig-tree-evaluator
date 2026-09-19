@@ -1,3 +1,13 @@
+/**
+ * MIGRATION STATUS (Phase 7.2, 2026-09-19): hand-migrated to
+ * test/operators-regex.test.ts. Divergences: the aliases REGEX /
+ * pattern-match / regexp / matchPattern die; `testString` (aliases
+ * `string` / `value`) becomes `value`, `pattern`'s aliases die; both
+ * cases convert by pure rename, since v2's no-flags boolean test is
+ * exactly `mode: 'test'` + `flags: ''`. Everything else in the v3 suite
+ * is new: `mode: 'extract'` / `'match'`, `flags` and the g/y ban,
+ * `noMatchDefault`, and the literal-pattern compile at validate().
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator()

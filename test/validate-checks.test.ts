@@ -347,6 +347,24 @@ describe('sample-data check (only when data is supplied)', () => {
   test('no data supplied, no check', () => {
     expect(warningCodes({ a: '$data.missing.path' })).toHaveLength(0)
   })
+
+  test('a literal get path is checked too — the sugar equivalence', () => {
+    const result = fig.validate(
+      { a: { $get: 'user.name' }, b: { $get: 'missing.path' } },
+      { data: { user: { name: 'Ada' } } }
+    )
+    const misses = result.issues.filter((issue) => issue.code === 'missing-data-path')
+    expect(misses).toHaveLength(1)
+    expect(misses[0].message).toContain('missing.path')
+  })
+
+  test('a get reading a supplied `from` is not a $data path, so it is not checked', () => {
+    const result = fig.validate(
+      { a: { $get: { path: 'missing.path', from: { $plus: [1, 2] } } } },
+      { data: {} }
+    )
+    expect(result.issues.filter((issue) => issue.code === 'missing-data-path')).toHaveLength(0)
+  })
 })
 
 describe('useless modifiers on literal', () => {

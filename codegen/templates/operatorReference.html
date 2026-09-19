@@ -571,9 +571,9 @@
     <li><b>Parameter-name aliases</b> — they do not exist in v3, so each name shown is the only spelling.</li>
   </ul>
 
-  <h3>Two count discrepancies in the source docs</h3>
+  <h3>A count discrepancy, since resolved</h3>
   <div class="flag">
-    <b>The canonical list heads itself “42 core + 3 I/O operators” over a table of 41 core rows</b>, and the M3 milestone in the implementation plan likewise says “all 42 core operators”. Both are consistent with <code>substring</code> having been cut from core during the string batch without the headline counts following. The 13 symbolic aliases are correct as stated.
+    <b>The canonical list used to head itself “42 core + 3 I/O operators” over a table of 41 core rows</b>, and the M3 milestone in the implementation plan said “all 42 core operators” — both consistent with <code>substring</code> having been cut from core during the string batch without the headline counts following. Corrected in the specs at Phase 7, to <b>41 core</b>: 40 <code>defineOperator()</code> definitions plus <code>literal</code>, which is grammar and has none. The 13 symbolic aliases were correct as stated.
   </div>
 
   <p class="colophon">

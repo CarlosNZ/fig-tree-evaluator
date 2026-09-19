@@ -47,7 +47,7 @@ inspect({ $not: '$d.active' }, { label: '7 · namespace alias normalization' })
 // A `vars` block scopes its subtree; `$vars.x` resolves against it.
 inspect(
   {
-    operator: 'format',
+    operator: 'buildString',
     vars: { who: '$data.user.name' },
     template: 'Hello %1',
     substitutions: ['$vars.who'],
@@ -100,19 +100,22 @@ inspect(
 )
 
 // A required parameter left unsupplied.
-inspect({ operator: 'format', substitutions: ['x'] }, { label: '16 · missing required' })
+inspect({ operator: 'buildString', substitutions: ['x'] }, { label: '16 · missing required' })
 
 // The feeding-position check: `not` returns boolean, `clamp.value` takes
 // number|null — disjoint, so it fails at authoring time.
 inspect({ operator: 'clamp', value: { $not: true } }, { label: '17 · feeding-position check' })
 
 // An operator's own `validate` hook lints its literal parameters.
-inspect({ $regex: ['([', 'gq'] }, { label: '18 · a validate-hook finding' })
+inspect(
+  { $regex: { value: 'x', pattern: '([', flags: 'gq' } },
+  { label: '18 · a validate-hook finding' }
+)
 
 // Warnings never block: an unrecognized `$` string is inert data, and a
 // declared-but-unused var is dead weight.
 inspect(
-  { operator: 'format', vars: { unused: 1 }, template: '$notANamespace' },
+  { operator: 'buildString', vars: { unused: 1 }, template: '$notANamespace' },
   { label: '19 · warnings (unrecognized $, unreferenced var)' }
 )
 
@@ -122,7 +125,7 @@ inspect(
 // recorded dataPaths, and the limits against the recorded counts. Compare
 // the artifact sections above with the validate() section below.
 inspect(
-  { operator: 'format', template: 'Hi %1', substitutions: ['$data.user.nickname'] },
+  { operator: 'buildString', template: 'Hi %1', substitutions: ['$data.user.nickname'] },
   {
     label: '20 · sample-data warning and a node limit',
     data: { user: { name: 'Iron Man' } },
