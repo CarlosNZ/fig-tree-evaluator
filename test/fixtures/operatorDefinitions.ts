@@ -98,7 +98,7 @@ export const nullReplacerLike = (): OperatorDefinition => ({
   evaluate: ({ values }) => values,
 })
 
-/** An I/O-shaped definition: `timeoutParam`, `readsOptions`, manual cache. */
+/** An I/O-shaped definition: `timeoutParam` and a manual cache. */
 export const httpLike = (): OperatorDefinition => ({
   name: 'http',
   description: 'HTTP request',
@@ -108,7 +108,6 @@ export const httpLike = (): OperatorDefinition => ({
   },
   positionalParams: ['url'],
   timeoutParam: 'requestTimeout',
-  readsOptions: ['http'],
   useCache: true,
   cache: 'manual',
   returns: 'any',
@@ -240,11 +239,6 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'cache-outside-vocabulary',
     definition: withField('cache', 'sometimes'),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['cache'] },
-  },
-  {
-    id: 'readsOptions-not-a-string-array',
-    definition: withField('readsOptions', 'http'),
-    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['readsOptions'] },
   },
   {
     id: 'metadata-not-an-object',

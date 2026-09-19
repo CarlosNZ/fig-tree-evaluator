@@ -80,7 +80,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const { params, propagate } = await resolveParams(node, ctx)
   if (propagate) return null
   const { definition } = node.entry
-  const result = await definition.evaluate(params, createOperatorContext(ctx, definition))
+  const result = await definition.evaluate(params, createOperatorContext(ctx))
   return normalizeResult(result, node)
 }
 

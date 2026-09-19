@@ -10,7 +10,6 @@
  * to the instance.
  */
 import type { FigTreeOptions } from '../options'
-import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { OperatorContext } from '../runtimeInterface'
 import { isPlainObject } from '../utils'
 import type { Bindings } from './bindings'
@@ -68,7 +67,7 @@ export const mergeOptions = (instance: FigTreeOptions, call: FigTreeOptions): Fi
 export const createEvaluationContext = (merged: FigTreeOptions): EvaluationContext => {
   const signal = merged.signal ?? new AbortController().signal
   return {
-    options: merged,
+    options: Object.freeze(merged),
     data: Object.freeze({ ...(merged.data ?? {}) }),
     signal,
     rootSignal: signal,
@@ -113,24 +112,21 @@ export const SCOPE_SETTLED = 'fig-tree:scope-settled'
 const noop = () => {}
 
 /**
- * The context a body receives: the signal, exactly the option blocks its
- * definition declares (frozen), and the two stubs — `memo` runs the unit
- * every time until the result cache lands (Phase 9), `note` discards until
- * trace lands (Phase 12).
+ * The context a body receives: the signal, the evaluation's frozen options,
+ * and the two stubs — `memo` runs the unit every time until the result cache
+ * lands (Phase 9), `note` discards until trace lands (Phase 12).
+ *
+ * Options reach a body whole. There is nothing privileged in them to hide,
+ * and a per-definition declaration of which blocks a body reads could only
+ * record an intention, never police one — an operator that wanted a block
+ * would simply name it. A body whose result depends on an option it reads
+ * owns that dependency in its cache key, which means `cache: 'manual'`
+ * ("Caching" in docs-dev/v3-specs/v3-operator-contract.md); the `'auto'`
+ * key covers resolved parameters only.
  */
-export const createOperatorContext = (
-  ctx: EvaluationContext,
-  definition: ValidatedOperatorDefinition
-): OperatorContext => {
-  const picked: Record<string, unknown> = {}
-  const options = ctx.options as Record<string, unknown>
-  for (const block of definition.readsOptions) {
-    if (options[block] !== undefined) picked[block] = options[block]
-  }
-  return {
-    signal: ctx.signal,
-    options: Object.freeze(picked) as Readonly<Partial<FigTreeOptions>>,
-    cache: { memo: (_key, fn) => fn() },
-    trace: { note: noop },
-  }
-}
+export const createOperatorContext = (ctx: EvaluationContext): OperatorContext => ({
+  signal: ctx.signal,
+  options: ctx.options,
+  cache: { memo: (_key, fn) => fn() },
+  trace: { note: noop },
+})

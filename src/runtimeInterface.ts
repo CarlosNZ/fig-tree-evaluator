@@ -70,8 +70,8 @@ export type TraceEvent = { type: string; [key: string]: unknown }
 export interface OperatorContext {
   /** Caller signal, evaluation timeout, enclosing early-resolution scopes */
   signal: AbortSignal
-  /** Only the option blocks the definition's `readsOptions` names; frozen */
-  options: Readonly<Partial<FigTreeOptions>>
+  /** The merged instance + per-call options, frozen for the evaluation */
+  options: Readonly<FigTreeOptions>
   cache: {
     /** Memoize a unit of work under a body key; identity when caching is off */
     memo<T>(key: unknown, fn: () => Promise<T>): Promise<T>

@@ -70,7 +70,6 @@ export const spyOp = (
   parameters: Record<string, ParameterDeclaration>,
   extra: {
     positionalParams?: string[]
-    readsOptions?: string[]
     returns?: 'string'
     result?: unknown
   } = {}
@@ -82,7 +81,6 @@ export const spyOp = (
     description: `spy ${name}`,
     parameters,
     ...(extra.positionalParams !== undefined ? { positionalParams: extra.positionalParams } : {}),
-    ...(extra.readsOptions !== undefined ? { readsOptions: extra.readsOptions } : {}),
     evaluate: (params, context) => {
       calls.push(params)
       contexts.push(context)

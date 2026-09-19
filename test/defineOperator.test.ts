@@ -85,7 +85,6 @@ describe('defineOperator — the validated artifact', () => {
     expect(Object.isFrozen(validated.parameters)).toBe(true)
     expect(Object.isFrozen(validated.parameters.value)).toBe(true)
     expect(Object.isFrozen(validated.positionalParams)).toBe(true)
-    expect(Object.isFrozen(validated.readsOptions)).toBe(true)
   })
 
   it('fills every documented default (normalization, not verbatim storage)', () => {
@@ -97,7 +96,6 @@ describe('defineOperator — the validated artifact', () => {
     })
     expect(validated.useCache).toBe(false)
     expect(validated.cache).toBe('auto')
-    expect(validated.readsOptions).toEqual([])
     expect(validated.returns).toBe('any')
     expect(validated.timeoutParam).toBeNull()
     expect(validated.restParam).toBeNull()
@@ -134,10 +132,9 @@ describe('defineOperator — the validated artifact', () => {
     expect(validated.restParam).toBe('values')
   })
 
-  it('carries the I/O-shaped fields through (timeoutParam, readsOptions, cache)', () => {
+  it('carries the I/O-shaped fields through (timeoutParam, cache)', () => {
     const validated = defineOperator(httpLike())
     expect(validated.timeoutParam).toBe('requestTimeout')
-    expect(validated.readsOptions).toEqual(['http'])
     expect(validated.useCache).toBe(true)
     expect(validated.cache).toBe('manual')
   })
