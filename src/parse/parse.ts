@@ -116,6 +116,7 @@ import type {
   NodePath,
   OperatorNode,
   ParseArtifact,
+  SequencedIssue,
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
@@ -161,12 +162,12 @@ interface WalkState {
    */
   asNames: Set<string>
   /**
-   * `$`-tokens warned as unrecognized, with where their issue landed. A
+   * `$`-tokens warned as unrecognized, each with the issue it raised. A
    * token naming a binding declared ANYWHERE is not unrecognized, it is
    * out of scope, and the walk cannot know that at the time: a depth-first
    * walk meets an iterator's `input` before its `as`.
    */
-  unrecognized: { token: string; issueIndex: number; raw: string }[]
+  unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
 }
 
 /** Parse an expression into its compile artifact. Never throws on content. */
@@ -227,21 +228,17 @@ export const parseExpression = (
  * a namespace inside its own scope, which is exactly why this second look
  * is needed to treat the two alike.
  *
- * Replaced in place, so the issue keeps its emission order.
+ * Rewritten on the issue record itself, so it keeps its emission order.
  */
 const upgradeOutOfScopeBindings = (state: WalkState) => {
   if (state.asNames.size === 0) return
-  for (const { token, issueIndex, raw } of state.unrecognized) {
+  for (const { token, issue: sequenced, raw } of state.unrecognized) {
     if (!state.asNames.has(token)) continue
-    const sequenced = state.issues[issueIndex]
-    state.issues[issueIndex] = {
-      order: sequenced.order,
-      issue: {
-        ...sequenced.issue,
-        severity: 'error',
-        code: ErrorCodes.unresolvedBinding,
-        message: `'${raw}' names an iterator binding, but no enclosing iterator binds it here`,
-      },
+    sequenced.issue = {
+      ...sequenced.issue,
+      severity: 'error',
+      code: ErrorCodes.unresolvedBinding,
+      message: `'${raw}' names an iterator binding, but no enclosing iterator binds it here`,
     }
   }
 }
@@ -256,8 +253,8 @@ const emit = (
   path: NodePath,
   order: number,
   operator?: string
-) => {
-  state.issues.push({
+): SequencedIssue => {
+  const sequenced: SequencedIssue = {
     issue: {
       severity,
       code,
@@ -266,7 +263,9 @@ const emit = (
       ...(operator !== undefined ? { operator } : {}),
     },
     order,
-  })
+  }
+  state.issues.push(sequenced)
+  return sequenced
 }
 
 // ── The walk ────────────────────────────────────────────────────────
@@ -354,7 +353,7 @@ const walkString = (
     case 'unrecognized': {
       const renamed = recognizeRenamedBinding(state, raw, path, order)
       if (renamed !== null) return renamed
-      emit(
+      const issue = emit(
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
@@ -363,8 +362,7 @@ const walkString = (
         order
       )
       const sigil = splitSigilToken(raw)
-      if (sigil !== null)
-        state.unrecognized.push({ token: sigil.token, issueIndex: state.issues.length - 1, raw })
+      if (sigil !== null) state.unrecognized.push({ token: sigil.token, issue, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
