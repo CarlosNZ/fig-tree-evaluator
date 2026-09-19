@@ -16,7 +16,7 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { isOperatorFailure } from '../OperatorFailure'
-import type { CompiledNode, OperatorNode } from '../parse'
+import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
 import { childScope, createOperatorContext, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
@@ -46,12 +46,10 @@ export const evaluateOperator = async (
     // served back to the caller as the author's placeholder
     if (isInternalError(error) || isCancellation(error)) throw error
     const failure = wrapFailure(error, node)
-    const fallback = fallbackOf(node)
+    const fallback = fallbackOf(node, scoped)
     if (fallback === undefined) throw failure
     try {
-      return fallback.kind === 'constant'
-        ? fallback.value
-        : await evaluateNode(fallback.node, scoped)
+      return await fallback()
     } catch (fallbackError) {
       if (isInternalError(fallbackError)) throw fallbackError
       const wrapped = wrapFailure(fallbackError, node)
@@ -86,14 +84,12 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   return normalizeResult(result, node)
 }
 
-type Fallback = { kind: 'node'; node: CompiledNode } | { kind: 'constant'; value: unknown }
-
 /** The node's own fallback, else the operator's instance-wide default. */
-const fallbackOf = (node: OperatorNode): Fallback | undefined => {
-  if (node.fallback !== undefined) return { kind: 'node', node: node.fallback }
+const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {
+  const own = node.fallback
+  if (own !== undefined) return () => evaluateNode(own, ctx)
   const defaults = node.entry.instanceDefaults
-  if (defaults !== undefined && Object.hasOwn(defaults, 'fallback'))
-    return { kind: 'constant', value: defaults.fallback }
+  if (defaults !== undefined && Object.hasOwn(defaults, 'fallback')) return () => defaults.fallback
   return undefined
 }
 
