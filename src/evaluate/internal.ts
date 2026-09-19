@@ -12,15 +12,11 @@
  */
 const INTERNAL: unique symbol = Symbol('fig-tree:internal-error')
 
-export const internalError = (message: string): Error => {
-  const error = new Error(`[fig-tree internal] ${message}`)
-  ;(error as unknown as Record<PropertyKey, unknown>)[INTERNAL] = true
-  return error
-}
+export const internalError = (message: string): Error =>
+  branded(`[fig-tree internal] ${message}`, INTERNAL)
 
 /** True for an engine-bug error: never caught, never wrapped, never shaped. */
-export const isInternalError = (error: unknown): boolean =>
-  error instanceof Error && (error as unknown as Record<PropertyKey, unknown>)[INTERNAL] === true
+export const isInternalError = (error: unknown): boolean => hasBrand(error, INTERNAL)
 
 /**
  * The abandonment marker: a node declined to start because its scope was
@@ -34,11 +30,20 @@ export const isInternalError = (error: unknown): boolean =>
  */
 const CANCELLED: unique symbol = Symbol('fig-tree:cancelled')
 
-export const cancellation = (): Error => {
-  const error = new Error('[fig-tree] evaluation cancelled')
-  ;(error as unknown as Record<PropertyKey, unknown>)[CANCELLED] = true
+export const cancellation = (): Error => branded('[fig-tree] evaluation cancelled', CANCELLED)
+
+export const isCancellation = (error: unknown): boolean => hasBrand(error, CANCELLED)
+
+// ── The brand mechanism ─────────────────────────────────────────────
+
+type Branded = Record<PropertyKey, unknown>
+
+/** A plain Error carrying `brand` as an own property. */
+const branded = (message: string, brand: symbol): Error => {
+  const error = new Error(message)
+  ;(error as unknown as Branded)[brand] = true
   return error
 }
 
-export const isCancellation = (error: unknown): boolean =>
-  error instanceof Error && (error as unknown as Record<PropertyKey, unknown>)[CANCELLED] === true
+const hasBrand = (error: unknown, brand: symbol): boolean =>
+  error instanceof Error && (error as unknown as Branded)[brand] === true
