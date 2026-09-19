@@ -49,7 +49,6 @@ import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterfac
 import {
   checkConstraintsUnderPolicy,
   checkType,
-  describeType,
   typeNamesNull,
   type ExpectedType,
 } from '../typeCheck'
@@ -553,6 +552,3 @@ const applyTruthiness = (value: unknown, type: ExpectedType): unknown => {
   }
   return isTruthy(value)
 }
-
-// describeType is re-exported for the boundary's messages
-export { describeType }
