@@ -54,9 +54,13 @@ export const probeConstant = (
   return { constant, depth: state.maxDepth }
 }
 
-interface ProbeState {
+/** What resolving a `$name` key needs: the registry and the fragments. */
+export interface Lookups {
   registry: OperatorRegistry
   fragments: FragmentLookup
+}
+
+interface ProbeState extends Lookups {
   maxDepth: number
 }
 
@@ -90,8 +94,11 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
   return true
 }
 
-/** Does a `$name` key invoke something registered, or `literal`? */
-export const isRecognizedShorthand = (state: ProbeState, name: string): boolean =>
+/**
+ * Does a `$name` key invoke something registered, or `literal`? The one
+ * answer to the recognition question, for the probe and the walk alike.
+ */
+export const isRecognizedShorthand = (lookups: Lookups, name: string): boolean =>
   name === 'literal' ||
-  resolveOperator(state.registry, name) !== undefined ||
-  state.fragments.has(name)
+  resolveOperator(lookups.registry, name) !== undefined ||
+  lookups.fragments.has(name)

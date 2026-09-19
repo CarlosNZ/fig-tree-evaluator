@@ -104,7 +104,7 @@ import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
-import { DEPTH_CEILING, probeConstant } from './probe'
+import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
 import type {
   ArtifactHole,
   CompiledNode,
@@ -441,15 +441,9 @@ const walkArray = (
 
 /** The `$name` keys of an object that resolve against what's known. */
 const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] =>
-  Object.keys(raw).filter((key) => {
-    if (!key.startsWith('$')) return false
-    const name = key.slice(1)
-    return (
-      name === 'literal' ||
-      resolveOperator(state.registry, name) !== undefined ||
-      state.fragments.has(name)
-    )
-  })
+  Object.keys(raw).filter(
+    (key) => key.startsWith('$') && isRecognizedShorthand(state, key.slice(1))
+  )
 
 /** Would this value classify as a node (kinds 1–3, 5)? */
 const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
