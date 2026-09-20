@@ -149,9 +149,9 @@ describe('lifecycle — two expressions, one instance, the parse half', () => {
 
   it('step 5 — both again with different data: still no compile', async () => {
     spy.reset()
-    expect(await fig.evaluate(exprA, { data: { currency: 'AUD', team: [{ name: 'Alan' }] } })).toEqual(
-      { greeting: 'Welcome to Acme', team: 'Alan', rate: 'AUD' }
-    )
+    expect(
+      await fig.evaluate(exprA, { data: { currency: 'AUD', team: [{ name: 'Alan' }] } })
+    ).toEqual({ greeting: 'Welcome to Acme', team: 'Alan', rate: 'AUD' })
     expect(await fig.evaluate(exprB2, { data: { tier: 'gold' } })).toBe('gold')
     expect(spy.compiles()).toBe(0)
   })
@@ -300,4 +300,61 @@ describe('lifecycle — the full example, fetch counts and all', () => {
     expect(compiles.compiles()).toBe(0)
     expect(http.callCount).toBe(4)
   })
+})
+
+/**
+ * Worked example 3 in full (docs-dev/v3-specs/v3-worked-examples.md § 3) —
+ * timeout shielding in throw mode, and the validate badge. The two
+ * report-mode lines are Phase 12.
+ *
+ * The doc's request takes ~900ms against a 50ms budget; the mock's latency
+ * is shorter so the suite stays quick, and the relationship is what matters.
+ */
+describe('worked example 3 — timeout shielding: throw mode and the validate badge', () => {
+  const http = new MockHttpClient({ latencyMs: 300, responses: { offers: [{ id: 7 }] } })
+  const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
+
+  const banner = {
+    greeting: { $buildString: ['Hi %1', '$data.name'], fallback: 'Hi there' },
+    offers: { operator: 'http', url: 'https://api.example.com/offers', fallback: [] },
+  }
+  const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
+
+  it('every hole root carries a static fallback, so validate badges it shielded', () => {
+    expect(fig.validate(banner)).toEqual({ valid: true, issues: [], timeoutShielded: true })
+  })
+
+  it('under the budget, greeting contributes its real value and offers its static fallback', async () => {
+    expect(await fig.evaluate(banner, { data: { name: 'Ada' }, timeout: 50 })).toEqual({
+      greeting: 'Hi Ada',
+      offers: [],
+    })
+    // The request went out, and — failures never being cached — goes out
+    // again when there is time for it: the fallback was the deadline's
+    expect(http.callCount).toBe(1)
+    expect(await fig.evaluate(banner, { data: { name: 'Ada' } })).toEqual({
+      greeting: 'Hi Ada',
+      offers: [{ id: 7 }],
+    })
+    expect(http.callCount).toBe(2)
+  })
+
+  it('one dynamic fallback un-shields the whole expression: the badge flips, the timeout throws', async () => {
+    expect(fig.validate(banner2)).toEqual({ valid: true, issues: [], timeoutShielded: false })
+    // The step above left the offers in the result cache, and a cache hit
+    // cannot time out: the request the deadline is meant to cut off has to
+    // be in flight
+    expect(await fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })).toEqual({
+      greeting: 'Hi Ada',
+      offers: [{ id: 7 }],
+    })
+    fig.clearCache()
+    const error = await rejection<FigTreeError>(
+      fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })
+    )
+    expect(error.code).toBe('timeout')
+  })
+
+  it.todo('report mode returns the assembly beside exactly [timeoutError] (Phase 12)')
+  it.todo('report mode returns null beside the timeout error for the un-shielded banner (Phase 12)')
 })

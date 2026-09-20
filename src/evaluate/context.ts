@@ -34,14 +34,15 @@ export interface EvaluationContext {
    * host's own object and is neither copied nor frozen.
    */
   data: Readonly<Record<string, unknown>>
-  /** This node's effective signal: the caller's, plus enclosing scopes. */
+  /** This node's effective signal: the root's, plus enclosing scopes. */
   signal: AbortSignal
   /**
-   * The kill switch alone — the caller's `signal` and (Phase 10) the
-   * evaluation deadline, with no enclosing node scope mixed in. The two
-   * are told apart because they mean opposite things: a scope abort is
-   * silent and its branch is simply abandoned, while a kill-switch abort
-   * is the caller's decision and cuts through every fallback.
+   * The kill switch alone — the root scope's signal, which composes the
+   * caller's `signal` and the evaluation `timeout` (./run.ts), with no
+   * enclosing node scope mixed in. The two are told apart because they
+   * mean opposite things: a scope abort is silent and its branch is simply
+   * abandoned, while a kill-switch abort is the caller's decision and cuts
+   * through every fallback. At the root the two fields hold one signal.
    */
   rootSignal: AbortSignal
   /**
@@ -111,11 +112,17 @@ export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
 /** The data block of an evaluation that supplied none. */
 const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 
+/**
+ * The context an evaluation starts from. `signal` is the root scope's —
+ * the caller's `signal` composed with the `timeout` — and is built by the
+ * caller (./run.ts), because its lifetime is the evaluation's and this
+ * module only describes the record.
+ */
 export const createEvaluationContext = (
   merged: EvaluationOptions,
-  cache: ResultStore
+  cache: ResultStore,
+  signal: AbortSignal
 ): EvaluationContext => {
-  const signal = merged.signal ?? new AbortController().signal
   const options = freezeOptions(merged)
   return {
     options,
@@ -139,104 +146,6 @@ const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
     if (isPlainDataObject(value)) Object.freeze(value)
   }
   return Object.freeze(options)
-}
-
-/** A chained abort controller, seen from outside: its signal and two verbs. */
-export interface AbortScope {
-  signal: AbortSignal
-  /** Aborts this scope alone, with the given reason; the parent is untouched */
-  abort: (reason: unknown) => void
-  /** Ends the scope: detaches from the parent, aborts with `SCOPE_SETTLED` */
-  settle: () => void
-}
-
-/**
- * A node's own abort scope: a controller chained to the enclosing signal,
- * which the node wrapper aborts once its body settles. "Resolution is
- * cancellation" — anything the body did not wait for stops.
- *
- * Chained by hand rather than with `AbortSignal.any`: that is Node 22 and
- * a much more recent browser floor (Chrome 116, Safari 17.4) than this
- * package should ask for. The listener is removed on settle, so a
- * long-lived caller signal does not accumulate one per node evaluated.
- *
- * Honest about reach: JS cannot interrupt code already running, so an
- * abandoned subtree runs to completion and has its result discarded. What
- * the abort does reliably is stop work that has not *started*, and stop
- * anything holding the signal — which is the I/O clients, and where the
- * time actually lives.
- */
-export const childScope = (parent: AbortSignal): AbortScope => {
-  const controller = new AbortController()
-  if (parent.aborted) controller.abort(parent.reason)
-  const forward = () => controller.abort(parent.reason)
-  parent.addEventListener('abort', forward, { once: true })
-  return {
-    signal: controller.signal,
-    abort: (reason) => controller.abort(reason),
-    settle: () => {
-      parent.removeEventListener('abort', forward)
-      controller.abort(SCOPE_SETTLED)
-    },
-  }
-}
-
-/** The reason a scope abort carries, distinguishing it from a kill switch. */
-export const SCOPE_SETTLED = 'fig-tree:scope-settled'
-
-/** The reason a per-request deadline carries, distinguishing it from both. */
-export const REQUEST_EXPIRED = 'fig-tree:request-expired'
-
-export interface RequestDeadline {
-  /**
-   * The signal a body (and the client it holds) sees. Its `reason` says
-   * which abort landed: `REQUEST_EXPIRED` for this node's own timer, the
-   * parent's reason for anything upstream.
-   */
-  signal: AbortSignal
-  /** Rejects with the signal's reason the moment it aborts, for any reason. */
-  expiry: Promise<never>
-  settle: () => void
-}
-
-/**
- * A node's per-request deadline (ledger #15): the node's own `timeout`
- * parameter, composed onto the signal its body receives.
- *
- * A child scope with a timer on it. The timer aborts the scope with its
- * own reason, and that reason is how the wrapper tells an expiry — an
- * ORDINARY failure, the per-node network-flakiness guard, caught by the
- * node's `fallback` — from a scope abort (silent abandonment) and the
- * caller's signal (cuts through everything).
- *
- * `expiry` exists because a signal alone cannot end a wait: a driver that
- * cannot abort (SQLite's synchronous API) would hold the node past its
- * deadline forever. So the wrapper races the body against this promise,
- * which rejects on ANY abort of the composed signal — the timer, a
- * sibling's resolution, or the caller — so a deaf driver is abandoned the
- * moment any of them lands. Cancellation is best-effort; the deadline is
- * not.
- */
-export const requestDeadline = (parent: AbortSignal, ms: number): RequestDeadline => {
-  const scope = childScope(parent)
-  const { signal } = scope
-  const expiry = new Promise<never>((_resolve, reject) => {
-    if (signal.aborted) reject(signal.reason)
-    else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
-  })
-  // Attached where the promise is created, which is the only point early
-  // enough: when the body wins the race nobody ever awaits this, and a
-  // runtime reports an unhandled rejection at the microtask checkpoint
-  expiry.catch(() => {})
-  const timer = setTimeout(() => scope.abort(REQUEST_EXPIRED), ms)
-  return {
-    signal,
-    expiry,
-    settle: () => {
-      clearTimeout(timer)
-      scope.settle()
-    },
-  }
 }
 
 const noop = () => {}

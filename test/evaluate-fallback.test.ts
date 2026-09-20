@@ -2,7 +2,7 @@
  * Chunk 4.1 — `fallback` rules 1, 2, 4 and 6 ("fallback semantics" in
  * docs-dev/v3-specs/v3-api.md) and the `operatorDefaults` modifier default
  * ("operatorDefaults" in the Options area). Rule 3 (the kill switch) is
- * Phase 10; rule 5 (vars scope) is Phase 5.
+ * test/evaluate-timeout.test.ts; rule 5 (vars scope) is test/vars.test.ts.
  */
 import { coreOperators, FigTree, FigTreeError } from '../src'
 import { boomOp, echoOp, latencyOp, spyOp } from './fixtures/evalOperators'

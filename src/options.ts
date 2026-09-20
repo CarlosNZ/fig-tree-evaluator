@@ -58,7 +58,10 @@ export interface FigTreeOptions {
   // ── Resource limits ─────────────────────────────────────
   maxDepth?: number
   maxNodes?: number
-  /** ms, whole evaluation — the strict deadline (Phase 10). */
+  /**
+   * ms, whole evaluation — a strict deadline that includes fallback time.
+   * Only static shielding (src/evaluate/run.ts) can shape a timed-out result.
+   */
   timeout?: number
   signal?: AbortSignal
 

@@ -22,10 +22,10 @@ export const evaluateNode = async (
   ctx: EvaluationContext
 ): Promise<unknown> => {
   // The node boundary is where cancellation lands: no new work starts once
-  // the enclosing scope is gone. A kill switch is the caller's decision and
-  // surfaces as an ordinary failure that cuts through fallbacks; a scope
-  // abort means a sibling already decided the answer, so this branch is
-  // simply abandoned and raises nothing anyone will see
+  // the enclosing scope is gone. The kill switch — the caller's signal or
+  // the evaluation deadline — surfaces as an error that cuts through
+  // fallbacks; a scope abort means a sibling already decided the answer,
+  // so this branch is simply abandoned and raises nothing anyone will see
   if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
   switch (node.kind) {
     case 'constant':
@@ -67,9 +67,10 @@ type Container = Record<string | number, unknown>
  * Splice hole results into the skeleton, copying only the containers on
  * each splice path (once per evaluation). Constant subtrees off those paths
  * stay shared with the artifact and the input — the documented
- * results-are-read-only contract.
+ * results-are-read-only contract. Shared with the shielded assembly
+ * (./run.ts), which splices static fallbacks where holes did not finish.
  */
-const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
+export const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
   const copied = new Set<object>()
   let result = skeleton
   holes.forEach((hole, i) => {

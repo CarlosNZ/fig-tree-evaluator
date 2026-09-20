@@ -8,25 +8,43 @@
  * is the passthrough branch — the cache proper has its own suite in
  * test/result-cache.test.ts.
  */
-import { FigTree } from '../src'
-import { spyOp } from './fixtures/evalOperators'
+import { FigTree, defineOperator } from '../src'
+import { signalProbeOp, spyOp } from './fixtures/evalOperators'
+import { rejection } from './helpers/rejection'
 
 test('context.signal follows the caller signal', async () => {
-  const spy = spyOp('sig', {})
-  const fig = new FigTree({ operators: [spy.definition] })
+  const probe = signalProbeOp()
+  const fig = new FigTree({ operators: [probe.definition] })
   const controller = new AbortController()
-  await fig.evaluate({ $sig: {} }, { signal: controller.signal })
-  const { signal } = spy.contexts[0]
-  expect(signal.aborted).toBe(false)
+  const running = fig.evaluate({ $probe: {} }, { signal: controller.signal })
+  await new Promise((resolve) => setTimeout(resolve, 10))
   controller.abort()
-  expect(signal.aborted).toBe(true)
+  expect((await rejection<{ code: string }>(running)).code).toBe('aborted')
+  expect(probe.seen).toEqual([false, true])
 })
 
 test('without a caller signal there is still a live, unaborted signal', async () => {
   const spy = spyOp('sig', {})
+  const seen: boolean[] = []
+  const live = defineOperator({
+    name: 'live',
+    description: 'Record whether the signal is live on entry',
+    parameters: {},
+    evaluate: (_params, context) => {
+      seen.push(context.signal instanceof AbortSignal, context.signal.aborted)
+      return 'ok'
+    },
+  })
+  await new FigTree({ operators: [spy.definition, live] }).evaluate({ $live: {} })
+  expect(seen).toEqual([true, false])
+})
+
+test('the signal a body received is settled once the evaluation has returned', async () => {
+  // The root scope settles like any node scope: nothing is waiting on this
+  // evaluation any more, so anything still holding its signal is told so
+  const spy = spyOp('sig', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $sig: {} })
-  expect(spy.contexts[0].signal).toBeInstanceOf(AbortSignal)
-  expect(spy.contexts[0].signal.aborted).toBe(false)
+  expect(spy.contexts[0].signal.aborted).toBe(true)
 })
 
 test('context.options is the whole merged option set, frozen, merged per call', async () => {

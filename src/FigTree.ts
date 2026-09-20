@@ -10,8 +10,8 @@
  * and evaluates the holes otherwise. Only `evaluate()` goes through the
  * parse cache; `validate()` compiles fresh every time, so its report always
  * costs a parse and the cache holds only what evaluation asked for.
- * `mode: 'report'` and `trace` land in Phase 12 and `timeout` in Phase 10 —
- * those options are accepted and inert until then.
+ * `mode: 'report'` and `trace` land in Phase 12 — those two options are
+ * accepted and inert until then.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the parse cache are
@@ -38,7 +38,7 @@ import {
   runStaticChecks,
   type ParseArtifact,
 } from './parse'
-import { copyOptions, createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
+import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
@@ -101,6 +101,7 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
   // instance-owned: `fragments` gets the two-level treatment and
   // `operators`, an array, replaces
   const options = mergeOptions(previous === null ? {} : previous.options, update)
+  checkKillSwitchOptions(options)
   if (previous !== null && !touchesRegistry(update))
     return { options, registry: previous.registry, parseCache: previous.parseCache }
 
@@ -252,6 +253,7 @@ export class FigTree {
   async evaluate(expression: unknown, options: FigTreeOptions = {}): Promise<unknown> {
     rejectPerCallRegistry(options)
     const merged = mergeOptions(this.state.options, options)
+    checkKillSwitchOptions(merged)
 
     // An inert input is returned by identity without being parsed. The
     // verdict is memoized in the cache's identity layer, so a repeated
@@ -272,10 +274,7 @@ export class FigTree {
     const firstError = issues.find((issue) => issue.severity === 'error')
     if (firstError !== undefined) throw staticError(firstError, issues)
 
-    return evaluateNode(
-      artifact.root,
-      createEvaluationContext(withoutRegistryKeys(merged), this.results)
-    )
+    return runEvaluation(artifact, withoutRegistryKeys(merged), this.results)
   }
 }
 
@@ -302,6 +301,33 @@ const rejectPerCallRegistry = (options: FigTreeOptions) => {
       code: ErrorCodes.invalidOptions,
       message:
         "'cache' is not a per-call option — configure it at construction or via updateOptions()",
+      path: [],
+    })
+}
+
+/**
+ * The two kill-switch options ("Resource limits" in the Options area of
+ * docs-dev/v3-specs/v3-api.md), checked wherever options arrive — at
+ * construction and `updateOptions()` (loud at registration) and on the
+ * merged options of every call (a per-call override can be wrong too).
+ * `undefined` is the one spelling of "no deadline": zero, a negative, a
+ * non-finite number or a non-number is refused rather than read as one.
+ */
+const checkKillSwitchOptions = (options: FigTreeOptions) => {
+  const { timeout, signal } = options
+  if (
+    timeout !== undefined &&
+    (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0)
+  )
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message: "'timeout' must be a positive number of milliseconds",
+      path: [],
+    })
+  if (signal !== undefined && !(signal instanceof AbortSignal))
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message: "'signal' must be an AbortSignal",
       path: [],
     })
 }

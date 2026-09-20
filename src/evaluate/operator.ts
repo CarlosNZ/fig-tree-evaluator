@@ -19,16 +19,10 @@ import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
-import {
-  REQUEST_EXPIRED,
-  childScope,
-  createOperatorContext,
-  requestDeadline,
-  type EvaluationContext,
-  type RequestDeadline,
-} from './context'
+import { REQUEST_EXPIRED, childScope, requestDeadline, type Deadline } from './abort'
+import { createOperatorContext, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
-import { abortedOutcome, isCancellation, isInternalError } from './internal'
+import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
 import { autoKey, through } from './memo'
 import { resolveParams } from './params'
 import { pushVars } from './scope'
@@ -62,7 +56,15 @@ export const evaluateOperator = async (
     try {
       return await fallback()
     } catch (fallbackError) {
-      if (isInternalError(fallbackError)) throw fallbackError
+      // The same three bail-outs as above: a kill switch or a cancellation
+      // landing at the fallback's own node boundary passes through untouched
+      // rather than being wrapped, or having `cause` attached
+      if (
+        isInternalError(fallbackError) ||
+        isCancellation(fallbackError) ||
+        isKillSwitch(fallbackError)
+      )
+        throw fallbackError
       const wrapped = wrapFailure(fallbackError, node)
       if (wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped
@@ -179,7 +181,7 @@ const classifyBodyFailure = (
   error: unknown,
   node: OperatorNode,
   ctx: EvaluationContext,
-  deadline: RequestDeadline | undefined,
+  deadline: Deadline | undefined,
   ms: number | undefined
 ): unknown => {
   if (isInternalError(error) || isCancellation(error)) return error
@@ -214,10 +216,6 @@ export const effectiveUseCache = (node: OperatorNode, options: FigTreeOptions): 
   (node.entry.instanceDefaults?.useCache as boolean | undefined) ??
   options.useCache ??
   node.entry.definition.useCache
-
-/** The caller's abort, which no fallback may answer. */
-const isKillSwitch = (error: unknown): boolean =>
-  isFigTreeError(error) && error.code === ErrorCodes.aborted
 
 /** The node's own fallback, else the operator's instance-wide default. */
 const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {

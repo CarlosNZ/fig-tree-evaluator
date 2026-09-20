@@ -18,8 +18,8 @@
  * evaluation. There is no runtime cycle guard, and it could not be a simple
  * one: re-entrant demand and a legitimate parallel branch sharing the
  * in-flight promise are indistinguishable without async context tracking.
- * The static gate is the defence; the whole-evaluation timeout (Phase 10)
- * is the backstop.
+ * The static gate is the defence; the whole-evaluation timeout is the
+ * backstop.
  *
  * A thunk is bound to the scope that DECLARED it, never to whichever node
  * demanded it first. The alternative loses: an `and` that resolved early

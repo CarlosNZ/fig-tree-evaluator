@@ -11,7 +11,8 @@
  * `context.options`, not by reaching into the engine.
  */
 import { FigTree } from '../src'
-import { spyOp } from './fixtures/evalOperators'
+import { signalProbeOp, spyOp } from './fixtures/evalOperators'
+import { rejection } from './helpers/rejection'
 
 /** An instance whose one operator records the options each call saw. */
 const withSpy = (instance: object = {}) => {
@@ -125,12 +126,13 @@ describe('what does not merge', () => {
 
   it('threads an instance-level signal through when no call signal is given', async () => {
     const controller = new AbortController()
-    const spy = spyOp('sig', {})
-    const fig = new FigTree({ operators: [spy.definition], signal: controller.signal })
-    await fig.evaluate({ $sig: {} })
-    expect(spy.contexts[0].signal.aborted).toBe(false)
+    const probe = signalProbeOp()
+    const fig = new FigTree({ operators: [probe.definition], signal: controller.signal })
+    const running = fig.evaluate({ $probe: {} })
+    await new Promise((resolve) => setTimeout(resolve, 10))
     controller.abort()
-    expect(spy.contexts[0].signal.aborted).toBe(true)
+    expect((await rejection<{ code: string }>(running)).code).toBe('aborted')
+    expect(probe.seen).toEqual([false, true])
   })
 })
 

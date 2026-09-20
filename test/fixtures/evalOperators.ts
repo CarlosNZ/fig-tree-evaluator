@@ -175,3 +175,94 @@ export const latencyOp = (name = 'slow'): LatencySpy => {
   })
   return { definition, started, finished, aborted }
 }
+
+const abortError = () => {
+  const error = new Error('The operation was aborted')
+  error.name = 'AbortError'
+  return error
+}
+
+/**
+ * A sleeping operator with a declared `timeout` parameter: the instrument
+ * for the two kinds of deadline. It honours the signal the way a real
+ * client does — unless `deaf` is set, which is the SQLite case: a driver
+ * that cannot be interrupted at all, so only a race against it can end
+ * the wait.
+ */
+export interface Sleeper {
+  definition: ValidatedOperatorDefinition
+  /** The `ms` of every sleep that began, in start order. */
+  started: number[]
+  /**
+   * Clears the timers a deaf sleep leaves running. A deaf body never clears
+   * its own timer, so a 2-second sleep would outlive the test that made it
+   * and jest would report an open handle — call this from `afterEach`.
+   */
+  cleanup: () => void
+}
+
+export const sleepOp = (): Sleeper => {
+  const started: number[] = []
+  const timers: ReturnType<typeof setTimeout>[] = []
+  const definition = defineOperator({
+    name: 'sleep',
+    description: 'Resolve after a delay, honouring the signal',
+    parameters: {
+      ms: { type: 'integer' },
+      timeout: { type: 'integer', required: false },
+      deaf: { type: 'boolean', default: false },
+    },
+    positionalParams: ['ms', 'timeout'],
+    timeoutParam: 'timeout',
+    evaluate: ({ ms, deaf }, context) =>
+      new Promise<string>((resolve, reject) => {
+        started.push(ms)
+        const timer = setTimeout(() => resolve(`slept ${ms}`), ms)
+        timers.push(timer)
+        if (deaf) return
+        context.signal.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer)
+            reject(abortError())
+          },
+          { once: true }
+        )
+      }),
+  })
+  return { definition, started, cleanup: () => timers.forEach(clearTimeout) }
+}
+
+/**
+ * A body that reports its signal's state on entry and again when the
+ * signal fires, then resolves. The state has to be read INSIDE the body:
+ * the root scope settles with the evaluation, so a signal inspected after
+ * the call has returned is always aborted.
+ */
+export interface SignalProbe {
+  definition: ValidatedOperatorDefinition
+  /** `signal.aborted` on entry, then again when the abort lands. */
+  seen: boolean[]
+}
+
+export const signalProbeOp = (name = 'probe'): SignalProbe => {
+  const seen: boolean[] = []
+  const definition = defineOperator({
+    name,
+    description: 'Report the signal state on entry, then on abort',
+    parameters: {},
+    evaluate: (_params, context) =>
+      new Promise((resolve) => {
+        seen.push(context.signal.aborted)
+        context.signal.addEventListener(
+          'abort',
+          () => {
+            seen.push(context.signal.aborted)
+            resolve('done')
+          },
+          { once: true }
+        )
+      }),
+  })
+  return { definition, seen }
+}

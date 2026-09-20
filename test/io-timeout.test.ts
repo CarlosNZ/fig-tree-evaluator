@@ -10,62 +10,16 @@
  * everything. These are asserted against a throwaway sleeping operator
  * rather than `http`, so the engine's half stands on its own.
  */
-import { FigTree, FigTreeError, coreOperators, defineOperator } from '../src'
-import { spyOp } from './fixtures/evalOperators'
+import { FigTree, FigTreeError, coreOperators } from '../src'
+import { sleepOp, spyOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
-
-const abortError = () => {
-  const error = new Error('The operation was aborted')
-  error.name = 'AbortError'
-  return error
-}
-
-/**
- * Sleeps, and honours the signal the way a real client does — unless
- * `deaf` is set, which is the SQLite case: a driver that cannot be
- * interrupted at all.
- */
-const sleeper = () => {
-  const started: number[] = []
-  // A deaf sleeper never clears its own timer, so the fixture holds them
-  // and the suite clears them itself — otherwise a 2-second timer outlives
-  // the test that made it and jest reports an open handle
-  const timers: ReturnType<typeof setTimeout>[] = []
-  const definition = defineOperator({
-    name: 'sleep',
-    description: 'Resolve after a delay, honouring the signal',
-    parameters: {
-      ms: { type: 'integer' },
-      timeout: { type: 'integer', required: false },
-      deaf: { type: 'boolean', default: false },
-    },
-    positionalParams: ['ms', 'timeout'],
-    timeoutParam: 'timeout',
-    evaluate: ({ ms, deaf }, context) =>
-      new Promise<string>((resolve, reject) => {
-        started.push(ms)
-        const timer = setTimeout(() => resolve(`slept ${ms}`), ms)
-        timers.push(timer)
-        if (deaf) return
-        context.signal.addEventListener(
-          'abort',
-          () => {
-            clearTimeout(timer)
-            reject(abortError())
-          },
-          { once: true }
-        )
-      }),
-  })
-  return { definition, started, cleanup: () => timers.forEach(clearTimeout) }
-}
 
 /**
  * `operators` states the registry exhaustively, so the core set has to be
  * named alongside the fixture — the races below need `or`.
  */
 const withSleeper = (extra: object = {}) => {
-  const sleep = sleeper()
+  const sleep = sleepOp()
   const fig = new FigTree({ operators: [coreOperators, sleep.definition], ...extra })
   cleanups.push(sleep.cleanup)
   return { fig, sleep }
@@ -164,7 +118,7 @@ describe("the caller's signal is not the same thing", () => {
 
 describe('an enclosing scope resolving early', () => {
   it('cancels the loser silently — cancellation is not failure', async () => {
-    const sleep = sleeper()
+    const sleep = sleepOp()
     cleanups.push(sleep.cleanup)
     // The fallback is a spy node, so "did the fallback run?" is a count
     const caught = spyOp('caught', {})
