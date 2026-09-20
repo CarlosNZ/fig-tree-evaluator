@@ -1,5 +1,6 @@
 /**
- * Helpers shared by the core definitions: the validate-hook findings for
+ * Helpers shared by the core definitions: the path-parameter pair that
+ * `get`, `http` and `graphQL` all need, the validate-hook findings for
  * empty literal aggregates (ruled hook-authored at Phase 4 — the
  * empty-literal-aggregate check in "The check inventory",
  * docs-dev/v3-specs/v3-evaluator-methods.md), and the OperatorFailure
@@ -8,9 +9,41 @@
 import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import type { ValidateFinding } from '../operatorDefinition'
+import { parsePath, type PathSegment } from '../primitives'
 import type { Settlement, SettlementStream } from '../runtimeInterface'
 
 /** A literal empty `values` where the operator has no identity to return. */
+/**
+ * A path arrives as the string grammar or as a segments array, where
+ * strings are keys VERBATIM (never parsed, so no escaping question can
+ * arise) and numbers are indices. A malformed string path is the author's
+ * mistake either way: caught at `validate()` when literal, an ordinary
+ * runtime failure when it arrived as data.
+ *
+ * Shared by `get`, `http` and `graphQL` — `returnPath` is `get.path`'s
+ * grammar by ruling, so it has to be `get.path`'s code too, or the two
+ * would drift.
+ */
+export const toSegments = (path: string | unknown[]): PathSegment[] => {
+  if (Array.isArray(path)) return path as PathSegment[]
+  try {
+    return parsePath(path)
+  } catch (error) {
+    throw new OperatorFailure((error as Error).message)
+  }
+}
+
+/** The literal-path check the same three operators' hooks all want. */
+export const pathFindings = (path: unknown, parameter: string): ValidateFinding[] => {
+  if (typeof path !== 'string') return []
+  try {
+    parsePath(path)
+    return []
+  } catch (error) {
+    return [{ severity: 'error', parameter, message: (error as Error).message }]
+  }
+}
+
 export const emptyAggregateError = (literalParams: Record<string, unknown>): ValidateFinding[] =>
   Array.isArray(literalParams.values) && literalParams.values.length === 0
     ? [

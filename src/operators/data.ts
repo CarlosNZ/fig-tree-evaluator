@@ -12,24 +12,8 @@ import { defineOperator } from '../defineOperator'
 import { EvaluationData } from '../operatorDefinition'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
-import { parsePath, renderText, resolvePath, type PathSegment } from '../primitives'
-import { emptyEntriesWarning } from './shared'
-
-/**
- * A path arrives as the string grammar or as a segments array, where
- * strings are keys VERBATIM (never parsed, so no escaping question can
- * arise) and numbers are indices. A malformed string path is the author's
- * mistake either way: caught at `validate()` when literal, an ordinary
- * runtime failure when it arrived as data.
- */
-const toSegments = (path: string | unknown[]): PathSegment[] => {
-  if (Array.isArray(path)) return path as PathSegment[]
-  try {
-    return parsePath(path)
-  } catch (error) {
-    throw new OperatorFailure((error as Error).message)
-  }
-}
+import { renderText, resolvePath } from '../primitives'
+import { emptyEntriesWarning, pathFindings, toSegments } from './shared'
 
 export const get = defineOperator({
   name: 'get',
@@ -58,15 +42,7 @@ export const get = defineOperator({
   },
   positionalParams: ['path', 'missingPathDefault'],
   returns: 'any',
-  validate: ({ path }) => {
-    if (typeof path !== 'string') return []
-    try {
-      parsePath(path)
-      return []
-    } catch (error) {
-      return [{ severity: 'error', parameter: 'path', message: (error as Error).message }]
-    }
-  },
+  validate: ({ path }) => pathFindings(path, 'path'),
   evaluate: ({ path, from, missingPathDefault }, context) => {
     const result = resolvePath(from, toSegments(path))
     // A stored `undefined` is not a value — JSON semantics at the boundary
