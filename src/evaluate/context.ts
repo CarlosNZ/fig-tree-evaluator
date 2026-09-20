@@ -16,16 +16,21 @@
  * the freeze in `createEvaluationContext` can therefore reach every block
  * without ever touching an object the host still owns.
  */
-import type { FigTreeOptions } from '../options'
+import type { EvaluationOptions, FigTreeOptions } from '../options'
 import type { OperatorContext } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
 import type { Bindings } from './bindings'
 import type { Scope } from './scope'
 
 export interface EvaluationContext {
-  /** The merged instance + per-call options. */
-  options: FigTreeOptions
-  /** The merged evaluation data; frozen at the top level (our object). */
+  /** The merged instance + per-call options, registry keys stripped. */
+  options: EvaluationOptions
+  /**
+   * The merged evaluation data — the same object as `options.data`, so a
+   * body and the `$data` resolver read one block. Frozen when it is a
+   * plain data block (ours, rebuilt by the merge); a class instance is the
+   * host's own object and is neither copied nor frozen.
+   */
   data: Readonly<Record<string, unknown>>
   /** This node's effective signal: the caller's, plus enclosing scopes. */
   signal: AbortSignal
@@ -86,19 +91,23 @@ export const mergeOptions = (instance: FigTreeOptions, call: FigTreeOptions): Fi
  * `data` values are theirs and results may share structure with them, and
  * an `AbortSignal` or a `CacheStore` cannot be cloned at all.
  */
-export const copyOptions = (options: FigTreeOptions): FigTreeOptions => {
-  const copy: Record<string, unknown> = { ...options }
-  for (const [key, value] of Object.entries(copy)) {
-    if (isPlainDataObject(value)) copy[key] = { ...value }
+export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
+  const copy: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(options)) {
+    copy[key] = isPlainDataObject(value) ? { ...value } : value
   }
-  return copy as FigTreeOptions
+  return copy as T
 }
 
-export const createEvaluationContext = (merged: FigTreeOptions): EvaluationContext => {
+/** The data block of an evaluation that supplied none. */
+const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
+
+export const createEvaluationContext = (merged: EvaluationOptions): EvaluationContext => {
   const signal = merged.signal ?? new AbortController().signal
+  const options = freezeOptions(merged)
   return {
-    options: freezeOptions(merged),
-    data: Object.freeze({ ...(merged.data ?? {}) }),
+    options,
+    data: options.data ?? NO_DATA,
     signal,
     rootSignal: signal,
     strictDataPaths: merged.strictDataPaths ?? false,
@@ -112,7 +121,7 @@ export const createEvaluationContext = (merged: FigTreeOptions): EvaluationConte
  * runs, so the freeze never reaches a caller's object. A caller's `data`
  * values sit a level deeper and stay writable.
  */
-const freezeOptions = (options: FigTreeOptions): FigTreeOptions => {
+const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
   for (const value of Object.values(options)) {
     if (isPlainDataObject(value)) Object.freeze(value)
   }

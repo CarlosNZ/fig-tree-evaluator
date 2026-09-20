@@ -20,9 +20,8 @@
  */
 import { buildRegistry } from '../registry'
 import { coreOperators } from '../operators'
-import { parseExpression, probeConstant, runStaticChecks } from '../parse'
+import { CONTENT_LAYER_SIZE, parseExpression, probeConstant, runStaticChecks } from '../parse'
 import { serializeInput } from '../parse/contentKey'
-import { CONTENT_LAYER_SIZE } from '../parse/parseCache'
 
 const registry = buildRegistry({ operators: [coreOperators] })
 const NO_FRAGMENTS = new Map<string, never>()

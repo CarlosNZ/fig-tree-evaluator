@@ -16,7 +16,8 @@ export class Lru<K, V> {
   constructor(private readonly max: number) {
     // A bound below one would evict what it just stored, so every lookup
     // would miss and the layer would be pure overhead
-    if (!Number.isInteger(max) || max < 1) throw new RangeError('LRU bound must be a positive integer')
+    if (!Number.isInteger(max) || max < 1)
+      throw new RangeError('LRU bound must be a positive integer')
   }
 
   get size(): number {
@@ -34,10 +35,7 @@ export class Lru<K, V> {
   set(key: K, value: V): void {
     this.entries.delete(key)
     this.entries.set(key, value)
-    while (this.entries.size > this.max) {
-      const oldest = this.entries.keys().next()
-      if (oldest.done === true) break
-      this.entries.delete(oldest.value)
-    }
+    // At most one entry over the bound, since a set adds at most one
+    if (this.entries.size > this.max) this.entries.delete(this.entries.keys().next().value as K)
   }
 }

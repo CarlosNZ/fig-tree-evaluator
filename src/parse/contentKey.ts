@@ -13,6 +13,16 @@
  * the only property that matters is injectivity over the inputs it
  * accepts, and a refusal is always safe because it just skips the layer.
  *
+ * The serialized string IS the key — it is not hashed. A `Map` keyed on a
+ * string hashes it natively and then verifies with full equality, so a
+ * hand-rolled digest would swap a verified hash for an unverified one
+ * whose collision serves the wrong artifact, silently. Staying sound means
+ * retaining the full string in the entry and comparing it on a bucket
+ * match anyway, and what that buys is bounded at both ends: the native
+ * hash is the larger half of a lookup only below V8's content-hash
+ * ceiling of 16383 characters, and the retained key is already bounded by
+ * the LRU's bound.
+ *
  * Key order is preserved rather than sorted: two spellings of the same
  * object are a deliberate miss, not something to canonicalize.
  */
@@ -32,22 +42,6 @@ export const serializeInput = (value: unknown): string | undefined => {
   const out: string[] = []
   return write(value, 0, out) ? out.join('') : undefined
 }
-
-/**
- * The key material. Separated from the serializer so the choice of what
- * to key on is one line: the serialized string itself, exact and
- * collision-free.
- *
- * A digest is deliberately not used. A `Map` keyed on a string hashes it
- * natively and then verifies with full equality, so a hand-rolled digest
- * trades a verified hash for an unverified one whose collision serves the
- * wrong artifact, silently. Staying sound means retaining the full string
- * in the entry and comparing it on a bucket match anyway, and what that
- * buys is bounded at both ends: the native hash is the larger half of a
- * lookup only below V8's content-hash ceiling of 16383 characters, and
- * the retained key is already bounded by the LRU's bound.
- */
-export const contentKey = (serialized: string): string => serialized
 
 const write = (value: unknown, depth: number, out: string[]): boolean => {
   if (depth > DEPTH_CEILING) return false
