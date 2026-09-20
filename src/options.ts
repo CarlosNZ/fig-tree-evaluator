@@ -16,6 +16,16 @@ import type { ValidatedOperatorDefinition } from './operatorDefinition'
  */
 export type FragmentDefinition = unknown
 
+/**
+ * The options an evaluation runs under, and what `getOptions()` reports:
+ * everything but the registry keys. `operators` and `fragments` are consumed
+ * at construction and `updateOptions()` and never reach a body — the
+ * definitions, and the clients closed inside them, are not evaluation
+ * state. Stripped at exactly those two escape points, so the type is true
+ * by construction.
+ */
+export type EvaluationOptions = Omit<FigTreeOptions, 'operators' | 'fragments'>
+
 export interface FigTreeOptions {
   // ── Evaluation environment ──────────────────────────────
   data?: Record<string, unknown>

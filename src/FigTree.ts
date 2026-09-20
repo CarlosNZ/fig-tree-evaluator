@@ -7,8 +7,10 @@
  * `validate()` and `evaluate()` share one spine: the same compile (parse +
  * static checks) and the same per-call limit checks; `validate()` returns
  * the issue stream, `evaluate()` refuses on the first error-severity issue
- * and evaluates the holes otherwise, with the parse cache wrapping that
- * shared compile. `mode: 'report'` and `trace` land in Phase 12,
+ * and evaluates the holes otherwise. Only `evaluate()` goes through the
+ * parse cache; `validate()` compiles fresh every time, so its report always
+ * costs a parse and the cache holds only what evaluation asked for.
+ * `mode: 'report'` and `trace` land in Phase 12,
  * `timeout` in Phase 10 and the result cache in Phase 9 — those options
  * are accepted and inert until then.
  *
@@ -18,9 +20,9 @@
  * bakes in registry resolution, and a cache built against one registry
  * must never answer against another.
  */
-import type { FigTreeOptions, FragmentDefinition } from './options'
+import type { EvaluationOptions, FigTreeOptions } from './options'
 import type { Issue, ValidationResult } from './issues'
-import { buildRegistry, type OperatorRegistry, type RegistryInput } from './registry'
+import { buildRegistry, type OperatorRegistry } from './registry'
 import {
   ParseCache,
   parseExpression,
@@ -37,23 +39,15 @@ import { coreOperators } from './operators'
 /** No fragments are registrable until Phase 11. */
 const NO_FRAGMENTS: ReadonlyMap<string, unknown> = new Map()
 
-/**
- * What the registry is built from. Held apart from the stored options so
- * that the definitions — and the clients closed inside them — are not
- * reachable through `context.options`, which every operator body
- * receives whole. `getOptions()` excludes the same two keys, so the
- * instance and its introspection agree.
- */
-interface RegistrySource {
-  operators: NonNullable<FigTreeOptions['operators']>
-  fragments?: Record<string, FragmentDefinition>
-}
-
 /** Everything an instance may swap, and may only swap together. */
 interface InstanceState {
-  /** The stored options, registry keys removed. */
+  /**
+   * The stored options, registry keys included. Those two keys are
+   * stripped at the two points where options leave the instance —
+   * `getOptions()` and the context an evaluation runs under — so the
+   * definitions, and the clients closed inside them, never reach a body.
+   */
   options: FigTreeOptions
-  source: RegistrySource
   registry: OperatorRegistry
   /**
    * Built with the registry and discarded with it. An artifact bakes in
@@ -94,47 +88,48 @@ const touchesRegistry = (update: FigTreeOptions): boolean =>
  * could have changed, so rebuilding would only throw away artifacts.
  */
 const buildState = (previous: InstanceState | null, update: FigTreeOptions): InstanceState => {
-  // Merged with the registry keys present, so `fragments` gets the same
-  // two-level treatment as any other block and `operators`, an array,
-  // replaces. They are split back out immediately afterwards.
-  const base = previous === null ? {} : withSource(previous.options, previous.source)
-  const { operators, fragments, ...options } = copyOptions(mergeOptions(base, update))
-  const source: RegistrySource = {
+  // `mergeOptions` rebuilds every incoming block, so the result is already
+  // instance-owned: `fragments` gets the two-level treatment and
+  // `operators`, an array, replaces
+  const options = mergeOptions(previous === null ? {} : previous.options, update)
+  if (previous !== null && !touchesRegistry(update))
+    return { options, registry: previous.registry, parseCache: previous.parseCache }
+
+  const registry = buildRegistry({
     // Omitted `operators` means the core set only — no HTTP, no SQL
-    operators: operators ?? [coreOperators],
-    ...(fragments !== undefined ? { fragments } : {}),
-  }
-  const registryInput: RegistryInput = {
-    operators: source.operators,
+    operators: options.operators ?? [coreOperators],
     ...(options.operatorDefaults !== undefined
       ? { operatorDefaults: options.operatorDefaults }
       : {}),
-  }
-  if (previous !== null && !touchesRegistry(update))
-    return { options, source, registry: previous.registry, parseCache: previous.parseCache }
-
-  const registry = buildRegistry(registryInput)
+  })
   return {
     options,
-    source,
     registry,
     parseCache: new ParseCache({
-      compile: (expression) => {
-        const artifact = parseExpression(expression, registry, NO_FRAGMENTS)
-        runStaticChecks(artifact)
-        return artifact
-      },
+      compile: (expression) => compile(expression, registry),
       probe: (expression) => probeConstant(expression, registry, NO_FRAGMENTS),
     }),
   }
 }
 
-/** The stored options with the registry keys put back, for merging. */
-const withSource = (options: FigTreeOptions, source: RegistrySource): FigTreeOptions => ({
-  ...options,
-  operators: source.operators,
-  ...(source.fragments !== undefined ? { fragments: source.fragments } : {}),
-})
+/** The stored or merged options as they leave the instance. */
+const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
+  const stripped = { ...options }
+  delete stripped.operators
+  delete stripped.fragments
+  return stripped
+}
+
+/**
+ * The one compile: parse plus the metadata-driven static checks, against a
+ * registry. `validate()` calls it directly; `evaluate()` reaches it through
+ * the parse cache, which is what makes the two report identically.
+ */
+const compile = (expression: unknown, registry: OperatorRegistry): ParseArtifact => {
+  const artifact = parseExpression(expression, registry, NO_FRAGMENTS)
+  runStaticChecks(artifact)
+  return artifact
+}
 
 export class FigTree {
   private state: InstanceState
@@ -146,13 +141,16 @@ export class FigTree {
   /**
    * The one sanctioned mutation path ("The method surface at a glance" in
    * docs-dev/v3-specs/v3-evaluator-methods.md). Merges by the same rule as
-   * per-call options, re-validates the whole registry, and swaps.
+   * per-call options, rebuilds what the update can have changed, and swaps.
    *
-   * Re-validation is unconditional. A merged `operatorDefaults` has to be
-   * re-checked against a new operator set in any case — an entry naming an
-   * operator the new set no longer registers is an error reachable no
-   * other way — and the converse holds too, so there is no update for
-   * which skipping the check would be sound.
+   * The registry and the parse cache are rebuilt only when the update names
+   * one of the three registry-affecting options (`touchesRegistry` is the
+   * one place that set is defined), and the rebuild re-validates the whole
+   * registry: a merged `operatorDefaults` has to be re-checked against a
+   * new operator set — an entry naming an operator the new set no longer
+   * registers is an error reachable no other way — and the converse holds
+   * too. Any other update carries the registry and the cache across
+   * untouched, since nothing about either could have changed.
    */
   updateOptions(options: FigTreeOptions = {}): void {
     this.state = buildState(this.state, options)
@@ -169,8 +167,8 @@ export class FigTree {
    * `getOperators()`, which reports effective defaults, because the
    * question here is "what was I configured with".
    */
-  getOptions(): FigTreeOptions {
-    return copyOptions(this.state.options)
+  getOptions(): EvaluationOptions {
+    return copyOptions(withoutRegistryKeys(this.state.options))
   }
 
   /**
@@ -182,7 +180,7 @@ export class FigTree {
    */
   validate(expression: unknown, options: FigTreeOptions = {}): ValidationResult {
     rejectPerCallRegistry(options)
-    const artifact = this.compile(expression)
+    const artifact = compile(expression, this.state.registry)
     const merged = mergeOptions(this.state.options, options)
     const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
 
@@ -228,7 +226,7 @@ export class FigTree {
     // Under `trace` the skip is off: a skipped parse has no nodes to echo.
     const resolved =
       merged.trace === true
-        ? ({ kind: 'artifact', artifact: this.compile(expression) } as const)
+        ? ({ kind: 'artifact', artifact: compile(expression, this.state.registry) } as const)
         : this.state.parseCache.resolve(expression)
     if (resolved.kind === 'inert') {
       if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth)
@@ -241,21 +239,7 @@ export class FigTree {
     const firstError = issues.find((issue) => issue.severity === 'error')
     if (firstError !== undefined) throw staticError(firstError, issues)
 
-    return evaluateNode(artifact.root, createEvaluationContext(merged))
-  }
-
-  /**
-   * The shared compile seam: parse + the metadata-driven static checks,
-   * behind the parse cache. `validate()` calls it directly and so warms
-   * the cache for the next `evaluate()`, which is the only pre-warm the
-   * surface offers.
-   *
-   * It always yields an artifact, never a probe verdict: an inert input
-   * can still earn an unrecognized-`$` warning, and reporting is
-   * `validate()`'s whole job.
-   */
-  private compile(expression: unknown): ParseArtifact {
-    return this.state.parseCache.artifact(expression)
+    return evaluateNode(artifact.root, createEvaluationContext(withoutRegistryKeys(merged)))
   }
 }
 

@@ -27,7 +27,7 @@
  */
 import { Lru } from '../lru'
 import type { ParseArtifact } from './artifact'
-import { contentKey, serializeInput } from './contentKey'
+import { serializeInput } from './contentKey'
 import type { ProbeResult } from './probe'
 
 /**
@@ -45,14 +45,13 @@ import type { ProbeResult } from './probe'
 export const CONTENT_LAYER_SIZE = 200
 
 /**
- * What a lookup can answer with. An `inert` entry is a memoized probe
+ * What `resolve` answers with. An `inert` entry is a memoized probe
  * verdict: the input has nothing to evaluate, so `evaluate()` returns it
  * by identity and never needs an artifact at all. It carries the measured
  * depth because that is what `maxDepth` is compared against.
  */
 export type CacheEntry =
-  | { kind: 'artifact'; artifact: ParseArtifact }
-  | { kind: 'inert'; depth: number }
+  { kind: 'artifact'; artifact: ParseArtifact } | { kind: 'inert'; depth: number }
 
 export interface ParseCacheDeps {
   /** Parse plus the static checks, bound to one registry. */
@@ -61,85 +60,53 @@ export interface ParseCacheDeps {
   probe: (expression: unknown) => ProbeResult
 }
 
+/**
+ * `evaluate()` is the only consumer. `validate()` compiles fresh and
+ * never touches the cache — it is an authoring tool, its report should
+ * cost a parse, and reading the cache would need a second answer shape
+ * here (an inert verdict cannot report the unrecognized-`$` warning a
+ * full artifact carries).
+ */
 export class ParseCache {
   private readonly identity = new WeakMap<object, CacheEntry>()
-  private readonly content: Lru<string, CacheEntry>
+  private readonly content = new Lru<string, ParseArtifact>(CONTENT_LAYER_SIZE)
 
-  constructor(
-    private readonly deps: ParseCacheDeps,
-    max: number = CONTENT_LAYER_SIZE
-  ) {
-    this.content = new Lru<string, CacheEntry>(max)
-  }
+  constructor(private readonly deps: ParseCacheDeps) {}
 
-  /**
-   * For `evaluate()`: may answer that the input is inert, in which case
-   * the caller returns it by identity without anything ever being parsed.
-   */
   resolve(expression: unknown): CacheEntry {
-    return this.lookup(expression, true)
-  }
-
-  /**
-   * For `validate()`, and for `evaluate()` under `trace`: always an
-   * artifact. An inert input still earns its unrecognized-`$` warnings, so
-   * reporting cannot be served by a probe verdict.
-   */
-  artifact(expression: unknown): ParseArtifact {
-    const entry = this.lookup(expression, false)
-    // `lookup` only ever returns `inert` when inert answers are allowed
-    return (entry as { kind: 'artifact'; artifact: ParseArtifact }).artifact
-  }
-
-  private lookup(expression: unknown, allowInert: boolean): CacheEntry {
-    const weakKey = weakKeyOf(expression)
+    // Only an object can key a `WeakMap`; a primitive takes neither layer
+    const weakKey = typeof expression === 'object' && expression !== null ? expression : undefined
 
     if (weakKey !== undefined) {
       const held = this.identity.get(weakKey)
-      // An inert entry does not satisfy a caller that needs an artifact,
-      // but the compile that follows upgrades it in place — an artifact is
-      // a strict superset, so nothing is lost by replacing it
-      if (held !== undefined && (allowInert || held.kind === 'artifact')) return held
+      if (held !== undefined) return held
     }
 
-    if (allowInert) {
-      const probed = this.deps.probe(expression)
-      if (probed.constant) {
-        const entry: CacheEntry = { kind: 'inert', depth: probed.depth }
-        if (weakKey !== undefined) this.identity.set(weakKey, entry)
-        return entry
-      }
+    const probed = this.deps.probe(expression)
+    if (probed.constant) {
+      const entry: CacheEntry = { kind: 'inert', depth: probed.depth }
+      if (weakKey !== undefined) this.identity.set(weakKey, entry)
+      return entry
     }
 
-    // Reached only by genuine expressions on the `evaluate()` path, since
-    // constant containers have already exited above — so the O(input)
-    // serialization never runs on inert data
-    const key = weakKey === undefined ? undefined : keyOf(expression)
-    if (key !== undefined) {
-      const held = this.content.get(key)
-      if (held !== undefined) {
-        if (weakKey !== undefined) this.identity.set(weakKey, held)
-        return held
-      }
-    }
-
-    const entry: CacheEntry = { kind: 'artifact', artifact: this.deps.compile(expression) }
+    // Reached only by genuine expressions, since constant containers have
+    // exited above — so the O(input) serialization never runs on inert data
+    const key = weakKey === undefined ? undefined : serializeInput(expression)
+    const held = key === undefined ? undefined : this.content.get(key)
+    const artifact = held ?? this.deps.compile(expression)
+    const entry: CacheEntry = { kind: 'artifact', artifact }
     if (weakKey !== undefined) this.identity.set(weakKey, entry)
     // Identity-only artifacts must never be served by content: two inputs
     // holding different opaque constants can serialize alike, and splicing
     // the wrong constants in would be silent. The serializer refuses those
     // too, so this is the second of two independent guards
-    if (key !== undefined && !entry.artifact.identityOnly && entry.artifact.holes.length > 0)
-      this.content.set(key, entry)
+    if (
+      key !== undefined &&
+      held === undefined &&
+      !artifact.identityOnly &&
+      artifact.holes.length > 0
+    )
+      this.content.set(key, artifact)
     return entry
   }
-}
-
-/** Only an object can key a `WeakMap`; a primitive takes neither layer. */
-const weakKeyOf = (expression: unknown): object | undefined =>
-  typeof expression === 'object' && expression !== null ? expression : undefined
-
-const keyOf = (expression: unknown): string | undefined => {
-  const serialized = serializeInput(expression)
-  return serialized === undefined ? undefined : contentKey(serialized)
 }

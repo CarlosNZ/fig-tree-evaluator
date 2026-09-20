@@ -140,23 +140,25 @@ describe('inert inputs', () => {
   })
 })
 
-describe('validate() and evaluate() share the cache', () => {
-  it('validate warms the cache for the next evaluate', async () => {
+describe('validate() stays out of the cache', () => {
+  it('neither warms the cache nor reads it', async () => {
     const { fig, spy } = rig()
     const expression = expr('x')
     fig.validate(expression)
     await fig.evaluate(expression)
-    expect(spy.compiles()).toBe(1)
+    expect(spy.compiles()).toBe(2)
+    fig.validate(expression)
+    expect(spy.compiles()).toBe(3)
   })
 
-  it('validate still reports on an input evaluate answered as inert', async () => {
+  it('still reports on an input evaluate answered as inert', async () => {
     const { fig } = rig()
     // A stray `$` key is inert data, but validate must still flag it
     const config = { title: '$nosuchthing' }
     expect(await fig.evaluate(config)).toBe(config)
     const { issues } = fig.validate(config)
     expect(issues.map((issue) => issue.severity)).toEqual(['warning'])
-    // ...and the upgrade leaves evaluate's identity return intact
+    // ...and evaluate's identity return is untouched by the report
     expect(await fig.evaluate(config)).toBe(config)
   })
 })
@@ -174,7 +176,9 @@ describe('invalidation — lifecycle step 6', () => {
   }
 
   it('drops both layers when operatorDefaults changes', async () => {
-    expect(await recompilesOn(() => ({ operatorDefaults: { counted: { value: 'other' } } }))).toBe(1)
+    expect(await recompilesOn(() => ({ operatorDefaults: { counted: { value: 'other' } } }))).toBe(
+      1
+    )
   })
 
   it('drops both layers when the operator set changes', async () => {

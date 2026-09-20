@@ -8,7 +8,7 @@
  * handles (Phases 5–6) and signal composition (Phase 10) light up later
  * without reshaping what bodies see.
  */
-import type { FigTreeOptions } from './options'
+import type { EvaluationOptions } from './options'
 
 /**
  * The brand every engine-made handle carries. Internal (never
@@ -70,8 +70,11 @@ export type TraceEvent = { type: string; [key: string]: unknown }
 export interface OperatorContext {
   /** Caller signal, evaluation timeout, enclosing early-resolution scopes */
   signal: AbortSignal
-  /** The merged instance + per-call options, frozen for the evaluation */
-  options: Readonly<FigTreeOptions>
+  /**
+   * The merged instance + per-call options, frozen for the evaluation. The
+   * registry keys are absent by type as well as by value.
+   */
+  options: Readonly<EvaluationOptions>
   cache: {
     /** Memoize a unit of work under a body key; identity when caching is off */
     memo<T>(key: unknown, fn: () => Promise<T>): Promise<T>

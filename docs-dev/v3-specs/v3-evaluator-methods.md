@@ -357,8 +357,8 @@ interface Issue {
 - **`validate()` never throws on expression content** — reporting is its entire job; even hard "parse errors" come back as `severity: 'error'` issues. (It throws only on misuse of the method itself, e.g. per-call `operators`.)
 - **Synchronous by construction**: the parse pass touches no I/O, and the contract's operator `validate` hooks are sync functions returning `Issue[]`. Editors get keystroke-rate validation with no async ceremony.
 - It accepts per-call options under the standard merge (minus the barred `operators`/`fragments`) because options legitimately affect static checking: `maxDepth`/`maxNodes` are structural checks, `data` enables the sample-data check (below).
-- Calling it warms the parse cache as a side effect — a host that validates at config-save time gets its first `evaluate()` pre-parsed for free. No public `parse`/`compile` method exists; the pipeline stays engine architecture (assessment § 3.3), and this side effect is the only "pre-warm" anyone needs.
-- Relationship to `evaluate()`: the same pass with the same checks runs (cached) inside every evaluation — `validate()` adds nothing evaluation doesn't already know; it just returns the stream instead of acting on it. Warnings never block evaluation and are *only* visible through `validate()` (and the trace echo) — the no-console principle.
+- It never touches the parse cache — neither reads it nor warms it (ruled at Phase-8 review, September 2026, Carl; the first cut shared the cache). `validate()` is an authoring tool: its report should cost a parse, and the cache holds only what `evaluate()` asked for. No public `parse`/`compile` method exists; the pipeline stays engine architecture (assessment § 3.3), and the pre-warm story is simply to evaluate the expression once.
+- Relationship to `evaluate()`: the same pass with the same checks runs (cached, there) inside every evaluation — `validate()` adds nothing evaluation doesn't already know; it just returns the stream instead of acting on it. Warnings never block evaluation and are *only* visible through `validate()` (and the trace echo) — the no-console principle.
 
 ### The check inventory
 
@@ -490,7 +490,7 @@ This is v2 parity (v2 already returns shared references from `getData` et al.) a
 
 - **No `evaluateSync()`.** The assessment sketched it; cut for v3.0. The contract makes every body potentially async (`Value | Promise<Value>`), and the interesting machinery — race, lazy handles, memoized vars — is promise-shaped; a genuinely synchronous path is a second evaluation engine, not a flag. The performance story it targeted is already answered by the parse cache and lazy evaluation. Adding it later is non-breaking; shipping it now doubles the surface the differential suite must hold still. *(Non-addition — nothing existed in v2.)*
 - **No standalone `evaluateExpression()`.** v2's convenience wrapper constructs a throwaway instance per call — under v3 that silently discards the parse cache (the performance model) and, with registration now explicit, quietly means "core operators only". It is also a second way to say a one-liner: `new FigTree().evaluate(expr)`. The migration doc shows the one-liner.
-- **No consumer-facing `parse`/`compile`.** Reaffirmed from the assessment; `validate()`'s cache-warming side effect is the pre-warm story.
+- **No consumer-facing `parse`/`compile`.** Reaffirmed from the assessment; the pre-warm story is one `evaluate()` call, since `validate()` stays out of the cache.
 - **`toShorthand` / conversion utilities** are `./convert` / Packaging-area material, not instance methods — recorded here only so this doc is checkably complete about the method surface.
 
 ---

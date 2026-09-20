@@ -13,6 +13,13 @@
  * the only property that matters is injectivity over the inputs it
  * accepts, and a refusal is always safe because it just skips the layer.
  *
+ * The serialized string IS the key — it is not hashed. Hashing does not
+ * replace serialization, it follows it, so it is strictly more work at
+ * both insert and lookup; and a `Map` keyed on a string already hashes
+ * natively and then verifies with full equality, where a hand-rolled
+ * digest would swap a verified hash for an unverified one. All it would
+ * buy is a smaller retained key, which the LRU's bound already bounds.
+ *
  * Key order is preserved rather than sorted: two spellings of the same
  * object are a deliberate miss, not something to canonicalize.
  */
@@ -32,20 +39,6 @@ export const serializeInput = (value: unknown): string | undefined => {
   const out: string[] = []
   return write(value, 0, out) ? out.join('') : undefined
 }
-
-/**
- * The key material. Separated from the serializer so the choice of what
- * to key on is one line: the serialized string itself, exact and
- * collision-free.
- *
- * Hashing was considered and rejected. It does not replace serialization,
- * it follows it, so it is strictly more work at both insert and lookup;
- * and a `Map` keyed on a string already hashes natively and then verifies
- * with full equality, where a hand-rolled digest would replace a verified
- * hash with an unverified one. All it buys is a smaller retained key,
- * which the LRU's bound already bounds.
- */
-export const contentKey = (serialized: string): string => serialized
 
 const write = (value: unknown, depth: number, out: string[]): boolean => {
   if (depth > DEPTH_CEILING) return false
