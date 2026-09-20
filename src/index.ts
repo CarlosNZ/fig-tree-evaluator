@@ -14,7 +14,7 @@
  */
 export { version } from './version'
 
-export type { HttpClient, SqlConnection, CacheStore } from './types'
+export type { HttpClient, HttpRequest, SqlConnection, SqlRequest, CacheStore } from './types'
 
 // Phase 1.2 — errors & diagnostics
 export { FigTreeError, isFigTreeError } from './FigTreeError'
@@ -104,3 +104,20 @@ export type { ParameterDeclarations } from './operatorDefinition'
 // their groups) and the deep-equality primitive `equal` is specified by.
 export { coreOperators } from './operators'
 export { deepEqual } from './primitives'
+
+// Phase 9.2 — the I/O toolkit. It lives in the root entry rather than a
+// `./clients` subpath (packaging ruling): the wrappers are thin adapters
+// over an injected driver, so there is no weight to quarantine, and
+// capability is gated by registration rather than by import path —
+// importing these gives an instance nothing until the factories' output
+// is put in the `operators` array.
+export { httpOperators, sqlOperators } from './operators/io'
+export { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from './clients'
+export type {
+  FetchLike,
+  FetchResponseLike,
+  AxiosLike,
+  AxiosErrorLike,
+  PgClientLike,
+  SqliteDatabaseLike,
+} from './clients'
