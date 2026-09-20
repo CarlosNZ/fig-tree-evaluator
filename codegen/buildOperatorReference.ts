@@ -20,6 +20,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { coreOperators } from '../src/operators/index'
+import { httpOperators, sqlOperators } from '../src/operators/io'
 import type { ValidatedOperatorDefinition, ValidatedParameter } from '../src/operatorDefinition'
 import type { Constraints, ExpectedType } from '../src/typeCheck'
 
@@ -145,153 +146,6 @@ const PENDING: Record<string, PendingEntry> = {
       },
     ],
   },
-  http: {
-    n: 'http',
-    st: '9.3',
-    ret: 'any',
-    pos: ['url'],
-    d: 'One HTTP request — GET or POST, with no method-pinning aliases',
-    p: [
-      {
-        n: 'url',
-        t: 'string',
-        r: true,
-        ev: null,
-        tr: false,
-        d: 'An address is never manufactured from absence: null here is a type error',
-      },
-      {
-        n: 'method',
-        t: "'get' | 'post'",
-        r: false,
-        def: '"get"',
-        ev: null,
-        tr: false,
-        d: 'PUT / PATCH / DELETE are a literal-type extension away',
-      },
-      {
-        n: 'query',
-        t: 'object',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Query-string pairs; a null value omits its pair entirely',
-      },
-      {
-        n: 'body',
-        t: 'JSON value (excl. null)',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'A whole-null body means no body at all; nulls inside a present body serialize as JSON null',
-      },
-      {
-        n: 'headers',
-        t: 'object',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'A null value omits its pair, removing an instance-default header',
-      },
-      {
-        n: 'returnPath',
-        t: 'string | array',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Drill into the response instead of returning all of it',
-      },
-      {
-        n: 'timeout',
-        t: 'integer (ms)',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Per-request bound; expiry is an ordinary failure a fallback can catch',
-      },
-    ],
-  },
-  graphQL: {
-    n: 'graphQL',
-    st: '9.3',
-    ret: 'any',
-    pos: ['query', 'variables'],
-    d: 'One GraphQL query, implemented on the http core — 200-with-errors is a failure',
-    p: [
-      { n: 'query', t: 'string', r: true, ev: null, tr: false, d: 'The query document' },
-      {
-        n: 'variables',
-        t: 'object',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Values carried as JSON, so a null is a nullable argument, not an omission',
-      },
-      {
-        n: 'url',
-        t: 'string',
-        r: false,
-        def: 'the graphQL.endpoint option',
-        ev: null,
-        tr: false,
-        d: 'Overrides the connection endpoint for this node',
-      },
-      { n: 'headers', t: 'object', r: false, ev: null, tr: false, d: 'As http.headers' },
-      {
-        n: 'returnPath',
-        t: 'string | array',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Drilling within the data field, exactly v2 scope',
-      },
-      { n: 'timeout', t: 'integer (ms)', r: false, ev: null, tr: false, d: 'Per-request bound' },
-    ],
-  },
-  sql: {
-    n: 'sql',
-    st: '9.3',
-    ret: 'any',
-    pos: ['query', '...values'],
-    d: 'One parameterized SQL query — the injected connection determines the dialect',
-    p: [
-      {
-        n: 'query',
-        t: 'string',
-        r: true,
-        ev: null,
-        tr: false,
-        d: 'The statement, with the driver placeholders it expects',
-      },
-      {
-        n: 'values',
-        t: 'array | object',
-        r: false,
-        ev: null,
-        tr: false,
-        d: 'Bind values — an array binds positionally, an object by name; a null goes to the wire as SQL NULL',
-      },
-      {
-        n: 'shape',
-        t: "'rows' | 'row' | 'column' | 'value'",
-        r: false,
-        def: '"rows"',
-        ev: null,
-        tr: false,
-        d: 'rows gives every row, row the first, column one column, value a single cell',
-      },
-      {
-        n: 'noRowDefault',
-        t: 'any',
-        r: false,
-        def: 'null',
-        ev: 'lazy',
-        tr: false,
-        d: "Returned for the 'row' and 'value' shapes when the result set is empty",
-      },
-      { n: 'timeout', t: 'integer (ms)', r: false, ev: null, tr: false, d: 'Per-request bound' },
-    ],
-  },
 }
 
 /**
@@ -341,8 +195,18 @@ const fromDefinition = (op: ValidatedOperatorDefinition, group: string): PageOpe
 })
 
 const build = (): PageOperator[] => {
+  // The I/O operators are factories, never members of `coreOperators` — a
+  // host only gets them by wiring a client. The reference documents them
+  // all the same, so it builds them over a stub that is never called
+  const unreachable = () => {
+    throw new Error('the reference never evaluates')
+  }
   const live = new Map<string, ValidatedOperatorDefinition>(
-    coreOperators.map((op) => [op.name, op])
+    [
+      ...coreOperators,
+      ...httpOperators({ request: unreachable }),
+      ...sqlOperators({ query: unreachable }),
+    ].map((op) => [op.name, op])
   )
   const listed = new Set(CANONICAL.map(([name]) => name))
   const problems: string[] = []

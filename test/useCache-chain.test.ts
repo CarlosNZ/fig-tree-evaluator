@@ -30,7 +30,10 @@ const pureOp = defineOperator({
 })
 
 /** Parse one expression and hand back its single operator node. */
-const nodeOf = (expression: unknown, operatorDefaults?: object): OperatorNode => {
+const nodeOf = (
+  expression: unknown,
+  operatorDefaults?: Record<string, Record<string, unknown>>
+): OperatorNode => {
   const registry = buildRegistry({
     operators: [cachingOp, pureOp],
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),

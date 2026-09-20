@@ -9,7 +9,12 @@
  * row per violation of the contract's validation list, carrying the issue
  * code and path the throw must include.
  */
-import { EvaluationData, ErrorCodes, type OperatorDefinition } from '../../src'
+import {
+  EvaluationData,
+  ErrorCodes,
+  type LazyValue,
+  type OperatorDefinition,
+} from '../../src'
 
 /** A fresh minimal valid definition — callers may mutate their copy freely. */
 export const validDefinition = (): OperatorDefinition => ({
@@ -34,7 +39,11 @@ export const clampLike = (): OperatorDefinition => ({
   },
   positionalParams: ['value', 'min', 'max'],
   useCache: false,
-  evaluate: ({ value, min, max }) => Math.min(max, Math.max(min, value)),
+  // Annotated `OperatorDefinition`, so the declarations are the OPEN record
+  // and every parameter arrives `unknown` — these fixtures exercise
+  // registration, not inference (test/inference.test.ts covers that)
+  evaluate: ({ value, min, max }) =>
+    Math.min(max as number, Math.max(min as number, value as number)),
 })
 
 /** The contract's `if` example: alias, truthiness, lazy branches. */
@@ -49,7 +58,7 @@ export const ifLike = (): OperatorDefinition => ({
   },
   positionalParams: ['condition', 'then', 'else'],
   evaluate: ({ condition, then, else: otherwise }) =>
-    condition ? then.evaluate() : otherwise.evaluate(),
+    (condition ? (then as LazyValue) : (otherwise as LazyValue)).evaluate(),
 })
 
 /**

@@ -3,13 +3,20 @@
 // and never run against v3 source (implementation plan working rule 4):
 //   - test/V2         — the frozen record; run vs /v2-src with `pnpm test:v2`.
 //   - test/v2-working — the editable migration source (not run by any suite).
+//   - test/live       — needs the network or a local Northwind Postgres;
+//                       run on demand with `pnpm test:live`.
 export default {
   roots: ['<rootDir>/test'],
   testMatch: ['**/__tests__/**/*.+(ts|tsx|js)', '**/?(*.)+(spec|test).+(ts|tsx|js)'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.test.json' }],
   },
-  testPathIgnorePatterns: ['/node_modules/', '<rootDir>/test/V2/', '<rootDir>/test/v2-working/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '<rootDir>/test/V2/',
+    '<rootDir>/test/v2-working/',
+    '<rootDir>/test/live/',
+  ],
   modulePathIgnorePatterns: ['<rootDir>/test/V2/', '<rootDir>/test/v2-working/'],
   verbose: true,
   testTimeout: 10000,

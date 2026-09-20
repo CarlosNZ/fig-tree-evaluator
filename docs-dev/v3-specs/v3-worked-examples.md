@@ -155,7 +155,9 @@ await fig.evaluate(exprA, { data: dataA })                // → { greeting: 'We
 ```js
 // key(illustrative): 'http|get|https://api.example.com/rates?currency=NZD|headers:{}'
 // MISS → fetch #1 fires → response { rate: 0.61, base: 'USD' }
-// stored VALUE is the FULL response — returnPath applies post-cache:
+// stored VALUE is the FULL response — returnPath applies post-cache.
+// (Illustrative: what a store actually receives is an engine-owned
+//  envelope wrapping this value with a generation and an expiry.)
 // resultStore { 'http|get|…currency=NZD|…' → { rate: 0.61, base: 'USD' } }
 // node returns 0.61
 ```

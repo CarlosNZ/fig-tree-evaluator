@@ -35,6 +35,7 @@ import {
   type SkeletonHole,
 } from '../parse'
 import { demoOperators } from './demoOperators'
+import { httpOperators, sqlOperators } from '../operators/io'
 import { coreOperators } from '../operators'
 
 const WIDTH = 78
@@ -245,9 +246,26 @@ const printIssues = (heading: string, issues: Issue[]) => {
  * own registry instead of the demo set, `data` to exercise the sample-data
  * warning, `maxNodes`/`maxDepth` for the limit checks.
  */
+/**
+ * The I/O operators, wired to a client that cannot run: `inspect` parses
+ * and validates and never evaluates, so what matters is that the
+ * definitions are REGISTERED — otherwise an `http` node inspects as
+ * invalid. A stub rather than `httpOperators()` so the tool needs no
+ * global fetch, and can never accidentally reach the network.
+ */
+const inspectIO = () => {
+  const unreachable = () => {
+    throw new Error('inspect() never evaluates')
+  }
+  return [
+    httpOperators({ request: unreachable }),
+    sqlOperators({ query: unreachable }),
+  ]
+}
+
 export const inspect = (expression: unknown, options: InspectOptions = {}): void => {
   const { label, ...figOptions } = options
-  const operators = figOptions.operators ?? [coreOperators, demoOperators()]
+  const operators = figOptions.operators ?? [coreOperators, demoOperators(), ...inspectIO()]
   const registry = buildRegistry({
     operators,
     ...(figOptions.operatorDefaults !== undefined
