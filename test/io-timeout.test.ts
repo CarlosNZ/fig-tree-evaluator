@@ -132,6 +132,23 @@ describe("the caller's signal is not the same thing", () => {
     expect(error.code).toBe('aborted')
   })
 
+  it('ends the wait at once, even for a driver that cannot be interrupted', async () => {
+    // A deaf driver under a caller's abort must not wait out its own
+    // timeout: the race is against every abort of the composed signal,
+    // not only the timer
+    const { fig } = withSleeper()
+    const controller = new AbortController()
+    const started = Date.now()
+    const running = fig.evaluate(
+      { operator: 'sleep', ms: 2000, timeout: 1500, deaf: true },
+      { signal: controller.signal }
+    )
+    controller.abort()
+    const error = await rejection<FigTreeError>(running)
+    expect(error.code).toBe('aborted')
+    expect(Date.now() - started).toBeLessThan(500)
+  })
+
   it("is not caught by the node's fallback — it is the caller's decision", async () => {
     const { fig } = withSleeper()
     const controller = new AbortController()

@@ -4,9 +4,8 @@
  * what a body's own `memo` call means.
  *
  * Deliberately separate from ../resultCache.ts, which owns the store, the
- * bound, the expiry and the generation and knows nothing about nodes. The
- * split is the spec's own: a store is storage, and caching is a policy
- * over it.
+ * expiry and the generation and knows nothing about nodes. The split is
+ * the spec's own: a store is storage, and caching is a policy over it.
  *
  * Two layers, selected by the definition's `cache` field and gated by the
  * effective `useCache` chain. `'auto'` memoizes the whole body run on the
@@ -16,7 +15,7 @@
  */
 import { serializeInput, type OperatorNode } from '../parse'
 import type { ResultStore } from '../resultCache'
-import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
+import type { OperatorContext } from '../runtimeInterface'
 
 /**
  * A layer tag opens every key. Not decoration: `memo` is present on every
@@ -80,15 +79,14 @@ export const autoKey = (
   // taken literally for an operator that mixes modes: `if` would key on
   // its condition alone, so two nodes with one condition and different
   // branches would collide. An operator that delivers anything lazily is
-  // not auto-cacheable at all
+  // not auto-cacheable at all. This one test is also what keeps an engine
+  // handle out of the serializer, which matters because a settlement
+  // stream is a plain-prototype object whose only own string key is
+  // `length`, so the serializer would ACCEPT it and two different
+  // three-element streams would key alike. Past this line every value is
+  // an eager result — already through the escaped-handle guard — or an
+  // authored constant, so no handle can be present
   if (node.entry.definition.deliversLazily) return undefined
-  // The second guard is not belt-and-braces. A settlement stream is a
-  // plain-prototype object whose only string-keyed own property is
-  // `length`, so the serializer ACCEPTS it and two different three-element
-  // streams serialize alike — a wrong hit, silently. The value-level test
-  // is what catches that; the declaration-level one above is what keeps it
-  // from arising
-  for (const value of Object.values(params)) if (isEngineHandle(value)) return undefined
   return serializeInput([AUTO, node.entry.definition.name, params])
 }
 

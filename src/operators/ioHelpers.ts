@@ -57,20 +57,20 @@ export const assembleUrl = (
   return full
 }
 
+/**
+ * Only the seam is touched: one trailing slash off the base, one leading
+ * slash off the path, so `base/` + `/users` and `base` + `users` are one
+ * address. Everything else, a trailing slash on the path included, goes
+ * on the wire as authored.
+ */
 const joinBase = (base: string | undefined, url: string): string => {
   if (base === undefined || base === '')
     throw new OperatorFailure(
       `'${url}' is a relative URL and no http.baseEndpoint is configured`,
       { code: ErrorCodes.typeCheck }
     )
-  return [base, url]
-    .map((part, index) => {
-      const start = index > 0 && part.startsWith('/') ? 1 : 0
-      const end = part.endsWith('/') ? -1 : undefined
-      return part.slice(start, end)
-    })
-    .filter((part) => part !== '')
-    .join('/')
+  if (url === '') return base
+  return `${base.replace(/\/$/, '')}/${url.replace(/^\//, '')}`
 }
 
 /**

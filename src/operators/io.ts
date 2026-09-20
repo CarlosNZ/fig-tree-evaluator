@@ -9,10 +9,13 @@
  * through `context.options` and a host cannot swap one per call.
  *
  * Registration is therefore structural, and so is absence: on a clientless
- * instance these operators do not exist, so `{ $http: … }` is an
- * unknown-operator error at `validate()` — v2's evaluation-time
- * 'No HTTP client provided' moves from the end user's runtime to the
- * author's toolchain.
+ * instance these operators do not exist. `{ operator: 'http', … }` is an
+ * unknown-operator error at `validate()`, and the shorthand `{ $http: … }`
+ * is an unrecognized-identifier warning with the object passing through
+ * as data, since a `$`-keyed object cannot be an error without making
+ * every such data object one. Either way v2's evaluation-time 'No HTTP
+ * client provided' moves from the end user's runtime to the author's
+ * toolchain.
  *
  * **The read contract.** v3 treats every I/O node as an idempotent read:
  * the machinery the rest of the engine grants — parallel children, early
@@ -28,7 +31,6 @@
 import { defineOperator } from '../defineOperator'
 import { FetchClient } from '../clients/http'
 import { ErrorCodes } from '../errorCodes'
-import { FigTreeError } from '../FigTreeError'
 import { OperatorFailure } from '../OperatorFailure'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { HttpClient, SqlConnection } from '../types'
@@ -110,7 +112,6 @@ const httpDefinition = (client: HttpClient) =>
     returns: 'any',
     validate: ({ returnPath, method, body }) => [
       ...pathFindings(returnPath, 'returnPath'),
-      ...methodFindings(method),
       ...bodyFindings(method, body),
     ],
     evaluate: async ({ url, method, query, body, headers, returnPath }, context) => {
@@ -248,18 +249,6 @@ const sqlDefinition = (connection: SqlConnection) =>
     },
   })
 
-/** A near-miss on the one literal union an author is likely to shout. */
-const methodFindings = (method: unknown) =>
-  typeof method === 'string' && method !== method.toLowerCase()
-    ? [
-        {
-          severity: 'hint' as const,
-          parameter: 'method',
-          message: `did you mean '${method.toLowerCase()}'? the verb is lowercase`,
-        },
-      ]
-    : []
-
 /**
  * The likely intent is a forgotten `method: 'post'`; the message says so.
  *
@@ -281,32 +270,6 @@ const bodyFindings = (method: unknown, body: unknown) =>
     : []
 
 /**
- * The wiring check. It catches the likely mistake, which is handing a
- * factory the DRIVER rather than a wrapper around it —
- * `httpOperators(axios)` — since the parameter is an `HttpClient`
- * instance and axios is never one.
- */
-const assertWired = (
-  wiring: unknown,
-  factory: string,
-  contract: string,
-  method: 'request' | 'query'
-): void => {
-  if (
-    typeof wiring !== 'object' ||
-    wiring === null ||
-    typeof (wiring as Record<string, unknown>)[method] !== 'function'
-  )
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message:
-        `${factory}(): expected a ${contract} — an object with a ${method}() method. ` +
-        'Wrap the driver first, e.g. new AxiosClient(axios) or new PostgresConnection(client)',
-      path: [],
-    })
-}
-
-/**
  * `http` + `graphQL`, one client serving both ("Operator registration" in
  * the Options area of docs-dev/v3-specs/v3-api.md).
  *
@@ -320,17 +283,13 @@ const assertWired = (
  */
 export const httpOperators = (
   client: HttpClient = new FetchClient()
-): ValidatedOperatorDefinition[] => {
-  assertWired(client, 'httpOperators', 'HttpClient', 'request')
-  return [httpDefinition(client), graphQLDefinition(client)]
-}
+): ValidatedOperatorDefinition[] => [httpDefinition(client), graphQLDefinition(client)]
 
 /**
  * `sql`. No default: there is no ambient database connection to adopt,
  * which is the asymmetry with `httpOperators()` and the reason it is
  * stated rather than inferred.
  */
-export const sqlOperators = (connection: SqlConnection): ValidatedOperatorDefinition[] => {
-  assertWired(connection, 'sqlOperators', 'SqlConnection', 'query')
-  return [sqlDefinition(connection)]
-}
+export const sqlOperators = (connection: SqlConnection): ValidatedOperatorDefinition[] => [
+  sqlDefinition(connection),
+]

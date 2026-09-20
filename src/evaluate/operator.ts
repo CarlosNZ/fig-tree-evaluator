@@ -20,6 +20,7 @@ import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
 import {
+  REQUEST_EXPIRED,
   childScope,
   createOperatorContext,
   requestDeadline,
@@ -27,7 +28,7 @@ import {
   type RequestDeadline,
 } from './context'
 import { evaluateNode } from './evaluate'
-import { cancellation, isCancellation, isInternalError } from './internal'
+import { abortedOutcome, isCancellation, isInternalError } from './internal'
 import { autoKey, through } from './memo'
 import { resolveParams } from './params'
 import { pushVars } from './scope'
@@ -120,12 +121,13 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
     // this node's parameters resolve — and `addEventListener('abort')` on
     // an already-aborted signal NEVER fires, so a body that only listens
     // would run to completion and hand back a result nobody wants
-    const landed = abortedOutcome(node, ctx)
+    const landed = abortedOutcome(ctx, node.path, node.name)
     if (landed !== undefined) throw landed
     const running = Promise.resolve(definition.evaluate(params, context))
     if (deadline === undefined) return normalizeResult(await running, node)
-    // The body may reject a tick AFTER the deadline won the race, when its
-    // client notices the abort — without this that is an unhandled rejection
+    // The body may reject a tick AFTER an abort won the race, when its
+    // client notices the signal — without this that is an unhandled
+    // rejection
     running.catch(() => {})
     return normalizeResult(await Promise.race([running, deadline.expiry]), node)
   }
@@ -144,32 +146,6 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   } finally {
     deadline?.settle()
   }
-}
-
-/**
- * The outcome where an abort has ALREADY landed, or `undefined` where
- * none has. One helper, because two places need the same answer: before a
- * body starts, and after one throws.
- *
- * The order is the contract's: the caller's kill switch outranks an
- * enclosing scope, because they mean opposite things — a scope abort is
- * silent abandonment, a caller's abort is a decision that cuts through
- * every fallback.
- */
-const abortedOutcome = (node: OperatorNode, ctx: EvaluationContext): unknown | undefined => {
-  if (ctx.rootSignal.aborted)
-    return new FigTreeError({
-      code: ErrorCodes.aborted,
-      message: 'evaluation was aborted by the caller',
-      path: node.path,
-      operator: node.name,
-    })
-  // `ctx.signal` is the deadline's PARENT, never the deadline itself, so
-  // "someone upstream aborted me" stays distinguishable from "my own timer
-  // fired". This runs before the enclosing scope settles, so it is not a
-  // false positive on every lazily-delivering node
-  if (ctx.signal.aborted) return cancellation()
-  return undefined
 }
 
 /** The node's own deadline in ms, or `undefined` where it declared none. */
@@ -207,9 +183,9 @@ const classifyBodyFailure = (
   ms: number | undefined
 ): unknown => {
   if (isInternalError(error) || isCancellation(error)) return error
-  const landed = abortedOutcome(node, ctx)
+  const landed = abortedOutcome(ctx, node.path, node.name)
   if (landed !== undefined) return landed
-  if (deadline?.expired() === true)
+  if (deadline?.signal.reason === REQUEST_EXPIRED)
     return new OperatorFailure(`request exceeded its ${String(ms)}ms timeout`, {
       code: ErrorCodes.requestTimeout,
     })

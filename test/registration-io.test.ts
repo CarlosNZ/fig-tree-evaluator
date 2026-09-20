@@ -50,15 +50,6 @@ describe('httpOperators()', () => {
       expect(() => httpOperators(new MockHttpClient())).not.toThrow()
     })
   })
-
-  it('refuses the driver where a client was meant — the likely mistake', () => {
-    const axiosLike = Object.assign(() => undefined, { isAxiosError: () => false })
-    // @ts-expect-error — the parameter is an HttpClient instance, never the
-    // import
-    expect(() => httpOperators(axiosLike)).toThrow(FigTreeError)
-    // @ts-expect-error — nor a config object
-    expect(() => httpOperators({ baseURL: 'https://api.test' })).toThrow(/HttpClient/)
-  })
 })
 
 describe('sqlOperators()', () => {
@@ -67,11 +58,6 @@ describe('sqlOperators()', () => {
       operators: [coreOperators, sqlOperators(new MockSqlConnection())],
     })
     expect(fig.validate({ $sql: ['SELECT 1'] }).valid).toBe(true)
-  })
-
-  it('has no default — there is no ambient database to adopt', () => {
-    // @ts-expect-error — the argument is required, deliberately
-    expect(() => sqlOperators()).toThrow(/SqlConnection/)
   })
 })
 

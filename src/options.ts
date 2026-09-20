@@ -65,6 +65,10 @@ export interface FigTreeOptions {
   // ── Caching ─────────────────────────────────────────────
   /** Blanket default: node key > operatorDefaults > this > metadata. */
   useCache?: boolean
+  /**
+   * `maxSize` bounds the built-in store only; a supplied `store` keeps its
+   * own eviction policy. `maxTime` is seconds from the write, every store.
+   */
   cache?: { store?: CacheStore; maxSize?: number; maxTime?: number }
 
   // ── Type checking ───────────────────────────────────────

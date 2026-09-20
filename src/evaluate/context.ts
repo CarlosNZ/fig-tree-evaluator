@@ -141,6 +141,15 @@ const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
   return Object.freeze(options)
 }
 
+/** A chained abort controller, seen from outside: its signal and two verbs. */
+export interface AbortScope {
+  signal: AbortSignal
+  /** Aborts this scope alone, with the given reason; the parent is untouched */
+  abort: (reason: unknown) => void
+  /** Ends the scope: detaches from the parent, aborts with `SCOPE_SETTLED` */
+  settle: () => void
+}
+
 /**
  * A node's own abort scope: a controller chained to the enclosing signal,
  * which the node wrapper aborts once its body settles. "Resolution is
@@ -157,13 +166,14 @@ const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
  * anything holding the signal — which is the I/O clients, and where the
  * time actually lives.
  */
-export const childScope = (parent: AbortSignal): { signal: AbortSignal; settle: () => void } => {
+export const childScope = (parent: AbortSignal): AbortScope => {
   const controller = new AbortController()
   if (parent.aborted) controller.abort(parent.reason)
   const forward = () => controller.abort(parent.reason)
   parent.addEventListener('abort', forward, { once: true })
   return {
     signal: controller.signal,
+    abort: (reason) => controller.abort(reason),
     settle: () => {
       parent.removeEventListener('abort', forward)
       controller.abort(SCOPE_SETTLED)
@@ -178,12 +188,14 @@ export const SCOPE_SETTLED = 'fig-tree:scope-settled'
 export const REQUEST_EXPIRED = 'fig-tree:request-expired'
 
 export interface RequestDeadline {
-  /** The signal a body (and the client it holds) sees. */
+  /**
+   * The signal a body (and the client it holds) sees. Its `reason` says
+   * which abort landed: `REQUEST_EXPIRED` for this node's own timer, the
+   * parent's reason for anything upstream.
+   */
   signal: AbortSignal
-  /** Rejects when the deadline passes; raced against the body. */
+  /** Rejects with the signal's reason the moment it aborts, for any reason. */
   expiry: Promise<never>
-  /** True once the timer has fired — how the wrapper classifies the throw. */
-  expired: () => boolean
   settle: () => void
 }
 
@@ -191,45 +203,38 @@ export interface RequestDeadline {
  * A node's per-request deadline (ledger #15): the node's own `timeout`
  * parameter, composed onto the signal its body receives.
  *
- * Chained onto the enclosing signal exactly as `childScope` is, with two
- * differences that carry the whole feature. It fires on its own, rather
- * than only when something upstream aborts. And its expiry is an ORDINARY
- * failure — the per-node network-flakiness guard, caught by the node's
- * `fallback` — where a scope abort is silent abandonment and the caller's
- * signal cuts through everything.
+ * A child scope with a timer on it. The timer aborts the scope with its
+ * own reason, and that reason is how the wrapper tells an expiry — an
+ * ORDINARY failure, the per-node network-flakiness guard, caught by the
+ * node's `fallback` — from a scope abort (silent abandonment) and the
+ * caller's signal (cuts through everything).
  *
  * `expiry` exists because a signal alone cannot end a wait: a driver that
  * cannot abort (SQLite's synchronous API) would hold the node past its
- * deadline forever. So the wrapper races the body against this promise.
- * Cancellation is best-effort; the deadline is not.
+ * deadline forever. So the wrapper races the body against this promise,
+ * which rejects on ANY abort of the composed signal — the timer, a
+ * sibling's resolution, or the caller — so a deaf driver is abandoned the
+ * moment any of them lands. Cancellation is best-effort; the deadline is
+ * not.
  */
 export const requestDeadline = (parent: AbortSignal, ms: number): RequestDeadline => {
-  const controller = new AbortController()
-  if (parent.aborted) controller.abort(parent.reason)
-  const forward = () => controller.abort(parent.reason)
-  parent.addEventListener('abort', forward, { once: true })
-
-  let fired = false
-  let expire!: (reason: unknown) => void
-  const expiry = new Promise<never>((_resolve, reject) => (expire = reject))
+  const scope = childScope(parent)
+  const { signal } = scope
+  const expiry = new Promise<never>((_resolve, reject) => {
+    if (signal.aborted) reject(signal.reason)
+    else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+  })
   // Attached where the promise is created, which is the only point early
   // enough: when the body wins the race nobody ever awaits this, and a
   // runtime reports an unhandled rejection at the microtask checkpoint
   expiry.catch(() => {})
-
-  const timer = setTimeout(() => {
-    fired = true
-    controller.abort(REQUEST_EXPIRED)
-    expire(REQUEST_EXPIRED)
-  }, ms)
-
+  const timer = setTimeout(() => scope.abort(REQUEST_EXPIRED), ms)
   return {
-    signal: controller.signal,
+    signal,
     expiry,
-    expired: () => fired,
     settle: () => {
       clearTimeout(timer)
-      parent.removeEventListener('abort', forward)
+      scope.settle()
     },
   }
 }

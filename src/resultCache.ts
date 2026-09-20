@@ -4,8 +4,8 @@
  *
  * Storage plus policy, and nothing about nodes or operators: what to key
  * and when to cache is the engine's half, next door in
- * ./evaluate/memo.ts. This half owns the store, the bound, the expiry and
- * the generation.
+ * ./evaluate/memo.ts. This half owns the store, the expiry and the
+ * generation.
  *
  * Deliberately disjoint from the parse cache
  * ("Two caches, deliberately disjoint" in
@@ -14,6 +14,12 @@
  * it; this one keys resolved runtime values and is emptied by
  * `clearCache()`. The lifetimes differ to match, which is why this lives
  * beside the instance state rather than inside it.
+ *
+ * The bound belongs to the store. The built-in store is an `Lru` sized by
+ * `maxSize`; a host-supplied store brings its own eviction policy and
+ * `maxSize` does not reach it. What the engine does own for every store is
+ * the expiry and the generation, both stamped into the envelope, so a
+ * stale entry reads as a miss wherever it is held.
  *
  * A cache is never load-bearing for correctness, so every fault here
  * degrades to not-caching rather than failing an evaluation. This is the
@@ -37,13 +43,12 @@ export interface ResolvedCacheConfig {
   maxTime: number
 }
 
-/** What an evaluation is handed: the store, seen as reads and writes. */
-export interface ResultStore {
-  lookup(key: string): Promise<CacheHit | CacheMiss>
-  write(key: string, value: unknown, generation: number, ttlSeconds?: number): Promise<void>
-  /** Captured before a unit runs, quoted back when its result is written. */
-  readonly generation: number
-}
+/**
+ * What an evaluation is handed: the cache seen as reads and writes only.
+ * `clear()` and `configure()` are the instance's verbs, and typing the
+ * evaluation context this way keeps them out of the evaluator's reach.
+ */
+export type ResultStore = Pick<ResultCache, 'lookup' | 'write' | 'generation'>
 
 export interface CacheHit {
   hit: true
@@ -96,7 +101,10 @@ export const readCacheConfig = (block: unknown): ResolvedCacheConfig => {
     throw configError("'cache.maxSize' must be a positive integer")
   // Zero would mean "cache nothing", which `useCache: false` already says;
   // admitting it here would give one behaviour two spellings
-  if (maxTime !== undefined && (typeof maxTime !== 'number' || maxTime <= 0 || Number.isNaN(maxTime)))
+  if (
+    maxTime !== undefined &&
+    (typeof maxTime !== 'number' || maxTime <= 0 || Number.isNaN(maxTime))
+  )
     throw configError("'cache.maxTime' must be a positive number of seconds, or Infinity")
 
   return {
@@ -116,26 +124,29 @@ const isCacheStore = (value: unknown): value is CacheStore =>
 const configError = (message: string) =>
   new FigTreeError({ code: ErrorCodes.invalidOptions, message, path: [] })
 
-export class ResultCache implements ResultStore {
+export class ResultCache {
   private store: CacheStore
-  private maxTime: number
   /**
-   * The keys this instance has written, in recency order — its own
-   * bookkeeping, because a `CacheStore` has no ordering of its own.
-   * Holding it here rather than making the default store an `Lru` is what
-   * lets `maxSize` mean the same thing for a host-supplied store: the
-   * bound is on what THIS instance put there, which is the only claim that
-   * stays honest when the store is shared or persisted.
+   * The built-in store, when no host store was supplied. `maxSize` is its
+   * bound and nobody else's: a host store has its own memory policy, and
+   * an engine that deleted entries from a Redis or lru-cache store past
+   * fifty would be overriding a bound the host had already chosen.
    */
-  private keys: Lru<string, true>
+  private own?: Lru<string, unknown>
+  private maxTime: number
   private current = 0
 
   constructor(config: ResolvedCacheConfig) {
-    this.store = config.store ?? new Map<string, unknown>()
+    if (config.store === undefined) {
+      this.own = new Lru<string, unknown>(config.maxSize)
+      this.store = this.own
+    } else {
+      this.store = config.store
+    }
     this.maxTime = config.maxTime
-    this.keys = new Lru<string, true>(config.maxSize)
   }
 
+  /** Captured before a unit runs, quoted back when its result is written. */
   get generation(): number {
     return this.current
   }
@@ -154,47 +165,39 @@ export class ResultCache implements ResultStore {
       this.drop(key)
       return MISS
     }
-    // A read promotes, or this would be FIFO-with-refresh rather than LRU
-    this.keys.get(key)
     return { hit: true, value: held.value }
   }
 
-  async write(
-    key: string,
-    value: unknown,
-    generation: number,
-    ttlSeconds?: number
-  ): Promise<void> {
+  async write(key: string, value: unknown, generation: number): Promise<void> {
     // A clearCache() landed while this unit was running, so its result
     // describes a world the caller has already discarded
     if (generation !== this.current) return
-    const seconds = ttlSeconds ?? this.maxTime
     const envelope: Envelope = {
       fig: ENVELOPE_MARK,
       value,
       generation,
-      ...(Number.isFinite(seconds) ? { expiresAt: Date.now() + seconds * 1000 } : {}),
+      ...(Number.isFinite(this.maxTime) ? { expiresAt: Date.now() + this.maxTime * 1000 } : {}),
     }
     try {
       await this.store.set(key, envelope)
     } catch {
-      return
+      // Not caching is always an acceptable outcome
     }
-    const evicted = this.keys.set(key, true)
-    if (evicted !== undefined) this.drop(evicted)
   }
 
   /**
-   * Sync, all-or-nothing, and total across every store ("clearCache()" in
+   * Sync and all-or-nothing ("clearCache()" in
    * docs-dev/v3-specs/v3-evaluator-methods.md). The generation bump is
-   * what makes it total: `store.clear()` may be asynchronous, and a
-   * request may already be in flight, so entries can outlive the call
-   * either way — bumping the counter makes every one of them read as a
-   * miss the moment the method returns.
+   * what makes it total for this instance: `store.clear()` may be
+   * asynchronous, and a request may already be in flight, so entries can
+   * outlive the call either way — bumping the counter makes every envelope
+   * written under this instance's generation, or a lower one, read as a
+   * miss the moment the method returns. The counter is per instance, so in
+   * a store shared between instances an envelope another instance wrote
+   * under a higher generation stays reachable until `store.clear()` lands.
    */
   clear(): void {
     this.current += 1
-    this.keys.clear()
     try {
       void Promise.resolve(this.store.clear()).catch(noop)
     } catch {
@@ -203,28 +206,31 @@ export class ResultCache implements ResultStore {
   }
 
   /**
-   * Re-read the `cache` block after `updateOptions`. The store is replaced
-   * only when a different one is supplied, so entries survive a change
-   * that could not have affected them — the merge rule's `cache: { maxSize }`
-   * row promises exactly that.
+   * Re-read the `cache` block after `updateOptions`. A host store replaces
+   * the current one only when it is a different object, so entries survive
+   * a change that could not have affected them — the merge rule's
+   * `cache: { maxSize }` row promises exactly that. The built-in store is
+   * resized in place for the same reason.
    */
   configure(config: ResolvedCacheConfig): void {
-    const store = config.store ?? this.store
-    if (store !== this.store) {
-      this.store = store
-      this.keys.clear()
+    if (config.store !== undefined && config.store !== this.store) {
+      this.store = config.store
+      this.own = undefined
     }
     this.maxTime = config.maxTime
-    for (const evicted of this.keys.resize(config.maxSize)) this.drop(evicted)
+    this.own?.resize(config.maxSize)
   }
 
-  /** Best-effort removal: a store that cannot forget is still correct. */
+  /**
+   * Best-effort removal of an entry that can never be served again: a
+   * store that cannot forget is still correct, because the generation and
+   * expiry checks already hold.
+   */
   private drop(key: string): void {
-    this.keys.get(key) // no-op unless present; keeps the ledger truthful
     try {
       void Promise.resolve(this.store.delete(key)).catch(noop)
     } catch {
-      // Nothing to do — the generation and expiry checks already hold
+      // Nothing to do
     }
   }
 }

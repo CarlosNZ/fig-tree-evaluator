@@ -1,6 +1,6 @@
 /**
- * The bounded LRU behind the parse cache's content layer ("Cache keying
- * for non-identical inputs" in
+ * The bounded LRU behind the parse cache's content layer and the result
+ * cache's built-in store ("Cache keying for non-identical inputs" in
  * docs-dev/v3-specs/v3-implementation-notes.md).
  */
 import { Lru } from '../src/lru'
@@ -56,33 +56,25 @@ test('refuses a bound that would evict what it just stored', () => {
   expect(() => new Lru<string, number>(1.5)).toThrow(RangeError)
 })
 
-/**
- * Chunk 9.1 additions. The result cache's eviction ledger is the second
- * consumer, and it needs to ACT on an eviction — deleting the evicted key
- * from a store the LRU itself knows nothing about — so `set` reports who
- * it dropped. `clear` and `resize` serve `clearCache()` and a `maxSize`
- * update.
- */
-describe('reporting the evicted key', () => {
-  test('set returns the key it dropped, and undefined when it dropped none', () => {
-    const lru = new Lru<string, number>(2)
-    expect(lru.set('a', 0)).toBeUndefined()
-    expect(lru.set('b', 1)).toBeUndefined()
-    expect(lru.set('c', 2)).toBe('a')
-  })
-
-  test('re-setting an existing key evicts nobody', () => {
-    const lru = new Lru<string, number>(2)
-    fill(lru, ['a', 'b'])
-    expect(lru.set('a', 99)).toBeUndefined()
+describe('delete', () => {
+  test('removes one entry and leaves the rest in order', () => {
+    const lru = new Lru<string, number>(3)
+    fill(lru, ['a', 'b', 'c'])
+    lru.delete('b')
     expect(lru.size).toBe(2)
+    expect(lru.get('b')).toBeUndefined()
+    lru.set('d', 3)
+    lru.set('e', 4)
+    // With b gone, a is the oldest and the only one over the bound
+    expect(lru.get('a')).toBeUndefined()
+    expect(lru.get('c')).toBe(2)
   })
 
-  test('the reported key is the least recently USED, not the oldest inserted', () => {
+  test('is a no-op on a key it does not hold', () => {
     const lru = new Lru<string, number>(2)
     fill(lru, ['a', 'b'])
-    lru.get('a')
-    expect(lru.set('c', 2)).toBe('b')
+    lru.delete('zzz')
+    expect(lru.size).toBe(2)
   })
 })
 
@@ -108,12 +100,13 @@ describe('resize', () => {
     expect(lru.get('a')).toBe(0)
   })
 
-  test('shrinking evicts the least recently used first, and reports them', () => {
+  test('shrinking evicts the least recently used first', () => {
     const lru = new Lru<string, number>(5)
     fill(lru, ['a', 'b', 'c', 'd', 'e'])
     lru.get('a')
-    expect(lru.resize(2)).toEqual(['b', 'c', 'd'])
+    lru.resize(2)
     expect(lru.size).toBe(2)
+    expect(['b', 'c', 'd'].map((key) => lru.get(key))).toEqual([undefined, undefined, undefined])
     expect(lru.get('a')).toBe(0)
     expect(lru.get('e')).toBe(4)
   })

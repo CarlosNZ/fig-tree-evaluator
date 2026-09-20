@@ -220,7 +220,7 @@ describe("what the 'auto' layer refuses to key", () => {
     const f = fig({ operators: [raced], cache: { store } })
     // A stream is a plain-prototype object whose only own string key is
     // `length`, so the serializer would ACCEPT it and these two would
-    // share a key
+    // share a key — `deliversLazily` is the guard that keeps it out
     expect(await f.evaluate({ $raced: ['a', 'b', 'c'] })).toBe('abc')
     expect(await f.evaluate({ $raced: ['x', 'y', 'z'] })).toBe('xyz')
     expect(store.log).toHaveLength(0)
@@ -395,19 +395,33 @@ describe('expiry', () => {
 })
 
 describe('maxSize', () => {
-  it('evicts the least recently used entry, from the store as well as the ledger', async () => {
+  it('evicts the least recently used entry from the built-in store', async () => {
+    const counted = countedOp()
+    const f = fig({ operators: [counted.definition], cache: { maxSize: 2 } })
+    await f.evaluate({ $cached: 1 })
+    await f.evaluate({ $cached: 2 })
+    await f.evaluate({ $cached: 3 })
+    // 1 was evicted, so it recomputes; 3 is still held
+    await f.evaluate({ $cached: 1 })
+    expect(counted.runs()).toBe(4)
+    await f.evaluate({ $cached: 3 })
+    expect(counted.runs()).toBe(4)
+  })
+
+  it('does not reach a host-supplied store, which keeps its own bound', async () => {
+    // A host wiring Redis or lru-cache has already chosen how much to hold;
+    // an engine deleting their entries past fifty would override that with
+    // no way to switch it off
     const store = new RecordingCacheStore()
     const counted = countedOp()
     const f = fig({ operators: [counted.definition], cache: { store, maxSize: 2 } })
     await f.evaluate({ $cached: 1 })
     await f.evaluate({ $cached: 2 })
     await f.evaluate({ $cached: 3 })
-    expect(store.size).toBe(2)
-    // 1 was evicted, so it recomputes; 3 is still held
+    expect(store.size).toBe(3)
+    expect(store.log.filter((entry) => entry.op === 'delete')).toHaveLength(0)
     await f.evaluate({ $cached: 1 })
-    expect(counted.runs()).toBe(4)
-    await f.evaluate({ $cached: 3 })
-    expect(counted.runs()).toBe(4)
+    expect(counted.runs()).toBe(3)
   })
 
   it('a read promotes, so the next eviction takes someone else', async () => {

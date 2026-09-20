@@ -10,23 +10,12 @@
  * their phases: the static gate refuses every error-severity issue before
  * evaluation starts.
  */
-import { ErrorCodes } from '../errorCodes'
-import { FigTreeError } from '../FigTreeError'
 import type { CompiledNode, SkeletonHole, SkeletonNode } from '../parse'
 import type { EvaluationContext } from './context'
-import { cancellation, internalError } from './internal'
+import { abortedOutcome, internalError } from './internal'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
-
-const abandon = (ctx: EvaluationContext, node: CompiledNode): Error =>
-  ctx.rootSignal.aborted
-    ? new FigTreeError({
-        code: ErrorCodes.aborted,
-        message: 'evaluation was aborted by the caller',
-        path: node.path,
-      })
-    : cancellation()
 
 export const evaluateNode = async (
   node: CompiledNode,
@@ -37,7 +26,7 @@ export const evaluateNode = async (
   // surfaces as an ordinary failure that cuts through fallbacks; a scope
   // abort means a sibling already decided the answer, so this branch is
   // simply abandoned and raises nothing anyone will see
-  if (ctx.signal.aborted) throw abandon(ctx, node)
+  if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
   switch (node.kind) {
     case 'constant':
       return node.value

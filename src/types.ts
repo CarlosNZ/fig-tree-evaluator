@@ -73,15 +73,18 @@ export interface SqlConnection {
 
 /**
  * A pluggable result-cache store: keyed storage, and nothing else. The
- * engine owns TTL, `maxSize` and key namespacing, and never caches
- * failures. Sync and async implementations are both permitted.
+ * engine owns TTL and key namespacing, and never caches failures. The
+ * bound is the store's own: `cache.maxSize` sizes the built-in store and
+ * does not reach a host-supplied one, which brings its own eviction
+ * policy. Sync and async implementations are both permitted.
  *
  * Four methods rather than two (ruled September 2026, at Phase-9
- * planning): with only `get`/`set` the engine cannot do what it is
- * specified to own, because `clearCache()` and eviction both need a
- * removal it has no way to express — so on a host-supplied store both
- * would be silent no-ops. `new Map()` satisfies this interface as it
- * stands.
+ * planning): `clearCache()` needs `clear`, and `delete` is how the engine
+ * frees an entry it has found expired or invalidated on lookup, rather
+ * than leaving a dead envelope in the host's store. Both are best-effort
+ * on the engine's side — a store that cannot forget is still correct,
+ * because the envelope's expiry and generation already make the entry a
+ * miss. `new Map()` satisfies this interface as it stands.
  *
  * Values are engine-owned envelopes carrying the cached value, the cache
  * generation and an expiry, so a store persisting them round-trips an

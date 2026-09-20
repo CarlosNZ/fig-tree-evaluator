@@ -57,6 +57,11 @@ describe('URL assembly', () => {
     // itself: two spellings of one request share one entry
     await fig.evaluate({ $http: 'users' })
     expect(http.callCount).toBe(1)
+
+    // Only the seam is normalized: a trailing slash on the path is the
+    // author's, and a server may treat it as significant
+    await fig.evaluate({ $http: 'users/' })
+    expect(http.calls[1].url).toBe('https://base.test/api/users/')
   })
 
   it("treats '' as the base itself — a deliberate address, never a manufactured one", async () => {
@@ -301,10 +306,13 @@ describe('the response', () => {
 })
 
 describe('authoring hints', () => {
-  it("nudges a shouted verb towards the lowercase union", () => {
+  it('names the accepted verbs for a shouted one, once', () => {
+    // The literal type check already says what is admitted, so there is no
+    // second hint to add on top of it
     const report = withClient(client()).validate({
       $http: { url: 'https://api.test/x', method: 'GET' },
     })
-    expect(report.issues.map((issue) => issue.message).join(' ')).toMatch(/did you mean 'get'/)
+    expect(report.issues).toHaveLength(1)
+    expect(report.issues[0].message).toMatch(/"get", "post"/)
   })
 })
