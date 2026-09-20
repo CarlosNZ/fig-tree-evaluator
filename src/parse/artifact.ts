@@ -86,8 +86,15 @@ export interface OperatorNode extends CompiledBase {
   vars?: Record<string, CompiledNode>
   /**
    * Operator-owned parse-time precompute slot (B5, B7): compiled literal
-   * regex patterns (Phase 7.2), result-key skeletons (Phase 9). Opaque to
-   * the parser.
+   * regex patterns (Phase 7.2). Opaque to the parser.
+   *
+   * Result-key skeletons, the other use obligation B7 anticipated, are
+   * **not built** (assessed at Phase-9 planning, confirming the
+   * implementation notes): a skeleton rides one artifact, so a second
+   * expression spelling the same request gets no shortcut although it
+   * still shares the result entry — and parse-time work is unconditional
+   * where evaluation is not, so it would pay for every never-taken branch
+   * on the cold call to save sub-milliseconds behind a network round trip.
    */
   precomputed?: unknown
 }

@@ -22,48 +22,81 @@
  * `AxiosClient` and a host's own wrapper stay thin and equivalent.
  * The operator body owns URL assembly; the client only transports.
  */
+export interface HttpRequest {
+  /**
+   * Fully resolved: base joined, query string rendered and appended (null
+   * pairs already omitted).
+   */
+  url: string
+  method: 'get' | 'post'
+  /** The merged, rendered header chain. */
+  headers: Record<string, string>
+  /** JSON payload; the client serialises it. Absent = no body. */
+  body?: unknown
+  /**
+   * The composed signal (contract ledger #15) — the client must honour it.
+   */
+  signal: AbortSignal
+}
+
 export interface HttpClient {
-  request(req: {
-    /**
-     * Fully resolved: base joined, query string rendered and appended (null
-     * pairs already omitted).
-     */
-    url: string
-    method: 'get' | 'post'
-    /** The merged, rendered header chain. */
-    headers: Record<string, string>
-    /** JSON payload; the client serialises it. Absent = no body. */
-    body?: unknown
-    /**
-     * The composed signal (contract ledger #15) — the client must honour it.
-     */
-    signal: AbortSignal
-  }): Promise<unknown>
+  /**
+   * Resolves to the parsed JSON body — `null` for an empty success (204).
+   * Throws `OperatorFailure` carrying `errorData` (status, url, response
+   * payload) on a non-2xx or non-JSON response. Header VALUES never appear
+   * in that payload: headers are the secret-bearing channel, so error and
+   * trace output render header names only, and a custom client must follow
+   * suit.
+   */
+  request(req: HttpRequest): Promise<unknown>
 }
 
 /**
  * The SQL connection contract. Rows come back as objects, always — any
  * reshaping is the operator's job, not the client's.
  */
+export interface SqlRequest {
+  /** Dialect-owned placeholders, verbatim. */
+  text: string
+  values?: unknown[] | Record<string, unknown>
+  /**
+   * Best-effort where the driver can't abort (e.g. SQLite) — recorded, not
+   * hidden.
+   */
+  signal?: AbortSignal
+}
+
 export interface SqlConnection {
-  query(req: {
-    /** Dialect-owned placeholders, verbatim. */
-    text: string
-    values?: unknown[] | Record<string, unknown>
-    /**
-     * Best-effort where the driver can't abort (e.g. SQLite) — recorded, not
-     * hidden.
-     */
-    signal?: AbortSignal
-  }): Promise<Record<string, unknown>[]>
+  /** Rows as objects, always; reshaping is the operator's job, not this. */
+  query(req: SqlRequest): Promise<Record<string, unknown>[]>
 }
 
 /**
- * A pluggable result-cache store. The engine owns TTL / maxSize / key
- * namespacing and never caches failures; the store is just a keyed get/set.
- * Sync and async implementations are both permitted.
+ * A pluggable result-cache store: keyed storage, and nothing else. The
+ * engine owns TTL, `maxSize` and key namespacing, and never caches
+ * failures. Sync and async implementations are both permitted.
+ *
+ * Four methods rather than two (ruled September 2026, at Phase-9
+ * planning): with only `get`/`set` the engine cannot do what it is
+ * specified to own, because `clearCache()` and eviction both need a
+ * removal it has no way to express — so on a host-supplied store both
+ * would be silent no-ops. `new Map()` satisfies this interface as it
+ * stands.
+ *
+ * Values are engine-owned envelopes carrying the cached value, the cache
+ * generation and an expiry, so a store persisting them round-trips an
+ * opaque record rather than the operator's result.
+ *
+ * The three mutators are declared `void` rather than `void | Promise<void>`
+ * so that a store returning something else still satisfies the contract —
+ * which is what lets a plain `new Map()` be passed straight in, its `set`
+ * returning the map and its `delete` a boolean. The engine awaits whatever
+ * comes back, so an asynchronous store works equally well; it simply has
+ * nothing useful to say in its return type.
  */
 export interface CacheStore {
   get(key: string): unknown | Promise<unknown>
-  set(key: string, value: unknown): void | Promise<void>
+  set(key: string, value: unknown): void
+  delete(key: string): void
+  clear(): void
 }

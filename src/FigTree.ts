@@ -10,15 +10,23 @@
  * and evaluates the holes otherwise. Only `evaluate()` goes through the
  * parse cache; `validate()` compiles fresh every time, so its report always
  * costs a parse and the cache holds only what evaluation asked for.
- * `mode: 'report'` and `trace` land in Phase 12,
- * `timeout` in Phase 10 and the result cache in Phase 9 — those options
- * are accepted and inert until then.
+ * `mode: 'report'` and `trace` land in Phase 12 and `timeout` in Phase 10 —
+ * those options are accepted and inert until then.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the parse cache are
  * derived from each other, so they may only change together: an artifact
  * bakes in registry resolution, and a cache built against one registry
  * must never answer against another.
+ *
+ * The RESULT cache is deliberately not in that record. It keys resolved
+ * runtime values where the parse cache keys the authored input, and the
+ * two invalidation stories are opposites: an `operatorDefaults` change
+ * must drop every artifact and touch no result, while `clearCache()` does
+ * exactly the reverse. Putting it in a record documented as "may only swap
+ * together" would invert that invariant in the one place the code states
+ * it, so it lives beside the record and is reconfigured rather than
+ * replaced.
  */
 import type { EvaluationOptions, FigTreeOptions } from './options'
 import type { Issue, ValidationResult } from './issues'
@@ -31,6 +39,7 @@ import {
   type ParseArtifact,
 } from './parse'
 import { copyOptions, createEvaluationContext, evaluateNode, mergeOptions } from './evaluate'
+import { readCacheConfig, ResultCache } from './resultCache'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
@@ -133,9 +142,11 @@ const compile = (expression: unknown, registry: OperatorRegistry): ParseArtifact
 
 export class FigTree {
   private state: InstanceState
+  private readonly results: ResultCache
 
   constructor(options: FigTreeOptions = {}) {
     this.state = buildState(null, options)
+    this.results = new ResultCache(readCacheConfig(options.cache))
   }
 
   /**
@@ -153,7 +164,29 @@ export class FigTree {
    * untouched, since nothing about either could have changed.
    */
   updateOptions(options: FigTreeOptions = {}): void {
-    this.state = buildState(this.state, options)
+    // Both validators run before either mutation, so a rejected update
+    // leaves the instance exactly as it was — the same all-or-nothing
+    // discipline `buildState` already has, extended to cover the second
+    // thing an update can invalidate
+    const next = buildState(this.state, options)
+    const cache = readCacheConfig(next.options.cache)
+    this.state = next
+    this.results.configure(cache)
+  }
+
+  /**
+   * Empty the result store ("clearCache()" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md): sync, all-or-nothing, for
+   * when the host knows external state moved and wants the next evaluation
+   * fresh without waiting out `maxTime` or building a new instance.
+   *
+   * The parse cache is deliberately untouched. It is semantically
+   * transparent — keyed on input identity against a stable registry — so
+   * there is never a correctness reason to clear it, and it has no
+   * clearing API for this method to reach.
+   */
+  clearCache(): void {
+    this.results.clear()
   }
 
   /**
@@ -239,14 +272,17 @@ export class FigTree {
     const firstError = issues.find((issue) => issue.severity === 'error')
     if (firstError !== undefined) throw staticError(firstError, issues)
 
-    return evaluateNode(artifact.root, createEvaluationContext(withoutRegistryKeys(merged)))
+    return evaluateNode(
+      artifact.root,
+      createEvaluationContext(withoutRegistryKeys(merged), this.results)
+    )
   }
 }
 
 /**
- * Registry keys are constructor/`updateOptions` only. Tested by value, not
- * by key presence, because the merge rule ignores an `undefined` value —
- * so `{ operators: config.operators }` with nothing configured means "not
+ * The constructor/`updateOptions`-only options. Tested by value, not by key
+ * presence, because the merge rule ignores an `undefined` value — so
+ * `{ operators: config.operators }` with nothing configured means "not
  * supplied", exactly as it would for any other option.
  */
 const rejectPerCallRegistry = (options: FigTreeOptions) => {
@@ -255,6 +291,17 @@ const rejectPerCallRegistry = (options: FigTreeOptions) => {
       code: ErrorCodes.invalidOptions,
       message:
         "'operators' and 'fragments' are not per-call options — register them at construction or via updateOptions()",
+      path: [],
+    })
+  // The store is instance-lived, so a per-call block could only be
+  // ignored. Refusing is the reversible direction: honouring it later is
+  // additive, where quietly ignoring it and then honouring it would change
+  // the meaning of expressions already in the field
+  if (options.cache !== undefined)
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message:
+        "'cache' is not a per-call option — configure it at construction or via updateOptions()",
       path: [],
     })
 }

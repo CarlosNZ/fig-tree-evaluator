@@ -17,9 +17,11 @@
  * without ever touching an object the host still owns.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
+import type { ResultStore } from '../resultCache'
 import type { OperatorContext } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
 import type { Bindings } from './bindings'
+import { bodyMemo, type MemoBinding } from './memo'
 import type { Scope } from './scope'
 
 export interface EvaluationContext {
@@ -42,6 +44,13 @@ export interface EvaluationContext {
    * is the caller's decision and cuts through every fallback.
    */
   rootSignal: AbortSignal
+  /**
+   * The instance's result store. Carried on the context because it is
+   * constant for the whole evaluation, like `options` and `rootSignal` —
+   * threading it through every recursion site would deliver nothing that
+   * varies.
+   */
+  cache: ResultStore
   strictDataPaths: boolean
   runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
@@ -102,7 +111,10 @@ export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
 /** The data block of an evaluation that supplied none. */
 const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 
-export const createEvaluationContext = (merged: EvaluationOptions): EvaluationContext => {
+export const createEvaluationContext = (
+  merged: EvaluationOptions,
+  cache: ResultStore
+): EvaluationContext => {
   const signal = merged.signal ?? new AbortController().signal
   const options = freezeOptions(merged)
   return {
@@ -110,6 +122,7 @@ export const createEvaluationContext = (merged: EvaluationOptions): EvaluationCo
     data: options.data ?? NO_DATA,
     signal,
     rootSignal: signal,
+    cache,
     strictDataPaths: merged.strictDataPaths ?? false,
     runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
   }
@@ -161,12 +174,75 @@ export const childScope = (parent: AbortSignal): { signal: AbortSignal; settle: 
 /** The reason a scope abort carries, distinguishing it from a kill switch. */
 export const SCOPE_SETTLED = 'fig-tree:scope-settled'
 
+/** The reason a per-request deadline carries, distinguishing it from both. */
+export const REQUEST_EXPIRED = 'fig-tree:request-expired'
+
+export interface RequestDeadline {
+  /** The signal a body (and the client it holds) sees. */
+  signal: AbortSignal
+  /** Rejects when the deadline passes; raced against the body. */
+  expiry: Promise<never>
+  /** True once the timer has fired — how the wrapper classifies the throw. */
+  expired: () => boolean
+  settle: () => void
+}
+
+/**
+ * A node's per-request deadline (ledger #15): the node's own `timeout`
+ * parameter, composed onto the signal its body receives.
+ *
+ * Chained onto the enclosing signal exactly as `childScope` is, with two
+ * differences that carry the whole feature. It fires on its own, rather
+ * than only when something upstream aborts. And its expiry is an ORDINARY
+ * failure — the per-node network-flakiness guard, caught by the node's
+ * `fallback` — where a scope abort is silent abandonment and the caller's
+ * signal cuts through everything.
+ *
+ * `expiry` exists because a signal alone cannot end a wait: a driver that
+ * cannot abort (SQLite's synchronous API) would hold the node past its
+ * deadline forever. So the wrapper races the body against this promise.
+ * Cancellation is best-effort; the deadline is not.
+ */
+export const requestDeadline = (parent: AbortSignal, ms: number): RequestDeadline => {
+  const controller = new AbortController()
+  if (parent.aborted) controller.abort(parent.reason)
+  const forward = () => controller.abort(parent.reason)
+  parent.addEventListener('abort', forward, { once: true })
+
+  let fired = false
+  let expire!: (reason: unknown) => void
+  const expiry = new Promise<never>((_resolve, reject) => (expire = reject))
+  // Attached where the promise is created, which is the only point early
+  // enough: when the body wins the race nobody ever awaits this, and a
+  // runtime reports an unhandled rejection at the microtask checkpoint
+  expiry.catch(() => {})
+
+  const timer = setTimeout(() => {
+    fired = true
+    controller.abort(REQUEST_EXPIRED)
+    expire(REQUEST_EXPIRED)
+  }, ms)
+
+  return {
+    signal: controller.signal,
+    expiry,
+    expired: () => fired,
+    settle: () => {
+      clearTimeout(timer)
+      parent.removeEventListener('abort', forward)
+    },
+  }
+}
+
 const noop = () => {}
 
 /**
  * The context a body receives: the signal, the evaluation's frozen options,
- * and the two stubs — `memo` runs the unit every time until the result cache
- * lands (Phase 9), `note` discards until trace lands (Phase 12).
+ * the live `memo`, and `note`, which discards until trace lands (Phase 12).
+ *
+ * The binding is passed rather than the node, because both fields it holds
+ * are already computed one frame up and this module has no business
+ * knowing what a node is.
  *
  * Options reach a body whole. There is nothing privileged in them to hide,
  * and a per-definition declaration of which blocks a body reads could only
@@ -176,9 +252,12 @@ const noop = () => {}
  * ("Caching" in docs-dev/v3-specs/v3-operator-contract.md); the `'auto'`
  * key covers resolved parameters only.
  */
-export const createOperatorContext = (ctx: EvaluationContext): OperatorContext => ({
+export const createOperatorContext = (
+  ctx: EvaluationContext,
+  binding: MemoBinding
+): OperatorContext => ({
   signal: ctx.signal,
   options: ctx.options,
-  cache: { memo: (_key, fn) => fn() },
+  cache: { memo: bodyMemo(binding, ctx.cache) },
   trace: { note: noop },
 })

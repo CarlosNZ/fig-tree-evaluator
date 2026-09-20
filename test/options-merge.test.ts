@@ -39,14 +39,25 @@ describe('the consequence table', () => {
     expect(options.graphQL).toEqual({ endpoint: 'https://other.test', headers: { a: '1' } })
   })
 
+  // Reached through `updateOptions` rather than a per-call block: `cache`
+  // is constructor/updateOptions-only (Phase 9.1), since the store is
+  // instance-lived and a per-call block could only have been ignored
   it('row 3 — cache maxSize keeps store and maxTime, and the store is shared', async () => {
-    const store = { get: () => undefined, set: () => {} }
-    const { seen } = withSpy({ cache: { store, maxSize: 10, maxTime: 60 } })
-    const options = await seen({ cache: { maxSize: 99 } })
+    const store = new Map<string, unknown>()
+    const { fig, seen } = withSpy({ cache: { store, maxSize: 10, maxTime: 60 } })
+    fig.updateOptions({ cache: { maxSize: 99 } })
+    const options = await seen()
     expect(options.cache?.maxSize).toBe(99)
     expect(options.cache?.maxTime).toBe(60)
     // A store is not ours to clone — identity, not equality
     expect(options.cache?.store).toBe(store)
+  })
+
+  it('row 3, the other half — a per-call cache block is refused, not ignored', async () => {
+    const { fig } = withSpy({ cache: { maxTime: 60 } })
+    await expect(fig.evaluate({ $peek: {} }, { cache: { maxTime: 5 } })).rejects.toThrow(
+      /not a per-call option/
+    )
   })
 
   it('row 5 — data merges at top-level keys; a supplied key replaces its value', async () => {
@@ -133,7 +144,9 @@ describe('the instance is never written back to', () => {
   })
 
   it('does not capture the caller’s options object, to the merge rule’s depth', async () => {
-    const supplied = { http: { baseEndpoint: 'https://x.test', headers: { a: '1' } } }
+    const supplied: { http: { baseEndpoint: string; headers: Record<string, string> } } = {
+      http: { baseEndpoint: 'https://x.test', headers: { a: '1' } },
+    }
     const spy = spyOp('peek', {})
     const fig = new FigTree({ operators: [spy.definition], ...supplied })
     supplied.http = { baseEndpoint: 'https://replaced.test', headers: {} }

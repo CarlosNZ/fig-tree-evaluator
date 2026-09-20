@@ -166,7 +166,7 @@ describe('getOptions is a snapshot', () => {
   })
 
   it('shares by reference exactly what cannot be cloned', () => {
-    const store = { get: () => undefined, set: () => {} }
+    const store = new Map<string, unknown>()
     const controller = new AbortController()
     const user = { name: 'Ada' }
     const fig = new FigTree({ cache: { store }, signal: controller.signal, data: { user } })

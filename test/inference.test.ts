@@ -58,8 +58,11 @@ const op = defineOperator({
     assertType<Equal<typeof params.list, unknown[]>>()
     assertType<Equal<typeof params.branch, LazyValue<unknown>>>()
     assertType<Equal<typeof params.each, PerElement<string>>>()
-    assertType<Equal<typeof params.candidates, LazyValue<unknown[]>[]>>()
-    assertType<Equal<typeof params.branches, Record<string, LazyValue<Record<string, unknown>>>>>()
+    // The container modes deliver `LazyValue<unknown>`: the declared type
+    // describes the CONTAINER, and there is no element-type declaration to
+    // do better with (the Phase-5 ruling)
+    assertType<Equal<typeof params.candidates, LazyValue<unknown>[]>>()
+    assertType<Equal<typeof params.branches, Record<string, LazyValue<unknown>>>>()
     assertType<Equal<typeof params.racers, SettlementStream>>()
     assertType<Equal<typeof params.as, string | undefined>>()
     assertType<Equal<typeof params.from, Record<string, unknown> | unknown[]>>()
@@ -79,7 +82,9 @@ defineOperator({
   description: 'open record',
   parameters: dynamic,
   evaluate: (params) => {
-    assertType<Equal<typeof params, Record<string, unknown>>>()
+    // Open, but not opaque: every declaration here says `string`, so the
+    // mapped type still resolves the value type
+    assertType<Equal<typeof params, Record<string, string>>>()
     return params
   },
 })
@@ -88,7 +93,31 @@ defineOperator({
 type Declared = { a: { type: 'number' }; b: { type: 'string'; required: false } }
 assertType<Equal<ResolvedParams<Declared>, { a: number; b?: string }>>()
 
+/**
+ * Regression (Phase 9.2): `defineOperator` used to take one parameter
+ * typed `OperatorDefinition<P> | ValidatedOperatorDefinition`, and a
+ * literal carrying enough of the validated shape's fields stopped being
+ * contextually typed — silently, with every body parameter becoming
+ * `any`. `useCache` and `cache` together were enough, which is the pair
+ * every I/O operator declares. Overloads replaced the union; this is the
+ * combination that caught it.
+ */
+const cachingOp = defineOperator({
+  name: 'caching',
+  description: 'declares both caching fields',
+  parameters: { key: { type: 'string' }, count: { type: 'integer', default: 1 } },
+  useCache: true,
+  cache: 'manual',
+  evaluate: (params) => {
+    assertType<Equal<typeof params.key, string>>()
+    assertType<Equal<typeof params.count, number>>()
+    return `${params.key}:${params.count}`
+  },
+})
+
 test('the inferred definition is a valid, registrable definition', () => {
+  expect(cachingOp.cache).toBe('manual')
+
   expect(op.name).toBe('inferred')
   expect(op.parameters.value.nullPolicy).toBe('propagate')
 })

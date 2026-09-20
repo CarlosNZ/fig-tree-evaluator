@@ -21,6 +21,10 @@ export const ErrorCodes = {
   typeCheck: 'type-check', // { $plus: ['x', 2] } — a string where a number is required
   operatorFailure: 'operator-failure', // an $http request 500s, or an operator body throws
   timeout: 'timeout', // evaluation exceeds the `timeout` deadline
+  // one node's own `timeout` parameter expires (ledger #15). Distinct
+  // from `timeout`, which is the whole-evaluation kill switch: this one
+  // is an ORDINARY failure the node's `fallback` catches
+  requestTimeout: 'request-timeout',
   aborted: 'aborted', // the caller's AbortSignal fired
   unknownNodeKey: 'unknown-node-key', // { $plus: {...}, colour: 'red' } — 'colour' isn't a declared property
   unresolvedVar: 'unresolved-var', // '$vars.foo' referenced but 'foo' isn't defined in scope

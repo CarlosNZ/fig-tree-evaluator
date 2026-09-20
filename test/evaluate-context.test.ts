@@ -3,6 +3,10 @@
  * ("The runtime interface" in docs-dev/v3-specs/v3-operator-contract.md;
  * working rule 3): signal passthrough, options delivery, identity
  * `cache.memo`, no-op `trace.note`.
+ *
+ * The spy operator's metadata `useCache` default is false, so its `memo`
+ * is the passthrough branch — the cache proper has its own suite in
+ * test/result-cache.test.ts.
  */
 import { FigTree } from '../src'
 import { spyOp } from './fixtures/evalOperators'
@@ -74,7 +78,7 @@ test('options are frozen at the block level too, but not below it', async () => 
   expect(Object.isFrozen(options.data?.user)).toBe(false)
 })
 
-test('cache.memo is an identity passthrough until Phase 9', async () => {
+test('cache.memo is an identity passthrough when the node is not caching', async () => {
   const spy = spyOp('memo', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $memo: {} })
   let runs = 0

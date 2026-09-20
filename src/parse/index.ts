@@ -34,4 +34,7 @@ export type {
 export { bindsReference, renamedBinding } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
 export { ParseCache, CONTENT_LAYER_SIZE } from './parseCache'
+// The result cache's `'auto'` keys use the same serializer (Phase 9.1) —
+// its second consumer, as `lru.ts` is shared with the content layer
+export { serializeInput } from './contentKey'
 export type { ProbeResult } from './probe'
