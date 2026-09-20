@@ -242,12 +242,17 @@ describe("the caller's signal", () => {
       fig.evaluate({ $mark: {} }, { signal: controller.signal })
     )
     expect(plain.code).toBe('aborted')
-    // The shielded path too — a listener on an already-aborted signal never
-    // fires, so this would hang without the guard at registration
+    expect(plain.path).toEqual([])
+    // The shielded path too, and the error is the root's — path `[]` — not
+    // the first hole boundary's to notice
     const shielded = await rejection<FigTreeError>(
-      fig.evaluate({ $mark: {}, fallback: 'x' }, { signal: controller.signal, timeout: 500 })
+      fig.evaluate(
+        { a: { $mark: {}, fallback: 'x' }, b: { $mark: {}, fallback: 'y' } },
+        { signal: controller.signal, timeout: 500 }
+      )
     )
     expect(shielded.code).toBe('aborted')
+    expect(shielded.path).toEqual([])
     expect(mark.calls).toHaveLength(0)
   })
 
@@ -339,5 +344,26 @@ describe('the options', () => {
     expect(() => new FigTree({ signal })).toThrow(/signal/)
     const error = await rejection<FigTreeError>(new FigTree().evaluate({ $plus: [1] }, { signal }))
     expect(error.code).toBe('invalid-options')
+  })
+
+  it('admits a signal by shape, not by realm', async () => {
+    // A signal from another realm (an iframe, a vm context, a polyfill)
+    // fails `instanceof`; what the engine needs is the shape it reads
+    const controller = new AbortController()
+    const real = controller.signal
+    const foreign = {
+      get aborted() {
+        return real.aborted
+      },
+      get reason() {
+        return real.reason
+      },
+      addEventListener: real.addEventListener.bind(real),
+      removeEventListener: real.removeEventListener.bind(real),
+    } as unknown as AbortSignal
+    const { fig } = setup()
+    const running = fig.evaluate({ $sleep: [300] }, { signal: foreign })
+    controller.abort()
+    expect((await rejection<FigTreeError>(running)).code).toBe('aborted')
   })
 })

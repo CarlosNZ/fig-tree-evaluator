@@ -324,13 +324,26 @@ const checkKillSwitchOptions = (options: FigTreeOptions) => {
       message: "'timeout' must be a positive number of milliseconds",
       path: [],
     })
-  if (signal !== undefined && !(signal instanceof AbortSignal))
+  if (signal !== undefined && !isAbortSignal(signal))
     throw new FigTreeError({
       code: ErrorCodes.invalidOptions,
       message: "'signal' must be an AbortSignal",
       path: [],
     })
 }
+
+/**
+ * By shape rather than `instanceof`, like the `cache.store` check: a signal
+ * from another realm (an iframe, a `vm` context, a polyfill) works exactly
+ * as well, since the engine only ever reads `aborted` and `reason` and
+ * subscribes to `abort`.
+ */
+const isAbortSignal = (value: unknown): value is AbortSignal =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as AbortSignal).aborted === 'boolean' &&
+  typeof (value as AbortSignal).addEventListener === 'function' &&
+  typeof (value as AbortSignal).removeEventListener === 'function'
 
 /**
  * The two option-dependent checks, run per call against the artifact's

@@ -63,16 +63,6 @@ export const childScope = (parent: AbortSignal): AbortScope => {
   }
 }
 
-/** A scope with nothing above it: the root of a chain. */
-const rootScope = (): AbortScope => {
-  const controller = new AbortController()
-  return {
-    signal: controller.signal,
-    abort: (reason) => controller.abort(reason),
-    settle: () => controller.abort(SCOPE_SETTLED),
-  }
-}
-
 export interface Deadline {
   /**
    * The signal the work under this deadline sees. Its `reason` says which
@@ -120,7 +110,9 @@ export const deadline = (
   ms: number | undefined,
   reason: string
 ): Deadline => {
-  const scope = parent === undefined ? rootScope() : childScope(parent)
+  // No parent makes this the root of a chain: a fresh signal that never
+  // aborts stands in, so there is one scope constructor rather than two
+  const scope = childScope(parent ?? new AbortController().signal)
   const { signal } = scope
   let expire!: (reason: unknown) => void
   const expiry = new Promise<never>((_resolve, reject) => {

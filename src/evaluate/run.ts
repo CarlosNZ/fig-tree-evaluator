@@ -17,24 +17,33 @@
  * With a kill switch and no shielding, the evaluation is raced against the
  * root's expiry, so the caller gets the call back on time however deaf a
  * driver inside it may be, and the error is the root's — code `timeout` or
- * `aborted`, path `[]`. With a `timeout` over a shielded artifact, the
- * holes are watched individually, and on the deadline the answer is
- * ASSEMBLED rather than thrown: real values where holes finished, the
- * precomputed static fallbacks where they did not, spliced into the
- * constant skeleton. The assembly runs synchronously inside the abort
- * dispatch, so the set of finished holes is exactly what had settled
- * before the timer's turn — a crisp cut, with no evaluation after it.
+ * `aborted`, path `[]`. With a `timeout` over a shielded artifact, each
+ * hole is raced against the expiry on its own, and on the deadline the
+ * answer is ASSEMBLED rather than thrown: real values where the holes won,
+ * the precomputed static fallbacks where the expiry did, spliced into the
+ * constant skeleton.
  *
- * Report mode and trace (Phase 12) attach here: the slot table already
- * knows which holes contributed a fallback.
+ * The race is what makes the cut exact. A hole that settled before the
+ * timer fired has already won: its race's reaction is a microtask, and the
+ * timer's callback is a macrotask that runs only once the queue has
+ * drained. A hole that had not settled cannot win afterwards: `deadline()`
+ * registers its abort listener before any node's scope does, so the
+ * expiry's rejection is the first reaction queued in the dispatch, and the
+ * fallback it hands back settles the race two hops later — long before a
+ * node that only now notices the abort could reject through its wrapper.
+ * Nothing is evaluated after the deadline; whatever is still in flight is
+ * abandoned at its next node boundary.
+ *
+ * Report mode and trace (Phase 12) attach here: the expiry handler in
+ * `evaluateShielded` is the one place a hole takes its fallback.
  */
 import type { EvaluationOptions } from '../options'
 import type { ArtifactHole, ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
-import { EVALUATION_TIMEOUT, SCOPE_SETTLED, deadline, type Deadline } from './abort'
+import { EVALUATION_TIMEOUT, deadline, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext } from './context'
 import { evaluateNode, splice } from './evaluate'
-import { internalError, isCancellation, isKillSwitch, killSwitchError } from './internal'
+import { internalError, killSwitchError } from './internal'
 import { pushVars } from './scope'
 
 /**
@@ -53,6 +62,11 @@ export const runEvaluation = async (
   const ctx = createEvaluationContext(options, cache, root.signal)
   try {
     if (timeout === undefined && signal === undefined) return await evaluateNode(artifact.root, ctx)
+    // A signal already aborted at entry is answered once, here: nothing
+    // starts, and the error is the root's. Left to the races below, the
+    // first node boundary to notice would win instead — a race between two
+    // settled promises goes to the one with fewer hops, which is the node's
+    if (root.signal.aborted) throw killSwitchError(root.signal.reason, [])
     // A shielded artifact with no holes is a constant that merely was not
     // inert (a comment key, a vars block): nothing in it can time out
     if (timeout !== undefined && artifact.shielded && artifact.holes.length > 0)
@@ -64,12 +78,10 @@ export const runEvaluation = async (
 }
 
 /**
- * The unshielded case: the evaluation against the root's expiry. The
- * expiry goes first so that when both are already settled — the caller's
- * signal aborted before the call — the root-level error wins
- * deterministically; in the live case the abort dispatch rejects it before
- * any node boundary can observe the signal, so the caller always receives
- * the root's error rather than whichever node happened to notice first.
+ * The unshielded case: the evaluation against the root's expiry. The abort
+ * dispatch rejects the expiry before any node boundary can observe the
+ * signal, so the caller receives the root's error — path `[]`, naming the
+ * budget — rather than whichever node happened to notice first.
  * `Promise.race` subscribes to both, so the loser's later rejection is
  * handled.
  */
@@ -78,110 +90,52 @@ const raced = (
   ctx: EvaluationContext,
   root: Deadline,
   ms: number | undefined
-): Promise<unknown> => {
-  const fired = root.expiry.catch((reason) => {
-    throw killSwitchError(reason, [], { ms })
-  })
-  fired.catch(noop)
-  return Promise.race([fired, evaluateNode(artifact.root, ctx)])
-}
-
-const noop = () => {}
-
-/** A hole settled with a value; an empty slot is one still in flight. */
-interface Slot {
-  value: unknown
-}
+): Promise<unknown> =>
+  Promise.race([
+    evaluateNode(artifact.root, ctx),
+    root.expiry.catch((reason) => {
+      throw killSwitchError(reason, [], { ms })
+    }),
+  ])
 
 /**
  * The shielded case. The holes are the artifact's — for a literal root its
  * skeleton's holes, for a node root the node itself — evaluated under the
  * root's `vars` scope exactly as the skeleton path would evaluate them,
- * with one addition: each records its value in a slot as it lands.
+ * each raced against the root's expiry. A hole wins with its value. The
+ * expiry wins with the hole's static fallback for a timeout, and with the
+ * kill-switch error for the caller's signal, which nothing may shape.
  *
- * Two ways out. Every hole finishing resolves the all-real assembly, which
- * is what the ordinary path would have returned. The kill switch firing
- * first resolves the degraded assembly for a timeout, and rejects for the
- * caller's signal — which nothing may shape. A shielded hole cannot reject
- * with an ordinary failure, its static fallback having caught it; what can
- * still reach `Promise.all` is a kill-switch error or a cancellation from
- * a boundary crossed after the deadline, which the assembly has already
- * answered. Anything else is an engine bug, and surfaces rather than being
- * masked by a degraded answer arriving when the timer fires.
+ * A shielded hole cannot reject with an ordinary failure, its static
+ * fallback having caught it. What can still reach a race is a kill-switch
+ * error or a cancellation from a boundary crossed after the deadline, which
+ * the race has already settled — handled, and ignored — or an engine bug
+ * before it, which wins its race and surfaces rather than being masked by
+ * a degraded answer.
  */
-const evaluateShielded = (
+const evaluateShielded = async (
   artifact: ParseArtifact,
   ctx: EvaluationContext,
   root: Deadline
-): Promise<unknown> =>
-  new Promise((resolve, reject) => {
-    const top = artifact.root
-    const scoped = top.kind === 'skeleton' ? pushVars(ctx, top.vars) : ctx
-    const slots: (Slot | undefined)[] = artifact.holes.map(() => undefined)
-    const runs = artifact.holes.map((hole, i) =>
-      evaluateNode(hole.node, scoped).then((value) => {
-        slots[i] = { value }
-      })
-    )
-
-    const onKill = () => {
-      const { reason } = root.signal
-      if (reason === SCOPE_SETTLED) return
-      if (reason !== EVALUATION_TIMEOUT) return reject(killSwitchError(reason, []))
-      try {
-        resolve(assemble(artifact, slots).result)
-      } catch (error) {
-        reject(error)
-      }
-    }
-    // A listener added to an already-aborted signal never fires — and a
-    // caller's signal may well be aborted before the call begins
-    if (root.signal.aborted) onKill()
-    else root.signal.addEventListener('abort', onKill, { once: true })
-
-    Promise.all(runs).then(
-      () => {
-        root.signal.removeEventListener('abort', onKill)
-        try {
-          resolve(assemble(artifact, slots).result)
-        } catch (error) {
-          reject(error)
-        }
-      },
-      (error: unknown) => {
-        if (isKillSwitch(error) || isCancellation(error)) return
-        root.signal.removeEventListener('abort', onKill)
-        reject(error)
-      }
-    )
-  })
-
-/**
- * The shielded assembly: settled slots contribute their values, the rest
- * their precomputed static fallbacks, spliced into the constant skeleton.
- * Pure constant work — no node is evaluated here, which is what lets the
- * deadline hold exactly. `degraded` names the holes that took their
- * fallback: the `shielded-fallback` trace event and the report row's
- * timeout error are built from it in Phase 12.
- */
-const assemble = (
-  artifact: ParseArtifact,
-  slots: (Slot | undefined)[]
-): { result: unknown; degraded: number[] } => {
-  const degraded: number[] = []
-  const values = artifact.holes.map((hole, i) => {
-    const slot = slots[i]
-    if (slot !== undefined) return slot.value
-    degraded.push(i)
-    return staticFallbackOf(hole)
-  })
+): Promise<unknown> => {
   const top = artifact.root
-  if (top.kind !== 'skeleton') return { result: values[0], degraded }
-  // The artifact's holes are the root skeleton's, in order, by
-  // construction (rootHoles in src/parse/parse.ts)
-  if (top.holes.length !== values.length)
-    throw internalError('the artifact hole list and the root skeleton disagree')
-  return { result: splice(top.skeleton, top.holes, values), degraded }
+  const scoped = top.kind === 'skeleton' ? pushVars(ctx, top.vars) : ctx
+  const values = await Promise.all(
+    artifact.holes.map((hole) =>
+      Promise.race([
+        evaluateNode(hole.node, scoped),
+        root.expiry.catch((reason) => {
+          if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
+          // Where a hole takes its fallback: the `shielded-fallback` trace
+          // event and the report row's timeout error attach here (Phase 12)
+          return staticFallbackOf(hole)
+        }),
+      ])
+    )
+  )
+  // The artifact's holes are the root skeleton's, in order, by construction
+  // (rootHoles in src/parse/parse.ts)
+  return top.kind === 'skeleton' ? splice(top.skeleton, top.holes, values) : values[0]
 }
 
 const staticFallbackOf = (hole: ArtifactHole): unknown => {
