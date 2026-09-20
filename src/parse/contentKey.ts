@@ -38,12 +38,14 @@ export const serializeInput = (value: unknown): string | undefined => {
  * to key on is one line: the serialized string itself, exact and
  * collision-free.
  *
- * Hashing was considered and rejected. It does not replace serialization,
- * it follows it, so it is strictly more work at both insert and lookup;
- * and a `Map` keyed on a string already hashes natively and then verifies
- * with full equality, where a hand-rolled digest would replace a verified
- * hash with an unverified one. All it buys is a smaller retained key,
- * which the LRU's bound already bounds.
+ * A digest is deliberately not used. A `Map` keyed on a string hashes it
+ * natively and then verifies with full equality, so a hand-rolled digest
+ * trades a verified hash for an unverified one whose collision serves the
+ * wrong artifact, silently. Staying sound means retaining the full string
+ * in the entry and comparing it on a bucket match anyway, and what that
+ * buys is bounded at both ends: the native hash is the larger half of a
+ * lookup only below V8's content-hash ceiling of 16383 characters, and
+ * the retained key is already bounded by the LRU's bound.
  */
 export const contentKey = (serialized: string): string => serialized
 
