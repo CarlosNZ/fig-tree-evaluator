@@ -34,6 +34,7 @@ const equalityParameters = {
 export const equal = defineOperator({
   name: 'equal',
   alias: '=',
+  category: 'comparison',
   description:
     'Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false',
   parameters: equalityParameters,
@@ -46,6 +47,7 @@ export const equal = defineOperator({
 export const notEqual = defineOperator({
   name: 'notEqual',
   alias: '!=',
+  category: 'comparison',
   description: 'Are the values NOT all equal? The exact negation of equal (never "all distinct")',
   parameters: equalityParameters,
   positionalParams: ['...values'],
@@ -63,6 +65,7 @@ const ordering = (
   defineOperator({
     name,
     alias,
+    category: 'comparison',
     description,
     parameters: {
       values: {

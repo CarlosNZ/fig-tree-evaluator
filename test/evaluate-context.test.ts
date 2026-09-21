@@ -3,26 +3,49 @@
  * ("The runtime interface" in docs-dev/v3-specs/v3-operator-contract.md;
  * working rule 3): signal passthrough, options delivery, identity
  * `cache.memo`, no-op `trace.note`.
+ *
+ * The spy operator's metadata `useCache` default is false, so its `memo`
+ * is the passthrough branch — the cache proper has its own suite in
+ * test/result-cache.test.ts.
  */
-import { FigTree } from '../src'
-import { spyOp } from './fixtures/evalOperators'
+import { FigTree, defineOperator } from '../src'
+import { signalProbeOp, spyOp } from './fixtures/evalOperators'
+import { rejection } from './helpers/rejection'
 
 test('context.signal follows the caller signal', async () => {
-  const spy = spyOp('sig', {})
-  const fig = new FigTree({ operators: [spy.definition] })
+  const probe = signalProbeOp()
+  const fig = new FigTree({ operators: [probe.definition] })
   const controller = new AbortController()
-  await fig.evaluate({ $sig: {} }, { signal: controller.signal })
-  const { signal } = spy.contexts[0]
-  expect(signal.aborted).toBe(false)
+  const running = fig.evaluate({ $probe: {} }, { signal: controller.signal })
+  await new Promise((resolve) => setTimeout(resolve, 10))
   controller.abort()
-  expect(signal.aborted).toBe(true)
+  expect((await rejection<{ code: string }>(running)).code).toBe('aborted')
+  expect(probe.seen).toEqual([false, true])
 })
 
 test('without a caller signal there is still a live, unaborted signal', async () => {
   const spy = spyOp('sig', {})
+  const seen: boolean[] = []
+  const live = defineOperator({
+    name: 'live',
+    category: 'other',
+    description: 'Record whether the signal is live on entry',
+    parameters: {},
+    evaluate: (_params, context) => {
+      seen.push(context.signal instanceof AbortSignal, context.signal.aborted)
+      return 'ok'
+    },
+  })
+  await new FigTree({ operators: [spy.definition, live] }).evaluate({ $live: {} })
+  expect(seen).toEqual([true, false])
+})
+
+test('the signal a body received is settled once the evaluation has returned', async () => {
+  // The root scope settles like any node scope: nothing is waiting on this
+  // evaluation any more, so anything still holding its signal is told so
+  const spy = spyOp('sig', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $sig: {} })
-  expect(spy.contexts[0].signal).toBeInstanceOf(AbortSignal)
-  expect(spy.contexts[0].signal.aborted).toBe(false)
+  expect(spy.contexts[0].signal.aborted).toBe(true)
 })
 
 test('context.options is the whole merged option set, frozen, merged per call', async () => {
@@ -74,7 +97,7 @@ test('options are frozen at the block level too, but not below it', async () => 
   expect(Object.isFrozen(options.data?.user)).toBe(false)
 })
 
-test('cache.memo is an identity passthrough until Phase 9', async () => {
+test('cache.memo is an identity passthrough when the node is not caching', async () => {
   const spy = spyOp('memo', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $memo: {} })
   let runs = 0
@@ -83,7 +106,7 @@ test('cache.memo is an identity passthrough until Phase 9', async () => {
   expect(await spy.contexts[0].cache.memo('key', fn)).toBe(2)
 })
 
-test('trace.note is a no-op until Phase 12', async () => {
+test('trace.note discards when trace is off, so a body emits unconditionally', async () => {
   const spy = spyOp('note', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $note: {} })
   expect(() => spy.contexts[0].trace.note({ type: 'cache', hit: true })).not.toThrow()

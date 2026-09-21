@@ -17,9 +17,14 @@
  * without ever touching an object the host still owns.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
-import type { OperatorContext } from '../runtimeInterface'
+import type { CompiledNode } from '../parse'
+import type { ResultStore } from '../resultCache'
+import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
+import type { TraceNode } from '../trace'
 import type { Bindings } from './bindings'
+import { bodyMemo, type MemoBinding } from './memo'
+import type { TraceRecorder } from './trace'
 import type { Scope } from './scope'
 
 export interface EvaluationContext {
@@ -32,16 +37,24 @@ export interface EvaluationContext {
    * host's own object and is neither copied nor frozen.
    */
   data: Readonly<Record<string, unknown>>
-  /** This node's effective signal: the caller's, plus enclosing scopes. */
+  /** This node's effective signal: the root's, plus enclosing scopes. */
   signal: AbortSignal
   /**
-   * The kill switch alone — the caller's `signal` and (Phase 10) the
-   * evaluation deadline, with no enclosing node scope mixed in. The two
-   * are told apart because they mean opposite things: a scope abort is
-   * silent and its branch is simply abandoned, while a kill-switch abort
-   * is the caller's decision and cuts through every fallback.
+   * The kill switch alone — the root scope's signal, which composes the
+   * caller's `signal` and the evaluation `timeout` (./run.ts), with no
+   * enclosing node scope mixed in. The two are told apart because they
+   * mean opposite things: a scope abort is silent and its branch is simply
+   * abandoned, while a kill-switch abort is the caller's decision and cuts
+   * through every fallback. At the root the two fields hold one signal.
    */
   rootSignal: AbortSignal
+  /**
+   * The instance's result store. Carried on the context because it is
+   * constant for the whole evaluation, like `options` and `rootSignal` —
+   * threading it through every recursion site would deliver nothing that
+   * varies.
+   */
+  cache: ResultStore
   strictDataPaths: boolean
   runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
@@ -52,6 +65,62 @@ export interface EvaluationContext {
    * frame lives for one element where a vars scope lives for a node.
    */
   bindings?: Bindings
+  /**
+   * The arguments of the fragment call whose body is running: one thunk per
+   * DECLARED parameter, absent outside a body (./fragment).
+   *
+   * A frame, not a chain — unlike `scope` and `bindings`. A fragment body
+   * is sealed, so a nested call replaces this rather than nesting under it,
+   * and the recursion ban means a body can never be its own ancestor.
+   */
+  params?: ParamsFrame
+  /**
+   * Wrapped around each of the artifact ROOT's holes, where report mode
+   * or a shielded timeout asked for one (./run.ts builds it). Consumed
+   * exactly once, by the root skeleton, which clears it for everything
+   * below: degradation and shielded assembly are defined on the hole —
+   * the maximal evaluable node — and a nested skeleton's holes are
+   * already inside one.
+   */
+  rootBoundary?: HoleBoundary
+  /**
+   * The trace recorder, present only when `trace` was asked for — its
+   * absence IS the fast path, checked once per node.
+   */
+  trace?: TraceRecorder
+  /**
+   * This node's own trace entry, which its children attach to. Set by
+   * the dispatch before it descends, so a var's definition lands under
+   * the node that DECLARED it rather than under whichever node first
+   * demanded it — `pushVars` builds its thunks over the declaring
+   * context, so this needs no special handling anywhere.
+   */
+  traceParent?: TraceNode
+  /**
+   * The fragment body this node belongs to, absent in the input's own
+   * expression. It is what a failure is attributed to (./fragment): the
+   * fragment's name, and the path of the call IN THE INPUT — inherited
+   * through nested calls, since an inner call node's own path resolves
+   * inside a body rather than in the input.
+   */
+  frame?: FragmentFrame
+}
+
+/**
+ * Wrapped around one root hole's evaluation, addressing the hole by its
+ * node — the one object the artifact's hole list and the root skeleton's
+ * share. Declared here, beside the field that holds it, so the context
+ * does not have to import from the module that builds it.
+ */
+export type HoleBoundary = (run: () => Promise<unknown>, node: CompiledNode) => Promise<unknown>
+
+/** Declared parameter name → its evaluate-at-most-once resolved value. */
+export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
+
+/** Where a failure inside a fragment body is to be attributed. */
+export interface FragmentFrame {
+  fragment: string
+  callPath: (string | number)[]
 }
 
 /**
@@ -102,16 +171,28 @@ export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
 /** The data block of an evaluation that supplied none. */
 const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 
-export const createEvaluationContext = (merged: EvaluationOptions): EvaluationContext => {
-  const signal = merged.signal ?? new AbortController().signal
+/**
+ * The context an evaluation starts from. `signal` is the root scope's —
+ * the caller's `signal` composed with the `timeout` — and is built by the
+ * caller (./run.ts), because its lifetime is the evaluation's and this
+ * module only describes the record.
+ */
+export const createEvaluationContext = (
+  merged: EvaluationOptions,
+  cache: ResultStore,
+  signal: AbortSignal,
+  trace?: TraceRecorder
+): EvaluationContext => {
   const options = freezeOptions(merged)
   return {
     options,
     data: options.data ?? NO_DATA,
     signal,
     rootSignal: signal,
+    cache,
     strictDataPaths: merged.strictDataPaths ?? false,
     runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
+    ...(trace !== undefined ? { trace } : {}),
   }
 }
 
@@ -129,44 +210,12 @@ const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
 }
 
 /**
- * A node's own abort scope: a controller chained to the enclosing signal,
- * which the node wrapper aborts once its body settles. "Resolution is
- * cancellation" — anything the body did not wait for stops.
- *
- * Chained by hand rather than with `AbortSignal.any`: that is Node 22 and
- * a much more recent browser floor (Chrome 116, Safari 17.4) than this
- * package should ask for. The listener is removed on settle, so a
- * long-lived caller signal does not accumulate one per node evaluated.
- *
- * Honest about reach: JS cannot interrupt code already running, so an
- * abandoned subtree runs to completion and has its result discarded. What
- * the abort does reliably is stop work that has not *started*, and stop
- * anything holding the signal — which is the I/O clients, and where the
- * time actually lives.
- */
-export const childScope = (parent: AbortSignal): { signal: AbortSignal; settle: () => void } => {
-  const controller = new AbortController()
-  if (parent.aborted) controller.abort(parent.reason)
-  const forward = () => controller.abort(parent.reason)
-  parent.addEventListener('abort', forward, { once: true })
-  return {
-    signal: controller.signal,
-    settle: () => {
-      parent.removeEventListener('abort', forward)
-      controller.abort(SCOPE_SETTLED)
-    },
-  }
-}
-
-/** The reason a scope abort carries, distinguishing it from a kill switch. */
-export const SCOPE_SETTLED = 'fig-tree:scope-settled'
-
-const noop = () => {}
-
-/**
  * The context a body receives: the signal, the evaluation's frozen options,
- * and the two stubs — `memo` runs the unit every time until the result cache
- * lands (Phase 9), `note` discards until trace lands (Phase 12).
+ * the live `memo`, and `note`, which discards until trace lands (Phase 12).
+ *
+ * The binding is passed rather than the node, because both fields it holds
+ * are already computed one frame up and this module has no business
+ * knowing what a node is.
  *
  * Options reach a body whole. There is nothing privileged in them to hide,
  * and a per-definition declaration of which blocks a body reads could only
@@ -176,9 +225,30 @@ const noop = () => {}
  * ("Caching" in docs-dev/v3-specs/v3-operator-contract.md); the `'auto'`
  * key covers resolved parameters only.
  */
-export const createOperatorContext = (ctx: EvaluationContext): OperatorContext => ({
-  signal: ctx.signal,
-  options: ctx.options,
-  cache: { memo: (_key, fn) => fn() },
-  trace: { note: noop },
-})
+export const createOperatorContext = (
+  ctx: EvaluationContext,
+  binding: MemoBinding
+): OperatorContext => {
+  const note = noteChannel(ctx)
+  return {
+    signal: ctx.signal,
+    options: ctx.options,
+    cache: { memo: bodyMemo({ ...binding, note }, ctx.cache) },
+    trace: { note },
+  }
+}
+
+/** Discards while trace is off, so a body emits unconditionally. */
+const noop = () => {}
+
+/**
+ * The live `note`: events land on the node's OWN entry, which the
+ * dispatch has already made this context's `traceParent`.
+ */
+export const noteChannel = (ctx: EvaluationContext): ((event: TraceEvent) => void) => {
+  const { trace, traceParent } = ctx
+  if (trace === undefined || traceParent === undefined) return noop
+  return (event) => {
+    trace.note(traceParent, event)
+  }
+}

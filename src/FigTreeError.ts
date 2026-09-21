@@ -20,13 +20,9 @@
  */
 import type { FigTreeErrorCode } from './errorCodes'
 import type { Issue } from './issues'
+import type { TraceNode } from './trace'
 
-/**
- * Placeholder for the trace instance-tree node ("trace" in
- * docs-dev/v3-specs/v3-evaluator-methods.md). Narrowed to its real shape in
- * Phase 12; declared now only so the `trace` field name is stable.
- */
-export type TraceNode = unknown
+export type { TraceNode } from './trace'
 
 export interface FigTreeErrorInit {
   code: FigTreeErrorCode

@@ -10,34 +10,62 @@
  * their phases: the static gate refuses every error-severity issue before
  * evaluation starts.
  */
-import { ErrorCodes } from '../errorCodes'
-import { FigTreeError } from '../FigTreeError'
-import type { CompiledNode, SkeletonHole, SkeletonNode } from '../parse'
+import { splice, type CompiledNode, type SkeletonNode } from '../parse'
 import type { EvaluationContext } from './context'
-import { cancellation, internalError } from './internal'
+import { isFigTreeError } from '../FigTreeError'
+import { abortedOutcome, internalError, isCancellation } from './internal'
+import { now, type TraceAnnotation, type TraceRecorder } from './trace'
+import { evaluateFragment } from './fragment'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
 
-const abandon = (ctx: EvaluationContext, node: CompiledNode): Error =>
-  ctx.rootSignal.aborted
-    ? new FigTreeError({
-        code: ErrorCodes.aborted,
-        message: 'evaluation was aborted by the caller',
-        path: node.path,
-      })
-    : cancellation()
-
 export const evaluateNode = async (
   node: CompiledNode,
-  ctx: EvaluationContext
+  ctx: EvaluationContext,
+  annotation?: TraceAnnotation
 ): Promise<unknown> => {
+  // The recorder's absence is the fast path, and it is the only cost
+  // trace imposes on an untraced evaluation
+  if (ctx.trace !== undefined) return traced(node, ctx, ctx.trace, annotation)
   // The node boundary is where cancellation lands: no new work starts once
-  // the enclosing scope is gone. A kill switch is the caller's decision and
-  // surfaces as an ordinary failure that cuts through fallbacks; a scope
-  // abort means a sibling already decided the answer, so this branch is
-  // simply abandoned and raises nothing anyone will see
-  if (ctx.signal.aborted) throw abandon(ctx, node)
+  // the enclosing scope is gone. The kill switch — the caller's signal or
+  // the evaluation deadline — surfaces as an error that cuts through
+  // fallbacks; a scope abort means a sibling already decided the answer,
+  // so this branch is simply abandoned and raises nothing anyone will see
+  if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
+  return dispatch(node, ctx)
+}
+
+/**
+ * The same boundary, recording. The entry opens BEFORE the cancellation
+ * check, so a node abandoned at its boundary is a `cancelled` entry
+ * rather than an absence — an absence would be indistinguishable from a
+ * subtree that was never demanded, which is the opposite fact.
+ */
+const traced = async (
+  node: CompiledNode,
+  ctx: EvaluationContext,
+  recorder: TraceRecorder,
+  annotation: TraceAnnotation | undefined
+): Promise<unknown> => {
+  const entry = recorder.enter(node, ctx.traceParent, ctx.frame, annotation)
+  const started = now()
+  try {
+    if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
+    const value = await dispatch(node, { ...ctx, traceParent: entry })
+    recorder.settle(entry, 'value', { value, elapsed: now() - started })
+    return value
+  } catch (error) {
+    recorder.settle(entry, isCancellation(error) ? 'cancelled' : 'failed', {
+      ...(isFigTreeError(error) ? { error } : {}),
+      elapsed: now() - started,
+    })
+    throw error
+  }
+}
+
+const dispatch = async (node: CompiledNode, ctx: EvaluationContext): Promise<unknown> => {
   switch (node.kind) {
     case 'constant':
       return node.value
@@ -48,9 +76,7 @@ export const evaluateNode = async (
     case 'operator':
       return evaluateOperator(node, ctx)
     case 'fragmentCall':
-      throw internalError(
-        `fragment call '${node.name}' reached evaluation — fragments land in Phase 11`
-      )
+      return evaluateFragment(node, ctx)
     case 'elements':
     case 'entries':
       throw internalError(
@@ -64,48 +90,22 @@ export const evaluateNode = async (
 }
 
 const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Promise<unknown> => {
+  // The hole boundary belongs to the ARTIFACT root's holes alone, and this
+  // is the first skeleton an evaluation reaches — so take it, and clear it
+  // for everything below: a nested skeleton's holes sit inside a hole
+  // already, where neither degradation nor shielded assembly is defined
+  const boundary = ctx.rootBoundary
+  const inner = boundary === undefined ? ctx : { ...ctx, rootBoundary: undefined }
   // `vars` is functional and consumed on a plain object literal, scoping
   // the whole subtree — and the parser has already stripped the key, so
   // the scope is all that is left to apply
-  const scoped = pushVars(ctx, node.vars)
-  const values = await Promise.all(node.holes.map((hole) => evaluateNode(hole.node, scoped)))
+  const scoped = pushVars(inner, node.vars)
+  const values = await Promise.all(
+    node.holes.map((hole) =>
+      boundary === undefined
+        ? evaluateNode(hole.node, scoped)
+        : boundary(() => evaluateNode(hole.node, scoped), hole.node)
+    )
+  )
   return splice(node.skeleton, node.holes, values)
-}
-
-type Container = Record<string | number, unknown>
-
-/**
- * Splice hole results into the skeleton, copying only the containers on
- * each splice path (once per evaluation). Constant subtrees off those paths
- * stay shared with the artifact and the input — the documented
- * results-are-read-only contract.
- */
-const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
-  const copied = new Set<object>()
-  let result = skeleton
-  holes.forEach((hole, i) => {
-    result = setAt(result, hole.at, values[i], copied)
-  })
-  return result
-}
-
-const setAt = (
-  container: unknown,
-  at: (string | number)[],
-  value: unknown,
-  copied: Set<object>
-): unknown => {
-  const copy = copyOnce(container as Container, copied)
-  const [key, ...rest] = at
-  copy[key] = rest.length === 0 ? value : setAt(copy[key], rest, value, copied)
-  return copy
-}
-
-const copyOnce = (container: Container, copied: Set<object>): Container => {
-  if (copied.has(container)) return container
-  const copy: Container = Array.isArray(container)
-    ? ([...container] as unknown as Container)
-    : { ...container }
-  copied.add(copy)
-  return copy
 }

@@ -28,6 +28,10 @@ export const WILDCARD: unique symbol = Symbol('figtree.path.wildcard')
 export type Wildcard = typeof WILDCARD
 export type PathSegment = string | number | Wildcard
 
+/** Is this value one segment of a literal path array? */
+export const isPathSegment = (value: unknown): value is PathSegment =>
+  typeof value === 'string' || typeof value === 'number' || value === WILDCARD
+
 export interface ResolveResult {
   found: boolean
   value: unknown
@@ -132,10 +136,8 @@ const normalizePath = (path: string | PathSegment[]): PathSegment[] =>
  * Resolve a path against a source value, reporting found-vs-missing
  * distinctly.
  */
-export const resolvePath = (
-  source: unknown,
-  path: string | PathSegment[]
-): ResolveResult => resolveSegments(source, normalizePath(path), 0)
+export const resolvePath = (source: unknown, path: string | PathSegment[]): ResolveResult =>
+  resolveSegments(source, normalizePath(path), 0)
 
 const resolveSegments = (
   current: unknown,
@@ -181,3 +183,12 @@ const readOwn = (current: unknown, segment: string | number): ResolveResult => {
 
 const toIndex = (segment: string): number | undefined =>
   /^\d+$/.test(segment) ? Number(segment) : undefined
+
+/**
+ * The one spelling of a read. `readOwn` resolves the key `'0'` and the
+ * index `0` identically against arrays (by index) and objects (by string
+ * key), so `x.0` and `x[0]` are one read — and a record of reads has to
+ * store them as one. Digit-only keys become indices; nothing else changes.
+ */
+export const canonicalSegments = (segments: PathSegment[]): PathSegment[] =>
+  segments.map((segment) => (typeof segment === 'string' ? (toIndex(segment) ?? segment) : segment))

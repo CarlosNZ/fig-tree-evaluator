@@ -24,10 +24,9 @@ import { CONTENT_LAYER_SIZE, parseExpression, probeConstant, runStaticChecks } f
 import { serializeInput } from '../parse/contentKey'
 
 const registry = buildRegistry({ operators: [coreOperators] })
-const NO_FRAGMENTS = new Map<string, never>()
 
 const compile = (expression: unknown) => {
-  const artifact = parseExpression(expression, registry, NO_FRAGMENTS)
+  const artifact = parseExpression(expression, registry)
   runStaticChecks(artifact)
   return artifact
 }
@@ -154,7 +153,7 @@ const wholeShapes = () => {
     for (let i = 0; i < CONTENT_LAYER_SIZE - 1; i++) map.set(`${key}#filler${i}`, artifact)
     map.set(key, artifact)
 
-    const probe = time(iterations, () => probeConstant(input, registry, NO_FRAGMENTS).constant)
+    const probe = time(iterations, () => probeConstant(input, registry).constant)
     const serialize = time(iterations, () => serializeInput(input))
     const hit = time(iterations, () => map.get(serializeInput(input) as string))
     const compileNs = time(iterations, () => compile(input))

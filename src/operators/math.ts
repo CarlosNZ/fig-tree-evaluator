@@ -39,6 +39,7 @@ const plusKind = (value: unknown): PlusMode | undefined => {
 export const plus = defineOperator({
   name: 'plus',
   alias: '+',
+  category: 'math',
   description:
     'Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type',
   parameters: {
@@ -99,6 +100,7 @@ export const plus = defineOperator({
 export const subtract = defineOperator({
   name: 'subtract',
   alias: '-',
+  category: 'math',
   description: 'Subtract one number from another',
   parameters: {
     value: { type: ['number', 'null'], description: 'The main operand' },
@@ -112,6 +114,7 @@ export const subtract = defineOperator({
 export const divide = defineOperator({
   name: 'divide',
   alias: '/',
+  category: 'math',
   description: 'Divide one number by another — true division; zero divisors fail',
   parameters: {
     value: { type: ['number', 'null'], description: 'The main operand' },
@@ -124,6 +127,7 @@ export const divide = defineOperator({
 
 export const modulo = defineOperator({
   name: 'modulo',
+  category: 'math',
   description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
   parameters: {
     value: { type: ['number', 'null'], description: 'The main operand' },
@@ -137,6 +141,7 @@ export const modulo = defineOperator({
 export const multiply = defineOperator({
   name: 'multiply',
   alias: '*',
+  category: 'math',
   description: 'Multiply numbers together — an empty input is 1, the empty product',
   parameters: {
     values: {
@@ -162,6 +167,7 @@ export const multiply = defineOperator({
 export const power = defineOperator({
   name: 'power',
   alias: '^',
+  category: 'math',
   description: 'Raise a base to an exponent — overflow and complex results fail',
   parameters: {
     base: { type: ['number', 'null'] },
@@ -174,6 +180,7 @@ export const power = defineOperator({
 
 export const round = defineOperator({
   name: 'round',
+  category: 'math',
   description:
     'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
   parameters: {
@@ -192,6 +199,7 @@ export const round = defineOperator({
 const unary = (name: string, description: string, compute: (value: number) => number) =>
   defineOperator({
     name,
+    category: 'math',
     description,
     parameters: { value: { type: ['number', 'null'] } },
     positionalParams: ['value'],
@@ -211,6 +219,7 @@ const extremum = (
 ) =>
   defineOperator({
     name,
+    category: 'math',
     description,
     parameters: {
       values: {

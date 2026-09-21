@@ -4,9 +4,13 @@
  * siblings) are re-authored in test/parse-normalization.test.ts and
  * test/parse-recognition.test.ts — including the "with alias fallback"
  * divergence (v2 alias-definition sibling → v3 malformed-node error).
- * Evaluation-result cases migrate with their operators (Phase 4/7);
- * fragment shorthand cases migrate at Phase 11; custom-function cases are
- * non-convertible (functions tier deleted — migration doc wrapper recipe).
+ * Evaluation-result cases migrate with their operators (Phase 4/7).
+ * Fragment shorthand migrated at Phase 11 into test/fragments-calls.test.ts
+ * — the `$`-prefixed argument names (`$country`, `$values`) die with the
+ * name-legality rule, and the `$buildObject` argument map that this file's
+ * "nested fragments" case builds is v3's dynamic-arguments mode.
+ * Custom-function cases are non-convertible (functions tier deleted —
+ * migration doc wrapper recipe).
  */
 import fetch from 'node-fetch'
 import { FigTreeEvaluator } from './evaluator'

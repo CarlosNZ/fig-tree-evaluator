@@ -5,8 +5,8 @@
  * and `OperatorContext`. Interfaces early, features behind them
  * (implementation-plan working rule 3): every shape here is final from
  * Phase 4, while `cache.memo` (Phase 9), `trace.note` (Phase 12), the
- * handles (Phases 5–6) and signal composition (Phase 10) light up later
- * without reshaping what bodies see.
+ * handles (Phases 5–6) and signal composition (Phases 9–10) lit up behind
+ * them without reshaping what bodies see.
  */
 import type { EvaluationOptions } from './options'
 

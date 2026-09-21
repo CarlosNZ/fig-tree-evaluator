@@ -15,6 +15,7 @@ import { parseExpression, type OperatorNode } from '../src/parse'
 
 const cachingOp = defineOperator({
   name: 'fetchish',
+  category: 'other',
   description: 'An I/O-shaped operator whose metadata default is on',
   parameters: {},
   useCache: true,
@@ -24,13 +25,17 @@ const cachingOp = defineOperator({
 
 const pureOp = defineOperator({
   name: 'pureish',
+  category: 'other',
   description: 'A pure operator, metadata default off',
   parameters: {},
   evaluate: () => 'ok',
 })
 
 /** Parse one expression and hand back its single operator node. */
-const nodeOf = (expression: unknown, operatorDefaults?: object): OperatorNode => {
+const nodeOf = (
+  expression: unknown,
+  operatorDefaults?: Record<string, Record<string, unknown>>
+): OperatorNode => {
   const registry = buildRegistry({
     operators: [cachingOp, pureOp],
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),

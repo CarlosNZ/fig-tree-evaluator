@@ -12,6 +12,7 @@
  * C1–C7).
  */
 import type { RegistryEntry } from '../registry'
+import type { FragmentEntry } from '../fragments'
 import type { PathSegment } from '../primitives'
 import type { Issue } from '../issues'
 
@@ -86,8 +87,15 @@ export interface OperatorNode extends CompiledBase {
   vars?: Record<string, CompiledNode>
   /**
    * Operator-owned parse-time precompute slot (B5, B7): compiled literal
-   * regex patterns (Phase 7.2), result-key skeletons (Phase 9). Opaque to
-   * the parser.
+   * regex patterns (Phase 7.2). Opaque to the parser.
+   *
+   * Result-key skeletons, the other use obligation B7 anticipated, are
+   * **not built** (assessed at Phase-9 planning, confirming the
+   * implementation notes): a skeleton rides one artifact, so a second
+   * expression spelling the same request gets no shortcut although it
+   * still shares the result entry — and parse-time work is unconditional
+   * where evaluation is not, so it would pay for every never-taken branch
+   * on the cold call to save sub-milliseconds behind a network round trip.
    */
   precomputed?: unknown
 }
@@ -97,10 +105,16 @@ export interface OperatorNode extends CompiledBase {
  * statically (Fragments area): a plain-object `parameters` is the static
  * named-arguments map, a node-valued `parameters` is the dynamic mode, an
  * absent `parameters` is a zero-argument static call.
+ *
+ * `entry` bakes the registry resolution into the artifact exactly as
+ * `OperatorNode.entry` does (C3) — the compiled body a call site splices,
+ * and the declarations the static checks and the runtime read. Absent only
+ * where the name resolved to nothing, which is already an error issue.
  */
 export interface FragmentCallNode extends CompiledBase {
   kind: 'fragmentCall'
   name: string
+  entry?: FragmentEntry
   argumentsMode: 'static' | 'dynamic'
   parameters?: Record<string, CompiledNode> | CompiledNode
   fallback?: CompiledNode
@@ -213,10 +227,31 @@ export interface ArtifactHole {
   staticFallback?: { value: unknown }
 }
 
+/**
+ * One resolved fragment call site, with the depth it sits at. Kept because
+ * the two rollups compose differently and neither survives a dependency
+ * list: `nodeCount` needs the multiplicity a name set loses (two calls are
+ * two evaluations of the body), and `maxDepth` needs each site's own depth.
+ */
+export interface FragmentCall {
+  name: string
+  depth: number
+}
+
 /** The dependency record (B6) — the `getDependencies()` data, minus sorting. */
 export interface ArtifactDependencies {
-  /** Statically-known $data paths, as-written spellings, deduplicated. */
-  dataPaths: string[]
+  /**
+   * Statically-known $data reads, keyed on their canonical render — the
+   * public `paths` spelling — with the canonical segments as values.
+   *
+   * Both forms travel because both are consumed and neither derives cheaply
+   * from the other: the render is the deduplication key here and the string
+   * `getDependencies()` reports, while the segments are what `resolvePath`
+   * accepts and what traversal-order sorting compares. A render alone would
+   * not do, since dot-joining reads a single key holding a dot exactly like
+   * two levels; the injective render is what makes the key sound.
+   */
+  dataPaths: ReadonlyMap<string, PathSegment[]>
   /**
    * True when the read-set is not statically enumerable: a dynamic `get`
    * path, a bare `$data`, or a dynamic-arguments fragment call.
@@ -240,23 +275,11 @@ export interface SequencedIssue {
 }
 
 /**
- * The compile artifact — the four products of the parse pass (A1–A4) plus
- * the precomputations (B). Option-independent (C1) and data-independent
- * (C2) by construction: nothing here may derive from any option outside
- * the registry-affecting three, and nothing from `data`.
+ * The measurements a fragment call site composes through — the four the
+ * option-dependent checks and the cache read. An artifact carries them
+ * twice: composed, under these names, and un-composed as `own`.
  */
-export interface ParseArtifact {
-  root: CompiledNode
-  /** Maximal evaluable nodes; empty for a fully-constant input. */
-  holes: ArtifactHole[]
-  /**
-   * The option-independent static issue stream, tree-ordered (A3). The two
-   * option-dependent checks (maxDepth/maxNodes, sample-data) run per call
-   * against `nodeCount`/`maxDepth`/`dependencies` and are never stored.
-   */
-  issues: SequencedIssue[]
-  /** True iff every hole carries a static fallback (B2). */
-  shielded: boolean
+export interface Rollups {
   /**
    * The number of evaluable nodes — operator, fragment-call, reference and
    * invalid placeholders (B4, amended September 2026). Constants and plain
@@ -279,6 +302,40 @@ export interface ParseArtifact {
    * leaves this flag `false`.
    */
   identityOnly: boolean
+}
+
+/**
+ * The compile artifact — the four products of the parse pass (A1–A4) plus
+ * the precomputations (B). Option-independent (C1) and data-independent
+ * (C2) by construction: nothing here may derive from any option outside
+ * the registry-affecting three, and nothing from `data`.
+ *
+ * The inherited measurements are COMPOSED through every fragment call the
+ * expression makes — the reading every consumer wants, under the plain
+ * names so the safe reading is the default one.
+ */
+export interface ParseArtifact extends Rollups {
+  root: CompiledNode
+  /** Maximal evaluable nodes; empty for a fully-constant input. */
+  holes: ArtifactHole[]
+  /**
+   * The option-independent static issue stream, tree-ordered (A3). The two
+   * option-dependent checks (maxDepth/maxNodes, sample-data) run per call
+   * against `nodeCount`/`maxDepth`/`dependencies` and are never stored.
+   */
+  issues: SequencedIssue[]
+  /** True iff every hole carries a static fallback (B2). */
+  shielded: boolean
+  /**
+   * What the walk measured of this expression alone, before composition.
+   * With `fragmentCalls` it is the material composition works from, kept
+   * so that registration — which folds bodies in dependency order, after
+   * their targets are complete — composes from values that by definition
+   * have not been composed, and cannot double-count.
+   */
+  own: Rollups
+  /** Every resolved fragment call site, with the depth it sits at. */
+  fragmentCalls: FragmentCall[]
 }
 
 /**
@@ -313,3 +370,49 @@ export const bindsReference = (
   binding === undefined
     ? as === null
     : (namespace === 'element' ? as : `${as ?? ''}Index`) === binding
+
+// ── Skeleton assembly ───────────────────────────────────────────────
+
+type Container = Record<string | number, unknown>
+
+/**
+ * Splice hole values into the skeleton, copying only the containers on
+ * each splice path. Constant subtrees off those paths stay shared with the
+ * artifact and the input — the documented results-are-read-only contract.
+ *
+ * Three callers, one rule: evaluation splices its holes' results, the
+ * shielded assembly splices static fallbacks where holes did not finish,
+ * and fragment registration splices a skeleton-rooted body's fallbacks
+ * into the constant a call site lifts. The module that defines the
+ * skeleton shape is what owns filling it, so none of them depends on
+ * another.
+ */
+export const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
+  const copied = new Set<object>()
+  let result = skeleton
+  holes.forEach((hole, i) => {
+    result = setAt(result, hole.at, values[i], copied)
+  })
+  return result
+}
+
+const setAt = (
+  container: unknown,
+  at: (string | number)[],
+  value: unknown,
+  copied: Set<object>
+): unknown => {
+  const copy = copyOnce(container as Container, copied)
+  const [key, ...rest] = at
+  copy[key] = rest.length === 0 ? value : setAt(copy[key], rest, value, copied)
+  return copy
+}
+
+const copyOnce = (container: Container, copied: Set<object>): Container => {
+  if (copied.has(container)) return container
+  const copy: Container = Array.isArray(container)
+    ? ([...container] as unknown as Container)
+    : { ...container }
+  copied.add(copy)
+  return copy
+}

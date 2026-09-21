@@ -18,8 +18,8 @@
  * evaluation. There is no runtime cycle guard, and it could not be a simple
  * one: re-entrant demand and a legitimate parallel branch sharing the
  * in-flight promise are indistinguishable without async context tracking.
- * The static gate is the defence; the whole-evaluation timeout (Phase 10)
- * is the backstop.
+ * The static gate is the defence; the whole-evaluation timeout is the
+ * backstop.
  *
  * A thunk is bound to the scope that DECLARED it, never to whichever node
  * demanded it first. The alternative loses: an `and` that resolved early
@@ -52,7 +52,14 @@ export const pushVars = (
   const scope: Scope = { parent: ctx.scope, vars: new Map() }
   const scoped: EvaluationContext = { ...ctx, scope }
   for (const [name, node] of Object.entries(vars))
-    scope.vars.set(name, once(() => evaluateNode(node, scoped)))
+    // The thunk closes over the DECLARING context, so its trace entry
+    // lands under the node that declared it rather than under whichever
+    // node first demanded it — one entry at the declaration site, which
+    // is what keeps the (source, path) join one-instance-per-location
+    scope.vars.set(
+      name,
+      once(() => evaluateNode(node, scoped, { var: name }))
+    )
   return scoped
 }
 

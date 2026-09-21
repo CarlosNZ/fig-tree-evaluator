@@ -1,4 +1,5 @@
-import { MockHttpClient, MockHttpFailure, RecordingCacheStore } from './index'
+import { OperatorFailure } from '../../src'
+import { MockHttpClient, MockSqlConnection, RecordingCacheStore } from './index'
 
 const anySignal = () => new AbortController().signal
 
@@ -44,19 +45,19 @@ describe('MockHttpClient', () => {
     expect(await client.request({ url: 'https://x/a/b', method: 'get', headers: {}, signal: anySignal() })).toBe(0)
   })
 
-  it('throws MockHttpFailure with errorData when the failure switch is on', async () => {
+  it('throws OperatorFailure with errorData when the failure switch is on', async () => {
     const client = new MockHttpClient({ fail: true, failMessage: 'boom', failData: { status: 500 } })
 
     await expect(
       client.request({ url: 'https://x/y', method: 'get', headers: {}, signal: anySignal() })
-    ).rejects.toBeInstanceOf(MockHttpFailure)
+    ).rejects.toBeInstanceOf(OperatorFailure)
 
     // still counts as a call
     expect(client.callCount).toBe(1)
     try {
       await client.request({ url: 'https://x/y', method: 'get', headers: {}, signal: anySignal() })
     } catch (err) {
-      expect((err as MockHttpFailure).errorData).toEqual({ status: 500 })
+      expect((err as OperatorFailure).errorData).toEqual({ status: 500 })
     }
   })
 
@@ -106,5 +107,42 @@ describe('RecordingCacheStore', () => {
     cache.reset()
     expect(cache.size).toBe(0)
     expect(cache.log).toHaveLength(0)
+  })
+})
+
+describe('MockSqlConnection', () => {
+  it('answers from the scripted rows and counts the queries', async () => {
+    const db = new MockSqlConnection({ rows: { 'FROM people': [{ id: 1 }] } })
+    expect(await db.query({ text: 'SELECT id FROM people WHERE id = $1', values: [1] })).toEqual([
+      { id: 1 },
+    ])
+    expect(db.queryCount).toBe(1)
+    expect(db.calls[0]).toEqual({
+      text: 'SELECT id FROM people WHERE id = $1',
+      values: [1],
+    })
+  })
+
+  it('returns an empty result when nothing matches', async () => {
+    expect(await new MockSqlConnection().query({ text: 'SELECT 1' })).toEqual([])
+  })
+
+  it('honours the failure and abort switches', async () => {
+    const failing = new MockSqlConnection({ fail: true, failMessage: 'down' })
+    await expect(failing.query({ text: 'SELECT 1' })).rejects.toBeInstanceOf(OperatorFailure)
+
+    const controller = new AbortController()
+    controller.abort()
+    await expect(
+      new MockSqlConnection().query({ text: 'SELECT 1', signal: controller.signal })
+    ).rejects.toThrow(/aborted/)
+  })
+
+  it('reset() clears the log without disarming the switches', async () => {
+    const db = new MockSqlConnection({ fail: true })
+    await expect(db.query({ text: 'SELECT 1' })).rejects.toThrow()
+    db.reset()
+    expect(db.queryCount).toBe(0)
+    await expect(db.query({ text: 'SELECT 1' })).rejects.toThrow()
   })
 })

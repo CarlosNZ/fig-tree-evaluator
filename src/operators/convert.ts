@@ -16,6 +16,7 @@ const cannot = (value: unknown, to: string) =>
 
 export const convert = defineOperator({
   name: 'convert',
+  category: 'other',
   description:
     'Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess',
   parameters: {

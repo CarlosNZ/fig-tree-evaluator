@@ -30,7 +30,8 @@ describe('FigTreeError', () => {
       related: [inner],
       cause: inner,
       issues: [{ severity: 'error', code: ErrorCodes.typeCheck, message: 'm', path: [] }],
-      trace: { some: 'tree' },
+      // A real TraceNode since Phase 12 narrowed the slot from `unknown`
+      trace: { path: [], kind: 'operator', operator: 'http', status: 'failed' },
     })
 
     expect(err.holePath).toEqual(['hole'])
@@ -41,7 +42,7 @@ describe('FigTreeError', () => {
     expect(err.related).toEqual([inner])
     expect(err.cause).toBe(inner)
     expect(err.issues).toHaveLength(1)
-    expect(err.trace).toEqual({ some: 'tree' })
+    expect(err.trace).toMatchObject({ kind: 'operator', status: 'failed' })
   })
 
   it('leaves unset optional fields undefined', () => {
