@@ -38,11 +38,11 @@
  * `evaluateShielded` is the one place a hole takes its fallback.
  */
 import type { EvaluationOptions } from '../options'
-import type { ArtifactHole, ParseArtifact } from '../parse'
+import { splice, type ArtifactHole, type ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
 import { EVALUATION_TIMEOUT, deadline, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext } from './context'
-import { evaluateNode, splice } from './evaluate'
+import { evaluateNode } from './evaluate'
 import { internalError, killSwitchError } from './internal'
 import { pushVars } from './scope'
 

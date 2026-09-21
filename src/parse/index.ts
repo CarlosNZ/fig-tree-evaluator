@@ -28,11 +28,12 @@ export type {
   ParseArtifact,
   ReferenceNamespace,
   ReferenceNode,
+  Rollups,
   SequencedIssue,
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-export { bindsReference, renamedBinding } from './artifact'
+export { bindsReference, renamedBinding, splice } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
 export { ParseCache, CONTENT_LAYER_SIZE } from './parseCache'
 // The result cache's `'auto'` keys use the same serializer (Phase 9.1) —

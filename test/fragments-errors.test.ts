@@ -125,6 +125,68 @@ describe('timeout shielding through a call', () => {
     ).toEqual({ a: 'from call' })
   })
 
+  // The lift is transitive. A body rooted at another call reads its
+  // target's constant through the registry, not through its own artifact:
+  // the walk that compiled this body ran before any target was folded
+  test('the lift composes through a nested call', async () => {
+    const sleep = slow()
+    const fig = build(
+      {
+        slowFrag: { expression: { $sleep: [300], fallback: 'shielded' } },
+        wrapper: { expression: { $slowFrag: {} } },
+        outer: { expression: { $wrapper: {} } },
+      },
+      [sleep.definition]
+    )
+    expect(fig.validate({ a: { $wrapper: {} } }).timeoutShielded).toBe(true)
+    expect(fig.validate({ a: { $outer: {} } }).timeoutShielded).toBe(true)
+    expect(await fig.evaluate({ a: { $outer: {} } }, { timeout: 30 })).toEqual({
+      a: 'shielded',
+    })
+  })
+
+  // A skeleton-rooted body lifts the shape assembled from every hole's
+  // fallback — a call being one hole at its call site, it contributes all
+  // of them or none
+  test('a skeleton-rooted body lifts its assembled fallbacks', async () => {
+    const sleep = slow()
+    const fig = build(
+      {
+        card: {
+          expression: {
+            title: { $sleep: [300], fallback: 'untitled' },
+            body: { $sleep: [300], fallback: '' },
+          },
+        },
+      },
+      [sleep.definition]
+    )
+    expect(fig.validate({ a: { $card: {} } }).timeoutShielded).toBe(true)
+    expect(await fig.evaluate({ a: { $card: {} } }, { timeout: 30 })).toEqual({
+      a: { title: 'untitled', body: '' },
+    })
+  })
+
+  test('one unshielded hole leaves the whole skeleton body unlifted', async () => {
+    const sleep = slow()
+    const fig = build(
+      {
+        card: {
+          expression: {
+            title: { $sleep: [300], fallback: 'untitled' },
+            body: { $sleep: [300] },
+          },
+        },
+      },
+      [sleep.definition]
+    )
+    expect(fig.validate({ a: { $card: {} } }).timeoutShielded).toBe(false)
+    const error = await rejection<FigTreeError>(
+      fig.evaluate({ a: { $card: {} } }, { timeout: 30 })
+    )
+    expect(error.code).toBe(ErrorCodes.timeout)
+  })
+
   test('a body with no static fallback leaves the call unshielded', async () => {
     const sleep = slow()
     const fig = build({ slowFrag: { expression: { $sleep: [300] } } }, [sleep.definition])

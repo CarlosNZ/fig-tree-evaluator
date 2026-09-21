@@ -78,15 +78,15 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
     )
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
-  return drill(value, rest as PathSegment[], node, ctx, `is absent from the value of '$vars.${name}'`)
+  return drill(
+    value,
+    rest as PathSegment[],
+    node,
+    ctx,
+    `is absent from the value of '$vars.${name}'`
+  )
 }
 
-/**
- * Resolve a drill path, with the one absence rule: `null`, unless
- * `strictDataPaths` makes it an ordinary runtime failure — which a
- * `fallback` catches like any other, references being unable to carry one
- * themselves.
- */
 const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
   const params = ctx.params
   if (params === undefined)
@@ -131,9 +131,21 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
     )
   if (namespace === 'index') return frame.index
   if (node.segments.length === 0) return normalize(frame.element)
-  return drill(frame.element, node.segments, node, ctx, `is absent from '${node.raw.split('.')[0]}'`)
+  return drill(
+    frame.element,
+    node.segments,
+    node,
+    ctx,
+    `is absent from '${node.raw.split('.')[0]}'`
+  )
 }
 
+/**
+ * Resolve a drill path, with the one absence rule: `null`, unless
+ * `strictDataPaths` makes it an ordinary runtime failure — which a
+ * `fallback` catches like any other, references being unable to carry one
+ * themselves.
+ */
 const drill = (
   source: unknown,
   segments: PathSegment[],

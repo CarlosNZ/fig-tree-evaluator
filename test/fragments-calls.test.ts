@@ -250,8 +250,17 @@ describe('dynamic arguments', () => {
     const error = await rejection(
       fig().evaluate({ fragment: 'frag', parameters: '$data.args' }, { data: { args: { b: 'x' } } })
     )
-    expect(error.code).toBe(ErrorCodes.missingArgument)
+    expect(error.code).toBe(ErrorCodes.missingRequired)
     expect(error.message).toContain("requires 'a'")
+    // One condition, one code, on both sides of the boundary: the static
+    // form of the same call classifies identically, and reads identically
+    const [statically] = fig().validate({ fragment: 'frag', parameters: { b: 'x' } }).issues
+    expect(statically.code).toBe(error.code)
+    expect(statically.message).toBe(error.message)
+    // The issue names its owner, as an operator issue names its operator
+    expect(statically.fragment).toBe('frag')
+    expect(statically.parameter).toBe('a')
+    expect(statically.operator).toBeUndefined()
   })
 
   test('a non-object result is a runtime type error', async () => {
@@ -271,7 +280,7 @@ describe('dynamic arguments', () => {
     const error = await rejection(
       ignores.evaluate({ fragment: 'ignores', parameters: '$data.args' }, { data: { args: {} } })
     )
-    expect(error.code).toBe(ErrorCodes.missingArgument)
+    expect(error.code).toBe(ErrorCodes.missingRequired)
   })
 
   test('a fallback on the call catches a bad arguments object', async () => {

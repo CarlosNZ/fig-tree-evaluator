@@ -9,7 +9,7 @@
  * lets a call site splice a precompiled body and lets the static checker
  * resolve `$params` against a declaration set.
  *
- * Five passes, in this order for reasons that matter:
+ * Four passes, in this order for reasons that matter:
  *
  *  1. Shape, names and declarations — every entry exists, declarations
  *     filled, before any body compiles. That is what gives batch semantics:
@@ -40,7 +40,9 @@ import {
   composeRollups,
   parseExpression,
   runStaticChecks,
+  splice,
   type ArtifactDependencies,
+  type ArtifactHole,
   type CompiledNode,
   type NodePath,
   type ParseArtifact,
@@ -181,9 +183,9 @@ export const registerFragments = (
 
   // ── Pass 2: bodies ────────────────────────────────────────────────
   // Every entry is in the lookup by now, so a body may call any fragment in
-  // the batch. Each body's own measurements are what the artifact carries
-  // here: every target still reads zero, so composition at its call sites
-  // adds nothing, and pass 4 does the real folding.
+  // the batch. The composed measurements on these artifacts are not yet
+  // meaningful — no target is folded before pass 4 — which is why the fold
+  // composes from `artifact.own`, never from them.
   const compiled = new Map<string, ParseArtifact>()
   for (const [name, entry] of registry.fragments) {
     const definition = (definitions as Record<string, FragmentDefinition>)[name]
@@ -450,11 +452,12 @@ const checkCycles = (compiled: Map<string, ParseArtifact>, addIssue: AddIssue): 
 }
 
 /**
- * Fold each body's own measurements together with its targets', in reverse
- * topological order so a target is always complete before a caller reads
- * it. `composeRollups` holds the composition rules themselves — shared with
- * the walk, so a call site in an expression and a call site in a body
- * compose identically.
+ * Fold each body's own measurements together with its targets', and lift
+ * the constant its call sites shield with — both in reverse topological
+ * order, so a target is always complete before a caller reads it.
+ * `composeRollups` holds the composition rules themselves, shared with the
+ * walk, so a call site in an expression and a call site in a body compose
+ * identically.
  */
 const foldRollups = (registry: OperatorRegistry, compiled: Map<string, ParseArtifact>) => {
   const done = new Set<string>()
@@ -466,25 +469,71 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, ParseArti
     const artifact = compiled.get(name)
     if (entry === undefined || artifact === undefined) return
     for (const call of artifact.fragmentCalls) fold(call.name)
-    const rolled = composeRollups(artifact, artifact.fragmentCalls, registry.fragments)
+    const rolled = composeRollups(artifact.own, artifact.fragmentCalls, registry.fragments)
     entry.nodeCount = rolled.nodeCount
     entry.maxDepth = rolled.maxDepth
     entry.dependencies = rolled.dependencies
     entry.identityOnly = rolled.identityOnly
-    entry.staticFallback = bodyRootFallback(artifact)
+    entry.staticFallback = liftedFallback(artifact, registry.fragments)
   }
 
   for (const name of compiled.keys()) fold(name)
 }
 
 /**
- * The body root's static fallback, where the root is a single evaluable
- * node that declared a constant one. The artifact already computed it —
- * a node root is exactly one hole, and it is the root. A skeleton-rooted
- * body would need per-hole treatment and is deliberately not lifted.
+ * The constant a call site lifts from this body (obligation B2): what
+ * shielded assembly would splice for the whole call, or `undefined` where
+ * the body is not shielded and a call therefore is not either.
+ *
+ * Every hole must answer, because a call is ONE hole at its call site: it
+ * contributes all of its fallbacks or none of them, where the same
+ * expression written inline would degrade hole by hole. That is the one
+ * place a call is not exactly its expansion, and it is the conservative
+ * direction — a partially-finished body cannot contribute a half-real
+ * value through a boundary that has already returned a single one.
+ *
+ * A node root is one hole, and it is the root, so its constant is the
+ * call's. A skeleton root splices its holes' constants into its shape —
+ * the same assembly `evaluateShielded` performs, and relying on the same
+ * by-construction ordering: the artifact's holes ARE the root skeleton's,
+ * in order (`rootHoles` in src/parse/parse.ts).
  */
-const bodyRootFallback = (artifact: ParseArtifact): { value: unknown } | undefined => {
-  const [hole] = artifact.holes
-  if (artifact.holes.length !== 1 || hole.node !== artifact.root) return undefined
-  return hole.staticFallback
+const liftedFallback = (
+  artifact: ParseArtifact,
+  fragments: ReadonlyMap<string, FragmentEntry>
+): { value: unknown } | undefined => {
+  const { root, holes } = artifact
+  // A constant body has no hole to lift, and nothing in it can time out
+  if (holes.length === 0) return undefined
+  const values: unknown[] = []
+  for (const hole of holes) {
+    const fallback = holeFallback(hole, fragments)
+    if (fallback === undefined) return undefined
+    values.push(fallback.value)
+  }
+  if (root.kind === 'skeleton') return { value: splice(root.skeleton, root.holes, values) }
+  return { value: values[0] }
+}
+
+/**
+ * A hole's own precomputed constant, or the one its target lifts where the
+ * hole is itself a call.
+ *
+ * The second case cannot come from the artifact: the walk read
+ * `entry.staticFallback` while compiling this body, which is pass 2, and
+ * no target has been folded before pass 4. Resolving it here against the
+ * registry is what makes the lift transitive — well-founded because the
+ * fold runs in reverse topological order, so a target is always complete
+ * before a caller reads it.
+ */
+const holeFallback = (
+  hole: ArtifactHole,
+  fragments: ReadonlyMap<string, FragmentEntry>
+): { value: unknown } | undefined => {
+  if (hole.staticFallback !== undefined) return hole.staticFallback
+  const { node } = hole
+  // An authored call-site fallback always wins, and a non-constant one
+  // disqualifies the hole rather than falling through to the target's
+  if (node.kind !== 'fragmentCall' || node.fallback !== undefined) return undefined
+  return fragments.get(node.name)?.staticFallback
 }
