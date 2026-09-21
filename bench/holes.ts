@@ -73,9 +73,9 @@ const instanceCost = () => {
   const iterations = 5000
   let best = Infinity
   for (let r = 0; r < 5; r++) {
-    const start = process.hrtime.bigint()
+    const start = performance.now()
     for (let i = 0; i < iterations; i++) new FigTree({ operators: [coreOperators] })
-    best = Math.min(best, Number(process.hrtime.bigint() - start) / iterations)
+    best = Math.min(best, ((performance.now() - start) * 1e6) / iterations)
   }
   return best
 }

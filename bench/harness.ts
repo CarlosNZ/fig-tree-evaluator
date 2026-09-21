@@ -16,25 +16,47 @@
  *
  * Evaluation is async on both sides, so the loop awaits — promise
  * overhead is real but symmetric, and it is charged to every arm equally.
+ *
+ * The benches run under Node and, bundled, in a browser
+ * (codegen/benchBrowser.mjs), so this file uses only what both have. The
+ * clock is `performance.now()`: sub-microsecond on both, where
+ * `process.hrtime` is Node's alone.
  */
-import { setMaxListeners } from 'node:events'
 import { deepEqual } from '../src'
+
+const inNode = typeof process !== 'undefined' && process.versions?.node !== undefined
 
 // Node's default ceiling is ten listeners per EventTarget, and v3 chains an
 // abort listener per node onto its evaluation's root signal — so any
 // expression wider than about ten concurrent nodes trips
 // MaxListenersExceededWarning, tens of times per sweep. Raised here because
 // the warning would bury the table, NOT because it is uninteresting: it is
-// a v3 finding this bench surfaced, and it reaches consumers too.
-setMaxListeners(0)
+// a v3 finding this bench surfaced, and it reaches consumers too. Browsers
+// have no such ceiling, and no `node:events` to import.
+if (inNode) {
+  const events = await import('node:events')
+  events.default.setMaxListeners(0)
+}
+
+/**
+ * Where a line goes: the console always, and in a browser also a `<pre>`,
+ * so the page shows its own results and a driver can wait for them.
+ */
+const out = (line: string) => {
+  console.log(line)
+  if (typeof document !== 'undefined') {
+    const pre = document.getElementById('out')
+    if (pre) pre.textContent += line + '\n'
+  }
+}
 
 let sink = 0
 
 /** Nanoseconds per iteration for one pass of `iterations` calls. */
 const round = async (iterations: number, run: (i: number) => Promise<unknown>): Promise<number> => {
-  const start = process.hrtime.bigint()
+  const start = performance.now()
   for (let i = 0; i < iterations; i++) sink += (await run(i)) === undefined ? 0 : 1
-  return Number(process.hrtime.bigint() - start) / iterations
+  return ((performance.now() - start) * 1e6) / iterations
 }
 
 const time = async (iterations: number, run: (i: number) => Promise<unknown>): Promise<number> => {
@@ -76,9 +98,21 @@ const assertAgreement = async (sweep: Sweep, kase: Case) => {
     const actual = await kase.arms[arm](0)
     if (deepEqual(expected, actual)) continue
     console.error(`\nArms "${first}" and "${arm}" disagree on "${kase.label}" — not a measurement.`)
-    console.error(`  ${first}:`, JSON.stringify(expected)?.slice(0, 300))
-    console.error(`  ${arm}:`, JSON.stringify(actual)?.slice(0, 300))
-    process.exit(1)
+    // A case that evaluates many units returns them as an array; point at
+    // the first one that differs rather than truncating the whole thing.
+    if (Array.isArray(expected) && Array.isArray(actual)) {
+      const at = expected.findIndex((value, i) => !deepEqual(value, actual[i]))
+      console.error(
+        `  first difference at index ${at}${expected.length !== actual.length ? ' (lengths differ)' : ''}`
+      )
+      console.error(`  ${first}:`, JSON.stringify(expected[at])?.slice(0, 300))
+      console.error(`  ${arm}:`, JSON.stringify(actual[at])?.slice(0, 300))
+    } else {
+      console.error(`  ${first}:`, JSON.stringify(expected)?.slice(0, 300))
+      console.error(`  ${arm}:`, JSON.stringify(actual)?.slice(0, 300))
+    }
+    // Unhandled, this ends a Node run non-zero and a browser run visibly
+    throw new Error(`arms disagree on "${kase.label}"`)
   }
 }
 
@@ -86,23 +120,46 @@ const us = (ns: number) => (ns / 1000).toFixed(ns < 10_000 ? 2 : 1)
 const ratioName = ([top, bottom]: [string, string]) => `${top} / ${bottom}`
 
 /**
- * Column headings, and the widths every row pads to. Derived from the
- * sweep alone so the header and the rows cannot disagree — arm names are
- * free-form, and "v3 cold / v3 warm" is wider than any number under it.
+ * Output is Markdown — a `###` heading, a note, and one table per sweep —
+ * padded so it also reads as a table in a terminal. A run's output pastes
+ * into an issue or the plan as-is, which is where results end up, and the
+ * browser page renders it.
+ *
+ * Column widths come from the rows themselves, so a sweep's table is held
+ * back and printed whole once its last row is in. That costs the row-by-
+ * row reveal; in Node a tick goes to stderr per row instead, so a long
+ * sweep still looks alive without dirtying the Markdown on stdout.
  */
-const layout = (sweep: Sweep) => {
-  const heads = [...sweep.arms.map((arm) => `${arm} µs`), ...(sweep.ratios ?? []).map(ratioName)]
-  return { heads, widths: heads.map((head) => Math.max(head.length, 8) + 2) }
+let pending: { sweep: Sweep; rows: string[][] } | undefined
+
+const heads = (sweep: Sweep) => [
+  'label',
+  ...sweep.arms.map((arm) => `${arm} µs`),
+  ...(sweep.ratios ?? []).map(ratioName),
+]
+
+const flush = () => {
+  if (pending === undefined) return
+  const { sweep, rows } = pending
+  pending = undefined
+  const head = heads(sweep)
+  const widths = head.map((h, i) => Math.max(h.length, 3, ...rows.map((row) => row[i].length)))
+  // The first column is text and pads right; every other is a number and
+  // pads left, with a `:` in the rule so it right-aligns when rendered too
+  const line = (cells: string[]) =>
+    `| ${cells.map((cell, i) => (i === 0 ? cell.padEnd(widths[i]) : cell.padStart(widths[i]))).join(' | ')} |`
+  out(line(head))
+  out(
+    `| ${widths.map((w, i) => (i === 0 ? '-'.repeat(w) : `${'-'.repeat(w - 1)}:`)).join(' | ')} |`
+  )
+  for (const row of rows) out(line(row))
 }
 
-const columns = (label: string, cells: string[], widths: number[]) =>
-  console.log(label.padEnd(28) + cells.map((cell, i) => cell.padStart(widths[i])).join(''))
-
 export const section = (sweep: Sweep) => {
-  console.log(`\n── ${sweep.title} ${'─'.repeat(Math.max(0, 64 - sweep.title.length))}`)
-  console.log(`${sweep.note}\n`)
-  const { heads, widths } = layout(sweep)
-  columns('label', heads, widths)
+  flush()
+  out(`\n### ${sweep.title}\n`)
+  out(`${sweep.note}\n`)
+  pending = { sweep, rows: [] }
 }
 
 export const runCase = async (sweep: Sweep, kase: Case) => {
@@ -110,15 +167,24 @@ export const runCase = async (sweep: Sweep, kase: Case) => {
   const timings: Record<string, number> = {}
   for (const arm of sweep.arms) timings[arm] = await time(kase.iterations, kase.arms[arm])
   const cells = [
+    kase.label,
     ...sweep.arms.map((arm) => us(timings[arm])),
     ...(sweep.ratios ?? []).map(([top, bottom]) =>
       timings[bottom] === 0 ? '—' : `${(timings[top] / timings[bottom]).toFixed(1)}×`
     ),
   ]
-  columns(kase.label, cells, layout(sweep).widths)
+  if (pending?.sweep === sweep) pending.rows.push(cells)
+  else out(`| ${cells.join(' | ')} |`)
+  if (inNode) process.stderr.write(`  · ${kase.label}\n`)
   return timings
 }
 
-export const note = (text: string) => console.log(`\n${text}`)
+export const note = (text: string) => {
+  flush()
+  out(`\n${text}`)
+}
 
-export const finish = () => console.log(`\n(sink ${sink})\n`)
+export const finish = () => {
+  flush()
+  out(`\n(sink ${sink})\n`)
+}

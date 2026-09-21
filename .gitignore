@@ -52,3 +52,9 @@ test/testSecrets.json
 # Temp folder for working on Expression builder
 json-edit-react
 package
+
+# Browser bench bundles (codegen/benchBrowser.mjs)
+bench/browser/dist
+
+# Playwright MCP session snapshots and console logs
+.playwright-mcp

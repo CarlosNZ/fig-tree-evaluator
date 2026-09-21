@@ -1,0 +1,764 @@
+{
+    "ON_PREVIEW_alias_5929": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stageNumber"
+                        },
+                        2
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "LIST_OF_QUESTIONS"
+                    ],
+                    "operator": "="
+                }
+            ],
+            "fallback": false,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "code": "notifyLOQ",
+            "sendEmail": false
+        }
+    },
+    "ON_PREVIEW_alias_5934": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stageNumber"
+                        },
+                        2
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "NON_CONFORM"
+                    ],
+                    "operator": "="
+                }
+            ],
+            "fallback": false,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "code": "notifyRejected",
+            "sendEmail": false
+        }
+    },
+    "ON_PREVIEW_alias_5937": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stageNumber"
+                        },
+                        2
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "CONFORM"
+                    ],
+                    "operator": "="
+                }
+            ],
+            "fallback": false,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "code": "genCertificate"
+        }
+    },
+    "ON_PREVIEW_alias_5938": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stageNumber"
+                        },
+                        2
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "CONFORM"
+                    ],
+                    "operator": "="
+                }
+            ],
+            "fallback": false,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "code": "notifyApproved",
+            "sendEmail": false
+        }
+    },
+    "ON_SCHEDULE_cLog_5927": {
+        "condition": true,
+        "parameter_queries": {
+            "message": {
+                "value": "Alpha, Bravo, Charlie",
+                "fallback": null,
+                "operator": "split"
+            }
+        }
+    },
+    "ON_EXTEND_changeOutcome_5926": {
+        "condition": true,
+        "parameter_queries": {
+            "newOutcome": "PENDING"
+        }
+    },
+    "ON_SCHEDULE_changeOutcome_5933": {
+        "condition": false,
+        "parameter_queries": {
+            "newOutcome": "EXPIRED"
+        }
+    },
+    "ON_REVIEW_SUBMIT_generateDoc_5939": {
+        "condition": {
+            "fallback": false,
+            "fragment": "Application Approved"
+        },
+        "parameter_queries": {
+            "filename": {
+                "string": "Tonga_Medicine_Cert_Registration_{{registration}}",
+                "fallback": null,
+                "operator": "stringSubstitution",
+                "substitutions": {
+                    "registration": {
+                        "fallback": "",
+                        "operator": "getData",
+                        "property": "outputCumulative.generatedText"
+                    }
+                }
+            },
+            "isOutputDoc": true,
+            "docTemplateId": "adG-8LF_bol2wRr5EdbzX",
+            "additionalData": {
+                "dosageForm": {
+                    "fallback": null,
+                    "operator": "?",
+                    "condition": {
+                        "values": [
+                            {
+                                "fallback": null,
+                                "operator": "getData",
+                                "property": "applicationData.responses.prodSelect.selection[0].dosageForm"
+                            },
+                            null
+                        ],
+                        "fallback": null,
+                        "operator": "="
+                    },
+                    "valueIfTrue": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.dosageForm.text"
+                    },
+                    "valueIfFalse": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.dosageFormGeneral.text"
+                    }
+                },
+                "siteAddress": {
+                    "args": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.responses.manufacturers.list[0].address.value.text"
+                        },
+                        {
+                            "separator": ", "
+                        }
+                    ],
+                    "operator": "flattenLines"
+                },
+                "registrationDate": {
+                    "args": [
+                        "dd LLLL, yyyy"
+                    ],
+                    "operator": "getFormattedDate"
+                }
+            }
+        }
+    },
+    "ON_REVIEW_SUBMIT_modifyRecord_5924": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stageNumber"
+                        },
+                        1
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "APPROVED"
+                    ],
+                    "operator": "="
+                },
+                {
+                    "query": "SELECT id FROM review\nWHERE application_id = $1\nAND stage_number = 2",
+                    "values": [
+                        {
+                            "fallback": 0,
+                            "operator": "getData",
+                            "property": "applicationData.applicationId"
+                        }
+                    ],
+                    "operator": "postgres"
+                }
+            ],
+            "fallback": false,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "status": "PENDING",
+            "reviewId": {
+                "query": "SELECT id FROM review\nWHERE application_id = $1\nAND stage_number = 2",
+                "values": [
+                    {
+                        "fallback": 0,
+                        "operator": "getData",
+                        "property": "applicationData.applicationId"
+                    }
+                ],
+                "operator": "postgres"
+            },
+            "tableName": "reviewStatusHistory"
+        }
+    },
+    "ON_REVIEW_SUBMIT_modifyRecord_5941": {
+        "condition": {
+            "values": [
+                {
+                    "operator": "getData",
+                    "property": "applicationData.outcome"
+                },
+                "APPROVED"
+            ],
+            "operator": "="
+        },
+        "parameter_queries": {
+            "data": {
+                "atcCode": "responses.atcCode",
+                "companyId": "orgId",
+                "shelfLife": "responses.shelfLife.text",
+                "tradeName": "responses.brandName.text",
+                "legalClass": "responses.legalClass.text",
+                "applicantId": "userId",
+                "companyName": "orgName",
+                "pharmacopeia": "responses.pharmacopeia.text",
+                "containerType": "responses.containerType.text",
+                "manufacturers": "responses.manufacturers",
+                "gmpCertificate": "responses.gmpCertificate",
+                "packagingSizes": "responses.packSizesFiji",
+                "manufacturerName": "responses.manName.text",
+                "originalFullName": "responses.prodSelect.selection[0].fullName",
+                "activeIngredients": "responses.Generics",
+                "applicationSerial": "applicationSerial",
+                "storageConditions": "responses.storageConditions.text",
+                "prodRegCertificate": "responses.prodRegCert",
+                "productDescription": "responses.productDescription.text",
+                "routeOfAdministration": "responses.routeAdministration.text",
+                "medicalProductClassification": "responses.natMedClass.text",
+                "recommendedDosageAndSchedules": "responses.recDosage.text"
+            },
+            "fullName": {
+                "string": "{{applicationData.responses.brandName.text}} {{applicationData.responses.Generics.list[0].ingredient.value.text}} {{applicationData.responses.Generics.list[0].quantity.value.text}} {{applicationData.responses.Generics.list[0].unit.value.text}} {{applicationData.responses.packagingSizes.text}}",
+                "fallback": "",
+                "operator": "stringSubstitution"
+            },
+            "isActive": true,
+            "productId": {
+                "fallback": null,
+                "operator": "getData",
+                "property": "outputCumulative.generatedText"
+            },
+            "tableName": "medicinalProduct",
+            "dosageForm": {
+                "fallback": null,
+                "operator": "?",
+                "condition": {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.responses.prodSelect.selection[0].dosageForm"
+                        },
+                        null
+                    ],
+                    "fallback": null,
+                    "operator": "="
+                },
+                "valueIfTrue": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.dosageForm.text"
+                },
+                "valueIfFalse": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.dosageFormGeneral.text"
+                }
+            },
+            "originalId": {
+                "Fiji": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.prodSelect.selection[0].productId"
+                },
+                "fallback": null,
+                "operator": "match",
+                "Australia": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.prodSelect.selection[0].productIdOriginal"
+                },
+                "New Zealand": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.prodSelect.selection[0].productIdOriginal"
+                },
+                "matchExpression": {
+                    "fallback": "",
+                    "operator": "getData",
+                    "property": "applicationData.responses.countrySelect.text"
+                }
+            },
+            "mSupplyItem": {
+                "fallback": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.mSupplyItemReviewer.selection[0]"
+                },
+                "operator": "getData",
+                "property": "applicationData.responses.mSupplyItem.selection[0]"
+            },
+            "registeredIn": {
+                "operator": "?",
+                "condition": {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.responses.countrySelect.selection"
+                        },
+                        "Other"
+                    ],
+                    "operator": "="
+                },
+                "valueIfTrue": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.countriesOfRegistration.text"
+                },
+                "valueIfFalse": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.countrySelect.selection"
+                }
+            },
+            "applicantName": {
+                "string": "{{applicationData.firstName}} {{applicationData.lastName}}",
+                "fallback": null,
+                "operator": "stringSubstitution",
+                "trimWhiteSpace": true
+            },
+            "mSupplyItemCode": {
+                "fallback": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.mSupplyItemReviewer.selection[0].code"
+                },
+                "operator": "getData",
+                "property": "applicationData.responses.mSupplyItem.selection[0].code"
+            },
+            "mSupplyItemName": {
+                "fallback": {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.responses.mSupplyItemReviewer.selection[0].item_name"
+                },
+                "operator": "getData",
+                "property": "applicationData.responses.mSupplyItem.selection[0].item_name"
+            },
+            "registration_date": {
+                "children": [
+                    "functions.getJSDate"
+                ],
+                "operator": "objectFunctions"
+            },
+            "regenerateDataTableFilters": true
+        }
+    },
+    "ON_REVIEW_SUBMIT_incrementStage_5928": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.stage"
+                        },
+                        "Final Decision"
+                    ],
+                    "operator": "="
+                },
+                {
+                    "values": [
+                        {
+                            "fallback": null,
+                            "operator": "getData",
+                            "property": "applicationData.reviewData.latestDecision.decision"
+                        },
+                        "LIST_OF_QUESTIONS"
+                    ],
+                    "operator": "="
+                }
+            ],
+            "fallback": null,
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "stageNumber": 1
+        }
+    },
+    "ON_REVIEW_SUBMIT_scheduleAction_5932": {
+        "condition": false,
+        "parameter_queries": {
+            "duration": {
+                "days": 10
+            },
+            "eventCode": "applicantDeadline"
+        }
+    },
+    "ON_REVIEW_SUBMIT_grantPermissions_5923": {
+        "condition": {
+            "values": [
+                {
+                    "values": [
+                        {
+                            "operator": "getData",
+                            "property": "applicationData.outcome"
+                        },
+                        "APPROVED"
+                    ],
+                    "operator": "="
+                },
+                false
+            ],
+            "operator": "and"
+        },
+        "parameter_queries": {
+            "orgId": {
+                "children": [
+                    "applicationData.orgId"
+                ],
+                "operator": "objectProperties"
+            },
+            "username": {
+                "children": [
+                    "applicationData.username"
+                ],
+                "operator": "objectProperties"
+            },
+            "permissionNames": [
+                "applyRenewProduct"
+            ]
+        }
+    },
+    "ON_REVIEW_SUBMIT_sendNotification_5935": {
+        "condition": {
+            "children": [
+                {
+                    "children": [
+                        "applicationData.outcome"
+                    ],
+                    "operator": "objectProperties"
+                },
+                "REJECTED"
+            ],
+            "operator": "="
+        },
+        "parameter_queries": {
+            "email": {
+                "fallback": "",
+                "operator": "getData",
+                "property": "applicationData.email"
+            },
+            "message": {
+                "string": "{{applicationData.responses.orgData.data.name}}  \n{{applicationData.responses.orgData.data.address}}\n\nDear {{applicationData.firstName}} {{applicationData.lastName}},\n\nThe National Drugs and Medical Supplies Committee has considered your application for inclusion of **{{drugName}}** drug into the Tongan Registered Medicinal Drug list.\n\nWe refer to the details of the medicinal drug as follows:\n\nProprietary name (trade name): {{drugName}}  \nStrength(s) per dosage unit: {{strength}}\n \nEvaluation of the application has been completed. Pursuant to the Therapeutic Goods Act of 2020, Chapter 12.16 of the Laws of the Kingdom of Tonga, we regret to inform you that your application was unsuccessful and has been rejected. The following reasons are given by the Committee:\n\n{{reasons}}\n\nPlease address any future correspondence regarding the outcome of your application to the Registration Section of the Central Pharmacy and Medical Store.\n\nYours Sincerely,  \n\nNational Drugs and Medical Supplies Committee Chairperson.\nMinistry of Health (Potungaue ‘o e Mo’ui)\nNuku’alofa, Tonga \ntongadrugregulatory@gmail.com Date: {{date}}",
+                "operator": "stringSubstitution",
+                "substitutions": {
+                    "date": {
+                        "args": [
+                            "dd LLLL, yyyy"
+                        ],
+                        "operator": "getFormattedDate"
+                    },
+                    "reasons": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.reviewData.latestDecision.comment"
+                    },
+                    "drugName": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.brandName.text"
+                    },
+                    "strength": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.Generics.list.additionalInfo.value.text",
+                        "outputType": "string"
+                    }
+                }
+            },
+            "subject": {
+                "string": "Tongan Registered List of Medicinal Drugs - %1",
+                "operator": "stringSubstitution",
+                "substitutions": [
+                    {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.applicationSerial"
+                    }
+                ]
+            }
+        }
+    },
+    "ON_REVIEW_SUBMIT_sendNotification_5936": {
+        "condition": {
+            "fallback": null,
+            "fragment": "Application Approved"
+        },
+        "parameter_queries": {
+            "email": {
+                "fallback": "",
+                "operator": "getData",
+                "property": "applicationData.email"
+            },
+            "message": {
+                "string": "Dear {{applicationData.firstName}} {{applicationData.lastName}},\n\nThe National Drugs and Medical Supplies Committee has considered your application for inclusion of **{{drugName}}** drug into the Tongan Registered Medicinal Drug list.\n\nEvaluation of the application has been completed. We are pleased to inform you that your application was successful and an approval for registration under the Therapeutic Goods Act of 2020, Chapter 12.16 of the Laws of the Kingdom of Tonga is granted, subject to the conditions in this email and its attachments. This email and its attachments constitute the marketing authorization. The following special conditions of registration are listed by the Committee:\n\n1. The product(s) must conform with all the details provided in your application\n2. No changes may be made to the product without prior approval of the committee\n3. All advertising and promotion of the product(s) must be consistent with the agreed product information.\n\nPlease retain the certificate as proof of registration in the Kingdom Of Tonga. It can also be accessed on the Tongan Drug Regulatory Online Services Portal. \n\nMedicinal Drug registration Number: {{registrationId}}  \nProduct Name:  **{{drugName}}**  \nManufacturer: {{manufacturer}}      \nLegal Class: {{class}}  \nName of Market Authorisation Holder: {{marketAuthHolder}}\n\nPlease find attached your registration certificate with full product details.\n\nKind regards,\n\nNational Drugs and Medical Supplies Committee Chairperson\nMinistry of Health",
+                "operator": "stringSubstitution",
+                "substitutions": {
+                    "class": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.legalClass.selection"
+                    },
+                    "drugName": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.brandName.text"
+                    },
+                    "manufacturer": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.manName.text"
+                    },
+                    "registrationId": {
+                        "fallback": "*generated on approval*",
+                        "operator": "getData",
+                        "property": "outputCumulative.generatedText"
+                    },
+                    "marketAuthHolder": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.orgName"
+                    }
+                }
+            },
+            "subject": {
+                "string": "Tongan Registered List of Medicinal Drugs - %1",
+                "operator": "stringSubstitution",
+                "substitutions": [
+                    {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.applicationSerial"
+                    }
+                ]
+            },
+            "attachments": {
+                "fallback": null,
+                "operator": "getData",
+                "property": "outputCumulative.document.uniqueId"
+            }
+        }
+    },
+    "ON_REVIEW_SUBMIT_sendNotification_5940": {
+        "condition": {
+            "children": [
+                {
+                    "children": [
+                        "applicationData.reviewData.latestDecision.decision",
+                        null
+                    ],
+                    "operator": "objectProperties"
+                },
+                "LIST_OF_QUESTIONS"
+            ],
+            "operator": "="
+        },
+        "parameter_queries": {
+            "email": {
+                "fallback": "",
+                "operator": "getData",
+                "property": "applicationData.email"
+            },
+            "message": {
+                "string": "{{applicationData.responses.orgData.data.name}}  \n{{applicationData.responses.orgData.data.address}}\n\nDear {{applicationData.firstName}} {{applicationData.lastName}},\n\nYour recent application ({{applicationData.applicationSerial}}) for registration of the medicinal drug **{{drugName}}**  was incomplete. \n\nThe details of the medicinal drug are as follows:\n\nProprietary name (trade name): {{drugName}}   \nStrength(s) per dosage unit: {{strength}}  \n \nEvaluation of the application is in process. The following items should be attended to before returning the application to the Registration Section of the Central Pharmacy and Medical Store:\n\n{{comments}}\n\nTo review the application requiring your attention and respond to the request, please visit:\n\n{{applicationData.environmentData.webHostUrl}}/application/{{applicationData.applicationSerial}}\n\nPlease provide a response to these questions within 10 days. Failure to respond within this timeframe may delay a decision on your application, or the National Drugs and Medical Supplies Committee may at its discretion proceed to decide without further responses from you.\n\nYours Sincerely,  \n \nNational Drugs and Medical Supplies Committee Chairperson.\nMinistry of Health (Potungaue ‘o e Mo’ui)  \nNuku’alofa, Tonga  \ntongadrugregulatory@gmail.com \n\nDate: {{date}}\n",
+                "operator": "stringSubstitution",
+                "substitutions": {
+                    "date": {
+                        "args": [
+                            "dd LLLL, yyyy"
+                        ],
+                        "operator": "getFormattedDate"
+                    },
+                    "serial": null,
+                    "comments": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.reviewData.latestDecision.comment"
+                    },
+                    "drugName": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.brandName.text"
+                    },
+                    "strength": {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.responses.Generics.list.additionalInfo.value.text",
+                        "outputType": "string"
+                    }
+                }
+            },
+            "subject": {
+                "string": "Tongan Registered List of Medicinal Drugs - %1",
+                "operator": "stringSubstitution",
+                "substitutions": [
+                    {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.applicationSerial"
+                    }
+                ]
+            }
+        }
+    },
+    "ON_REVIEW_SUBMIT_generateTextString_5930": {
+        "condition": {
+            "values": [
+                {
+                    "fallback": null,
+                    "operator": "getData",
+                    "property": "applicationData.outcome"
+                },
+                "APPROVED"
+            ],
+            "operator": "="
+        },
+        "parameter_queries": {
+            "pattern": "TR-<+ddddd>",
+            "counterName": "medProdReg"
+        }
+    },
+    "ON_APPLICATION_SUBMIT_scheduleAction_5925": {
+        "condition": true,
+        "parameter_queries": {
+            "cancel": true,
+            "eventCode": "applicantDeadline"
+        }
+    },
+    "ON_APPLICATION_SUBMIT_sendNotification_5931": {
+        "condition": true,
+        "parameter_queries": {
+            "to": {
+                "fallback": null,
+                "operator": "getData",
+                "property": "applicationData.email"
+            },
+            "message": {
+                "string": "Dear {{applicationData.firstName}} {{applicationData.lastName}},    \n\nYour application for inclusion into the Tongan registered medicinal drug has been successfully submitted.\n\nThe Tonga Drug Regulatory Unit aims to screen listing submissions within 30 working days at which time clarifications, if any, will be requested of you.\n\nYours sincerely,\n\nRegistration Section,  \nCentral Pharmacy and Medical Store.\n\n**Ministry of Health (Potungaue ‘o e Mo’ui) Nuku’alofa, Tonga**   tongadrugregulatory@gmail.com  Date: {{date}}\n",
+                "operator": "stringSubstitution",
+                "substitutions": {
+                    "date": {
+                        "args": [
+                            "dd LLLL, yyyy"
+                        ],
+                        "operator": "getFormattedDate"
+                    }
+                }
+            },
+            "subject": {
+                "string": "Medicinal Drug Registration – %1",
+                "operator": "stringSubstitution",
+                "substitutions": [
+                    {
+                        "fallback": null,
+                        "operator": "getData",
+                        "property": "applicationData.applicationSerial"
+                    }
+                ]
+            }
+        }
+    }
+}

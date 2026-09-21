@@ -29,5 +29,13 @@ test/massiveQuery.json
 # codegen/fetchArtifacts.mjs — they are copies of what is live, not source
 docs-artifacts/*.html
 
+# Real-world benchmark fixtures: the v2 corpus as exported from Conforma,
+# kept byte-identical, and the v3 forms bench/real-world/migrate.ts emits
+# from it
+bench/real-world/*.json
+
+# Generated: browser bundles of the benches
+bench/browser/dist
+
 # Lockfile
 pnpm-lock.yaml

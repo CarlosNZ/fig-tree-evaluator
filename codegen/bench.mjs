@@ -16,6 +16,18 @@ const available = () =>
     .filter((name) => !HIDDEN.has(name))
     .sort()
 
+// Benchmarks are only comparable on one runtime, and `engines` names it.
+// Node 20's AbortController is roughly seven times slower than Node 22's,
+// which alone moves v3's per-node figures by half — so a number taken on
+// an older Node is not a smaller version of the same measurement, it is a
+// different one. Refuse rather than warn: a warning above a table gets
+// cropped out of the table.
+const major = Number(process.versions.node.split('.')[0])
+if (major < 22) {
+  console.error(`pnpm bench needs Node >= 22 (engines); this is ${process.version}. Try: nvm use`)
+  process.exit(1)
+}
+
 const name = process.argv[2]
 
 if (name === undefined || name === 'list') {

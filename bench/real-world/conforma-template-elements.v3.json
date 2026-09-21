@@ -1,0 +1,2455 @@
+{
+  "PIL": {
+    "parameters": {
+      "label": "Attach Patient information leaflet (PIL)",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 10,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "lessThanOrEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.legalClass.optionIndex",
+              "fallback": -1
+            },
+            2
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "greaterThanOrEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.legalClass.optionIndex",
+              "fallback": -1
+            },
+            0
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "RegID": {
+    "parameters": {
+      "label": "Corresponding Registration ID",
+      "default": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": null
+        },
+        "branches": {
+          "Fiji": {
+            "operator": "get",
+            "path": "responses.prodSelect.selection[0].productId",
+            "fallback": null
+          },
+          "Australia": {
+            "operator": "get",
+            "path": "responses.prodSelect.selection[0].productIdOriginal",
+            "fallback": null
+          },
+          "New Zealand": {
+            "operator": "get",
+            "path": "responses.prodSelect.selection[0].productIdOriginal",
+            "fallback": null
+          }
+        },
+        "fallback": null
+      },
+      "description": {
+        "operator": "if",
+        "condition": {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            "Other"
+          ],
+          "fallback": null
+        },
+        "then": "_Include Registration of the first country selected only_",
+        "else": null
+      }
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "match",
+          "value": {
+            "operator": "get",
+            "path": "responses.countrySelect.selection",
+            "fallback": null
+          },
+          "branches": {
+            "Fiji": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].productId",
+              "fallback": null
+            },
+            "Australia": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].productIdOriginal",
+              "fallback": null
+            },
+            "New Zealand": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].productIdOriginal",
+              "fallback": null
+            }
+          },
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "whoCpp": {
+    "parameters": {
+      "label": "WHO CPP-Certificate of Pharmaceutical Product",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "atcCode": {
+    "parameters": {
+      "icon": "barcode",
+      "label": "ATC Code and Category",
+      "source": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/data-views/atcCode?&raw=true&first=20&search=%2&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "fallback": null
+            },
+            {
+              "operator": "get",
+              "path": "search.text",
+              "fallback": null
+            }
+          ]
+        },
+        "body": {}
+      },
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].atcCode.selection",
+        "fallback": null
+      },
+      "description": "Search by ingredient to find the ATC code and category",
+      "multiSelect": false,
+      "placeholder": "Search ingredients...",
+      "displayFormat": {
+        "title": "${name}",
+        "description": "Category: ${category}  \nATC Code: ${atcCode}"
+      },
+      "minCharacters": 2
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].atcCode.selection",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "gmpCert": {
+    "parameters": {
+      "label": "A Certificate of Good Manufacturing Practise (GMP)",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "manName": {
+    "parameters": {
+      "label": "Name of the Manufacturer"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "orgData": {
+    "parameters": {
+      "default": {
+        "fragment": "Get Single Entity",
+        "parameters": {
+          "id": {
+            "operator": "get",
+            "path": "currentUser.organisation.orgId"
+          },
+          "dataViewCode": "organisation"
+        },
+        "fallback": null
+      }
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "orgInfo": {
+    "parameters": {
+      "text": {
+        "operator": "buildString",
+        "template": "### {{p0}}\n\n**Type of business**: {{p1}}  \n**Postal address**: {{p2}}  \n**Country of Primary Registration**: {{p3}}  \n**Primary Contact Name**: {{p4}}  \n**Telephone No.**: {{p5}}  \n**Fax No.**: {{p6}}  \n**Email Address**: {{p7}}  \n**Role of the applicant for this product registration**: {{p8}}",
+        "substitutions": {
+          "p0": {
+            "operator": "get",
+            "path": "responses.orgData.data.name"
+          },
+          "p1": {
+            "operator": "get",
+            "path": "responses.orgData.data.type.text"
+          },
+          "p2": {
+            "operator": "get",
+            "path": "responses.orgData.data.address"
+          },
+          "p3": {
+            "operator": "get",
+            "path": "responses.orgData.data.country"
+          },
+          "p4": {
+            "operator": "get",
+            "path": "responses.orgData.data.contactName"
+          },
+          "p5": {
+            "operator": "get",
+            "path": "responses.orgData.data.contactPhone"
+          },
+          "p6": {
+            "operator": "get",
+            "path": "responses.orgData.data.fax"
+          },
+          "p7": {
+            "operator": "get",
+            "path": "responses.orgData.data.contactEmail"
+          },
+          "p8": {
+            "operator": "get",
+            "path": "responses.orgData.data.regulatoryActivity.text"
+          }
+        },
+        "fallback": "<Unable to load company info 😥️>"
+      }
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "Generics": {
+    "parameters": {
+      "label": "Generic name of active substance (INN)",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].activeIngredients.list",
+        "fallback": {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].activeIngredientsResponse.list",
+          "fallback": null
+        }
+      },
+      "modalText": "Please provide details of each active substance.  \nTo close this pop-up, click anywhere outside the window.",
+      "displayType": "table",
+      "inputFields": [
+        {
+          "code": "ingredient",
+          "title": "Ingredient",
+          "category": "QUESTION",
+          "parameters": {
+            "icon": "pills",
+            "label": "Generic name of active substance (INN)",
+            "source": {
+              "operator": "http",
+              "method": "post",
+              "url": {
+                "operator": "buildString",
+                "template": "%1/data-views/activeIngredients?&raw=true&first=20&search=%2&",
+                "substitutions": [
+                  {
+                    "operator": "get",
+                    "path": "applicationData.config.serverREST",
+                    "missingPathDefault": null
+                  },
+                  {
+                    "operator": "get",
+                    "path": "search.text",
+                    "missingPathDefault": null
+                  }
+                ]
+              },
+              "body": []
+            },
+            "textFormat": "${name}",
+            "multiSelect": true,
+            "placeholder": "Search substances...",
+            "resultFormat": {
+              "title": "${name}",
+              "description": " "
+            },
+            "displayFormat": {
+              "title": "${name}"
+            },
+            "minCharacters": 2
+          },
+          "elementTypePluginCode": "search"
+        },
+        {
+          "code": "quantity",
+          "title": "Strength",
+          "category": "QUESTION",
+          "parameters": {
+            "type": "float",
+            "label": "Strength"
+          },
+          "elementTypePluginCode": "number"
+        },
+        {
+          "code": "unit",
+          "title": "Unit",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Select Unit from list",
+            "search": true,
+            "options": {
+              "operator": "http",
+              "method": "post",
+              "url": {
+                "operator": "buildString",
+                "template": "%1/data-views/units?&raw=true&",
+                "substitutions": [
+                  {
+                    "operator": "get",
+                    "path": "applicationData.config.serverREST",
+                    "missingPathDefault": null
+                  }
+                ]
+              },
+              "body": [],
+              "returnPath": "code"
+            },
+            "placeholder": "Search units",
+            "optionsDisplayProperty": "code"
+          },
+          "elementTypePluginCode": "dropdownChoice"
+        },
+        {
+          "code": "additionalInfo",
+          "title": "Ingredient detail",
+          "category": "QUESTION",
+          "isVisible": false,
+          "isRequired": false,
+          "parameters": {
+            "label": "Any additional info about this ingredient?"
+          },
+          "elementTypePluginCode": "longText"
+        }
+      ],
+      "addButtonText": "Finish Adding Ingredient",
+      "displayFormat": {
+        "title": "${activeIngredientsList}"
+      },
+      "deleteItemText": "Remove formulation",
+      "createModalButtonText": "Add Ingredient"
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].activeIngredients.list",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].activeIngredientsResponse.list",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "brandName": {
+    "parameters": {
+      "label": "Brand/Trade Name",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].tradeName",
+        "fallback": null
+      }
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].tradeName",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "exipients": {
+    "parameters": {
+      "label": "Exipients"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "packSizes": {
+    "parameters": {
+      "label": "Packaging Sizes",
+      "default": {
+        "operator": "if",
+        "condition": {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.text",
+              "fallback": null
+            },
+            "Other"
+          ]
+        },
+        "then": {
+          "operator": "match",
+          "value": {
+            "operator": "get",
+            "path": "responses.countrySelect.text",
+            "fallback": ""
+          },
+          "branches": {
+            "Fiji": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].packagingSizesForm.list",
+              "fallback": []
+            },
+            "Australia": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].packSizesResponse.list",
+              "fallback": []
+            },
+            "New Zealand": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].packSizesResponse.list",
+              "fallback": []
+            }
+          },
+          "fallback": null
+        },
+        "else": []
+      },
+      "modalText": "To close this pop-up, click anywhere outside the window.",
+      "displayType": "table",
+      "inputFields": [
+        {
+          "code": "packsize",
+          "title": "Pack size",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Pack size",
+            "description": "(e.g. 10 tablets)"
+          },
+          "elementTypePluginCode": "shortText"
+        }
+      ],
+      "createModalButtonText": "Add package size"
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": null
+        },
+        "Other"
+      ]
+    },
+    "is_required": true,
+    "visibility_condition": false
+  },
+  "recDosage": {
+    "parameters": {
+      "label": "Recommended dosage and dosage schedules"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    },
+    "visibility_condition": true
+  },
+  "shelfLife": {
+    "parameters": {
+      "label": "Shelf life",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].shelfLife",
+        "fallback": null
+      }
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].shelfLife",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "dosageForm": {
+    "parameters": {
+      "label": "Dosage form",
+      "search": true,
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].dosageForm",
+        "fallback": null
+      },
+      "options": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/data-views/dosageForm?raw=true&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "fallback": null
+            }
+          ]
+        },
+        "body": {},
+        "returnPath": "shortDescription"
+      }
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].dosageForm",
+          "fallback": null
+        },
+        null
+      ]
+    },
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].dosageForm",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    }
+  },
+  "legalClass": {
+    "parameters": {
+      "label": "Medicinal Products Classification",
+      "options": [
+        "CLASS 1: Medicinal Drugs available from licensed retail outlets",
+        "CLASS 2A: Medicinal Drugs available from registered pharmacy premises under the supervision of a registered pharmacist, where advice of pharmacist at point of sale is not required",
+        "CLASS 2B : Medicinal Drugs available from registered pharmacy premises under the supervision of a registered pharmacist, where advice of pharmacist at point of sale is required",
+        "CLASS 3: Medicinal Drugs available on prescription only and dispensed by a pharmacist or Assistant Pharmacist",
+        "CLASS 4: Medicinal Drugs available on special prescription only and dispensed by a pharmacist or Assistant Pharmacist",
+        "CLASS 5: Narcotic Drugs and Psychotropic Substances subject to Special Import Controls",
+        "CLASS 6: Medicinal Drugs available from Veterinary Practitioners for Animal Use"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partAIntro": {
+    "parameters": {
+      "text": "The application for inclusion to the list of registered medicinal drugs shall be made by a manufacturer, or an authorized importer of the manufacturer or license/patent holder",
+      "title": "## PART A: Company Particulars"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partEIntro": {
+    "parameters": {
+      "title": "## PART E: Indication and Dosage Schedules"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partFIntro": {
+    "parameters": {
+      "title": "## PART F: Product marketing authorisation in the country of manufacture"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partGIntro": {
+    "parameters": {
+      "title": "## PART G: Product marketing authorisation in other Countries"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partHIntro": {
+    "parameters": {
+      "title": "## PART H: Application Fee"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "prodSelect": {
+    "parameters": {
+      "icon": "pills",
+      "label": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": ""
+        },
+        "branches": {
+          "Fiji": "Search products registered in Fiji",
+          "Australia": "Australian Register of Therapeutic Goods (ARTG) ID",
+          "New Zealand": "Search NZ Medsafe database"
+        },
+        "fallback": false
+      },
+      "source": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": ""
+        },
+        "branches": {
+          "Fiji": {
+            "operator": "http",
+            "method": "post",
+            "url": {
+              "operator": "buildString",
+              "template": "%1/external-api/FijiConforma/productSearch?search=%2&",
+              "substitutions": [
+                {
+                  "operator": "get",
+                  "path": "applicationData.config.serverREST",
+                  "fallback": null
+                },
+                {
+                  "operator": "get",
+                  "path": "search.text",
+                  "fallback": null
+                }
+              ]
+            }
+          },
+          "Australia": {
+            "operator": "http",
+            "method": "post",
+            "url": {
+              "operator": "buildString",
+              "template": "%1/data-views/preregProd?orderBy=tradeName&raw=true&first=40&search=%2&",
+              "substitutions": [
+                {
+                  "operator": "get",
+                  "path": "applicationData.config.serverREST",
+                  "fallback": null
+                },
+                {
+                  "operator": "get",
+                  "path": "search.text",
+                  "fallback": null
+                }
+              ]
+            },
+            "body": {
+              "authority": {
+                "equalTo": "Australia"
+              }
+            }
+          },
+          "New Zealand": {
+            "operator": "http",
+            "method": "post",
+            "url": {
+              "operator": "buildString",
+              "template": "%1/data-views/preregProd?orderBy=tradeName&raw=true&first=40&search=%2&",
+              "substitutions": [
+                {
+                  "operator": "get",
+                  "path": "applicationData.config.serverREST",
+                  "fallback": null
+                },
+                {
+                  "operator": "get",
+                  "path": "search.text",
+                  "fallback": null
+                }
+              ]
+            },
+            "body": {
+              "authority": {
+                "equalTo": "New Zealand"
+              }
+            }
+          }
+        },
+        "fallback": false
+      },
+      "textFormat": "${fullName}",
+      "description": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": ""
+        },
+        "branches": {
+          "Fiji": "Search by full name",
+          "Australia": "Search by Product ID, name, or sponsor",
+          "New Zealand": "Search by File reference number, product name, or sponsor"
+        },
+        "fallback": false
+      },
+      "displayType": "list",
+      "multiSelect": false,
+      "placeholder": "Search products...",
+      "resultFormat": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": ""
+        },
+        "branches": {
+          "Fiji": {
+            "title": "${fullName} - ${productId}",
+            "description": "${sponsorName}"
+          },
+          "Australia": {
+            "title": "${fullName} - ${productIdOriginal}",
+            "description": "${sponsorName}"
+          },
+          "New Zealand": {
+            "title": "${fullName} - ${productIdOriginal}",
+            "description": "${sponsorName}"
+          }
+        },
+        "fallback": false
+      },
+      "displayFormat": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": ""
+        },
+        "branches": {
+          "Fiji": {
+            "title": "${fullName} - ${productId}"
+          },
+          "Australia": {
+            "title": "${fullName} - ${productIdOriginal}"
+          },
+          "New Zealand": {
+            "title": "${fullName} - ${productIdOriginal}"
+          }
+        },
+        "fallback": false
+      },
+      "minCharacters": 3
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "match",
+      "value": {
+        "operator": "get",
+        "path": "responses.countrySelect.text",
+        "fallback": ""
+      },
+      "branches": {
+        "Fiji": true,
+        "Australia": true,
+        "New Zealand": true
+      },
+      "fallback": null
+    }
+  },
+  "indications": {
+    "parameters": {
+      "label": "Recommended clinical indications"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    },
+    "visibility_condition": true
+  },
+  "mSupplyItem": {
+    "parameters": {
+      "icon": "pills",
+      "label": "Please select the corresponding mSupply item",
+      "source": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/external-api/mSupply/item?search=@%2@&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "fallback": null
+            },
+            {
+              "operator": "get",
+              "path": "search.text",
+              "fallback": ""
+            }
+          ]
+        },
+        "fallback": []
+      },
+      "textFormat": "${item_name}",
+      "displayType": "input",
+      "multiSelect": false,
+      "placeholder": "Search items...",
+      "resultFormat": {
+        "title": "${item_name} - ${code}",
+        "description": "${itemCategory.Description}"
+      },
+      "displayFormat": {
+        "title": "${item_name} - ${code}"
+      },
+      "minCharacters": 3
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "regAuthName": {
+    "parameters": {
+      "label": "Name of Regulatory Authority"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "get",
+      "path": "responses.noApprovedCountry.data",
+      "fallback": false
+    }
+  },
+  "meetingNotes": {
+    "parameters": {
+      "label": "Upload evidence of committee approval",
+      "isOutputDoc": true,
+      "fileSizeLimit": 10000,
+      "fileCountLimit": 1,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "applicationData.current.stage.name",
+          "fallback": null
+        },
+        "Final Decision"
+      ]
+    }
+  },
+  "pharmacopeia": {
+    "parameters": {
+      "label": "Pharmacopeia standard of medicinal product",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].pharmacopeia",
+        "fallback": null
+      },
+      "options": [
+        "BP (British Pharmacopeia)",
+        "U.S.P (United States Pharmacopoeia)",
+        "Ph. Int (International Pharmacopoeia)",
+        "Ph Eur (European Pharmacopoeia)"
+      ],
+      "hasOther": true
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].pharmacopeia",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "regAuthEmail": {
+    "parameters": {
+      "label": "Email of Regulatory Authority"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "get",
+      "path": "responses.noApprovedCountry.data",
+      "fallback": false
+    }
+  },
+  "regAuthPhone": {
+    "parameters": {
+      "label": "Contact number of Regulatory Authority"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "get",
+      "path": "responses.noApprovedCountry.data",
+      "fallback": false
+    }
+  },
+  "advanceSample": {
+    "parameters": {
+      "label": "Sample of the Medicinal Drug to be supplied in advance?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "containerType": {
+    "parameters": {
+      "label": "Container Type and Type of Seal"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "countrySelect": {
+    "parameters": {
+      "label": "Select where the product is already registered",
+      "options": [
+        "Fiji",
+        "Australia",
+        "New Zealand",
+        "Other",
+        "None"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "manufacturers": {
+    "parameters": {
+      "label": "Manufacturing Site Location",
+      "maxItems": 1,
+      "modalText": "Enter manufacturing site details",
+      "displayType": "inline",
+      "inputFields": [
+        {
+          "code": "address",
+          "title": "Site address",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Site address"
+          },
+          "elementTypePluginCode": "longText"
+        },
+        {
+          "code": "country",
+          "title": "Country",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Country of manufacturing site",
+            "search": true,
+            "options": {
+              "operator": "http",
+              "method": "post",
+              "url": {
+                "operator": "buildString",
+                "template": "%1/data-views/countries?orderBy=nameCommon&raw=true&",
+                "substitutions": [
+                  {
+                    "operator": "get",
+                    "path": "applicationData.config.serverREST",
+                    "fallback": null
+                  }
+                ]
+              },
+              "body": {},
+              "returnPath": "nameCommon"
+            }
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "dropdownChoice"
+        },
+        {
+          "code": "manSiteActivity",
+          "title": "Manufacturer SIte Activity",
+          "category": "QUESTION",
+          "isRequired": false,
+          "parameters": {
+            "label": "Manufacturing Site Activity"
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "shortText"
+        },
+        {
+          "code": "phoneNum",
+          "title": "Phone number",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Telephone Number"
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "shortText"
+        },
+        {
+          "code": "email",
+          "title": "Email",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Email Address of the Organisation"
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "shortText"
+        },
+        {
+          "code": "manLicense",
+          "title": "Manufacturing License",
+          "category": "QUESTION",
+          "isRequired": false,
+          "parameters": {
+            "label": "Copy of manufacturing license",
+            "fileSizeLimit": 5000,
+            "fileCountLimit": 10,
+            "fileExtensions": [
+              "pdf",
+              "jpg",
+              "jpeg",
+              "png"
+            ]
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "fileUpload"
+        },
+        {
+          "code": "manGmpCert",
+          "title": "Good Manufacturing Practice certificate ",
+          "category": "QUESTION",
+          "isRequired": false,
+          "parameters": {
+            "label": "Good Manufacturing Practice certificate",
+            "fileSizeLimit": 5000,
+            "fileCountLimit": 1,
+            "fileExtensions": [
+              "pdf",
+              "jpg",
+              "jpeg",
+              "png"
+            ]
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "fileUpload"
+        },
+        {
+          "code": "otherDocs",
+          "title": "Other relevant documents",
+          "category": "QUESTION",
+          "isRequired": false,
+          "parameters": {
+            "label": "Other relevant documents",
+            "fileSizeLimit": 5000,
+            "fileCountLimit": 10,
+            "fileExtensions": [
+              "pdf",
+              "jpg",
+              "jpeg",
+              "png"
+            ]
+          },
+          "validationMessage": "",
+          "elementTypePluginCode": "fileUpload"
+        }
+      ],
+      "addButtonText": "Add site",
+      "displayFormat": {
+        "title": "${address}"
+      },
+      "deleteItemText": "Remove site",
+      "createModalButtonText": "Add site"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "noAuthReasons": {
+    "parameters": {
+      "label": "Reasons for non-registration and other notes for Tonga to consider this product",
+      "lines": 6
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": null
+        },
+        "None"
+      ],
+      "fallback": null
+    },
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": false
+        },
+        "None"
+      ],
+      "fallback": false
+    }
+  },
+  "packSizesFiji": {
+    "parameters": {
+      "label": "Packaging Sizes",
+      "default": {
+        "operator": "if",
+        "condition": {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.text",
+              "fallback": null
+            },
+            "Fiji"
+          ]
+        },
+        "then": {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].packagingSizesForm.list",
+          "fallback": []
+        },
+        "else": []
+      },
+      "textFormat": "${LBQuantity.value.text} ${LBUnit.value.selection}",
+      "description": {
+        "operator": "if",
+        "condition": {
+          "operator": "or",
+          "values": [
+            {
+              "operator": "equal",
+              "values": [
+                {
+                  "operator": "get",
+                  "path": "responses.countrySelect.text",
+                  "fallback": null
+                },
+                "Australia"
+              ]
+            },
+            {
+              "operator": "equal",
+              "values": [
+                {
+                  "operator": "get",
+                  "path": "responses.countrySelect.text",
+                  "fallback": null
+                },
+                "Australia"
+              ]
+            }
+          ]
+        },
+        "then": {
+          "operator": "buildString",
+          "template": "Pack sizes for {{country}}:  \n*{{packSizes}}*",
+          "substitutions": {
+            "country": {
+              "operator": "get",
+              "path": "responses.countrySelect.text",
+              "fallback": null
+            },
+            "packSizes": {
+              "operator": "get",
+              "path": "responses.prodSelect.selection[0].packSizesResponse.list[*].packsize.value.text",
+              "fallback": []
+            }
+          }
+        },
+        "else": ""
+      },
+      "displayType": "table",
+      "inputFields": [
+        {
+          "code": "LBQuantity",
+          "title": "Quantity",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Quantity",
+            "description": "Number of units within a pack"
+          },
+          "elementTypePluginCode": "number"
+        },
+        {
+          "code": "LBUnit",
+          "title": "Unit",
+          "category": "QUESTION",
+          "parameters": {
+            "label": "Unit",
+            "search": true,
+            "options": {
+              "operator": "plus",
+              "values": [
+                {
+                  "operator": "http",
+                  "method": "post",
+                  "url": {
+                    "operator": "buildString",
+                    "template": "%1/data-views/units?&raw=true&",
+                    "substitutions": [
+                      {
+                        "operator": "get",
+                        "path": "applicationData.config.serverREST",
+                        "missingPathDefault": null
+                      }
+                    ]
+                  },
+                  "body": [],
+                  "returnPath": "code"
+                },
+                {
+                  "operator": "http",
+                  "method": "post",
+                  "url": {
+                    "operator": "buildString",
+                    "template": "%1/data-views/dosageForm?raw=true&",
+                    "substitutions": [
+                      {
+                        "operator": "get",
+                        "path": "applicationData.config.serverREST",
+                        "missingPathDefault": null
+                      }
+                    ]
+                  },
+                  "body": [],
+                  "returnPath": "shortDescription"
+                }
+              ]
+            },
+            "description": "Specify the dosage unit (e.g. ml, tablets, ampoules)"
+          },
+          "elementTypePluginCode": "dropdownChoice"
+        }
+      ],
+      "displayFormat": {
+        "description": "${LBQuantity} ${LBUnit}"
+      },
+      "createModalButtonText": "Add package size"
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "notEqual",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": null
+        },
+        "Fiji"
+      ]
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "bioequivalence": {
+    "parameters": {
+      "label": "If product has a narrow therapeutic window, attach Bio-equivalence Report",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "isManufacturer": {
+    "parameters": {
+      "label": "Are you the Manufacturer, license/patent holder?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "productSpecDoc": {
+    "parameters": {
+      "label": "Product Specification",
+      "description": "A copy of the finished medicinal drug specification(s) from the company responsible for the batch release of the finished medicinal drug should be provided.",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "regAuthAddress": {
+    "parameters": {
+      "label": "Address of Regulatory Authority"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "get",
+      "path": "responses.noApprovedCountry.data",
+      "fallback": false
+    }
+  },
+  "regCertificate": {
+    "parameters": {
+      "label": "Product marketing authorisation from recognised drug regulatory authorities",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": {
+      "operator": "notEqual",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": null
+        },
+        "None"
+      ],
+      "fallback": null
+    },
+    "visibility_condition": true
+  },
+  "stabilityStudy": {
+    "parameters": {
+      "label": "Stability Study Report",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "partBIntro-COPY": {
+    "parameters": {
+      "text": "",
+      "title": "## PART B: Manufacturer's Particulars"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "partGIntro-COPY": {
+    "parameters": {
+      "text": "*Legal Class means indicating in the application the proposed dispensing category/classification by ticking which of the options below apply to the medicinal drug*",
+      "title": "## PART D: Legal Class"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "Declaration-COPY": {
+    "parameters": {
+      "label": "Declaration",
+      "checkboxes": [
+        "I agree"
+      ],
+      "description": "I confirm and declare that:\n\n-  I, the undersigned hereby certify and declare that all the information in this application and accompanying documentation is correct, complete, and true to the best of my knowledge.\n\n-  I, the undersigned hereby take full responsibility on the quality, safety, and efficacy, of the listed medicinal product over its lifetime and will ensure that each individual batch imported complies with laws in force in the Kingdom of Tonga. If required, I will cooperate with any official of the Tonga Ministry of Health in performing inspection.\n\n\n- I, the undersigned hereby confirm and agree that listing of this application for Inclusion into the Register of Medicinal Drugs does not constitute to a marketing authorisation or registration of the medicinal product in Tonga.\n\n-  I, the undersigned hereby confirm and agree to furnish the Tonga Ministry of Health with registration information as required in respect to an authorised medicinal product within such time as is stipulated in the communication.\n\n-  I, the undersigned hereby acknowledge that if the required information requested by the Tonga Ministry of Health is without valid reasons submitted the medicinal product shall be delisted from the Register of Medicinal Drugs.\n\n- I, the undersigned hereby confirm and agree that Tonga Ministry of Health shall have the authority to suspend or cancel the Medicinal Drug Registration if the medicinal product is found not to have not complied with laws in force in the Kingdom of Tonga.\n\n- I also agree to follow the Tongan legal requirements related to listing of medicinal products.\n\n- I also consent to the processing of information provided to the Tonga Ministry of Health.",
+      "preventNonResponse": true
+    },
+    "validation": {
+      "operator": "if",
+      "condition": {
+        "operator": "equal",
+        "values": [
+          {
+            "operator": "get",
+            "path": "responses.thisResponse",
+            "missingPathDefault": null
+          },
+          "I agree"
+        ]
+      },
+      "then": true,
+      "else": false
+    },
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "externalContact?": {
+    "parameters": {
+      "label": "For Section G, Part GC — Has the external inspection agency been contacted if the product is not registered in an approved country?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "applicationData.current.stage.name",
+              "fallback": null
+            },
+            "Final Decision"
+          ]
+        },
+        {
+          "operator": "equal",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.otherCountrySelect.text",
+              "fallback": ""
+            },
+            "Other"
+          ],
+          "fallback": false
+        }
+      ],
+      "fallback": false
+    }
+  },
+  "manufacturerAuth": {
+    "parameters": {
+      "label": "Attach Letter of Authorisation / Sponsor letter with the manufacturer authorising your company to represent them for registration",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.isManufacturer.selection",
+          "fallback": null
+        },
+        "No"
+      ],
+      "fallback": false
+    }
+  },
+  "prodInfoLeafleet": {
+    "parameters": {
+      "label": "Product information leaflet",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 10,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "dosageFormGeneral": {
+    "parameters": {
+      "label": "Dosage form",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].dosageForm",
+        "fallback": null
+      }
+    },
+    "validation": true,
+    "is_editable": false,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "get",
+      "path": "responses.prodSelect.selection[0].dosageForm",
+      "fallback": false
+    }
+  },
+  "mSupplyItemLookup": {
+    "parameters": {
+      "icon": "pills",
+      "label": "Please select the corresponding mSupply item",
+      "source": {
+        "fragment": "Search DataView",
+        "parameters": {
+          "query": "orderBy=itemName",
+          "resultCount": 10,
+          "dataViewCode": "mSupplyItem"
+        },
+        "fallback": null
+      },
+      "textFormat": "${itemName}",
+      "displayType": "input",
+      "multiSelect": false,
+      "placeholder": "Search items...",
+      "resultFormat": {
+        "title": "${itemName} - ${itemCode}",
+        "description": "${category}"
+      },
+      "displayFormat": {
+        "title": "${itemName} - ${itemCode}"
+      },
+      "minCharacters": 3
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": false
+  },
+  "manCountryDisplay": {
+    "parameters": {
+      "text": {
+        "operator": "buildString",
+        "template": "Country of Manufacture: **{{p0}}**",
+        "substitutions": {
+          "p0": {
+            "operator": "get",
+            "path": "responses.manufacturers.list[0].country.value.selection"
+          }
+        },
+        "fallback": ""
+      }
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "noApprovedCountry": {
+    "parameters": {
+      "values": {
+        "operator": "equal",
+        "values": [
+          {
+            "operator": "regex",
+            "pattern": "(?:^|,)\\s*([^,]+?)\\s*,(?:.*,)?\\s*\\1\\s*(?:,|$)",
+            "value": {
+              "operator": "plus",
+              "values": [
+                {
+                  "operator": "get",
+                  "path": "responses.otherCountrySelect.text",
+                  "fallback": ""
+                },
+                ", ",
+                "Austria, Australia, Belgium, Canada, Czech Republic, Denmark, Finland, France, Germany, Greece, Hungary, Iceland, Ireland, Italy, Liechtenstein, Malaysia, Netherlands, New Zealand, Norway, Portugal, Romania, Singapore, Slovak Republic, Spain, Sweden, Switzerland, United States, United Kingdom, European Medicines Agency"
+              ],
+              "fallback": ""
+            },
+            "fallback": false
+          },
+          false
+        ],
+        "fallback": true
+      }
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "storageConditions": {
+    "parameters": {
+      "label": "Storage conditions",
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].storageConditions",
+        "fallback": null
+      },
+      "description": "Include measurement unit of storage temperature (eg: degree Celsius)"
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].storageConditions",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "trademarkEvidence": {
+    "parameters": {
+      "label": "Trademark registration evidence",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 100,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "otherCountrySelect": {
+    "parameters": {
+      "label": "Product marketing authorisation from recognised drug regulatory authorities",
+      "options": {
+        "operator": "match",
+        "value": {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": null
+        },
+        "branches": {
+          "Fiji": [
+            "Fiji"
+          ],
+          "None": [],
+          "Other": [
+            {
+              "operator": "get",
+              "path": "responses.countriesOfRegistration.selection",
+              "fallback": []
+            }
+          ],
+          "Australia": [
+            "Australia"
+          ],
+          "New Zealand": [
+            "New Zealand"
+          ]
+        },
+        "fallback": []
+      },
+      "multiSelect": true
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": {
+      "operator": "notEqual",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.selection",
+          "fallback": null
+        },
+        "None"
+      ],
+      "fallback": null
+    },
+    "visibility_condition": true
+  },
+  "productDescription": {
+    "parameters": {
+      "label": "Description of Product",
+      "description": "A full visual description of the medicinal drug including colour, size, shape, and other relevant features"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "and",
+      "values": [
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "regex",
+              "pattern": "\\b(?:New Zealand|Australia|Austria|Belgium|Canada|Czech Republic|Denmark|Finland|France|Germany|Greece|Hungary|Iceland|Ireland|Italy|Liechtenstein|Malaysia|Netherlands|Norway|Portugal|Romania|Singapore|Slovak Republic|Spain|Sweden|Switzerland|United Kingdom|United States of America|European Medicines Agency)\\b",
+              "value": {
+                "operator": "get",
+                "path": "responses.countrySelectAggregate.data",
+                "fallback": ""
+              },
+              "fallback": null
+            },
+            true
+          ],
+          "fallback": null
+        },
+        {
+          "operator": "notEqual",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": null
+            },
+            null
+          ],
+          "fallback": null
+        }
+      ],
+      "fallback": null
+    }
+  },
+  "mSupplyItemReviewer": {
+    "parameters": {
+      "icon": "pills",
+      "label": "Applicant did **not** identify corresponding mSupply item; please select it for them",
+      "source": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/external-api/mSupply/item?search=@%2@&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "fallback": null
+            },
+            {
+              "operator": "get",
+              "path": "search.text",
+              "fallback": ""
+            }
+          ]
+        },
+        "fallback": []
+      },
+      "textFormat": "${item_name}",
+      "displayType": "input",
+      "multiSelect": false,
+      "placeholder": "Search items...",
+      "resultFormat": {
+        "title": "${item_name} - ${code}",
+        "description": "${itemCategory.Description}"
+      },
+      "displayFormat": {
+        "title": "${item_name} - ${code}"
+      },
+      "minCharacters": 3
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.mSupplyItem.selection[0]",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": false
+    }
+  },
+  "routeAdministration": {
+    "parameters": {
+      "label": "Route of administration",
+      "search": true,
+      "default": {
+        "operator": "get",
+        "path": "responses.prodSelect.selection[0].routeOfAdministration",
+        "fallback": null
+      },
+      "options": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/data-views/adminRoutes?raw=true&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "missingPathDefault": null
+            }
+          ]
+        },
+        "body": [],
+        "returnPath": "shortDescription"
+      },
+      "placeholder": "Seach route of administration"
+    },
+    "validation": true,
+    "is_editable": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.prodSelect.selection[0].routeOfAdministration",
+          "fallback": null
+        },
+        null
+      ],
+      "fallback": null
+    },
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "countrySelectAggregate": {
+    "parameters": {
+      "values": {
+        "operator": "convert",
+        "value": {
+          "operator": "plus",
+          "values": [
+            {
+              "operator": "get",
+              "path": "responses.countrySelect.selection",
+              "fallback": ""
+            },
+            ",",
+            {
+              "operator": "join",
+              "values": {
+                "operator": "get",
+                "path": "responses.countriesOfRegistration.selection",
+                "fallback": ""
+              },
+              "delimiter": ","
+            }
+          ],
+          "fallback": null
+        },
+        "to": "string"
+      }
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": true
+  },
+  "countriesOfRegistration": {
+    "parameters": {
+      "label": "Please select which countries the product is registered in",
+      "search": "true",
+      "default": "United States",
+      "options": {
+        "operator": "http",
+        "method": "post",
+        "url": {
+          "operator": "buildString",
+          "template": "%1/data-views/countries?orderBy=nameCommon&raw=true&",
+          "substitutions": [
+            {
+              "operator": "get",
+              "path": "applicationData.config.serverREST",
+              "missingPathDefault": null
+            }
+          ]
+        },
+        "body": [],
+        "returnPath": "nameCommon"
+      },
+      "multiSelect": true,
+      "placeholder": "Select country(s)"
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "responses.countrySelect.text",
+          "fallback": null
+        },
+        "Other"
+      ],
+      "fallback": null
+    }
+  },
+  "productAuthInCountryMan": {
+    "parameters": {
+      "label": "Is the product authorised in the country of manufacturing?",
+      "options": [
+        "Yes",
+        "No"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "proofOfPaymentApplicant": {
+    "parameters": {
+      "label": "Attach proof of payment",
+      "fileSizeLimit": 5000,
+      "fileCountLimit": 1,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": false,
+    "visibility_condition": true
+  },
+  "proofOfPaymentReviewer-COPY": {
+    "parameters": {
+      "label": "Attach proof of payment",
+      "fileSizeLimit": 10000,
+      "fileCountLimit": 1,
+      "fileExtensions": [
+        "pdf",
+        "jpg",
+        "jpeg",
+        "png"
+      ]
+    },
+    "validation": true,
+    "is_editable": true,
+    "is_required": true,
+    "visibility_condition": {
+      "operator": "equal",
+      "values": [
+        {
+          "operator": "get",
+          "path": "applicationData.current.stage.name",
+          "fallback": null
+        },
+        "Final Decision"
+      ]
+    }
+  }
+}

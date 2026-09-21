@@ -22,6 +22,7 @@ export default tseslint.config(
       'test/__mocks__',
       'src/dev/playground.ts',
       'src/dev/playground_example.ts',
+      'bench/browser/dist',
     ],
   },
   js.configs.recommended,
