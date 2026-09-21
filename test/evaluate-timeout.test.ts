@@ -9,7 +9,8 @@
  * which returns its assembly — real values where holes finished, the
  * precomputed static fallbacks where they did not — instead of throwing.
  * `signal` is never shaped by anything: the caller cancelled, and nobody
- * is waiting. Report mode's rows of the shapes table are Phase 12.
+ * is waiting. Report mode's rows of the same table live in
+ * evaluate-report.test.ts, where the envelope they return does.
  *
  * Timings are real: budgets in the tens of milliseconds against bodies in
  * the hundreds, the margin io-timeout.test.ts already relies on.

@@ -15,7 +15,7 @@
  */
 import { serializeInput, type OperatorNode } from '../parse'
 import type { ResultStore } from '../resultCache'
-import type { OperatorContext } from '../runtimeInterface'
+import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 
 /**
  * A layer tag opens every key. Not decoration: `memo` is present on every
@@ -32,6 +32,8 @@ export interface MemoBinding {
   operator: string
   /** The four-step chain's verdict for this node. */
   useCache: boolean
+  /** Where a hit or miss is recorded; absent when trace is off. */
+  note?: (event: TraceEvent) => void
 }
 
 /**
@@ -46,12 +48,15 @@ export interface MemoBinding {
 export const through = async <T>(
   cache: ResultStore,
   key: string,
-  run: () => Promise<T>
+  run: () => Promise<T>,
+  note?: (event: TraceEvent) => void
 ): Promise<T> => {
   const generation = cache.generation
   const held = await cache.lookup(key)
-  // TO-DO (Phase 12): note the hit and the miss here — this is the one
-  // place that knows which it was
+  // The one place that knows which it was: a hit means the body never
+  // ran, so the node's entry has no children and no body events, and
+  // this is the only thing that explains why
+  note?.({ type: 'cache', hit: held.hit })
   if (held.hit) return held.value as T
   const value = await run()
   await cache.write(key, value, generation)
@@ -107,6 +112,6 @@ export const bodyMemo = (
     const full = serializeInput([MANUAL, binding.operator, key])
     // A key holding something that cannot be serialized — a Date off the
     // data, a class instance — runs uncached rather than colliding
-    return full === undefined ? fn() : through(cache, full, fn)
+    return full === undefined ? fn() : through(cache, full, fn, binding.note)
   }
 }

@@ -20,7 +20,7 @@ import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
 import { REQUEST_EXPIRED, childScope, requestDeadline, type Deadline } from './abort'
-import { createOperatorContext, type EvaluationContext } from './context'
+import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
 import { autoKey, through } from './memo'
@@ -54,7 +54,13 @@ export const evaluateOperator = async (
     const fallback = fallbackOf(node, scoped)
     if (fallback === undefined) throw failure
     try {
-      return await fallback()
+      const answered = await fallback()
+      // A fallback firing is the author's designed degradation, so it is
+      // a SUCCESS that `errors` never sees — which makes trace the only
+      // record that it happened, and of what it caught
+      if (ctx.trace !== undefined && ctx.traceParent !== undefined)
+        ctx.trace.markFallback(ctx.traceParent, failure)
+      return answered
     } catch (fallbackError) {
       // The same three bail-outs as above: a kill switch or a cancellation
       // landing at the fallback's own node boundary passes through untouched
@@ -138,7 +144,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
     if (!useCache || definition.cache !== 'auto') return run()
     const key = autoKey(node, params)
     // An unkeyable node runs uncached rather than sharing a weaker key
-    return key === undefined ? run() : through(ctx.cache, key, run)
+    return key === undefined ? run() : through(ctx.cache, key, run, noteChannel(ctx))
   }
 
   try {

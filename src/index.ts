@@ -18,7 +18,19 @@ export type { HttpClient, HttpRequest, SqlConnection, SqlRequest, CacheStore } f
 
 // Phase 1.2 — errors & diagnostics
 export { FigTreeError, isFigTreeError } from './FigTreeError'
-export type { FigTreeErrorInit, TraceNode } from './FigTreeError'
+export type { FigTreeErrorInit } from './FigTreeError'
+export type {
+  TraceNode,
+  TraceKind,
+  TraceStatus,
+  KnownTraceEvent,
+  CacheTraceEvent,
+  RequestTraceEvent,
+  QueryTraceEvent,
+  RenderTraceEvent,
+  KeyOverwriteTraceEvent,
+  ShieldedFallbackTraceEvent,
+} from './trace'
 export { ErrorCodes } from './errorCodes'
 export type { FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'
@@ -49,6 +61,8 @@ export { EvaluationData, isValidatedOperator } from './operatorDefinition'
 // Phase 2.2 — the instance shell. Registry machinery stays internal.
 export { FigTree } from './FigTree'
 export type { EvaluationOptions, FigTreeOptions } from './options'
+// Phase 12 — the diagnostic surfaces' return shape
+export type { EvaluationResult, Merge, NoOptions, ResultShape } from './options'
 export type { FragmentDefinition, FragmentParameterDeclaration } from './fragments'
 export type {
   OperatorDefinition,

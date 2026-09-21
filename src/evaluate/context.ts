@@ -18,10 +18,12 @@
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
 import type { ResultStore } from '../resultCache'
-import type { OperatorContext } from '../runtimeInterface'
+import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
+import type { TraceNode } from '../trace'
 import type { Bindings } from './bindings'
 import { bodyMemo, type MemoBinding } from './memo'
+import type { TraceRecorder } from './trace'
 import type { Scope } from './scope'
 
 export interface EvaluationContext {
@@ -72,6 +74,28 @@ export interface EvaluationContext {
    */
   params?: ParamsFrame
   /**
+   * Wrapped around each of the artifact ROOT's holes, where report mode
+   * or a shielded timeout asked for one (./run.ts builds it). Consumed
+   * exactly once, by the root skeleton, which clears it for everything
+   * below: degradation and shielded assembly are defined on the hole —
+   * the maximal evaluable node — and a nested skeleton's holes are
+   * already inside one.
+   */
+  rootBoundary?: HoleBoundary
+  /**
+   * The trace recorder, present only when `trace` was asked for — its
+   * absence IS the fast path, checked once per node.
+   */
+  trace?: TraceRecorder
+  /**
+   * This node's own trace entry, which its children attach to. Set by
+   * the dispatch before it descends, so a var's definition lands under
+   * the node that DECLARED it rather than under whichever node first
+   * demanded it — `pushVars` builds its thunks over the declaring
+   * context, so this needs no special handling anywhere.
+   */
+  traceParent?: TraceNode
+  /**
    * The fragment body this node belongs to, absent in the input's own
    * expression. It is what a failure is attributed to (./fragment): the
    * fragment's name, and the path of the call IN THE INPUT — inherited
@@ -80,6 +104,13 @@ export interface EvaluationContext {
    */
   frame?: FragmentFrame
 }
+
+/**
+ * Wrapped around one root hole's evaluation, addressing it by its index in
+ * `artifact.holes`. Declared here, beside the field that holds it, so the
+ * context does not have to import from the module that builds it.
+ */
+export type HoleBoundary = (run: () => Promise<unknown>, index: number) => Promise<unknown>
 
 /** Declared parameter name → its evaluate-at-most-once resolved value. */
 export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
@@ -147,7 +178,8 @@ const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 export const createEvaluationContext = (
   merged: EvaluationOptions,
   cache: ResultStore,
-  signal: AbortSignal
+  signal: AbortSignal,
+  trace?: TraceRecorder
 ): EvaluationContext => {
   const options = freezeOptions(merged)
   return {
@@ -158,6 +190,7 @@ export const createEvaluationContext = (
     cache,
     strictDataPaths: merged.strictDataPaths ?? false,
     runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
+    ...(trace !== undefined ? { trace } : {}),
   }
 }
 
@@ -173,8 +206,6 @@ const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
   }
   return Object.freeze(options)
 }
-
-const noop = () => {}
 
 /**
  * The context a body receives: the signal, the evaluation's frozen options,
@@ -195,9 +226,27 @@ const noop = () => {}
 export const createOperatorContext = (
   ctx: EvaluationContext,
   binding: MemoBinding
-): OperatorContext => ({
-  signal: ctx.signal,
-  options: ctx.options,
-  cache: { memo: bodyMemo(binding, ctx.cache) },
-  trace: { note: noop },
-})
+): OperatorContext => {
+  const note = noteChannel(ctx)
+  return {
+    signal: ctx.signal,
+    options: ctx.options,
+    cache: { memo: bodyMemo({ ...binding, note }, ctx.cache) },
+    trace: { note },
+  }
+}
+
+/** Discards while trace is off, so a body emits unconditionally. */
+const noop = () => {}
+
+/**
+ * The live `note`: events land on the node's OWN entry, which the
+ * dispatch has already made this context's `traceParent`.
+ */
+export const noteChannel = (ctx: EvaluationContext): ((event: TraceEvent) => void) => {
+  const { trace, traceParent } = ctx
+  if (trace === undefined || traceParent === undefined) return noop
+  return (event) => {
+    trace.note(traceParent, event)
+  }
+}

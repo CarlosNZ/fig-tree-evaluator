@@ -1,50 +1,75 @@
 /**
- * The top of an evaluation — the policy half of the kill switch (fallback
- * rule 3 in "fallback semantics", docs-dev/v3-specs/v3-api.md;
- * "Kill-switch shapes" in docs-dev/v3-specs/v3-evaluator-methods.md;
- * "Timeout shielding rides the compile artifact" in
- * docs-dev/v3-specs/v3-implementation-notes.md).
+ * The top of an evaluation — the policy half of the kill switch and of
+ * report mode (fallback rule 3 in "fallback semantics",
+ * docs-dev/v3-specs/v3-api.md; "Kill-switch shapes" and "mode: 'report'"
+ * in docs-dev/v3-specs/v3-evaluator-methods.md; "Timeout shielding rides
+ * the compile artifact" in docs-dev/v3-specs/v3-implementation-notes.md).
  *
  * Every evaluation runs under a root scope: the caller's `signal` (if any)
  * as its parent, the `timeout` (if any) as its timer, settled like any
  * node scope when the evaluation settles — so work still in flight after
  * an uncaught failure is cancelled through the same chain, kill switch or
  * not. The recursive evaluator is wrapped, not forked: every node still
- * goes through `evaluateNode`. What this module adds is what happens at
- * the root when the kill switch fires.
+ * goes through `evaluateNode`, and the artifact root always goes through
+ * it too, which is what gives `trace` one root entry in every mode.
  *
- * Three cases. With neither option, the root evaluates as it always has.
- * With a kill switch and no shielding, the evaluation is raced against the
- * root's expiry, so the caller gets the call back on time however deaf a
- * driver inside it may be, and the error is the root's — code `timeout` or
- * `aborted`, path `[]`. With a `timeout` over a shielded artifact, each
- * hole is raced against the expiry on its own, and on the deadline the
- * answer is ASSEMBLED rather than thrown: real values where the holes won,
- * the precomputed static fallbacks where the expiry did, spliced into the
- * constant skeleton.
+ * What this module adds is the **hole boundary**: one function wrapped
+ * around each of the artifact's root holes, composed here and applied by
+ * the root skeleton (./evaluate.ts) — or, for a node root whose single
+ * hole IS the root, applied here around the whole call. Two features want
+ * the same wrapper and compose inside it:
  *
- * The race is what makes the cut exact. A hole that settled before the
- * timer fired has already won: its race's reaction is a microtask, and the
- * timer's callback is a macrotask that runs only once the queue has
- * drained. A hole that had not settled cannot win afterwards: `deadline()`
- * registers its abort listener before any node's scope does, so the
- * expiry's rejection is the first reaction queued in the dispatch, and the
- * fallback it hands back settles the race two hops later — long before a
- * node that only now notices the abort could reject through its wrapper.
- * Nothing is evaluated after the deadline; whatever is still in flight is
- * abandoned at its next node boundary.
+ *   - **report** catches an uncaught failure, records it against the hole
+ *     it degraded, and resolves that hole to `null`;
+ *   - **a shielded `timeout`** races the hole against the root's expiry,
+ *     handing back the hole's precomputed static fallback where the
+ *     expiry wins, so the answer is ASSEMBLED rather than thrown.
  *
- * Report mode and trace (Phase 12) attach here: the expiry handler in
- * `evaluateShielded` is the one place a hole takes its fallback.
+ * The composition order is the whole of the semantics: the expiry race
+ * sits OUTSIDE the report catch, because a kill switch ends the
+ * evaluation where an ordinary failure only degrades a hole.
+ *
+ * The race is what makes the deadline's cut exact. A hole that settled
+ * before the timer fired has already won: its race's reaction is a
+ * microtask, and the timer's callback is a macrotask that runs only once
+ * the queue has drained. A hole that had not settled cannot win
+ * afterwards: `deadline()` registers its abort listener before any node's
+ * scope does, so the expiry's rejection is the first reaction queued in
+ * the dispatch, and the fallback it hands back settles the race two hops
+ * later — long before a node that only now notices the abort could reject
+ * through its wrapper. Nothing is evaluated after the deadline; whatever
+ * is still in flight is abandoned at its next node boundary.
  */
+import { isFigTreeError, type FigTreeError } from '../FigTreeError'
+import { ErrorCodes } from '../errorCodes'
 import type { EvaluationOptions } from '../options'
 import type { ArtifactHole, ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
 import { EVALUATION_TIMEOUT, deadline, type Deadline } from './abort'
-import { createEvaluationContext, type EvaluationContext } from './context'
-import { evaluateNode, splice } from './evaluate'
-import { internalError, killSwitchError } from './internal'
-import { pushVars } from './scope'
+import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
+import { evaluateNode } from './evaluate'
+import {
+  internalError,
+  isCancellation,
+  isInternalError,
+  isKillSwitch,
+  killSwitchError,
+} from './internal'
+import { createErrorCollector, type ErrorCollector } from './report'
+import { createTraceRecorder, type TraceRecorder } from './trace'
+import type { TraceNode } from '../trace'
+
+/**
+ * What one evaluation produced. `errors` and `trace` are present only
+ * where their option asked for them; the class turns this into the bare
+ * value or the `EvaluationResult` envelope ("The envelope rule" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md).
+ */
+export interface EvaluationOutcome {
+  result: unknown
+  errors?: FigTreeError[]
+  trace?: TraceNode
+}
 
 /**
  * Evaluate a compiled artifact under the merged options. The clock, when
@@ -56,26 +81,93 @@ export const runEvaluation = async (
   artifact: ParseArtifact,
   options: EvaluationOptions,
   cache: ResultStore
-): Promise<unknown> => {
+): Promise<EvaluationOutcome> => {
   const { timeout, signal } = options
+  const reporting = options.mode === 'report'
+  // A shielded artifact with no holes is a constant that merely was not
+  // inert (a comment key, a vars block): nothing in it can time out, and
+  // nothing in it can fail
+  const evaluable = artifact.holes.length > 0
+  const shielded = timeout !== undefined && artifact.shielded && evaluable
+
   const root = deadline(signal, timeout, EVALUATION_TIMEOUT)
-  const ctx = createEvaluationContext(options, cache, root.signal)
+  const collector = reporting ? createErrorCollector() : undefined
+  const recorder =
+    options.trace === true
+      ? createTraceRecorder(
+          artifact.issues.map((s) => s.issue).filter((i) => i.severity !== 'error')
+        )
+      : undefined
+  const base = createEvaluationContext(options, cache, root.signal, recorder)
+  const boundary =
+    evaluable && (collector !== undefined || shielded)
+      ? holeBoundary(artifact, root, collector, shielded, recorder)
+      : undefined
+  // A skeleton root hands each of its holes to the boundary; any other
+  // root IS its single hole, so the boundary wraps the whole call
+  const atRoot = boundary !== undefined && artifact.root.kind !== 'skeleton'
+  const ctx: EvaluationContext =
+    boundary !== undefined && !atRoot ? { ...base, rootBoundary: boundary } : base
+
   try {
-    if (timeout === undefined && signal === undefined) return await evaluateNode(artifact.root, ctx)
     // A signal already aborted at entry is answered once, here: nothing
     // starts, and the error is the root's. Left to the races below, the
     // first node boundary to notice would win instead — a race between two
     // settled promises goes to the one with fewer hops, which is the node's
     if (root.signal.aborted) throw killSwitchError(root.signal.reason, [])
-    // A shielded artifact with no holes is a constant that merely was not
-    // inert (a comment key, a vars block): nothing in it can time out
-    if (timeout !== undefined && artifact.shielded && artifact.holes.length > 0)
-      return await evaluateShielded(artifact, ctx, root)
-    return await raced(artifact, ctx, root, timeout)
+
+    const evaluateRoot = () =>
+      atRoot && boundary !== undefined
+        ? boundary(() => evaluateNode(artifact.root, ctx), 0)
+        : evaluateNode(artifact.root, ctx)
+
+    // Shielded: the per-hole races answer the deadline, so the assembly is
+    // awaited plainly. Unshielded with a kill switch: the whole evaluation
+    // is raced, so the caller gets the call back on time however deaf a
+    // driver inside it may be, and the error is the root's
+    const result = await (shielded || (timeout === undefined && signal === undefined)
+      ? evaluateRoot()
+      : raced(evaluateRoot, root, timeout))
+
+    // Shielding returns the assembly silently in throw mode — rule 3 — so
+    // report mode is the only channel that says the deadline fired at all
+    if (collector !== undefined && shielded && expired(root))
+      collector.add(killSwitchError(EVALUATION_TIMEOUT, [], { ms: timeout }))
+
+    return outcome(result, collector, recorder)
+  } catch (error) {
+    // The kill switch under report: a `timeout` becomes the last row of
+    // the report, beside whatever holes had already degraded. A `signal`
+    // does NOT — the caller cancelled, nobody is waiting for a result, and
+    // resolving normally would invite code that treats cancellation as
+    // data. "Never throws" scopes to expression errors
+    if (collector !== undefined && isFigTreeError(error) && error.code === ErrorCodes.timeout) {
+      collector.add(error)
+      return outcome(null, collector, recorder)
+    }
+    // A failing run must not lose its diagnostics: the partial instance
+    // tree rides the error it threw with
+    if (recorder !== undefined && isFigTreeError(error) && error.trace === undefined)
+      error.trace = recorder.finish()
+    throw error
   } finally {
     root.settle()
   }
 }
+
+const outcome = (
+  result: unknown,
+  collector: ErrorCollector | undefined,
+  recorder: TraceRecorder | undefined
+): EvaluationOutcome => ({
+  result,
+  ...(collector !== undefined ? { errors: collector.emit() } : {}),
+  ...(recorder !== undefined ? { trace: recorder.finish() } : {}),
+})
+
+/** Whether the root's own timer is what aborted it. Read before `settle()`. */
+const expired = (root: Deadline): boolean =>
+  root.signal.aborted && root.signal.reason === EVALUATION_TIMEOUT
 
 /**
  * The unshielded case: the evaluation against the root's expiry. The abort
@@ -86,56 +178,88 @@ export const runEvaluation = async (
  * handled.
  */
 const raced = (
-  artifact: ParseArtifact,
-  ctx: EvaluationContext,
+  evaluateRoot: () => Promise<unknown>,
   root: Deadline,
   ms: number | undefined
 ): Promise<unknown> =>
   Promise.race([
-    evaluateNode(artifact.root, ctx),
+    evaluateRoot(),
     root.expiry.catch((reason) => {
       throw killSwitchError(reason, [], { ms })
     }),
   ])
 
 /**
- * The shielded case. The holes are the artifact's — for a literal root its
- * skeleton's holes, for a node root the node itself — evaluated under the
- * root's `vars` scope exactly as the skeleton path would evaluate them,
- * each raced against the root's expiry. A hole wins with its value. The
- * expiry wins with the hole's static fallback for a timeout, and with the
- * kill-switch error for the caller's signal, which nothing may shape.
+ * The boundary itself: the report catch, the shielded race, or both.
  *
  * A shielded hole cannot reject with an ordinary failure, its static
- * fallback having caught it. What can still reach a race is a kill-switch
- * error or a cancellation from a boundary crossed after the deadline, which
- * the race has already settled — handled, and ignored — or an engine bug
- * before it, which wins its race and surfaces rather than being masked by
- * a degraded answer.
+ * fallback having caught it. What can still reach the race is a
+ * kill-switch error or a cancellation from a boundary crossed after the
+ * deadline, which the race has already settled — handled, and ignored — or
+ * an engine bug before it, which wins its race and surfaces rather than
+ * being masked by a degraded answer.
  */
-const evaluateShielded = async (
+const holeBoundary = (
   artifact: ParseArtifact,
-  ctx: EvaluationContext,
-  root: Deadline
+  root: Deadline,
+  collector: ErrorCollector | undefined,
+  shielded: boolean,
+  recorder: TraceRecorder | undefined
+): HoleBoundary => {
+  return (run, index) => {
+    const hole = artifact.holes[index]
+    if (hole === undefined)
+      throw internalError(
+        `the hole boundary was handed index ${String(index)}, which the artifact does not have`
+      )
+    const attempt = collector === undefined ? run() : degrade(run, hole, collector)
+    if (!shielded) return attempt
+    // `Promise.race` does not unsubscribe the loser, so the expiry
+    // handler below runs for EVERY hole when the deadline fires — the
+    // ones that already won included, whose returned fallback is simply
+    // discarded. That is harmless for a pure handler and wrong for one
+    // with a side effect, so the winners are tracked and skipped. The
+    // flag is reliable for the same reason the cut is exact: a hole that
+    // settled first had its reaction run as a microtask, and the timer
+    // is a macrotask that waits for the queue to drain
+    let won = false
+    const answered = attempt.then((value) => {
+      won = true
+      return value
+    })
+    return Promise.race([
+      answered,
+      root.expiry.catch((reason) => {
+        if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
+        if (won) return undefined
+        // Which holes contributed a real value and which a static
+        // fallback is timing-dependent and invisible in the result, so
+        // trace is the only channel that can say
+        recorder?.noteOn(hole.node, { type: 'shielded-fallback' })
+        return staticFallbackOf(hole)
+      }),
+    ])
+  }
+}
+
+/**
+ * Report mode's degradation, per hole. The three bail-outs are the node
+ * wrapper's, for the same reasons: an engine bug, a cancellation and the
+ * caller's kill switch are none of them expression failures, so none may
+ * be served back as a degraded hole.
+ */
+const degrade = async (
+  run: () => Promise<unknown>,
+  hole: ArtifactHole,
+  collector: ErrorCollector
 ): Promise<unknown> => {
-  const top = artifact.root
-  const scoped = top.kind === 'skeleton' ? pushVars(ctx, top.vars) : ctx
-  const values = await Promise.all(
-    artifact.holes.map((hole) =>
-      Promise.race([
-        evaluateNode(hole.node, scoped),
-        root.expiry.catch((reason) => {
-          if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
-          // Where a hole takes its fallback: the `shielded-fallback` trace
-          // event and the report row's timeout error attach here (Phase 12)
-          return staticFallbackOf(hole)
-        }),
-      ])
-    )
-  )
-  // The artifact's holes are the root skeleton's, in order, by construction
-  // (rootHoles in src/parse/parse.ts)
-  return top.kind === 'skeleton' ? splice(top.skeleton, top.holes, values) : values[0]
+  try {
+    return await run()
+  } catch (error) {
+    if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
+    collector.record(error, hole)
+    return null
+  }
 }
 
 const staticFallbackOf = (hole: ArtifactHole): unknown => {

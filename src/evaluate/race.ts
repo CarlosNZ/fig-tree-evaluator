@@ -46,7 +46,8 @@ export const raceStream = (
   nodes: CompiledNode[],
   ctx: EvaluationContext,
   vet: Vet
-): SettlementStream => indexedStream(nodes.length, (index) => evaluateNode(nodes[index], ctx), vet)
+): SettlementStream =>
+  indexedStream(nodes.length, (index) => evaluateNode(nodes[index], ctx, { index }), vet)
 
 /**
  * The degenerate case: the list arrived as data, so every value is already

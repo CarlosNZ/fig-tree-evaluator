@@ -10,8 +10,11 @@
  * and evaluates the holes otherwise. Only `evaluate()` goes through the
  * parse cache; `validate()` compiles fresh every time, so its report always
  * costs a parse and the cache holds only what evaluation asked for.
- * `mode: 'report'` and `trace` land in Phase 12 — those two options are
- * accepted and inert until then.
+ * The two diagnostic options shape what comes back rather than how the
+ * spine works: with `mode: 'report'` or `trace` in effect the method
+ * returns an `EvaluationResult` envelope instead of the bare value, and
+ * the class is generic over its construction options so the static type
+ * follows the effective ones.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the parse cache are
@@ -28,7 +31,14 @@
  * it, so it lives beside the record and is reconfigured rather than
  * replaced.
  */
-import type { EvaluationOptions, FigTreeOptions } from './options'
+import type {
+  EvaluationOptions,
+  EvaluationResult,
+  FigTreeOptions,
+  Merge,
+  NoOptions,
+  ResultShape,
+} from './options'
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry } from './registry'
 import {
@@ -41,6 +51,7 @@ import {
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
 import { FigTreeError } from './FigTreeError'
+import type { TraceNode } from './trace'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
 import { coreOperators } from './operators'
@@ -139,11 +150,11 @@ const compile = (expression: unknown, registry: OperatorRegistry): ParseArtifact
   return artifact
 }
 
-export class FigTree {
+export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   private state: InstanceState
   private readonly results: ResultCache
 
-  constructor(options: FigTreeOptions = {}) {
+  constructor(options: InstanceOpts = {} as InstanceOpts) {
     this.state = buildState(null, options)
     this.results = new ResultCache(readCacheConfig(options.cache))
   }
@@ -238,20 +249,43 @@ export class FigTree {
 
   /**
    * The one evaluation method ("evaluate() return shapes" in
-   * docs-dev/v3-specs/v3-evaluator-methods.md). Throw mode: the first
-   * static error, or the first uncaught runtime failure, rejects the call
-   * with a `FigTreeError`; otherwise the bare result value.
+   * docs-dev/v3-specs/v3-evaluator-methods.md).
+   *
+   * Throw mode returns the bare value; the first static error, or the
+   * first uncaught runtime failure, rejects the call with a
+   * `FigTreeError`. With `mode: 'report'` or `trace` in effect it returns
+   * the `EvaluationResult` envelope instead, and the return TYPE follows
+   * the merged effective options — the instance's, overridden by the
+   * call's, in either direction.
    *
    * Inert input skips the parse entirely: the constancy probe recognizes a
    * value with nothing to evaluate or normalize and returns it by identity
    * (the user's `maxDepth` still applies to its measured depth). The skip is
    * off when `trace` is requested — a skipped parse has no nodes for the
-   * trace to echo.
+   * trace to echo — but stays on under `report`, which wants an envelope
+   * rather than nodes.
    */
-  async evaluate(expression: unknown, options: FigTreeOptions = {}): Promise<unknown> {
+  evaluate<CallOpts extends FigTreeOptions = NoOptions>(
+    expression: unknown,
+    options?: CallOpts
+  ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
+    return this.run(expression, options ?? {}) as Promise<
+      ResultShape<Merge<InstanceOpts, CallOpts>>
+    >
+  }
+
+  /**
+   * `evaluate()`'s body, at one fixed return type. The conditional shape
+   * is a promise to the caller about which of these two the value is; it
+   * cannot be produced from inside, where the options are values rather
+   * than types, so the assertion happens once, above.
+   */
+  private async run(expression: unknown, options: FigTreeOptions): Promise<unknown> {
     rejectPerCallRegistry(options)
     const merged = mergeOptions(this.state.options, options)
     checkKillSwitchOptions(merged)
+    const reporting = merged.mode === 'report'
+    const enveloped = reporting || merged.trace === true
 
     // An inert input is returned by identity without being parsed. The
     // verdict is memoized in the cache's identity layer, so a repeated
@@ -262,19 +296,45 @@ export class FigTree {
         ? ({ kind: 'artifact', artifact: compile(expression, this.state.registry) } as const)
         : this.state.parseCache.resolve(expression)
     if (resolved.kind === 'inert') {
-      if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth)
-        throw staticError(depthIssue(resolved.depth, merged.maxDepth), [])
-      return expression
+      if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth) {
+        const issue = depthIssue(resolved.depth, merged.maxDepth)
+        if (!reporting) throw staticError(issue, [])
+        return envelope(null, [staticError(issue, [])])
+      }
+      return enveloped ? envelope(expression, []) : expression
     }
 
     const { artifact } = resolved
     const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
-    const firstError = issues.find((issue) => issue.severity === 'error')
-    if (firstError !== undefined) throw staticError(firstError, issues)
+    const errors = issues.filter((issue) => issue.severity === 'error')
+    // Under report a static failure is reported like any other, and ALL of
+    // it: the pass collects the whole stream anyway, and a host that chose
+    // resilience did not choose "resilient except for typos". Throw mode
+    // throws the first in tree order, carrying the stream as `issues`
+    if (errors.length > 0) {
+      if (!reporting) throw staticError(errors[0], issues)
+      return envelope(
+        null,
+        errors.map((issue) => staticError(issue))
+      )
+    }
 
-    return runEvaluation(artifact, withoutRegistryKeys(merged), this.results)
+    const outcome = await runEvaluation(artifact, withoutRegistryKeys(merged), this.results)
+    return enveloped
+      ? envelope(outcome.result, outcome.errors ?? [], outcome.trace)
+      : outcome.result
   }
 }
+
+const envelope = (
+  result: unknown,
+  errors: FigTreeError[],
+  trace?: TraceNode
+): EvaluationResult => ({
+  result,
+  errors,
+  ...(trace !== undefined ? { trace } : {}),
+})
 
 /**
  * The constructor/`updateOptions`-only options. Tested by value, not by key
@@ -369,14 +429,18 @@ const depthIssue = (measured: number, limit: number): Issue => ({
 })
 
 /**
- * The static-error gate's throw: the first error-severity issue in tree
- * order, the full stream attached as `issues` so nothing is hidden.
+ * One error-severity issue as a `FigTreeError`.
+ *
+ * Throw mode passes the whole stream as `issues`, because it throws only
+ * the first and nothing may be hidden behind it. Report mode passes none:
+ * there, `errors` IS the stream — one entry per error-severity issue — so
+ * attaching a copy of it to every entry would say the same thing N times.
  */
-const staticError = (issue: Issue, issues: Issue[]): FigTreeError =>
+const staticError = (issue: Issue, issues?: Issue[]): FigTreeError =>
   new FigTreeError({
     code: issue.code,
     message: issue.message,
     path: issue.path,
     ...(issue.operator !== undefined ? { operator: issue.operator } : {}),
-    issues,
+    ...(issues !== undefined ? { issues } : {}),
   })

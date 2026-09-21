@@ -33,6 +33,7 @@ import { FetchClient } from '../clients/http'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
+import type { OperatorContext } from '../runtimeInterface'
 import type { HttpClient, SqlConnection } from '../types'
 import {
   assembleUrl,
@@ -129,9 +130,10 @@ const httpDefinition = (client: HttpClient) =>
         ),
         ...(body !== undefined ? { body } : {}),
       }
-      const response = await context.cache.memo(requestKey(request), () =>
-        client.request({ ...request, signal: context.signal })
-      )
+      const response = await context.cache.memo(requestKey(request), () => {
+        noteRequest(context, request)
+        return client.request({ ...request, signal: context.signal })
+      })
       // Post-cache, and so outside the key: two nodes drilling one
       // response differently share the single fetch
       return drill(response, returnPath)
@@ -194,9 +196,10 @@ const graphQLDefinition = (client: HttpClient) =>
       // The errors check sits INSIDE the unit: a 200 carrying `errors` is
       // a failure, and "failures are never cached" would be false if the
       // check ran outside and every later evaluation re-derived it
-      const data = await context.cache.memo(requestKey(request), async () =>
-        graphQLData(await client.request({ ...request, signal: context.signal }))
-      )
+      const data = await context.cache.memo(requestKey(request), async () => {
+        noteRequest(context, request)
+        return graphQLData(await client.request({ ...request, signal: context.signal }))
+      })
       return drill(data, returnPath)
     },
   })
@@ -242,9 +245,13 @@ const sqlDefinition = (connection: SqlConnection) =>
     returns: 'any',
     evaluate: async ({ query, values, shape, noRowDefault }, context) => {
       const request = { text: query, ...(isNonEmpty(values) ? { values } : {}) }
-      const rows = await context.cache.memo(request, () =>
-        connection.query({ ...request, signal: context.signal })
-      )
+      const rows = await context.cache.memo(request, () => {
+        // The statement, never its bound values: those carry row data,
+        // which is the same reason pg's `detail` / `hint` stay out of
+        // `errorData` (src/clients/failures.ts)
+        context.trace.note({ type: 'query', text: request.text })
+        return connection.query({ ...request, signal: context.signal })
+      })
       return reshape(rows as Record<string, unknown>[], shape as SqlShape, noRowDefault)
     },
   })
@@ -293,3 +300,24 @@ export const httpOperators = (
 export const sqlOperators = (connection: SqlConnection): ValidatedOperatorDefinition[] => [
   sqlDefinition(connection),
 ]
+
+/**
+ * The effective request, as actually sent — inside the memo unit, so a
+ * cache hit records the hit and no request, which is the distinction
+ * trace exists to show.
+ *
+ * Header NAMES only (the batch-8 rule): a value may be a bearer token,
+ * and a trace is something hosts log. Enforced here by construction —
+ * there is no path from this function to a header value.
+ */
+const noteRequest = (
+  context: OperatorContext,
+  request: { method: string; url: string; headers: Record<string, string> }
+) => {
+  context.trace.note({
+    type: 'request',
+    method: request.method,
+    url: request.url,
+    headers: Object.keys(request.headers),
+  })
+}

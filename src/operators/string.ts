@@ -94,6 +94,8 @@ const compositeValuesErrors = (literalParams: Record<string, unknown>): Validate
 interface Part {
   text: string
   site: boolean
+  /** The token this site rendered — carried for trace, on sites only. */
+  token?: string
 }
 
 /**
@@ -113,20 +115,25 @@ interface Part {
  * most once": a text piece that was entirely whitespace is empty
  * afterwards, so the next site finds no run there.
  */
-const closeTheGaps = (parts: Part[]) => {
+const closeTheGaps = (parts: Part[], closed: (token: string) => void) => {
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i]
     if (!part.site || part.text !== '') continue
     const before = parts[i - 1]
     if (before !== undefined && !before.site) {
-      const closed = stripTrailingRun(before.text)
-      if (closed !== before.text) {
-        before.text = closed
+      const stripped = stripTrailingRun(before.text)
+      if (stripped !== before.text) {
+        before.text = stripped
+        closed(part.token ?? '')
         continue
       }
     }
     const after = parts[i + 1]
-    if (after !== undefined && !after.site) after.text = stripLeadingRun(after.text)
+    if (after !== undefined && !after.site) {
+      const stripped = stripLeadingRun(after.text)
+      if (stripped !== after.text) closed(part.token ?? '')
+      after.text = stripped
+    }
   }
 }
 
@@ -205,10 +212,13 @@ export const buildString = defineOperator({
         context.trace.note({ type: 'render', token: segment.raw, rendered: 'placeholder' })
       const text = trimValues ? trimText(rendered) : rendered
       if (text === '') context.trace.note({ type: 'render', token: segment.raw, rendered: 'empty' })
-      parts.push({ text, site: true })
+      parts.push({ text, site: true, token: segment.raw })
     }
 
-    if (closeGaps) closeTheGaps(parts)
+    if (closeGaps)
+      closeTheGaps(parts, (token) =>
+        context.trace.note({ type: 'render', token, rendered: 'gap-closed' })
+      )
     return parts.map((part) => part.text).join('')
   },
 })

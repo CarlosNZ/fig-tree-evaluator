@@ -52,7 +52,14 @@ export const pushVars = (
   const scope: Scope = { parent: ctx.scope, vars: new Map() }
   const scoped: EvaluationContext = { ...ctx, scope }
   for (const [name, node] of Object.entries(vars))
-    scope.vars.set(name, once(() => evaluateNode(node, scoped)))
+    // The thunk closes over the DECLARING context, so its trace entry
+    // lands under the node that declared it rather than under whichever
+    // node first demanded it — one entry at the declaration site, which
+    // is what keeps the (source, path) join one-instance-per-location
+    scope.vars.set(
+      name,
+      once(() => evaluateNode(node, scoped, { var: name }))
+    )
   return scoped
 }
 

@@ -7,6 +7,7 @@
  * stored untouched and picked up by its owning phase.
  */
 import type { CacheStore } from './types'
+import type { FigTreeError, TraceNode } from './FigTreeError'
 import type { ValidatedOperatorDefinition } from './operatorDefinition'
 import type { FragmentDefinition } from './fragments'
 
@@ -78,6 +79,67 @@ export interface FigTreeOptions {
   runtimeTypeCheck?: boolean
 
   // ── Output & error handling ─────────────────────────────
+  /**
+   * `'throw'` (default): the first uncaught failure rejects the call.
+   * `'report'`: never throws on an expression error — the failing HOLE
+   * degrades to `null`, everything else evaluates, and the failures come
+   * back in the envelope. A caller's `signal` still rejects.
+   */
   mode?: 'throw' | 'report'
+  /**
+   * Record what happened at every node instance. Orthogonal to `mode`,
+   * not a third value of it: `trace` changes no semantics, and all four
+   * combinations are legal — `throw` + `trace` is a run you want to keep
+   * failing loudly, whose error carries the partial tree as `error.trace`.
+   *
+   * Opt-in, and priced accordingly: the tree holds one entry per node
+   * INSTANCE (one per iterator element) and holds values by reference, so
+   * a retained trace retains whole API responses.
+   */
   trace?: boolean
 }
+
+/**
+ * What `evaluate()` returns when a diagnostic option is active ("The
+ * envelope rule" in docs-dev/v3-specs/v3-evaluator-methods.md): one
+ * envelope for both, rather than a shape per option.
+ */
+export interface EvaluationResult {
+  /** The evaluated value — `null` at any hole report mode degraded. */
+  result: unknown
+  /**
+   * Every uncaught failure, in tree order. Always present in the
+   * envelope, so a consumer never branches on key existence: under throw
+   * mode with `trace` it is simply always empty, an error having thrown.
+   */
+  errors: FigTreeError[]
+  /** The instance tree — present iff `trace` was on. */
+  trace?: TraceNode
+}
+
+/**
+ * "No options supplied" — the identity of the merge below, and the
+ * default for both type parameters. Spelled this way rather than `{}`,
+ * which means "any non-nullish value" and is a lint error for saying so.
+ */
+export type NoOptions = Record<never, never>
+
+/** Per-call options over instance ones, at the merge rule's top level. */
+export type Merge<Instance, Call> = Omit<Instance, keyof Call> & Call
+
+/**
+ * The bare value, unless a diagnostic option is active.
+ *
+ * No `const` type parameter is needed to keep `{ trace: true }` from
+ * widening to `boolean` (settled by a spike at Phase-12 planning):
+ * widening applies to a mutable variable declaration, not to inference
+ * into a type-parameter position, so a fresh object literal argument
+ * infers the literal on its own — where `const` would additionally turn
+ * the `operators` array literal into a readonly tuple the declared type
+ * does not accept. The one case that does widen is a caller hoisting the
+ * options into a variable first, which `const` could not have reached
+ * either.
+ */
+export type ResultShape<O> = O extends { mode: 'report' } | { trace: true }
+  ? EvaluationResult
+  : unknown

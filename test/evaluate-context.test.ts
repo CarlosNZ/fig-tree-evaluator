@@ -105,7 +105,7 @@ test('cache.memo is an identity passthrough when the node is not caching', async
   expect(await spy.contexts[0].cache.memo('key', fn)).toBe(2)
 })
 
-test('trace.note is a no-op until Phase 12', async () => {
+test('trace.note discards when trace is off, so a body emits unconditionally', async () => {
   const spy = spyOp('note', {})
   await new FigTree({ operators: [spy.definition] }).evaluate({ $note: {} })
   expect(() => spy.contexts[0].trace.note({ type: 'cache', hit: true })).not.toThrow()

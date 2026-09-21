@@ -6,6 +6,7 @@
  * docs-dev/v3-specs/v3-evaluator-methods.md), and the OperatorFailure
  * bodies raise for an empty dynamic aggregate.
  */
+import { isFigTreeError } from '../FigTreeError'
 import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import type { ValidateFinding } from '../operatorDefinition'
@@ -133,9 +134,35 @@ export const decide = async (values: SettlementStream, decider: boolean): Promis
   }
   if (parked.length > 0) {
     parked.sort((a, b) => a.index - b.index)
-    throw parked[0].error
+    throw withRelated(parked)
   }
   return !decider
+}
+
+/**
+ * The lowest-index parked failure, carrying the others as `related`
+ * ("the throw/report invariant" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md).
+ *
+ * A failing decider is ONE failing node, so it contributes one error —
+ * but the siblings that also failed are why it failed, and dropping them
+ * loses the only record of a request that was already broken. They ride
+ * the raised error instead of becoming entries of their own, which is
+ * what keeps one-entry-per-failing-hole true.
+ *
+ * This is the body's job rather than the engine's for the same reason the
+ * lowest-index rule is: `decide` is the only place that ever holds the
+ * whole parked pile. It runs in both modes — `related` is a property of
+ * the error, not of the mode — and `collectAll` has no counterpart, since
+ * it raises as soon as an index is KNOWN lowest and so has no completed
+ * pile to attach.
+ */
+const withRelated = (parked: Settlement[]): unknown => {
+  const [lowest, ...rest] = parked
+  const related = rest.map((settled) => settled.error).filter(isFigTreeError)
+  if (related.length > 0 && isFigTreeError(lowest.error) && lowest.error.related === undefined)
+    lowest.error.related = related
+  return lowest.error
 }
 
 /**
