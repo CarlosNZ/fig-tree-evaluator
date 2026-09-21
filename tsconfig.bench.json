@@ -1,0 +1,37 @@
+{
+  // Compile context for the v2-vs-v3 benchmarks (`pnpm bench`, Phase 16a).
+  // Unlike every other config here, a bench file imports BOTH engines, so
+  // the program spans src/ and the frozen v2-src/ — and inherits v2's
+  // laxer checks, since /v2-src predates the stricter v3 ones and is never
+  // fixed.
+  //
+  // The `paths` entry is interop, not preference. `object-property-extractor`
+  // (v2's only non-optional runtime dependency) ships an ESM build at
+  // build/index.esm.js but declares no "type": "module", so Node — and tsx
+  // with it — treats that .js as CommonJS. An ESM importer then receives the
+  // whole exports object where v2 expects the bare function, and every
+  // `objectProperties` node fails with "extractProperty is not a function".
+  // Jest never sees this because ts-jest resolves the "require" condition.
+  // Pointing the specifier straight at the CommonJS build restores the
+  // default export v2 was written against, and touches nothing in /v2-src.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    // The mapping must name the .cjs.js and nothing else: tsx takes the
+    // first entry it can resolve, so listing the .d.ts first silently sends
+    // it back to the broken default. A plain .js carries no types, so
+    // bench/object-property-extractor.d.ts restates the one signature
+    // /v2-src uses.
+    "paths": {
+      "object-property-extractor": ["./node_modules/object-property-extractor/build/index.cjs.js"]
+    }
+  },
+  "include": ["bench", "src", "v2-src"],
+  // v2-src/dev is the frozen engine's own scratch space — it reaches for a
+  // pgConfig.json that the v3 tree does not carry, and no bench imports it.
+  "exclude": ["node_modules", "build", "src/dev/playground.ts", "v2-src/dev"]
+}

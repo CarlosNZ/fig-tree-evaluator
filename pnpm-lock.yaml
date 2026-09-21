@@ -32,6 +32,9 @@ importers:
       axios:
         specifier: ^1.18.1
         version: 1.18.1
+      dequal:
+        specifier: ^2.0.3
+        version: 2.0.3
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
