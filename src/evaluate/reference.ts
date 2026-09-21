@@ -25,7 +25,13 @@
  * `$index` is bare-only by grammar and needs no resolution beyond the
  * frame.
  *
- * `$params` arrives with fragments (Phase 11).
+ * `$params`: the same shape as `$vars` — the first segment names the
+ * parameter, the rest drills into its resolved value — with one deliberate
+ * difference. An unresolvable var is an engine bug, because the static gate
+ * refuses one; an unresolvable *parameter* cannot arise either, but a
+ * DECLARED parameter with no argument is ordinary and yields null. Bare
+ * `$params` is legal and materializes the declared set, which is why it
+ * demands every argument.
  */
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
@@ -48,11 +54,11 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
       return resolveData(node, ctx)
     case 'vars':
       return resolveVar(node, ctx)
+    case 'params':
+      return resolveParam(node, ctx)
     case 'element':
     case 'index':
       return resolveBinding(node, ctx)
-    default:
-      throw internalError(`'${node.raw}': the $${node.namespace} namespace is not evaluable yet`)
   }
 }
 
@@ -81,6 +87,41 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
  * `fallback` catches like any other, references being unable to carry one
  * themselves.
  */
+const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
+  const params = ctx.params
+  if (params === undefined)
+    throw internalError(
+      `'${node.raw}': $params outside a fragment body — the static gate should have refused it`
+    )
+  const [name, ...rest] = node.segments
+  // Bare `$params`: the declared parameters with their resolved values.
+  // Every one of them, so laziness is gone for this call — self-inflicted,
+  // legible, and the same bargain as referencing a var
+  if (name === undefined) {
+    const resolved: Record<string, unknown> = {}
+    await Promise.all(
+      [...params].map(async ([declared, thunk]) => {
+        resolved[declared] = normalize(await thunk())
+      })
+    )
+    return resolved
+  }
+  const thunk = typeof name === 'string' ? params.get(name) : undefined
+  if (thunk === undefined)
+    throw internalError(
+      `'${node.raw}': the fragment declares no parameter '${String(name)}' — the static gate should have refused it`
+    )
+  const value = await thunk()
+  if (rest.length === 0) return normalize(value)
+  return drill(
+    value,
+    rest as PathSegment[],
+    node,
+    ctx,
+    `is absent from the value of '$params.${String(name)}'`
+  )
+}
+
 const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
   const namespace = node.namespace as 'element' | 'index'
   const frame = lookupBinding(ctx.bindings, namespace, node.binding)

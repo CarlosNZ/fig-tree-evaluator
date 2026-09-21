@@ -28,7 +28,6 @@
 import { isPlainDataObject } from '../utils'
 import { resolveOperator, type OperatorRegistry } from '../registry'
 import { recognizeReference } from './references'
-import type { FragmentLookup } from './parse'
 
 /**
  * The built-in, option-independent nesting ceiling for the parse walk and
@@ -44,23 +43,14 @@ export interface ProbeResult {
   depth: number
 }
 
-export const probeConstant = (
-  value: unknown,
-  registry: OperatorRegistry,
-  fragments: FragmentLookup
-): ProbeResult => {
-  const state: ProbeState = { registry, fragments, maxDepth: 0 }
+export const probeConstant = (value: unknown, registry: OperatorRegistry): ProbeResult => {
+  const state: ProbeState = { registry, maxDepth: 0 }
   const constant = scan(state, value, 0)
   return { constant, depth: state.maxDepth }
 }
 
-/** What resolving a `$name` key needs: the registry and the fragments. */
-export interface Lookups {
+interface ProbeState {
   registry: OperatorRegistry
-  fragments: FragmentLookup
-}
-
-interface ProbeState extends Lookups {
   maxDepth: number
 }
 
@@ -82,7 +72,7 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
   if (isPlainDataObject(value)) {
     for (const key of Object.keys(value)) {
       if (key === 'operator' || key === 'fragment' || key === 'vars' || key === '//') return false
-      if (key.startsWith('$') && isRecognizedShorthand(state, key.slice(1))) return false
+      if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) return false
     }
     for (const key of Object.keys(value)) {
       if (!scan(state, value[key], depth + 1)) return false
@@ -98,7 +88,7 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
  * Does a `$name` key invoke something registered, or `literal`? The one
  * answer to the recognition question, for the probe and the walk alike.
  */
-export const isRecognizedShorthand = (lookups: Lookups, name: string): boolean =>
+export const isRecognizedShorthand = (registry: OperatorRegistry, name: string): boolean =>
   name === 'literal' ||
-  resolveOperator(lookups.registry, name) !== undefined ||
-  lookups.fragments.has(name)
+  resolveOperator(registry, name) !== undefined ||
+  registry.fragments.has(name)

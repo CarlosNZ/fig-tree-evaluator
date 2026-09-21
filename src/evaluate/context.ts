@@ -62,6 +62,32 @@ export interface EvaluationContext {
    * frame lives for one element where a vars scope lives for a node.
    */
   bindings?: Bindings
+  /**
+   * The arguments of the fragment call whose body is running: one thunk per
+   * DECLARED parameter, absent outside a body (./fragment).
+   *
+   * A frame, not a chain — unlike `scope` and `bindings`. A fragment body
+   * is sealed, so a nested call replaces this rather than nesting under it,
+   * and the recursion ban means a body can never be its own ancestor.
+   */
+  params?: ParamsFrame
+  /**
+   * The fragment body this node belongs to, absent in the input's own
+   * expression. It is what a failure is attributed to (./fragment): the
+   * fragment's name, and the path of the call IN THE INPUT — inherited
+   * through nested calls, since an inner call node's own path resolves
+   * inside a body rather than in the input.
+   */
+  frame?: FragmentFrame
+}
+
+/** Declared parameter name → its evaluate-at-most-once resolved value. */
+export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
+
+/** Where a failure inside a fragment body is to be attributed. */
+export interface FragmentFrame {
+  fragment: string
+  callPath: (string | number)[]
 }
 
 /**

@@ -13,11 +13,14 @@
 import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
-import type { ValidatedParameter } from '../operatorDefinition'
+import type { Constraints, ExpectedType } from '../typeCheck'
+import type { EvaluationMode } from '../operatorDefinition'
+import { nearestName } from '../utils'
 import { validateHelpers } from './helpers'
 import { bindsReference, renamedBinding } from './artifact'
 import type {
   CompiledNode,
+  FragmentCallNode,
   NodePath,
   OperatorNode,
   ParseArtifact,
@@ -103,16 +106,9 @@ const visit = (state: CheckState, node: CompiledNode) => {
       popVars(state, frame)
       return
     }
-    case 'fragmentCall': {
-      const frame = pushVars(state, node.vars, node.path)
-      if (node.fallback !== undefined) visit(state, node.fallback)
-      if (node.parameters !== undefined) {
-        if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-        else for (const argument of Object.values(node.parameters)) visit(state, argument)
-      }
-      popVars(state, frame)
+    case 'fragmentCall':
+      visitFragmentCall(state, node)
       return
-    }
     case 'elements':
       for (const element of node.nodes) visit(state, element)
       return
@@ -159,7 +155,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
-    checkSuppliedParam(state, node, name, declared, supplied)
+    checkSuppliedParam(state, operatorOwner(node), name, declared, supplied)
   }
 
   runValidateHook(state, node)
@@ -195,11 +191,25 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   popVars(state, frame)
 }
 
+/**
+ * What a receiving position declares, as this layer reads it. An operator's
+ * `ValidatedParameter` and a fragment's `FragmentParameter` both satisfy it
+ * — the two declaration shapes share `TypeDeclaration`, which is what lets
+ * one checker serve an operator parameter and a fragment argument alike.
+ */
+interface ReceivingDeclaration {
+  type: ExpectedType
+  required: boolean
+  constraints?: Constraints
+  elementNullPolicy?: unknown
+  evaluation?: EvaluationMode
+}
+
 const checkSuppliedParam = (
   state: CheckState,
-  node: OperatorNode,
+  owner: { label: string; extra: { operator?: string } },
   name: string,
-  declared: ValidatedParameter,
+  declared: ReceivingDeclaration,
   supplied: CompiledNode
 ) => {
   // Literal values: the parse moment of the one type table. 'as' is owned
@@ -216,10 +226,10 @@ const checkSuppliedParam = (
         state,
         'error',
         ErrorCodes.typeCheck,
-        `'${node.name}.${name}': expected ${typed.expected}, received ${typed.actual}`,
+        `'${owner.label}.${name}': expected ${typed.expected}, received ${typed.actual}`,
         supplied.path,
         supplied.order,
-        { operator: node.name, parameter: name }
+        { ...owner.extra, parameter: name }
       )
       return
     }
@@ -234,10 +244,10 @@ const checkSuppliedParam = (
           state,
           'error',
           ErrorCodes.typeCheck,
-          `'${node.name}.${name}': expected ${constrained.expected}, received ${constrained.actual}`,
+          `'${owner.label}.${name}': expected ${constrained.expected}, received ${constrained.actual}`,
           supplied.path,
           supplied.order,
-          { operator: node.name, parameter: name }
+          { ...owner.extra, parameter: name }
         )
     }
     return
@@ -254,10 +264,10 @@ const checkSuppliedParam = (
         state,
         'error',
         ErrorCodes.typeCheck,
-        `'${node.name}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
+        `'${owner.label}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
         supplied.path,
         supplied.order,
-        { operator: node.name, parameter: name }
+        { ...owner.extra, parameter: name }
       )
     return
   }
@@ -266,10 +276,10 @@ const checkSuppliedParam = (
       state,
       'error',
       ErrorCodes.typeCheck,
-      `'${node.name}.${name}' is structural — it requires a literal value`,
+      `'${owner.label}.${name}' is structural — it requires a literal value`,
       supplied.path,
       supplied.order,
-      { operator: node.name, parameter: name }
+      { ...owner.extra, parameter: name }
     )
     return
   }
@@ -282,12 +292,81 @@ const checkSuppliedParam = (
         state,
         'error',
         ErrorCodes.returnsMismatch,
-        `'${supplied.name}' returns ${JSON.stringify(returns)} — it can never satisfy '${node.name}.${name}'`,
+        `'${supplied.name}' returns ${JSON.stringify(returns)} — it can never satisfy '${owner.label}.${name}'`,
         supplied.path,
         supplied.order,
-        { operator: node.name, parameter: name }
+        { ...owner.extra, parameter: name }
       )
   }
+}
+
+const operatorOwner = (node: OperatorNode) => ({
+  label: node.name,
+  extra: { operator: node.name },
+})
+
+// ── Fragment calls: the call signature ──────────────────────────────
+
+/**
+ * Static mode gets the full signature check — a missing required argument
+ * or an unknown argument name is a typo the author can fix before running
+ * anything, which is the same posture the no-hoisting rule takes on an
+ * operator node.
+ *
+ * Dynamic mode gets none of it: the arguments object does not exist until
+ * evaluation, so the identical checks move to the call itself. What is
+ * checked here in one mode and there in the other is deliberately the same
+ * list.
+ */
+const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
+  const frame = pushVars(state, node.vars, node.path)
+  if (node.fallback !== undefined) visit(state, node.fallback)
+
+  const declarations = node.entry?.parameters
+  const supplied =
+    node.parameters !== undefined && !isCompiledNode(node.parameters) ? node.parameters : undefined
+
+  // An unregistered name already raised unknown-fragment; there is nothing
+  // to check a call against
+  if (declarations !== undefined && node.argumentsMode === 'static') {
+    const owner = { label: node.name, extra: {} }
+    for (const [name, declared] of Object.entries(declarations)) {
+      const argument = supplied?.[name]
+      if (argument === undefined) {
+        if (declared.required)
+          emit(
+            state,
+            'error',
+            ErrorCodes.missingRequired,
+            `fragment '${node.name}' requires '${name}'`,
+            node.path,
+            node.order,
+            { parameter: name }
+          )
+        continue
+      }
+      checkSuppliedParam(state, owner, name, declared, argument)
+    }
+    for (const [name, argument] of Object.entries(supplied ?? {}))
+      if (declarations[name] === undefined) {
+        const suggestion = nearestName(name, Object.keys(declarations))
+        emit(
+          state,
+          'error',
+          ErrorCodes.unknownNodeKey,
+          `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+          argument.path,
+          argument.order,
+          { parameter: name }
+        )
+      }
+  }
+
+  if (node.parameters !== undefined) {
+    if (isCompiledNode(node.parameters)) visit(state, node.parameters)
+    else for (const argument of Object.values(node.parameters)) visit(state, argument)
+  }
+  popVars(state, frame)
 }
 
 // ── The operator validate hook (contract ledger #11) ────────────────
@@ -397,6 +476,9 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
     )
     return
   }
+  // Bare `$params` is the declared parameters resolved — legal, because
+  // the set it names is declared, finite and local
+  if (node.segments.length === 0) return
   const first = node.segments[0]
   if (typeof first !== 'string' || !declared.has(first))
     emit(

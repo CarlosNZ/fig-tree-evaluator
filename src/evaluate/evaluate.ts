@@ -13,6 +13,7 @@
 import type { CompiledNode, SkeletonHole, SkeletonNode } from '../parse'
 import type { EvaluationContext } from './context'
 import { abortedOutcome, internalError } from './internal'
+import { evaluateFragment } from './fragment'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
@@ -37,9 +38,7 @@ export const evaluateNode = async (
     case 'operator':
       return evaluateOperator(node, ctx)
     case 'fragmentCall':
-      throw internalError(
-        `fragment call '${node.name}' reached evaluation — fragments land in Phase 11`
-      )
+      return evaluateFragment(node, ctx)
     case 'elements':
     case 'entries':
       throw internalError(

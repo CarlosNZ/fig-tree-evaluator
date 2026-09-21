@@ -48,7 +48,8 @@ export { EvaluationData, isValidatedOperator } from './operatorDefinition'
 
 // Phase 2.2 — the instance shell. Registry machinery stays internal.
 export { FigTree } from './FigTree'
-export type { EvaluationOptions, FigTreeOptions, FragmentDefinition } from './options'
+export type { EvaluationOptions, FigTreeOptions } from './options'
+export type { FragmentDefinition, FragmentParameterDeclaration } from './fragments'
 export type {
   OperatorDefinition,
   ParameterDeclaration,

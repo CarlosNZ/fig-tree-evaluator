@@ -277,5 +277,16 @@ export const makeParseRegistry = (
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),
   })
 
-/** Phase 3 has no registrable fragments — the empty lookup. */
-export const noFragments: ReadonlyMap<string, unknown> = new Map()
+/**
+ * A registry with two fragments registered, for the parse-side cases that
+ * need a KNOWN name: the shorthand face and the entry the walk bakes in.
+ * Bodies are trivial — what is under test is recognition, not the body.
+ */
+export const withFragments = (): OperatorRegistry =>
+  buildRegistry({
+    operators: [parseOps()],
+    fragments: {
+      summary: { expression: 'a summary', parameters: { title: { type: 'string' } } },
+      plain: { expression: 1 },
+    },
+  })

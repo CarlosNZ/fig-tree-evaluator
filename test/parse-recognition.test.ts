@@ -6,10 +6,10 @@
  */
 import { parseExpression } from '../src/parse'
 import type { ParseArtifact, OperatorNode, FragmentCallNode } from '../src/parse'
-import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
+import { makeParseRegistry, withFragments } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry, noFragments)
+const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 const issueCodes = (artifact: ParseArtifact, severity?: string) =>
   artifact.issues
@@ -157,14 +157,14 @@ test('canonical literal takes its content from the value key', () => {
   expect(artifact.holes).toHaveLength(0)
 })
 
-// ── Fragment-call grammar (registrable fragments arrive Phase 11) ───
+// ── Fragment-call grammar ───────────────────────────────────────────
 
 test('fragment parameters: plain object is the static mode', () => {
   const artifact = parse({ fragment: 'f', parameters: { x: 1 } })
   const root = artifact.root as FragmentCallNode
   expect(root.kind).toBe('fragmentCall')
   expect(root.argumentsMode).toBe('static')
-  // Unknown fragment still errors — nothing is registrable yet
+  // An unregistered name is a hard error on the canonical face
   expect(issueCodes(artifact, 'error')).toContain('unknown-fragment')
 })
 
@@ -188,6 +188,41 @@ test('useCache is banned on fragment calls', () => {
 test('parameters is reserved-unused on operator nodes', () => {
   const artifact = parse({ operator: 'plus', values: [1], parameters: { x: 1 } })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
+})
+
+// ── Registered fragments: the shorthand face and the baked entry ────
+
+const withFragment = (input: unknown): ParseArtifact => parseExpression(input, withFragments())
+
+test('a registered name makes its $key a call, not inert data', () => {
+  const artifact = withFragment({ $summary: { title: 'x' } })
+  const root = artifact.root as FragmentCallNode
+  expect(root.kind).toBe('fragmentCall')
+  expect(root.name).toBe('summary')
+  expect(root.argumentsMode).toBe('static')
+  expect(issueCodes(artifact, 'error')).toEqual([])
+})
+
+// Registry resolution is baked in (obligation C3), exactly as it is for an
+// operator node: nothing is looked up again at evaluation
+test('a resolved call carries its registry entry', () => {
+  const root = withFragment({ fragment: 'plain' }).root as FragmentCallNode
+  expect(root.entry?.name).toBe('plain')
+  expect(withFragment({ fragment: 'nope' }).root.kind).toBe('fragmentCall')
+  expect((withFragment({ fragment: 'nope' }).root as FragmentCallNode).entry).toBeUndefined()
+})
+
+test('a fragment shorthand takes the reserved siblings, but never useCache', () => {
+  expect(issueCodes(withFragment({ $plain: {}, fallback: 1, vars: { a: 1 } }), 'error')).toEqual([])
+  expect(issueCodes(withFragment({ $plain: {}, useCache: true }), 'error')).toContain(
+    'malformed-node'
+  )
+})
+
+test('a non-object shorthand payload is a hard error — no positional form', () => {
+  for (const payload of ['$data.args', 5, [1, 2]]) {
+    expect(issueCodes(withFragment({ $summary: payload }), 'error')).toContain('malformed-node')
+  }
 })
 
 // ── v2 divergences (hand-migrated from test/v2-working — the idioms the

@@ -79,9 +79,11 @@
  *     the element bindings, and is a parse-time literal precisely so the
  *     walk can read it), ordinary parameters next, and the per-element
  *     subtrees last, under the binding it named — the scope concern above.
- * 12. A fragment call checks its name against the lookup and fixes its
- *     argument mode statically: a plain object is the named map, a node or
- *     reference the dynamic form.
+ * 12. A fragment call resolves its name in the registry — baking the
+ *     compiled body in, as an operator node bakes in its entry — and fixes
+ *     its argument mode statically: a plain object is the named map, a node
+ *     or reference the dynamic form. Each resolved call is recorded with
+ *     its depth, so the counts and dependencies can compose through it.
  * 13. Containers assemble: `//` keys and `undefined` values drop out, a
  *     `vars` block is consumed, stray `$keys` warn as inert, constant
  *     children fold into the skeleton and evaluable ones become holes (a
@@ -114,6 +116,7 @@ import type {
   ConstantNode,
   ElementsNode,
   EntriesNode,
+  FragmentCall,
   FragmentCallNode,
   NodePath,
   OperatorNode,
@@ -122,15 +125,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-
-/**
- * Registered fragments, keyed by name. Nothing is registrable until Phase
- * 11 — the parser takes the lookup now so fragment-body compilation reuses
- * this exact entry point.
- */
-export type FragmentLookup = ReadonlyMap<string, unknown>
-
-const NO_FRAGMENTS: FragmentLookup = new Map()
+import type { FragmentEntry } from '../fragments'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
 const SHORTHAND_SIBLINGS = new Set(['fallback', 'useCache', 'vars', '//'])
@@ -146,7 +141,6 @@ interface BindingFrame {
 
 interface WalkState {
   registry: OperatorRegistry
-  fragments: FragmentLookup
   issues: ParseArtifact['issues']
   order: number
   nodeCount: number
@@ -155,6 +149,8 @@ interface WalkState {
   dynamic: boolean
   operators: Set<string>
   fragmentNames: Set<string>
+  /** Resolved call sites, for the rollup composition at assembly. */
+  fragmentCalls: FragmentCall[]
   identityOnly: boolean
   renamedBindings: BindingFrame[]
   /**
@@ -172,15 +168,26 @@ interface WalkState {
   unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
 }
 
+export interface ParseOptions {
+  /**
+   * Where the root sits in the value being parsed. Only fragment-body
+   * compilation supplies one (`['expression']`), so a body's node paths —
+   * and so the `fragmentPath` a runtime failure carries — resolve inside
+   * the registered definition. Depth still starts at 0, which is what keeps
+   * a body's `maxDepth` measured from its own root and the call-site offset
+   * exact.
+   */
+  basePath?: NodePath
+}
+
 /** Parse an expression into its compile artifact. Never throws on content. */
 export const parseExpression = (
   input: unknown,
   registry: OperatorRegistry,
-  fragments: FragmentLookup = NO_FRAGMENTS
+  options: ParseOptions = {}
 ): ParseArtifact => {
   const state: WalkState = {
     registry,
-    fragments,
     issues: [],
     order: 0,
     nodeCount: 0,
@@ -189,21 +196,18 @@ export const parseExpression = (
     dynamic: false,
     operators: new Set(),
     fragmentNames: new Set(),
+    fragmentCalls: [],
     identityOnly: false,
     renamedBindings: [],
     asNames: new Set(),
     unrecognized: [],
   }
-  const root = walk(state, input, [], 0)
+  const root = walk(state, input, options.basePath ?? [], 0)
   upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
   // Stable sort — issues from one node keep their emission order
   state.issues.sort((a, b) => a.order - b.order)
-  return {
-    root,
-    holes,
-    issues: state.issues,
-    shielded: holes.every((hole) => hole.staticFallback !== undefined),
+  const own = {
     nodeCount: state.nodeCount,
     maxDepth: state.maxDepth,
     dependencies: {
@@ -213,6 +217,70 @@ export const parseExpression = (
       fragments: [...state.fragmentNames],
     },
     identityOnly: state.identityOnly,
+  }
+  return {
+    root,
+    holes,
+    issues: state.issues,
+    shielded: holes.every((hole) => hole.staticFallback !== undefined),
+    ...composeRollups(own, state.fragmentCalls, registry.fragments),
+    fragmentCalls: state.fragmentCalls,
+  }
+}
+
+/** The measurements a call site composes through. */
+type Rollups = Pick<
+  ParseArtifact,
+  'nodeCount' | 'maxDepth' | 'dependencies' | 'identityOnly'
+>
+
+/**
+ * Compose an expression's own measurements with those of every fragment it
+ * calls. The two counts compose by different rules because the quantities
+ * differ: `nodeCount` is a **total**, so each call site adds its target's
+ * — twice for two call sites, two calls being two evaluations of the body —
+ * while `maxDepth` is a **maximum along a path**, so a call site offsets
+ * rather than adds (a caller measuring 10 with a depth-3 call into a
+ * depth-4 body is 10 deep, not 14). Dependencies and `identityOnly` are a
+ * union and a disjunction, which is what makes "what does this expression
+ * need" answerable through a call.
+ *
+ * Shared by the walk's assembly and by registration's reverse-topological
+ * fold, so a call site in an expression and a call site in a body compose
+ * identically.
+ */
+export const composeRollups = (
+  own: Rollups,
+  calls: FragmentCall[],
+  fragments: ReadonlyMap<string, FragmentEntry>
+): Rollups => {
+  if (calls.length === 0) return own
+  const dataPaths = new Set(own.dependencies.dataPaths)
+  const operators = new Set(own.dependencies.operators)
+  const fragmentNames = new Set(own.dependencies.fragments)
+  let { nodeCount, maxDepth, identityOnly } = own
+  let dynamic = own.dependencies.dynamic
+  for (const call of calls) {
+    const target = fragments.get(call.name)
+    if (target === undefined) continue
+    nodeCount += target.nodeCount
+    maxDepth = Math.max(maxDepth, call.depth + target.maxDepth)
+    identityOnly ||= target.identityOnly
+    dynamic ||= target.dependencies.dynamic
+    for (const path of target.dependencies.dataPaths) dataPaths.add(path)
+    for (const name of target.dependencies.operators) operators.add(name)
+    for (const name of target.dependencies.fragments) fragmentNames.add(name)
+  }
+  return {
+    nodeCount,
+    maxDepth,
+    identityOnly,
+    dependencies: {
+      dataPaths: [...dataPaths],
+      dynamic,
+      operators: [...operators],
+      fragments: [...fragmentNames],
+    },
   }
 }
 
@@ -368,7 +436,14 @@ const walkString = (
       return constant(raw, path, order)
     }
     case 'invalid':
-      emit(state, 'error', ErrorCodes.invalidReference, `'${raw}': ${recognition.reason}`, path, order)
+      emit(
+        state,
+        'error',
+        recognition.code ?? ErrorCodes.invalidReference,
+        `'${raw}': ${recognition.reason}`,
+        path,
+        order
+      )
       return invalid(raw, path, order)
     case 'reference': {
       const { namespace, segments } = recognition
@@ -443,7 +518,7 @@ const walkArray = (
 /** The `$name` keys of an object that resolve against what's known. */
 const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] =>
   Object.keys(raw).filter(
-    (key) => key.startsWith('$') && isRecognizedShorthand(state, key.slice(1))
+    (key) => key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))
   )
 
 /** Would this value classify as a node (kinds 1–3, 5)? */
@@ -1116,7 +1191,7 @@ const walkShorthand = (
 ): CompiledNode => {
   const name = shorthandKey.slice(1)
   const isLiteral = name === 'literal'
-  const isFragment = !isLiteral && state.fragments.has(name)
+  const isFragment = !isLiteral && state.registry.fragments.has(name)
 
   // The sibling-key rule: reserved modifiers only
   for (const key of Object.keys(raw)) {
@@ -1355,8 +1430,6 @@ const walkFragmentCanonical = (
     )
     return invalid(raw, path, order)
   }
-  checkFragmentKnown(state, fragValue, path, order)
-
   const node: FragmentCallNode = {
     kind: 'fragmentCall',
     name: fragValue,
@@ -1364,6 +1437,7 @@ const walkFragmentCanonical = (
     path,
     order,
   }
+  resolveFragment(state, node, depth, path, order)
   for (const [key, value] of Object.entries(raw)) {
     if (key === 'fragment' || key === '//' || value === undefined) continue
     if (key === 'parameters') {
@@ -1410,7 +1484,6 @@ const walkFragmentShorthand = (
   depth: number,
   order: number
 ): CompiledNode => {
-  checkFragmentKnown(state, name, path, order)
   const node: FragmentCallNode = {
     kind: 'fragmentCall',
     name,
@@ -1418,6 +1491,7 @@ const walkFragmentShorthand = (
     path,
     order,
   }
+  resolveFragment(state, node, depth, path, order)
   for (const [key, value] of Object.entries(raw)) {
     if (key === `$${name}` || key === '//' || value === undefined) continue
     if (key === 'fallback') node.fallback = walk(state, value, [...path, 'fallback'], depth + 1)
@@ -1438,10 +1512,23 @@ const walkFragmentShorthand = (
   return node
 }
 
-const checkFragmentKnown = (state: WalkState, name: string, path: NodePath, order: number) => {
+/**
+ * Bake the registry resolution into the call node (C3) and record the call
+ * site for the rollup composition. An unknown name is a hard error — the
+ * registry is stable by construction, so this is statically knowable.
+ */
+const resolveFragment = (
+  state: WalkState,
+  node: FragmentCallNode,
+  depth: number,
+  path: NodePath,
+  order: number
+) => {
+  const { name } = node
   state.fragmentNames.add(name)
-  if (!state.fragments.has(name)) {
-    const suggestion = nearestName(name, state.fragments.keys())
+  const entry = state.registry.fragments.get(name)
+  if (entry === undefined) {
+    const suggestion = nearestName(name, state.registry.fragments.keys())
     emit(
       state,
       'error',
@@ -1450,7 +1537,10 @@ const checkFragmentKnown = (state: WalkState, name: string, path: NodePath, orde
       path,
       order
     )
+    return
   }
+  node.entry = entry
+  state.fragmentCalls.push({ name, depth })
 }
 
 /**
@@ -1683,7 +1773,9 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
       node: hole.node,
       ...withStaticFallback(state, hole.node),
     }))
-  return [{ path: [], node: root, ...withStaticFallback(state, root) }]
+  // `root.path` rather than `[]`: a fragment body parses under a base path,
+  // and a hole must still name where its node sits in the value parsed
+  return [{ path: root.path, node: root, ...withStaticFallback(state, root) }]
 }
 
 const withStaticFallback = (
@@ -1698,7 +1790,7 @@ const withStaticFallback = (
  * The shielding precompute (obligation B2): present iff the hole root's
  * fallback subtree is classified constant. An operatorDefaults modifier
  * fallback counts — which is exactly why `operatorDefaults` invalidates the
- * parse cache.
+ * parse cache — and so does the body-root fallback a fragment call lifts.
  */
 const staticFallbackFor = (
   state: WalkState,
@@ -1714,16 +1806,21 @@ const staticFallbackFor = (
     if (
       defaults !== undefined &&
       'fallback' in defaults &&
-      probeConstant(defaults.fallback, state.registry, state.fragments).constant
+      probeConstant(defaults.fallback, state.registry).constant
     )
       return { value: defaults.fallback }
+    return undefined
   }
-  return undefined
+  // A call with no fallback of its own lifts its target's body-root one.
+  // The call's value IS the body root's value, so the constant the author
+  // declared there is exactly what assembly would splice — and without the
+  // lift, factoring an expression into a fragment silently unshields it
+  return node.entry?.staticFallback
 }
 
 /** Every invocable name — operators, aliases, fragments — for suggestions. */
 const allInvocationNames = (state: WalkState): string[] => [
   ...state.registry.operators.keys(),
   ...state.registry.aliases.keys(),
-  ...state.fragments.keys(),
+  ...state.registry.fragments.keys(),
 ]

@@ -6,10 +6,10 @@
  */
 import { parseExpression } from '../src/parse'
 import type { ParseArtifact } from '../src/parse'
-import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
+import { makeParseRegistry } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry, noFragments)
+const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 // ── Constancy and hole extraction ───────────────────────────────────
 
@@ -92,7 +92,7 @@ test('a hole with no fallback at all unshields the expression', () => {
 
 test('an operatorDefaults modifier fallback counts as a static fallback', () => {
   const withDefaults = makeParseRegistry({ http: { fallback: 'offline' } })
-  const artifact = parseExpression({ a: { $http: 'https://x.test' } }, withDefaults, noFragments)
+  const artifact = parseExpression({ a: { $http: 'https://x.test' } }, withDefaults)
   expect(artifact.shielded).toBe(true)
   expect(artifact.holes[0].staticFallback).toEqual({ value: 'offline' })
 })

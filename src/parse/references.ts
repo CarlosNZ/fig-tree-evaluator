@@ -1,10 +1,11 @@
 /**
- * Reference-token recognition ("Reference grammar" in
- * docs-dev/v3-specs/v3-api.md): the token rule, namespace-alias
+ * Reference-token recognition ("Reference grammar" and "Bare namespace
+ * forms" in docs-dev/v3-specs/v3-api.md): the token rule, namespace-alias
  * normalization, and the bare-namespace legality rules. Pure classification
  * — scope resolution (does the var exist, are we inside an iterator) is the
  * chunk-3.3 layer's job.
  */
+import { ErrorCodes } from '../errorCodes'
 import { parsePath, WILDCARD, type PathSegment } from '../primitives'
 import type { ReferenceNamespace } from './artifact'
 
@@ -25,8 +26,12 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
 export type ReferenceRecognition =
   /** A recognized, well-formed reference. */
   | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[] }
-  /** A recognized namespace used illegally (bare $vars, drilled $index…). */
-  | { kind: 'invalid'; namespace: ReferenceNamespace; reason: string }
+  /**
+   * A recognized namespace used illegally (bare $vars, drilled $index…).
+   * `code` overrides the generic `invalid-reference` where the rule broken
+   * has a name of its own.
+   */
+  | { kind: 'invalid'; namespace: ReferenceNamespace; reason: string; code?: string }
   /** $-prefixed but no recognized namespace token — inert, warned. */
   | { kind: 'unrecognized' }
   /** Not $-prefixed — ordinary data. */
@@ -58,15 +63,19 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
   if (namespace === undefined) return { kind: 'unrecognized' }
 
   if (rest === '') {
-    // Bare namespaces: $data = the whole merged object; $element / $index
-    // are bare-legal; bare $vars / $params name nothing
-    if (namespace === 'vars' || namespace === 'params')
+    // The namespaces divide on whether they name a VALUE or a SET. $data
+    // and $element name a value, so the bare form is that value; $index is
+    // bare-only by grammar. $vars and $params name a set, and the bare form
+    // is legal only where that set has declared, finite, local membership:
+    // a call's declared parameters do, a scope chain does not — its
+    // membership is every var every enclosing node declared, shadowing
+    // included, and materializing it would force all of them to evaluate
+    if (namespace === 'vars')
       return {
         kind: 'invalid',
         namespace,
-        reason: `bare '$${token}' names nothing — reference a specific ${
-          namespace === 'vars' ? 'var' : 'parameter'
-        }`,
+        code: ErrorCodes.bareVars,
+        reason: "'$vars' must name a var — there is no whole-scope value",
       }
     return { kind: 'reference', namespace, segments: [] }
   }

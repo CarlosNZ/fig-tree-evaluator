@@ -8,13 +8,7 @@
  */
 import type { CacheStore } from './types'
 import type { ValidatedOperatorDefinition } from './operatorDefinition'
-
-/**
- * Placeholder for the fragment definition shape (the Fragments area of
- * docs-dev/v3-specs/v3-api.md). Narrowed to its real shape in Phase 11;
- * declared now only so the `fragments` option key is stable.
- */
-export type FragmentDefinition = unknown
+import type { FragmentDefinition } from './fragments'
 
 /**
  * The options an evaluation runs under, and what `getOptions()` reports:
@@ -29,7 +23,12 @@ export type EvaluationOptions = Omit<FigTreeOptions, 'operators' | 'fragments'>
 export interface FigTreeOptions {
   // ── Evaluation environment ──────────────────────────────
   data?: Record<string, unknown>
-  /** Registered at construction; not per-call. Phase 11. */
+  /**
+   * Registered at construction or via `updateOptions()`, never per call:
+   * an artifact bakes in which `$name` keys invoke, so the parse cache is
+   * only sound against a stable registry. Definitions validate loudly where
+   * they are supplied (src/fragments.ts).
+   */
   fragments?: Record<string, FragmentDefinition>
 
   // ── Operator registry ───────────────────────────────────

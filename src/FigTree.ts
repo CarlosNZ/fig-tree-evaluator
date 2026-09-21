@@ -45,9 +45,6 @@ import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
 import { coreOperators } from './operators'
 
-/** No fragments are registrable until Phase 11. */
-const NO_FRAGMENTS: ReadonlyMap<string, unknown> = new Map()
-
 /** Everything an instance may swap, and may only swap together. */
 interface InstanceState {
   /**
@@ -111,13 +108,14 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
     ...(options.operatorDefaults !== undefined
       ? { operatorDefaults: options.operatorDefaults }
       : {}),
+    ...(options.fragments !== undefined ? { fragments: options.fragments } : {}),
   })
   return {
     options,
     registry,
     parseCache: new ParseCache({
       compile: (expression) => compile(expression, registry),
-      probe: (expression) => probeConstant(expression, registry, NO_FRAGMENTS),
+      probe: (expression) => probeConstant(expression, registry),
     }),
   }
 }
@@ -136,7 +134,7 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
  * the parse cache, which is what makes the two report identically.
  */
 const compile = (expression: unknown, registry: OperatorRegistry): ParseArtifact => {
-  const artifact = parseExpression(expression, registry, NO_FRAGMENTS)
+  const artifact = parseExpression(expression, registry)
   runStaticChecks(artifact)
   return artifact
 }

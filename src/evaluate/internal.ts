@@ -117,9 +117,17 @@ type Branded = Record<PropertyKey, unknown>
 /** A plain Error carrying `brand` as an own property. */
 const branded = (message: string, brand: symbol): Error => {
   const error = new Error(message)
-  ;(error as unknown as Branded)[brand] = true
+  brand_(error, brand)
   return error
 }
 
-const hasBrand = (error: unknown, brand: symbol): boolean =>
-  error instanceof Error && (error as unknown as Branded)[brand] === true
+/** Mark an existing error — for a brand that records what has happened to
+ * it rather than what it is (./fragment's anchoring). */
+export const brand = (error: Error, mark: symbol): void => brand_(error, mark)
+
+const brand_ = (error: Error, mark: symbol): void => {
+  ;(error as unknown as Branded)[mark] = true
+}
+
+export const hasBrand = (error: unknown, mark: symbol): boolean =>
+  error instanceof Error && (error as unknown as Branded)[mark] === true

@@ -12,6 +12,7 @@
  * C1–C7).
  */
 import type { RegistryEntry } from '../registry'
+import type { FragmentEntry } from '../fragments'
 import type { PathSegment } from '../primitives'
 import type { Issue } from '../issues'
 
@@ -104,10 +105,16 @@ export interface OperatorNode extends CompiledBase {
  * statically (Fragments area): a plain-object `parameters` is the static
  * named-arguments map, a node-valued `parameters` is the dynamic mode, an
  * absent `parameters` is a zero-argument static call.
+ *
+ * `entry` bakes the registry resolution into the artifact exactly as
+ * `OperatorNode.entry` does (C3) — the compiled body a call site splices,
+ * and the declarations the static checks and the runtime read. Absent only
+ * where the name resolved to nothing, which is already an error issue.
  */
 export interface FragmentCallNode extends CompiledBase {
   kind: 'fragmentCall'
   name: string
+  entry?: FragmentEntry
   argumentsMode: 'static' | 'dynamic'
   parameters?: Record<string, CompiledNode> | CompiledNode
   fallback?: CompiledNode
@@ -220,6 +227,17 @@ export interface ArtifactHole {
   staticFallback?: { value: unknown }
 }
 
+/**
+ * One resolved fragment call site, with the depth it sits at. Kept because
+ * the two rollups compose differently and neither survives a dependency
+ * list: `nodeCount` needs the multiplicity a name set loses (two calls are
+ * two evaluations of the body), and `maxDepth` needs each site's own depth.
+ */
+export interface FragmentCall {
+  name: string
+  depth: number
+}
+
 /** The dependency record (B6) — the `getDependencies()` data, minus sorting. */
 export interface ArtifactDependencies {
   /** Statically-known $data paths, as-written spellings, deduplicated. */
@@ -278,6 +296,13 @@ export interface ParseArtifact {
    */
   maxDepth: number
   dependencies: ArtifactDependencies
+  /**
+   * Every resolved fragment call site. The four measurements above are
+   * already composed through these; the list is retained because
+   * registration folds bodies in dependency order and must recompose from
+   * the same material.
+   */
+  fragmentCalls: FragmentCall[]
   /**
    * True when the input contains opaque constants — such artifacts must
    * never be served from the content-keyed cache layer (C5). The key

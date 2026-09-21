@@ -5,8 +5,8 @@
  * parse/compile method ("Rulings on the surface" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  */
-export { parseExpression } from './parse'
-export type { FragmentLookup } from './parse'
+export { composeRollups, parseExpression } from './parse'
+export type { ParseOptions } from './parse'
 export { runStaticChecks } from './staticChecks'
 export type { StaticCheckContext } from './staticChecks'
 export { validateHelpers } from './helpers'
@@ -20,6 +20,7 @@ export type {
   ConstantNode,
   ElementsNode,
   EntriesNode,
+  FragmentCall,
   FragmentCallNode,
   InvalidNode,
   NodePath,

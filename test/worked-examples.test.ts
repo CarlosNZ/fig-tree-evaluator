@@ -17,6 +17,8 @@ import { coreOperators } from '../src/operators'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
 import { compileSpyOp } from './fixtures/evalOperators'
+import { ErrorCodes } from '../src'
+import type { FragmentDefinition } from '../src'
 
 const fig = new FigTree()
 
@@ -357,4 +359,63 @@ describe('worked example 3 — timeout shielding: throw mode and the validate ba
 
   it.todo('report mode returns the assembly beside exactly [timeoutError] (Phase 12)')
   it.todo('report mode returns null beside the timeout error for the un-shielded banner (Phase 12)')
+})
+
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Worked example 4 ────────────────────────────────────────────────
+
+describe('worked example 4 — a failure inside a fragment body', () => {
+  const build = (fragments: Record<string, FragmentDefinition>) =>
+    new FigTree({ operators: [coreOperators], fragments })
+
+  // The example's `$lower` has no v3 counterpart; `join` stands in as a
+  // typed operator fed from `$params` that renders to a string. `roles` is
+  // declared `any` deliberately: a declared `array` would be refused by the
+  // ARGUMENT check at the call boundary, and the failure would never reach
+  // the body at all — which is the one correction this example needs
+  const fig = () =>
+    build({
+      userSummary: {
+        expression: {
+          $buildString: [
+            '%1 (%2)',
+            '$params.name',
+            { $join: { values: '$params.roles', delimiter: ', ' } },
+          ],
+        },
+        parameters: { name: { type: 'string' }, roles: { type: 'any', default: ['member'] } },
+      },
+    })
+
+  const expression = {
+    banner: { $userSummary: { name: '$data.user.name', roles: '$data.user.roles' } },
+  }
+
+  test('the happy path', async () => {
+    const result = await fig().evaluate(expression, {
+      data: { user: { name: 'Ada', roles: ['admin', 'ops'] } },
+    })
+    expect(result).toEqual({ banner: 'Ada (admin, ops)' })
+  })
+
+  test('a body failure names the call in the input and the node in the body', async () => {
+    const error = await rejection<FigTreeError>(
+      fig().evaluate(expression, { data: { user: { name: 'Ada', roles: 7 } } })
+    )
+    expect(error.code).toBe(ErrorCodes.typeCheck)
+    expect(error.operator).toBe('join')
+    // The call node, in the input — resolvable without asking whether a
+    // fragment was involved
+    expect(error.path).toEqual(['banner'])
+    expect(error.fragment).toBe('userSummary')
+    expect(error.fragmentPath).toEqual(['expression', '$buildString', 2])
+  })
+
+  test('a literal argument of the wrong type is a validate-time error instead', () => {
+    const strict = build({
+      frag: { expression: '$params.role', parameters: { role: { type: 'string' } } },
+    })
+    expect(strict.validate({ $frag: { role: 7 } }).issues[0].code).toBe(ErrorCodes.typeCheck)
+  })
 })

@@ -6,10 +6,10 @@
  */
 import { parseExpression } from '../src/parse'
 import type { ParseArtifact, OperatorNode, SkeletonNode } from '../src/parse'
-import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
+import { makeParseRegistry } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry, noFragments)
+const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 const errorCodes = (artifact: ParseArtifact) =>
   artifact.issues.filter((s) => s.issue.severity === 'error').map((s) => s.issue.code)

@@ -57,6 +57,11 @@ export const ErrorCodes = {
   shadowedVar: 'shadowed-var', // an inner vars block redeclaring an outer name (warning)
   varCycle: 'var-cycle', // vars: { a: '$vars.b', b: '$vars.a' }
 
+  // Phase 11 — fragments
+  bareVars: 'bare-vars', // '$vars' with no name — a scope is a chain, not a value
+  fragmentCycle: 'fragment-cycle', // a fragment transitively reaching itself — recursion is banned
+  missingArgument: 'missing-argument', // a required fragment parameter with no argument (dynamic mode)
+
   // Phase 7 — buildString's literal-face token checks
   unboundToken: 'unbound-token', // { $buildString: ['Hi %2', 'there'] } — a token with nothing to bind to (warning)
   unusedSubstitution: 'unused-substitution', // a literal substitution the literal template never names (warning)
