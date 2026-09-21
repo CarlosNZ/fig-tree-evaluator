@@ -126,15 +126,21 @@ export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
         .map((child) => child.entry)
   }
 
+  const append = (entry: TraceNode, event: TraceEvent) => {
+    ;(entry.events ??= []).push(event)
+  }
+
   return {
     enter: (node, parent, frame, annotation) => {
+      const operator = nameOf(node)
+      const ref = refOf(node)
       const entry: TraceNode = {
         path: node.path,
         kind: kindOf(node),
         status: 'value',
         ...(frame !== undefined ? { source: { fragment: frame.fragment } } : {}),
-        ...(nameOf(node) !== undefined ? { operator: nameOf(node) } : {}),
-        ...(refOf(node) !== undefined ? { ref: refOf(node) } : {}),
+        ...(operator !== undefined ? { operator } : {}),
+        ...(ref !== undefined ? { ref } : {}),
         ...(annotation?.var !== undefined ? { var: annotation.var } : {}),
       }
       open.set(entry, { node, children: [], seen: new Set() })
@@ -142,19 +148,15 @@ export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
       place(parent, { entry, order: node.order, index: annotation?.index ?? 0 }, node)
       return entry
     },
-    settle: (entry, status, detail) => {
-      close(entry, status, detail)
-    },
+    settle: close,
     markFallback: (entry, caught) => {
       entry.status = 'fallback'
       entry.error = caught
     },
-    note: (entry, event) => {
-      ;(entry.events ??= []).push(event)
-    },
+    note: append,
     noteOn: (node, event) => {
       const entry = latest.get(node)
-      if (entry !== undefined) (entry.events ??= []).push(event)
+      if (entry !== undefined) append(entry, event)
     },
     finish: () => {
       // Anything still open was abandoned rather than finished — a hole

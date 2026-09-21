@@ -90,20 +90,10 @@ const tagHole = (error: FigTreeError, holePath: NodePath): FigTreeError => {
     error.holePath = holePath
     return error
   }
-  const copy = new FigTreeError({
-    code: error.code,
-    message: error.message,
-    path: error.path,
-    holePath,
-    ...(error.operator !== undefined ? { operator: error.operator } : {}),
-    ...(error.fragment !== undefined ? { fragment: error.fragment } : {}),
-    ...(error.fragmentPath !== undefined ? { fragmentPath: error.fragmentPath } : {}),
-    ...(error.errorData !== undefined ? { errorData: error.errorData } : {}),
-    ...(error.related !== undefined ? { related: error.related } : {}),
-    ...(error.cause !== undefined ? { cause: error.cause } : {}),
-    ...(error.issues !== undefined ? { issues: error.issues } : {}),
-    ...(error.trace !== undefined ? { trace: error.trace } : {}),
-  })
+  // Every field the class sets is an own enumerable property and rides
+  // the spread; `message` and `stack` are named because `Error` keeps them
+  // non-enumerable
+  const copy = new FigTreeError({ ...error, message: error.message, holePath })
   copy.stack = error.stack
   return copy
 }

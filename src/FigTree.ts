@@ -51,7 +51,6 @@ import {
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
 import { FigTreeError } from './FigTreeError'
-import type { TraceNode } from './trace'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
 import { coreOperators } from './operators'
@@ -172,6 +171,12 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * registers is an error reachable no other way — and the converse holds
    * too. Any other update carries the registry and the cache across
    * untouched, since nothing about either could have changed.
+   *
+   * The static return type of `evaluate()` follows the constructor's
+   * options and cannot follow an update: after `updateOptions({ mode })`
+   * or `updateOptions({ trace })` the runtime shape changes and the type
+   * does not. A TypeScript host that flips modes should pass the option
+   * per call, which types correctly, or construct a second instance.
    */
   updateOptions(options: FigTreeOptions = {}): void {
     // Both validators run before either mutation, so a rejected update
@@ -298,8 +303,8 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     if (resolved.kind === 'inert') {
       if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth) {
         const issue = depthIssue(resolved.depth, merged.maxDepth)
-        if (!reporting) throw staticError(issue, [])
-        return envelope(null, [staticError(issue, [])])
+        if (!reporting) throw staticError(issue, [issue])
+        return envelope(null, [staticError(issue)])
       }
       return enveloped ? envelope(expression, []) : expression
     }
@@ -320,20 +325,18 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     }
 
     const outcome = await runEvaluation(artifact, withoutRegistryKeys(merged), this.results)
-    return enveloped
-      ? envelope(outcome.result, outcome.errors ?? [], outcome.trace)
-      : outcome.result
+    return enveloped ? outcome : outcome.result
   }
 }
 
-const envelope = (
-  result: unknown,
-  errors: FigTreeError[],
-  trace?: TraceNode
-): EvaluationResult => ({
+/**
+ * The envelope for a return that never ran: a static refusal, or an inert
+ * input handed back by identity. Neither has a trace, nothing having been
+ * instantiated.
+ */
+const envelope = (result: unknown, errors: FigTreeError[]): EvaluationResult => ({
   result,
   errors,
-  ...(trace !== undefined ? { trace } : {}),
 })
 
 /**

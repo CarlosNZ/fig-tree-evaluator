@@ -101,10 +101,10 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
   // the scope is all that is left to apply
   const scoped = pushVars(inner, node.vars)
   const values = await Promise.all(
-    node.holes.map((hole, index) =>
+    node.holes.map((hole) =>
       boundary === undefined
         ? evaluateNode(hole.node, scoped)
-        : boundary(() => evaluateNode(hole.node, scoped), index)
+        : boundary(() => evaluateNode(hole.node, scoped), hole.node)
     )
   )
   return splice(node.skeleton, node.holes, values)
@@ -116,10 +116,9 @@ type Container = Record<string | number, unknown>
  * Splice hole results into the skeleton, copying only the containers on
  * each splice path (once per evaluation). Constant subtrees off those paths
  * stay shared with the artifact and the input — the documented
- * results-are-read-only contract. Shared with the shielded assembly
- * (./run.ts), which splices static fallbacks where holes did not finish.
+ * results-are-read-only contract.
  */
-export const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
+const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
   const copied = new Set<object>()
   let result = skeleton
   holes.forEach((hole, i) => {
