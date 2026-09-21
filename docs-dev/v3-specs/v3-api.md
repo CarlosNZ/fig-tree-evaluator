@@ -424,6 +424,12 @@ The converter maps all of these mechanically, but human muscle memory won't — 
 
 Naming notes: `$params` is plural for consistency with `$vars`; `$element`/`$index` were chosen over v2-assessment's `$item` (which would have collided with `$index` over the `$i` alias). Every namespace has exactly one single-character alias; like operator symbols, aliases normalize to the canonical form at parse — the canonical AST only ever contains `$data.…` etc. The distinction between recognized-but-unresolvable (error) and unrecognized (inert) is deliberate: `$vars`/`$params`/`$element`/`$index` resolution is statically known, so failures there are authoring errors; `$typo.x` might just be data.
 
+**Bare namespace forms** (ruled September 2026, Carl, at Phase-11 planning). The namespaces divide on one line: `$data` and `$element` **name a single value**, so the bare form is that value; `$vars` and `$params` **name a set**, where the first path segment is a selector rather than a drill (in `$vars.country[0].name`, `country` is a name lookup and `[0].name` the drill — there is no object called "vars"). The bare form is therefore legal only where the set has a declared, finite, local membership:
+
+- **`$data`** — the whole merged data object. **`$element`** — the element. **`$index`** — bare only, by grammar. All unchanged.
+- **`$params`** — **legal**: the declared parameters with their resolved values, defaults applied and null-means-unset applied. Deliberately *not* the raw incoming object in dynamic-arguments mode: extras stay excluded, so the value means the same thing in both modes (static mode has no extras — unknown argument names are a parse error) and "declared parameters define everything a body can read" stays true, keeping a body's read-set enumerable. Where the arguments object already has the declared shape — the case that motivates the form, a form response or DB row forwarded whole to another fragment or a request body — the two readings coincide. One cost, recorded because it surprises: a bare `$params` demands every argument, so laziness is gone for that call. Self-inflicted and legible, the same bargain as referencing a var.
+- **`$vars`** — **an error**, with its own code and message ("`$vars` must name a var — there is no whole-scope value"), replacing today's accidental report of a var named empty-string. A scope is a *chain*, not a frame: its membership is every var declared by every enclosing node, so the "whole thing" is unbounded and mostly belongs to ancestors this node has nothing to do with; shadowing is legal, so materializing it would need a merge rule invented for no requested use case; and it would force the entire visible chain to evaluate, outer-scope vars holding I/O included. Bare `$params` is "the arguments this call declared"; bare `$vars` would be "every var anyone declared above me" — a value versus an environment.
+
 ### Reference grammar
 
 1. **Token rule**: a string is a reference iff it starts with `$<namespace>` (canonical or alias) followed by end-of-string, `.`, or `[`. `"$database"` is inert data — the namespace token is `database`, not `data` or `d`. Case-sensitive.
@@ -466,7 +472,7 @@ Replaces v2 alias nodes. Declared in a `vars` block (reserved node key; names ar
 - **Lazy + memoized**: a var evaluates at most once per scope instance per evaluation, on first reference; unreferenced vars never evaluate at all (a var used only in an `if` branch that never runs never fires its GET — extending the lazy-branch principle; deliberate change from v2's eager evaluate-at-node-entry, [evaluate.ts:148](../../v2-src/evaluate.ts#L148)). Parallel branches referencing the same var share the one in-flight evaluation.
 - A var definition may reference vars from the same block or outer scopes; cycles are a validation error (statically detectable).
 - **Shadowing** an outer name in an inner `vars` block is allowed (standard lexical behaviour); `validate()` warns.
-- **Fragments are sealed**: a fragment body sees its own `vars` and its `$params`, never the caller's vars — keeping fragments portable and statically checkable.
+- **Fragments are sealed**: a fragment body sees its own `vars`, its own iterator bindings and its `$params` — never the caller's vars, and never an `$element` / `$index` / `as` binding from an iterator in the *calling* expression. Keeps fragments portable and statically checkable. The binding half is spelled out under Fragments (Composition & recursion).
 
 ### `$element` / `$index` and `as`
 
@@ -890,6 +896,7 @@ Zero-parameter calls: `{ fragment: 'myFrag' }` (no `parameters` key), or shortha
 - Fragments freely reference other fragments (and custom operators — one invocation namespace, per Operators).
 - **Recursion is banned** — recorded as a deliberate decision, not a side effect of the error-partition table: a cycle in the fragment reference graph (any fragment transitively reaching itself) is a **registration error**, which necessarily excludes *guarded* recursion too — a fragment calling itself behind a terminating `if` (a tree-walker, say) cannot be written. Rationale: FigTree is a config-logic sandbox; admitting recursion means runtime depth budgets and a halting story — fragments become a programming language. Marked for revisit only if a concrete use case materializes.
 - The reference graph is fully static regardless of argument mode: fragment *names* are always literal strings (Node grammar), so dynamic arguments don't blunt cycle detection.
+- **No inherited iterator bindings** (ruled September 2026, Carl, at Phase-11 planning). A body may contain iterators and read their `$element` / `$index` / `as` bindings freely; it may not reference a binding supplied by an iterator in the calling expression. This is the sealing rule (References) applied to the binding chain, and it costs nothing to enforce: bodies compile in isolation at registration, where an unbound binding reference is already an error — so such a fragment fails to register rather than surprising its caller. The explicit route is an ordinary declared argument, `{ $formatRow: { row: '$element' } }`, or dynamic arguments for the whole element, `parameters: '$element'` — both evaluated in the caller's scope, both leaving the fragment usable outside an iterator, and both naming *which* element where iterators nest. Implicit capture would be dynamic scoping: one body meaning different things at different call sites, unvalidatable at registration.
 
 ### Registration-time validation
 
@@ -898,12 +905,13 @@ Fragments are statically checkable at registration (the registry is stable by co
 - **Batch semantics**: all fragments supplied in one constructor / `updateOptions()` call validate together — a fragment may reference any fragment in the same batch or already registered, regardless of key order.
 - **Cross-call ordering**: referencing a fragment that will only be registered in a *later* `updateOptions()` call is an error — register dependencies first, or in one batch.
 - **Replacement re-validates the registry**: re-supplying a name (replace-wholesale, per Options) can break dependents or close a cycle through existing fragments, so the whole registry is re-checked. Likewise an `updateOptions()` that changes the `operators` array re-validates all fragment bodies — a body using a now-absent operator fails there, loudly, not at the next `evaluate()`. (This rule also absorbs the former per-call-`excludeOperators` edge: with `excludeOperators` removed — Options ruling, July 2026 — registry changes are the *only* way an operator disappears from under a fragment body, and they always re-validate.)
+- **Warnings survive registration, on the compiled body** (ruled September 2026, Carl, at Phase-11 planning). Registration *throws* on error-severity issues, which leaves a body's **warnings** with no return channel — an unrecognized `$`-token, a shadowed var, a dead expression, an unreferenced var. They are kept with the compiled fragment and surfaced by `getFragments()`, not replayed by `validate()` of a calling expression: body errors were caught at registration and cannot recur, and repeating body warnings once per call site would attach them to expressions whose authors did not write the body and cannot act on them.
 
 ### Tooling metadata
 
 - `description` is the one universal top-level field — consumed by generated docs, editor labels and `validate()` messaging.
 - **`metadata?: Record<string, unknown>` is an opaque bag**: the engine never reads it; `getFragments()` returns it verbatim. v2's editor display hints (`textColor` / `backgroundColor` — [types.ts:100-101](../../v2-src/types.ts#L100-L101)) move here, becoming keys that [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) defines for itself; hosts can carry anything else the same way (organisational ownership, versioning, category tags). Constraint recorded for Extensibility: custom-operator definitions adopt the same `description` + opaque-`metadata` convention.
-- `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their *effective* optionality and defaults, and the `metadata` bag.
+- `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their *effective* optionality and defaults, the `metadata` bag, and any warnings the body raised when it was registered (above).
 
 ### v2 → v3 disposition
 
@@ -927,6 +935,7 @@ Fragments are statically checkable at registration (the registry is stable by co
 - Fragment-*result* caching (`useCache` on call nodes) → already deferred in Node grammar; adding later is non-breaking.
 - A declared return type (`returns`) for editor/validation use → maybe-later, on demand.
 - Recursion ban → revisit only if a concrete use case appears.
+- Inherited iterator bindings → same posture. Admitting them means deferring binding resolution from registration to the call sites, so bodies stop being self-contained; revisit only if a use case appears that a declared argument doesn't serve.
 
 ---
 

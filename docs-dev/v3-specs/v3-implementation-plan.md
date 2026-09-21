@@ -172,8 +172,8 @@ Same chunk, same root cause: **`nodeCount` narrows to count *evaluable* nodes on
 
 ## Phase 11 — Fragments
 
-**11.1 · Registration.** Body compilation at registration (rides the Phase-3 parser), signature validation, cycle detection, batch semantics, replacement re-validation.
-**11.2 · Calls.** `$params` on the vars mechanism (lazy memoized args, caller-scope closure), both argument modes, call-site static checks (already parsed in 3.x — now evaluated), fragment shorthand faces.
+**11.1 · Registration.** Body compilation at registration (rides the Phase-3 parser), signature validation, cycle detection, batch semantics, replacement re-validation. Plus the rollups a call site needs from its target, all computed here in reverse topological order (the cycle ban makes the graph a DAG): transitive `nodeCount` (a total, so a call site adds its target's, twice for two call sites) and `maxDepth` (a maximum, so `max(current, depthOfCall + target.maxDepth)`), `dependencies`, `identityOnly`, and the body root's static fallback, which a call node with no `fallback` of its own lifts for timeout shielding (obligation B2, amended).
+**11.2 · Calls.** `$params` on the vars mechanism (lazy memoized args, caller-scope closure), both argument modes, call-site static checks (already parsed in 3.x — now evaluated), fragment shorthand faces. Includes the bare namespace forms (References): bare `$params` is the declared parameters resolved, and so demands every argument; bare `$vars` becomes an explicit error with its own code, replacing the empty-name report it produces by accident today.
 *Spec: Fragments, entire; worked example 4.*
 
 ---
