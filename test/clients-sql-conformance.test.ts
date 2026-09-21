@@ -15,7 +15,10 @@ import type { PgClientLike, SqlConnection, SqliteDatabaseLike } from '../src'
 import { MockSqlConnection } from './helpers'
 import { rejection } from './helpers/rejection'
 
-const ROWS = [{ id: 1, name: 'Ada' }, { id: 2, name: 'Grace' }]
+const ROWS = [
+  { id: 1, name: 'Ada' },
+  { id: 2, name: 'Grace' },
+]
 
 /** What each stub driver was handed, for the passthrough assertions. */
 interface Seen {

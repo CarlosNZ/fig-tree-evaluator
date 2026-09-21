@@ -42,10 +42,7 @@ const defineInvalid = (definition: unknown): FigTreeError => {
 }
 
 /** True when some issue matches the fixture's expected code and path tail. */
-const hasIssue = (
-  error: FigTreeError,
-  expected: InvalidDefinitionFixture['expected']
-): boolean =>
+const hasIssue = (error: FigTreeError, expected: InvalidDefinitionFixture['expected']): boolean =>
   (error.issues ?? []).some((issue) => {
     if (issue.code !== expected.code) return false
     if (!expected.pathTail) return true

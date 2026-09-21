@@ -2,9 +2,9 @@
 
 ![Logo](images/FigTreeEvaluator_logo_1000.png)
 
-**FigTree Evaluator** is a module to evaluate JSON-structured expression trees. 
+**FigTree Evaluator** is a module to evaluate JSON-structured expression trees.
 
-A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Examples could include: 
+A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Examples could include:
 
 - a [form-builder app](https://github.com/openmsupply/conforma-web-app) might need to allow complex conditional logic for form element visibility based on previous responses, or for validation beyond what is available in standard validation libraries.
 - configure a [decision tree](https://en.wikipedia.org/wiki/Decision_tree) to implement branching logic. (See implementation in `20_match.test.ts`)
@@ -12,13 +12,14 @@ A typical use case would be for evaluating **configuration** files, where you ne
 
 A range of built-in operators are available, from simple logic, arithmetic and string manipulation, to data fetching from local sources or remote APIs. Plus, you can extend functionality with your own [custom operators](#custom-functionsoperators)
 
-<!-- omit in toc -->
-## [Try the Demo/Playground](https://carlosnz.github.io/fig-tree-evaluator/)
+## [Try the Demo/Playground](https://carlosnz.github.io/fig-tree-evaluator/) <!-- omit in toc -->
 
 The demo is powered by [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react), a React component for editing FigTree expressions.
 
 ## Contents <!-- omit in toc -->
+
 <!-- TOC -->
+
 - [The basics](#the-basics)
 - [Install](#install)
 - [Usage](#usage)
@@ -68,6 +69,7 @@ The demo is powered by [fig-tree-editor-react](https://github.com/CarlosNZ/fig-t
 - [Credit](#credit)
 
 <!-- /TOC -->
+
 ## The basics
 
 Fig-tree evaluates expressions structured in a JSON/Javascript object [expression tree](https://www.geeksforgeeks.org/expression-tree/). A single "node" of the tree consists of an **Operator**, with associated parameters (or child nodes), each of which can itself be another Operator node -- i.e. a recursive tree structure of arbitrary depth and complexity.
@@ -85,6 +87,7 @@ For example:
 ```
 
 Or, with a deeper structure that results in the same final output:
+
 ```js
 {
   operator: '+',
@@ -132,19 +135,22 @@ or\
 import { FigTreeEvaluator } from 'fig-tree-evaluator'
 
 // New evaluator instance
-const fig = new FigTreeEvaluator([ options ]) // See available options below
+const fig = new FigTreeEvaluator([options]) // See available options below
 
 // Evaluate expressions
-fig.evaluate(expression, [options]) // Options over-ride initial options for this evaluation
-    .then((result) => { // "evaluate" is async method
-        // Do something with result
-    })
+fig
+  .evaluate(expression, [options]) // Options over-ride initial options for this evaluation
+  .then((result) => {
+    // "evaluate" is async method
+    // Do something with result
+  })
 
 // Or within async function:
 const result = await fig.evaluate(expression, [options])
 ```
 
 FigTreeEvaluator is written in **Typescript**, and the following types are available to import from the package:
+
 - `FigTreeOptions`: `options` object, as per [options](#available-options) below
 - `Operator`: string literal canonical [Operator](#operator-nodes) names (`AND`, `OR`, `EQUAL`, etc.)
 - `EvaluatorNode`: Evaluator input
@@ -154,20 +160,20 @@ FigTreeEvaluator is written in **Typescript**, and the following types are avail
 
 The `options` parameter is an object with the following available properties (all optional):
 
-- `data` -- a single object containing any *objects* in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
-- `functions` -- a single object containing any *custom functions* available for use by [custom functions/operators](#custom_functions).
+- `data` -- a single object containing any _objects_ in your application that may wish to be inspected using the [objectProperties](#object_properties) operator. (See [playground](LINK) for examples). If these objects are regularly changing, you'll probably want to pass them into each separate evaluation rather than with the initial constructor.
+- `functions` -- a single object containing any _custom functions_ available for use by [custom functions/operators](#custom_functions).
 - `fragments` -- commonly-used expressions (with optional parameters) that can be re-used in any other expression. See [Fragments](#fragments)
-- `httpClient` -- pass your http client in here in order to use the HTTP-based operators ([`GET`](#get), [`POST`](#post), [`GraphQL`](#graphql)) (uses browser's native `fetch` by default). 
+- `httpClient` -- pass your http client in here in order to use the HTTP-based operators ([`GET`](#get), [`POST`](#post), [`GraphQL`](#graphql)) (uses browser's native `fetch` by default).
 - `graphQLConnection` -- a GraphQL connection object, if using the [`graphQL` operator](#graphql). See operator details below.
 - `sqlConnection` -- if you wish to make calls to an SQL database using the [`SQL` operator](#sql), pass a connection to the database here. See operator details below.
 - `baseEndpoint` -- If specified, any partial urls specified in the http-based operators (`GET`, `POST`) will be relative to to this base. Useful if you expect most http requests to be to the same server.
-- `headers` -- A general http headers object that will be passed to *all* http-based operators (`GET`, `POST`, `GraphQL`). Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
+- `headers` -- A general http headers object that will be passed to _all_ http-based operators (`GET`, `POST`, `GraphQL`). Useful for authentication headers, for example. Each operator and instance can have its own headers, though, so see specific operator reference for details.
 - `returnErrorAsString` -- by default the evaluator will throw errors with invalid evaluation expressions (with helpful error messages indicating the node which threw the error and what the problem was). But if you have `returnErrorAsString: true` set, the evaluator will never throw, but instead return error messages as a valid string output. (See also the [`fallback`](#other-common-properties) parameter below). See [Error handling](#error-handling) section for more detail.
 - `allowJSONStringInput` -- the evaluator is expecting the input expression to be a javascript object. However, it will also accept JSON strings if this option is set to `true`. We have to perform additional logic on every evaluation input to determine if a string is a JSON expression or a standard string, so this is skipped by default for performance reasons. However, if you want to send (for example) user input directly to the evaluator without running it through your own `JSON.parse()`, then enable this option.
 - `skipRuntimeTypeCheck` -- we perform comprehensive type checking at runtime to ensure that each operator only performs its operation on valid inputs. If type checking fails, we throw an error detailing the explicit problem. However, if `skipRuntimeTypeCheck` is set to `true`, then all inputs are passed to the operator regardless, and any errors will come from whatever standard javascript errors might be encountered (e.g. trying to pass a primitive value when an array is expected => `.map is not a function`)
-- `caseInsensitive` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
-- `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail). 
-- `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find *any* operator nodes within the structure and evaluate them within the object tree.
+- `caseInsensitive` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail).
+- `nullEqualsUndefined` -- this only affects the [`equal`/`notEqual` operators](#equal) (see there for more detail).
+- `evaluateFullObject` -- by default, FigTree expects the root of an input expression to be an [Operator Node](#operator-nodes), and if not, will return the input unmodified. However, you may have cases where the evaluation expressions are deep within a larger structure (such as a JSON schema, for example). In this case, you can set `evaluateFullObject` to `true` and the evaluator will find _any_ operator nodes within the structure and evaluate them within the object tree.
 - `excludeOperators` -- an array of operator names (or [aliases](#operator--property-aliases)) to prohibit from being used in expressions. You may wish to restrict (for example) database access via FigTree configurations, in which case these exclusions can be defined when instantiating the FigTree instance (or updated on the fly).
 - `useCache` -- caches the results from certain operators to avoid repeated network requests with the same input values. By default, this is set to `true`, and it can be overridden for specific nodes. See [Memoization/Caching section](#caching-memoization) for more detail
 - `maxCacheSize` -- the maximum number of results that will be held in the aforementioned cache (default: `50`)
@@ -188,7 +194,7 @@ It's also possible to run one-off evaluations by importing the evaluation method
 import { evaluateExpression } from 'fig-tree-evaluator'
 
 evaluateExpression(expression, [options]).then((result) => {
-    // Do something with result
+  // Do something with result
 })
 ```
 
@@ -232,12 +238,12 @@ Most of the time named properties would be preferable; however there are occasio
 
 In each operator node, as well as the operator-specific properties, the following three optional properties can be provided:
 
-- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes. *Fallbacks are strongly recommended if there is any chance of an error (e.g. a network "GET" request that doesn't yet have its parameters defined).*  
-See [Error handling](#error-handling)
+- `fallback`: if the operation throws an error, the `fallback` value will be returned instead. The `fallback` property can be provided at any level of the expression tree and bubbled up from where errors are caught to parent nodes. _Fallbacks are strongly recommended if there is any chance of an error (e.g. a network "GET" request that doesn't yet have its parameters defined)._  
+  See [Error handling](#error-handling)
 - `outputType` (or `type`): will convert the result of the current node to the specified `outputType`. Valid values are `string`, `number`, `boolean` (or `bool`), and `array`. You can experiment in the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) to see the outcome of applying different `outputType` values to various results.
 - `useCache`: Overrides the global `useCache` value (from [options](#available-options)) for this node only. See [Caching/Memoization](#caching-memoization) below for more info.
 
-Remember that *all* operator node properties can themselves be operator nodes, *including* the `fallback` and `outputType` properties.
+Remember that _all_ operator node properties can themselves be operator nodes, _including_ the `fallback` and `outputType` properties.
 
 e.g.
 
@@ -275,7 +281,7 @@ The full list of available operators and their associated properties:
 
 ### AND
 
-*Logical AND*
+_Logical AND_
 
 Aliases: `and`, `&`, `&&`
 
@@ -284,6 +290,7 @@ Aliases: `and`, `&`, `&&`
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `&&` operator
 
 e.g.
+
 ```js
 {
   operator: '&',
@@ -294,10 +301,11 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### OR
 
-*Logical OR*
+_Logical OR_
 
 Aliases: `or`, `|`, `||`
 
@@ -306,6 +314,7 @@ Aliases: `or`, `|`, `||`
 - `values`<sup>*</sup>: (array) -- any number of elements; will be compared using Javascript `||` operator
 
 e.g.
+
 ```js
 {
   operator: 'or',
@@ -323,10 +332,11 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### EQUAL
 
-*Equality*
+_Equality_
 
 Aliases: `=`, `eq`, `equal`, `equals`
 
@@ -337,6 +347,7 @@ Aliases: `=`, `eq`, `equal`, `equals`
 - `nullEqualsUndefined`: (boolean, default `false`) -- there are times when it is convenient for `null` to be considered equal to `undefined`. If this is desired, set this property to `true`, otherwise all equality checks will be "strict" equality. If you find that you want this setting enabled globally, then you can set it in the overall [evaluator options](#available-options) instead of having to add this additional property to every equality expression.
 
 e.g.
+
 ```js
 {
   operator: '=',
@@ -347,10 +358,11 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### NOT_EQUAL
 
-*Non-equality*
+_Non-equality_
 
 Aliases: `!=`, `!`, `ne`, `notEqual`
 
@@ -361,6 +373,7 @@ Aliases: `!=`, `!`, `ne`, `notEqual`
 - `nullEqualsUndefined`: (boolean, default `false`) -- as [above](#equal)
 
 e.g.
+
 ```js
 {
   operator: '=',
@@ -371,19 +384,21 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### PLUS
 
-*Addition, concatenation, merging*
+_Addition, concatenation, merging_
 
 Aliases: `+`, `add`, `concat`, `join`, `merge`
 
 #### Properties
 
 - `values`<sup>*</sup>: (array) -- any number of elements. Will be added (numbers), concatenated (strings, arrays) or merged (objects) according their type.
-- `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common [`outputType` property](#other-common-properties) is that `outputType` converts the result, whereas this `type` property converts each element *before* the "PLUS" operation. 
+- `type`: (`'string' | 'array'`) -- if specified, operator will treat the `values` as though they were this type. E.g. if `string`, it will concatenate the values, even if they're all numbers. The difference between this property and the common [`outputType` property](#other-common-properties) is that `outputType` converts the result, whereas this `type` property converts each element _before_ the "PLUS" operation.
 
 e.g.
+
 ```js
 {
   operator: '+',
@@ -421,10 +436,11 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### SUBTRACT
 
-*Subtraction*
+_Subtraction_
 
 Aliases: `-`, `subtract`, `minus`, `takeaway`
 
@@ -433,6 +449,7 @@ Aliases: `-`, `subtract`, `minus`, `takeaway`
 - `values`<sup>*</sup>: (array) -- exactly 2 numerical elements; the second will be subtracted from the first. (If non-numerical elements are provided, the operator will return `NaN`)
 
 e.g.
+
 ```js
 {
   operator: '-',
@@ -455,18 +472,20 @@ e.g.
 
 `children` array: `[originalValue, valueToSubtract]` (same as `values`)
 
-----
+---
+
 ### MULTIPLY
 
-*Multiplication*
+_Multiplication_
 
 Aliases: `*`, `x`, `multiply`, `times`
 
 #### Properties
 
-- `values`<sup>*</sup>: (array) -- any number of numerical elements. Returns the product of all elements.  (If non-numerical elements are provided, the operator will return `NaN`)
+- `values`<sup>*</sup>: (array) -- any number of numerical elements. Returns the product of all elements. (If non-numerical elements are provided, the operator will return `NaN`)
 
 e.g.
+
 ```js
 {
   operator: '*',
@@ -489,23 +508,25 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### DIVIDE
 
-*Division*
+_Division_
 
 Aliases: `/`, `divide`, `÷`
 
 #### Properties
 
-- `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second.  (If non-numerical elements are provided, the operator will return `NaN`)
+- `values`: (array) -- exactly 2 numerical elements; the first will be divided by the second. (If non-numerical elements are provided, the operator will return `NaN`)
 - `dividend` (or `divide`): (number) -- the number that will be divided
 - `divisor` (or `by`): (number) -- the number to divide `dividend` by
 - `output` (`'quotient' | 'remainder'`) -- by default, the operator returns a floating point value. However, if `quotient` is specified, it will return the integer part of the result; if `remainder` is specified, it will return the remainder after division (i.e. `value1 % value2`)
 
-Note that the input values can be provided as *either* a `values` array *or* `dividend`/`divisor` properties. If both are provided, `values` takes precedence.
+Note that the input values can be provided as _either_ a `values` array _or_ `dividend`/`divisor` properties. If both are provided, `values` takes precedence.
 
 e.g.
+
 ```js
 {
   operator: '/',
@@ -517,7 +538,7 @@ e.g.
   operator: '/',
   divide: 20,
   by: 3,
-  output: 'quotient' 
+  output: 'quotient'
 }
 // => 6
 
@@ -532,10 +553,11 @@ e.g.
 
 `children` array: `[dividend, divisor]` (same as `values`)
 
-----
+---
+
 ### GREATER_THAN
 
-*Greater than (or equal to)*
+_Greater than (or equal to)_
 
 Aliases: `>`, `greaterThan`, `higher`, `larger`
 
@@ -545,6 +567,7 @@ Aliases: `>`, `greaterThan`, `higher`, `larger`
 - `strict`: (boolean, default `false`) -- if `true`, value 1 must be strictly greater than value 2 (i.e. `>`). Otherwise it will be compared with "greater than or equal to" (i.e. `>=`)
 
 e.g.
+
 ```js
 {
   operator: '>',
@@ -568,10 +591,11 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
-----
+---
+
 ### LESS_THAN
 
-*Less than (or equal to)*
+_Less than (or equal to)_
 
 Aliases: `<`, `lessThan`, `lower`, `smaller`
 
@@ -581,6 +605,7 @@ Aliases: `<`, `lessThan`, `lower`, `smaller`
 - `strict`: (boolean, default `false`) -- if `true`, value 1 must be strictly lower than value 2 (i.e. `<`). Otherwise it will be compared with "less than or equal to" (i.e. `<=`)
 
 e.g.
+
 ```js
 {
   operator: '<',
@@ -604,10 +629,11 @@ e.g.
 
 `children` array: `[firstValue, secondValue]` (same as `values`)
 
-----
+---
+
 ### COUNT
 
-*Count elements in array*
+_Count elements in array_
 
 Aliases: `count`, `length`
 
@@ -616,6 +642,7 @@ Aliases: `count`, `length`
 - `values`<sup>*</sup>: (array) -- any number of elements. Returns `array.length`
 
 e.g.
+
 ```js
 {
   operator: 'count',
@@ -626,10 +653,11 @@ e.g.
 
 `children` array: `[...values]`
 
-----
+---
+
 ### CONDITIONAL
 
-*Return different values depending on a condition expression*
+_Return different values depending on a condition expression_
 
 Aliases: `?`, `conditional`, `ifThen`
 
@@ -640,6 +668,7 @@ Aliases: `?`, `conditional`, `ifThen`
 - `valueIfFalse` (or `ifFalse`)<sup>*</sup>: the value returned if `condition` is `false`
 
 e.g.
+
 ```js
 {
   operator: '?',
@@ -661,12 +690,13 @@ e.g.
 
 `children` array: `[condition, valueIfTrue, valueIfFalse]`
 
-**Note**: *For more complex branching logic, the ["match" operator](#match) can be used (it matches more than just a boolean condition)*
+**Note**: _For more complex branching logic, the ["match" operator](#match) can be used (it matches more than just a boolean condition)_
 
-----
+---
+
 ### REGEX
 
-*Compares an input string against a [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) pattern*
+_Compares an input string against a [regular expression](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) pattern_
 
 Aliases: `regex`, `patternMatch`, `regexp`, `matchPattern`
 
@@ -678,6 +708,7 @@ Aliases: `regex`, `patternMatch`, `regexp`, `matchPattern`
 Returns `true` (match found) or `false` (no match)
 
 e.g.
+
 ```js
 {
   operator: 'regex',
@@ -689,10 +720,11 @@ e.g.
 
 `children` array: `[testString, pattern]`
 
-----
+---
+
 ### OBJECT_PROPERTIES
 
-*Extracts values from data objects in your application*
+_Extracts values from data objects in your application_
 
 Aliases: `objectProperties`, `dataProperties`,`data`, `getData`, `objProps`, `getProperty`, `getObjProp`
 
@@ -703,7 +735,7 @@ Aliases: `objectProperties`, `dataProperties`,`data`, `getData`, `objProps`, `ge
 
 Data objects are normally expected to be passed in to the evaluator as part of the [options](#available-options), not as part of the expression itself. This is because the source objects are expected to be values internal to your application, whereas the evaluator provides an externally configurable mechanism to extract (and process) application data. (However, it is possible to pass data objects directly as part of the expression using the `additionalObjects` property, so (in theory) data objects could be dynamically generated from other expressions.)
 
-For example, consider a `user` object and an fig-tree evaluator instance: 
+For example, consider a `user` object and an fig-tree evaluator instance:
 
 ```js
 const user = {
@@ -745,18 +777,19 @@ Here is the result of various values of `expression:`
 }
 // => ["The Vulture", "Green Goblin"]
 ```
+
 Notice the last example pulls multiple values out of an array of objects, in this case the "name". This is essentially a shorthand for:
 
 ```js
-fig.evaluate(
-    { operator: 'getProperty', path: 'user.enemies' },
-    { data: { user } }
-  ).map((e) => e.name)
+fig
+  .evaluate({ operator: 'getProperty', path: 'user.enemies' }, { data: { user } })
+  .map((e) => e.name)
 ```
 
 The "objectProperties" operator uses [`object-property-extractor`](https://www.npmjs.com/package/object-property-extractor) internally, so please see the documentation of that package for more information.
 
 The "objectProperties" operator will throw an error if an invalid path is provided, so it is recommended to provide a [`fallback`](#other-common-properties) value for the expression:
+
 ```js
 {
   operator: 'objectProperties',
@@ -767,7 +800,6 @@ The "objectProperties" operator will throw an error if an invalid path is provid
 ```
 
 `children` array: `[property]`
-
 
 Example using "data" passed in dynamically as part of expression:
 
@@ -785,10 +817,11 @@ Example using "data" passed in dynamically as part of expression:
 // => "Frodo"
 ```
 
-----
+---
+
 ### STRING_SUBSTITUTION
 
-*Replace values in a string using simple parameter (positional or named properties) substitution*
+_Replace values in a string using simple parameter (positional or named properties) substitution_
 
 Aliases: `stringSubstitution`, `substitute`, `stringSub`, `replace`
 
@@ -807,6 +840,7 @@ Substitution can be done using either **positional** replacement, or with **name
 The values in the `substitutions` array are replaced in the original `string` by matching their order to the numerical order of the parameters.
 
 e.g.
+
 ```js
 {
   operator: 'stringSubstitution',
@@ -866,6 +900,7 @@ e.g.
 (`trimWhiteSpace` and `substitutionCharacter` not available, since `substitutions` can be an arbitrary number of items)
 
 e.g.
+
 ```js
 {
   operator: 'replace',
@@ -890,6 +925,7 @@ Replacement tokens can be indicated in the main string with a named value, using
 }
 // => "Your name is Steve Rogers and your best friend is Bucky Barnes"
 ```
+
 Note the use of `nested.properties` as per [objectProperties](#object_properties).
 
 Additionally, the substitutions can actually be provided directly in the associated `data` object and the operator will search for them there if not found in the `substitutions` property. This could be achieved simply by nesting a [`getData` node](#object_properties) inside the `substitutions` property, but because this is a very common scenario (the values provided will normally be dynamic based on application state), this shorthand is provided as a convenience.
@@ -918,13 +954,12 @@ Additionally, the substitutions can actually be provided directly in the associa
 // => "The rain in Spain falls mainly on the plain"
 ```
 
-
-
 #### Number mapping
 
 If the replacement values are numbers, we can extend this functionality with a special `numberMapping` object, which allows for different replacements depending on the value, which is handy for pluralisation, for example.
 
 The syntax for the `numberMapping` property is:
+
 ```js
   {
     propertyName1: {
@@ -938,9 +973,11 @@ The syntax for the `numberMapping` property is:
     propertyName2: { ...etc }
   }
 ```
+
 The number map can have as few or as many match options as desired -- if no match is found (or if no `numberMapping` property at all), the number will be returned as-is.
 
 e.g.
+
 ```js
 {
   operator: 'stringSubstitution',
@@ -976,26 +1013,26 @@ e.g.
 
 **Note**: `children` array not available for named properties
 
-
-----
+---
 
 ### SPLIT
 
-*Split strings into arrays*
+_Split strings into arrays_
 
 Aliases: `split`, `arraySplit`
 
 #### Properties
 
 - `value` (or `string`)<sup>*</sup>: (string) -- string to be split
-- `delimiter` (or `separator`): (string) -- substring to split `value` on (Default: `" "` (space)) 
-- `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of resulting substrings 
+- `delimiter` (or `separator`): (string) -- substring to split `value` on (Default: `" "` (space))
+- `trimWhiteSpace` (or `trimWhitespace`, `trim`): (boolean, default `true`) -- strips whitespace from the beginning or end of resulting substrings
 - `excludeTrailing` (or `removeTrailing`, `excludeTrailingDelimiter`): (boolean, default `true`) -- if `false`, if the input string ends with the delimiter, the last member of the output array will be an empty string.  
   i.e. `this, that, another,` (delimiter `","`) => `["this", "that", "another", ""]`
 
-The last two parameters (`timeWhiteSpace` and `excludeTrailing`) should *rarely* be needed to be changed from their default values.
+The last two parameters (`timeWhiteSpace` and `excludeTrailing`) should _rarely_ be needed to be changed from their default values.
 
 e.g.
+
 ```js
 {
   operator: 'split',
@@ -1012,7 +1049,7 @@ e.g.
 
 ### HTTP requests
 
-The following three operators (`GET`, `POST`, `GraphQL`) make http requests, so require an http client. If using fig-tree in the browser, it will use the native `fetch()` method by default, *so no configuration is required*. However, if using in `node`, or you wish to use a different http client (if your project is already using [`axios`](https://www.npmjs.com/package/axios), say), you can specify it with the `httpClient` option.
+The following three operators (`GET`, `POST`, `GraphQL`) make http requests, so require an http client. If using fig-tree in the browser, it will use the native `fetch()` method by default, _so no configuration is required_. However, if using in `node`, or you wish to use a different http client (if your project is already using [`axios`](https://www.npmjs.com/package/axios), say), you can specify it with the `httpClient` option.
 
 The `httpClient` object is an abstraction around an http package in order to standardise the implementation for use in fig-tree. Two such "wrappers" are provided in the FigTree package, for:
 
@@ -1029,7 +1066,7 @@ import { FigTreeEvaluator, AxiosClient } from 'fig-tree-evaluator'
 
 const fig = new FigTreeEvaluator({
   httpClient: AxiosClient(axios),
-  ...otherOptions
+  ...otherOptions,
 })
 ```
 
@@ -1041,7 +1078,7 @@ import { FigTreeEvaluator, FetchClient } from 'fig-tree-evaluator'
 
 const fig = new FigTreeEvaluator({
   httpClient: FetchClient(fetch),
-  ...otherOptions
+  ...otherOptions,
 })
 ```
 
@@ -1072,21 +1109,19 @@ import { someClient } from 'some-library'
 
 const fig = new FigTreeEvaluator({
   httpClient: MyHttpWrapper(someClient),
-  ...otherOptions
+  ...otherOptions,
 })
-
 ```
 
 See the implementation for `axios` and `node-fetch` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/src/httpClients.ts) for specific details.
 
-
 ### GET
 
-*Http GET request*
+_Http GET request_
 
 Aliases: `get`, `api`
 
-*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
+_Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)_
 
 #### Properties
 
@@ -1098,6 +1133,7 @@ Aliases: `get`, `api`
 As mentioned in the [options reference](#available-options) above, a `baseEndpoint` string and `headers` object can be provided in the constructor. These are applied to all subsequent requests to save having to specify them in every evaluation. (Additional/override `headers` can always be added to a specific evaluation, too.)
 
 e.g.
+
 ```js
 {
   operator: 'GET',
@@ -1128,6 +1164,7 @@ e.g.
 - `returnProperty` (optional): as above
 
 e.g.
+
 ```js
 {
   operator: 'get',
@@ -1143,16 +1180,17 @@ e.g.
 // => "🇨🇺"
 ```
 
-----
+---
+
 ### POST
 
-*Http POST request*
+_Http POST request_
 
 Aliases: `post`
 
 The "POST" operator is basically structurally the same as [GET](#get).
 
-*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
+_Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)_
 
 #### Properties
 
@@ -1160,6 +1198,7 @@ The "POST" operator is basically structurally the same as [GET](#get).
 - `parameters` (or `bodyJson`, `data`) -- passed to the Post request as body JSON rather than url query parameters (hence the different aliases)
 
 e.g.
+
 ```js
 {
   operator: "post",
@@ -1177,17 +1216,17 @@ e.g.
 
 `children` array: `[urlObject, parameterKeys, ...values, returnProperty]` (same as "GET")
 
-----
+---
 
 ### GRAPHQL
 
-*Http GraphQL request (using POST)*
+_Http GraphQL request (using POST)_
 
 Aliases: `graphQL`, `graphQl`, `graphql`, `gql`
 
 This operator is essentially a special case of the "POST" operator, but structured specifically for [GraphQL](https://graphql.org/) requests.
 
-*Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)*
+_Note: if used in `node`, or you're using an http client other than `fetch`, you will need to explicitly provide an `httpClient` option. [See details](#http-requests)_
 
 #### Properties
 
@@ -1202,6 +1241,7 @@ As mentioned in the [options reference](#available-options) above, a `headers` o
 Often, GraphQL queries will be to a single endpoint and only the query/variables will differ. In that case, it is recommended to pass a GraphQL connection object into the FigTreeEvaluator constructor [options](#available-options).
 
 The required connection object is:
+
 ```ts
 {
   endpoint: string // url
@@ -1210,6 +1250,7 @@ The required connection object is:
 ```
 
 The following example expression uses the GraphQL connection (specified in constructor options): `{endpoint: 'https://countries.trevorblades.com/'}`
+
 ```js
 {
   operator: 'graphQL',
@@ -1235,6 +1276,7 @@ The following example expression uses the GraphQL connection (specified in const
 - `returnNode` (optional): the return property, as per "GET" and "POST" operators
 
 e.g.
+
 ```js
 {
   operator: 'GraphQL',
@@ -1255,10 +1297,11 @@ e.g.
 // => "🇨🇺"
 ```
 
-----
+---
+
 ### SQL
 
-*Query an SQL database*
+_Query an SQL database_
 
 Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
@@ -1266,7 +1309,7 @@ Aliases: `sql`, `pgSql`, `postgres`, `pg`, `sqlLite`, `sqlite`, `mySql`
 
 - `query`<sup>*</sup>: (string) -- SQL query string, with parameterised replacements (i.e. `$1`, `$2`, etc)
 - `values` (or `replacements`): (array / object) -- replacements for the `query` parameters
-- `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query *does* fetch multiple records, only the first will be returned.
+- `single` (or `singleRecord`): (boolean) -- by default, results are returned as an array of objects. However, if your query is expected to just return a single record, you can set `single: true` and just the record object will be returned (i.e. not in an array). Note that if the query _does_ fetch multiple records, only the first will be returned.
 - `flatten` (or `flat`): (boolean) -- Instead of returning an object, `flatten: true` will just return an array of values. e.g, instead of `{name: "Tom", age: 49}`, it will return `["Tom", 49]`. This would usually be used in conjunction with the `single` property -- if not, it will return an array of flattened arrays.
 
 #### Examples
@@ -1327,7 +1370,7 @@ const pgConfig = {
   host: 'localhost',
   database: 'northwind',
   port: 5432,
-  ...etc
+  ...etc,
 }
 
 const pgConnect = new Client(pgConfig)
@@ -1336,20 +1379,20 @@ pgConnect.connect()
 
 const fig = new FigTreeEvaluator({
   sqlConnection: SQLNodePostgres(pgConnect),
-  ...otherOptions
+  ...otherOptions,
 })
 
-fig.evaluate({
-  operator: "SQL",
-  query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
-  single: true,
-  flatten: true
-})
-.then((result) => console.log(result)) // => "Aria Cruz"
+fig
+  .evaluate({
+    operator: 'SQL',
+    query: "SELECT contact_name FROM customers where customer_id = 'FAMIA';",
+    single: true,
+    flatten: true,
+  })
+  .then((result) => console.log(result)) // => "Aria Cruz"
 ```
 
 ##### SQLite
-
 
 ```js
 import sqlite3 from 'sqlite3'
@@ -1391,10 +1434,11 @@ You then implement in FigTree options the same way as the two described above.
 
 Check out `SQLNodePostgres` and `SQLite` [in the repo](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/src/databaseConnections.ts) for specific details.
 
-----
+---
+
 ### BUILD_OBJECT
 
-*Return an object constructed by separate keys and values*
+_Return an object constructed by separate keys and values_
 
 Aliases: `buildObject`, `build`, `object`
 
@@ -1403,18 +1447,20 @@ The "buildObject" operator would primarily be used to construct an object input 
 #### Properties
 
 - `properties` (or `values`, `keyValPairs`, `keyValuePairs`)<sup>*</sup>: (array) -- array of either:
-  -  objects of the following shape:  
-    ```ts
-    {
-      key: string
-      value: any
-    }
-    ```
+  - objects of the following shape:
+
+  ```ts
+  {
+    key: string
+    value: any
+  }
+  ```
   - key/value pairs in sequence, e.g. `[ "key1", "value1", "key2", "value2", ... ]`
 
   Each object or pair of elements provides one key-value pair in the output object
 
 e.g.
+
 ```js
 {
   operator: 'buildObject',
@@ -1446,11 +1492,11 @@ e.g.
 
 `children`: `[...properties]` (same as properties array above)
 
-----
+---
 
 ### MATCH
 
-*Return different values depending on a matching expression*
+_Return different values depending on a matching expression_
 
 Aliases: `match`, `switch`
 
@@ -1459,10 +1505,11 @@ The "match" operator is equivalent to a "switch"/"case" in Javascript. It is sim
 #### Properties
 
 - `matchExpression` (or `matchValue`)<sup>*</sup>: (string | number | boolean) -- a node that returns a value to be compared against possible cases.
-- `branches` (or `arms` or `cases`): (object) -- an object whose *keys* are compared against the `matchExpression`. The *value* of the matching key is returned.
+- `branches` (or `arms` or `cases`): (object) -- an object whose _keys_ are compared against the `matchExpression`. The _value_ of the matching key is returned.
 - `...branches` -- as an alternative to the `branches` object, matching key/values can be placed at the root of the node (see example)
 
 e.g.
+
 ```js
 // Simple decision tree
 {
@@ -1498,6 +1545,7 @@ e.g.
 ```
 
 This expression could also be written as (with branch/case keys at the root level)"
+
 ```js
 {
   operator: 'match',
@@ -1533,10 +1581,11 @@ The pairs of `key`/`value`s are constructed into the `branches` object, the same
 
 For an example of a complex decision tree implementation, which includes [aliases](#alias-nodes), [fallbacks](#other-common-properties) and a range of operators, see the "match" test case file (`20_match.test.ts`).
 
-----
+---
+
 ### PASSTHRU
 
-*Pass-thru (does nothing)*
+_Pass-thru (does nothing)_
 
 Aliases: `passThru`, `_`, `pass`, `ignore`, `coerce`, `convert`
 
@@ -1547,6 +1596,7 @@ This operator simply returns its input. Its purpose is to allow an additional ty
 - `value` (or `_`, `data`)<sup>*</sup>: (any) -- the value that is returned
 
 e.g.
+
 ```js
 {
   operator: 'pass',
@@ -1556,7 +1606,7 @@ e.g.
 // => ["500"]
 ```
 
-----
+---
 
 ## Custom Functions/Operators
 
@@ -1569,7 +1619,7 @@ const fig = new FigTreeEvaluator({
   functions: {
     double: (x) => x * 2,
     getCurrentYear: () => new Date().toLocaleString('en', { year: 'numeric' }),
-    changeCase: ({string, toCase}) => toCase === "upper" ? 
+    changeCase: ({string, toCase}) => toCase === "upper" ?
       string.toUpperCase() : string.toLowerCase()
     average: (...numbers) => (numbers.reduce(
       (a, n) => a + n, 0)) / numbers.length,
@@ -1577,7 +1627,7 @@ const fig = new FigTreeEvaluator({
 })
 ```
 
-*You can also define functions with extended metadata -- see [Metadata](#metadata) for more on that.*
+_You can also define functions with extended metadata -- see [Metadata](#metadata) for more on that._
 
 ### The CUSTOM_FUNCTIONS operator
 
@@ -1585,11 +1635,12 @@ Aliases: `customFunctions`, `customFunction`, `functions`, `function`, `runFunct
 
 #### Properties
 
-- `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>): (string) -- name of the function in the  `options.functions` object
+- `functionPath` (or `functionsPath`, `functionName`, `funcPath`<sup>*</sup>): (string) -- name of the function in the `options.functions` object
 - `args` (or `arguments`, `variables`): (array | any) -- input arguments for the function. If an array, will be passed in as multiple arguments.
 - `input`: Input argument if function only takes a single argument. Note that, if your function takes a single array as its argument, you'll need to pass it in the `input` property -- the `args` property will spread the array into multiple arguments.
 
 Here is the result of various expressions:
+
 ```js
 {
   operator: 'functions',
@@ -1673,12 +1724,12 @@ Converting the above examples to this format:
 
 These custom operators even support the [shorthand syntax](#shorthand-syntax) -- they should behave just like standard operators.
 
-
 ## Alias Nodes
 
 If you have a node that is used more than once in a complex expression, it's possible to just evaluate the repeated node once, and refer to it throughout using an "alias" reference. This allows for a simpler expression (reduces code duplication) as well as a performance improvement, since the aliased node is only evaluated once, providing a simple [memoization](https://en.wikipedia.org/wiki/Memoization) mechanism. (See also [Caching/Memoization](#caching-memoization))
 
 For example, if you have the expression:
+
 ```js
 {
   operator: "?",
@@ -1713,6 +1764,7 @@ For example, if you have the expression:
 The `GET` operation is used twice -- once to compare it for non-equality with `null`, and once again to return its value if `true`. This is particularly wasteful since it is a network request.
 
 We can create an alias for this whole node, resulting in this equivalent expression:
+
 ```js
 {
   $getCountry: {
@@ -1748,6 +1800,7 @@ Like all expression nodes, alias nodes can themselves contain complex expression
 ## Fragments
 
 You may find that the expressions you are building for your configuration files often use very similar sub-expressions (but perhaps with only some input values that differ). For example, your expressions might be regularly looking up a "countries" database and fetching the capital city, such as:
+
 ```js
 {
   operator: 'GET',
@@ -1776,21 +1829,22 @@ const fig = new FigTreeEvaluator({
       url: {
         operator: 'stringSubstitution',
         string: 'https://restcountries.com/v3.1/name/%1',
-        replacements: [ "$country" ],
+        replacements: ['$country'],
       },
       returnProperty: '[0].capital',
       outputType: 'string',
       metadata: {
         // Not required, but useful for external consumers -- see Metadata below
-        description: "Fetches the capital city of a country",
+        description: 'Fetches the capital city of a country',
         parameters: { $country: { type: 'string', required: true } },
-      }
+      },
     },
   },
 })
 ```
 
 Then any subsequent expressions can use this fragment by specifying a special "Fragment Node", which contains the `fragment` and (optionally) `parameters` fields:
+
 ```js
 {
   fragment: "getCapital",
@@ -1801,6 +1855,7 @@ Then any subsequent expressions can use this fragment by specifying a special "F
 ```
 
 Like the `branches` field in the ["Match" operator](#match), the properties of the `parameters` field can be specified at the root level as well -- it just depends on whichever is most appropriate for your use case. So the following is equivalent to the previous fragment node:
+
 ```js
 {
   fragment: "getCapital",
@@ -1810,21 +1865,24 @@ Like the `branches` field in the ["Match" operator](#match), the properties of t
 
 See `22_fragments.test.ts` for more complex examples.
 
-Unlike Alias Nodes, which are evaluated *once* and then the result re-used whenever the alias is referenced, Fragments are evaluated every time, as the input parameters may differ.
+Unlike Alias Nodes, which are evaluated _once_ and then the result re-used whenever the alias is referenced, Fragments are evaluated every time, as the input parameters may differ.
 
 ## Shorthand syntax
 
 It's possible to express FigTree expressions in a more compact syntax, as follows:
 
-- Fragment and Operator nodes can be represented by putting the name of the fragment or operator as a property name (prefixed by `$`), then putting the parameters in an object as the property value. For example:  
+- Fragment and Operator nodes can be represented by putting the name of the fragment or operator as a property name (prefixed by `$`), then putting the parameters in an object as the property value. For example:
+
   ```js
   {
     operator: 'regex',
     string: "home@myplace.com",
-    pattern: '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$' 
+    pattern: '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$'
   }
   ```
+
   can be written as:
+
   ```js
   {
     $regex:
@@ -1835,14 +1893,15 @@ It's possible to express FigTree expressions in a more compact syntax, as follow
   }
   ```
 
-- For operator nodes (not fragments, as they always require named parameters), parameters can be represented positionally (equivalent to the `children` property in normal operator nodes) in an array. The above example could also be expressed as:  
+- For operator nodes (not fragments, as they always require named parameters), parameters can be represented positionally (equivalent to the `children` property in normal operator nodes) in an array. The above example could also be expressed as:
+
   ```js
   {
-    $regex: [ 'home@myplace.com', '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$' ]
+    $regex: ['home@myplace.com', '^[A-Za-z0-9.]+@[A-Za-z0-9]+\\.[A-Za-z0-9.]+$']
   }
   ```
 
-- Operator nodes with a single parameter can just be placed directly as the single property value. For example:  
+- Operator nodes with a single parameter can just be placed directly as the single property value. For example:
   ```js
   {
     operator: "getData",
@@ -1851,11 +1910,12 @@ It's possible to express FigTree expressions in a more compact syntax, as follow
   ```
   can become, simply:
   ```js
-  { $getData: "user.firstName" }
+  {
+    $getData: 'user.firstName'
+  }
   ```
 
 For more examples, see `23_shorthand.test.ts`, or have a play with the [demo app](https://carlosnz.github.io/fig-tree-evaluator/) app.
-
 
 ## Caching (Memoization)
 
@@ -1864,14 +1924,15 @@ FigTree Evaluator has basic [memoization](https://en.wikipedia.org/wiki/Memoizat
 Currently, caching is only implemented for the following operators, since they perform requests to external resources, which are inherently slow:
 
 - GET (`useCache` default: `true`)
-- POST (`useCache` default: `false`) 
+- POST (`useCache` default: `false`)
 - PG_SQL (`useCache` default: `true`)
 - GRAPH_QL (`useCache` default: `true`)
 - CUSTOM_FUNCTIONS (`useCache` default: `false`)
 
 This is different to the memoization provided by [Alias Nodes](#alias-nodes):
-- Alias nodes are still evaluated once for every evaluation -- they're more for re-use *within* a complex expression.
-- Cached nodes will persist *between* different evaluations as long as the input values are the same as a previously evaluated node.
+
+- Alias nodes are still evaluated once for every evaluation -- they're more for re-use _within_ a complex expression.
+- Cached nodes will persist _between_ different evaluations as long as the input values are the same as a previously evaluated node.
 
 Caching is enabled by default for most of the above operators, but this can be overridden by setting `useCache: false` in [options](#available-options), either globally or per expression. If you're querying a database or API that is likely to have a different result for the same request (i.e. data has changed), then you probably want to turn the cache off.
 
@@ -1901,7 +1962,7 @@ interface FigTreeError extends Error {
 There are two alternatives to throwing:
 
 1. **Fallback**: If the `fallback` property is specified in the expression, this will be returned whenever an error occurs at that node (or below). See [Fallback option](#other-common-properties).
-2. **Formatted string**: By using the `returnErrorAsString: true` option, FigTree will return a nicely formatted string describing the error. *This is the same string returned in the `prettyPrint` property of the FigTreeError.* The formatted string will be structured like so:
+2. **Formatted string**: By using the `returnErrorAsString: true` option, FigTree will return a nicely formatted string describing the error. _This is the same string returned in the `prettyPrint` property of the FigTreeError._ The formatted string will be structured like so:
 
 ```
 Operator: <OPERATOR_NAME>: - <error.name (if specific)>
@@ -1910,9 +1971,11 @@ Operator: <OPERATOR_NAME>: - <error.name (if specific)>
   ...errorData
 }
 ```
+
 `errorData` is specific data returned by the error thrown by an internal process (such as a network request using [fetch](#http-requests)).
 
 For example, a 403 (forbidden) error thrown by the `GET` operator (with Axios HTTP client) would return a string like:
+
 ```
 Operator: GET - AxiosError
 Request failed with status code 403
@@ -1928,6 +1991,7 @@ Request failed with status code 403
 ```
 
 And, if thrown, the error object would contain:
+
 ```js
 {
   name: "AxiosError",
@@ -1995,7 +2059,7 @@ const fig = new FigTreeEvaluator({
       argsDefault: [1, 2, 3, 4]
     },
     changeCase: {
-      function: ({string, toCase}) => toCase === "upper" ? 
+      function: ({string, toCase}) => toCase === "upper" ?
         string.toUpperCase() : string.toLowerCase(),
       description: "Convert a string to either upper or lower case",
       inputDefault: {string: "New string", toCase: "upper"}
@@ -2069,6 +2133,7 @@ This will return something like:
 #### Retrieve customFunction info
 
 Similarly, we can fetch basic info about custom functions in the current FigTree instance, although with more limited detail:
+
 ```js
 fig.getCustomFunctions()
 ```
@@ -2076,19 +2141,19 @@ fig.getCustomFunctions()
 Returns:
 
 ```js
-[
+;[
   {
     name: 'doubleArray',
     numRequiredArgs: 1,
     description: 'Double each item in an array',
-    argsDefault: [ 1, 2, 3, 4 ]
+    argsDefault: [1, 2, 3, 4],
   },
   {
     name: 'changeCase',
     numRequiredArgs: 1,
     description: 'Convert a string to either upper or lower case',
-    inputDefault: { string: 'New string', toCase: 'upper' }
-  }
+    inputDefault: { string: 'New string', toCase: 'upper' },
+  },
 ]
 ```
 
@@ -2098,14 +2163,14 @@ Returns:
 fig.isFigTreeExpression(value)
 ```
 
-When building a UI, you often need to decide whether a given value should be treated as an evaluable FigTree expression or as plain data. This method returns `true` only for values that *this* instance would actually process as an expression. It is **registry-aware** — `$`-prefixed [shorthand](#shorthand-syntax) and keys are validated against the instance's registered operators, [fragments](#fragments) and [custom functions](#custom_functions) — and it follows the instance's [`evaluateFullObject`](#available-options) and `noShorthand` settings.
+When building a UI, you often need to decide whether a given value should be treated as an evaluable FigTree expression or as plain data. This method returns `true` only for values that _this_ instance would actually process as an expression. It is **registry-aware** — `$`-prefixed [shorthand](#shorthand-syntax) and keys are validated against the instance's registered operators, [fragments](#fragments) and [custom functions](#custom_functions) — and it follows the instance's [`evaluateFullObject`](#available-options) and `noShorthand` settings.
 
 ```js
 fig.isFigTreeExpression({ operator: '+', values: [1, 2] }) // true
-fig.isFigTreeExpression({ $getData: 'user.name' })         // true  (registered shorthand)
-fig.isFigTreeExpression({ name: 'Steve', age: 30 })        // false (plain data)
-fig.isFigTreeExpression({ $somethingUnknown: 1 })          // false (not a registered operator/fragment/function)
-fig.isFigTreeExpression('$myAlias')                        // false (alias reference with no definition in scope)
+fig.isFigTreeExpression({ $getData: 'user.name' }) // true  (registered shorthand)
+fig.isFigTreeExpression({ name: 'Steve', age: 30 }) // false (plain data)
+fig.isFigTreeExpression({ $somethingUnknown: 1 }) // false (not a registered operator/fragment/function)
+fig.isFigTreeExpression('$myAlias') // false (alias reference with no definition in scope)
 ```
 
 The last two cases are why this is preferable to a purely structural check: an object whose only `$`-prefixed key doesn't correspond to anything the evaluator recognises (e.g. `{ "$somethingUnknown": 1 }`) is plain data, not an expression, and won't be flagged here.
@@ -2147,4 +2212,5 @@ Please open an issue: https://github.com/CarlosNZ/fig-tree-evaluator/issues
 See [here](https://github.com/CarlosNZ/fig-tree-evaluator/blob/main/CHANGELOG.md)
 
 ## Credit
+
 Icon: Tree by ka reemov from <a href="https://thenounproject.com/icon/tree-2665898/" target="_blank" title="Tree Icon">Noun Project</a>

@@ -78,9 +78,7 @@ describe('URL assembly', () => {
   })
 
   it('fails a resolved value that is not a URL at all', async () => {
-    const error = await rejection<FigTreeError>(
-      withClient(client()).evaluate({ $http: 'http://' })
-    )
+    const error = await rejection<FigTreeError>(withClient(client()).evaluate({ $http: 'http://' }))
     expect(error.message).toMatch(/is not a valid URL/)
   })
 
@@ -196,9 +194,12 @@ describe('the header chain', () => {
 describe('the body', () => {
   it('goes out with a POST, under a JSON content type', async () => {
     const http = client()
-    await withClient(http).evaluate({
-      $http: { url: 'https://api.test/s', method: 'post', body: { term: '$data.term' } },
-    }, { data: { term: 'ada' } })
+    await withClient(http).evaluate(
+      {
+        $http: { url: 'https://api.test/s', method: 'post', body: { term: '$data.term' } },
+      },
+      { data: { term: 'ada' } }
+    )
     expect(http.calls[0]).toMatchObject({ method: 'post', body: { term: 'ada' } })
     expect(http.calls[0].headers).toMatchObject({ 'Content-Type': 'application/json' })
   })

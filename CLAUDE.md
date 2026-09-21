@@ -17,6 +17,8 @@ pnpm test                 # Jest, v3 suite only (see testing gotchas below)
 pnpm test <substring>     # run test files matching substring, e.g. `pnpm test string`
 pnpm test:v2              # frozen v2 corpus (test/V2) against /v2-src — on demand, never CI
 pnpm lint                 # eslint (flat config, eslint.config.mjs)
+pnpm format               # prettier --write over the repo (scope: .prettierignore)
+pnpm format:check         # the same check CI runs — fails on anything unformatted
 pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
 pnpm size                 # re-print the bundle-size report for the existing build/
 pnpm compile              # tsc only (typecheck + emit, no bundling)
@@ -75,7 +77,9 @@ src/
 
 ## Code style
 
-- Prettier (`.prettierrc.js`): **no semicolons**, single quotes, 100-char width, 2-space indent, `trailingComma: 'es5'`. Match this exactly.
+- Prettier (`.prettierrc.js`): **no semicolons**, single quotes, 100-char width, 2-space indent, `trailingComma: 'es5'`. Match this exactly. `pnpm format:check` is a CI step, so unformatted files fail the build — run `pnpm format` before pushing.
+- Prettier's scope is `.prettierignore`, which mirrors the ESLint `ignores` list and adds the generated/fetched files (the 8 MB `test/massiveQuery.json`, the `docs-artifacts/*.html` copies of published pages, the lockfile). It covers Markdown and HTML as well as TS.
+- Prettier and ESLint are kept apart: neither `eslint-plugin-prettier` nor `eslint-config-prettier` is installed. The plugin would format every file twice and report whitespace as lint errors; the config would switch off `max-len`, which is load-bearing for the 80-char comment limit below. There is no rule conflict to resolve — `max-len`'s `code` is set to 200 precisely so Prettier stays the authority on code width.
 - Comments wrap at **80 chars** (code stays at Prettier's 100). Enforced by ESLint: `//` comments via `comment-length/limit-single-line-comments` (auto-fixable — `pnpm lint --fix` reflows them), block-comment lines via `max-len` (wrap by hand). The plugin's multi-line rule is deliberately not used — it corrupts non-JSDoc `/* … */` blocks.
 - TypeScript throughout; ESLint with `@typescript-eslint/recommended`.
 - Operators' `evaluate` methods are `async`. Use `evaluateArray`/`evaluatorFunction` from `evaluate.ts` to recurse into child nodes rather than calling operators directly.
@@ -85,6 +89,7 @@ src/
 Jest via `ts-jest`. Tests live in `test/` as numbered files (`1_simpleValues.test.ts` … `26_convert.test.ts`); they import the evaluator through [test/evaluator.ts](test/evaluator.ts), which points at `../src` (toggle the commented line there to test the built package instead).
 
 Two suites need external resources:
+
 - **HTTP operators** (GET/POST/GraphQL) require an internet connection.
 - **SQL operators** require a local Postgres with the [Northwind](https://github.com/pthom/northwind_psql) database installed.
 

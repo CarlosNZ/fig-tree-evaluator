@@ -37,7 +37,9 @@ describe('the call', () => {
   it('takes the standard pair positionally — document, then variables', async () => {
     const http = client()
     await withClient(http).evaluate(
-      { $graphQL: ['query ($code: ID!) { country(code: $code) { name } }', { code: '$data.code' }] },
+      {
+        $graphQL: ['query ($code: ID!) { country(code: $code) { name } }', { code: '$data.code' }],
+      },
       { data: { code: 'FJ' } }
     )
     expect(http.calls[0].body).toEqual({
@@ -110,9 +112,9 @@ describe('the header chain', () => {
 
 describe('the response', () => {
   it('answers with the data field, not the envelope', async () => {
-    expect(await withClient(client()).evaluate({ $graphQL: 'query { countries { name } }' })).toEqual(
-      { countries: [{ name: 'Fiji' }] }
-    )
+    expect(
+      await withClient(client()).evaluate({ $graphQL: 'query { countries { name } }' })
+    ).toEqual({ countries: [{ name: 'Fiji' }] })
   })
 
   it('drills within data, projections included', async () => {
@@ -148,7 +150,9 @@ describe('the response', () => {
   })
 
   it('treats data: null with no errors as a successful null', async () => {
-    expect(await withClient(client({ data: null })).evaluate({ $graphQL: 'query { a }' })).toBeNull()
+    expect(
+      await withClient(client({ data: null })).evaluate({ $graphQL: 'query { a }' })
+    ).toBeNull()
   })
 
   it('fails a response that is neither data nor errors', async () => {

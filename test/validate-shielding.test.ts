@@ -42,9 +42,7 @@ test('an operatorDefaults modifier fallback counts as a static fallback', () => 
     operators: [parseOps()],
     operatorDefaults: { http: { fallback: 'offline' } },
   })
-  expect(shieldedByDefaults.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(
-    true
-  )
+  expect(shieldedByDefaults.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(true)
   // The same expression on the plain instance is unshielded
   expect(fig.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(false)
 })

@@ -47,8 +47,7 @@ export const assembleUrl = (
 ): string => {
   const resolved = FULL_URL.test(url) ? url : joinBase(base, url)
   const pairs = renderQuery(query)
-  const full =
-    pairs === '' ? resolved : `${resolved}${resolved.includes('?') ? '&' : '?'}${pairs}`
+  const full = pairs === '' ? resolved : `${resolved}${resolved.includes('?') ? '&' : '?'}${pairs}`
   try {
     void new URL(full)
   } catch {
@@ -65,10 +64,9 @@ export const assembleUrl = (
  */
 const joinBase = (base: string | undefined, url: string): string => {
   if (base === undefined || base === '')
-    throw new OperatorFailure(
-      `'${url}' is a relative URL and no http.baseEndpoint is configured`,
-      { code: ErrorCodes.typeCheck }
-    )
+    throw new OperatorFailure(`'${url}' is a relative URL and no http.baseEndpoint is configured`, {
+      code: ErrorCodes.typeCheck,
+    })
   if (url === '') return base
   return `${base.replace(/\/$/, '')}/${url.replace(/^\//, '')}`
 }
@@ -192,8 +190,7 @@ export const drill = (value: unknown, returnPath: string | unknown[] | undefined
  * the field.
  */
 export const graphQLData = (response: unknown): unknown => {
-  if (!isPlainObject(response))
-    throw new OperatorFailure('the GraphQL response was not an object')
+  if (!isPlainObject(response)) throw new OperatorFailure('the GraphQL response was not an object')
   const errors = (response as Record<string, unknown>).errors
   if (Array.isArray(errors) && errors.length > 0) {
     const first = (errors[0] as { message?: unknown } | null)?.message

@@ -117,7 +117,9 @@ const main = async () => {
 
   section('GraphQL and SQL, on the same machinery')
 
-  const gql = { $graphQL: { query: 'query { countries { name } }', returnPath: 'countries[*].name' } }
+  const gql = {
+    $graphQL: { query: 'query { countries { name } }', returnPath: 'countries[*].name' },
+  }
   print('the data field, projected', gql, await outcome(() => fig.evaluate(gql)))
 
   for (const shape of ['rows', 'firstRow', 'column', 'firstValue']) {

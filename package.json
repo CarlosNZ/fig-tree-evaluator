@@ -39,6 +39,8 @@
     "generateMassiveQuery": "tsx codegen/generateMassiveQuery.ts",
     "getVersion": "tsx codegen/getVersion.ts",
     "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
     "build": "pnpm getVersion && rimraf ./build && rollup -c && rimraf ./build/dts",
     "size": "node codegen/bundleSize.mjs",

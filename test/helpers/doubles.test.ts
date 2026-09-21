@@ -31,22 +31,49 @@ describe('MockHttpClient', () => {
     })
 
     expect(
-      await client.request({ url: 'https://x/countries/nz/full', method: 'get', headers: {}, signal: anySignal() })
+      await client.request({
+        url: 'https://x/countries/nz/full',
+        method: 'get',
+        headers: {},
+        signal: anySignal(),
+      })
     ).toEqual({ name: 'New Zealand' })
     expect(
-      await client.request({ url: 'https://x/unknown', method: 'get', headers: {}, signal: anySignal() })
+      await client.request({
+        url: 'https://x/unknown',
+        method: 'get',
+        headers: {},
+        signal: anySignal(),
+      })
     ).toEqual({ fallback: true })
     expect(client.callCount).toBe(2)
   })
 
   it('honours exactMatch when requested', async () => {
-    const client = new MockHttpClient({ responses: { 'https://x/a': 1 }, exactMatch: true, defaultResponse: 0 })
-    expect(await client.request({ url: 'https://x/a', method: 'get', headers: {}, signal: anySignal() })).toBe(1)
-    expect(await client.request({ url: 'https://x/a/b', method: 'get', headers: {}, signal: anySignal() })).toBe(0)
+    const client = new MockHttpClient({
+      responses: { 'https://x/a': 1 },
+      exactMatch: true,
+      defaultResponse: 0,
+    })
+    expect(
+      await client.request({ url: 'https://x/a', method: 'get', headers: {}, signal: anySignal() })
+    ).toBe(1)
+    expect(
+      await client.request({
+        url: 'https://x/a/b',
+        method: 'get',
+        headers: {},
+        signal: anySignal(),
+      })
+    ).toBe(0)
   })
 
   it('throws OperatorFailure with errorData when the failure switch is on', async () => {
-    const client = new MockHttpClient({ fail: true, failMessage: 'boom', failData: { status: 500 } })
+    const client = new MockHttpClient({
+      fail: true,
+      failMessage: 'boom',
+      failData: { status: 500 },
+    })
 
     await expect(
       client.request({ url: 'https://x/y', method: 'get', headers: {}, signal: anySignal() })
@@ -65,7 +92,12 @@ describe('MockHttpClient', () => {
     const client = new MockHttpClient({ latencyMs: 50, responses: { '/slow': 'ok' } })
     const controller = new AbortController()
 
-    const pending = client.request({ url: '/slow', method: 'get', headers: {}, signal: controller.signal })
+    const pending = client.request({
+      url: '/slow',
+      method: 'get',
+      headers: {},
+      signal: controller.signal,
+    })
     controller.abort()
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' })

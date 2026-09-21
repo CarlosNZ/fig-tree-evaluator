@@ -77,7 +77,9 @@ describe('shape', () => {
 
   it('column — one column’s values', async () => {
     expect(
-      await withDb(db(NAMES)).evaluate({ $sql: { query: 'SELECT name FROM people', shape: 'column' } })
+      await withDb(db(NAMES)).evaluate({
+        $sql: { query: 'SELECT name FROM people', shape: 'column' },
+      })
     ).toEqual(['Ada', 'Grace'])
   })
 
@@ -93,9 +95,9 @@ describe('shape', () => {
 
   it('takes the first row under the singular shapes, no error — queryOne semantics', async () => {
     const fig = withDb(db(NAMES))
-    expect(await fig.evaluate({ $sql: { query: 'SELECT name FROM people', shape: 'firstValue' } })).toBe(
-      'Ada'
-    )
+    expect(
+      await fig.evaluate({ $sql: { query: 'SELECT name FROM people', shape: 'firstValue' } })
+    ).toBe('Ada')
   })
 
   it('refuses a multi-column result under the single-column shapes', async () => {

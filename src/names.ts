@@ -61,7 +61,6 @@ export const checkNameLegality = (name: unknown): NameLegalityResult => {
   if (typeof name !== 'string') return { ok: false, reason: 'a name must be a string' }
   if (name === '') return { ok: false, reason: 'a name must be non-empty' }
   if (name.startsWith('$')) return { ok: false, reason: "a name may not start with '$'" }
-  if (/[.[\]]/.test(name))
-    return { ok: false, reason: "a name may not contain '.', '[' or ']'" }
+  if (/[.[\]]/.test(name)) return { ok: false, reason: "a name may not contain '.', '[' or ']'" }
   return { ok: true }
 }

@@ -66,11 +66,9 @@ const main = async () => {
   await show('instance data and call data are read by one expression', '$data.org', {
     data: { team: 'Platform' },
   })
-  await show(
-    'a supplied key replaces its whole value, so age is gone',
-    '$data.user',
-    { data: { user: { name: 'Grace' } } }
-  )
+  await show('a supplied key replaces its whole value, so age is gone', '$data.user', {
+    data: { user: { name: 'Grace' } },
+  })
   await show(
     'an undefined value means “not supplied”, never “remove”',
     { $peek: 'http' },
@@ -91,7 +89,9 @@ const main = async () => {
     fig.updateOptions({ operators: [{ not: 'a definition' } as never], maxNodes: 1 })
   })
   console.log(`      a rejected update changes nothing:\n    ${broken}`)
-  console.log(`      the valid key that rode along is not applied either: maxNodes is still ${String(fig.getOptions().maxNodes)}\n`)
+  console.log(
+    `      the valid key that rode along is not applied either: maxNodes is still ${String(fig.getOptions().maxNodes)}\n`
+  )
 
   section('The parse cache')
 
@@ -110,13 +110,21 @@ const main = async () => {
     JSON.parse(JSON.stringify(expression)),
     'content hit, re-registered by identity'
   )
-  await run('the same content, keys the other way round', { value: '$data.value', operator: 'counted' }, 'an honest miss — order is never canonicalized')
+  await run(
+    'the same content, keys the other way round',
+    { value: '$data.value', operator: 'counted' },
+    'an honest miss — order is never canonicalized'
+  )
 
   const inert = { title: 'Report', rows: [1, 2, 3] }
   const before = compiles
   const returned = await cached.evaluate(inert)
-  print('inert data is never parsed at all', inert, `→ ${block(returned)}`,
-    `${compiles - before} compile(s), and returned by identity: ${String(returned === inert)}`)
+  print(
+    'inert data is never parsed at all',
+    inert,
+    `→ ${block(returned)}`,
+    `${compiles - before} compile(s), and returned by identity: ${String(returned === inert)}`
+  )
 
   section('What invalidates it')
 

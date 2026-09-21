@@ -168,9 +168,7 @@ describe('FetchClient', () => {
 
   it('serializes the body and passes method, headers and signal through', async () => {
     const seen: { init?: Record<string, unknown>; url?: string } = {}
-    const client = new FetchClient(
-      stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen)
-    )
+    const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen))
     const signal = new AbortController().signal
     await client.request(request({ method: 'post', body: { term: 'ada' }, signal }))
     expect(seen.init).toMatchObject({
@@ -183,9 +181,7 @@ describe('FetchClient', () => {
 
   it('sends no body key at all when there is no body', async () => {
     const seen: { init?: Record<string, unknown> } = {}
-    const client = new FetchClient(
-      stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen)
-    )
+    const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen))
     await client.request(request())
     expect(seen.init).not.toHaveProperty('body')
   })

@@ -393,9 +393,9 @@ describe('dead bindings', () => {
   })
 
   test('a renamed iterator is judged on its own names', () => {
-    expect(
-      warningCodes({ operator: 'map', input: [1], as: 'row', each: '$row' })
-    ).not.toContain('dead-binding')
+    expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: '$row' })).not.toContain(
+      'dead-binding'
+    )
     expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: 1 })).toContain(
       'dead-binding'
     )

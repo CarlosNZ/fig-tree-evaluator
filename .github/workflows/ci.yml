@@ -21,6 +21,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # Prettier owns whitespace; ESLint owns everything else. The two are
+      # kept apart deliberately — running Prettier as a lint rule would
+      # format every file twice, and `eslint-config-prettier` would switch
+      # off `max-len`, which this repo relies on for the 80-char comment
+      # limit. Scope and exclusions: .prettierignore
+      - run: pnpm format:check
       # `pnpm build` typechecks the library source; this covers test/, which
       # nothing else does — ts-jest runs transpile-only (isolatedModules), so
       # a type error in a test is otherwise invisible. That is how three

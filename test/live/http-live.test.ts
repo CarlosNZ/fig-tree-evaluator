@@ -75,10 +75,7 @@ it('runs a real GraphQL query and projects out of data', async () => {
   if (!online.ok()) return
   expect(
     await fig.evaluate({
-      $graphQL: [
-        'query ($code: ID!) { country(code: $code) { name } }',
-        { code: 'NZ' },
-      ],
+      $graphQL: ['query ($code: ID!) { country(code: $code) { name } }', { code: 'NZ' }],
     })
   ).toEqual({ country: { name: 'New Zealand' } })
 })

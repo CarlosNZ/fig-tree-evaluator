@@ -19,18 +19,12 @@ import { sqlFailure } from './failures'
 
 /** node-postgres' `Client` or `Pool`, reduced to the one call. */
 export interface PgClientLike {
-  query(config: {
-    text: string
-    values?: unknown[]
-  }): Promise<{ rows: Record<string, unknown>[] }>
+  query(config: { text: string; values?: unknown[] }): Promise<{ rows: Record<string, unknown>[] }>
 }
 
 /** The `sqlite` package's `Database`, reduced to the one call. */
 export interface SqliteDatabaseLike {
-  all(
-    sql: string,
-    params?: unknown[] | Record<string, unknown>
-  ): Promise<Record<string, unknown>[]>
+  all(sql: string, params?: unknown[] | Record<string, unknown>): Promise<Record<string, unknown>[]>
 }
 
 export class PostgresConnection implements SqlConnection {

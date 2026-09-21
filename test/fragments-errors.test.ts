@@ -181,9 +181,7 @@ describe('timeout shielding through a call', () => {
       [sleep.definition]
     )
     expect(fig.validate({ a: { $card: {} } }).timeoutShielded).toBe(false)
-    const error = await rejection<FigTreeError>(
-      fig.evaluate({ a: { $card: {} } }, { timeout: 30 })
-    )
+    const error = await rejection<FigTreeError>(fig.evaluate({ a: { $card: {} } }, { timeout: 30 }))
     expect(error.code).toBe(ErrorCodes.timeout)
   })
 

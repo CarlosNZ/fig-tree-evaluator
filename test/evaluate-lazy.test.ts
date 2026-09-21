@@ -209,13 +209,19 @@ describe('lazyElements', () => {
 
   test('a partly-constant element is still one element', async () => {
     expect(
-      await figWith([firstTwo()]).evaluate({ $firstTwo: ['a', { n: '$data.x' }, 'c'] }, { data: { x: 9 } })
+      await figWith([firstTwo()]).evaluate(
+        { $firstTwo: ['a', { n: '$data.x' }, 'c'] },
+        { data: { x: 9 } }
+      )
     ).toEqual(['a', { n: 9 }, 3])
   })
 
   test('degeneration: a dynamic array delivers pre-resolved handles', async () => {
     expect(
-      await figWith([firstTwo()]).evaluate({ $firstTwo: '$data.list' }, { data: { list: [1, 2, 3] } })
+      await figWith([firstTwo()]).evaluate(
+        { $firstTwo: '$data.list' },
+        { data: { list: [1, 2, 3] } }
+      )
     ).toEqual([1, 2, 3])
   })
 
@@ -279,7 +285,10 @@ describe('lazyEntries', () => {
 
   test('degeneration: a dynamic map delivers pre-resolved handles', async () => {
     expect(
-      await figWith([pick()]).evaluate({ $pick: ['b', '$data.map'] }, { data: { map: { a: 1, b: 2 } } })
+      await figWith([pick()]).evaluate(
+        { $pick: ['b', '$data.map'] },
+        { data: { map: { a: 1, b: 2 } } }
+      )
     ).toBe(2)
   })
 

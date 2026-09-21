@@ -3,11 +3,7 @@
  * name style" and "The reserved-key set" in docs-dev/v3-specs/v3-api.md).
  * White-box: `names.ts` is internal vocabulary, not barrel surface.
  */
-import {
-  checkNameLegality,
-  RESERVED_NODE_KEYS,
-  RESERVED_REGISTRATION_NAMES,
-} from '../src/names'
+import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from '../src/names'
 
 describe('checkNameLegality — the one rule', () => {
   it('accepts any non-empty string without . [ ] or a leading $', () => {

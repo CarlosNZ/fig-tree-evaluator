@@ -66,9 +66,9 @@ describe('a failure matters only when the result depends on it', () => {
 
   test('and(failure, falsy) is false — whichever settles first', async () => {
     const fast = build()
-    expect(
-      await fast.fig.evaluate({ $and: [{ $slow: ['x', 1, true] }, { $slow: [0, 40] }] })
-    ).toBe(false)
+    expect(await fast.fig.evaluate({ $and: [{ $slow: ['x', 1, true] }, { $slow: [0, 40] }] })).toBe(
+      false
+    )
 
     const slowFirst = build()
     expect(

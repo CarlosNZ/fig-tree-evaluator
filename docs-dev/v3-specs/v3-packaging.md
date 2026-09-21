@@ -1,16 +1,16 @@
 # FigTree v3 — Packaging & exports
 
-*Working document — first sketch (Claude, July 2026), awaiting review. This area discharges the packaging deferrals scattered across the other docs: export grouping (Operators § Deferred), the editor-hints module mechanics ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), the subpath sketch ([v3-assessment.md](v3-assessment.md) §3.6), and the client-factory homes (Options § Operator registration). It unblocks [implementation-plan](v3-implementation-plan.md) Phase 14. Open questions are collected at the end.*
+_Working document — first sketch (Claude, July 2026), awaiting review. This area discharges the packaging deferrals scattered across the other docs: export grouping (Operators § Deferred), the editor-hints module mechanics ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), the subpath sketch ([v3-assessment.md](v3-assessment.md) §3.6), and the client-factory homes (Options § Operator registration). It unblocks [implementation-plan](v3-implementation-plan.md) Phase 14. Open questions are collected at the end._
 
 ## The package at a glance
 
 One npm package, `fig-tree-evaluator`, three entry points:
 
-| Entry point | Contents | Consumers |
-|---|---|---|
-| `fig-tree-evaluator` | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host |
-| `fig-tree-evaluator/convert` | v2→v3 conversion + shorthand round-trip utilities (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees) | migration tooling, the editor |
-| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md)) | the editor and other tooling |
+| Entry point                       | Contents                                                                                                                                                                                                     | Consumers                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
+| `fig-tree-evaluator`              | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host                    |
+| `fig-tree-evaluator/convert`      | v2→v3 conversion + shorthand round-trip utilities (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees)                                      | migration tooling, the editor |
+| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md))                   | the editor and other tooling  |
 
 Explicitly **not** entry points:
 
@@ -30,27 +30,27 @@ Explicitly **not** entry points:
 
 The complete value-export inventory. Types are inventoried separately below.
 
-| Export | Kind | Specified in |
-|---|---|---|
-| `FigTree` | class | Options; [evaluator-methods](v3-evaluator-methods.md) |
-| `defineOperator` | function | [operator contract](v3-operator-contract.md) |
-| `coreOperators` | `OperatorDefinition[]` — all 40 core operator definitions (`literal` is grammar, so it has none) | Operators § canonical list |
-| `httpOperators` | `(client?: HttpClient) => OperatorDefinition[]` — `[http, graphQL]`; no argument defaults to `new FetchClient()` over global fetch (ruling below) | Options; contract § client contracts |
-| `sqlOperators` | `(connection: SqlConnection) => OperatorDefinition[]` — `[sql]` | Options; contract § client contracts |
-| `FetchClient`, `AxiosClient` | `HttpClient` wrappers | contract § client contracts |
-| `PostgresConnection`, `SQLiteConnection` | `SqlConnection` wrappers *(names: open Q2)* | contract § client contracts |
-| `FigTreeError`, `isFigTreeError` | error class + guard | evaluator-methods § FigTreeError |
-| `isOperatorNode`, `isFragmentNode` | structural node guards (registry-*unaware*; the registry-aware question is the `isEvaluable()` method) | Node grammar; evaluator-methods |
-| `isTruthy`, `compareValues`, `renderText`, `resolvePath` | engine-parity helpers *(list & names: open Q3)* | implementation notes § shared one-function requirements |
-| `EvaluationData` | sentinel value, legal only in a parameter `default` | contract § runtime interface |
-| `version` | string, generated from package.json (also the instance property) | evaluator-methods |
+| Export                                                   | Kind                                                                                                                                              | Specified in                                            |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `FigTree`                                                | class                                                                                                                                             | Options; [evaluator-methods](v3-evaluator-methods.md)   |
+| `defineOperator`                                         | function                                                                                                                                          | [operator contract](v3-operator-contract.md)            |
+| `coreOperators`                                          | `OperatorDefinition[]` — all 40 core operator definitions (`literal` is grammar, so it has none)                                                  | Operators § canonical list                              |
+| `httpOperators`                                          | `(client?: HttpClient) => OperatorDefinition[]` — `[http, graphQL]`; no argument defaults to `new FetchClient()` over global fetch (ruling below) | Options; contract § client contracts                    |
+| `sqlOperators`                                           | `(connection: SqlConnection) => OperatorDefinition[]` — `[sql]`                                                                                   | Options; contract § client contracts                    |
+| `FetchClient`, `AxiosClient`                             | `HttpClient` wrappers                                                                                                                             | contract § client contracts                             |
+| `PostgresConnection`, `SQLiteConnection`                 | `SqlConnection` wrappers _(names: open Q2)_                                                                                                       | contract § client contracts                             |
+| `FigTreeError`, `isFigTreeError`                         | error class + guard                                                                                                                               | evaluator-methods § FigTreeError                        |
+| `isOperatorNode`, `isFragmentNode`                       | structural node guards (registry-_unaware_; the registry-aware question is the `isEvaluable()` method)                                            | Node grammar; evaluator-methods                         |
+| `isTruthy`, `compareValues`, `renderText`, `resolvePath` | engine-parity helpers _(list & names: open Q3)_                                                                                                   | implementation notes § shared one-function requirements |
+| `EvaluationData`                                         | sentinel value, legal only in a parameter `default`                                                                                               | contract § runtime interface                            |
+| `version`                                                | string, generated from package.json (also the instance property)                                                                                  | evaluator-methods                                       |
 
 ### Ruling: the I/O toolkit lives in the root entry
 
 The assessment sketched a `./clients` subpath; the worked examples were written the other way (`import { FigTree, coreOperators, httpOperators, FetchClient } from 'fig-tree-evaluator'`) — and the worked examples have it right.
 
-- The subpath's only real payoff would be keeping I/O code out of bundles — but that is tree-shaking's job (principle 5 verifies it), and the *security* layering is already registration's job (principle 1). A `./clients` subpath would split the single most common setup line across two imports to buy nothing that isn't already bought.
-- The wrappers are thin adapters over an *injected* client (contract § client contracts) — `axios`, `pg` etc. are never dependencies, so there is no weight argument either. The v2 discipline (HTTP/SQL clients passed in by the consumer, never bundled) carries over unchanged.
+- The subpath's only real payoff would be keeping I/O code out of bundles — but that is tree-shaking's job (principle 5 verifies it), and the _security_ layering is already registration's job (principle 1). A `./clients` subpath would split the single most common setup line across two imports to buy nothing that isn't already bought.
+- The wrappers are thin adapters over an _injected_ client (contract § client contracts) — `axios`, `pg` etc. are never dependencies, so there is no weight argument either. The v2 discipline (HTTP/SQL clients passed in by the consumer, never bundled) carries over unchanged.
 
 **Considered and rejected: `./clients`.** Revisit only if a wrapper ever grows a real dependency — that, not aesthetics, would be the trigger for quarantining it behind a subpath (or out of the package entirely, as with the dates plugin).
 
@@ -64,9 +64,9 @@ const fig = new FigTree({
 })
 ```
 
-- **Opt-in by construction is intact**: the visible, deliberate act is registering the factory's output — importing `httpOperators` still gives you nothing, and an instance still can't reach the network unless the host put I/O operators in the array. The Options phrasing ("someone visibly handed it a client") reads as "someone visibly registered the I/O operators"; this extends batch 8's `FetchClient()` no-arg ruling (wrap global fetch; only *implicit* adoption died) up one level to the factory.
+- **Opt-in by construction is intact**: the visible, deliberate act is registering the factory's output — importing `httpOperators` still gives you nothing, and an instance still can't reach the network unless the host put I/O operators in the array. The Options phrasing ("someone visibly handed it a client") reads as "someone visibly registered the I/O operators"; this extends batch 8's `FetchClient()` no-arg ruling (wrap global fetch; only _implicit_ adoption died) up one level to the factory.
 - **No global `fetch` → the no-arg call throws at registration**, loudly, naming the remedy (`httpOperators(new FetchClient(myFetch))` or another client) — the fragment/`defineOperator` registration posture, never a first-evaluation surprise.
-- **Only fetch gets this** — it is the one client with an ambient standard global. `AxiosClient` must be handed the axios import (`httpOperators(new AxiosClient(axios))` — the parameter is always an `HttpClient` *instance*, and axios is never our dependency), and `sqlOperators(connection)` stays required: there is no ambient SQL connection to default to.
+- **Only fetch gets this** — it is the one client with an ambient standard global. `AxiosClient` must be handed the axios import (`httpOperators(new AxiosClient(axios))` — the parameter is always an `HttpClient` _instance_, and axios is never our dependency), and `sqlOperators(connection)` stays required: there is no ambient SQL connection to default to.
 
 ### Ruling: one `coreOperators` array — no grouped arrays, no per-operator exports
 
@@ -74,17 +74,17 @@ The export-grouping question deferred from Operators (fat `coreOperators` vs lea
 
 - The weight argument fails on arithmetic: the core operators are small pure functions — the entire set is a rounding error next to any host application, and the only genuinely heavy things (I/O, Intl/dates) are already outside `coreOperators` by construction. Grouping would tax every consumer with registration ceremony (and every doc with "which array is `round` in?") to serve a bundle-size case that doesn't exist.
 - The floated constraint — the default core must cover everything v2 had post-conversion, so converted v2 expressions run without extra registration — is satisfied trivially: converted v2 trees can only need core operators (I/O conversion necessarily involves handing over a client, which is registration).
-- Regret is asymmetric, as usual: grouped arrays are plain `OperatorDefinition[]` values and can be *added* later without breaking anything (`coreOperators` would simply be their concatenation); a shipped grouping can never be re-fattened without breaking lean consumers.
+- Regret is asymmetric, as usual: grouped arrays are plain `OperatorDefinition[]` values and can be _added_ later without breaking anything (`coreOperators` would simply be their concatenation); a shipped grouping can never be re-fattened without breaking lean consumers.
 
 **Per-operator named exports** (`import { round } from …`) are also rejected: the canonical names are author-facing words, not JS-facing ones — `if` is a reserved word outright, and `get`, `not`, `map`, `join` are collision bait in any host module — so individual exports would need a renaming scheme (`ifOperator`, …) that forfeits the one thing individual exports are for. A host wanting a minimal registry filters the array (`coreOperators.filter(…)`) — the supported surface (`excludeOperators` removed from v3: Options ruling, July 2026).
 
 ### Ruling: engine-parity helpers export from the root
 
-A custom operator must be able to *match core behaviour exactly* — the same truthiness at a declared truthiness position, the same ordering as `greaterThan`, the same stringification as `buildString`, the same path grammar as `get`. These are one-function requirements ([implementation notes](v3-implementation-notes.md)) with specified semantics; exporting them is what makes the first-class principle practical rather than aspirational, and their unit tests are already contract tests (Phase 1.1). Proposed set: `isTruthy`, `compareValues` (the ordering comparator), `renderText` (the shared stringifier), `resolvePath` (the `$data` path resolver, `strictDataPaths`-flag included). The finer-grained primitives (whitespace set, code-point segmentation, decimal rounding) stay internal unless a concrete author need surfaces — open Q3.
+A custom operator must be able to _match core behaviour exactly_ — the same truthiness at a declared truthiness position, the same ordering as `greaterThan`, the same stringification as `buildString`, the same path grammar as `get`. These are one-function requirements ([implementation notes](v3-implementation-notes.md)) with specified semantics; exporting them is what makes the first-class principle practical rather than aspirational, and their unit tests are already contract tests (Phase 1.1). Proposed set: `isTruthy`, `compareValues` (the ordering comparator), `renderText` (the shared stringifier), `resolvePath` (the `$data` path resolver, `strictDataPaths`-flag included). The finer-grained primitives (whitespace set, code-point segmentation, decimal rounding) stay internal unless a concrete author need surfaces — open Q3.
 
 ### Types
 
-Grouped by owning doc; packaging adds no shapes of its own, it only fixes what is reachable. All types export from the root — including those whose *values* live in subpaths, so `./convert` and `./editor-hints` stay data/function modules without private type surfaces.
+Grouped by owning doc; packaging adds no shapes of its own, it only fixes what is reachable. All types export from the root — including those whose _values_ live in subpaths, so `./convert` and `./editor-hints` stay data/function modules without private type surfaces.
 
 - **Expressions & nodes**: `FigTreeExpression` (the evaluable-input type — name: open Q4), `OperatorNode`, `FragmentNode`, `OperatorName`.
 - **Options**: `FigTreeOptions`, `CacheStore`.
@@ -99,7 +99,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 Exists so that no conversion code can ever ride the runtime bundle again — the direct fix for v2's entanglement finding. Packaging fixes only:
 
 - The subpath name: `fig-tree-evaluator/convert`.
-- **Isolation**: the root entry never imports from it (lint-enforced); it *may* import from the root (it is built on the parser's normalizer — Phase 15.1) — the dependency arrow points one way.
+- **Isolation**: the root entry never imports from it (lint-enforced); it _may_ import from the root (it is built on the parser's normalizer — Phase 15.1) — the dependency arrow points one way.
 - Its exports are functions and types only, same module formats and `.d.ts` treatment as the root.
 - Contents — `convertV2ToV3` (+ its `ConversionResult` / `ConversionIssue` types) and the v3 shorthand round-trip utilities (`toShorthand` / `fromShorthand`, per the evaluator-methods ruling that these are not instance methods) — are fixed by the **Migration area** ([v3-migration.md](v3-migration.md) § module surface). v1 support is **dropped** (no `convertV1ToV2` here — Migration § v1 ruling).
 
@@ -116,16 +116,16 @@ Discharges the deferral from the parameter passes ("final name and packaging mec
 
 The assessment floated `./internal` for the editor's leftover needs. Examined item by item, the need dissolves:
 
-| v2 editor dependency | v3 answer |
-|---|---|
-| `standardiseOperatorName` | dies with the machinery — exact-match canonical names, no case folding (Operators § naming rule 1) |
-| `truncateString` | a three-line display utility; the editor owns its own |
-| `dequal` | a published package; the editor depends on it directly (principle 4) — the engine's own copy is the vendored `deepEqual` primitive |
-| structural/registry checks | `isOperatorNode` / `isFragmentNode` (root) + the `isEvaluable()` method |
-| operator metadata, defaults merged | `getOperators()` |
-| static diagnostics | `validate()` |
-| display seeds & colours | `./editor-hints` |
-| conversion / display modes | `./convert` |
+| v2 editor dependency               | v3 answer                                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `standardiseOperatorName`          | dies with the machinery — exact-match canonical names, no case folding (Operators § naming rule 1)                                 |
+| `truncateString`                   | a three-line display utility; the editor owns its own                                                                              |
+| `dequal`                           | a published package; the editor depends on it directly (principle 4) — the engine's own copy is the vendored `deepEqual` primitive |
+| structural/registry checks         | `isOperatorNode` / `isFragmentNode` (root) + the `isEvaluable()` method                                                            |
+| operator metadata, defaults merged | `getOperators()`                                                                                                                   |
+| static diagnostics                 | `validate()`                                                                                                                       |
+| display seeds & colours            | `./editor-hints`                                                                                                                   |
+| conversion / display modes         | `./convert`                                                                                                                        |
 
 **The editor's sanctioned surface is the public surface.** A `./internal` subpath would be a standing invitation to grow exactly the entanglement v3 is deleting; if the editor genuinely needs something not listed above, that is a spec conversation, not an import path.
 
@@ -146,22 +146,22 @@ Sketch of the resulting manifest (mechanics, not contract — final paths are im
   "sideEffects": false,
   "engines": { "node": ">=22" },
   "files": ["build"],
-  "main": "./build/index.js",           // legacy-resolver fallback only
+  "main": "./build/index.js", // legacy-resolver fallback only
   "types": "./build/index.d.ts",
   "exports": {
     ".": {
       "types": "./build/index.d.ts",
-      "default": "./build/index.js"
+      "default": "./build/index.js",
     },
     "./convert": {
       "types": "./build/convert/index.d.ts",
-      "default": "./build/convert/index.js"
+      "default": "./build/convert/index.js",
     },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
-      "default": "./build/editor-hints/index.js"
-    }
-  }
+      "default": "./build/editor-hints/index.js",
+    },
+  },
 }
 ```
 
@@ -173,8 +173,8 @@ Implementation notes for Phase 14, not contract — free to reshape provided the
 
 - **Rollup stays** (three inputs, three ESM bundles + three `.d.ts` rollups — halved by the ESM-only ruling); no reason to switch tooling for its own sake. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
 - **Two CI checks**, added at Phase 14 and kept forever:
-  1. *Tree-shake fixture*: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, `./convert`, or `./editor-hints` code (marker-identifier scan). This is principle 5 made executable.
-  2. *Size budget*: bundle-size assertion on the root ESM entry. The number is set from measurement at Phase 14; the check existing is the contract, the number is maintenance.
+  1. _Tree-shake fixture_: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, `./convert`, or `./editor-hints` code (marker-identifier scan). This is principle 5 made executable.
+  2. _Size budget_: bundle-size assertion on the root ESM entry. The number is set from measurement at Phase 14; the check existing is the contract, the number is maintenance.
 - **Import-direction lint**: root source may not import from `convert/` or `editor-hints/` source (extends the Phase-0.2 `/v2-src` import ban).
 - **Codegen disposition**: `getVersion` (package.json → `src/version.ts`) survives, feeding the `version` export/property. `buildOperatorAliasReference` **dies** — v2 generated a global alias table because aliases were unbounded; v3's 13 symbolic aliases live in their operators' definitions and the registry builds its lookup at construction (Operators § naming rules).
 - **Generated README operator reference**: the metadata-as-single-source commitment (assessment §3.6) lands as repo tooling that renders `getOperators()` output into the README section — a build script, not a package export.
@@ -190,35 +190,35 @@ Implementation notes for Phase 14, not contract — free to reshape provided the
 
 Every export of v2's `src/index.ts`, accounted for:
 
-| v2 export | Disposition |
-|---|---|
-| `FigTreeEvaluator` | **Renamed** `FigTree` (evaluator-methods) |
-| `evaluateExpression` | **Deleted** — evaluator-methods ruling (throwaway instance discards the parse cache; one-liner shown in migration doc) |
-| `SQLNodePostgres`, `SQLite` | **Replaced** by `SqlConnection` wrappers + `sqlOperators(connection)` (names: open Q2) |
-| `AxiosClient`, `FetchClient` | **Kept** — now implementing the contract's `HttpClient`; the FetchClient `console.log`s die with the no-console principle |
-| `FigTreeError`, `isFigTreeError` | **Kept** — shape respecified in evaluator-methods |
-| `isOperatorNode`, `isFragmentNode` | **Kept** — structural guards against the v3 grammar |
-| `isFigTreeExpression` | **Deleted as standalone** — registry-aware question becomes the `isEvaluable()` method; structural question is `isOperatorNode` |
-| `isAliasString` | **Deleted** — v2 alias nodes died; `vars` is grammar, not string convention |
-| `isObject` | **Deleted** — generic utility, never our contract |
-| `preProcessShorthand` | **Deleted** — normalization is parse-internal; round-trip utilities live in `./convert` |
-| `standardiseOperatorName` | **Deleted** — no case folding, no alias machinery |
-| `truncateString` | **Deleted** — editor-owned display concern |
-| `convertToShorthand`, `convertFromShorthand` | **Moved & reshaped** → `./convert` as `toShorthand` / `fromShorthand` (Migration area § module surface) |
-| `convertV1ToV2`, `isV1Node` | **Deleted** — v1 support dropped from v3; v1 holdouts convert via still-published v2 first (Migration area § v1 ruling) |
-| `dequal` re-export | **Deleted** — principle 4 |
-| `Operator` (name union) | **Replaced** by `OperatorName` |
-| `OperatorAlias` | **Deleted** — aliases are per-definition metadata, not a public type |
-| `FigTreeOptions` | **Kept** — new shape (Options) |
-| `FigTreeConfig` | **Deleted** — died with `getConfig()` |
-| `EvaluatorNode` | **Renamed/kept** — the evaluable-input type (name: open Q4) |
-| `OperatorNode`, `FragmentNode` | **Kept** — v3 canonical node shapes |
-| `Fragment`, `Fragments`, `FragmentMetadata`, `FragmentParameterMetadata` | **Replaced** by `FragmentDefinition` + its declaration types (Fragments) |
-| `EvaluatorOutput`, `OutputType` | **Deleted** — result vocabulary is evaluator-methods'; `outputType` died into `convert` |
-| `OperatorData`, `OperatorMetadata`, `OperatorParameterMetadata` | **Replaced** by `OperatorDefinition` + parameter-declaration types (contract) |
-| `CustomFunctionMetadata`, `FunctionDefinition`, `UnknownFunction` | **Deleted** — the functions tier is gone |
-| `GraphQLConnection` | **Deleted** — `graphQL` rides `httpOperators` + the `graphQL` options block |
-| `BasicType`, `LiteralType`, `ExpectedType` | **Replaced** by the contract's metadata type vocabulary types |
+| v2 export                                                                | Disposition                                                                                                                     |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `FigTreeEvaluator`                                                       | **Renamed** `FigTree` (evaluator-methods)                                                                                       |
+| `evaluateExpression`                                                     | **Deleted** — evaluator-methods ruling (throwaway instance discards the parse cache; one-liner shown in migration doc)          |
+| `SQLNodePostgres`, `SQLite`                                              | **Replaced** by `SqlConnection` wrappers + `sqlOperators(connection)` (names: open Q2)                                          |
+| `AxiosClient`, `FetchClient`                                             | **Kept** — now implementing the contract's `HttpClient`; the FetchClient `console.log`s die with the no-console principle       |
+| `FigTreeError`, `isFigTreeError`                                         | **Kept** — shape respecified in evaluator-methods                                                                               |
+| `isOperatorNode`, `isFragmentNode`                                       | **Kept** — structural guards against the v3 grammar                                                                             |
+| `isFigTreeExpression`                                                    | **Deleted as standalone** — registry-aware question becomes the `isEvaluable()` method; structural question is `isOperatorNode` |
+| `isAliasString`                                                          | **Deleted** — v2 alias nodes died; `vars` is grammar, not string convention                                                     |
+| `isObject`                                                               | **Deleted** — generic utility, never our contract                                                                               |
+| `preProcessShorthand`                                                    | **Deleted** — normalization is parse-internal; round-trip utilities live in `./convert`                                         |
+| `standardiseOperatorName`                                                | **Deleted** — no case folding, no alias machinery                                                                               |
+| `truncateString`                                                         | **Deleted** — editor-owned display concern                                                                                      |
+| `convertToShorthand`, `convertFromShorthand`                             | **Moved & reshaped** → `./convert` as `toShorthand` / `fromShorthand` (Migration area § module surface)                         |
+| `convertV1ToV2`, `isV1Node`                                              | **Deleted** — v1 support dropped from v3; v1 holdouts convert via still-published v2 first (Migration area § v1 ruling)         |
+| `dequal` re-export                                                       | **Deleted** — principle 4                                                                                                       |
+| `Operator` (name union)                                                  | **Replaced** by `OperatorName`                                                                                                  |
+| `OperatorAlias`                                                          | **Deleted** — aliases are per-definition metadata, not a public type                                                            |
+| `FigTreeOptions`                                                         | **Kept** — new shape (Options)                                                                                                  |
+| `FigTreeConfig`                                                          | **Deleted** — died with `getConfig()`                                                                                           |
+| `EvaluatorNode`                                                          | **Renamed/kept** — the evaluable-input type (name: open Q4)                                                                     |
+| `OperatorNode`, `FragmentNode`                                           | **Kept** — v3 canonical node shapes                                                                                             |
+| `Fragment`, `Fragments`, `FragmentMetadata`, `FragmentParameterMetadata` | **Replaced** by `FragmentDefinition` + its declaration types (Fragments)                                                        |
+| `EvaluatorOutput`, `OutputType`                                          | **Deleted** — result vocabulary is evaluator-methods'; `outputType` died into `convert`                                         |
+| `OperatorData`, `OperatorMetadata`, `OperatorParameterMetadata`          | **Replaced** by `OperatorDefinition` + parameter-declaration types (contract)                                                   |
+| `CustomFunctionMetadata`, `FunctionDefinition`, `UnknownFunction`        | **Deleted** — the functions tier is gone                                                                                        |
+| `GraphQLConnection`                                                      | **Deleted** — `graphQL` rides `httpOperators` + the `graphQL` options block                                                     |
+| `BasicType`, `LiteralType`, `ExpectedType`                               | **Replaced** by the contract's metadata type vocabulary types                                                                   |
 
 ## Open questions
 

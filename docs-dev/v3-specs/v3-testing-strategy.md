@@ -16,12 +16,12 @@ results. We use it as the converter's oracle.
 5. **Run the differential:** for each V2 expression-tree test,
    `evaluate(convert(v2Tree))` should equal the frozen V2 expected result — or
    be a catalogued divergence. Record divergences, write migration notes, and
-   adjust expected outputs *on the converter/differential tests only*.
+   adjust expected outputs _on the converter/differential tests only_.
 
 ## Guardrails
 
 - **The invariant is the evaluated result, not the tree shape.** Assert on the
-  recorded V2 expected *value*, never on "the converter produced the V3 tree I'd
+  recorded V2 expected _value_, never on "the converter produced the V3 tree I'd
   have written by hand."
 - **Keep the V3 suite independent of the converter.** Hand-migration (step 2) is
   what makes the V3 tests an independent oracle. Do not regenerate them from the

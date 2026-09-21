@@ -132,8 +132,7 @@ export const isExpectedType = (expression: unknown): expression is ExpectedType 
   if (typeof expression === 'string') return BASIC_TYPES.has(expression)
   if (Array.isArray(expression))
     return (
-      expression.length > 0 &&
-      expression.every((t) => typeof t === 'string' && BASIC_TYPES.has(t))
+      expression.length > 0 && expression.every((t) => typeof t === 'string' && BASIC_TYPES.has(t))
     )
   if (isPlainObject(expression) && 'literal' in expression) {
     const members = (expression as { literal: unknown }).literal
@@ -154,7 +153,8 @@ export const checkType = (value: unknown, expected: ExpectedType): TypeCheckResu
     return fail(`one of ${allowed}`, value)
   }
 
-  if (typeof expected === 'string') return matchesBasic(value, expected) ? OK : fail(expected, value)
+  if (typeof expected === 'string')
+    return matchesBasic(value, expected) ? OK : fail(expected, value)
   return expected.some((t) => matchesBasic(value, t)) ? OK : fail(expected.join(' | '), value)
 }
 
@@ -289,7 +289,8 @@ export const typesIntersect = (a: ExpectedType, b: ExpectedType): boolean => {
 
   // literal × basics: some member's runtime type is admitted
   if (left.literals !== undefined) return left.literals.some((m) => literalMatches(m, right.basics))
-  if (right.literals !== undefined) return right.literals.some((m) => literalMatches(m, left.basics))
+  if (right.literals !== undefined)
+    return right.literals.some((m) => literalMatches(m, left.basics))
 
   // basics × basics: shared member, with the integer/number bridge
   return left.basics.some(

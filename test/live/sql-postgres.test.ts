@@ -59,7 +59,10 @@ it('firstValue — one scalar, where v2 needed single + flatten', async () => {
 it('column — one column across rows', async () => {
   if (!database.ok() || fig === undefined) return
   const result = await fig.evaluate({
-    $sql: { query: 'SELECT company_name FROM suppliers ORDER BY supplier_id LIMIT 3', shape: 'column' },
+    $sql: {
+      query: 'SELECT company_name FROM suppliers ORDER BY supplier_id LIMIT 3',
+      shape: 'column',
+    },
   })
   expect(Array.isArray(result)).toBe(true)
   expect(result).toHaveLength(3)
@@ -75,7 +78,9 @@ it('refuses a multi-column result under a single-column shape', async () => {
 
 it('names the driver, and its classifiers, on a real SQL error', async () => {
   if (!database.ok() || fig === undefined) return
-  const error = await rejection<FigTreeError>(fig.evaluate({ $sql: ['SELECT * FROM employee_table'] }))
+  const error = await rejection<FigTreeError>(
+    fig.evaluate({ $sql: ['SELECT * FROM employee_table'] })
+  )
   expect(error.message).toMatch(/^sql – postgres: /)
   expect(error.errorData).toMatchObject({ driver: 'postgres', code: '42P01' })
 })

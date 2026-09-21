@@ -9,12 +9,7 @@
  * row per violation of the contract's validation list, carrying the issue
  * code and path the throw must include.
  */
-import {
-  EvaluationData,
-  ErrorCodes,
-  type LazyValue,
-  type OperatorDefinition,
-} from '../../src'
+import { EvaluationData, ErrorCodes, type LazyValue, type OperatorDefinition } from '../../src'
 
 /** A fresh minimal valid definition — callers may mutate their copy freely. */
 export const validDefinition = (): OperatorDefinition => ({
@@ -183,8 +178,7 @@ const withParams = (parameters: Record<string, unknown>): unknown => {
   return definition
 }
 
-const withValueParam = (declaration: unknown): unknown =>
-  withParams({ value: declaration })
+const withValueParam = (declaration: unknown): unknown => withParams({ value: declaration })
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 export const invalidDefinitions: InvalidDefinitionFixture[] = [

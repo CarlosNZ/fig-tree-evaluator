@@ -47,9 +47,9 @@ describe('if', () => {
 
   test('exactly one branch evaluates — the other never runs', async () => {
     const { calls, fig } = tracked()
-    expect(
-      await fig.evaluate({ $if: [true, { $track: 'taken' }, { $track: 'skipped' }] })
-    ).toBe('taken')
+    expect(await fig.evaluate({ $if: [true, { $track: 'taken' }, { $track: 'skipped' }] })).toBe(
+      'taken'
+    )
     expect(calls).toEqual(['taken'])
   })
 
@@ -144,8 +144,9 @@ describe('match', () => {
 
 describe('firstOf', () => {
   test('returns the first candidate that is not null', async () => {
-    expect(await ev({ $firstOf: ['$data.nickname', '$data.name', 'Anonymous'] }, { name: 'Ada' }))
-      .toBe('Ada')
+    expect(
+      await ev({ $firstOf: ['$data.nickname', '$data.name', 'Anonymous'] }, { name: 'Ada' })
+    ).toBe('Ada')
   })
 
   test('skips only null — "", 0 and false are answers', async () => {
@@ -183,9 +184,7 @@ describe('firstOf', () => {
       'non-finite-result'
     )
     // The recorded idiom: demote a risky candidate with its own fallback
-    expect(
-      await ev({ $firstOf: [{ $divide: [1, 0], fallback: null }, 'backup'] })
-    ).toBe('backup')
+    expect(await ev({ $firstOf: [{ $divide: [1, 0], fallback: null }, 'backup'] })).toBe('backup')
   })
 
   test('a literal empty list warns as a dead expression', () => {

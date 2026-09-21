@@ -12,7 +12,13 @@
  */
 import { FigTree } from '../src'
 import { parseExpression } from '../src/parse'
-import type { CompiledNode, ElementsNode, EntriesNode, OperatorNode, ParseArtifact } from '../src/parse'
+import type {
+  CompiledNode,
+  ElementsNode,
+  EntriesNode,
+  OperatorNode,
+  ParseArtifact,
+} from '../src/parse'
 import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()

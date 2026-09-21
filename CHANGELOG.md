@@ -6,7 +6,7 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 
 ### Added
 
-- New `FigTreeEvaluator` instance method `isFigTreeExpression(expression)` — a registry-aware check for whether an expression is something *this* instance would actually evaluate. Unlike the structural stand-alone `isFigTreeExpression` export, it validates `$`-prefixed shorthand and keys against the instance's registered operators, fragments and custom functions, and follows its `evaluateFullObject` and `noShorthand` settings. Useful for editor UIs deciding whether to treat a value as an evaluable expression rather than plain data.
+- New `FigTreeEvaluator` instance method `isFigTreeExpression(expression)` — a registry-aware check for whether an expression is something _this_ instance would actually evaluate. Unlike the structural stand-alone `isFigTreeExpression` export, it validates `$`-prefixed shorthand and keys against the instance's registered operators, fragments and custom functions, and follows its `evaluateFullObject` and `noShorthand` settings. Useful for editor UIs deciding whether to treat a value as an evaluable expression rather than plain data.
 
 ## [2.22.1] - 2026-06-30
 
@@ -46,25 +46,25 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 
 ## Earlier versions
 
-*Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included*
+_Trivial upgrades (e.g. documentation, small re-factors, types, etc.) not included_
 
 - **v2.21.0**: Use default parameter values for Fragments if not provided in expression
 - **v2.20.6**: Fix certain `parseChildren` methods to not evaluate while parsing
 - **v2.20.0**:
   - Add helper scripts to convert V1 to V2 expressions, and to and from Shorthand syntax -- used in [FigTree Editor](https://github.com/CarlosNZ/fig-tree-editor-react) tool.
   - Small tweaks to `buildObject` and `match` operators to make them a little more consistent in their behaviour.
-- **v2.19.0**: *Remove* "string" shorthand syntax (technically a breaking change, but I doubt anyone is affected by this) #124
+- **v2.19.0**: _Remove_ "string" shorthand syntax (technically a breaking change, but I doubt anyone is affected by this) #124
 - **v2.18.0**: Prevent HTTP clients from being bundled with main package
 - **v2.17.0**: Allow Custom Functions to be expressed as Custom Operators
 - **v2.16.10**: Fix for when aliases reference other aliases at the same level
 - **v2.16.8**: Don't deep merge fragments, data, headers and functions when using `.updateOptions()`
-- **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when 
-`evaluateFullObject` is off.
+- **v2.16.5**: Make sure all parameters that are objects get pre-evaluated, even when
+  `evaluateFullObject` is off.
 - **v2.16.0**: Standardise error response (see [Error handling](#error-handling))
 - **v2.15.0**:
-  - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). *Results in significantly smaller bundle size.*
+  - Remove `axios` package dependency and create HTTP client abstraction (with built-in wrappers for `axios` and `fetch`). _Results in significantly smaller bundle size._
   - Generalise `PG_SQL` operator to a client-agnostic `SQL` operator (with built-in abstractions for `node-postgres` and `SQLite`)
-  - ***Breaking changes*** as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
+  - _**Breaking changes**_ as a result of the above: SQL client and HTTP client must be specified differently. See relevant operator details.
   - Changes to `SQL` parameters to reflect the aforementioned agnosticism.
 - **v2.14.0**: Improvements to `stringSubstitution` operator:
   - Can accept nested property references (e.g. `{{user.name}}`)
@@ -106,13 +106,13 @@ The format below (from v2.21.4 onwards) is loosely based on [Keep a Changelog](h
 - **v2.0.4**: Backwards compatibility for customFunctions (#53)
 - **v2.0.1**: **Add deep equality comparison** for objects/arrays in `=`/`!=` operators
 - **v2.0.0**: Re-write as stand-alone package. Major improvements include:
-  -  more [operators](#operator-reference)
-  -  operator (and property) [aliases](#operator--property-aliases)
-  -  more appropriately-named properties associated with each operator (as
-     opposed to a single `children` array)
-  -  class-based Evaluator instances
-  -  runtime type-checking
-  -  better error handling and error reporting
-  -  more flexible output conversion
-  -  more well-organised codebase
+  - more [operators](#operator-reference)
+  - operator (and property) [aliases](#operator--property-aliases)
+  - more appropriately-named properties associated with each operator (as
+    opposed to a single `children` array)
+  - class-based Evaluator instances
+  - runtime type-checking
+  - better error handling and error reporting
+  - more flexible output conversion
+  - more well-organised codebase
 - **v1.x.x**: created specifically for [Conforma](https://github.com/openmsupply/conforma-server/wiki/Query-Syntax) application manager by [mSupplyFoundation](https://github.com/openmsupply). v2 is a complete re-write with numerous improvements, but should be 99% backwards compatible.

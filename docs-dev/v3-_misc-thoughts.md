@@ -1,6 +1,6 @@
 A place for author (@CarlosNZ) to make notes of things to remember to consider in the V3 development. Not to be edited by CLAUDE.
 
-- String substitution should have a way to trim whitespace caused by empty subsitutions. For example:  
+- String substitution should have a way to trim whitespace caused by empty subsitutions. For example:
   ```
   {
     "$buildString": {
@@ -11,5 +11,5 @@ A place for author (@CarlosNZ) to make notes of things to remember to consider i
       }
     }
   }
-  ```  
-  would normally return "My name is Carl .", due the space after the `{{first}}` sub. There should be an option to drop white space from *around* a substituted value if it's empty.
+  ```
+  would normally return "My name is Carl .", due the space after the `{{first}}` sub. There should be an option to drop white space from _around_ a substituted value if it's empty.

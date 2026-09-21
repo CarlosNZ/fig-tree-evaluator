@@ -398,8 +398,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
     return
   }
   for (const finding of findings) {
-    const target =
-      finding.parameter !== undefined ? node.params[finding.parameter] : undefined
+    const target = finding.parameter !== undefined ? node.params[finding.parameter] : undefined
     emit(
       state,
       finding.severity,
@@ -497,11 +496,7 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
  * iterator frame binding the name used. A renamed frame does not bind the
  * default names ("one way to refer to each thing").
  */
-const resolveBinding = (
-  state: CheckState,
-  node: ReferenceNode,
-  namespace: 'element' | 'index'
-) => {
+const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'element' | 'index') => {
   for (let i = state.iteratorFrames.length - 1; i >= 0; i--) {
     const frame = state.iteratorFrames[i]
     if (bindsReference(frame.as, namespace, node.binding)) {

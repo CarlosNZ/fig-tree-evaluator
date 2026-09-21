@@ -51,9 +51,9 @@ describe('buildRegistry — flattening and order', () => {
       operators: [[[makeOp('alpha')] as never]],
     })
     expect(error.code).toBe(ErrorCodes.invalidOptions)
-    expect(hasIssue(error, { code: ErrorCodes.invalidOptions, pathTail: ['operators', 0, 0] })).toBe(
-      true
-    )
+    expect(
+      hasIssue(error, { code: ErrorCodes.invalidOptions, pathTail: ['operators', 0, 0] })
+    ).toBe(true)
   })
 
   it('builds the alias map from names and aliases', () => {
