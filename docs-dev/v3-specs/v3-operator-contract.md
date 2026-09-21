@@ -47,6 +47,7 @@ import { defineOperator } from 'fig-tree-evaluator'
 
 const clamp = defineOperator({
   name: 'clamp',
+  category: 'math',
   description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },          // nullPolicy 'propagate' (the default) — body never sees null
@@ -67,6 +68,7 @@ The laziness capabilities, on the operator that forced them into the ledger:
 const ifOperator = defineOperator({
   name: 'if',
   alias: '?',
+  category: 'logic',
   description: 'Conditional branching',
   parameters: {
     condition: { type: 'any', truthiness: true },              // body receives a boolean (ledger #4)
@@ -86,6 +88,7 @@ const ifOperator = defineOperator({
 |---|---|---|---|
 | `name` | string | ✓ | shared legality rule + reservation set (Node grammar); collision-checked at registration |
 | `alias` | string | — | exactly one, like natives; same legality/collision rules; normalizes away at parse (Extensibility) |
+| `category` | one of the eight values below | ✓ | grouping for tooling — an operator dropdown's sections; reported by `getOperators()`, never read by the engine (added at Phase-13 planning, Carl, September 2026) |
 | `description` | string | ✓ | required — `getOperators()` totality is the point of killing the functions tier; a definition with nothing to say about itself is malformed |
 | `metadata` | `Record<string, unknown>` | — | opaque; engine never reads it; returned verbatim by `getOperators()` (ledger #6; conventions § Metadata) |
 | `parameters` | object keyed by name | ✓ (may be `{}`) | declarations, § below; object-keyed as for fragments — ordering lives in `positionalParams`, so an array's ordering would be double-encoding |
@@ -96,6 +99,23 @@ const ifOperator = defineOperator({
 | `validate` | function | — | the static hook (ledger #11), § Registration & validation |
 | `evaluate` | function | ✓ | the body, § Runtime interface |
 | `returns` | metadata type | — (reads as `any`) | declared result type — drives the static feeding-position check, § `returns` |
+
+### `category` — the closed vocabulary
+
+**Ruled (Carl, September 2026, at Phase-13 planning): required on every definition, from a closed set of eight.** The motivating consumer is an operator dropdown that wants sections; the engine never reads the field. Required rather than optional-with-a-default because a silent fallback produces exactly the uncategorized entries the field exists to prevent — an author who genuinely doesn't fit picks `other` deliberately.
+
+| Category | Core operators |
+|---|---|
+| `logic` | `and` `or` `not` `if` `match` `firstOf` |
+| `comparison` | `equal` `notEqual` `greaterThan` `greaterThanOrEqual` `lessThan` `lessThanOrEqual` |
+| `math` | `plus` `subtract` `multiply` `divide` `modulo` `power` `round` `floor` `ceil` `abs` `min` `max` |
+| `string` | `buildString` `split` `join` `lower` `upper` `trim` `regex` |
+| `array` | `length` `map` `filter` `find` `some` `every` |
+| `data` | `get` `buildObject` |
+| `io` | `http` `graphQL` `sql` |
+| `other` | `convert`, and any custom operator that fits none of the above |
+
+The vocabulary is the canonical list's own grouping, with two decisions recorded: `length` stays with `array` although it also measures strings, matching the file it lives in and the parameter pass that specified it; and `convert` takes `other` rather than a category of one. A custom operator may declare any of the eight — `other` is the escape hatch, not a quarantine for third-party definitions. An unrecognized value is a registration error, like any other malformed definition field.
 
 ## Parameter declarations
 
@@ -314,9 +334,29 @@ The warning-severity flavour is batch 8's mutation lint: a literal `sql.query` o
 
 ## Introspection: `getOperators()`
 
-Returns the declarative half, verbatim and total: `name`, `alias`, `description`, `metadata`, `parameters` (every field of every declaration, compiled conditional null-policy tables and constraints included — the editor renders from this), `positionalParams`, `useCache` metadata default, `returns` — with instance-effective `operatorDefaults` (parameter and modifier alike) merged visibly, per Options. Function-valued fields are reported as capability flags (`hasValidate: true`, `cache: 'manual'`), never as functions. Nothing invocable lacks an entry — the totality the functions-tier deletion bought.
+Returns the declarative half, verbatim and total: `name`, `alias`, `category`, `description`, `metadata`, `parameters` (every field of every declaration, compiled conditional null-policy tables and constraints included — the editor renders from this), `positionalParams`, `useCache` metadata default, `returns` — with instance-level `operatorDefaults` (parameter and modifier alike) reported visibly beside them, per Options. Function-valued fields are reported as capability flags (`hasValidate: true`, `cache: 'manual'`), never as functions. Nothing invocable lacks an entry — the totality the functions-tier deletion bought.
 
 "Total" is served by the normalization posture recorded under Registration & validation (Phase-2 implementation): validated definitions carry every documented default filled in, so `getOperators()` reports the *effective* declaration (`evaluation: 'eager'` explicit, `required` computed, compiled policy tables in place) rather than echoing authored sparseness.
+
+### The snapshot shape (settled at Phase-13 planning, Carl, September 2026)
+
+**Authored value and instance override are reported side by side, never merged into one field.** The first draft merged the instance default into the parameter's `default`, which left no record of what the operator itself declares — so a tool could no longer tell "the definition defaults to `'string'`" from "this host set it to `'string'`". Every override is therefore its own key, present **only when `operatorDefaults` supplies one**, and the composition rule is the same everywhere: *effective = `instanceX` ?? `X`*.
+
+| Reported | Meaning |
+|---|---|
+| `parameters.<name>.default` | the definition's own default; absent when it declares none |
+| `parameters.<name>.instanceDefault` | what `operatorDefaults` set for that parameter |
+| `useCache` | the definition's metadata default |
+| `instanceUseCache` | what `operatorDefaults` set for this operator |
+| `instanceFallback` | what `operatorDefaults` set as this operator's fallback — no definition-level counterpart exists, `fallback` being a node grammar key rather than a declaration |
+
+Three consequences worth stating, because each is a way to get it subtly wrong:
+
+- **Presence is `Object.hasOwn`, never `!== undefined`.** `null` is a legitimate instance default and a legitimate fallback ("degrade to null" is the common case), so an override *of* `null` must be distinguishable from no override. The evaluator already reads `fallback` this way (src/evaluate/operator.ts).
+- **`instanceUseCache` reports the `operatorDefaults` modifier alone — the blanket `useCache` option is not folded into it.** Folding was considered and rejected: it would make one `instance*` key mean something different from all the others (two sources instead of one), and the blanket option is not a per-operator fact. So `instanceUseCache ?? useCache` is the precedence *between these two fields*, while the full chain a consumer composes is `node key ?? instanceUseCache ?? getOptions().useCache ?? useCache` — a doc line, not a shape.
+- **`getFragments()` needs no equivalent**, because `operatorDefaults` keys must name a registered operator; a fragment name is an `unknown-operator` error at construction.
+
+**Copy posture.** A fresh array and fresh operator/parameter objects on every call — they are synthesized anyway to carry the override keys, so a caller may reassign any field with no effect on the registry. Everything below that is shared by reference: the deep-frozen structures (`type`, compiled `nullPolicy` tables, `constraints`, `replacesNullAt`, `positionalParams`, `returns`) safely, and `metadata` bags and `default` values knowingly — those are host-owned and deliberately left unfrozen by `defineOperator()`. Copying them is not available in any case: a metadata bag may legitimately hold a function or a class instance, which `structuredClone` refuses, and copying would break the identity comparison a host may rely on. So the guarantee is documented rather than enforced, exactly as for `getOptions()`'s level three and for result immutability: **don't mutate a `metadata` bag or a `default` value after registering it.** The returned snapshot is not frozen either, matching `getOptions()`.
 
 ## TypeScript ergonomics
 

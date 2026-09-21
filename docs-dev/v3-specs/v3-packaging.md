@@ -10,7 +10,7 @@ One npm package, `fig-tree-evaluator`, three entry points:
 |---|---|---|
 | `fig-tree-evaluator` | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host |
 | `fig-tree-evaluator/convert` | v2→v3 conversion + shorthand round-trip utilities (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees) | migration tooling, the editor |
-| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds (content fixed in [v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module) | the editor and other tooling |
+| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md)) | the editor and other tooling |
 
 Explicitly **not** entry points:
 
@@ -108,7 +108,7 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 Discharges the deferral from the parameter passes ("final name and packaging mechanics → Packaging area"):
 
 - **Name confirmed: `editor-hints`** — self-describing, and the awkwardness of typing it is borne by tooling authors, not expression authors.
-- A **data-only module**: a plain typed map from canonical operator names to display values (colours, per-parameter editor seeds). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
+- A **data-only module**: two plain typed maps — canonical operator names to display values (colours, per-parameter editor seeds), and `category` values to their presentation (display label, listing position, colour; added at Phase-13 planning, where the field itself was ruled onto the definition). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
 - The exported map type is the documented key convention for plugin/custom-operator authors who want their definitions to display well in the same tools (settled in the parameters doc; the type itself exports from the root per the Types rule above).
 - Co-versioned here rather than in the editor repo so an operator/parameter change and its hint update land in the same PR (rationale recorded in the parameters doc).
 

@@ -234,6 +234,8 @@ Deferred to other areas:
 
 41 core + 3 I/O operators, 13 symbolic aliases. *(The count was written as 42 and is corrected here at Phase 7, where the generated reference began counting the tables below: 6 logic + 6 comparison + 12 math + 7 string + 6 arrays + 2 data + 2 special = 41, of which 40 are `defineOperator()` definitions and `literal` is grammar.)* Which export array each operator ships in (`coreOperators` vs optional grouped arrays) is a Packaging-area decision — this section locks names and semantics only.
 
+The group headings below became **data** at Phase-13 planning: every definition declares a required `category`, and the closed vocabulary is these groups — `logic`, `comparison`, `math`, `string`, `array`, `data`, `io` — plus `other`, which absorbs the "special" group (`convert`) and any custom operator that fits none of them. The per-operator assignment table lives in "`category` — the closed vocabulary" in [v3-operator-contract.md](v3-operator-contract.md), and `getOperators()` reports the field so a tool can group its own listing.
+
 The rule that shaped the math batch, and pre-answers every future "why not one operator with a mode?": **a mode parameter is acceptable only when the signature is invariant across modes** — as with `plus`'s add/concat/merge, always `values: [...]`. When modes would change the arity or types of the other parameters (`round(value, decimals)` vs `power(base, exponent)` vs `min(values[])`), they are separate operators; a mode-switched mega-operator hides per-mode signatures from validation, positional mapping and the editor.
 
 #### Logic & control
