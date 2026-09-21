@@ -242,6 +242,7 @@ const main = async () => {
   section('A custom operator, written against the contract')
   const clamp = defineOperator({
     name: 'clamp',
+    category: 'math',
     description: 'Constrain a number to a range',
     parameters: {
       value: { type: ['number', 'null'] },
@@ -256,6 +257,7 @@ const main = async () => {
   })
   const greet = defineOperator({
     name: 'greet',
+    category: 'string',
     description: 'Greet someone, reading the options http block for a base URL',
     parameters: {
       name: { type: 'string' },

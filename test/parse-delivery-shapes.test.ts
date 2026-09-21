@@ -13,10 +13,10 @@
 import { FigTree } from '../src'
 import { parseExpression } from '../src/parse'
 import type { CompiledNode, ElementsNode, EntriesNode, OperatorNode, ParseArtifact } from '../src/parse'
-import { makeParseRegistry, noFragments, parseOps } from './fixtures/parseRegistry'
+import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry, noFragments)
+const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 /** The compiled value of one parameter of a root operator node. */
 const param = (input: unknown, name: string): CompiledNode =>

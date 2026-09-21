@@ -24,6 +24,7 @@ import { emptyAggregateWarning } from './shared'
 const normalizer = (name: string, description: string, transform: (value: string) => string) =>
   defineOperator({
     name,
+    category: 'string',
     description,
     parameters: { value: { type: ['string', 'null'] } },
     positionalParams: ['value'],
@@ -49,6 +50,7 @@ export const trim = normalizer(
 
 export const split = defineOperator({
   name: 'split',
+  category: 'string',
   description:
     'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
   parameters: {
@@ -90,11 +92,11 @@ const compositeValuesErrors = (literalParams: Record<string, unknown>): Validate
       ]
     : []
 
-/** One rendered piece of the output: template text, or a token site. */
-interface Part {
-  text: string
-  site: boolean
-}
+/**
+ * One rendered piece of the output: template text, or a token site. A
+ * site carries the token it rendered, for trace.
+ */
+type Part = { text: string; site: false } | { text: string; site: true; token: string }
 
 /**
  * `closeGaps`: a token site that rendered `""` also consumes the maximal
@@ -112,26 +114,36 @@ interface Part {
  * text. Stripping in place is also what gives "each run is consumed at
  * most once": a text piece that was entirely whitespace is empty
  * afterwards, so the next site finds no run there.
+ *
+ * Returns the tokens whose gaps were closed, for the caller to report.
  */
-const closeTheGaps = (parts: Part[]) => {
+const closeTheGaps = (parts: Part[]): string[] => {
+  const closed: string[] = []
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i]
     if (!part.site || part.text !== '') continue
     const before = parts[i - 1]
     if (before !== undefined && !before.site) {
-      const closed = stripTrailingRun(before.text)
-      if (closed !== before.text) {
-        before.text = closed
+      const stripped = stripTrailingRun(before.text)
+      if (stripped !== before.text) {
+        before.text = stripped
+        closed.push(part.token)
         continue
       }
     }
     const after = parts[i + 1]
-    if (after !== undefined && !after.site) after.text = stripLeadingRun(after.text)
+    if (after !== undefined && !after.site) {
+      const stripped = stripLeadingRun(after.text)
+      if (stripped !== after.text) closed.push(part.token)
+      after.text = stripped
+    }
   }
+  return closed
 }
 
 export const buildString = defineOperator({
   name: 'buildString',
+  category: 'string',
   description: 'Render a template, filling its tokens — the result is always a string',
   parameters: {
     template: {
@@ -205,16 +217,19 @@ export const buildString = defineOperator({
         context.trace.note({ type: 'render', token: segment.raw, rendered: 'placeholder' })
       const text = trimValues ? trimText(rendered) : rendered
       if (text === '') context.trace.note({ type: 'render', token: segment.raw, rendered: 'empty' })
-      parts.push({ text, site: true })
+      parts.push({ text, site: true, token: segment.raw })
     }
 
-    if (closeGaps) closeTheGaps(parts)
+    if (closeGaps)
+      for (const token of closeTheGaps(parts))
+        context.trace.note({ type: 'render', token, rendered: 'gap-closed' })
     return parts.map((part) => part.text).join('')
   },
 })
 
 export const join = defineOperator({
   name: 'join',
+  category: 'string',
   description: 'Render array elements to text and concatenate them with a delimiter',
   parameters: {
     values: {
@@ -289,6 +304,7 @@ export const checkFlags = (flags: string): string | undefined => {
 
 export const regex = defineOperator({
   name: 'regex',
+  category: 'string',
   description: 'Test, extract or match a string against a regular expression',
   parameters: {
     value: { type: ['string', 'null'], description: 'The subject string' },

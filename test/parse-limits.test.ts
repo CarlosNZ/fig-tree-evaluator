@@ -8,11 +8,11 @@
  */
 import { FigTree } from '../src'
 import { parseExpression } from '../src/parse'
-import { makeParseRegistry, noFragments, parseOps } from './fixtures/parseRegistry'
+import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
 
 const fig = new FigTree({ operators: [parseOps()] })
 const registry = makeParseRegistry()
-const parse = (input: unknown) => parseExpression(input, registry, noFragments)
+const parse = (input: unknown) => parseExpression(input, registry)
 
 /** `depth` nested single-element arrays around `leaf`. */
 const nestArrays = (depth: number, leaf: unknown): unknown => {

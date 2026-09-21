@@ -211,6 +211,7 @@ describe('rule 5 — a fallback evaluates in its node’s own scope', () => {
     let calls = 0
     const alwaysFails = defineOperator({
       name: 'alwaysFails',
+      category: 'other',
       description: 'Count attempts, then fail',
       parameters: {},
       evaluate: () => {

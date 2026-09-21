@@ -9,11 +9,11 @@
  */
 import { parseExpression } from '../src/parse'
 import { probeConstant } from '../src/parse/probe'
-import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
+import { makeParseRegistry } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const probe = (value: unknown) => probeConstant(value, registry, noFragments)
-const parse = (input: unknown) => parseExpression(input, registry, noFragments)
+const probe = (value: unknown) => probeConstant(value, registry)
+const parse = (input: unknown) => parseExpression(input, registry)
 
 describe('constant inputs', () => {
   test.each([

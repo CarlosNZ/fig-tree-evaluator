@@ -5,8 +5,10 @@
  *
  * `buildRegistry()` is a pure function of the registry-affecting options:
  * construction and `updateOptions` both call it and swap the result
- * atomically — one path, validated identically. Fragments join the same
- * input and the same one-namespace collision domain in Phase 11.
+ * atomically — one path, validated identically. Fragments come through the
+ * same input and the same one-namespace collision domain; their own
+ * validation lives in src/fragments.ts, which this calls last so a body
+ * compiles against a finished operator set.
  *
  * The brand is the entry ticket (ruled July 2026): every flattened entry
  * must be a `defineOperator()`-validated definition, trusted wholesale —
@@ -23,6 +25,7 @@ import type { Issue } from './issues'
 import { isPlainObject } from './utils'
 import { checkConstraints, checkType } from './typeCheck'
 import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
+import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
 
 type Path = (string | number)[]
 
@@ -41,11 +44,18 @@ export interface OperatorRegistry {
   operators: Map<string, RegistryEntry>
   /** Alias → canonical name; consulted by parse-time normalization. */
   aliases: Map<string, string>
+  /**
+   * Registered fragments, keyed by name — the same invocation namespace the
+   * two maps above share, which is why they live in one object: a `$name`
+   * key resolves against all three, and an artifact bakes that resolution in.
+   */
+  fragments: Map<string, FragmentEntry>
 }
 
 export interface RegistryInput {
   operators: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
   operatorDefaults?: Record<string, Record<string, unknown>>
+  fragments?: Record<string, FragmentDefinition>
 }
 
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
@@ -77,11 +87,32 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
     })
   }
 
-  const operators = new Map<string, RegistryEntry>()
-  const aliases = new Map<string, string>()
+  const registry: OperatorRegistry = {
+    operators: new Map<string, RegistryEntry>(),
+    aliases: new Map<string, string>(),
+    fragments: new Map<string, FragmentEntry>(),
+  }
+  const { operators, aliases } = registry
   // Every claimed invocation name (canonical or alias) → the canonical name
-  // that owns it: the one-namespace collision domain
+  // that owns it: the one-namespace collision domain, shared by operators,
+  // their aliases and fragments alike
   const claimed = new Map<string, string>()
+
+  /** Claim an invocation name for `owner`, reporting a collision. */
+  const claim = (invocationName: string, path: Path, owner: string): boolean => {
+    const held = claimed.get(invocationName)
+    if (held !== undefined) {
+      addIssue(
+        ErrorCodes.duplicateOperator,
+        `'${invocationName}' is already registered (by '${held}') — one namespace, no silent precedence`,
+        path,
+        owner
+      )
+      return false
+    }
+    claimed.set(invocationName, owner)
+    return true
+  }
 
   const register = (entry: unknown, path: Path) => {
     if (typeof entry === 'function') {
@@ -101,22 +132,8 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
       return
     }
     const { name, alias } = entry
-    const claimName = (invocationName: string) => {
-      const owner = claimed.get(invocationName)
-      if (owner !== undefined) {
-        addIssue(
-          ErrorCodes.duplicateOperator,
-          `'${invocationName}' is already registered (by '${owner}') — one namespace, no silent precedence`,
-          path,
-          name
-        )
-        return false
-      }
-      claimed.set(invocationName, name)
-      return true
-    }
-    const nameOk = claimName(name)
-    const aliasOk = alias === undefined || claimName(alias)
+    const nameOk = claim(name, path, name)
+    const aliasOk = alias === undefined || claim(alias, path, name)
     if (!nameOk || !aliasOk) return
 
     operators.set(name, { definition: entry })
@@ -148,8 +165,12 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
   if (input.operatorDefaults !== undefined)
     validateOperatorDefaults(input.operatorDefaults, operators, aliases, addIssue)
 
+  // Fragments last: a body compiles against the finished operator set, and
+  // its shielding precompute reads the resolved `operatorDefaults`
+  registerFragments(input.fragments, registry, (name, path) => claim(name, path, name), addIssue)
+
   if (issues.length > 0) throwOptionsError(issues)
-  return { operators, aliases }
+  return registry
 }
 
 const validateOperatorDefaults = (
@@ -178,11 +199,7 @@ const validateOperatorDefaults = (
           canonical
         )
       else
-        addIssue(
-          ErrorCodes.unknownOperator,
-          `'${operatorName}' names no registered operator`,
-          path
-        )
+        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' names no registered operator`, path)
       continue
     }
     if (!isPlainObject(defaults)) {

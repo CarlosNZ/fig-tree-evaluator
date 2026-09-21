@@ -24,6 +24,7 @@ const iterator = (
 ) =>
   defineOperator({
     name,
+    category: 'other',
     description: 'Test iterator',
     parameters: {
       input: { type: 'array' },
@@ -43,6 +44,7 @@ const counter = () => {
   const calls: unknown[] = []
   const definition = defineOperator({
     name: 'count',
+    category: 'other',
     description: 'Record that it ran, then answer',
     parameters: { value: { type: 'any', nullPolicy: 'value' } },
     positionalParams: ['value'],
@@ -232,6 +234,7 @@ test('truthiness is applied per element, at the moment of demand', async () => {
 test('a per-element type miss fails when that index is demanded', async () => {
   const typed = defineOperator({
     name: 'typed',
+    category: 'other',
     description: 'perElement with a declared element type',
     parameters: {
       input: { type: 'array' },

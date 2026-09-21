@@ -21,6 +21,12 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # `pnpm build` typechecks the library source; this covers test/, which
+      # nothing else does — ts-jest runs transpile-only (isolatedModules), so
+      # a type error in a test is otherwise invisible. That is how three
+      # assertions in inference.test.ts came to be quietly false, and how the
+      # driver-shape check in clients-types.test.ts is kept honest.
+      - run: pnpm typecheck
       - run: pnpm test
       # The build has to stay green from Phase 0 on: it typechecks the whole
       # library source and prints the bundle-size report recorded per phase in

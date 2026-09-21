@@ -1,16 +1,50 @@
 /**
- * Helpers shared by the core definitions: the validate-hook findings for
+ * Helpers shared by the core definitions: the path-parameter pair that
+ * `get`, `http` and `graphQL` all need, the validate-hook findings for
  * empty literal aggregates (ruled hook-authored at Phase 4 — the
  * empty-literal-aggregate check in "The check inventory",
  * docs-dev/v3-specs/v3-evaluator-methods.md), and the OperatorFailure
  * bodies raise for an empty dynamic aggregate.
  */
+import { isFigTreeError } from '../FigTreeError'
 import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import type { ValidateFinding } from '../operatorDefinition'
+import { parsePath, type PathSegment } from '../primitives'
 import type { Settlement, SettlementStream } from '../runtimeInterface'
 
 /** A literal empty `values` where the operator has no identity to return. */
+/**
+ * A path arrives as the string grammar or as a segments array, where
+ * strings are keys VERBATIM (never parsed, so no escaping question can
+ * arise) and numbers are indices. A malformed string path is the author's
+ * mistake either way: caught at `validate()` when literal, an ordinary
+ * runtime failure when it arrived as data.
+ *
+ * Shared by `get`, `http` and `graphQL` — `returnPath` is `get.path`'s
+ * grammar by ruling, so it has to be `get.path`'s code too, or the two
+ * would drift.
+ */
+export const toSegments = (path: string | unknown[]): PathSegment[] => {
+  if (Array.isArray(path)) return path as PathSegment[]
+  try {
+    return parsePath(path)
+  } catch (error) {
+    throw new OperatorFailure((error as Error).message)
+  }
+}
+
+/** The literal-path check the same three operators' hooks all want. */
+export const pathFindings = (path: unknown, parameter: string): ValidateFinding[] => {
+  if (typeof path !== 'string') return []
+  try {
+    parsePath(path)
+    return []
+  } catch (error) {
+    return [{ severity: 'error', parameter, message: (error as Error).message }]
+  }
+}
+
 export const emptyAggregateError = (literalParams: Record<string, unknown>): ValidateFinding[] =>
   Array.isArray(literalParams.values) && literalParams.values.length === 0
     ? [
@@ -100,9 +134,35 @@ export const decide = async (values: SettlementStream, decider: boolean): Promis
   }
   if (parked.length > 0) {
     parked.sort((a, b) => a.index - b.index)
-    throw parked[0].error
+    throw withRelated(parked)
   }
   return !decider
+}
+
+/**
+ * The lowest-index parked failure, carrying the others as `related`
+ * ("the throw/report invariant" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md).
+ *
+ * A failing decider is ONE failing node, so it contributes one error —
+ * but the siblings that also failed are why it failed, and dropping them
+ * loses the only record of a request that was already broken. They ride
+ * the raised error instead of becoming entries of their own, which is
+ * what keeps one-entry-per-failing-hole true.
+ *
+ * This is the body's job rather than the engine's for the same reason the
+ * lowest-index rule is: `decide` is the only place that ever holds the
+ * whole parked pile. It runs in both modes — `related` is a property of
+ * the error, not of the mode — and `collectAll` has no counterpart, since
+ * it raises as soon as an index is KNOWN lowest and so has no completed
+ * pile to attach.
+ */
+const withRelated = (parked: Settlement[]): unknown => {
+  const [lowest, ...rest] = parked
+  const related = rest.map((settled) => settled.error).filter(isFigTreeError)
+  if (related.length > 0 && isFigTreeError(lowest.error) && lowest.error.related === undefined)
+    lowest.error.related = related
+  return lowest.error
 }
 
 /**

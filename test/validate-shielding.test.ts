@@ -2,8 +2,8 @@
  * Phase-3.3 black-box suite: the timeoutShielded badge — worked example 3
  * in docs-dev/v3-specs/v3-worked-examples.md is the acceptance test
  * (fallback rule 3 in "fallback semantics", docs-dev/v3-specs/v3-api.md).
- * The badge becomes runtime-true in Phase 10; here it is statically
- * computed and surfaced.
+ * Here the badge is statically computed and surfaced; what it promises at
+ * runtime is asserted in test/evaluate-timeout.test.ts.
  */
 import { FigTree } from '../src'
 import { parseOps } from './fixtures/parseRegistry'

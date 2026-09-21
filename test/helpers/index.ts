@@ -3,7 +3,9 @@
  * assume. Built once here, imported everywhere the v3 suite needs to inspect
  * I/O and caching behaviour as counts and call logs.
  */
-export { MockHttpClient, MockHttpFailure } from './mockHttpClient'
+export { MockHttpClient } from './mockHttpClient'
 export type { MockHttpRequest, MockHttpClientOptions } from './mockHttpClient'
+export { MockSqlConnection } from './mockSqlConnection'
+export type { MockSqlQuery, MockSqlConnectionOptions } from './mockSqlConnection'
 export { RecordingCacheStore } from './recordingCacheStore'
 export type { CacheLogEntry } from './recordingCacheStore'

@@ -23,6 +23,7 @@ const counter = () => {
   const calls: unknown[] = []
   const definition = defineOperator({
     name: 'count',
+    category: 'other',
     description: 'Record an evaluation',
     parameters: { value: { type: 'any', nullPolicy: 'value', required: false } },
     positionalParams: ['value'],
@@ -38,6 +39,7 @@ const counter = () => {
 const demander = (name: string, demands: string[], parameters: Record<string, unknown>) =>
   defineOperator({
     name,
+    category: 'other',
     description: `demand ${demands.join(',')}`,
     parameters: parameters as never,
     positionalParams: Object.keys(parameters),
@@ -56,6 +58,7 @@ describe('a lazy parameter', () => {
     const { calls, definition } = counter()
     const never = defineOperator({
       name: 'never',
+      category: 'other',
       description: 'Take a handle and ignore it',
       parameters: { branch: { type: 'any', evaluation: 'lazy' } },
       positionalParams: ['branch'],
@@ -81,6 +84,7 @@ describe('a lazy parameter', () => {
     let attempts = 0
     const flaky = defineOperator({
       name: 'flaky',
+      category: 'other',
       description: 'Fail, counting attempts',
       parameters: {},
       evaluate: () => {
@@ -90,6 +94,7 @@ describe('a lazy parameter', () => {
     })
     const retry = defineOperator({
       name: 'retry',
+      category: 'other',
       description: 'Demand twice, swallowing the first failure',
       parameters: { branch: { type: 'any', evaluation: 'lazy' } },
       positionalParams: ['branch'],
@@ -156,6 +161,7 @@ describe('the layers move to the moment of demand', () => {
   test('and does not fail at all if it is never demanded', async () => {
     const ignoring = defineOperator({
       name: 'ignoring',
+      category: 'other',
       description: 'Never demand the handle',
       parameters: { branch: { type: 'string', evaluation: 'lazy' } },
       positionalParams: ['branch'],
@@ -180,6 +186,7 @@ describe('lazyElements', () => {
   const firstTwo = () =>
     defineOperator({
       name: 'firstTwo',
+      category: 'other',
       description: 'Demand elements 0 and 1 only',
       parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
       positionalParams: ['...values'],
@@ -215,6 +222,7 @@ describe('lazyElements', () => {
   test('an unsupplied parameter with a default delivers handles over the default', async () => {
     const defaulted = defineOperator({
       name: 'firstTwoOr',
+      category: 'other',
       description: 'firstTwo, with a fallback list',
       parameters: {
         values: { type: 'array', evaluation: 'lazyElements', default: [7, 8, 9] },
@@ -240,6 +248,7 @@ describe('lazyEntries', () => {
   const pick = () =>
     defineOperator({
       name: 'pick',
+      category: 'other',
       description: 'Demand one named entry',
       parameters: {
         key: { type: 'string' },
@@ -285,6 +294,7 @@ describe('lazyEntries', () => {
 test('a body that returns a handle instead of demanding it fails loudly', async () => {
   const leaky = defineOperator({
     name: 'leaky',
+    category: 'other',
     description: 'Hand the handle back',
     parameters: { branch: { type: 'any', evaluation: 'lazy' } },
     positionalParams: ['branch'],

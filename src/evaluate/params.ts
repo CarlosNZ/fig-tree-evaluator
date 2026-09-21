@@ -345,7 +345,10 @@ const perElementHandle = (
     if (existing !== undefined) return existing
     const started = (async () =>
       vet(
-        await evaluateNode(supplied, pushBinding(ctx, as, collection[index], index)),
+        // The index is what tells one element's instance from another's:
+        // they share a static node, so it is the only thing that can
+        // order them, and trace records an entry per element
+        await evaluateNode(supplied, pushBinding(ctx, as, collection[index], index), { index }),
         node,
         name,
         declared,
@@ -394,8 +397,8 @@ const containerHandles = (
   ctx: EvaluationContext
 ): unknown => {
   if (declared.evaluation === 'lazyElements' && supplied.kind === 'elements')
-    return supplied.nodes.map((element) =>
-      handleOf(async () => vetElement(await evaluateNode(element, ctx), declared))
+    return supplied.nodes.map((element, index) =>
+      handleOf(async () => vetElement(await evaluateNode(element, ctx, { index }), declared))
     )
   if (declared.evaluation === 'race' && supplied.kind === 'elements')
     return raceStream(supplied.nodes, ctx, (value) => vetElement(value, declared))

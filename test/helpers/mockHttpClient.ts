@@ -7,31 +7,18 @@
  * logs* rather than by reaching into engine internals.
  *
  * Implements the real `HttpClient` contract (src/types.ts) — the same interface
- * `FetchClient` / `AxiosClient` will satisfy in Phase 9, so a test never has to
- * distinguish the mock from a real client (contract Q8's conformance point).
+ * `FetchClient` / `AxiosClient` satisfy, so a test never has to distinguish the
+ * mock from a real client, and the shared conformance suite runs over all
+ * three (contract Q8's check).
  */
-import type { HttpClient } from '../../src'
+import { OperatorFailure } from '../../src'
+import type { HttpClient, HttpRequest } from '../../src'
 
 export interface MockHttpRequest {
   url: string
   method: 'get' | 'post'
   headers: Record<string, string>
   body?: unknown
-}
-
-/**
- * Stand-in for the structured failure a real client throws on a non-2xx /
- * non-JSON response. Phase 9's clients throw the exported `OperatorFailure`
- * (Phase 1.2); until that class exists this local error carries the same
- * `errorData` payload.
- */
-export class MockHttpFailure extends Error {
-  readonly errorData: unknown
-  constructor(message: string, errorData?: unknown) {
-    super(message)
-    this.name = 'MockHttpFailure'
-    this.errorData = errorData
-  }
 }
 
 const abortError = () => {
@@ -77,6 +64,14 @@ export interface MockHttpClientOptions {
   /** `errorData` payload attached to the thrown failure. */
   failData?: unknown
   /**
+   * Fail like a real non-2xx response instead: sets the `errorData` a real
+   * client would build, so an expression's `fallback` / error assertions
+   * see the shape they will see in production.
+   */
+  failStatus?: number
+  /** The response body carried by a `failStatus` failure. */
+  failResponse?: unknown
+  /**
    * Artificial latency (ms) applied before each response resolves/rejects —
    * the latency switch.
    */
@@ -90,6 +85,8 @@ export class MockHttpClient implements HttpClient {
   fail: boolean
   failMessage: string
   failData: unknown
+  failStatus?: number
+  failResponse: unknown
   latencyMs: number
 
   private responses: Record<string, unknown>
@@ -103,6 +100,8 @@ export class MockHttpClient implements HttpClient {
     this.fail = options.fail ?? false
     this.failMessage = options.failMessage ?? 'Mock HTTP failure'
     this.failData = options.failData
+    this.failStatus = options.failStatus
+    this.failResponse = options.failResponse
     this.latencyMs = options.latencyMs ?? 0
   }
 
@@ -114,20 +113,33 @@ export class MockHttpClient implements HttpClient {
     return this.calls.length
   }
 
-  async request(req: {
-    url: string
-    method: 'get' | 'post'
-    headers: Record<string, string>
-    body?: unknown
-    signal: AbortSignal
-  }): Promise<unknown> {
+  request = async (req: HttpRequest): Promise<unknown> => {
     this.calls.push({ url: req.url, method: req.method, headers: req.headers, body: req.body })
 
     if (this.latencyMs > 0) await delay(this.latencyMs, req.signal)
     if (req.signal?.aborted) throw abortError()
-    if (this.fail) throw new MockHttpFailure(this.failMessage, this.failData)
+    if (this.failStatus !== undefined) throw this.statusFailure(req.url)
+    if (this.fail)
+      throw new OperatorFailure(this.failMessage, {
+        ...(this.failData !== undefined
+          ? { errorData: this.failData as Record<string, unknown> }
+          : {}),
+      })
 
     return this.resolveResponse(req.url)
+  }
+
+  /** The payload a real client builds for a non-2xx response. */
+  private statusFailure(url: string): OperatorFailure {
+    const status = this.failStatus as number
+    return new OperatorFailure(`request failed (${status}): ${url}`, {
+      errorData: {
+        status,
+        statusText: this.failMessage,
+        url,
+        response: this.failResponse ?? null,
+      },
+    })
   }
 
   private resolveResponse(url: string): unknown {

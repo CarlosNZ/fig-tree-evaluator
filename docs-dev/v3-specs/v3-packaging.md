@@ -10,7 +10,7 @@ One npm package, `fig-tree-evaluator`, three entry points:
 |---|---|---|
 | `fig-tree-evaluator` | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host |
 | `fig-tree-evaluator/convert` | v2→v3 conversion + shorthand round-trip utilities (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees) | migration tooling, the editor |
-| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds (content fixed in [v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module) | the editor and other tooling |
+| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md)) | the editor and other tooling |
 
 Explicitly **not** entry points:
 
@@ -108,7 +108,7 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 Discharges the deferral from the parameter passes ("final name and packaging mechanics → Packaging area"):
 
 - **Name confirmed: `editor-hints`** — self-describing, and the awkwardness of typing it is borne by tooling authors, not expression authors.
-- A **data-only module**: a plain typed map from canonical operator names to display values (colours, per-parameter editor seeds). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
+- A **data-only module**: two plain typed maps — canonical operator names to display values (colours, per-parameter editor seeds), and `category` values to their presentation (display label, listing position, colour; added at Phase-13 planning, where the field itself was ruled onto the definition). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
 - The exported map type is the documented key convention for plugin/custom-operator authors who want their definitions to display well in the same tools (settled in the parameters doc; the type itself exports from the root per the Types rule above).
 - Co-versioned here rather than in the editor repo so an operator/parameter change and its hint update land in the same PR (rationale recorded in the parameters doc).
 
@@ -223,7 +223,7 @@ Every export of v2's `src/index.ts`, accounted for:
 ## Open questions
 
 1. **ESM-only instead of dual?** — **resolved (Carl, July 2026): ESM-only.** The clincher was the dual-load hazard against v3's identity machinery (brand symbol, `EvaluationData` sentinel, `instanceof FigTreeError` — see Module format & platform floor); the "two migrations in one" concern was accepted as the cost of a major that already asks for expression rewrites. `require(esm)` on Node ≥20.19 covers CJS consumers.
-2. **SQL wrapper names.** `SQLNodePostgres`/`SQLite` are v2 oddities; proposed `PostgresConnection` / `SQLiteConnection` (matching the `SqlConnection` contract they implement). Also: confirm both wrappers still earn their place in-package vs living in README recipes. And one spelling for construction across all four wrappers — v2's are plain factories (`AxiosClient(axios)`), the v3 examples currently say `new FetchClient()`; class or factory, one wins at implementation (plan chunk 9.2, which ports the v2 wrappers as starting points).
+2. **SQL wrapper names** — **resolved (Carl, September 2026, at Phase-9.2 implementation).** `PostgresConnection` / `SQLiteConnection` as proposed, and **both ship in-package**: each is about fifteen lines with no dependency of its own (the drivers' types are declared structurally rather than imported, so `pg` and `sqlite` stay out of the emitted `.d.ts`), and the Northwind fixtures for both are already in the repo. **Classes, with `new`, across all four wrappers** — matching the worked examples, which already say `new FetchClient()` in three places. The compile-time conformance check turned out to be available either way (a factory annotated `: HttpClient` checks at the definition site exactly as `implements` does), so what decided it was that `new` reads as construction for things holding a connection, and that subclassing is a real extension path. Methods are arrow class fields, so a torn-off `const { request } = client` keeps its instance.
 3. **The engine-parity helper list.** Proposed: `isTruthy`, `compareValues`, `renderText`, `resolvePath` — confirm names, and whether any of the finer primitives (whitespace set, code-point segmentation, decimal rounding) deserve export too.
 4. **The public name of the expression-input type.** v2's `EvaluatorNode` is accurate but engine-flavoured; `FigTreeExpression` reads better in host code (`const expr: FigTreeExpression = …`). One name only, whichever it is.
 5. **Node floor: 20 or 22?** — **resolved (Carl, July 2026): `>=22`.** Node 20 went EOL April 2026, so 22 is the oldest supported LTS; it also buys `require(esm)` universality for Q1's ESM-only ruling.
