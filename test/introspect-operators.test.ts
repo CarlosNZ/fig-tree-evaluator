@@ -8,7 +8,7 @@
  * `operatorDefaults` override reported BESIDE the authored value rather
  * than merged over it.
  */
-import { FigTree, coreOperators, defineOperator, isValidatedOperator } from '../src'
+import { EvaluationData, FigTree, coreOperators, defineOperator, isValidatedOperator } from '../src'
 import type { OperatorInfo } from '../src'
 
 const bag = { hint: 'a host-owned bag', render: () => 'not clonable' }
@@ -115,6 +115,16 @@ describe('what the snapshot withholds', () => {
 
   test('the brand does not travel — a snapshot must not pass the guard', () => {
     expect(isValidatedOperator(info)).toBe(false)
+  })
+
+  test('the one symbol that does travel: EvaluationData as a default', () => {
+    // A deliberate carve-out, on record: the sentinel is a public export
+    // and identity comparison is what it is for — but JSON drops it, so a
+    // serializing consumer has to translate first
+    const from = find(build().getOperators(), 'get').parameters.from
+    expect(Object.hasOwn(from, 'default')).toBe(true)
+    expect(from.default).toBe(EvaluationData)
+    expect('default' in JSON.parse(JSON.stringify(from))).toBe(false)
   })
 })
 

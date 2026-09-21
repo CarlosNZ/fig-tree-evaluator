@@ -106,7 +106,7 @@ import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
-import { parsePath, type PathSegment } from '../primitives'
+import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
 import { scanTemplate, type TemplateSegment } from '../templateTokens'
 import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
 import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
@@ -224,7 +224,7 @@ export const parseExpression = (
     nodeCount: state.nodeCount,
     maxDepth: state.maxDepth,
     dependencies: {
-      dataPaths: [...state.dataPaths.values()],
+      dataPaths: state.dataPaths,
       dynamic: state.dynamic,
       operators: [...state.operators],
       fragments: [...state.fragmentNames],
@@ -263,9 +263,7 @@ export const composeRollups = (
   fragments: ReadonlyMap<string, FragmentEntry>
 ): Rollups => {
   if (calls.length === 0) return own
-  const dataPaths = new Map(
-    own.dependencies.dataPaths.map((segments) => [renderSegments(segments), segments])
-  )
+  const dataPaths = new Map(own.dependencies.dataPaths)
   const operators = new Set(own.dependencies.operators)
   const fragmentNames = new Set(own.dependencies.fragments)
   let { nodeCount, maxDepth, identityOnly } = own
@@ -277,8 +275,7 @@ export const composeRollups = (
     maxDepth = Math.max(maxDepth, call.depth + target.maxDepth)
     identityOnly ||= target.identityOnly
     dynamic ||= target.dependencies.dynamic
-    for (const path of target.dependencies.dataPaths)
-      dataPaths.set(renderSegments(path), path)
+    for (const [key, segments] of target.dependencies.dataPaths) dataPaths.set(key, segments)
     for (const name of target.dependencies.operators) operators.add(name)
     for (const name of target.dependencies.fragments) fragmentNames.add(name)
   }
@@ -287,7 +284,7 @@ export const composeRollups = (
     maxDepth,
     identityOnly,
     dependencies: {
-      dataPaths: [...dataPaths.values()],
+      dataPaths,
       dynamic,
       operators: [...operators],
       fragments: [...fragmentNames],
@@ -455,7 +452,7 @@ const walkString = (state: WalkState, raw: string, path: NodePath, order: number
       const { namespace, segments } = recognition
       if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
-        else state.dataPaths.set(renderSegments(segments), segments)
+        else recordDataPath(state, segments)
       }
       return { kind: 'reference', namespace, segments, raw, path, order }
     }
@@ -995,6 +992,17 @@ const reportTemplateFace = (
 }
 
 /**
+ * Record one statically-known `$data` read, deduplicated on its render.
+ * The segments are canonicalized first so that the render is injective on
+ * READS rather than on spellings: `x.0` parses to a key and `x[0]` to an
+ * index, and `resolvePath` reads both the same way.
+ */
+const recordDataPath = (state: WalkState, segments: PathSegment[]) => {
+  const canonical = canonicalSegments(segments)
+  state.dataPaths.set(renderSegments(canonical), canonical)
+}
+
+/**
  * `get` reads `$data` too, so its paths belong in the dependency list
  * (obligation B6) on exactly the sugar equivalence that defines the
  * operator: `{ $get: 'a.b' }` ≡ `"$data.a.b"`. A literal path joins the
@@ -1012,13 +1020,25 @@ const recordGetDependency = (state: WalkState, node: OperatorNode) => {
   }
   try {
     const segments = typeof path.value === 'string' ? parsePath(path.value) : path.value
-    if (Array.isArray(segments))
-      state.dataPaths.set(
-        renderSegments(segments as PathSegment[]),
-        segments as PathSegment[]
-      )
+    // A literal the recorder cannot read as segments — not an array, or an
+    // array holding a non-segment — still reads SOMETHING at runtime, so
+    // the honest record is an unenumerable read-set, not an empty one
+    if (!Array.isArray(segments) || !segments.every(isPathSegment)) {
+      state.dynamic = true
+      return
+    }
+    // An empty path is the whole data object, the same read a bare `$data`
+    // records (see the reference arm of `walkString`) — anything in it can
+    // be read, so nothing in it is enumerable
+    if (segments.length === 0) {
+      state.dynamic = true
+      return
+    }
+    recordDataPath(state, segments)
   } catch {
-    // A malformed literal path is the validate hook's finding to report
+    // A path string the grammar rejects is the validate hook's finding to
+    // report; the read-set is still not enumerable
+    state.dynamic = true
   }
 }
 

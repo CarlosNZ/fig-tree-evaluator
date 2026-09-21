@@ -198,7 +198,14 @@ export const registerFragments = (
           name,
           ...issue.path,
         ])
-      else entry.warnings.push(issue)
+      else {
+        // Frozen, because `getFragments()` hands these out: the array is
+        // copied per call, and a frozen issue is what makes the objects
+        // inside it equally out of a caller's reach
+        const frozen: Issue = { ...issue, path: [...issue.path] }
+        Object.freeze(frozen.path)
+        entry.warnings.push(Object.freeze(frozen))
+      }
     }
     entry.body = artifact.root
     compiled.set(name, artifact)
@@ -271,7 +278,7 @@ const validateDefinition = (
     warnings: [],
     nodeCount: 0,
     maxDepth: 0,
-    dependencies: { dataPaths: [], dynamic: false, operators: [], fragments: [] },
+    dependencies: { dataPaths: new Map(), dynamic: false, operators: [], fragments: [] },
     identityOnly: false,
   }
   if (definition.description !== undefined) {

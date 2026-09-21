@@ -33,6 +33,7 @@ import {
 import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
 import {
   EvaluationData,
+  OPERATOR_CATEGORIES,
   VALIDATED_OPERATOR,
   isValidatedOperator,
   type CompiledNullPolicy,
@@ -73,16 +74,7 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
  * uncategorized entries the field exists to prevent, so an author who
  * genuinely fits nowhere picks `other` deliberately.
  */
-const CATEGORIES: ReadonlySet<string> = new Set([
-  'logic',
-  'comparison',
-  'math',
-  'string',
-  'array',
-  'data',
-  'io',
-  'other',
-])
+const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
 
 const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
 
@@ -209,9 +201,11 @@ export function defineOperator(
     (!Array.isArray(def.positionalParams) ||
       def.positionalParams.some((p) => typeof p !== 'string'))
   )
-    addIssue(ErrorCodes.invalidDefinition, "'positionalParams' must be an array of parameter names", [
-      'positionalParams',
-    ])
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      "'positionalParams' must be an array of parameter names",
+      ['positionalParams']
+    )
   if (def.timeoutParam !== undefined && typeof def.timeoutParam !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'timeoutParam' must be a parameter name", [
       'timeoutParam',
@@ -234,8 +228,7 @@ export function defineOperator(
       )
     } else if (Array.isArray(value)) {
       value.forEach((element, i) => {
-        if (element === EvaluationData)
-          checkSentinelFree(element, [...path, i], parameter)
+        if (element === EvaluationData) checkSentinelFree(element, [...path, i], parameter)
       })
     }
   }
@@ -328,7 +321,12 @@ export function defineOperator(
     }
 
     if (d.required !== undefined && typeof d.required !== 'boolean')
-      addIssue(ErrorCodes.invalidDefinition, `'required' must be a boolean`, at('required'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'required' must be a boolean`,
+        at('required'),
+        paramName
+      )
     if (d.description !== undefined && typeof d.description !== 'string')
       addIssue(
         ErrorCodes.invalidDefinition,
@@ -337,7 +335,12 @@ export function defineOperator(
         paramName
       )
     if (d.metadata !== undefined && !isPlainObject(d.metadata))
-      addIssue(ErrorCodes.invalidDefinition, `'metadata' must be a plain object`, at('metadata'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'metadata' must be a plain object`,
+        at('metadata'),
+        paramName
+      )
 
     const hasDefault = 'default' in d
     if (hasDefault && d.required === true)
@@ -381,9 +384,19 @@ export function defineOperator(
         paramName
       )
     if (d.truthiness !== undefined && typeof d.truthiness !== 'boolean')
-      addIssue(ErrorCodes.invalidDefinition, `'truthiness' must be a boolean`, at('truthiness'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'truthiness' must be a boolean`,
+        at('truthiness'),
+        paramName
+      )
     if (d.over !== undefined && typeof d.over !== 'string')
-      addIssue(ErrorCodes.invalidDefinition, `'over' must be a parameter name`, at('over'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'over' must be a parameter name`,
+        at('over'),
+        paramName
+      )
     if (
       d.replacesNullAt !== undefined &&
       (!Array.isArray(d.replacesNullAt) || d.replacesNullAt.some((t) => typeof t !== 'string'))
@@ -446,7 +459,10 @@ export function defineOperator(
   // positionalParams: entries name declared parameters; rest entry last
   // only; no duplicates
   let restParam: string | null = null
-  if (Array.isArray(def.positionalParams) && def.positionalParams.every((p) => typeof p === 'string')) {
+  if (
+    Array.isArray(def.positionalParams) &&
+    def.positionalParams.every((p) => typeof p === 'string')
+  ) {
     const seen = new Set<string>()
     const entries = def.positionalParams
     entries.forEach((entry, i) => {
@@ -468,11 +484,10 @@ export function defineOperator(
           ['positionalParams', i]
         )
       if (seen.has(entryName))
-        addIssue(
-          ErrorCodes.invalidDefinition,
-          `duplicate positional entry '${entry}'`,
-          ['positionalParams', i]
-        )
+        addIssue(ErrorCodes.invalidDefinition, `duplicate positional entry '${entry}'`, [
+          'positionalParams',
+          i,
+        ])
       seen.add(entryName)
     })
   }
@@ -642,11 +657,9 @@ export function defineOperator(
         ['timeoutParam']
       )
     else if (effectiveTypes[def.timeoutParam] !== 'integer')
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `the 'timeoutParam' target must be 'integer'-typed`,
-        ['timeoutParam']
-      )
+      addIssue(ErrorCodes.invalidDefinition, `the 'timeoutParam' target must be 'integer'-typed`, [
+        'timeoutParam',
+      ])
   }
 
   if (issues.length > 0) throwDefinitionError(issues, operator)

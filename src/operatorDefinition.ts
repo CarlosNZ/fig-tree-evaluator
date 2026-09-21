@@ -22,30 +22,29 @@ import type { ResolvedParams } from './inference'
  * and nowhere else, so a rename is one edit.
  */
 export type EvaluationMode =
-  | 'eager'
-  | 'race'
-  | 'lazy'
-  | 'lazyElements'
-  | 'lazyEntries'
-  | 'perElement'
-  | 'structural'
+  'eager' | 'race' | 'lazy' | 'lazyElements' | 'lazyEntries' | 'perElement' | 'structural'
 
 /**
  * The grouping vocabulary ("`category` — the closed vocabulary" in the
  * contract): a closed set of eight, required on every definition. The
  * engine never reads it — it is what a tool building an operator dropdown
  * with sections groups by, which is why it travels on the definition
- * rather than in a hints module keyed by this package's own names.
+ * rather than in a hints module keyed by this package's own names. The
+ * tuple is the one source: the type derives from it, and so does
+ * `defineOperator()`'s membership check.
  */
-export type OperatorCategory =
-  | 'logic'
-  | 'comparison'
-  | 'math'
-  | 'string'
-  | 'array'
-  | 'data'
-  | 'io'
-  | 'other'
+export const OPERATOR_CATEGORIES = [
+  'logic',
+  'comparison',
+  'math',
+  'string',
+  'array',
+  'data',
+  'io',
+  'other',
+] as const
+
+export type OperatorCategory = (typeof OPERATOR_CATEGORIES)[number]
 
 export type NullPolicyValue = 'propagate' | 'value'
 
@@ -86,7 +85,10 @@ export const EvaluationData: unique symbol = Symbol('fig-tree:EvaluationData')
  * declarations (`OperatorDefinition.evaluate`); this is the erased shape a
  * validated definition carries.
  */
-export type OperatorEvaluate = (params: Record<string, unknown>, context: OperatorContext) => unknown
+export type OperatorEvaluate = (
+  params: Record<string, unknown>,
+  context: OperatorContext
+) => unknown
 
 /**
  * One finding from a `validate` hook. The hook classifies and describes; the
@@ -240,7 +242,9 @@ export interface ValidatedOperatorDefinition {
   deliversLazily: boolean
   /** Normalized `timeoutParam`: the declared name, or null. */
   timeoutParam: string | null
+  /** The definition's own default — the bottom of the `useCache` chain. */
   useCache: boolean
+  /** How caching is keyed; doubles as the `'manual'` capability flag. */
   cache: 'auto' | 'manual'
   validate?: OperatorValidate
   evaluate: OperatorEvaluate

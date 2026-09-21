@@ -106,4 +106,16 @@ describe('copy posture', () => {
     expect(find('greeting').parameters.name.required).toBe(true)
     expect(find('greeting').warnings).toEqual([])
   })
+
+  test('nor can mutating a warning inside it — the issues are frozen', () => {
+    const [warning] = find('sloppy').warnings
+    const { message } = warning
+    expect(() => {
+      warning.message = 'clobbered'
+    }).toThrow(TypeError)
+    expect(() => {
+      warning.path.push('x')
+    }).toThrow(TypeError)
+    expect(find('sloppy').warnings[0].message).toBe(message)
+  })
 })

@@ -95,10 +95,10 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
  * Render segments back to the shared string grammar — dependency-list
  * spellings (`orders[*].total`), deduplication keys, messages.
  *
- * Lossless, which is what lets the render double as a canonical identity:
- * dot-joining alone rendered a single key holding a dot (`['first.last']`)
- * exactly like two levels (`first.last`), so two different reads
- * deduplicated into one and any re-parse split the key. A key the dot
+ * Lossless, which is what lets the render double as a canonical identity.
+ * Dot-joining alone cannot distinguish a single key holding a dot
+ * (`['first.last']`) from two levels (`first.last`): the two reads would
+ * share one entry and any re-parse would split the key. A key the dot
  * grammar cannot carry takes the bracket-quoted form the grammar already
  * parses, so `parsePath(renderSegments(s))` returns `s` for every `s`.
  */

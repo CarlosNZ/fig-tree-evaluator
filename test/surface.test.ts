@@ -10,7 +10,7 @@ const fig = new FigTree({
   fragments: { summary: { expression: 'a summary' } },
 })
 
-describe('isEvaluable — would evaluation be non-identity?', () => {
+describe('isEvaluable — does the parse find anything to evaluate?', () => {
   test.each([
     ['an operator node', { $plus: [1, 2] }, true],
     ['a canonical-face node', { operator: 'plus', values: [1, 2] }, true],
@@ -20,6 +20,11 @@ describe('isEvaluable — would evaluation be non-identity?', () => {
     ['a plain container', { a: 1, b: [2, 3] }, false],
     ['a scalar', 'just text', false],
     ['an unrecognized $ key — inert data with a warning', { $flibble: 'inert' }, false],
+    // Normalization is not evaluation: these three evaluate to something
+    // other than their input, and none of them holds an expression
+    ['a comment key alone', { '//': 'note', a: 1 }, false],
+    ['an undefined value alone', { a: 1, b: undefined }, false],
+    ['a vars block nothing reads', { vars: { x: 1 }, a: 1 }, false],
     // A malformed node ENGAGED the grammar: it is an expression, a broken
     // one, and classifying it as inert data would be the silent
     // de-invocation the sibling-key rule exists to prevent
@@ -34,6 +39,14 @@ describe('isEvaluable — would evaluation be non-identity?', () => {
     // validate(), but the node is evaluable all the same
     expect(fig.validate({ $plus: 'not an array' }).valid).toBe(false)
     expect(fig.isEvaluable({ $plus: 'not an array' })).toBe(true)
+  })
+
+  test('a static error from a structural key counts too, with no hole to show for it', () => {
+    // A malformed `vars` block folds its container to a constant — zero
+    // holes — yet validate() rejects it and evaluate() would throw. Only
+    // the issue stream records that the expression engaged the grammar
+    expect(fig.validate({ vars: 'high' }).valid).toBe(false)
+    expect(fig.isEvaluable({ vars: 'high' })).toBe(true)
   })
 
   test('never throws, whatever it is handed', () => {

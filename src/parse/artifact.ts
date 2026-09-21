@@ -241,16 +241,17 @@ export interface FragmentCall {
 /** The dependency record (B6) — the `getDependencies()` data, minus sorting. */
 export interface ArtifactDependencies {
   /**
-   * Statically-known $data paths, deduplicated on their canonical render.
+   * Statically-known $data reads, keyed on their canonical render — the
+   * public `paths` spelling — with the canonical segments as values.
    *
-   * Segments rather than rendered strings, because the render was lossy in
-   * the one direction that matters: a single key holding a dot read
-   * identically to two levels, so two different reads collapsed into one
-   * entry and a consumer re-parsing the string split it wrongly. Segments
-   * also let `getDependencies()` sort in traversal order without a
-   * re-parse, and hand `resolvePath` the form it already accepts.
+   * Both forms travel because both are consumed and neither derives cheaply
+   * from the other: the render is the deduplication key here and the string
+   * `getDependencies()` reports, while the segments are what `resolvePath`
+   * accepts and what traversal-order sorting compares. A render alone would
+   * not do, since dot-joining reads a single key holding a dot exactly like
+   * two levels; the injective render is what makes the key sound.
    */
-  dataPaths: PathSegment[][]
+  dataPaths: ReadonlyMap<string, PathSegment[]>
   /**
    * True when the read-set is not statically enumerable: a dynamic `get`
    * path, a bare `$data`, or a dynamic-arguments fragment call.

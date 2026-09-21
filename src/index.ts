@@ -56,7 +56,7 @@ export type {
 // Phase 2.1 — operator definitions. The brand symbol itself stays internal:
 // `defineOperator()` is the only mint, `isValidatedOperator` the only probe.
 export { defineOperator } from './defineOperator'
-export { EvaluationData, isValidatedOperator } from './operatorDefinition'
+export { EvaluationData, isValidatedOperator, OPERATOR_CATEGORIES } from './operatorDefinition'
 
 // Phase 13 — the introspection snapshots. Assembly stays internal; the
 // shapes are public, being what three methods return.

@@ -279,7 +279,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     // The sample-data check walks the stored dependency list, which holds
     // segments — the form `resolvePath` accepts, so nothing is re-parsed
     if (merged.data !== undefined) {
-      for (const dataPath of artifact.dependencies.dataPaths) {
+      for (const dataPath of artifact.dependencies.dataPaths.values()) {
         if (!resolvePath(merged.data, dataPath).found)
           issues.push({
             severity: 'warning',
@@ -317,18 +317,30 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   }
 
   /**
-   * Would this instance's evaluation be non-identity? ("isEvaluable(expr)"
+   * Does this instance's parse find anything to evaluate? ("isEvaluable(expr)"
    * in docs-dev/v3-specs/v3-evaluator-methods.md.) Deep evaluation made
    * "is this a FigTree expression" meaningless — any JSON evaluates — so
-   * the question is whether the parse found anything to do.
+   * the question is whether there is a hole to fill or a malformed node
+   * to reject. Not "would the output differ from the input": normalization
+   * alone (a `//` comment key, an `undefined` value, a `vars` block with no
+   * reads) changes the output and is still `false` here, because nothing
+   * in such an input is an expression.
    *
-   * One test covers both halves the spec names, because the parser
-   * already classifies a malformed node as evaluable-never-constant: a
-   * sibling-key violation is a hole, and an unrecognized `$` key (inert
-   * data with a warning) is not. Nothing consults the issue stream.
+   * Two halves, as the spec names them: a hole, or a static error. A
+   * malformed node usually IS a hole — the parser classifies it as
+   * evaluable-never-constant, so a sibling-key violation counts and an
+   * unrecognized `$` key (inert data with a warning) does not — but an
+   * error raised from a structural key (`vars: 'high'`) folds its
+   * container to a constant with no hole at all, and only the issue stream
+   * knows the expression engaged the grammar. Pass 1 suffices: the static
+   * checks find issues only on operator nodes and fragment calls, which
+   * are holes already, so a second walk could never change the answer.
    */
   isEvaluable(expression: unknown): boolean {
-    return parseExpression(expression, this.state.registry).holes.length > 0
+    const artifact = parseExpression(expression, this.state.registry)
+    return (
+      artifact.holes.length > 0 || artifact.issues.some(({ issue }) => issue.severity === 'error')
+    )
   }
 
   /**

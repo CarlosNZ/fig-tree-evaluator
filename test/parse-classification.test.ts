@@ -4,7 +4,7 @@
  * identity-only flag (obligations A2/A4/B1/B2/B4/B6/C5 in
  * docs-dev/v3-specs/v3-artifact-obligations.md).
  */
-import { parseExpression, renderSegments } from '../src/parse'
+import { parseExpression } from '../src/parse'
 import type { ParseArtifact } from '../src/parse'
 import { makeParseRegistry } from './fixtures/parseRegistry'
 
@@ -12,8 +12,7 @@ const registry = makeParseRegistry()
 const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 /** Dependency paths are stored as segments; render them for readability. */
-const paths = (artifact: ParseArtifact): string[] =>
-  artifact.dependencies.dataPaths.map(renderSegments)
+const paths = (artifact: ParseArtifact): string[] => [...artifact.dependencies.dataPaths.keys()]
 
 // ── Constancy and hole extraction ───────────────────────────────────
 

@@ -8,15 +8,19 @@
  * the FigTree methods stay one line each: the operator and fragment
  * snapshots, and the reshape of an artifact's dependency record into the
  * public `Dependencies` shape. All are plain data — nothing invocable,
- * nothing branded, nothing live.
+ * nothing live, and nothing branded but for one carve-out: a parameter
+ * `default` may be the public `EvaluationData` sentinel, which is a symbol
+ * (see `ParameterInfo`).
  */
 import type { ArtifactDependencies } from './parse'
-import { renderSegments } from './parse'
 import { WILDCARD, type PathSegment } from './primitives'
-import type { OperatorCategory, ValidatedParameter } from './operatorDefinition'
+import {
+  VALIDATED_OPERATOR,
+  type ValidatedOperatorDefinition,
+  type ValidatedParameter,
+} from './operatorDefinition'
 import type { OperatorRegistry } from './registry'
 import type { FragmentParameter } from './fragments'
-import type { ExpectedType } from './typeCheck'
 import type { Issue } from './issues'
 
 /** What an expression reads and invokes ("getDependencies()" in the spec). */
@@ -44,10 +48,9 @@ export interface Dependencies {
  * key: `orders[10]` sorts before `orders[2]` as text, a sibling holding a
  * character below `.` (`user-id`) wedges itself inside the `user` subtree,
  * and `[*]` lands wherever `*` happens to fall. Comparing segments
- * sidesteps all three, and costs no re-parse now that the record holds
- * them.
+ * sidesteps all three, and the record holds them, so nothing is re-parsed.
  */
-export const compareSegmentPaths = (a: PathSegment[], b: PathSegment[]): number => {
+const compareSegmentPaths = (a: PathSegment[], b: PathSegment[]): number => {
   const shared = Math.min(a.length, b.length)
   for (let i = 0; i < shared; i++) {
     const left = a[i]
@@ -67,15 +70,19 @@ const segmentClass = (segment: PathSegment): number =>
   segment === WILDCARD ? 0 : typeof segment === 'number' ? 1 : 2
 
 /**
- * The artifact's record as the public shape. `paths` renders losslessly
- * from the sorted segments; `operators` and `fragments` keep the order the
- * parse walk collected them in, which is what the recording sets give —
- * the asymmetry is deliberate (a path set is what a host diffs between
- * runs, the other two are for display and the capability probe).
+ * The artifact's record as the public shape. `paths` sorts the record's
+ * entries by their segments and reports their keys, which are already the
+ * canonical renders — nothing is rendered here. `operators` and
+ * `fragments` keep the order the parse walk collected them in, which is
+ * what the recording sets give — the asymmetry is deliberate (a path set
+ * is what a host diffs between runs, the other two are for display and the
+ * capability probe).
  */
 export const toDependencies = (dependencies: ArtifactDependencies): Dependencies => ({
   data: {
-    paths: [...dependencies.dataPaths].sort(compareSegmentPaths).map(renderSegments),
+    paths: [...dependencies.dataPaths]
+      .sort(([, a], [, b]) => compareSegmentPaths(a, b))
+      .map(([key]) => key),
     dynamic: dependencies.dynamic,
   },
   operators: [...dependencies.operators],
@@ -86,6 +93,13 @@ export const toDependencies = (dependencies: ArtifactDependencies): Dependencies
  * One parameter as `getOperators()` reports it: the validated declaration,
  * every documented default already filled by `defineOperator()`, plus the
  * instance override where `operatorDefaults` supplies one.
+ *
+ * `default` travels as authored, which includes the `EvaluationData`
+ * sentinel (`get.from` declares it). That is a symbol: it survives a
+ * structured clone and compares by identity against the package's export,
+ * but JSON drops symbol-valued keys, so a consumer serializing the
+ * snapshot must translate it first or the parameter reads as "optional,
+ * no default" on the far side.
  */
 export interface ParameterInfo extends ValidatedParameter {
   /**
@@ -99,27 +113,19 @@ export interface ParameterInfo extends ValidatedParameter {
 
 /**
  * One operator as `getOperators()` reports it: the declarative half,
- * verbatim and total. Function-valued fields become capability flags, and
- * nothing invocable or branded travels — a snapshot must not satisfy
- * `isValidatedOperator`.
+ * verbatim and total. Derived from the validated definition rather than
+ * re-declared, so a field added there is a compile error here until the
+ * snapshot carries it. The exclusions are the contract's own: the brand
+ * (a snapshot must not satisfy `isValidatedOperator`), the two functions
+ * (`validate` travels as a flag, `evaluate` not at all) and
+ * `deliversLazily`, an engine-internal derivation. `parameters` is
+ * re-declared only to widen its value to `ParameterInfo`.
  */
-export interface OperatorInfo {
-  name: string
-  alias?: string
-  category: OperatorCategory
-  description: string
-  metadata?: Record<string, unknown>
+export interface OperatorInfo extends Omit<
+  ValidatedOperatorDefinition,
+  typeof VALIDATED_OPERATOR | 'evaluate' | 'validate' | 'deliversLazily' | 'parameters'
+> {
   parameters: Record<string, ParameterInfo>
-  positionalParams?: string[]
-  /** Derived: the rest-marked positional parameter, or null. */
-  restParam: string | null
-  /** Derived: the parameter carrying a per-request deadline, or null. */
-  timeoutParam: string | null
-  /** The definition's metadata default — the bottom of the chain. */
-  useCache: boolean
-  /** How caching is keyed; doubles as the `'manual'` capability flag. */
-  cache: 'auto' | 'manual'
-  returns: ExpectedType
   /** The `validate` hook, as a flag — the function itself never travels. */
   hasValidate: boolean
   /**

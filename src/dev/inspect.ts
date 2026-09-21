@@ -211,8 +211,7 @@ const printArtifactFacts = (artifact: ParseArtifact) => {
   )
   console.log(`  operators    ${list(deps.operators)}`)
   console.log(
-    `  dataPaths    ${list(deps.dataPaths.map(renderSegments))}` +
-      `   (dynamic read-set: ${deps.dynamic})`
+    `  dataPaths    ${list([...deps.dataPaths.keys()])}` + `   (dynamic read-set: ${deps.dynamic})`
   )
   console.log(`  fragments    ${list(deps.fragments)}`)
   if (artifact.holes.length === 0) {
@@ -261,10 +260,7 @@ const inspectIO = () => {
   const unreachable = () => {
     throw new Error('inspect() never evaluates')
   }
-  return [
-    httpOperators({ request: unreachable }),
-    sqlOperators({ query: unreachable }),
-  ]
+  return [httpOperators({ request: unreachable }), sqlOperators({ query: unreachable })]
 }
 
 export const inspect = (expression: unknown, options: InspectOptions = {}): void => {

@@ -63,6 +63,20 @@ describe('what counts as a data read', () => {
       'user.name',
     ])
   })
+
+  test('a digit-only key and an index are one read, so one entry', () => {
+    // resolvePath reads the key '0' and the index 0 identically, against
+    // arrays and objects alike — the record must not keep them apart
+    expect(
+      paths({
+        a: { $get: 'x.0' },
+        b: { $get: 'x[0]' },
+        c: { $get: { path: ['x', '0'] } },
+        d: { $get: { path: ['x', 0] } },
+        e: '$data.x.0',
+      })
+    ).toEqual(['x[0]'])
+  })
 })
 
 describe('`dynamic` — the honesty bit', () => {
@@ -78,6 +92,22 @@ describe('`dynamic` — the honesty bit', () => {
 
   test('a statically enumerable expression says so', () => {
     expect(fig.getDependencies({ $get: 'user.name' }).data.dynamic).toBe(false)
+  })
+
+  test('a literal path the recorder cannot enumerate flips the bit rather than vanishing', () => {
+    // A non-segment element still reads a key at runtime (`'[object
+    // Object]'`), a non-array literal fails the type check but reads all
+    // the same — neither may be reported as "reads nothing"
+    for (const path of [['a', { x: 1 }], 5, 'a[']) {
+      const { data } = fig.getDependencies({ $get: { path } })
+      expect(data.dynamic).toBe(true)
+      expect(data.paths).toEqual([])
+    }
+  })
+
+  test('an empty get path is the whole data object, like a bare $data', () => {
+    for (const expression of [{ $get: '' }, { $get: { path: [] } }, '$data'])
+      expect(fig.getDependencies(expression).data).toEqual({ paths: [], dynamic: true })
   })
 })
 
