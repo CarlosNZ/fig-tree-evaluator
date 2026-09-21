@@ -19,6 +19,7 @@ const noop = async () => null
 /** Optional trailing slots carrying defaults, and a `number` receiver. */
 const clampOp = defineOperator({
   name: 'clamp',
+  category: 'math',
   description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },

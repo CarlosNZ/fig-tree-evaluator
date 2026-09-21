@@ -16,6 +16,7 @@ export const makeOp = (name: string, alias?: string): ValidatedOperatorDefinitio
   defineOperator({
     name,
     ...(alias !== undefined ? { alias } : {}),
+    category: 'other',
     description: `Test operator ${name}`,
     parameters: {},
     evaluate: () => null,
@@ -30,6 +31,7 @@ export const equalLike = (): ValidatedOperatorDefinition =>
   defineOperator({
     name: 'equal',
     alias: '=',
+    category: 'other',
     description: 'Equality comparison',
     parameters: {
       values: { type: 'array' },

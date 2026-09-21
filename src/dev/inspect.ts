@@ -210,7 +210,10 @@ const printArtifactFacts = (artifact: ParseArtifact) => {
       `   shielded ${artifact.shielded}   identityOnly ${artifact.identityOnly}`
   )
   console.log(`  operators    ${list(deps.operators)}`)
-  console.log(`  dataPaths    ${list(deps.dataPaths)}   (dynamic read-set: ${deps.dynamic})`)
+  console.log(
+    `  dataPaths    ${list(deps.dataPaths.map(renderSegments))}` +
+      `   (dynamic read-set: ${deps.dynamic})`
+  )
   console.log(`  fragments    ${list(deps.fragments)}`)
   if (artifact.holes.length === 0) {
     console.log('  holes        none — the input is fully constant')

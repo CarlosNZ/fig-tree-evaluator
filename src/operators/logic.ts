@@ -21,6 +21,7 @@ import { decide, emptyAggregateWarning } from './shared'
 export const ifOperator = defineOperator({
   name: 'if',
   alias: '?',
+  category: 'logic',
   description: 'Choose between two branches — only the chosen branch evaluates',
   parameters: {
     condition: {
@@ -47,6 +48,7 @@ export const ifOperator = defineOperator({
 
 export const match = defineOperator({
   name: 'match',
+  category: 'logic',
   description: 'Dispatch on a value — only the matching branch evaluates',
   parameters: {
     value: {
@@ -84,6 +86,7 @@ export const match = defineOperator({
 
 export const firstOf = defineOperator({
   name: 'firstOf',
+  category: 'logic',
   description:
     'The first candidate that is not null (SQL COALESCE) — later candidates never evaluate',
   parameters: {
@@ -110,6 +113,7 @@ export const firstOf = defineOperator({
 
 export const and = defineOperator({
   name: 'and',
+  category: 'logic',
   description: 'True when every value is truthy — operands run in parallel',
   parameters: {
     values: {
@@ -127,6 +131,7 @@ export const and = defineOperator({
 
 export const or = defineOperator({
   name: 'or',
+  category: 'logic',
   description: 'True when any value is truthy — operands run in parallel',
   parameters: {
     values: {
@@ -145,6 +150,7 @@ export const or = defineOperator({
 export const not = defineOperator({
   name: 'not',
   alias: '!',
+  category: 'logic',
   description: 'Negate the truthiness of a value',
   parameters: {
     value: {

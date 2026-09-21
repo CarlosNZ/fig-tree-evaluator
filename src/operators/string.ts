@@ -24,6 +24,7 @@ import { emptyAggregateWarning } from './shared'
 const normalizer = (name: string, description: string, transform: (value: string) => string) =>
   defineOperator({
     name,
+    category: 'string',
     description,
     parameters: { value: { type: ['string', 'null'] } },
     positionalParams: ['value'],
@@ -49,6 +50,7 @@ export const trim = normalizer(
 
 export const split = defineOperator({
   name: 'split',
+  category: 'string',
   description:
     'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
   parameters: {
@@ -139,6 +141,7 @@ const closeTheGaps = (parts: Part[], closed: (token: string) => void) => {
 
 export const buildString = defineOperator({
   name: 'buildString',
+  category: 'string',
   description: 'Render a template, filling its tokens — the result is always a string',
   parameters: {
     template: {
@@ -225,6 +228,7 @@ export const buildString = defineOperator({
 
 export const join = defineOperator({
   name: 'join',
+  category: 'string',
   description: 'Render array elements to text and concatenate them with a delimiter',
   parameters: {
     values: {
@@ -299,6 +303,7 @@ export const checkFlags = (flags: string): string | undefined => {
 
 export const regex = defineOperator({
   name: 'regex',
+  category: 'string',
   description: 'Test, extract or match a string against a regular expression',
   parameters: {
     value: { type: ['string', 'null'], description: 'The subject string' },

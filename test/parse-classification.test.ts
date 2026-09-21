@@ -4,12 +4,16 @@
  * identity-only flag (obligations A2/A4/B1/B2/B4/B6/C5 in
  * docs-dev/v3-specs/v3-artifact-obligations.md).
  */
-import { parseExpression } from '../src/parse'
+import { parseExpression, renderSegments } from '../src/parse'
 import type { ParseArtifact } from '../src/parse'
 import { makeParseRegistry } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
 const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
+
+/** Dependency paths are stored as segments; render them for readability. */
+const paths = (artifact: ParseArtifact): string[] =>
+  artifact.dependencies.dataPaths.map(renderSegments)
 
 // ── Constancy and hole extraction ───────────────────────────────────
 
@@ -126,11 +130,7 @@ test('statically-known $data paths are recorded, deduplicated, alias-normalized'
     d: '$data.orders[*].total',
     e: '$vars.internal',
   })
-  expect(artifact.dependencies.dataPaths.sort()).toEqual([
-    'orders[*].total',
-    'orders[0].total',
-    'user.name',
-  ])
+  expect(paths(artifact).sort()).toEqual(['orders[*].total', 'orders[0].total', 'user.name'])
   expect(artifact.dependencies.dynamic).toBe(false)
 })
 
@@ -145,35 +145,41 @@ test('a literal get path joins the list — the sugar equivalence', () => {
     b: { $get: { path: 'orders[*].total' } },
     c: { $get: ['letters[0]', 'fallback value'] },
   })
-  expect(artifact.dependencies.dataPaths.sort()).toEqual([
-    'letters[0]',
-    'orders[*].total',
-    'user.name',
-  ])
+  expect(paths(artifact).sort()).toEqual(['letters[0]', 'orders[*].total', 'user.name'])
   expect(artifact.dependencies.dynamic).toBe(false)
 })
 
 test('a get path spelled as segments joins the list in the shared grammar', () => {
   const artifact = parse({ a: { $get: { path: ['users', 0, 'name'] } } })
-  expect(artifact.dependencies.dataPaths).toEqual(['users[0].name'])
+  expect(paths(artifact)).toEqual(['users[0].name'])
 })
 
 test('a computed get path flips the dynamic flag instead', () => {
   const artifact = parse({ a: { $get: '$data.chosen' } })
   expect(artifact.dependencies.dynamic).toBe(true)
   // The reference supplying the path is itself a known read
-  expect(artifact.dependencies.dataPaths).toEqual(['chosen'])
+  expect(paths(artifact)).toEqual(['chosen'])
 })
 
 test('a get with `from` reads no $data path at all', () => {
   const artifact = parse({ a: { $get: { path: 'name', from: { $plus: [1, 2] } } } })
-  expect(artifact.dependencies.dataPaths).toEqual([])
+  expect(paths(artifact)).toEqual([])
   expect(artifact.dependencies.dynamic).toBe(false)
 })
 
 test('a malformed literal get path records nothing and does not throw', () => {
   const artifact = parse({ a: { $get: 'a[' } })
-  expect(artifact.dependencies.dataPaths).toEqual([])
+  expect(paths(artifact)).toEqual([])
+})
+
+test('a dotted key and a two-level path are different reads, and stay so', () => {
+  // The defect the segment form closes: both rendered `first.last` when
+  // the record held strings, so one deduplicated the other away
+  const artifact = parse({
+    a: { $get: { path: ['first.last'] } },
+    b: '$data.first.last',
+  })
+  expect(paths(artifact).sort()).toEqual(['["first.last"]', 'first.last'])
 })
 
 test('invoked operators and called fragments are recorded by canonical name', () => {

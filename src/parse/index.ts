@@ -11,7 +11,7 @@ export { runStaticChecks } from './staticChecks'
 export type { StaticCheckContext } from './staticChecks'
 export { validateHelpers } from './helpers'
 export type { ValidateHelpers } from './helpers'
-export { recognizeReference, renderSegments } from './references'
+export { recognizeReference, renderDataReference, renderSegments } from './references'
 export type { ReferenceRecognition } from './references'
 export type {
   ArtifactDependencies,

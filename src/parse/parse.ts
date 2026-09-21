@@ -145,7 +145,8 @@ interface WalkState {
   order: number
   nodeCount: number
   maxDepth: number
-  dataPaths: Set<string>
+  /** Canonical render → the segments, which is the deduplication. */
+  dataPaths: Map<string, PathSegment[]>
   dynamic: boolean
   operators: Set<string>
   fragmentNames: Set<string>
@@ -192,7 +193,7 @@ export const parseExpression = (
     order: 0,
     nodeCount: 0,
     maxDepth: 0,
-    dataPaths: new Set(),
+    dataPaths: new Map(),
     dynamic: false,
     operators: new Set(),
     fragmentNames: new Set(),
@@ -211,7 +212,7 @@ export const parseExpression = (
     nodeCount: state.nodeCount,
     maxDepth: state.maxDepth,
     dependencies: {
-      dataPaths: [...state.dataPaths],
+      dataPaths: [...state.dataPaths.values()],
       dynamic: state.dynamic,
       operators: [...state.operators],
       fragments: [...state.fragmentNames],
@@ -255,7 +256,9 @@ export const composeRollups = (
   fragments: ReadonlyMap<string, FragmentEntry>
 ): Rollups => {
   if (calls.length === 0) return own
-  const dataPaths = new Set(own.dependencies.dataPaths)
+  const dataPaths = new Map(
+    own.dependencies.dataPaths.map((segments) => [renderSegments(segments), segments])
+  )
   const operators = new Set(own.dependencies.operators)
   const fragmentNames = new Set(own.dependencies.fragments)
   let { nodeCount, maxDepth, identityOnly } = own
@@ -267,7 +270,8 @@ export const composeRollups = (
     maxDepth = Math.max(maxDepth, call.depth + target.maxDepth)
     identityOnly ||= target.identityOnly
     dynamic ||= target.dependencies.dynamic
-    for (const path of target.dependencies.dataPaths) dataPaths.add(path)
+    for (const path of target.dependencies.dataPaths)
+      dataPaths.set(renderSegments(path), path)
     for (const name of target.dependencies.operators) operators.add(name)
     for (const name of target.dependencies.fragments) fragmentNames.add(name)
   }
@@ -276,7 +280,7 @@ export const composeRollups = (
     maxDepth,
     identityOnly,
     dependencies: {
-      dataPaths: [...dataPaths],
+      dataPaths: [...dataPaths.values()],
       dynamic,
       operators: [...operators],
       fragments: [...fragmentNames],
@@ -449,7 +453,7 @@ const walkString = (
       const { namespace, segments } = recognition
       if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
-        else state.dataPaths.add(renderSegments(segments))
+        else state.dataPaths.set(renderSegments(segments), segments)
       }
       return { kind: 'reference', namespace, segments, raw, path, order }
     }
@@ -983,7 +987,11 @@ const recordGetDependency = (state: WalkState, node: OperatorNode) => {
   }
   try {
     const segments = typeof path.value === 'string' ? parsePath(path.value) : path.value
-    if (Array.isArray(segments)) state.dataPaths.add(renderSegments(segments as PathSegment[]))
+    if (Array.isArray(segments))
+      state.dataPaths.set(
+        renderSegments(segments as PathSegment[]),
+        segments as PathSegment[]
+      )
   } catch {
     // A malformed literal path is the validate hook's finding to report
   }

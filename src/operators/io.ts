@@ -67,6 +67,7 @@ const RETURN_PATH = {
 const httpDefinition = (client: HttpClient) =>
   defineOperator({
     name: 'http',
+    category: 'io',
     description: 'One HTTP request — GET or POST — returning the parsed JSON response',
     parameters: {
       url: {
@@ -143,6 +144,7 @@ const httpDefinition = (client: HttpClient) =>
 const graphQLDefinition = (client: HttpClient) =>
   defineOperator({
     name: 'graphQL',
+    category: 'io',
     description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
     parameters: {
       query: {
@@ -207,6 +209,7 @@ const graphQLDefinition = (client: HttpClient) =>
 const sqlDefinition = (connection: SqlConnection) =>
   defineOperator({
     name: 'sql',
+    category: 'io',
     description:
       'One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side',
     parameters: {

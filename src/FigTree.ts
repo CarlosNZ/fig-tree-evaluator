@@ -45,16 +45,26 @@ import {
   ParseCache,
   parseExpression,
   probeConstant,
+  renderDataReference,
   runStaticChecks,
   type ParseArtifact,
 } from './parse'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
+import {
+  fragmentSnapshot,
+  operatorSnapshot,
+  toDependencies,
+  type Dependencies,
+  type FragmentInfo,
+  type OperatorInfo,
+} from './introspect'
 import { FigTreeError } from './FigTreeError'
 import type { TraceNode } from './trace'
 import { ErrorCodes } from './errorCodes'
 import { resolvePath } from './primitives'
 import { coreOperators } from './operators'
+import { version } from './version'
 
 /** Everything an instance may swap, and may only swap together. */
 interface InstanceState {
@@ -154,6 +164,13 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   private state: InstanceState
   private readonly results: ResultCache
 
+  /**
+   * Instance-level rather than the module export alone: the realistic
+   * consumer is an editor handed a `fig` by a host whose bundled copy may
+   * differ from the editor's own import.
+   */
+  readonly version = version
+
   constructor(options: InstanceOpts = {} as InstanceOpts) {
     this.state = buildState(null, options)
     this.results = new ResultCache(readCacheConfig(options.cache))
@@ -215,6 +232,33 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   }
 
   /**
+   * Every registered operator, in registration order ("Introspection:
+   * `getOperators()`" in docs-dev/v3-specs/v3-operator-contract.md).
+   *
+   * A snapshot, never live definitions: mutating what comes back cannot
+   * reach the registry. The declarative half is reported verbatim and
+   * total — normalization has already filled every documented default, so
+   * this is the effective declaration rather than the authored sparseness
+   * — with any `operatorDefaults` override reported BESIDE the authored
+   * value rather than merged over it, so a tool can tell what the
+   * operator declares from what this host set.
+   */
+  getOperators(): OperatorInfo[] {
+    return operatorSnapshot(this.state.registry)
+  }
+
+  /**
+   * Every registered fragment, same posture and order ("Introspection &
+   * housekeeping methods" in docs-dev/v3-specs/v3-evaluator-methods.md).
+   * The body is withheld — a fragment is the host's own registration, and
+   * the editor consumes the declaration surface — so the body's warnings
+   * and its dependency rollup are reported in its place.
+   */
+  getFragments(): FragmentInfo[] {
+    return fragmentSnapshot(this.state.registry)
+  }
+
+  /**
    * Full static-issue report ("validate() — the process" in
    * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
    * on expression content — even hard parse errors come back as
@@ -227,14 +271,15 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     const merged = mergeOptions(this.state.options, options)
     const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
 
-    // The sample-data check walks the stored dependency list
+    // The sample-data check walks the stored dependency list, which holds
+    // segments — the form `resolvePath` accepts, so nothing is re-parsed
     if (merged.data !== undefined) {
       for (const dataPath of artifact.dependencies.dataPaths) {
         if (!resolvePath(merged.data, dataPath).found)
           issues.push({
             severity: 'warning',
             code: ErrorCodes.missingDataPath,
-            message: `'$data.${dataPath}' is absent from the supplied sample data`,
+            message: `'${renderDataReference(dataPath)}' is absent from the supplied sample data`,
             path: [],
           })
       }
@@ -245,6 +290,40 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
       issues,
       timeoutShielded: artifact.shielded,
     }
+  }
+
+  /**
+   * What an expression reads and invokes ("getDependencies()" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md): the statically-known
+   * `$data` paths with the honesty bit beside them, the operators invoked
+   * and the fragments called — transitively, since a call site composes
+   * its target's record in at parse time.
+   *
+   * Never throws: a malformed expression reports whatever the partial
+   * parse found, like `validate()`, because a tooling method that can
+   * throw is one every caller wraps. It parses without the static-check
+   * pass, which only appends issues, and — again like `validate()` —
+   * compiles fresh rather than going through the parse cache: an editor
+   * calling this per keystroke is exactly the content-layer churn that
+   * exclusion exists to prevent.
+   */
+  getDependencies(expression: unknown): Dependencies {
+    return toDependencies(parseExpression(expression, this.state.registry).dependencies)
+  }
+
+  /**
+   * Would this instance's evaluation be non-identity? ("isEvaluable(expr)"
+   * in docs-dev/v3-specs/v3-evaluator-methods.md.) Deep evaluation made
+   * "is this a FigTree expression" meaningless — any JSON evaluates — so
+   * the question is whether the parse found anything to do.
+   *
+   * One test covers both halves the spec names, because the parser
+   * already classifies a malformed node as evaluable-never-constant: a
+   * sibling-key violation is a hole, and an unrecognized `$` key (inert
+   * data with a warning) is not. Nothing consults the issue stream.
+   */
+  isEvaluable(expression: unknown): boolean {
+    return parseExpression(expression, this.state.registry).holes.length > 0
   }
 
   /**

@@ -15,6 +15,7 @@ import { parseExpression, type OperatorNode } from '../src/parse'
 
 const cachingOp = defineOperator({
   name: 'fetchish',
+  category: 'other',
   description: 'An I/O-shaped operator whose metadata default is on',
   parameters: {},
   useCache: true,
@@ -24,6 +25,7 @@ const cachingOp = defineOperator({
 
 const pureOp = defineOperator({
   name: 'pureish',
+  category: 'other',
   description: 'A pure operator, metadata default off',
   parameters: {},
   evaluate: () => 'ok',

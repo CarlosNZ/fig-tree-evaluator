@@ -21,6 +21,7 @@ const tracked = () => {
   const calls: unknown[] = []
   const definition = defineOperator({
     name: 'track',
+    category: 'other',
     description: 'Record that this branch ran',
     parameters: { value: { type: 'any', nullPolicy: 'value' } },
     positionalParams: ['value'],

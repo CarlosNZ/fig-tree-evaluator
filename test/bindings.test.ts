@@ -16,6 +16,7 @@ import type { PerElement, ValidatedOperatorDefinition } from '../src'
 /** A minimal real iterator: demands every index, in order. */
 const mapish = defineOperator({
   name: 'mapish',
+  category: 'other',
   description: 'Transform each element',
   parameters: {
     input: { type: 'array' },

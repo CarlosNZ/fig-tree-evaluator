@@ -38,6 +38,7 @@ import {
   type CompiledNullPolicy,
   type EvaluationMode,
   type NullPolicyValue,
+  type OperatorCategory,
   type OperatorDefinition,
   type OperatorEvaluate,
   type ParameterDeclaration,
@@ -64,6 +65,23 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'lazyEntries',
   'perElement',
   'structural',
+])
+
+/**
+ * The `category` vocabulary, closed. Required rather than
+ * optional-with-a-default: a silent fallback produces exactly the
+ * uncategorized entries the field exists to prevent, so an author who
+ * genuinely fits nowhere picks `other` deliberately.
+ */
+const CATEGORIES: ReadonlySet<string> = new Set([
+  'logic',
+  'comparison',
+  'math',
+  'string',
+  'array',
+  'data',
+  'io',
+  'other',
 ])
 
 const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
@@ -163,7 +181,21 @@ export function defineOperator(
     ])
   if (issues.length > 0) throwDefinitionError(issues, operator)
 
-  // ── Optional definition-level fields — shape checks ───────────────────
+  // ── Definition-level fields — shape checks ────────────────────────────
+  // `category` is required but is NOT in the gate above: nothing else
+  // depends on it, so it reports alongside every other violation
+  if (typeof def.category !== 'string')
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      `'category' is required and must be one of ${[...CATEGORIES].join(', ')}`,
+      ['category']
+    )
+  else if (!CATEGORIES.has(def.category))
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      `'${def.category}' is not a category — expected one of ${[...CATEGORIES].join(', ')}`,
+      ['category']
+    )
   if (def.alias !== undefined && typeof def.alias !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'alias' must be a string", ['alias'])
   if (def.useCache !== undefined && typeof def.useCache !== 'boolean')
@@ -649,6 +681,7 @@ export function defineOperator(
   const validated: ValidatedOperatorDefinition = {
     [VALIDATED_OPERATOR]: true,
     name: def.name,
+    category: def.category as OperatorCategory,
     description: def.description,
     parameters: validatedParameters,
     restParam,

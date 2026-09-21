@@ -27,6 +27,7 @@ const countedOp = (name = 'cached') => {
   let runs = 0
   const definition = defineOperator({
     name,
+    category: 'other',
     description: 'Count the runs the cache did not save',
     parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
     positionalParams: ['value'],
@@ -44,6 +45,7 @@ const manualOp = (name = 'manual') => {
   let runs = 0
   const definition = defineOperator({
     name,
+    category: 'other',
     description: 'Key its own unit of work',
     parameters: {
       key: { type: 'any', nullPolicy: 'value', default: null },
@@ -79,6 +81,7 @@ describe('the useCache chain gates the cache, not just a helper', () => {
     const store = new RecordingCacheStore()
     const pure = defineOperator({
       name: 'pure',
+      category: 'other',
       description: 'metadata default off',
       parameters: {},
       evaluate: () => 'ok',
@@ -94,6 +97,7 @@ describe('the useCache chain gates the cache, not just a helper', () => {
     let runs = 0
     const pure = defineOperator({
       name: 'pure',
+      category: 'other',
       description: 'metadata default off',
       parameters: {},
       evaluate: () => {
@@ -162,6 +166,7 @@ describe("the 'auto' layer's key", () => {
   it('leaves options out of the key — the accepted trade, stated', async () => {
     const reader = defineOperator({
       name: 'reader',
+      category: 'other',
       description: 'read an option',
       parameters: {},
       useCache: true,
@@ -182,6 +187,7 @@ describe("what the 'auto' layer refuses to key", () => {
     let runs = 0
     const lazyish = defineOperator({
       name: 'lazyish',
+      category: 'other',
       description: 'eager condition, lazy branch',
       parameters: {
         condition: { type: 'any', truthiness: true },
@@ -207,6 +213,7 @@ describe("what the 'auto' layer refuses to key", () => {
     const store = new RecordingCacheStore()
     const raced = defineOperator({
       name: 'raced',
+      category: 'other',
       description: 'consume a settlement stream',
       parameters: { values: { type: 'array', evaluation: 'race' } },
       positionalParams: ['...values'],
@@ -243,6 +250,7 @@ describe('failures are never cached', () => {
     let runs = 0
     return defineOperator({
       name: 'flaky',
+      category: 'other',
       description: 'fail once, then succeed',
       parameters: {},
       useCache: true,
@@ -277,6 +285,7 @@ describe('failures are never cached', () => {
     let runs = 0
     const nonFinite = defineOperator({
       name: 'nonFinite',
+      category: 'other',
       description: 'produce a non-finite number, then a finite one',
       parameters: {},
       useCache: true,
@@ -296,6 +305,7 @@ describe('failures are never cached', () => {
     const store = new RecordingCacheStore()
     const propagating = defineOperator({
       name: 'propagating',
+      category: 'other',
       description: 'propagate a null operand',
       parameters: { value: { type: ['string', 'null'] } },
       positionalParams: ['value'],
@@ -498,6 +508,7 @@ describe('clearCache()', () => {
     let started = deferred<void>()
     const slow = defineOperator({
       name: 'slow',
+      category: 'other',
       description: 'settle when the test says so',
       parameters: {},
       useCache: true,
@@ -531,6 +542,7 @@ describe('the two invalidation stories are opposites', () => {
     let runs = 0
     const counted = defineOperator({
       name: 'counted',
+      category: 'other',
       description: 'count compiles and runs separately',
       parameters: { value: { type: 'any', required: false, default: 'a' } },
       positionalParams: ['value'],

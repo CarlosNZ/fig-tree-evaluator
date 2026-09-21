@@ -26,6 +26,7 @@ import { collectAll, decide, emptyInputWarning } from './shared'
 
 export const length = defineOperator({
   name: 'length',
+  category: 'array',
   description: "An array's element count, or a string's Unicode code-point count",
   parameters: {
     value: {
@@ -89,6 +90,7 @@ const predicateEach = {
 
 export const map = defineOperator({
   name: 'map',
+  category: 'array',
   description: 'Transform every element of an array',
   parameters: { ...commonParams, each: transformEach },
   positionalParams: ['input', 'each'],
@@ -99,6 +101,7 @@ export const map = defineOperator({
 
 export const filter = defineOperator({
   name: 'filter',
+  category: 'array',
   description: 'Keep the elements of an array whose predicate is truthy',
   parameters: { ...commonParams, each: predicateEach },
   positionalParams: ['input', 'each'],
@@ -127,6 +130,7 @@ export const filter = defineOperator({
  */
 export const find = defineOperator({
   name: 'find',
+  category: 'array',
   description: 'The first element of an array whose predicate is truthy',
   parameters: {
     ...commonParams,
@@ -163,6 +167,7 @@ export const find = defineOperator({
 
 export const some = defineOperator({
   name: 'some',
+  category: 'array',
   description: 'True when any element satisfies the predicate',
   parameters: { ...commonParams, each: predicateEach },
   positionalParams: ['input', 'each'],
@@ -173,6 +178,7 @@ export const some = defineOperator({
 
 export const every = defineOperator({
   name: 'every',
+  category: 'array',
   description: 'True when every element satisfies the predicate',
   parameters: { ...commonParams, each: predicateEach },
   positionalParams: ['input', 'each'],

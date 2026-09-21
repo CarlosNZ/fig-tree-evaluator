@@ -90,6 +90,7 @@ describe('defineOperator — the validated artifact', () => {
   it('fills every documented default (normalization, not verbatim storage)', () => {
     const validated = defineOperator({
       name: 'bare',
+      category: 'other',
       description: 'An operator with one empty declaration',
       parameters: { value: {} },
       evaluate: ({ value }) => value,
@@ -143,6 +144,50 @@ describe('defineOperator — the validated artifact', () => {
     const definition = validDefinition()
     definition.parameters = { data: { type: 'object' }, element: {} }
     expect(() => defineOperator(definition)).not.toThrow()
+  })
+})
+
+describe('defineOperator — `category`', () => {
+  const CATEGORIES = [
+    'logic',
+    'comparison',
+    'math',
+    'string',
+    'array',
+    'data',
+    'io',
+    'other',
+  ] as const
+
+  it.each(CATEGORIES)('accepts %s and reports it verbatim', (category) => {
+    const validated = defineOperator({ ...validDefinition(), category })
+    expect(validated.category).toBe(category)
+  })
+
+  it('collects the violation rather than failing fast, so siblings still report', () => {
+    // A definition wrong in two places: the category AND a parameter type.
+    // Category is required but nothing depends on it, so it must not short
+    // -circuit the pass the way the structural gate does
+    const error = defineInvalid({
+      ...validDefinition(),
+      category: 'special',
+      parameters: { value: { type: 'text' } },
+    })
+    expect(hasIssue(error, { code: ErrorCodes.invalidDefinition, pathTail: ['category'] })).toBe(
+      true
+    )
+    expect(
+      hasIssue(error, {
+        code: ErrorCodes.invalidDefinition,
+        pathTail: ['parameters', 'value', 'type'],
+      })
+    ).toBe(true)
+  })
+
+  it('names the vocabulary in the message', () => {
+    const error = defineInvalid({ ...validDefinition(), category: 'special' })
+    const issue = (error.issues ?? []).find((entry) => entry.path[0] === 'category')
+    expect(issue?.message).toContain('other')
   })
 })
 

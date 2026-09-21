@@ -17,6 +17,7 @@ import { emptyEntriesWarning, pathFindings, toSegments } from './shared'
 
 export const get = defineOperator({
   name: 'get',
+  category: 'data',
   description:
     'Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference',
   parameters: {
@@ -66,6 +67,7 @@ const renderPath = (path: string | unknown[]): string =>
 
 export const buildObject = defineOperator({
   name: 'buildObject',
+  category: 'data',
   description:
     'Assemble an object from computed key/value entries — for keys known only at runtime',
   parameters: {

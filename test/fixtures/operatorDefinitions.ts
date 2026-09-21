@@ -19,6 +19,7 @@ import {
 /** A fresh minimal valid definition — callers may mutate their copy freely. */
 export const validDefinition = (): OperatorDefinition => ({
   name: 'testOp',
+  category: 'other',
   description: 'A minimal valid operator for tests',
   parameters: {
     value: { type: 'number' },
@@ -31,6 +32,7 @@ export const validDefinition = (): OperatorDefinition => ({
 /** The contract's `clamp` example: eager parameters, layered defaults. */
 export const clampLike = (): OperatorDefinition => ({
   name: 'clamp',
+  category: 'other',
   description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },
@@ -50,6 +52,7 @@ export const clampLike = (): OperatorDefinition => ({
 export const ifLike = (): OperatorDefinition => ({
   name: 'if',
   alias: '?',
+  category: 'other',
   description: 'Conditional branching',
   parameters: {
     condition: { type: 'any', truthiness: true },
@@ -67,6 +70,7 @@ export const ifLike = (): OperatorDefinition => ({
  */
 export const convertLike = (): OperatorDefinition => ({
   name: 'convert',
+  category: 'other',
   description: 'Convert a value to a target type',
   parameters: {
     value: {
@@ -93,6 +97,7 @@ export const convertLikeCompiledPolicy = {
 /** A `…Default` null-replacement holder (ledger #18). */
 export const nullReplacerLike = (): OperatorDefinition => ({
   name: 'plusish',
+  category: 'other',
   description: 'Sum with an authored null replacement',
   parameters: {
     values: { type: 'array', elementNullPolicy: 'propagate' },
@@ -110,6 +115,7 @@ export const nullReplacerLike = (): OperatorDefinition => ({
 /** An I/O-shaped definition: `timeoutParam` and a manual cache. */
 export const httpLike = (): OperatorDefinition => ({
   name: 'http',
+  category: 'other',
   description: 'HTTP request',
   parameters: {
     url: { type: 'string' },
@@ -130,6 +136,7 @@ export const httpLike = (): OperatorDefinition => ({
  */
 export const getFromLike = (): OperatorDefinition => ({
   name: 'getish',
+  category: 'other',
   description: 'Drill a path into data or a supplied object',
   parameters: {
     path: { type: 'string' },
@@ -226,6 +233,24 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'evaluate-not-a-function',
     definition: withField('evaluate', 'nope'),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['evaluate'] },
+  },
+
+  // `category` — required, but collected rather than gated: nothing else
+  // in the definition depends on it
+  {
+    id: 'category-missing',
+    definition: withoutField('category'),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
+  },
+  {
+    id: 'category-not-a-string',
+    definition: withField('category', 3),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
+  },
+  {
+    id: 'category-outside-vocabulary',
+    definition: withField('category', 'special'),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
   },
 
   // Optional definition-level fields, wrong shapes

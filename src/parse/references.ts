@@ -93,12 +93,38 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
 /**
  * Render segments back to the shared string grammar — dependency-list
  * spellings (`orders[*].total`), deduplication keys, messages.
+ *
+ * Lossless, which is what lets the render double as a canonical identity:
+ * dot-joining alone rendered a single key holding a dot (`['first.last']`)
+ * exactly like two levels (`first.last`), so two different reads
+ * deduplicated into one and any re-parse split the key. A key the dot
+ * grammar cannot carry takes the bracket-quoted form the grammar already
+ * parses, so `parsePath(renderSegments(s))` returns `s` for every `s`.
  */
 export const renderSegments = (segments: PathSegment[]): string =>
   segments
     .map((segment, i) => {
       if (typeof segment === 'number') return `[${segment}]`
       if (segment === WILDCARD) return '[*]'
-      return i === 0 ? String(segment) : `.${String(segment)}`
+      return renderKey(segment, i === 0)
     })
     .join('')
+
+/** Keys the dot grammar cannot carry unquoted (empty included, below). */
+const NEEDS_QUOTING = /[.[\]"\\]/
+
+const renderKey = (key: string, first: boolean): string => {
+  if (key === '' || NEEDS_QUOTING.test(key))
+    return `["${key.replace(/[\\"]/g, (char) => `\\${char}`)}"]`
+  return first ? key : `.${key}`
+}
+
+/**
+ * A `$data` read in the reference grammar, for messages: `$data.user.name`,
+ * and `$data[0].x` where the path opens with an index or a quoted key.
+ */
+export const renderDataReference = (segments: PathSegment[]): string => {
+  const rendered = renderSegments(segments)
+  if (rendered === '') return '$data'
+  return rendered.startsWith('[') ? `$data${rendered}` : `$data.${rendered}`
+}

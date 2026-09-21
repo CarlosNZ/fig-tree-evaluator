@@ -30,6 +30,23 @@ export type EvaluationMode =
   | 'perElement'
   | 'structural'
 
+/**
+ * The grouping vocabulary ("`category` — the closed vocabulary" in the
+ * contract): a closed set of eight, required on every definition. The
+ * engine never reads it — it is what a tool building an operator dropdown
+ * with sections groups by, which is why it travels on the definition
+ * rather than in a hints module keyed by this package's own names.
+ */
+export type OperatorCategory =
+  | 'logic'
+  | 'comparison'
+  | 'math'
+  | 'string'
+  | 'array'
+  | 'data'
+  | 'io'
+  | 'other'
+
 export type NullPolicyValue = 'propagate' | 'value'
 
 /**
@@ -143,6 +160,8 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
   name: string
   /** Exactly one, like natives; same legality/collision rules as `name`. */
   alias?: string
+  /** Grouping for tooling, from the closed set; never read by the engine. */
+  category: OperatorCategory
   description: string
   /** Opaque; engine never reads it; returned verbatim by `getOperators()`. */
   metadata?: Record<string, unknown>
@@ -206,6 +225,7 @@ export interface ValidatedOperatorDefinition {
   readonly [VALIDATED_OPERATOR]: true
   name: string
   alias?: string
+  category: OperatorCategory
   description: string
   metadata?: Record<string, unknown>
   parameters: Record<string, ValidatedParameter>
