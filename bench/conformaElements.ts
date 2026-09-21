@@ -37,6 +37,10 @@ import {
   type Unit,
 } from './real-world/fixtures'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  "A real Conforma template's 62 form elements: one full form re-evaluation per pass, at three granularities."
+
 /**
  * The search box changes as the applicant types; the rest of the form
  * holds.

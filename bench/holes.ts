@@ -29,6 +29,10 @@ import { FigTree, coreOperators } from '../src'
 import { finish, note, runCase, section, type Sweep } from './harness'
 import { config, data, holeV2, holeV3 } from './shapes'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'Evaluating a mostly-static config: does the cost track the number of expressions, not the size of what surrounds them?'
+
 const v2 = new FigTreeEvaluator({ evaluateFullObject: true })
 const v3 = new FigTree({ operators: [coreOperators] })
 

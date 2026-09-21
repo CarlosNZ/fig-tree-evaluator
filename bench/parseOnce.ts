@@ -25,6 +25,10 @@ import { FigTreeEvaluator } from '../v2-src'
 import { FigTree, coreOperators } from '../src'
 import { finish, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'What a single operator node and a single data read cost on each engine, with no static bulk in the way.'
+
 /** `(a + 1) + (a + 1) + …` — n operand nodes, all of which must run. */
 const sumV3 = (nodes: number) => ({
   $plus: Array.from({ length: nodes }, () => ({ $plus: ['$data.a', 1] })),

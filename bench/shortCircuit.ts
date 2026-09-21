@@ -35,6 +35,10 @@ import { FigTree, coreOperators, httpOperators } from '../src'
 import type { HttpClient } from '../src'
 import { finish, note, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'Stopping work that cannot change the answer: and() with the deciding operand first, last, or absent.'
+
 /** An operand costly enough to notice being skipped: 20 nested sums. */
 const costlyV3 = () => ({
   $greaterThan: [{ $plus: Array.from({ length: 20 }, () => ({ $plus: ['$data.a', 1] })) }, 0],

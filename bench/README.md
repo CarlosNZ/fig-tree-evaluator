@@ -22,18 +22,27 @@ pnpm bench holes        # run one
 
 A bench takes between a few seconds and about a minute. It prints one Markdown table per sweep — copy it straight into an issue — and ends with a `(sink N)` line, which is the harness proving nothing was optimised away, not a result.
 
-| Bench              | What it measures                                                                                                                                                                                         |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `holes`            | Claim 1, O(holes): a config with fixed holes as its static bulk grows, then fixed bulk as its holes grow. The floor claim rides in the cold column.                                                      |
-| `parseOnce`        | Claim 2, parse-once: operator-dense trees with no static bulk, and the same reads under one operator instead of many — differencing the two prices an operator node and a data reference on each engine. |
-| `churn`            | Claim 3, instance churn: the content layer on the three shapes #161 found, expression-dense, mostly-static, and one hole behind a 100 kB blob.                                                           |
-| `inert`            | Claim 5, the constancy probe: values with nothing to evaluate, handed over one at a time.                                                                                                                |
-| `io`               | Claim 6, memoized I/O: against an instant stub client; the request counts underneath the table are the claim.                                                                                            |
-| `shortCircuit`     | Claim 7, cancellation: `and()` over costly operands with a decider first, last, or absent — once CPU-bound, once with a real await to abandon.                                                           |
-| `nesting`          | Scale: one operator per level of depth.                                                                                                                                                                  |
-| `scale`            | Scale: one balanced tree grown to thousands of nodes, looking for a knee in the per-node cost.                                                                                                           |
-| `conformaElements` | Real world: the 62 form elements of a production Conforma template, at three granularities.                                                                                                              |
-| `conformaActions`  | Real world: the 19 actions of the same template.                                                                                                                                                         |
+## What each bench measures
+
+A little background the descriptions lean on. An **expression** is the JSON structure FigTree evaluates. The parts of it that actually compute something — an operator like `plus`, a data lookup like `$data.user.name` — are its **nodes**; everything else (labels, fixed numbers, option lists) is **static**. v3 compiles an expression once into a skeleton of the static parts plus a list of the places nodes sit, and on every later evaluation touches only those places. v2 walks the whole structure every time. Most of the claims below follow from that one difference, and most of the results come down to two numbers each bench helps pin: what one node costs on each engine, and what one evaluation costs before any node runs.
+
+**`holes` — evaluating a mostly-static config.** v3's central claim: the cost of evaluating a large config depends on how many expressions are in it, not on how much static material surrounds them. The bench builds a form-shaped config and runs two sweeps. First the static bulk grows while the number of expressions stays fixed — v3 should stay flat while v2 grows in step with the size. Then the expressions grow while the bulk stays fixed — v3 should now grow in proportion, because flat here would mean it was not evaluating at all. The `v3 cold` column also checks a second claim, that even with no caching whatsoever v3 should be no slower than v2.
+
+**`parseOnce` — what one operator costs.** Every time v2 evaluates a node it works out afresh which operator it is, which alias was used, and which parameters it has. v3 did all of that once, when it compiled. The bench uses expressions that are nothing but operators, with no static parts, so that per-node cost is the only thing being measured — in two shapes: many operators, and the same data reads gathered under a single operator. Subtracting one from the other gives the price of one operator node and one data read on each engine, which is what most of the other tables reduce to.
+
+**`churn` — being handed a fresh copy of the same config.** Hosts often give FigTree a newly parsed copy of a config it has seen before: a React component re-rendering, a server handling another request. v3 recognizes identical content and reuses its compiled form; the claim is that this costs one serialization of the input and is then as fast as if the same object had been held. The bench runs the three shapes where that trade-off comes out differently — dense with expressions, mostly static, and one expression behind a 100 kB block of static data, where serializing the block costs about as much as simply recompiling.
+
+**`inert` — values with nothing in them to evaluate.** Most of what a form hands the evaluator is plain data — a label, a number, a list of options — with no expression anywhere inside. v3 spots these with a quick scan and returns them untouched, compiling nothing. The bench hands over single inert values of increasing size. v2 walked arrays and objects even in this case, so the gap here is the widest in the suite.
+
+**`io` — not repeating network requests.** An expression that fetches from an API should fetch once and reuse the answer while its inputs are unchanged, and must fetch again the moment they change. The bench uses an instant stand-in for the HTTP client so that no network variance enters the timings — which makes the timings the lesser half. The request counts printed under the table are the real measurement: how many times each engine actually called out over a hundred evaluations.
+
+**`shortCircuit` — stopping work that cannot change the answer.** In `and(a, b, c)`, once one operand comes back false the others no longer matter. v2 evaluates all of them regardless; v3 abandons the rest. The bench puts the deciding operand first (v3 may stop early), last, or nowhere (both engines must do everything) — first with operands that are pure computation, then with operands that genuinely wait on something. Cancellation can only take effect while an operand is waiting, so only the second sweep can show a gain, and the first is there to prove the controls behave.
+
+**`nesting` — deeply nested expressions.** An operator inside an operator inside an operator, down to 160 levels. Checks that neither engine pays anything for depth beyond the ordinary per-node cost.
+
+**`scale` — one very large expression.** A single tree grown to 8,000 nodes, watching the cost per node as it grows. If that cost stops being constant somewhere, that is the finding — it usually means memory pressure.
+
+**`conformaElements` and `conformaActions` — a real template.** The 62 form elements and 19 back-end actions of a production Conforma template, migrated to v3 and checked unit for unit against v2 before anything is timed. The elements run at three levels of granularity — every property and parameter on its own (which is how the app does it today), `parameters` as one expression, and each element as one expression — so the tables show how much the way a host cuts up its template matters. See "The real-world corpus" below for what is in the folder.
 
 ## Reading a table
 
@@ -71,11 +80,12 @@ Conforma holds a single global `FigTree` instance on both the front end and the 
 Most evaluation happens in a browser, and a browser's `AbortController` is native code where Node's is JavaScript, so the browser is worth measuring in its own right.
 
 ```bash
-pnpm bench:browser conformaElements holes     # bundles to bench/browser/dist
+pnpm bench:browser conformaElements holes     # bundles those two to bench/browser/dist
+pnpm bench:browser all                        # or every bench
 pnpm bench:serve                              # http://localhost:8765
 ```
 
-Then open `http://localhost:8765/conformaElements.html`. The bench runs on load and renders each sweep's table on the page as it completes, with the raw Markdown under a disclosure for copying; the page's own console gets the same text. `(sink` appearing means it has finished. Bundles are ES modules served over HTTP rather than files opened directly, because the harness uses top-level `await` and Chrome blocks module scripts from `file://`. The server sends cross-origin isolation headers, which lift Chrome's `performance.now()` clamp from 100 µs to 5 µs; without them every fast row is quantised.
+Then open `http://localhost:8765/` — an index lists every page built with a line on what each measures — or a page directly, such as `http://localhost:8765/conformaElements.html`. The bench runs on load and renders each sweep's table on the page as it completes, with the raw Markdown under a disclosure for copying; the page's own console gets the same text. `(sink` appearing means it has finished. Bundles are ES modules served over HTTP rather than files opened directly, because the harness uses top-level `await` and Chrome blocks module scripts from `file://`. The server sends cross-origin isolation headers, which lift Chrome's `performance.now()` clamp from 100 µs to 5 µs; without them every fast row is quantised.
 
 The frozen v2 engine imports `pg` and `sqlite` by value; the browser build aliases both to `bench/browser/nodeStubs.ts`. Nothing constructs them — SQL goes through the injected stub connection.
 
@@ -83,7 +93,7 @@ To drive it from a script rather than by hand, Playwright works: navigate to the
 
 ## Adding a bench
 
-Drop a file in `bench/` and it appears in `pnpm bench` (shared modules are filtered by name in `codegen/bench.mjs`). Use `holes.ts` as the template. The shape is: build each spelling of the expression once, outside the loop; declare a `Sweep` with the four arm names and the ratio columns you want; hand `runCase` a `{ label, iterations, arms }` per row; end with `finish()`.
+Drop a file in `bench/` and it appears in `pnpm bench` and in `pnpm bench:browser all` (shared modules are filtered by name in `codegen/benchList.mjs`). It must `export const description = '…'` — one line, used by the listing and the browser index; the list refuses a bench without one. Use `holes.ts` as the template. The shape is: build each spelling of the expression once, outside the loop; declare a `Sweep` with the four arm names and the ratio columns you want; hand `runCase` a `{ label, iterations, arms }` per row; end with `finish()`.
 
 Rules that keep the numbers honest:
 

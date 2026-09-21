@@ -18,6 +18,9 @@ import type { EvaluatorNode } from '../v2-src/types'
 import { FigTree, coreOperators } from '../src'
 import { finish, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description = 'Deeply nested expressions — one operator per level, down to 160.'
+
 /** `((((a + 1) + 1) + 1) … )` — one operator per level of depth. */
 const chainV3 = (depth: number) => {
   let node: unknown = '$data.a'

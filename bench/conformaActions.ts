@@ -34,6 +34,10 @@ import {
   type Unit,
 } from './real-world/fixtures'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  "The same Conforma template's 19 back-end actions: every action of one event per pass."
+
 const all = (units: Unit[], run: (unit: Unit) => Promise<unknown>) => Promise.all(units.map(run))
 
 const v2 = newV2()

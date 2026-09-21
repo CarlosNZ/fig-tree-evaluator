@@ -37,6 +37,10 @@ import type { EvaluatorNode } from '../v2-src/types'
 import { FigTree, coreOperators } from '../src'
 import { finish, note, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'Plain values with nothing in them to evaluate, handed over one at a time.'
+
 const options = (entries: number) =>
   Array.from({ length: entries }, (_, i) => ({ label: `Option ${i}`, value: i, group: 'x' }))
 
@@ -80,9 +84,9 @@ const twoHundred = options(200)
 const cost = (iterations: number, run: () => unknown) => {
   let best = Infinity
   for (let r = 0; r < 5; r++) {
-    const start = process.hrtime.bigint()
+    const start = performance.now()
     for (let i = 0; i < iterations; i++) void run()
-    best = Math.min(best, Number(process.hrtime.bigint() - start) / iterations)
+    best = Math.min(best, ((performance.now() - start) * 1e6) / iterations)
   }
   return best / 1000
 }

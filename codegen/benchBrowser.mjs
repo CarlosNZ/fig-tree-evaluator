@@ -1,7 +1,8 @@
 // Bundles benches for a browser: `node codegen/benchBrowser.mjs <name>…`
-// writes bench/browser/dist/<name>.js and a page that runs it. Serve the
-// folder (codegen/benchServe.mjs) and open the page; results print to the
-// console and to the page itself, so a driver can wait for `(sink`.
+// (or `all`) writes bench/browser/dist/<name>.js and a page that runs it,
+// plus an index.html linking every page built. Serve the folder
+// (codegen/benchServe.mjs) and open a page; results render on the page
+// and print to its console, so a driver can wait for `(sink`.
 //
 // Both engines bundle whole. The frozen v2 engine imports `pg` and
 // `sqlite` by value, so those are aliased to bench/browser/nodeStubs.ts;
@@ -11,8 +12,9 @@
 // the harness uses top-level await and Chrome blocks module scripts from
 // file:// URLs.
 import { build } from 'esbuild'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { available, describe } from './benchList.mjs'
 
 /**
  * The page a bundle runs in. The harness appends Markdown to the hidden
@@ -22,8 +24,9 @@ import { resolve } from 'node:path'
  * rendering beat a dependency. The raw text stays under a disclosure for
  * copying into an issue, and it is what a driver reads back.
  */
-const page = (name) => `<!doctype html>
+const page = (name, description) => `<!doctype html>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <title>bench: ${name}</title>
 <style>
   body { margin: 24px; max-width: 1100px; font: 14px/1.5 system-ui, sans-serif; color: #1a1a1a }
@@ -38,6 +41,7 @@ const page = (name) => `<!doctype html>
   #out { display: none }
 </style>
 <h1>${name}</h1>
+<p>${description}</p>
 <div id="status">running…</div>
 <div id="rendered"></div>
 <details><summary>Markdown</summary><pre id="raw"></pre></details>
@@ -69,11 +73,12 @@ const page = (name) => `<!doctype html>
 <script type="module" src="./${name}.js"></script>
 `
 
-const names = process.argv.slice(2)
-if (names.length === 0) {
-  console.error('Usage: node codegen/benchBrowser.mjs <bench>…')
+const args = process.argv.slice(2)
+if (args.length === 0) {
+  console.error('Usage: node codegen/benchBrowser.mjs <bench>… | all')
   process.exit(1)
 }
+const names = args.includes('all') ? available() : args
 
 const dist = 'bench/browser/dist'
 mkdirSync(dist, { recursive: true })
@@ -92,6 +97,26 @@ for (const name of names) {
     tsconfig: 'tsconfig.bench.json',
     logLevel: 'warning',
   })
-  writeFileSync(`${dist}/${name}.html`, page(name))
+  writeFileSync(`${dist}/${name}.html`, page(name, describe(name)))
   console.log(`built ${dist}/${name}.html`)
 }
+
+// One landing page over everything in dist, not just this build's names,
+// so successive partial builds accumulate rather than replace the list.
+const pages = readdirSync(dist)
+  .filter((file) => file.endsWith('.html') && file !== 'index.html')
+  .map((file) => file.slice(0, -5))
+  .sort()
+writeFileSync(
+  `${dist}/index.html`,
+  `<!doctype html>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>benches</title>
+<style>body{margin:24px;font:14px/1.6 system-ui,sans-serif} li{margin:4px 0}</style>
+<h1>Benches</h1>
+<p>Each page runs its bench on load; results render as it goes.</p>
+<ul>${pages.map((name) => `<li><a href="./${name}.html">${name}</a> — ${describe(name)}</li>`).join('')}</ul>
+`
+)
+console.log(`built ${dist}/index.html (${pages.length} pages)`)

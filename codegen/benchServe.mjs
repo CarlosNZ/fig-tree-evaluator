@@ -9,7 +9,8 @@ const port = Number(process.argv[2] ?? 8765)
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json' }
 
 createServer(async (req, res) => {
-  const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname))
+  const requested = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname))
+  const path = requested.endsWith('/') ? `${requested}index.html` : requested
   try {
     const body = await readFile(join(root, path))
     // Cross-origin isolation lifts Chrome's `performance.now()` clamp from

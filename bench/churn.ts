@@ -25,6 +25,10 @@ import { FigTree, coreOperators } from '../src'
 import { finish, runCase, section, type Sweep } from './harness'
 import { config, holeV2, holeV3 } from './shapes'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'Being handed a fresh copy of the same config each time — how the content cache fares on three shapes.'
+
 const data = (i: number) => ({
   user: { isAdmin: i % 2 === 0 },
   stage: i % 3 === 0 ? 'draft' : 'live',

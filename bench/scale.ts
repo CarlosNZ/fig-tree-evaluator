@@ -30,6 +30,10 @@ import type { EvaluatorNode } from '../v2-src/types'
 import { FigTree, coreOperators } from '../src'
 import { finish, note, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'One very large expression, watching the cost per node for a knee as it grows to 8,000 nodes.'
+
 /** Builds a tree of roughly `nodes` operator nodes, in either spelling. */
 const build = (nodes: number, v3: boolean, seed = 0): unknown => {
   if (nodes <= 1) {

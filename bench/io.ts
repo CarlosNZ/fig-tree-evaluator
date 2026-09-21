@@ -22,6 +22,10 @@ import { FigTree, coreOperators, httpOperators } from '../src'
 import type { HttpClient } from '../src'
 import { finish, note, runCase, section, type Sweep } from './harness'
 
+/** One line for the bench list and the browser index. */
+export const description =
+  'Not repeating network requests: request counts over repeated evaluations, against an instant stub client.'
+
 const RESPONSE = { rate: 0.61 }
 
 /** v3's client: one `request` method. Counts what it was asked for. */

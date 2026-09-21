@@ -2,19 +2,9 @@
 // tsx. `pnpm bench list` prints what exists. Benches import BOTH engines,
 // so they compile under tsconfig.bench.json rather than the v3 config —
 // see that file for the one interop mapping it carries.
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-
-const BENCH_DIR = 'bench'
-// Shared modules, not runnable benches.
-const HIDDEN = new Set(['harness', 'shapes'])
-
-const available = () =>
-  readdirSync(BENCH_DIR)
-    .filter((file) => file.endsWith('.ts') && !file.endsWith('.d.ts'))
-    .map((file) => file.slice(0, -3))
-    .filter((name) => !HIDDEN.has(name))
-    .sort()
+import { BENCH_DIR, available, benches } from './benchList.mjs'
 
 // Benchmarks are only comparable on one runtime, and `engines` names it.
 // Node 20's AbortController is roughly seven times slower than Node 22's,
@@ -32,10 +22,10 @@ const name = process.argv[2]
 
 if (name === undefined || name === 'list') {
   console.log('Usage: pnpm bench <name>\n\nBenches:')
+  const all = benches()
+  const width = Math.max(...all.map(({ name }) => name.length))
   console.log(
-    available()
-      .map((entry) => `  ${entry}`)
-      .join('\n')
+    all.map(({ name, description }) => `  ${name.padEnd(width)}  ${description}`).join('\n')
   )
   process.exit(0)
 }
