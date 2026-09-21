@@ -177,7 +177,9 @@ Deferred to other areas:
 - **`mode: 'throw'`** (default) — first uncaught error aborts the evaluation and throws a `FigTreeError`; `fallback`s still catch where present.
 - **`mode: 'report'`** — never throws. An erroring node resolves to its `fallback` if present, otherwise `null`, and evaluation of everything else continues (the v2 `returnErrorAsString` partial-evaluation use case, minus its in-band-signaling flaw). Every error is collected as a `FigTreeError` **tagged with the failing node's path**, returned alongside the result.
 
-`FigTreeError` carrying a node path is part of the contract (also needed for editor diagnostics and trace mode).
+`FigTreeError` carrying a node path is part of the contract (also needed for editor diagnostics and for `trace`).
+
+**`mode` and `trace` are orthogonal, not three values of one setting** (stated at Phase-12 planning, September 2026 — the prose here previously said "trace mode", which implies a third `mode` value and is wrong). `mode` decides what happens when something fails; `trace` decides whether the run is also recorded, and changes no semantics. All four combinations are legal and three of them are wanted: `throw` alone is the production fast path, `report` alone is the resilience path, `report` + `trace` is the editor's preview run, and **`throw` + `trace` is the one a single enum could not express at all** — debugging a run you want to keep failing loudly, where the thrown `FigTreeError` carries the partial instance tree as `error.trace`. The two also have independent room to grow: a third `mode` (the authoring/dry-run mode with loud in-band markers) and a non-boolean `trace` (`'summary'`) are both recorded as possible, and neither would fit inside the other's value space.
 
 ### v2 → v3 option disposition
 
