@@ -1,3 +1,26 @@
+/**
+ * MIGRATION STATUS (Phase 7.2, 2026-09-19): hand-migrated to
+ * test/operators-renderers.test.ts. The `$N` block converts to the `%N`
+ * block by mechanical rewrite (`substitutionCharacter` dies — one token
+ * grammar), so the three blocks collapse to two.
+ *
+ * Behaviour kills, each an intentional divergence rather than a
+ * migration: **rank compaction** dies — `%N` is a strict 1-based index,
+ * so `'%2 out of every %3'` still works but `'My %1 is %3'` with two
+ * substitutions now renders `%3` literally instead of re-ranking;
+ * **unmatched tokens no longer render `""`** — they render their own
+ * text; the **`{{name}}`-from-`data` fallback dies**, and with it the
+ * re-evaluation of extracted data as an expression (the injection path);
+ * **bare path drilling inside a token** (`{{inner.two}}`,
+ * `{{arr[0].a}}`) dies; the **escape machinery** (`\%1`, `\{{`) dies,
+ * unneeded once cross-style tokens are inert and values are never
+ * re-scanned; **`numberMapping`** dies, composing as an ordinary `match`;
+ * `trimWhiteSpace` becomes `trim` with its default flipped to `false`;
+ * `string` becomes `template`, `replacements` / `values` become
+ * `substitutions`. New in v3 and authored from the pass: reference
+ * tokens, `nullValueDefault`, `closeGaps`, the composite placeholders,
+ * and the literal-face warnings.
+ */
 import fetch from 'node-fetch'
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 import { FetchClient } from '../src'

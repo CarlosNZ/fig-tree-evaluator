@@ -35,6 +35,8 @@ import {
   type SkeletonHole,
 } from '../parse'
 import { demoOperators } from './demoOperators'
+import { httpOperators, sqlOperators } from '../operators/io'
+import { coreOperators } from '../operators'
 
 const WIDTH = 78
 /** Column the `#order  path` annotations start at. */
@@ -135,6 +137,10 @@ const describeNode = (node: CompiledNode): string => {
       const holes = `${node.holes.length} hole${node.holes.length === 1 ? '' : 's'}`
       return `skeleton  ${holes}  shape: ${renderSkeleton(node.skeleton, node.holes)}`
     }
+    case 'elements':
+      return `elements  ${node.nodes.length} element${node.nodes.length === 1 ? '' : 's'}`
+    case 'entries':
+      return `entries   ${Object.keys(node.entries).join(', ')}`
     case 'invalid':
       return `invalid   ${preview(node.raw)}`
   }
@@ -163,7 +169,17 @@ const childrenOf = (node: CompiledNode): Child[] => {
   if (node.kind === 'skeleton')
     for (const hole of node.holes)
       children.push({ label: `at ${renderPath(hole.at)}`, node: hole.node })
-  if (node.kind === 'operator' || node.kind === 'fragmentCall' || node.kind === 'skeleton')
+  if (node.kind === 'elements')
+    node.nodes.forEach((element, i) => children.push({ label: `[${i}]`, node: element }))
+  if (node.kind === 'entries')
+    for (const [key, value] of Object.entries(node.entries))
+      children.push({ label: key, node: value })
+  if (
+    node.kind === 'operator' ||
+    node.kind === 'fragmentCall' ||
+    node.kind === 'skeleton' ||
+    node.kind === 'entries'
+  )
     if (node.vars !== undefined)
       for (const [name, definition] of Object.entries(node.vars))
         children.push({ label: `vars.${name}`, node: definition })
@@ -194,7 +210,9 @@ const printArtifactFacts = (artifact: ParseArtifact) => {
       `   shielded ${artifact.shielded}   identityOnly ${artifact.identityOnly}`
   )
   console.log(`  operators    ${list(deps.operators)}`)
-  console.log(`  dataPaths    ${list(deps.dataPaths)}   (dynamic read-set: ${deps.dynamic})`)
+  console.log(
+    `  dataPaths    ${list([...deps.dataPaths.keys()])}` + `   (dynamic read-set: ${deps.dynamic})`
+  )
   console.log(`  fragments    ${list(deps.fragments)}`)
   if (artifact.holes.length === 0) {
     console.log('  holes        none — the input is fully constant')
@@ -216,6 +234,7 @@ const printIssues = (heading: string, issues: Issue[]) => {
   for (const issue of issues) {
     const tags: string[] = []
     if (issue.operator !== undefined) tags.push(`operator '${issue.operator}'`)
+    if (issue.fragment !== undefined) tags.push(`fragment '${issue.fragment}'`)
     if (issue.parameter !== undefined) tags.push(`parameter '${issue.parameter}'`)
     console.log(
       `  ${issue.severity.padEnd(7)} ${issue.code.padEnd(22)} at ${renderPath(issue.path)}`
@@ -230,9 +249,23 @@ const printIssues = (heading: string, issues: Issue[]) => {
  * own registry instead of the demo set, `data` to exercise the sample-data
  * warning, `maxNodes`/`maxDepth` for the limit checks.
  */
+/**
+ * The I/O operators, wired to a client that cannot run: `inspect` parses
+ * and validates and never evaluates, so what matters is that the
+ * definitions are REGISTERED — otherwise an `http` node inspects as
+ * invalid. A stub rather than `httpOperators()` so the tool needs no
+ * global fetch, and can never accidentally reach the network.
+ */
+const inspectIO = () => {
+  const unreachable = () => {
+    throw new Error('inspect() never evaluates')
+  }
+  return [httpOperators({ request: unreachable }), sqlOperators({ query: unreachable })]
+}
+
 export const inspect = (expression: unknown, options: InspectOptions = {}): void => {
   const { label, ...figOptions } = options
-  const operators = figOptions.operators ?? [demoOperators()]
+  const operators = figOptions.operators ?? [coreOperators, demoOperators(), ...inspectIO()]
   const registry = buildRegistry({
     operators,
     ...(figOptions.operatorDefaults !== undefined

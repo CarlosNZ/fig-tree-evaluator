@@ -26,19 +26,24 @@ import {
   checkType,
   isExpectedType,
   isLiteralType,
+  typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
 } from './typeCheck'
 import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
 import {
   EvaluationData,
+  OPERATOR_CATEGORIES,
   VALIDATED_OPERATOR,
   isValidatedOperator,
   type CompiledNullPolicy,
   type EvaluationMode,
   type NullPolicyValue,
+  type OperatorCategory,
   type OperatorDefinition,
+  type OperatorEvaluate,
   type ParameterDeclaration,
+  type ParameterDeclarations,
   type ValidatedOperatorDefinition,
   type ValidatedParameter,
 } from './operatorDefinition'
@@ -63,17 +68,18 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'structural',
 ])
 
+/**
+ * The `category` vocabulary, closed. Required rather than
+ * optional-with-a-default: a silent fallback produces exactly the
+ * uncategorized entries the field exists to prevent, so an author who
+ * genuinely fits nowhere picks `other` deliberately.
+ */
+const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
+
 const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
 
 /** The rest marker on a `positionalParams` entry (`'...values'`). */
 const REST_PREFIX = '...'
-
-/** Does a declared type admit `null` (type-driven admission)? */
-const typeNamesNull = (type: ExpectedType): boolean => {
-  if (type === 'null' || type === 'any') return true
-  if (Array.isArray(type)) return type.includes('null') || type.includes('any')
-  return false
-}
 
 /** Does a declared type admit an array (the `over` target requirement)? */
 const typeAdmitsArray = (type: ExpectedType): boolean => {
@@ -104,9 +110,26 @@ const throwDefinitionError = (issues: Issue[], operator?: string): never => {
   })
 }
 
-export const defineOperator = (
-  definition: OperatorDefinition | ValidatedOperatorDefinition
-): ValidatedOperatorDefinition => {
+/**
+ * Overloads rather than one signature over a union, because a union
+ * defeats the inference this function exists to provide. With
+ * `OperatorDefinition<P> | ValidatedOperatorDefinition` as one parameter
+ * type, a literal carrying enough of the validated shape's fields — it
+ * takes only `useCache` and `cache` together — stops being contextually
+ * typed at all, and every body parameter silently becomes `any`. The I/O
+ * operators declare exactly that pair, which is how this surfaced.
+ *
+ * Ordered so the idempotent case is tried first: a plain literal cannot
+ * match it, since the brand symbol is unforgeable outside this module, so
+ * it falls through to the inferring overload.
+ */
+export function defineOperator(definition: ValidatedOperatorDefinition): ValidatedOperatorDefinition
+export function defineOperator<const P extends ParameterDeclarations>(
+  definition: OperatorDefinition<P>
+): ValidatedOperatorDefinition
+export function defineOperator(
+  definition: OperatorDefinition<ParameterDeclarations> | ValidatedOperatorDefinition
+): ValidatedOperatorDefinition {
   // Idempotence: a validated definition is already the artifact
   if (isValidatedOperator(definition)) return definition
 
@@ -130,7 +153,7 @@ export const defineOperator = (
     addIssue(ErrorCodes.invalidDefinition, 'a definition must be a plain object', [])
     throwDefinitionError(issues)
   }
-  const def = definition as OperatorDefinition & Record<string, unknown>
+  const def = definition as unknown as OperatorDefinition & Record<string, unknown>
 
   if (typeof def.name !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'name' is required and must be a string", ['name'])
@@ -150,20 +173,27 @@ export const defineOperator = (
     ])
   if (issues.length > 0) throwDefinitionError(issues, operator)
 
-  // ── Optional definition-level fields — shape checks ───────────────────
+  // ── Definition-level fields — shape checks ────────────────────────────
+  // `category` is required but is NOT in the gate above: nothing else
+  // depends on it, so it reports alongside every other violation
+  if (typeof def.category !== 'string')
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      `'category' is required and must be one of ${[...CATEGORIES].join(', ')}`,
+      ['category']
+    )
+  else if (!CATEGORIES.has(def.category))
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      `'${def.category}' is not a category — expected one of ${[...CATEGORIES].join(', ')}`,
+      ['category']
+    )
   if (def.alias !== undefined && typeof def.alias !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'alias' must be a string", ['alias'])
   if (def.useCache !== undefined && typeof def.useCache !== 'boolean')
     addIssue(ErrorCodes.invalidDefinition, "'useCache' must be a boolean", ['useCache'])
   if (def.cache !== undefined && def.cache !== 'auto' && def.cache !== 'manual')
     addIssue(ErrorCodes.invalidDefinition, "'cache' must be 'auto' or 'manual'", ['cache'])
-  if (
-    def.readsOptions !== undefined &&
-    (!Array.isArray(def.readsOptions) || def.readsOptions.some((o) => typeof o !== 'string'))
-  )
-    addIssue(ErrorCodes.invalidDefinition, "'readsOptions' must be an array of option-block names", [
-      'readsOptions',
-    ])
   if (def.metadata !== undefined && !isPlainObject(def.metadata))
     addIssue(ErrorCodes.invalidDefinition, "'metadata' must be a plain object", ['metadata'])
   if (
@@ -171,9 +201,11 @@ export const defineOperator = (
     (!Array.isArray(def.positionalParams) ||
       def.positionalParams.some((p) => typeof p !== 'string'))
   )
-    addIssue(ErrorCodes.invalidDefinition, "'positionalParams' must be an array of parameter names", [
-      'positionalParams',
-    ])
+    addIssue(
+      ErrorCodes.invalidDefinition,
+      "'positionalParams' must be an array of parameter names",
+      ['positionalParams']
+    )
   if (def.timeoutParam !== undefined && typeof def.timeoutParam !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'timeoutParam' must be a parameter name", [
       'timeoutParam',
@@ -196,8 +228,7 @@ export const defineOperator = (
       )
     } else if (Array.isArray(value)) {
       value.forEach((element, i) => {
-        if (element === EvaluationData)
-          checkSentinelFree(element, [...path, i], parameter)
+        if (element === EvaluationData) checkSentinelFree(element, [...path, i], parameter)
       })
     }
   }
@@ -290,7 +321,12 @@ export const defineOperator = (
     }
 
     if (d.required !== undefined && typeof d.required !== 'boolean')
-      addIssue(ErrorCodes.invalidDefinition, `'required' must be a boolean`, at('required'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'required' must be a boolean`,
+        at('required'),
+        paramName
+      )
     if (d.description !== undefined && typeof d.description !== 'string')
       addIssue(
         ErrorCodes.invalidDefinition,
@@ -299,7 +335,12 @@ export const defineOperator = (
         paramName
       )
     if (d.metadata !== undefined && !isPlainObject(d.metadata))
-      addIssue(ErrorCodes.invalidDefinition, `'metadata' must be a plain object`, at('metadata'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'metadata' must be a plain object`,
+        at('metadata'),
+        paramName
+      )
 
     const hasDefault = 'default' in d
     if (hasDefault && d.required === true)
@@ -343,9 +384,19 @@ export const defineOperator = (
         paramName
       )
     if (d.truthiness !== undefined && typeof d.truthiness !== 'boolean')
-      addIssue(ErrorCodes.invalidDefinition, `'truthiness' must be a boolean`, at('truthiness'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'truthiness' must be a boolean`,
+        at('truthiness'),
+        paramName
+      )
     if (d.over !== undefined && typeof d.over !== 'string')
-      addIssue(ErrorCodes.invalidDefinition, `'over' must be a parameter name`, at('over'), paramName)
+      addIssue(
+        ErrorCodes.invalidDefinition,
+        `'over' must be a parameter name`,
+        at('over'),
+        paramName
+      )
     if (
       d.replacesNullAt !== undefined &&
       (!Array.isArray(d.replacesNullAt) || d.replacesNullAt.some((t) => typeof t !== 'string'))
@@ -408,7 +459,10 @@ export const defineOperator = (
   // positionalParams: entries name declared parameters; rest entry last
   // only; no duplicates
   let restParam: string | null = null
-  if (Array.isArray(def.positionalParams) && def.positionalParams.every((p) => typeof p === 'string')) {
+  if (
+    Array.isArray(def.positionalParams) &&
+    def.positionalParams.every((p) => typeof p === 'string')
+  ) {
     const seen = new Set<string>()
     const entries = def.positionalParams
     entries.forEach((entry, i) => {
@@ -430,11 +484,10 @@ export const defineOperator = (
           ['positionalParams', i]
         )
       if (seen.has(entryName))
-        addIssue(
-          ErrorCodes.invalidDefinition,
-          `duplicate positional entry '${entry}'`,
-          ['positionalParams', i]
-        )
+        addIssue(ErrorCodes.invalidDefinition, `duplicate positional entry '${entry}'`, [
+          'positionalParams',
+          i,
+        ])
       seen.add(entryName)
     })
   }
@@ -604,11 +657,9 @@ export const defineOperator = (
         ['timeoutParam']
       )
     else if (effectiveTypes[def.timeoutParam] !== 'integer')
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `the 'timeoutParam' target must be 'integer'-typed`,
-        ['timeoutParam']
-      )
+      addIssue(ErrorCodes.invalidDefinition, `the 'timeoutParam' target must be 'integer'-typed`, [
+        'timeoutParam',
+      ])
   }
 
   if (issues.length > 0) throwDefinitionError(issues, operator)
@@ -643,14 +694,17 @@ export const defineOperator = (
   const validated: ValidatedOperatorDefinition = {
     [VALIDATED_OPERATOR]: true,
     name: def.name,
+    category: def.category as OperatorCategory,
     description: def.description,
     parameters: validatedParameters,
     restParam,
+    deliversLazily: Object.values(validatedParameters).some(
+      (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
+    ),
     timeoutParam: def.timeoutParam ?? null,
     useCache: def.useCache ?? false,
     cache: def.cache ?? 'auto',
-    readsOptions: [...(def.readsOptions ?? [])],
-    evaluate: def.evaluate,
+    evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
   if (def.alias !== undefined) validated.alias = def.alias
@@ -664,8 +718,8 @@ export const defineOperator = (
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {
   if (typeof type === 'string') return type
-  if (Array.isArray(type)) return [...type]
-  return { literal: [...type.literal] }
+  if (isLiteralType(type)) return { literal: [...type.literal] }
+  return [...type]
 }
 
 /** Plain-data deep clone for owned declaration structures (constraints). */
@@ -702,7 +756,6 @@ const deepFreezeArtifact = (
   Object.freeze(validated.parameters)
   if (typeof validated.returns !== 'string') Object.freeze(validated.returns)
   if (validated.positionalParams !== undefined) Object.freeze(validated.positionalParams)
-  Object.freeze(validated.readsOptions)
   return Object.freeze(validated)
 }
 

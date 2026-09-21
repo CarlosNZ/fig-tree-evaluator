@@ -55,3 +55,16 @@ export const nearestName = (name: string, candidates: Iterable<string>): string 
   }
   return best
 }
+
+/**
+ * Run an async producer at most once and hand every caller the same
+ * promise — rejections included, so a failure is memoized like a value. A
+ * synchronous throw inside `fn` becomes a rejection.
+ */
+export const once = <T>(fn: () => Promise<T> | T): (() => Promise<T>) => {
+  let pending: Promise<T> | undefined
+  return () => {
+    if (pending === undefined) pending = (async () => fn())()
+    return pending
+  }
+}

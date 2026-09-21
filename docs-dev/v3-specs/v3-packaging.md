@@ -10,7 +10,7 @@ One npm package, `fig-tree-evaluator`, three entry points:
 |---|---|---|
 | `fig-tree-evaluator` | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host |
 | `fig-tree-evaluator/convert` | v2→v3 conversion + shorthand round-trip utilities (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees) | migration tooling, the editor |
-| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds (content fixed in [v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module) | the editor and other tooling |
+| `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md)) | the editor and other tooling |
 
 Explicitly **not** entry points:
 
@@ -23,7 +23,7 @@ Explicitly **not** entry points:
 1. **Capability is gated by registration, not by import path.** Importing `httpOperators` gives you nothing; handing it a client and putting the result in the `operators` array is the act with consequences (Options § opt-in by construction). Import-path layering would duplicate — weakly — a boundary the registry already enforces strongly, so import ergonomics are free to optimize for discoverability instead.
 2. **Subpaths are for code that must never ride the runtime.** `./convert` and `./editor-hints` are tooling-side by definition; the root entry never imports either (v2's editor entanglement — every consumer bundling the converter suite — is the recorded failure this rule prevents). Runtime-side imports of a subpath are a lint error in this repo, not just a convention.
 3. **Everything exported is contract.** If it is reachable from an entry point, its behaviour is specified in these docs and its tests are contract tests (the Phase-1.1 rule). No incidental exports, no "for the editor" exceptions — that clause is how v2's root entry accreted `truncateString`.
-4. **No re-exports of third-party packages.** v2 re-exported `dequal` for the editor's convenience; a consumer who wants a published package can depend on it. (`dequal` remains an internal *dependency* — `equal`'s semantics are specified by it — it just isn't our export surface.)
+4. **No re-exports of third-party packages.** v2 re-exported `dequal` for the editor's convenience; a consumer who wants a published package can depend on it. (`equal`'s semantics are specified by `dequal`, **vendored** into `src/primitives/deepEqual.ts` with MIT attribution at Phase 4 — Carl, September 2026 — so the package has zero runtime dependencies; `deepEqual` is exported as a shared primitive, `dequal` itself is not.)
 5. **Tree-shakability is verified, not assumed.** `sideEffects: false` plus a CI fixture that bundles engine + `coreOperators` only and asserts the I/O toolkit and both subpaths are absent. A principle without a check is a hope.
 
 ## The root entry
@@ -34,7 +34,7 @@ The complete value-export inventory. Types are inventoried separately below.
 |---|---|---|
 | `FigTree` | class | Options; [evaluator-methods](v3-evaluator-methods.md) |
 | `defineOperator` | function | [operator contract](v3-operator-contract.md) |
-| `coreOperators` | `OperatorDefinition[]` — all 42 core operators | Operators § canonical list |
+| `coreOperators` | `OperatorDefinition[]` — all 40 core operator definitions (`literal` is grammar, so it has none) | Operators § canonical list |
 | `httpOperators` | `(client?: HttpClient) => OperatorDefinition[]` — `[http, graphQL]`; no argument defaults to `new FetchClient()` over global fetch (ruling below) | Options; contract § client contracts |
 | `sqlOperators` | `(connection: SqlConnection) => OperatorDefinition[]` — `[sql]` | Options; contract § client contracts |
 | `FetchClient`, `AxiosClient` | `HttpClient` wrappers | contract § client contracts |
@@ -70,7 +70,7 @@ const fig = new FigTree({
 
 ### Ruling: one `coreOperators` array — no grouped arrays, no per-operator exports
 
-The export-grouping question deferred from Operators (fat `coreOperators` vs lean core + `mathOperators` / `stringOperators`): **fat**. All 42 core operators ship in the one array.
+The export-grouping question deferred from Operators (fat `coreOperators` vs lean core + `mathOperators` / `stringOperators`): **fat**. All 40 core operator definitions ship in the one array.
 
 - The weight argument fails on arithmetic: the core operators are small pure functions — the entire set is a rounding error next to any host application, and the only genuinely heavy things (I/O, Intl/dates) are already outside `coreOperators` by construction. Grouping would tax every consumer with registration ceremony (and every doc with "which array is `round` in?") to serve a bundle-size case that doesn't exist.
 - The floated constraint — the default core must cover everything v2 had post-conversion, so converted v2 expressions run without extra registration — is satisfied trivially: converted v2 trees can only need core operators (I/O conversion necessarily involves handing over a client, which is registration).
@@ -108,7 +108,7 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 Discharges the deferral from the parameter passes ("final name and packaging mechanics → Packaging area"):
 
 - **Name confirmed: `editor-hints`** — self-describing, and the awkwardness of typing it is borne by tooling authors, not expression authors.
-- A **data-only module**: a plain typed map from canonical operator names to display values (colours, per-parameter editor seeds). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
+- A **data-only module**: two plain typed maps — canonical operator names to display values (colours, per-parameter editor seeds), and `category` values to their presentation (display label, listing position, colour; added at Phase-13 planning, where the field itself was ruled onto the definition). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorName`) are fine, since they erase at build.
 - The exported map type is the documented key convention for plugin/custom-operator authors who want their definitions to display well in the same tools (settled in the parameters doc; the type itself exports from the root per the Types rule above).
 - Co-versioned here rather than in the editor repo so an operator/parameter change and its hint update land in the same PR (rationale recorded in the parameters doc).
 
@@ -120,7 +120,7 @@ The assessment floated `./internal` for the editor's leftover needs. Examined it
 |---|---|
 | `standardiseOperatorName` | dies with the machinery — exact-match canonical names, no case folding (Operators § naming rule 1) |
 | `truncateString` | a three-line display utility; the editor owns its own |
-| `dequal` | a published package; the editor depends on it directly (principle 4) |
+| `dequal` | a published package; the editor depends on it directly (principle 4) — the engine's own copy is the vendored `deepEqual` primitive |
 | structural/registry checks | `isOperatorNode` / `isFragmentNode` (root) + the `isEvaluable()` method |
 | operator metadata, defaults merged | `getOperators()` |
 | static diagnostics | `validate()` |
@@ -134,7 +134,7 @@ The assessment floated `./internal` for the editor's leftover needs. Examined it
 - **ESM-only** (`"type": "module"`, no CJS artifacts — **ruled, Carl, July 2026**, resolving open Q1; supersedes this doc's earlier dual sketch). The deciding argument was not bundle weight but the **dual-load hazard being fatal to v3's identity machinery**: if one process loads both copies (one dependency `require`s, another `import`s), the `defineOperator()` brand symbol, the `EvaluationData` sentinel and `instanceof FigTreeError` all fail across the copy boundary — a class of "impossible" consumer bugs a CJS artifact invites and ESM-only makes structurally impossible. CJS consumers on Node ≥20.19 use native `require(esm)`; older consumers stay on v2.
 - **`sideEffects: false`** — kept, and now verified (principle 5). All three entries must be side-effect-free at import time; nothing registers, connects, or mutates globals on import (registration is explicit, per Options).
 - **Node floor: `engines: { "node": ">=22" }`** (**ruled, Carl, July 2026**, resolving open Q5 — Node 20 went EOL April 2026, so 22 is the oldest supported LTS; it also guarantees `require(esm)` for the CJS consumers above). Advisory (npm warns, doesn't block); the real commitments are: language target **ES2022**, no down-leveled output, no polyfills, and **no assumed globals beyond the ES standard + `AbortSignal`/`AbortController`**. The one sanctioned global probe is the no-arg `httpOperators()` / `FetchClient()` default reading global `fetch` — at registration, failing loudly there if absent (ruling above). The engine and core operators never touch it, which is what keeps the package runtime-agnostic (Node, Deno, Bun, browsers) without a compatibility matrix: a host without global fetch passes a client.
-- **Runtime dependencies: `dequal` only** (likely `dequal/lite`, external as today). `object-property-extractor` is retired: the v3 path resolver is a new in-repo primitive with deliberately different semantics (null drill-through by default, `[*]` projection, own-enumerable-only — References §3) — depending on the old package would mean overriding most of it. HTTP/SQL client libraries remain dev-only, injected by consumers, never bundled.
+- **Runtime dependencies: none** (`dequal` vendored as `deepEqual`, Phase 4 — full build, since `dequal/lite` lacks the Date/RegExp branches `equal` specifies). `object-property-extractor` is retired: the v3 path resolver is a new in-repo primitive with deliberately different semantics (null drill-through by default, `[*]` projection, own-enumerable-only — References §3) — depending on the old package would mean overriding most of it. HTTP/SQL client libraries remain dev-only, injected by consumers, never bundled.
 
 Sketch of the resulting manifest (mechanics, not contract — final paths are implementation detail):
 
@@ -223,7 +223,7 @@ Every export of v2's `src/index.ts`, accounted for:
 ## Open questions
 
 1. **ESM-only instead of dual?** — **resolved (Carl, July 2026): ESM-only.** The clincher was the dual-load hazard against v3's identity machinery (brand symbol, `EvaluationData` sentinel, `instanceof FigTreeError` — see Module format & platform floor); the "two migrations in one" concern was accepted as the cost of a major that already asks for expression rewrites. `require(esm)` on Node ≥20.19 covers CJS consumers.
-2. **SQL wrapper names.** `SQLNodePostgres`/`SQLite` are v2 oddities; proposed `PostgresConnection` / `SQLiteConnection` (matching the `SqlConnection` contract they implement). Also: confirm both wrappers still earn their place in-package vs living in README recipes. And one spelling for construction across all four wrappers — v2's are plain factories (`AxiosClient(axios)`), the v3 examples currently say `new FetchClient()`; class or factory, one wins at implementation (plan chunk 9.2, which ports the v2 wrappers as starting points).
+2. **SQL wrapper names** — **resolved (Carl, September 2026, at Phase-9.2 implementation).** `PostgresConnection` / `SQLiteConnection` as proposed, and **both ship in-package**: each is about fifteen lines with no dependency of its own (the drivers' types are declared structurally rather than imported, so `pg` and `sqlite` stay out of the emitted `.d.ts`), and the Northwind fixtures for both are already in the repo. **Classes, with `new`, across all four wrappers** — matching the worked examples, which already say `new FetchClient()` in three places. The compile-time conformance check turned out to be available either way (a factory annotated `: HttpClient` checks at the definition site exactly as `implements` does), so what decided it was that `new` reads as construction for things holding a connection, and that subclassing is a real extension path. Methods are arrow class fields, so a torn-off `const { request } = client` keeps its instance.
 3. **The engine-parity helper list.** Proposed: `isTruthy`, `compareValues`, `renderText`, `resolvePath` — confirm names, and whether any of the finer primitives (whitespace set, code-point segmentation, decimal rounding) deserve export too.
 4. **The public name of the expression-input type.** v2's `EvaluatorNode` is accurate but engine-flavoured; `FigTreeExpression` reads better in host code (`const expr: FigTreeExpression = …`). One name only, whichever it is.
 5. **Node floor: 20 or 22?** — **resolved (Carl, July 2026): `>=22`.** Node 20 went EOL April 2026, so 22 is the oldest supported LTS; it also buys `require(esm)` universality for Q1's ESM-only ruling.

@@ -1,8 +1,10 @@
 /**
- * Phase 2.2 — the `FigTree` shell: constructs, registers, throws on bad
- * input ("new FigTree(options?) … registration-time validation throws here"
- * in docs-dev/v3-specs/v3-evaluator-methods.md). No evaluation until
- * Phase 4.
+ * Construction: registers, and throws on bad input ("new FigTree(options?)
+ * … registration-time validation throws here" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md).
+ *
+ * The mutation path and the options snapshot are options-instance.test.ts;
+ * the merge rule is options-merge.test.ts.
  */
 import { FigTree, isFigTreeError, ErrorCodes, FigTreeError } from '../src'
 import { validDefinition } from './fixtures/operatorDefinitions'
@@ -18,8 +20,8 @@ const constructInvalid = (options: ConstructorParameters<typeof FigTree>[0]): Fi
   throw new Error('expected construction to throw')
 }
 
-describe('new FigTree — the Phase-2 shell', () => {
-  it('constructs with no options (default registry: empty until coreOperators, Phase 4)', () => {
+describe('new FigTree — registration', () => {
+  it('constructs with no options — the default registry is the core set', () => {
     expect(() => new FigTree()).not.toThrow()
   })
 

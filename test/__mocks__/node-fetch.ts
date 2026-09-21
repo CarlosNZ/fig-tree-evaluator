@@ -410,7 +410,7 @@ const mockFetch: any = jest.fn((url: string | Request, options?: any) => {
       ]
       const genders = ['male', 'female']
 
-      const persons = Array.from({ length: quantity }, (_, i) => ({
+      const persons = Array.from({ length: quantity }, () => ({
         id: Math.floor(Math.random() * 10000) + 1,
         firstname: firstNames[Math.floor(Math.random() * firstNames.length)],
         lastname: lastNames[Math.floor(Math.random() * lastNames.length)],

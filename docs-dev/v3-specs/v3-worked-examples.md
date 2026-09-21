@@ -78,6 +78,8 @@ Walking the five fates:
 4. **`summary` — deep uncaught failure.** `10 / 0` fails (finite-number guard); no `fallback` anywhere between the `divide` and the hole root, so the failure escapes: the *hole* `['stats','summary']` resolves to `null`, and the error is tagged with the deep failing node's `path` plus the `holePath`. Note the sibling `total` inside the same `stats` literal is untouched — `stats` is plain structure; the holes are independent.
 5. **`activity` — failing fallback (rule 4).** The primary request fails, the dynamic fallback evaluates and *also* fails → the node fails with the **fallback's** error, the original attached as `cause`. Nothing above catches → degraded hole.
 
+*Corrected at Phase-12 implementation (September 2026), on two points the printed output above gets wrong.* **The rule-4 error's `path` is `['activity', 'fallback']`**, not `['activity']`: `path` names the node that failed, and under rule 4 that is the fallback — re-tagging a path a child already set is exactly what the first-tagger-wins rule forbids, and it is that rule which makes the deep `['stats','summary','$buildString',1]` path two entries above work at all. The pair is more useful for keeping the two apart, `cause` naming the primary request and `path` the backup that also failed, with `holePath` answering "which hole degraded" either way. **And `summary`'s code is `non-finite-result`, not `operator-failure`**: `10 / 0` is stopped by the engine's finite-number guard (ledger #10), which is the whole reason no operator polices its own division — the fate, the path and the hole are as written, and the message is the guard's.
+
 **Throw-mode contrast**: the same call with `mode: 'throw'` rejects — with whichever of the two uncaught failures *occurred first* (the divide, in practice — no network round-trip), cancelling all in-flight work. Report's `errors` array is the complete set in deterministic tree order; the temporal race only affects throw mode's pick. And note what throw mode *destroys*: the three healthy values, computed and discarded.
 
 ---
@@ -155,7 +157,9 @@ await fig.evaluate(exprA, { data: dataA })                // → { greeting: 'We
 ```js
 // key(illustrative): 'http|get|https://api.example.com/rates?currency=NZD|headers:{}'
 // MISS → fetch #1 fires → response { rate: 0.61, base: 'USD' }
-// stored VALUE is the FULL response — returnPath applies post-cache:
+// stored VALUE is the FULL response — returnPath applies post-cache.
+// (Illustrative: what a store actually receives is an engine-owned
+//  envelope wrapping this value with a generation and an expiry.)
 // resultStore { 'http|get|…currency=NZD|…' → { rate: 0.61, base: 'USD' } }
 // node returns 0.61
 ```
@@ -316,7 +320,7 @@ fig.updateOptions({
   fragments: {
     userSummary: {
       expression: { $buildString: ['%1 (%2)', '$params.name', { $lower: '$params.role' }] },
-      parameters: { name: { type: 'string' }, role: { type: 'string', default: 'member' } },
+      parameters: { name: { type: 'string' }, role: { type: 'any', default: 'member' } },
     },
   },
 })
@@ -343,6 +347,8 @@ await fig.evaluate(expr, { mode: 'report', data: { user: { name: 'Ada', role: 7 
 ```
 
 A fragment-body failure has no single location in the input — the error carries both ends of the pointer: `path` says *which call* failed, `fragment` + `fragmentPath` say *where in the body*. (Had the failure been in the **argument** expression instead — say `role: { $http: … }` with the API down — the failure origin is caller-side and `path` points straight into the input; no `fragmentPath`.) The runtime type error lands at evaluation, not registration, because `role`'s value is dynamic; a *literal* `role: 7` at the call site would have been a `validate()`-time error instead.
+
+*Corrected at Phase-11 implementation (September 2026): `role` was declared `'string'`, which this example's own outcome cannot survive. A declared type is checked **at the boundary**, where the argument's value arrives — so a number would be refused as a bad argument to the call, with a caller-side `path` and no `fragmentPath`, and would never reach `lower` at all. Declaring `'any'` is what lets the value into the body and makes the body's own operator the one that rejects it, which is the two-level pointer this example exists to show. The boundary case is worth knowing in its own right and is tested beside this one: a strict declaration means a failure the body never sees.*
 
 ---
 

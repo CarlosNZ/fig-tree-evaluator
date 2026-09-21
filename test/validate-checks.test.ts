@@ -65,9 +65,7 @@ describe('missing required / unknown parameter', () => {
 describe('unresolved references', () => {
   test('$vars must resolve in lexical scope', () => {
     expect(errorCodes({ $plus: ['$vars.nope'] })).toContain('unresolved-var')
-    expect(
-      errorCodes({ operator: 'plus', vars: { a: 1 }, values: ['$vars.a'] })
-    ).toHaveLength(0)
+    expect(errorCodes({ operator: 'plus', vars: { a: 1 }, values: ['$vars.a'] })).toHaveLength(0)
   })
 
   test('vars resolve through enclosing scopes, plain-literal blocks included', () => {
@@ -92,12 +90,12 @@ describe('unresolved references', () => {
     expect(errorCodes({ operator: 'map', input: '$element', each: 1 })).toContain(
       'unresolved-binding'
     )
-    expect(
-      errorCodes({ operator: 'map', input: [1], each: 1, fallback: '$element' })
-    ).toContain('unresolved-binding')
-    expect(
-      errorCodes({ operator: 'map', input: [1], each: 1, vars: { x: '$index' } })
-    ).toContain('unresolved-binding')
+    expect(errorCodes({ operator: 'map', input: [1], each: 1, fallback: '$element' })).toContain(
+      'unresolved-binding'
+    )
+    expect(errorCodes({ operator: 'map', input: [1], each: 1, vars: { x: '$index' } })).toContain(
+      'unresolved-binding'
+    )
   })
 
   test("a nested iterator's input sees the outer bindings", () => {
@@ -146,15 +144,47 @@ describe('as renaming', () => {
   })
 
   test('a dynamic as is a parse error — structural means literal', () => {
-    expect(
-      errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })
-    ).toContain('invalid-as')
+    expect(errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })).toContain(
+      'invalid-as'
+    )
   })
 
   test('as may not collide with reserved namespaces, long or short form', () => {
     for (const as of ['data', 'e', 'index', 'v']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
     }
+  })
+
+  test('a binding used outside its each subtree is an error, not inert data', () => {
+    // `$element` is already an error there because the walk knows the
+    // namespace everywhere. An `as` name is a namespace only inside its
+    // own scope, so without the second look it would fall through to the
+    // generic unrecognized-$ warning and pass through as a string
+    const expression = {
+      operator: 'map',
+      input: '$order.items',
+      as: 'order',
+      each: '$order.name',
+    }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('the derived index form is caught out of scope too', () => {
+    const expression = { operator: 'map', input: [1], as: 'row', each: 1, fallback: '$rowIndex' }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('a binding name used after its iterator has closed is an error', () => {
+    const expression = {
+      $format: ['%1 %2', { operator: 'map', input: [1], as: 'row', each: '$row' }, '$row'],
+    }
+    expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('an unrelated $-string is still inert data with a warning', () => {
+    const expression = { operator: 'map', input: ['$typo'], as: 'row', each: '$row' }
+    expect(warningCodes(expression)).toContain('unrecognized-identifier')
+    expect(errorCodes(expression)).not.toContain('unresolved-binding')
   })
 
   test('as may not collide with enclosing as names, derived forms included', () => {
@@ -175,9 +205,9 @@ describe('vars cycles, shadowing, unreferenced', () => {
     expect(
       errorCodes({ operator: 'plus', vars: { a: '$vars.b', b: '$vars.a' }, values: ['$vars.a'] })
     ).toContain('var-cycle')
-    expect(
-      errorCodes({ operator: 'plus', vars: { a: '$vars.a' }, values: ['$vars.a'] })
-    ).toContain('var-cycle')
+    expect(errorCodes({ operator: 'plus', vars: { a: '$vars.a' }, values: ['$vars.a'] })).toContain(
+      'var-cycle'
+    )
   })
 
   test('a same-block chain without a loop is fine', () => {
@@ -222,9 +252,41 @@ describe('maxDepth / maxNodes — per call, from stored counts', () => {
     expect(fig.validate(deep).valid).toBe(true)
   })
 
-  test('maxNodes', () => {
-    const result = fig.validate(deep, { maxNodes: 3 })
+  test('maxNodes counts evaluable nodes — the one operator here', () => {
+    expect(fig.validate(deep, { maxNodes: 1 }).valid).toBe(true)
+    const result = fig.validate(deep, { maxNodes: 0 })
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
+  })
+})
+
+describe('the static layer applies null policy before the type check', () => {
+  test('a literal null at an optional parameter whose type excludes null is unset (row 14)', () => {
+    // clamp.min is `number` with a default — null means "use the default"
+    expect(errorCodes({ $clamp: [5, null] })).toHaveLength(0)
+    expect(errorCodes({ $clamp: { value: 5, max: null } })).toHaveLength(0)
+  })
+
+  test('a literal null at a required parameter whose type excludes null stays a type error', () => {
+    expect(errorCodes({ $format: { template: null } })).toContain('type-check')
+  })
+
+  test('a literal null at a required parameter whose type names null is admitted', () => {
+    expect(errorCodes({ $clamp: [null] })).toHaveLength(0)
+  })
+
+  test('null elements are excluded from homogeneity where elementNullPolicy is declared (row 13)', () => {
+    expect(errorCodes({ '$>': [1, null] })).toHaveLength(0)
+    expect(errorCodes({ '$>': [null, null] })).toHaveLength(0)
+    // the arity constraint still counts every slot
+    expect(errorCodes({ '$>': [1, null, 3] })).toContain('type-check')
+    // mixed non-null elements remain a violation
+    expect(errorCodes({ '$>': [1, 'a'] })).toContain('type-check')
+  })
+
+  test('null elements without a declared element policy are still constraint-checked', () => {
+    // strictNumbers.values is homogeneous ['number'] with no elementNullPolicy
+    expect(errorCodes({ $strictNumbers: [1, null] })).toContain('type-check')
+    expect(errorCodes({ $strictNumbers: [1, 2] })).toHaveLength(0)
   })
 })
 
@@ -266,7 +328,9 @@ describe('operator validate hooks', () => {
   })
 
   test('dynamic values are absent from literalParams — runtime never lints', () => {
-    expect(issuesOf({ $pattern: ['$data.p'] }).filter((i) => i.code === 'operator-validate')).toHaveLength(0)
+    expect(
+      issuesOf({ $pattern: ['$data.p'] }).filter((i) => i.code === 'operator-validate')
+    ).toHaveLength(0)
   })
 })
 
@@ -283,6 +347,24 @@ describe('sample-data check (only when data is supplied)', () => {
   test('no data supplied, no check', () => {
     expect(warningCodes({ a: '$data.missing.path' })).toHaveLength(0)
   })
+
+  test('a literal get path is checked too — the sugar equivalence', () => {
+    const result = fig.validate(
+      { a: { $get: 'user.name' }, b: { $get: 'missing.path' } },
+      { data: { user: { name: 'Ada' } } }
+    )
+    const misses = result.issues.filter((issue) => issue.code === 'missing-data-path')
+    expect(misses).toHaveLength(1)
+    expect(misses[0].message).toContain('missing.path')
+  })
+
+  test('a get reading a supplied `from` is not a $data path, so it is not checked', () => {
+    const result = fig.validate(
+      { a: { $get: { path: 'missing.path', from: { $plus: [1, 2] } } } },
+      { data: {} }
+    )
+    expect(result.issues.filter((issue) => issue.code === 'missing-data-path')).toHaveLength(0)
+  })
 })
 
 describe('useless modifiers on literal', () => {
@@ -291,5 +373,47 @@ describe('useless modifiers on literal', () => {
     const dead = result.issues.filter((issue) => issue.code === 'useless-modifier')
     expect(dead).toHaveLength(2)
     expect(result.valid).toBe(true)
+  })
+})
+
+describe('dead bindings', () => {
+  test("an each referencing none of its iterator's bindings warns", () => {
+    expect(warningCodes({ operator: 'map', input: [1, 2], each: 'constant' })).toContain(
+      'dead-binding'
+    )
+  })
+
+  test('referencing either binding clears it', () => {
+    expect(warningCodes({ operator: 'map', input: [1], each: '$element' })).not.toContain(
+      'dead-binding'
+    )
+    expect(warningCodes({ operator: 'map', input: [1], each: '$index' })).not.toContain(
+      'dead-binding'
+    )
+  })
+
+  test('a renamed iterator is judged on its own names', () => {
+    expect(
+      warningCodes({ operator: 'map', input: [1], as: 'row', each: '$row' })
+    ).not.toContain('dead-binding')
+    expect(warningCodes({ operator: 'map', input: [1], as: 'row', each: 1 })).toContain(
+      'dead-binding'
+    )
+  })
+
+  test('an inner iterator reading only the OUTER binding leaves the inner dead', () => {
+    const expression = {
+      operator: 'map',
+      input: [1],
+      as: 'outer',
+      each: { operator: 'map', input: [2], each: '$outer' },
+    }
+    // The outer frame is referenced; the inner one binds $element/$index
+    // and nothing reads them
+    expect(warningCodes(expression).filter((code) => code === 'dead-binding')).toHaveLength(1)
+  })
+
+  test('it is a warning, so the expression still evaluates', () => {
+    expect(errorCodes({ operator: 'map', input: [1], each: 'constant' })).toHaveLength(0)
   })
 })

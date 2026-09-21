@@ -12,11 +12,15 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
-import { checkType, checkConstraints, typesIntersect } from '../typeCheck'
-import type { ValidatedParameter } from '../operatorDefinition'
+import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
+import type { Constraints, ExpectedType } from '../typeCheck'
+import type { EvaluationMode } from '../operatorDefinition'
+import { nearestName } from '../utils'
 import { validateHelpers } from './helpers'
+import { bindsReference, renamedBinding } from './artifact'
 import type {
   CompiledNode,
+  FragmentCallNode,
   NodePath,
   OperatorNode,
   ParseArtifact,
@@ -50,6 +54,8 @@ interface VarsFrame {
 /** An iterator's binding scope: `as` name, or null for $element/$index. */
 interface IteratorFrame {
   as: string | null
+  /** Set when a reference inside the subtree resolved against this frame. */
+  referenced: boolean
 }
 
 interface CheckState {
@@ -76,10 +82,11 @@ const emit = (
   message: string,
   path: NodePath,
   order: number,
-  extra: { operator?: string; parameter?: string } = {}
+  extra: { operator?: string; fragment?: string; parameter?: string } = {}
 ) => {
   const issue: Issue = { severity, code, message, path }
   if (extra.operator !== undefined) issue.operator = extra.operator
+  if (extra.fragment !== undefined) issue.fragment = extra.fragment
   if (extra.parameter !== undefined) issue.parameter = extra.parameter
   state.artifact.issues.push({ issue, order })
 }
@@ -100,13 +107,15 @@ const visit = (state: CheckState, node: CompiledNode) => {
       popVars(state, frame)
       return
     }
-    case 'fragmentCall': {
+    case 'fragmentCall':
+      visitFragmentCall(state, node)
+      return
+    case 'elements':
+      for (const element of node.nodes) visit(state, element)
+      return
+    case 'entries': {
       const frame = pushVars(state, node.vars, node.path)
-      if (node.fallback !== undefined) visit(state, node.fallback)
-      if (node.parameters !== undefined) {
-        if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-        else for (const argument of Object.values(node.parameters)) visit(state, argument)
-      }
+      for (const value of Object.values(node.entries)) visit(state, value)
       popVars(state, frame)
       return
     }
@@ -114,6 +123,12 @@ const visit = (state: CheckState, node: CompiledNode) => {
       visitOperator(state, node)
       return
   }
+  // Exhaustive by construction: a new node kind must say how it is
+  // traversed. `visit` is the only resolver of $vars / $params / $element /
+  // $index and the only builder of the vars cycle graph, so a kind that
+  // slips through loses scope checking silently — and a cycle routed
+  // through it hangs at runtime instead of failing validation.
+  return node satisfies never
 }
 
 const isCompiledNode = (value: object): value is CompiledNode =>
@@ -141,7 +156,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
-    checkSuppliedParam(state, node, name, declared, supplied)
+    checkSuppliedParam(state, operatorOwner(node), name, declared, supplied)
   }
 
   runValidateHook(state, node)
@@ -154,59 +169,107 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
     else visit(state, supplied)
   }
   if (perElement.length > 0) {
-    state.iteratorFrames.push({ as: renamedBinding(node) })
+    const iterator: IteratorFrame = { as: renamedBinding(node), referenced: false }
+    state.iteratorFrames.push(iterator)
     for (const [, supplied] of perElement) visit(state, supplied)
     state.iteratorFrames.pop()
+    // The dead-binding lint, sibling of the unreferenced-vars warning: an
+    // `each` that reads none of its own bindings computes the same thing
+    // for every element. Conceivable on purpose, almost always a mistyped
+    // reference or a payload nested one level off
+    if (!iterator.referenced)
+      emit(
+        state,
+        'warning',
+        ErrorCodes.deadBinding,
+        `'${node.name}' binds ${iterator.as === null ? '$element / $index' : `$${iterator.as}`} but its 'each' references neither`,
+        node.path,
+        node.order,
+        { operator: node.name }
+      )
   }
 
   popVars(state, frame)
 }
 
-/** The literal `as` name on this node, when declared and usable. */
-const renamedBinding = (node: OperatorNode): string | null => {
-  const declared = node.entry.definition.parameters.as
-  if (declared?.evaluation !== 'structural') return null
-  const supplied = node.params.as
-  if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
-  return null
+/**
+ * What a receiving position declares, as this layer reads it. An operator's
+ * `ValidatedParameter` and a fragment's `FragmentParameter` both satisfy it
+ * — the two declaration shapes share `TypeDeclaration`, which is what lets
+ * one checker serve an operator parameter and a fragment argument alike.
+ */
+interface ReceivingDeclaration {
+  type: ExpectedType
+  required: boolean
+  constraints?: Constraints
+  elementNullPolicy?: unknown
+  evaluation?: EvaluationMode
 }
 
 const checkSuppliedParam = (
   state: CheckState,
-  node: OperatorNode,
+  owner: { label: string; extra: { operator?: string; fragment?: string } },
   name: string,
-  declared: ValidatedParameter,
+  declared: ReceivingDeclaration,
   supplied: CompiledNode
 ) => {
   // Literal values: the parse moment of the one type table. 'as' is owned
   // by the walk (invalid-as); other structural params must be literal too.
+  // Null policy runs BEFORE the type check, mirroring the runtime layers:
+  // a null at an optional parameter whose type excludes null is unset (the
+  // default applies), and null elements under a declared elementNullPolicy
+  // are the policy's business, not the constraints'.
   if (supplied.kind === 'constant') {
+    if (supplied.value === null && !declared.required && !typeNamesNull(declared.type)) return
     const typed = checkType(supplied.value, declared.type)
     if (!typed.ok) {
       emit(
         state,
         'error',
         ErrorCodes.typeCheck,
-        `'${node.name}.${name}': expected ${typed.expected}, received ${typed.actual}`,
+        `'${owner.label}.${name}': expected ${typed.expected}, received ${typed.actual}`,
         supplied.path,
         supplied.order,
-        { operator: node.name, parameter: name }
+        { ...owner.extra, parameter: name }
       )
       return
     }
     if (declared.constraints !== undefined) {
-      const constrained = checkConstraints(supplied.value, declared.constraints)
+      const constrained = checkConstraintsUnderPolicy(
+        supplied.value,
+        declared.constraints,
+        declared.elementNullPolicy !== undefined
+      )
       if (!constrained.ok)
         emit(
           state,
           'error',
           ErrorCodes.typeCheck,
-          `'${node.name}.${name}': expected ${constrained.expected}, received ${constrained.actual}`,
+          `'${owner.label}.${name}': expected ${constrained.expected}, received ${constrained.actual}`,
           supplied.path,
           supplied.order,
-          { operator: node.name, parameter: name }
+          { ...owner.extra, parameter: name }
         )
     }
+    return
+  }
+  // An element-addressable parameter has no whole value — not here and not
+  // at runtime, since the engine never assembles one. Its arity is known
+  // statically all the same, so the `length` constraint is checked against
+  // the element count; `homogeneous` and `elementShape` need element values
+  // and are checked per element as each is demanded (Phase 5.2).
+  if (supplied.kind === 'elements') {
+    const length = declared.constraints?.length
+    if (length !== undefined && supplied.nodes.length !== length)
+      emit(
+        state,
+        'error',
+        ErrorCodes.typeCheck,
+        `'${owner.label}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
+        supplied.path,
+        supplied.order,
+        { ...owner.extra, parameter: name }
+      )
     return
   }
   if (declared.evaluation === 'structural' && name !== 'as') {
@@ -214,10 +277,10 @@ const checkSuppliedParam = (
       state,
       'error',
       ErrorCodes.typeCheck,
-      `'${node.name}.${name}' is structural — it requires a literal value`,
+      `'${owner.label}.${name}' is structural — it requires a literal value`,
       supplied.path,
       supplied.order,
-      { operator: node.name, parameter: name }
+      { ...owner.extra, parameter: name }
     )
     return
   }
@@ -230,12 +293,81 @@ const checkSuppliedParam = (
         state,
         'error',
         ErrorCodes.returnsMismatch,
-        `'${supplied.name}' returns ${JSON.stringify(returns)} — it can never satisfy '${node.name}.${name}'`,
+        `'${supplied.name}' returns ${JSON.stringify(returns)} — it can never satisfy '${owner.label}.${name}'`,
         supplied.path,
         supplied.order,
-        { operator: node.name, parameter: name }
+        { ...owner.extra, parameter: name }
       )
   }
+}
+
+const operatorOwner = (node: OperatorNode) => ({
+  label: node.name,
+  extra: { operator: node.name },
+})
+
+// ── Fragment calls: the call signature ──────────────────────────────
+
+/**
+ * Static mode gets the full signature check — a missing required argument
+ * or an unknown argument name is a typo the author can fix before running
+ * anything, which is the same posture the no-hoisting rule takes on an
+ * operator node.
+ *
+ * Dynamic mode gets none of it: the arguments object does not exist until
+ * evaluation, so the identical checks move to the call itself. What is
+ * checked here in one mode and there in the other is deliberately the same
+ * list.
+ */
+const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
+  const frame = pushVars(state, node.vars, node.path)
+  if (node.fallback !== undefined) visit(state, node.fallback)
+
+  const declarations = node.entry?.parameters
+  const supplied =
+    node.parameters !== undefined && !isCompiledNode(node.parameters) ? node.parameters : undefined
+
+  // An unregistered name already raised unknown-fragment; there is nothing
+  // to check a call against
+  if (declarations !== undefined && node.argumentsMode === 'static') {
+    const owner = { label: node.name, extra: { fragment: node.name } }
+    for (const [name, declared] of Object.entries(declarations)) {
+      const argument = supplied?.[name]
+      if (argument === undefined) {
+        if (declared.required)
+          emit(
+            state,
+            'error',
+            ErrorCodes.missingRequired,
+            `fragment '${node.name}' – requires '${name}'`,
+            node.path,
+            node.order,
+            { fragment: node.name, parameter: name }
+          )
+        continue
+      }
+      checkSuppliedParam(state, owner, name, declared, argument)
+    }
+    for (const [name, argument] of Object.entries(supplied ?? {}))
+      if (declarations[name] === undefined) {
+        const suggestion = nearestName(name, Object.keys(declarations))
+        emit(
+          state,
+          'error',
+          ErrorCodes.unknownNodeKey,
+          `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+          argument.path,
+          argument.order,
+          { parameter: name }
+        )
+      }
+  }
+
+  if (node.parameters !== undefined) {
+    if (isCompiledNode(node.parameters)) visit(state, node.parameters)
+    else for (const argument of Object.values(node.parameters)) visit(state, argument)
+  }
+  popVars(state, frame)
 }
 
 // ── The operator validate hook (contract ledger #11) ────────────────
@@ -297,7 +429,7 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node)
+      resolveBinding(state, node, node.namespace)
       return
   }
 }
@@ -345,6 +477,9 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
     )
     return
   }
+  // Bare `$params` is the declared parameters resolved — legal, because
+  // the set it names is declared, finite and local
+  if (node.segments.length === 0) return
   const first = node.segments[0]
   if (typeof first !== 'string' || !declared.has(first))
     emit(
@@ -362,15 +497,17 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
  * iterator frame binding the name used. A renamed frame does not bind the
  * default names ("one way to refer to each thing").
  */
-const resolveBinding = (state: CheckState, node: ReferenceNode) => {
-  const matches = (frame: IteratorFrame): boolean => {
-    if (node.binding === undefined) return frame.as === null
-    return node.namespace === 'element'
-      ? frame.as === node.binding
-      : `${frame.as ?? ''}Index` === node.binding
-  }
+const resolveBinding = (
+  state: CheckState,
+  node: ReferenceNode,
+  namespace: 'element' | 'index'
+) => {
   for (let i = state.iteratorFrames.length - 1; i >= 0; i--) {
-    if (matches(state.iteratorFrames[i])) return
+    const frame = state.iteratorFrames[i]
+    if (bindsReference(frame.as, namespace, node.binding)) {
+      frame.referenced = true
+      return
+    }
   }
   emit(
     state,

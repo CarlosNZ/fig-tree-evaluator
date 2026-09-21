@@ -13,6 +13,8 @@
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
 import type { ValidateHelpers } from './parse/helpers'
+import type { OperatorContext } from './runtimeInterface'
+import type { ResolvedParams } from './inference'
 
 /**
  * The delivery-mode vocabulary ("Evaluation modes" in the contract).
@@ -20,13 +22,29 @@ import type { ValidateHelpers } from './parse/helpers'
  * and nowhere else, so a rename is one edit.
  */
 export type EvaluationMode =
-  | 'eager'
-  | 'race'
-  | 'lazy'
-  | 'lazyElements'
-  | 'lazyEntries'
-  | 'perElement'
-  | 'structural'
+  'eager' | 'race' | 'lazy' | 'lazyElements' | 'lazyEntries' | 'perElement' | 'structural'
+
+/**
+ * The grouping vocabulary ("`category` — the closed vocabulary" in the
+ * contract): a closed set of eight, required on every definition. The
+ * engine never reads it — it is what a tool building an operator dropdown
+ * with sections groups by, which is why it travels on the definition
+ * rather than in a hints module keyed by this package's own names. The
+ * tuple is the one source: the type derives from it, and so does
+ * `defineOperator()`'s membership check.
+ */
+export const OPERATOR_CATEGORIES = [
+  'logic',
+  'comparison',
+  'math',
+  'string',
+  'array',
+  'data',
+  'io',
+  'other',
+] as const
+
+export type OperatorCategory = (typeof OPERATOR_CATEGORIES)[number]
 
 export type NullPolicyValue = 'propagate' | 'value'
 
@@ -62,12 +80,15 @@ export interface CompiledNullPolicy {
 export const EvaluationData: unique symbol = Symbol('fig-tree:EvaluationData')
 
 /**
- * The operator body. Loosely typed until Phase 4 lands `OperatorContext` and
- * the resolved-params shapes — the contract's TS-inference stack is deferred
- * until real bodies exist to exercise it.
+ * The operator body as the engine calls it: post-everything params in, a
+ * value (or a promise of one) out. The authored form is typed from its
+ * declarations (`OperatorDefinition.evaluate`); this is the erased shape a
+ * validated definition carries.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type OperatorEvaluate = (params: Record<string, any>, context?: any) => unknown
+export type OperatorEvaluate = (
+  params: Record<string, unknown>,
+  context: OperatorContext
+) => unknown
 
 /**
  * One finding from a `validate` hook. The hook classifies and describes; the
@@ -125,25 +146,34 @@ export interface ParameterDeclaration extends TypeDeclaration {
    * named sibling target(s). Requires `evaluation: 'lazy'`, optional, no
    * `default`.
    */
-  replacesNullAt?: string[]
+  replacesNullAt?: readonly string[]
 }
 
-/** A definition as authored, before it passes through `defineOperator()`. */
-export interface OperatorDefinition {
+/** The `parameters` map of a definition, keyed by parameter name. */
+export type ParameterDeclarations = Record<string, ParameterDeclaration>
+
+/**
+ * A definition as authored, before it passes through `defineOperator()`.
+ * Generic over its own `parameters` so the body's `params` is typed from
+ * them (src/inference.ts).
+ */
+export interface OperatorDefinition<P extends ParameterDeclarations = ParameterDeclarations> {
   /** Shared legality rule + reservation set; collision-checked on registry. */
   name: string
   /** Exactly one, like natives; same legality/collision rules as `name`. */
   alias?: string
+  /** Grouping for tooling, from the closed set; never read by the engine. */
+  category: OperatorCategory
   description: string
   /** Opaque; engine never reads it; returned verbatim by `getOperators()`. */
   metadata?: Record<string, unknown>
   /** Keyed by parameter name; ordering lives in `positionalParams`. */
-  parameters: Record<string, ParameterDeclaration>
+  parameters: P
   /**
    * Ordered names; the last entry may be rest-marked (`'...values'`); every
    * entry names a declared parameter. Omitted ⇒ named-face only.
    */
-  positionalParams?: string[]
+  positionalParams?: readonly string[]
   /**
    * Names the declared `integer` parameter whose resolved value joins the
    * abort composition on `context.signal` (ledger #15; Q5 resolution).
@@ -153,10 +183,9 @@ export interface OperatorDefinition {
   useCache?: boolean
   /** How caching is keyed when effective `useCache` is true. */
   cache?: 'auto' | 'manual'
-  /** Option blocks the body reads; they arrive frozen on `context.options`. */
-  readsOptions?: string[]
   validate?: OperatorValidate
-  evaluate: OperatorEvaluate
+  /** The body, its `params` typed from the declarations above. */
+  evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
   /** Declared result type — drives the static feeding-position check. */
   returns?: ExpectedType
 }
@@ -198,17 +227,25 @@ export interface ValidatedOperatorDefinition {
   readonly [VALIDATED_OPERATOR]: true
   name: string
   alias?: string
+  category: OperatorCategory
   description: string
   metadata?: Record<string, unknown>
   parameters: Record<string, ValidatedParameter>
   positionalParams?: string[]
   /** Derived: the rest-marked positional parameter's name, or null. */
   restParam: string | null
+  /**
+   * Derived: does any parameter reach the body as a handle rather than a
+   * value? Only such a node can still have work in flight once its body
+   * has settled, so only such a node needs an abort scope of its own.
+   */
+  deliversLazily: boolean
   /** Normalized `timeoutParam`: the declared name, or null. */
   timeoutParam: string | null
+  /** The definition's own default — the bottom of the `useCache` chain. */
   useCache: boolean
+  /** How caching is keyed; doubles as the `'manual'` capability flag. */
   cache: 'auto' | 'manual'
-  readsOptions: string[]
   validate?: OperatorValidate
   evaluate: OperatorEvaluate
   returns: ExpectedType

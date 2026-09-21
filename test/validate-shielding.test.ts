@@ -2,8 +2,8 @@
  * Phase-3.3 black-box suite: the timeoutShielded badge — worked example 3
  * in docs-dev/v3-specs/v3-worked-examples.md is the acceptance test
  * (fallback rule 3 in "fallback semantics", docs-dev/v3-specs/v3-api.md).
- * The badge becomes runtime-true in Phase 10; here it is statically
- * computed and surfaced.
+ * Here the badge is statically computed and surfaced; what it promises at
+ * runtime is asserted in test/evaluate-timeout.test.ts.
  */
 import { FigTree } from '../src'
 import { parseOps } from './fixtures/parseRegistry'
@@ -47,4 +47,20 @@ test('an operatorDefaults modifier fallback counts as a static fallback', () => 
   )
   // The same expression on the plain instance is unshielded
   expect(fig.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(false)
+})
+
+test('a vars block on a plain-literal root does not un-shield it', () => {
+  // Phase-5 correction: the root skeleton was treated as a single hole when
+  // it carried vars, and a skeleton has no fallback of its own — so an
+  // expression whose every hole was shielded reported false
+  const shared = {
+    vars: { base: 'https://api.example.com' },
+    offers: { $http: { url: '$vars.base' }, fallback: [] },
+    banner: { $http: { url: '$vars.base' }, fallback: 'none' },
+  }
+  expect(fig.validate(shared).timeoutShielded).toBe(true)
+
+  // Still all-or-nothing, vars or not
+  const partial = { ...shared, banner: { $http: { url: '$vars.base' } } }
+  expect(fig.validate(partial).timeoutShielded).toBe(false)
 })

@@ -5,7 +5,7 @@
  * set where a real operator is being modelled, but the definitions are
  * test-local and deliberately minimal.
  */
-import { defineOperator } from '../../src'
+import { defineOperator, EvaluationData } from '../../src'
 import { buildRegistry, type OperatorRegistry } from '../../src/registry'
 import type { ValidatedOperatorDefinition } from '../../src'
 
@@ -16,6 +16,7 @@ export const ifOp = () =>
   defineOperator({
     name: 'if',
     alias: '?',
+    category: 'other',
     description: 'Conditional branching',
     parameters: {
       condition: { type: 'any', truthiness: true },
@@ -31,6 +32,7 @@ export const notOp = () =>
   defineOperator({
     name: 'not',
     alias: '!',
+    category: 'other',
     description: 'Boolean negation',
     parameters: { value: { type: 'any', truthiness: true } },
     positionalParams: ['value'],
@@ -43,6 +45,7 @@ export const plusOp = () =>
   defineOperator({
     name: 'plus',
     alias: '+',
+    category: 'other',
     description: 'Add things together',
     parameters: {
       values: { type: 'array' },
@@ -57,6 +60,7 @@ export const plusOp = () =>
 export const formatOp = () =>
   defineOperator({
     name: 'format',
+    category: 'other',
     description: 'Render a template with substitutions',
     parameters: {
       template: { type: 'string' },
@@ -71,6 +75,7 @@ export const formatOp = () =>
 export const clampOp = () =>
   defineOperator({
     name: 'clamp',
+    category: 'other',
     description: 'Constrain a number to a range',
     parameters: {
       value: { type: ['number', 'null'] },
@@ -86,6 +91,7 @@ export const clampOp = () =>
 export const httpOp = () =>
   defineOperator({
     name: 'http',
+    category: 'other',
     description: 'HTTP request',
     parameters: {
       url: { type: 'string' },
@@ -102,6 +108,7 @@ export const httpOp = () =>
 export const mapOp = () =>
   defineOperator({
     name: 'map',
+    category: 'other',
     description: 'Transform each element of an array',
     parameters: {
       input: { type: 'array' },
@@ -113,20 +120,39 @@ export const mapOp = () =>
     evaluate: noop,
   })
 
-/** `greaterThan` — constraints (length + homogeneous), boolean returns. */
+/**
+ * `greaterThan` — constraints (length + homogeneous), element-wise
+ * propagate, boolean returns.
+ */
 export const greaterThanOp = () =>
   defineOperator({
     name: 'greaterThan',
     alias: '>',
+    category: 'other',
     description: 'Strict ordering comparison',
     parameters: {
       values: {
         type: 'array',
+        elementNullPolicy: 'propagate',
         constraints: { length: 2, homogeneous: ['number', 'string'] },
       },
     },
     positionalParams: ['...values'],
     returns: 'boolean',
+    evaluate: noop,
+  })
+
+/** `strictNumbers` — a homogeneity constraint with NO element null policy. */
+export const strictNumbersOp = () =>
+  defineOperator({
+    name: 'strictNumbers',
+    category: 'other',
+    description: 'Homogeneous numbers, nulls not admitted per element',
+    parameters: {
+      values: { type: 'array', constraints: { homogeneous: ['number'] } },
+    },
+    positionalParams: ['...values'],
+    returns: 'number',
     evaluate: noop,
   })
 
@@ -138,6 +164,7 @@ export const greaterThanOp = () =>
 export const hookOp = () =>
   defineOperator({
     name: 'pattern',
+    category: 'other',
     description: 'Validate-hook holder',
     parameters: {
       pattern: { type: 'string' },
@@ -171,7 +198,78 @@ export const hookOp = () =>
     evaluate: noop,
   })
 
+/** `or` — the `race` delivery: element-addressable, truthiness per element. */
+export const orOp = () =>
+  defineOperator({
+    name: 'or',
+    category: 'other',
+    description: 'Boolean disjunction, resolved as operands settle',
+    parameters: { values: { type: 'array', truthiness: true, evaluation: 'race' } },
+    positionalParams: ['...values'],
+    returns: 'boolean',
+    evaluate: noop,
+  })
+
+/** `firstOf` — `lazyElements`: one demandable handle per element. */
+export const firstOfOp = () =>
+  defineOperator({
+    name: 'firstOf',
+    category: 'other',
+    description: 'The first candidate that is not null',
+    parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
+    positionalParams: ['...values'],
+    evaluate: noop,
+  })
+
+/** `pick` — a leading position before a `race` rest slice (the index trap). */
+export const pickOp = () =>
+  defineOperator({
+    name: 'pick',
+    category: 'other',
+    description: 'A leading position ahead of an element-addressable rest slice',
+    parameters: {
+      label: { type: 'string' },
+      values: { type: 'array', evaluation: 'lazyElements' },
+    },
+    positionalParams: ['label', '...values'],
+    evaluate: noop,
+  })
+
+/** `match` — the `lazyEntries` delivery, and its two-mode `branches`. */
+export const matchOp = () =>
+  defineOperator({
+    name: 'match',
+    category: 'other',
+    description: 'Dispatch on a value',
+    parameters: {
+      value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
+      branches: { type: 'object', evaluation: 'lazyEntries' },
+      default: { type: 'any', required: false, evaluation: 'lazy' },
+    },
+    positionalParams: ['value', 'branches', 'default'],
+    evaluate: noop,
+  })
+
+/** `get` — the parser records its literal paths as data dependencies. */
+export const getOp = () =>
+  defineOperator({
+    name: 'get',
+    category: 'other',
+    description: 'Read a path out of the evaluation data',
+    parameters: {
+      path: { type: ['string', 'array', 'null'] },
+      from: { type: 'any', nullPolicy: 'value', default: EvaluationData },
+      missingPathDefault: { type: 'any', required: false, evaluation: 'lazy' },
+    },
+    positionalParams: ['path', 'missingPathDefault'],
+    evaluate: noop,
+  })
+
 export const parseOps = (): ValidatedOperatorDefinition[] => [
+  orOp(),
+  firstOfOp(),
+  pickOp(),
+  matchOp(),
   ifOp(),
   notOp(),
   plusOp(),
@@ -180,7 +278,9 @@ export const parseOps = (): ValidatedOperatorDefinition[] => [
   httpOp(),
   mapOp(),
   greaterThanOp(),
+  strictNumbersOp(),
   hookOp(),
+  getOp(),
 ]
 
 /** A fresh registry over the stand-in set, optional operatorDefaults. */
@@ -192,5 +292,16 @@ export const makeParseRegistry = (
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),
   })
 
-/** Phase 3 has no registrable fragments — the empty lookup. */
-export const noFragments: ReadonlyMap<string, unknown> = new Map()
+/**
+ * A registry with two fragments registered, for the parse-side cases that
+ * need a KNOWN name: the shorthand face and the entry the walk bakes in.
+ * Bodies are trivial — what is under test is recognition, not the body.
+ */
+export const withFragments = (): OperatorRegistry =>
+  buildRegistry({
+    operators: [parseOps()],
+    fragments: {
+      summary: { expression: 'a summary', parameters: { title: { type: 'string' } } },
+      plain: { expression: 1 },
+    },
+  })

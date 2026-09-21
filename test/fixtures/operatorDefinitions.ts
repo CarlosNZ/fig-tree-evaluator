@@ -9,11 +9,17 @@
  * row per violation of the contract's validation list, carrying the issue
  * code and path the throw must include.
  */
-import { EvaluationData, ErrorCodes, type OperatorDefinition } from '../../src'
+import {
+  EvaluationData,
+  ErrorCodes,
+  type LazyValue,
+  type OperatorDefinition,
+} from '../../src'
 
 /** A fresh minimal valid definition — callers may mutate their copy freely. */
 export const validDefinition = (): OperatorDefinition => ({
   name: 'testOp',
+  category: 'other',
   description: 'A minimal valid operator for tests',
   parameters: {
     value: { type: 'number' },
@@ -26,6 +32,7 @@ export const validDefinition = (): OperatorDefinition => ({
 /** The contract's `clamp` example: eager parameters, layered defaults. */
 export const clampLike = (): OperatorDefinition => ({
   name: 'clamp',
+  category: 'other',
   description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },
@@ -34,13 +41,18 @@ export const clampLike = (): OperatorDefinition => ({
   },
   positionalParams: ['value', 'min', 'max'],
   useCache: false,
-  evaluate: ({ value, min, max }) => Math.min(max, Math.max(min, value)),
+  // Annotated `OperatorDefinition`, so the declarations are the OPEN record
+  // and every parameter arrives `unknown` — these fixtures exercise
+  // registration, not inference (test/inference.test.ts covers that)
+  evaluate: ({ value, min, max }) =>
+    Math.min(max as number, Math.max(min as number, value as number)),
 })
 
 /** The contract's `if` example: alias, truthiness, lazy branches. */
 export const ifLike = (): OperatorDefinition => ({
   name: 'if',
   alias: '?',
+  category: 'other',
   description: 'Conditional branching',
   parameters: {
     condition: { type: 'any', truthiness: true },
@@ -49,7 +61,7 @@ export const ifLike = (): OperatorDefinition => ({
   },
   positionalParams: ['condition', 'then', 'else'],
   evaluate: ({ condition, then, else: otherwise }) =>
-    condition ? then.evaluate() : otherwise.evaluate(),
+    (condition ? (then as LazyValue) : (otherwise as LazyValue)).evaluate(),
 })
 
 /**
@@ -58,6 +70,7 @@ export const ifLike = (): OperatorDefinition => ({
  */
 export const convertLike = (): OperatorDefinition => ({
   name: 'convert',
+  category: 'other',
   description: 'Convert a value to a target type',
   parameters: {
     value: {
@@ -84,6 +97,7 @@ export const convertLikeCompiledPolicy = {
 /** A `…Default` null-replacement holder (ledger #18). */
 export const nullReplacerLike = (): OperatorDefinition => ({
   name: 'plusish',
+  category: 'other',
   description: 'Sum with an authored null replacement',
   parameters: {
     values: { type: 'array', elementNullPolicy: 'propagate' },
@@ -98,9 +112,10 @@ export const nullReplacerLike = (): OperatorDefinition => ({
   evaluate: ({ values }) => values,
 })
 
-/** An I/O-shaped definition: `timeoutParam`, `readsOptions`, manual cache. */
+/** An I/O-shaped definition: `timeoutParam` and a manual cache. */
 export const httpLike = (): OperatorDefinition => ({
   name: 'http',
+  category: 'other',
   description: 'HTTP request',
   parameters: {
     url: { type: 'string' },
@@ -108,7 +123,6 @@ export const httpLike = (): OperatorDefinition => ({
   },
   positionalParams: ['url'],
   timeoutParam: 'requestTimeout',
-  readsOptions: ['http'],
   useCache: true,
   cache: 'manual',
   returns: 'any',
@@ -122,6 +136,7 @@ export const httpLike = (): OperatorDefinition => ({
  */
 export const getFromLike = (): OperatorDefinition => ({
   name: 'getish',
+  category: 'other',
   description: 'Drill a path into data or a supplied object',
   parameters: {
     path: { type: 'string' },
@@ -220,6 +235,24 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['evaluate'] },
   },
 
+  // `category` — required, but collected rather than gated: nothing else
+  // in the definition depends on it
+  {
+    id: 'category-missing',
+    definition: withoutField('category'),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
+  },
+  {
+    id: 'category-not-a-string',
+    definition: withField('category', 3),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
+  },
+  {
+    id: 'category-outside-vocabulary',
+    definition: withField('category', 'special'),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['category'] },
+  },
+
   // Optional definition-level fields, wrong shapes
   {
     id: 'validate-not-a-function',
@@ -240,11 +273,6 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'cache-outside-vocabulary',
     definition: withField('cache', 'sometimes'),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['cache'] },
-  },
-  {
-    id: 'readsOptions-not-a-string-array',
-    definition: withField('readsOptions', 'http'),
-    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['readsOptions'] },
   },
   {
     id: 'metadata-not-an-object',

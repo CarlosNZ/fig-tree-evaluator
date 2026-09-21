@@ -1,4 +1,6 @@
 import { resolvePath, parsePath, WILDCARD } from '../src'
+import { renderSegments } from '../src/parse'
+import type { PathSegment } from '../src'
 
 describe('parsePath', () => {
   it('parses dot, index, wildcard and quoted-bracket forms', () => {
@@ -13,6 +15,39 @@ describe('parsePath', () => {
     expect(() => parsePath('a[')).toThrow(/Invalid path/)
     expect(() => parsePath('a["unterminated]')).toThrow(/Invalid path/)
     expect(() => parsePath('a[x]')).toThrow(/Invalid path/)
+  })
+})
+
+describe('renderSegments — the lossless round trip', () => {
+  const cases: PathSegment[][] = [
+    [],
+    ['a'],
+    ['a', 'b', 'c'],
+    ['users', 0, 'name'],
+    ['list', WILDCARD, 'id'],
+    [0, 'x'],
+    [WILDCARD],
+    // The keys the dot grammar cannot carry — the reason the render had
+    // to change: each of these read as something else when dot-joined
+    ['first.last'],
+    ['a', 'b.c', 'd'],
+    ['settings', 'x[0]'],
+    ['quote"key'],
+    ['back\\slash'],
+    [''],
+    ['a', ''],
+  ]
+
+  it.each(cases.map((segments) => [JSON.stringify(segments.map(String)), segments]))(
+    'round-trips %s',
+    (_label, segments) => {
+      expect(parsePath(renderSegments(segments as PathSegment[]))).toEqual(segments)
+    }
+  )
+
+  it('keeps a dotted key distinct from two levels', () => {
+    expect(renderSegments(['first.last'])).toBe('["first.last"]')
+    expect(renderSegments(['first', 'last'])).toBe('first.last')
   })
 })
 

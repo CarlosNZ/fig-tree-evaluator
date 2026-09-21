@@ -1,3 +1,14 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): hand-migrated to test/operators-math.test.ts (subtract/divide/multiply,
+ * the ordering four), test/operators-comparison.test.ts (greaterThan/lessThan)
+ * and test/operators-array.test.ts (COUNT → length).
+ * Divergences: `from`/`subtract`/`subtractFrom`, `dividend`/`divisor` and
+ * `values` pairs collapse to `value` + `minus`/`by`; DIVIDE `output` dies
+ * (quotient = floor(divide), remainder = modulo); `strict: false` becomes
+ * the `…OrEqual` operators; empty multiply is 1, not 0; non-number operands
+ * are type errors (no "Not all values are numbers" string); COUNT `values` →
+ * `length.value` with string support; `outputType` → `convert` nodes.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator()

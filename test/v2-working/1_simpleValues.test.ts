@@ -1,3 +1,8 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): covered by test/evaluate-core.test.ts (constants evaluate by identity;
+ * `undefined` normalizes per JSON semantics — an absent key in objects, null
+ * in arrays — so the `four: undefined` expectation diverges).
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator({ supportDeprecatedValueNodes: true })

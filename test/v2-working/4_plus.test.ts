@@ -1,3 +1,10 @@
+/**
+ * MIGRATION STATUS (Phase 4.2, 2026-09-18): hand-migrated to test/operators-math.test.ts.
+ * Divergences: aliases add/concat/join/merge die; `type` → `expect`, which
+ * asserts instead of coercing; the empty-input quirk (`[]` out regardless of
+ * mode) becomes a runtime failure unless `expect` pins the identity (rows 2,
+ * 11); `{ three: undefined }` normalizes to an absent key at parse.
+ */
 import { FigTreeEvaluator, evaluateExpression } from './evaluator'
 
 const exp = new FigTreeEvaluator({ returnErrorAsString: true })

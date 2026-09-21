@@ -7,10 +7,10 @@
  */
 import { parseExpression } from '../src/parse'
 import type { ParseArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/parse'
-import { makeParseRegistry, noFragments } from './fixtures/parseRegistry'
+import { makeParseRegistry } from './fixtures/parseRegistry'
 
 const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry, noFragments)
+const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
 
 const rootOp = (input: unknown): OperatorNode => {
   const artifact = parse(input)
@@ -140,10 +140,23 @@ test('references are recognized inside nested plain literals', () => {
   expect(artifact.holes[0].path).toEqual(['outer', 'list', 0])
 })
 
-test('bare $vars and $params are errors; drilled $index is an error', () => {
-  for (const input of ['$vars', '$params', '$index.x', '$i[0]']) {
+test('drilled $index is an error', () => {
+  for (const input of ['$index.x', '$i[0]']) {
     expect(errorCodes(parse({ $not: input }))).toContain('invalid-reference')
   }
+})
+
+// The namespaces divide on whether they name a value or a set: bare $data
+// and $element are the value, bare $params is a call's declared parameters
+// (legal, checked for a body by the static layer), and bare $vars is an
+// error of its own — a scope is a chain, not a frame
+test('bare $vars has its own error code', () => {
+  expect(errorCodes(parse({ $not: '$vars' }))).toEqual(['bare-vars'])
+  expect(errorCodes(parse({ $not: '$v' }))).toEqual(['bare-vars'])
+})
+
+test('bare $params is recognized, and refused only for being outside a body', () => {
+  expect(errorCodes(parse({ $not: '$params' }))).toEqual([])
 })
 
 // ── Reserved-key values ─────────────────────────────────────────────

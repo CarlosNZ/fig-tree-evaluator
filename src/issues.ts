@@ -23,6 +23,14 @@ export interface Issue {
   message: string
   path: (string | number)[]
   operator?: string
+  /**
+   * The fragment whose signature the issue is against — the owner of
+   * `parameter` where the node is a call, as `operator` is where it is an
+   * operator node. Caller-side, unlike `FigTreeError.fragment`, which marks
+   * a failure INSIDE a body: bodies compile at registration, so a static
+   * issue can only ever be about the call, and `path` is in the input.
+   */
+  fragment?: string
   parameter?: string
 }
 
