@@ -167,12 +167,7 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
 
   // Fragments last: a body compiles against the finished operator set, and
   // its shielding precompute reads the resolved `operatorDefaults`
-  registerFragments(
-    input.fragments,
-    registry,
-    (name, path) => claim(name, path, name),
-    (code, message, path) => addIssue(code, message, path)
-  )
+  registerFragments(input.fragments, registry, (name, path) => claim(name, path, name), addIssue)
 
   if (issues.length > 0) throwOptionsError(issues)
   return registry
@@ -204,11 +199,7 @@ const validateOperatorDefaults = (
           canonical
         )
       else
-        addIssue(
-          ErrorCodes.unknownOperator,
-          `'${operatorName}' names no registered operator`,
-          path
-        )
+        addIssue(ErrorCodes.unknownOperator, `'${operatorName}' names no registered operator`, path)
       continue
     }
     if (!isPlainObject(defaults)) {

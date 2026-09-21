@@ -41,7 +41,7 @@ export const ErrorCodes = {
   unknownFragment: 'unknown-fragment', // { fragment: 'flibble' } — names no registered fragment
   positionalArity: 'positional-arity', // { $not: [1, 2] } — surplus positional arguments
   invalidVars: 'invalid-vars', // { vars: [1, 2] } — the vars shape rule (loud)
-  invalidReference: 'invalid-reference', // bare '$vars', drilled '$index' — a recognized namespace used illegally
+  invalidReference: 'invalid-reference', // drilled '$index' — a recognized namespace used illegally
   uselessModifier: 'useless-modifier', // fallback / vars / useCache on `literal` — legal but dead (warning)
   unreferencedVar: 'unreferenced-var', // a vars block declaring names nothing references (warning)
   missingRequired: 'missing-required', // { $if: [true] } — a required parameter not supplied
@@ -60,7 +60,6 @@ export const ErrorCodes = {
   // Phase 11 — fragments
   bareVars: 'bare-vars', // '$vars' with no name — a scope is a chain, not a value
   fragmentCycle: 'fragment-cycle', // a fragment transitively reaching itself — recursion is banned
-  missingArgument: 'missing-argument', // a required fragment parameter with no argument (dynamic mode)
 
   // Phase 7 — buildString's literal-face token checks
   unboundToken: 'unbound-token', // { $buildString: ['Hi %2', 'there'] } — a token with nothing to bind to (warning)

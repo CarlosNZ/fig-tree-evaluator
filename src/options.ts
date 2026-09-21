@@ -113,7 +113,10 @@ export interface EvaluationResult {
    * mode with `trace` it is simply always empty, an error having thrown.
    */
   errors: FigTreeError[]
-  /** The instance tree — present iff `trace` was on. */
+  /**
+   * The instance tree, when `trace` was on and the expression passed the
+   * static gate; a refused run instantiates nothing.
+   */
   trace?: TraceNode
 }
 
@@ -138,7 +141,9 @@ export type Merge<Instance, Call> = Omit<Instance, keyof Call> & Call
  * the `operators` array literal into a readonly tuple the declared type
  * does not accept. The one case that does widen is a caller hoisting the
  * options into a variable first, which `const` could not have reached
- * either.
+ * either. The other is an instance whose `mode` or `trace` was changed by
+ * `updateOptions()`, which the type parameter cannot follow (see that
+ * method's docstring).
  */
 export type ResultShape<O> = O extends { mode: 'report' } | { trace: true }
   ? EvaluationResult

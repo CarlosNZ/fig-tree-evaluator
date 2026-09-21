@@ -274,23 +274,11 @@ export interface SequencedIssue {
 }
 
 /**
- * The compile artifact — the four products of the parse pass (A1–A4) plus
- * the precomputations (B). Option-independent (C1) and data-independent
- * (C2) by construction: nothing here may derive from any option outside
- * the registry-affecting three, and nothing from `data`.
+ * The measurements a fragment call site composes through — the four the
+ * option-dependent checks and the cache read. An artifact carries them
+ * twice: composed, under these names, and un-composed as `own`.
  */
-export interface ParseArtifact {
-  root: CompiledNode
-  /** Maximal evaluable nodes; empty for a fully-constant input. */
-  holes: ArtifactHole[]
-  /**
-   * The option-independent static issue stream, tree-ordered (A3). The two
-   * option-dependent checks (maxDepth/maxNodes, sample-data) run per call
-   * against `nodeCount`/`maxDepth`/`dependencies` and are never stored.
-   */
-  issues: SequencedIssue[]
-  /** True iff every hole carries a static fallback (B2). */
-  shielded: boolean
+export interface Rollups {
   /**
    * The number of evaluable nodes — operator, fragment-call, reference and
    * invalid placeholders (B4, amended September 2026). Constants and plain
@@ -306,13 +294,6 @@ export interface ParseArtifact {
   maxDepth: number
   dependencies: ArtifactDependencies
   /**
-   * Every resolved fragment call site. The four measurements above are
-   * already composed through these; the list is retained because
-   * registration folds bodies in dependency order and must recompose from
-   * the same material.
-   */
-  fragmentCalls: FragmentCall[]
-  /**
    * True when the input contains opaque constants — such artifacts must
    * never be served from the content-keyed cache layer (C5). The key
    * serializer refuses them too, and is the stronger of the two guards:
@@ -320,6 +301,40 @@ export interface ParseArtifact {
    * leaves this flag `false`.
    */
   identityOnly: boolean
+}
+
+/**
+ * The compile artifact — the four products of the parse pass (A1–A4) plus
+ * the precomputations (B). Option-independent (C1) and data-independent
+ * (C2) by construction: nothing here may derive from any option outside
+ * the registry-affecting three, and nothing from `data`.
+ *
+ * The inherited measurements are COMPOSED through every fragment call the
+ * expression makes — the reading every consumer wants, under the plain
+ * names so the safe reading is the default one.
+ */
+export interface ParseArtifact extends Rollups {
+  root: CompiledNode
+  /** Maximal evaluable nodes; empty for a fully-constant input. */
+  holes: ArtifactHole[]
+  /**
+   * The option-independent static issue stream, tree-ordered (A3). The two
+   * option-dependent checks (maxDepth/maxNodes, sample-data) run per call
+   * against `nodeCount`/`maxDepth`/`dependencies` and are never stored.
+   */
+  issues: SequencedIssue[]
+  /** True iff every hole carries a static fallback (B2). */
+  shielded: boolean
+  /**
+   * What the walk measured of this expression alone, before composition.
+   * With `fragmentCalls` it is the material composition works from, kept
+   * so that registration — which folds bodies in dependency order, after
+   * their targets are complete — composes from values that by definition
+   * have not been composed, and cannot double-count.
+   */
+  own: Rollups
+  /** Every resolved fragment call site, with the depth it sits at. */
+  fragmentCalls: FragmentCall[]
 }
 
 /**
@@ -354,3 +369,49 @@ export const bindsReference = (
   binding === undefined
     ? as === null
     : (namespace === 'element' ? as : `${as ?? ''}Index`) === binding
+
+// ── Skeleton assembly ───────────────────────────────────────────────
+
+type Container = Record<string | number, unknown>
+
+/**
+ * Splice hole values into the skeleton, copying only the containers on
+ * each splice path. Constant subtrees off those paths stay shared with the
+ * artifact and the input — the documented results-are-read-only contract.
+ *
+ * Three callers, one rule: evaluation splices its holes' results, the
+ * shielded assembly splices static fallbacks where holes did not finish,
+ * and fragment registration splices a skeleton-rooted body's fallbacks
+ * into the constant a call site lifts. The module that defines the
+ * skeleton shape is what owns filling it, so none of them depends on
+ * another.
+ */
+export const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
+  const copied = new Set<object>()
+  let result = skeleton
+  holes.forEach((hole, i) => {
+    result = setAt(result, hole.at, values[i], copied)
+  })
+  return result
+}
+
+const setAt = (
+  container: unknown,
+  at: (string | number)[],
+  value: unknown,
+  copied: Set<object>
+): unknown => {
+  const copy = copyOnce(container as Container, copied)
+  const [key, ...rest] = at
+  copy[key] = rest.length === 0 ? value : setAt(copy[key], rest, value, copied)
+  return copy
+}
+
+const copyOnce = (container: Container, copied: Set<object>): Container => {
+  if (copied.has(container)) return container
+  const copy: Container = Array.isArray(container)
+    ? ([...container] as unknown as Container)
+    : { ...container }
+  copied.add(copy)
+  return copy
+}

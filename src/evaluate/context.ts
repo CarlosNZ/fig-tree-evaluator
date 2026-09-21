@@ -17,6 +17,7 @@
  * without ever touching an object the host still owns.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
+import type { CompiledNode } from '../parse'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
@@ -106,11 +107,12 @@ export interface EvaluationContext {
 }
 
 /**
- * Wrapped around one root hole's evaluation, addressing it by its index in
- * `artifact.holes`. Declared here, beside the field that holds it, so the
- * context does not have to import from the module that builds it.
+ * Wrapped around one root hole's evaluation, addressing the hole by its
+ * node — the one object the artifact's hole list and the root skeleton's
+ * share. Declared here, beside the field that holds it, so the context
+ * does not have to import from the module that builds it.
  */
-export type HoleBoundary = (run: () => Promise<unknown>, index: number) => Promise<unknown>
+export type HoleBoundary = (run: () => Promise<unknown>, node: CompiledNode) => Promise<unknown>
 
 /** Declared parameter name → its evaluate-at-most-once resolved value. */
 export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>

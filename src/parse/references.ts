@@ -27,7 +27,8 @@ export type ReferenceRecognition =
   /** A recognized, well-formed reference. */
   | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[] }
   /**
-   * A recognized namespace used illegally (bare $vars, drilled $index…).
+   * A recognized namespace used illegally (drilled $index, an unterminated
+   * `$data.items[`…).
    * `code` overrides the generic `invalid-reference` where the rule broken
    * has a name of its own.
    */

@@ -92,13 +92,11 @@ const compositeValuesErrors = (literalParams: Record<string, unknown>): Validate
       ]
     : []
 
-/** One rendered piece of the output: template text, or a token site. */
-interface Part {
-  text: string
-  site: boolean
-  /** The token this site rendered — carried for trace, on sites only. */
-  token?: string
-}
+/**
+ * One rendered piece of the output: template text, or a token site. A
+ * site carries the token it rendered, for trace.
+ */
+type Part = { text: string; site: false } | { text: string; site: true; token: string }
 
 /**
  * `closeGaps`: a token site that rendered `""` also consumes the maximal
@@ -116,8 +114,11 @@ interface Part {
  * text. Stripping in place is also what gives "each run is consumed at
  * most once": a text piece that was entirely whitespace is empty
  * afterwards, so the next site finds no run there.
+ *
+ * Returns the tokens whose gaps were closed, for the caller to report.
  */
-const closeTheGaps = (parts: Part[], closed: (token: string) => void) => {
+const closeTheGaps = (parts: Part[]): string[] => {
+  const closed: string[] = []
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i]
     if (!part.site || part.text !== '') continue
@@ -126,17 +127,18 @@ const closeTheGaps = (parts: Part[], closed: (token: string) => void) => {
       const stripped = stripTrailingRun(before.text)
       if (stripped !== before.text) {
         before.text = stripped
-        closed(part.token ?? '')
+        closed.push(part.token)
         continue
       }
     }
     const after = parts[i + 1]
     if (after !== undefined && !after.site) {
       const stripped = stripLeadingRun(after.text)
-      if (stripped !== after.text) closed(part.token ?? '')
+      if (stripped !== after.text) closed.push(part.token)
       after.text = stripped
     }
   }
+  return closed
 }
 
 export const buildString = defineOperator({
@@ -219,9 +221,8 @@ export const buildString = defineOperator({
     }
 
     if (closeGaps)
-      closeTheGaps(parts, (token) =>
+      for (const token of closeTheGaps(parts))
         context.trace.note({ type: 'render', token, rendered: 'gap-closed' })
-      )
     return parts.map((part) => part.text).join('')
   },
 })

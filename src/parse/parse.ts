@@ -121,6 +121,7 @@ import type {
   NodePath,
   OperatorNode,
   ParseArtifact,
+  Rollups,
   SequencedIssue,
   SkeletonHole,
   SkeletonNode,
@@ -131,7 +132,18 @@ import type { FragmentEntry } from '../fragments'
 const SHORTHAND_SIBLINGS = new Set(['fallback', 'useCache', 'vars', '//'])
 
 /** The reference-namespace words `as` names may not collide with. */
-const NAMESPACE_WORDS = new Set(['data', 'vars', 'params', 'element', 'index', 'd', 'v', 'p', 'e', 'i'])
+const NAMESPACE_WORDS = new Set([
+  'data',
+  'vars',
+  'params',
+  'element',
+  'index',
+  'd',
+  'v',
+  'p',
+  'e',
+  'i',
+])
 
 /** An active `as` renaming — pushed around perElement subtree walks. */
 interface BindingFrame {
@@ -224,16 +236,11 @@ export const parseExpression = (
     holes,
     issues: state.issues,
     shielded: holes.every((hole) => hole.staticFallback !== undefined),
+    own,
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
     fragmentCalls: state.fragmentCalls,
   }
 }
-
-/** The measurements a call site composes through. */
-type Rollups = Pick<
-  ParseArtifact,
-  'nodeCount' | 'maxDepth' | 'dependencies' | 'identityOnly'
->
 
 /**
  * Compose an expression's own measurements with those of every fragment it
@@ -414,12 +421,7 @@ const invalid = (raw: unknown, path: NodePath, order: number): CompiledNode => (
 
 // ── Strings: the reference token rule ───────────────────────────────
 
-const walkString = (
-  state: WalkState,
-  raw: string,
-  path: NodePath,
-  order: number
-): CompiledNode => {
+const walkString = (state: WalkState, raw: string, path: NodePath, order: number): CompiledNode => {
   const recognition = recognizeReference(raw)
   switch (recognition.kind) {
     case 'plain':
@@ -475,9 +477,24 @@ const recognizeRenamedBinding = (
     if (token === frame.element) {
       try {
         const segments = parseDrill(rest)
-        return { kind: 'reference', namespace: 'element', segments, raw, binding: token, path, order }
+        return {
+          kind: 'reference',
+          namespace: 'element',
+          segments,
+          raw,
+          binding: token,
+          path,
+          order,
+        }
       } catch (error) {
-        emit(state, 'error', ErrorCodes.invalidReference, `'${raw}': ${(error as Error).message}`, path, order)
+        emit(
+          state,
+          'error',
+          ErrorCodes.invalidReference,
+          `'${raw}': ${(error as Error).message}`,
+          path,
+          order
+        )
         return invalid(raw, path, order)
       }
     }
@@ -493,7 +510,15 @@ const recognizeRenamedBinding = (
         )
         return invalid(raw, path, order)
       }
-      return { kind: 'reference', namespace: 'index', segments: [], raw, binding: token, path, order }
+      return {
+        kind: 'reference',
+        namespace: 'index',
+        segments: [],
+        raw,
+        binding: token,
+        path,
+        order,
+      }
     }
   }
   return null
@@ -1034,7 +1059,13 @@ const walkSlice = (
   depth: number
 ): CompiledNode => {
   const { order, containerDepth } = openSynthetic(state, depth)
-  const children = sliceChildren(state, entry.elements, entry.basePath, entry.offset, containerDepth)
+  const children = sliceChildren(
+    state,
+    entry.elements,
+    entry.basePath,
+    entry.offset,
+    containerDepth
+  )
   const changed = entry.elements.some((element) => element === undefined)
   return assembleContainer(
     state,
@@ -1049,7 +1080,10 @@ const walkSlice = (
 }
 
 /** Take a synthetic container's preorder position and its depth level. */
-const openSynthetic = (state: WalkState, depth: number): { order: number; containerDepth: number } => {
+const openSynthetic = (
+  state: WalkState,
+  depth: number
+): { order: number; containerDepth: number } => {
   const order = state.order++
   const containerDepth = depth + 1
   if (containerDepth > state.maxDepth) state.maxDepth = containerDepth
@@ -1445,7 +1479,7 @@ const walkFragmentCanonical = (
     path,
     order,
   }
-  resolveFragment(state, node, depth, path, order)
+  resolveFragment(state, node, depth)
   for (const [key, value] of Object.entries(raw)) {
     if (key === 'fragment' || key === '//' || value === undefined) continue
     if (key === 'parameters') {
@@ -1499,7 +1533,7 @@ const walkFragmentShorthand = (
     path,
     order,
   }
-  resolveFragment(state, node, depth, path, order)
+  resolveFragment(state, node, depth)
   for (const [key, value] of Object.entries(raw)) {
     if (key === `$${name}` || key === '//' || value === undefined) continue
     if (key === 'fallback') node.fallback = walk(state, value, [...path, 'fallback'], depth + 1)
@@ -1525,14 +1559,8 @@ const walkFragmentShorthand = (
  * site for the rollup composition. An unknown name is a hard error — the
  * registry is stable by construction, so this is statically knowable.
  */
-const resolveFragment = (
-  state: WalkState,
-  node: FragmentCallNode,
-  depth: number,
-  path: NodePath,
-  order: number
-) => {
-  const { name } = node
+const resolveFragment = (state: WalkState, node: FragmentCallNode, depth: number) => {
+  const { name, path, order } = node
   state.fragmentNames.add(name)
   const entry = state.registry.fragments.get(name)
   if (entry === undefined) {
@@ -1819,10 +1847,11 @@ const staticFallbackFor = (
       return { value: defaults.fallback }
     return undefined
   }
-  // A call with no fallback of its own lifts its target's body-root one.
-  // The call's value IS the body root's value, so the constant the author
-  // declared there is exactly what assembly would splice — and without the
-  // lift, factoring an expression into a fragment silently unshields it
+  // A call with no fallback of its own lifts the constant its target
+  // shields with (`liftedFallback` in src/fragments.ts). The call's value
+  // IS the body's value, so what the author declared there is exactly what
+  // assembly would splice — and without the lift, factoring an expression
+  // into a fragment silently unshields it
   return node.entry?.staticFallback
 }
 

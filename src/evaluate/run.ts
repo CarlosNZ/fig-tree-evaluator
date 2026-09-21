@@ -40,9 +40,9 @@
  * through its wrapper. Nothing is evaluated after the deadline; whatever
  * is still in flight is abandoned at its next node boundary.
  */
-import { isFigTreeError, type FigTreeError } from '../FigTreeError'
+import { isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
-import type { EvaluationOptions } from '../options'
+import type { EvaluationOptions, EvaluationResult } from '../options'
 import type { ArtifactHole, ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
 import { EVALUATION_TIMEOUT, deadline, type Deadline } from './abort'
@@ -57,31 +57,23 @@ import {
 } from './internal'
 import { createErrorCollector, type ErrorCollector } from './report'
 import { createTraceRecorder, type TraceRecorder } from './trace'
-import type { TraceNode } from '../trace'
-
-/**
- * What one evaluation produced. `errors` and `trace` are present only
- * where their option asked for them; the class turns this into the bare
- * value or the `EvaluationResult` envelope ("The envelope rule" in
- * docs-dev/v3-specs/v3-evaluator-methods.md).
- */
-export interface EvaluationOutcome {
-  result: unknown
-  errors?: FigTreeError[]
-  trace?: TraceNode
-}
 
 /**
  * Evaluate a compiled artifact under the merged options. The clock, when
  * there is one, starts here: the compile before it is synchronous and
  * could not be interrupted anyway, and the deadline bounds the part that
  * can take time.
+ *
+ * The outcome is the public envelope, whatever the mode: the class hands
+ * it back whole or unwraps the bare value ("The envelope rule" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md). `errors` is empty rather
+ * than absent where nothing collected them — throw mode having thrown.
  */
 export const runEvaluation = async (
   artifact: ParseArtifact,
   options: EvaluationOptions,
   cache: ResultStore
-): Promise<EvaluationOutcome> => {
+): Promise<EvaluationResult> => {
   const { timeout, signal } = options
   const reporting = options.mode === 'report'
   // A shielded artifact with no holes is a constant that merely was not
@@ -118,7 +110,7 @@ export const runEvaluation = async (
 
     const evaluateRoot = () =>
       atRoot && boundary !== undefined
-        ? boundary(() => evaluateNode(artifact.root, ctx), 0)
+        ? boundary(() => evaluateNode(artifact.root, ctx), artifact.root)
         : evaluateNode(artifact.root, ctx)
 
     // Shielded: the per-hole races answer the deadline, so the assembly is
@@ -159,9 +151,9 @@ const outcome = (
   result: unknown,
   collector: ErrorCollector | undefined,
   recorder: TraceRecorder | undefined
-): EvaluationOutcome => ({
+): EvaluationResult => ({
   result,
-  ...(collector !== undefined ? { errors: collector.emit() } : {}),
+  errors: collector?.emit() ?? [],
   ...(recorder !== undefined ? { trace: recorder.finish() } : {}),
 })
 
@@ -206,11 +198,12 @@ const holeBoundary = (
   shielded: boolean,
   recorder: TraceRecorder | undefined
 ): HoleBoundary => {
-  return (run, index) => {
-    const hole = artifact.holes[index]
+  const holes = new Map(artifact.holes.map((hole) => [hole.node, hole]))
+  return (run, node) => {
+    const hole = holes.get(node)
     if (hole === undefined)
       throw internalError(
-        `the hole boundary was handed index ${String(index)}, which the artifact does not have`
+        `the hole boundary was handed the node at ${JSON.stringify(node.path)}, which is not one of the artifact's holes`
       )
     const attempt = collector === undefined ? run() : degrade(run, hole, collector)
     if (!shielded) return attempt

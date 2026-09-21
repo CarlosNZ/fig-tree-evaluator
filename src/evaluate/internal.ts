@@ -114,18 +114,16 @@ export const isKillSwitch = (error: unknown): boolean =>
 
 type Branded = Record<PropertyKey, unknown>
 
-/** A plain Error carrying `brand` as an own property. */
-const branded = (message: string, brand: symbol): Error => {
+/** A plain Error carrying `mark` as an own property. */
+const branded = (message: string, mark: symbol): Error => {
   const error = new Error(message)
-  brand_(error, brand)
+  brand(error, mark)
   return error
 }
 
 /** Mark an existing error — for a brand that records what has happened to
  * it rather than what it is (./fragment's anchoring). */
-export const brand = (error: Error, mark: symbol): void => brand_(error, mark)
-
-const brand_ = (error: Error, mark: symbol): void => {
+export const brand = (error: Error, mark: symbol): void => {
   ;(error as unknown as Branded)[mark] = true
 }
 

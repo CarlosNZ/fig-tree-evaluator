@@ -82,10 +82,11 @@ const emit = (
   message: string,
   path: NodePath,
   order: number,
-  extra: { operator?: string; parameter?: string } = {}
+  extra: { operator?: string; fragment?: string; parameter?: string } = {}
 ) => {
   const issue: Issue = { severity, code, message, path }
   if (extra.operator !== undefined) issue.operator = extra.operator
+  if (extra.fragment !== undefined) issue.fragment = extra.fragment
   if (extra.parameter !== undefined) issue.parameter = extra.parameter
   state.artifact.issues.push({ issue, order })
 }
@@ -207,7 +208,7 @@ interface ReceivingDeclaration {
 
 const checkSuppliedParam = (
   state: CheckState,
-  owner: { label: string; extra: { operator?: string } },
+  owner: { label: string; extra: { operator?: string; fragment?: string } },
   name: string,
   declared: ReceivingDeclaration,
   supplied: CompiledNode
@@ -329,7 +330,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   // An unregistered name already raised unknown-fragment; there is nothing
   // to check a call against
   if (declarations !== undefined && node.argumentsMode === 'static') {
-    const owner = { label: node.name, extra: {} }
+    const owner = { label: node.name, extra: { fragment: node.name } }
     for (const [name, declared] of Object.entries(declarations)) {
       const argument = supplied?.[name]
       if (argument === undefined) {
@@ -338,10 +339,10 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.missingRequired,
-            `fragment '${node.name}' requires '${name}'`,
+            `fragment '${node.name}' – requires '${name}'`,
             node.path,
             node.order,
-            { parameter: name }
+            { fragment: node.name, parameter: name }
           )
         continue
       }
