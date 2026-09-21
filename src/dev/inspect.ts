@@ -232,6 +232,7 @@ const printIssues = (heading: string, issues: Issue[]) => {
   for (const issue of issues) {
     const tags: string[] = []
     if (issue.operator !== undefined) tags.push(`operator '${issue.operator}'`)
+    if (issue.fragment !== undefined) tags.push(`fragment '${issue.fragment}'`)
     if (issue.parameter !== undefined) tags.push(`parameter '${issue.parameter}'`)
     console.log(
       `  ${issue.severity.padEnd(7)} ${issue.code.padEnd(22)} at ${renderPath(issue.path)}`

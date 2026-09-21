@@ -357,9 +357,12 @@ interface Issue {
   message: string                           // human-facing; includes did-you-mean suggestions where cheap
   path: (string | number)[]
   operator?: string
+  fragment?: string                         // the called fragment, where the issue is against a call's signature
   parameter?: string
 }
 ```
+
+`fragment` on an issue is the owner of `parameter` for a call node, exactly as `operator` is for an operator node — added at the Phase-11 PR review (Carl, September 2026), where a signature issue was found reporting `parameter: 'title'` with nothing machine-readable saying whose. It is **caller-side**: bodies compile at registration, so a static issue can only ever be about the call, and `path` resolves in the input. That is the opposite reading from `FigTreeError.fragment`, which marks a failure *inside* a body — the same name carries the two meanings because on each surface only one of them can occur.
 
 - **`validate()` never throws on expression content** — reporting is its entire job; even hard "parse errors" come back as `severity: 'error'` issues. (It throws only on misuse of the method itself, e.g. per-call `operators`.)
 - **Synchronous by construction**: the parse pass touches no I/O, and the contract's operator `validate` hooks are sync functions returning `Issue[]`. Editors get keystroke-rate validation with no async ceremony.

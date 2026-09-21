@@ -10,7 +10,7 @@
  * their phases: the static gate refuses every error-severity issue before
  * evaluation starts.
  */
-import type { CompiledNode, SkeletonHole, SkeletonNode } from '../parse'
+import { splice, type CompiledNode, type SkeletonNode } from '../parse'
 import type { EvaluationContext } from './context'
 import { isFigTreeError } from '../FigTreeError'
 import { abortedOutcome, internalError, isCancellation } from './internal'
@@ -108,42 +108,4 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
     )
   )
   return splice(node.skeleton, node.holes, values)
-}
-
-type Container = Record<string | number, unknown>
-
-/**
- * Splice hole results into the skeleton, copying only the containers on
- * each splice path (once per evaluation). Constant subtrees off those paths
- * stay shared with the artifact and the input — the documented
- * results-are-read-only contract.
- */
-const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
-  const copied = new Set<object>()
-  let result = skeleton
-  holes.forEach((hole, i) => {
-    result = setAt(result, hole.at, values[i], copied)
-  })
-  return result
-}
-
-const setAt = (
-  container: unknown,
-  at: (string | number)[],
-  value: unknown,
-  copied: Set<object>
-): unknown => {
-  const copy = copyOnce(container as Container, copied)
-  const [key, ...rest] = at
-  copy[key] = rest.length === 0 ? value : setAt(copy[key], rest, value, copied)
-  return copy
-}
-
-const copyOnce = (container: Container, copied: Set<object>): Container => {
-  if (copied.has(container)) return container
-  const copy: Container = Array.isArray(container)
-    ? ([...container] as unknown as Container)
-    : { ...container }
-  copied.add(copy)
-  return copy
 }

@@ -87,31 +87,51 @@ export const evaluateFragment = async (
     // the input, and the outermost call is the location a host can act on
     callPath: ctx.frame?.callPath ?? node.path,
   }
-  const { fallback } = node
-  let failure: unknown
+  const bodyCtx = { ...scoped, signal: scope.signal }
   try {
-    return await runBody(node, entry, { ...scoped, signal: scope.signal }, scoped, frame)
+    return await runBodyScoped(node, entry, bodyCtx, scoped, frame, scope)
   } catch (error) {
     if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
-    failure = anchor(error, frame)
+    const failure = anchor(error, frame)
+    const { fallback } = node
     if (fallback === undefined) throw failure
+    // The fallback runs outside the abort scope, which has settled by the
+    // time this branch runs — it is not part of the attempt, and must not
+    // be refused by the abort that ended it
+    try {
+      return await evaluateNode(fallback, scoped)
+    } catch (fallbackError) {
+      if (
+        isInternalError(fallbackError) ||
+        isCancellation(fallbackError) ||
+        isKillSwitch(fallbackError)
+      )
+        throw fallbackError
+      const wrapped = anchor(fallbackError, ctx.frame)
+      if (isFigTreeError(wrapped) && wrapped.cause === undefined) wrapped.cause = failure
+      throw wrapped
+    }
+  }
+}
+
+/**
+ * Settle the call's abort scope the moment the body settles, not when the
+ * whole wrapper returns — a fallback evaluating afterwards must not be
+ * caught by the abort that ended the attempt. The same shape as
+ * `attemptScoped` in ./operator.
+ */
+const runBodyScoped = async (
+  node: FragmentCallNode,
+  entry: FragmentEntry,
+  bodyCtx: EvaluationContext,
+  argumentCtx: EvaluationContext,
+  frame: FragmentFrame,
+  scope: { settle: () => void }
+): Promise<unknown> => {
+  try {
+    return await runBody(node, entry, bodyCtx, argumentCtx, frame)
   } finally {
     scope.settle()
-  }
-  // The fallback runs outside the abort scope above — it is not part of
-  // the attempt, and must not be refused by the abort that ended it
-  try {
-    return await evaluateNode(fallback, scoped)
-  } catch (fallbackError) {
-    if (
-      isInternalError(fallbackError) ||
-      isCancellation(fallbackError) ||
-      isKillSwitch(fallbackError)
-    )
-      throw fallbackError
-    const wrapped = anchor(fallbackError, ctx.frame)
-    if (isFigTreeError(wrapped) && wrapped.cause === undefined) wrapped.cause = failure
-    throw wrapped
   }
 }
 
@@ -235,7 +255,9 @@ const dynamicFrame = async (
  *
  * A required one has no answer. Static mode cannot reach this: the static
  * checker refused the call before evaluation. Dynamic mode can, and that
- * is one of the checks this mode moves to runtime.
+ * is one of the checks this mode moves to runtime — under the same code
+ * and wording the static checker uses, because the condition is the same
+ * and the mode is the author's choice, not the host's.
  */
 const unsuppliedValue = (
   node: FragmentCallNode,
@@ -245,7 +267,7 @@ const unsuppliedValue = (
   path: NodePath = node.path
 ): unknown => {
   if (!declared.required) return declared.default ?? null
-  throw anchor(callFailure(node, ErrorCodes.missingArgument, `requires '${name}'`, path), ctx.frame)
+  throw anchor(callFailure(node, ErrorCodes.missingRequired, `requires '${name}'`, path), ctx.frame)
 }
 
 /**
