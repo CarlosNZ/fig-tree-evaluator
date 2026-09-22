@@ -73,7 +73,7 @@ export const resolveParams = async (
   ctx: EvaluationContext
 ): Promise<ResolvedParameters> => {
   const { definition, instanceDefaults } = node.entry
-  const declarations = definition.parameterEntries
+  const { entries, whole, perElement } = definition.resolution
 
   // ── Pass 1: start everything ──────────────────────────────────────
   // Every structure here is built only when a parameter needs it, since
@@ -90,7 +90,7 @@ export const resolveParams = async (
    */
   const params: Record<string, unknown> = {}
 
-  for (const [name, declared] of declarations) {
+  for (const [name, declared] of entries) {
     const supplied = node.params[name]
     switch (declared.evaluation) {
       case 'eager':
@@ -165,10 +165,8 @@ export const resolveParams = async (
   }
 
   // ── The defaults pass: the layered chain, else removal ────────────
-  for (const [name, declared] of declarations) {
-    // Holders and per-element handles carry no whole value; a handle
-    // delivered in pass 1 runs its layers on demand
-    if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
+  for (const [name, declared] of whole) {
+    // A handle delivered in pass 1 runs its layers on demand
     if (params[name] !== undefined) continue
     const value = resolved[name]
     const unset =
@@ -184,11 +182,9 @@ export const resolveParams = async (
   }
 
   // ── Pass 2: the layers ────────────────────────────────────────────
-  for (const [name, declared] of declarations) {
-    // Holders never reach the body; per-element handles are built below;
-    // a handle delivered in pass 1 is in place already, its layers running
+  for (const [name, declared] of whole) {
+    // A handle delivered in pass 1 is in place already, its layers running
     // on demand, with no whole value here for the unset chain to test
-    if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
     if (params[name] !== undefined) continue
     let value = resolved[name]
 
@@ -233,8 +229,7 @@ export const resolveParams = async (
   // target's layers must already have run — including `nullInputDefault`'s
   // replacement, which is the whole reason a null `input` can become `[]`
   // before the derived reject sees it
-  for (const [name, declared] of declarations) {
-    if (declared.evaluation !== 'perElement') continue
+  for (const [name, declared] of perElement) {
     if (declared.over === undefined)
       throw internalError(
         `parameter '${name}' of '${node.name}' declares perElement without 'over'`

@@ -235,11 +235,11 @@ export interface ValidatedOperatorDefinition {
   /** Derived: the rest-marked positional parameter's name, or null. */
   restParam: string | null
   /**
-   * Derived: `parameters` as `[name, declaration]` pairs, in declaration
-   * order, built once here so the parameter resolver does not rebuild the
-   * pair list on every node it resolves.
+   * Derived: the declaration subsets the parameter resolver walks, built
+   * once here so a node pays for classifying its operator's declarations
+   * exactly never.
    */
-  parameterEntries: readonly (readonly [string, ValidatedParameter])[]
+  resolution: ResolutionPlan
   /**
    * Derived: does any parameter reach the body as a handle rather than a
    * value? Only such a node can still have work in flight once its body
@@ -255,6 +255,32 @@ export interface ValidatedOperatorDefinition {
   validate?: OperatorValidate
   evaluate: OperatorEvaluate
   returns: ExpectedType
+}
+
+/** A declaration with its name, as the resolver iterates them. */
+export type DeclarationEntry = readonly [name: string, declared: ValidatedParameter]
+
+/**
+ * The parameter resolver's passes, each over exactly the declarations it
+ * can apply to (src/evaluate/params.ts). Three lists rather than three
+ * guards in three loops: which declarations carry a whole value and which
+ * are built last is a fact about the definition, not about the node.
+ */
+export interface ResolutionPlan {
+  /** Every declaration, in order — the start pass dispatches over all. */
+  readonly entries: readonly DeclarationEntry[]
+  /**
+   * The declarations that carry a whole value through the defaults and
+   * layers passes: everything but a null-replacement holder (which never
+   * reaches the body) and a per-element handle (built below).
+   */
+  readonly whole: readonly DeclarationEntry[]
+  /**
+   * The per-element handles, built after the layers pass so each closes
+   * over its `over` sibling's VETTED value. Empty for most operators, and
+   * then the pass does not run at all.
+   */
+  readonly perElement: readonly DeclarationEntry[]
 }
 
 /** True when the value is a definition minted by `defineOperator()`. */
