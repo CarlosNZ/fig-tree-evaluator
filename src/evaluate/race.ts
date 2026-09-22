@@ -18,6 +18,7 @@ import type { CompiledNode } from '../parse'
 import { LAZY_HANDLE, type Settlement, type SettlementStream } from '../runtimeInterface'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
+import type { MaybePromise } from '../utils'
 
 /** What each element's value passes through before the body sees it. */
 type Vet = (value: unknown) => unknown
@@ -33,7 +34,7 @@ type Vet = (value: unknown) => unknown
  */
 export const indexedStream = (
   count: number,
-  run: (index: number) => Promise<unknown>,
+  run: (index: number) => MaybePromise<unknown>,
   vet: Vet
 ): SettlementStream =>
   streamOf(
@@ -58,7 +59,7 @@ export const settledStream = (values: unknown[], vet: Vet): SettlementStream =>
 
 const settlement = async (
   index: number,
-  run: () => Promise<unknown>,
+  run: () => MaybePromise<unknown>,
   vet: Vet
 ): Promise<Settlement> => {
   try {

@@ -19,12 +19,13 @@ import { evaluateFragment } from './fragment'
 import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
+import { isThenable, type MaybePromise } from '../utils'
 
 export const evaluateNode = (
   node: CompiledNode,
   ctx: EvaluationContext,
   annotation?: TraceAnnotation
-): Promise<unknown> => {
+): MaybePromise<unknown> => {
   // The recorder's absence is the fast path, and it is the only cost
   // trace imposes on an untraced evaluation
   if (ctx.trace !== undefined) return traced(node, ctx, ctx.trace, annotation)
@@ -67,20 +68,23 @@ const traced = async (
 
 /**
  * The dispatch and the boundary above it are plain functions that hand
- * back the handler's own promise, not async wrappers around it: an async
+ * back the handler's own result, not async wrappers around it: an async
  * function returning a promise costs a second promise and the microtasks
- * to chain the two, per node, for nothing. A leaf's value travels in one
- * settled promise; a leaf that fails synchronously (a strict data miss)
- * is converted to a rejection here, so no caller ever sees a throw where
- * it did not before — every failure still arrives as the promise settling.
+ * to chain the two, per node, for nothing. A leaf that already has its
+ * value — a constant, a `$data` read — hands the value back with no
+ * promise at all; a `$vars` or `$params` read that must wait hands back
+ * its promise. A leaf that fails synchronously (a strict data miss) is
+ * converted to a rejection here, so no caller ever sees a throw where it
+ * did not before: every failure still arrives as a promise settling, and
+ * every sibling is still started before one is observed.
  */
-const dispatch = (node: CompiledNode, ctx: EvaluationContext): Promise<unknown> => {
+const dispatch = (node: CompiledNode, ctx: EvaluationContext): MaybePromise<unknown> => {
   try {
     switch (node.kind) {
       case 'constant':
-        return Promise.resolve(node.value)
+        return node.value
       case 'reference':
-        return Promise.resolve(resolveReference(node, ctx))
+        return resolveReference(node, ctx)
       case 'skeleton':
         return evaluateSkeleton(node, ctx)
       case 'operator':
@@ -113,12 +117,13 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
   // the whole subtree — and the parser has already stripped the key, so
   // the scope is all that is left to apply
   const scoped = pushVars(inner, node.vars)
-  const values = await Promise.all(
-    node.holes.map((hole) =>
-      boundary === undefined
-        ? evaluateNode(hole.node, scoped)
-        : boundary(() => evaluateNode(hole.node, scoped), hole.node)
-    )
+  const outcomes = node.holes.map((hole) =>
+    boundary === undefined
+      ? evaluateNode(hole.node, scoped)
+      : boundary(() => evaluateNode(hole.node, scoped), hole.node)
   )
+  // A skeleton whose holes all answered at once — data reads into a
+  // config — needs no `Promise.all`
+  const values = outcomes.some(isThenable) ? await Promise.all(outcomes) : outcomes
   return splice(node.skeleton, node.holes, values)
 }
