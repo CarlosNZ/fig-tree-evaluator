@@ -20,7 +20,7 @@ import { evaluateOperator } from './operator'
 import { resolveReference } from './reference'
 import { pushVars } from './scope'
 
-export const evaluateNode = async (
+export const evaluateNode = (
   node: CompiledNode,
   ctx: EvaluationContext,
   annotation?: TraceAnnotation
@@ -33,7 +33,7 @@ export const evaluateNode = async (
   // the evaluation deadline — surfaces as an error that cuts through
   // fallbacks; a scope abort means a sibling already decided the answer,
   // so this branch is simply abandoned and raises nothing anyone will see
-  if (ctx.abortScope.aborted) throw abortedOutcome(ctx, node.path)
+  if (ctx.abortScope.aborted) return Promise.reject(abortedOutcome(ctx, node.path))
   return dispatch(node, ctx)
 }
 
@@ -65,27 +65,40 @@ const traced = async (
   }
 }
 
-const dispatch = async (node: CompiledNode, ctx: EvaluationContext): Promise<unknown> => {
-  switch (node.kind) {
-    case 'constant':
-      return node.value
-    case 'reference':
-      return resolveReference(node, ctx)
-    case 'skeleton':
-      return evaluateSkeleton(node, ctx)
-    case 'operator':
-      return evaluateOperator(node, ctx)
-    case 'fragmentCall':
-      return evaluateFragment(node, ctx)
-    case 'elements':
-    case 'entries':
-      throw internalError(
-        `a '${node.kind}' parameter value reached the node dispatch — parameter resolution consumes these, and nothing else may hold one`
-      )
-    case 'invalid':
-      throw internalError(
-        'an invalid node reached evaluation — the static gate should have refused it'
-      )
+/**
+ * The dispatch and the boundary above it are plain functions that hand
+ * back the handler's own promise, not async wrappers around it: an async
+ * function returning a promise costs a second promise and the microtasks
+ * to chain the two, per node, for nothing. A leaf's value travels in one
+ * settled promise; a leaf that fails synchronously (a strict data miss)
+ * is converted to a rejection here, so no caller ever sees a throw where
+ * it did not before — every failure still arrives as the promise settling.
+ */
+const dispatch = (node: CompiledNode, ctx: EvaluationContext): Promise<unknown> => {
+  try {
+    switch (node.kind) {
+      case 'constant':
+        return Promise.resolve(node.value)
+      case 'reference':
+        return Promise.resolve(resolveReference(node, ctx))
+      case 'skeleton':
+        return evaluateSkeleton(node, ctx)
+      case 'operator':
+        return evaluateOperator(node, ctx)
+      case 'fragmentCall':
+        return evaluateFragment(node, ctx)
+      case 'elements':
+      case 'entries':
+        throw internalError(
+          `a '${node.kind}' parameter value reached the node dispatch — parameter resolution consumes these, and nothing else may hold one`
+        )
+      case 'invalid':
+        throw internalError(
+          'an invalid node reached evaluation — the static gate should have refused it'
+        )
+    }
+  } catch (error) {
+    return Promise.reject(error)
   }
 }
 

@@ -52,7 +52,14 @@ export const evaluateOperator = async (
     : undefined
   const attempted = scope === undefined ? scoped : { ...scoped, abortScope: scope }
   try {
-    return await attemptScoped(node, attempted, scope)
+    // The scope settles the moment the attempt settles, not when this
+    // wrapper returns: the fallback below must not be caught by the abort
+    // that ended the attempt
+    try {
+      return await attempt(node, attempted)
+    } finally {
+      scope?.settle()
+    }
   } catch (error) {
     // Neither an engine bug, a cancellation, nor the caller's kill switch
     // is an expression failure: all three cut through the fallback process
@@ -85,23 +92,6 @@ export const evaluateOperator = async (
       if (wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped
     }
-  }
-}
-
-/**
- * Settle the node's abort scope the moment the body settles, not when the
- * whole wrapper returns — a fallback evaluating afterwards must not be
- * caught by the abort that ended the attempt.
- */
-const attemptScoped = async (
-  node: OperatorNode,
-  ctx: EvaluationContext,
-  scope: { settle: () => void } | undefined
-): Promise<unknown> => {
-  try {
-    return await attempt(node, ctx)
-  } finally {
-    scope?.settle()
   }
 }
 
