@@ -89,7 +89,14 @@ export const evaluateFragment = async (
   }
   const bodyCtx = { ...scoped, abortScope: scope }
   try {
-    return await runBodyScoped(node, entry, bodyCtx, scoped, frame, scope)
+    // The scope settles the moment the body settles, not when this wrapper
+    // returns: the fallback below must not be caught by the abort that
+    // ended the attempt
+    try {
+      return await runBody(node, entry, bodyCtx, scoped, frame)
+    } finally {
+      scope.settle()
+    }
   } catch (error) {
     if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
     const failure = anchor(error, frame)
@@ -111,27 +118,6 @@ export const evaluateFragment = async (
       if (isFigTreeError(wrapped) && wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped
     }
-  }
-}
-
-/**
- * Settle the call's abort scope the moment the body settles, not when the
- * whole wrapper returns — a fallback evaluating afterwards must not be
- * caught by the abort that ended the attempt. The same shape as
- * `attemptScoped` in ./operator.
- */
-const runBodyScoped = async (
-  node: FragmentCallNode,
-  entry: FragmentEntry,
-  bodyCtx: EvaluationContext,
-  argumentCtx: EvaluationContext,
-  frame: FragmentFrame,
-  scope: { settle: () => void }
-): Promise<unknown> => {
-  try {
-    return await runBody(node, entry, bodyCtx, argumentCtx, frame)
-  } finally {
-    scope.settle()
   }
 }
 
