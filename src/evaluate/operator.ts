@@ -18,7 +18,7 @@ import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
-import { isEngineHandle } from '../runtimeInterface'
+import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import {
   DeferredScope,
   REQUEST_EXPIRED,
@@ -32,6 +32,7 @@ import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from '.
 import { autoKey, through } from './memo'
 import { resolveParams } from './params'
 import { pushVars } from './scope'
+import { noop } from '../utils'
 
 export const evaluateOperator = async (
   node: OperatorNode,
@@ -132,38 +133,47 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const deadline = ms === undefined ? undefined : requestDeadline(ctx.abortScope.signal, ms)
   const bodyCtx =
     deadline === undefined ? ctx : { ...ctx, abortScope: signalScope(deadline.signal) }
-  const context = createOperatorContext(bodyCtx, { operator: definition.name, useCache })
-
-  const run = async () => {
-    // A signal can abort between the node-boundary check and here, while
-    // this node's parameters resolve — and `addEventListener('abort')` on
-    // an already-aborted signal NEVER fires, so a body that only listens
-    // would run to completion and hand back a result nobody wants
-    const landed = abortedOutcome(ctx, node.path, node.name)
-    if (landed !== undefined) throw landed
-    const running = Promise.resolve(definition.evaluate(params, context))
-    if (deadline === undefined) return normalizeResult(await running, node)
-    // The body may reject a tick AFTER an abort won the race, when its
-    // client notices the signal — without this that is an unhandled
-    // rejection
-    running.catch(() => {})
-    return normalizeResult(await Promise.race([running, deadline.expiry]), node)
-  }
-
-  const cached = async () => {
-    if (!useCache || definition.cache !== 'auto') return run()
-    const key = autoKey(node, params)
-    // An unkeyable node runs uncached rather than sharing a weaker key
-    return key === undefined ? run() : through(ctx.cache, key, run, noteChannel(ctx))
-  }
+  const context = createOperatorContext(bodyCtx, definition.name, useCache)
 
   try {
-    return await cached()
+    // The common node is not caching: straight to the body, with no
+    // closure built and no frame between
+    if (!useCache || definition.cache !== 'auto')
+      return await runBody(node, ctx, params, context, deadline)
+    const key = autoKey(node, params)
+    const run = () => runBody(node, ctx, params, context, deadline)
+    // An unkeyable node runs uncached rather than sharing a weaker key
+    return await (key === undefined ? run() : through(ctx.cache, key, run, noteChannel(ctx)))
   } catch (error) {
     throw classifyBodyFailure(error, node, ctx, deadline, ms)
   } finally {
     deadline?.settle()
   }
+}
+
+/**
+ * The body itself, then the result boundary. A signal can abort between
+ * the node-boundary check and here, while this node's parameters resolve
+ * — and `addEventListener('abort')` on an already-aborted signal NEVER
+ * fires, so a body that only listens would run to completion and hand
+ * back a result nobody wants; hence the check first.
+ */
+const runBody = async (
+  node: OperatorNode,
+  ctx: EvaluationContext,
+  params: Record<string, unknown>,
+  context: OperatorContext,
+  deadline: Deadline | undefined
+): Promise<unknown> => {
+  const landed = abortedOutcome(ctx, node.path, node.name)
+  if (landed !== undefined) throw landed
+  const running = Promise.resolve(node.entry.definition.evaluate(params, context))
+  if (deadline === undefined) return normalizeResult(await running, node)
+  // The body may reject a tick AFTER an abort won the race, when its
+  // client notices the signal — without this that is an unhandled
+  // rejection
+  running.catch(noop)
+  return normalizeResult(await Promise.race([running, deadline.expiry]), node)
 }
 
 /** The node's own deadline in ms, or `undefined` where it declared none. */

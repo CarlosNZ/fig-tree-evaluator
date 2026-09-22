@@ -52,7 +52,7 @@ import {
   typeNamesNull,
   type ExpectedType,
 } from '../typeCheck'
-import { isPlainObject, once } from '../utils'
+import { isPlainObject, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { internalError } from './internal'
@@ -73,23 +73,30 @@ export const resolveParams = async (
   ctx: EvaluationContext
 ): Promise<ResolvedParameters> => {
   const { definition, instanceDefaults } = node.entry
-  const declarations = Object.entries(definition.parameters)
+  const declarations = definition.parameterEntries
 
   // ── Pass 1: start everything ──────────────────────────────────────
-  const pendingNames: string[] = []
-  const pending: Promise<unknown>[] = []
+  // Every structure here is built only when a parameter needs it, since
+  // the common node has one eager parameter and nothing else
+  let pendingNames: string[] | undefined
+  let pending: Promise<unknown>[] | undefined
   const resolved: Record<string, unknown> = {}
-  const holders: Record<string, Thunk> = {}
-  /** Names already delivered as handles — the layers ran inside them. */
-  const delivered = new Set<string>()
+  let holders: Record<string, Thunk> | undefined
+  /**
+   * What the body receives. A handle delivered in pass 1 lands here
+   * directly — its layers run on demand, so the defaults pass and pass 2
+   * have nothing to do for it — and being here already is what marks a
+   * name as delivered.
+   */
+  const params: Record<string, unknown> = {}
 
   for (const [name, declared] of declarations) {
     const supplied = node.params[name]
     switch (declared.evaluation) {
       case 'eager':
         if (supplied !== undefined) {
-          pendingNames.push(name)
-          pending.push(evaluateNode(supplied, ctx))
+          ;(pendingNames ??= []).push(name)
+          ;(pending ??= []).push(evaluateNode(supplied, ctx))
         }
         break
       case 'structural':
@@ -107,16 +114,13 @@ export const resolveParams = async (
                 ? once(() => instanceDefaults[name])
                 : undefined
           if (thunk !== undefined)
-            for (const target of declared.replacesNullAt) holders[target] = thunk
+            for (const target of declared.replacesNullAt) (holders ??= {})[target] = thunk
           break
         }
         // An ordinary lazy parameter: the body holds the handle and decides
         // whether to demand it. Unsupplied falls to the default chain in
         // pass 2, which wraps the default in a pre-resolved handle
-        if (supplied !== undefined) {
-          resolved[name] = demand(supplied, node, name, declared, ctx)
-          delivered.add(name)
-        }
+        if (supplied !== undefined) params[name] = demand(supplied, node, name, declared, ctx)
         break
       case 'lazyElements':
       case 'lazyEntries':
@@ -124,16 +128,15 @@ export const resolveParams = async (
         if (supplied === undefined) break
         const handles = containerHandles(supplied, declared, ctx)
         if (handles !== undefined) {
-          resolved[name] = handles
-          delivered.add(name)
+          params[name] = handles
           break
         }
         // Degeneration: the value arrives dynamically, so it is already
         // data. Resolve it eagerly through the ordinary layers, then hand
         // the body pre-resolved handles — sequencing becomes iteration and
         // branch selection becomes lookup, with no body-side special case
-        pendingNames.push(name)
-        pending.push(evaluateNode(supplied, ctx))
+        ;(pendingNames ??= []).push(name)
+        ;(pending ??= []).push(evaluateNode(supplied, ctx))
         break
       }
       case 'perElement':
@@ -149,17 +152,24 @@ export const resolveParams = async (
     }
   }
 
-  const settled = await Promise.all(pending)
-  pendingNames.forEach((name, i) => {
-    resolved[name] = settled[i]
-  })
+  if (pending !== undefined && pendingNames !== undefined) {
+    // One pending parameter — the common node — is awaited on its own,
+    // sparing the `Promise.all` and its result array
+    if (pending.length === 1) resolved[pendingNames[0]] = await pending[0]
+    else {
+      const settled = await Promise.all(pending)
+      pendingNames.forEach((name, i) => {
+        resolved[name] = settled[i]
+      })
+    }
+  }
 
   // ── The defaults pass: the layered chain, else removal ────────────
   for (const [name, declared] of declarations) {
     // Holders and per-element handles carry no whole value; a handle
     // delivered in pass 1 runs its layers on demand
     if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
-    if (delivered.has(name)) continue
+    if (params[name] !== undefined) continue
     const value = resolved[name]
     const unset =
       value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
@@ -174,24 +184,19 @@ export const resolveParams = async (
   }
 
   // ── Pass 2: the layers ────────────────────────────────────────────
-  const params: Record<string, unknown> = {}
-
   for (const [name, declared] of declarations) {
-    // Holders never reach the body; per-element handles are built below
+    // Holders never reach the body; per-element handles are built below;
+    // a handle delivered in pass 1 is in place already, its layers running
+    // on demand, with no whole value here for the unset chain to test
     if (declared.replacesNullAt !== undefined || declared.evaluation === 'perElement') continue
-    if (delivered.has(name)) {
-      // Delivered as a handle in pass 1: its layers run on demand, and
-      // there is no whole value here for the unset chain to test
-      params[name] = resolved[name]
-      continue
-    }
+    if (params[name] !== undefined) continue
     let value = resolved[name]
 
     // 1. absent: nothing supplied and nothing declared a default
     if (value === undefined) continue
 
     // 2. replacesNullAt
-    const holder = holders[name]
+    const holder = holders?.[name]
     if (holder !== undefined) value = await replaceNulls(value, declared, holder)
 
     // 3. whole-value null policy. `propagate` is inert on a lazily
@@ -358,7 +363,7 @@ const perElementHandle = (
     // enough: a body that demands an index and then resolves without
     // awaiting it must not leave an unhandled rejection behind. A later
     // awaiter still sees the rejection — this only marks it handled
-    started.catch(() => {})
+    started.catch(noop)
     memo.set(index, started)
     return started
   }

@@ -29,7 +29,7 @@ import { ErrorCodes } from './errorCodes'
 import { FigTreeError } from './FigTreeError'
 import { Lru } from './lru'
 import type { CacheStore } from './types'
-import { isPlainDataObject } from './utils'
+import { isPlainDataObject, noop } from './utils'
 
 /** v2's defaults, kept: fifty entries, thirty minutes. */
 export const DEFAULT_MAX_SIZE = 50
@@ -237,5 +237,3 @@ export class ResultCache {
 
 const expired = (envelope: Envelope): boolean =>
   envelope.expiresAt !== undefined && envelope.expiresAt <= Date.now()
-
-const noop = () => {}

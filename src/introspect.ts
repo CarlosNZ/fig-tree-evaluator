@@ -117,13 +117,18 @@ export interface ParameterInfo extends ValidatedParameter {
  * re-declared, so a field added there is a compile error here until the
  * snapshot carries it. The exclusions are the contract's own: the brand
  * (a snapshot must not satisfy `isValidatedOperator`), the two functions
- * (`validate` travels as a flag, `evaluate` not at all) and
- * `deliversLazily`, an engine-internal derivation. `parameters` is
- * re-declared only to widen its value to `ParameterInfo`.
+ * (`validate` travels as a flag, `evaluate` not at all) and the two
+ * engine-internal derivations, `deliversLazily` and `parameterEntries`.
+ * `parameters` is re-declared only to widen its value to `ParameterInfo`.
  */
 export interface OperatorInfo extends Omit<
   ValidatedOperatorDefinition,
-  typeof VALIDATED_OPERATOR | 'evaluate' | 'validate' | 'deliversLazily' | 'parameters'
+  | typeof VALIDATED_OPERATOR
+  | 'evaluate'
+  | 'validate'
+  | 'deliversLazily'
+  | 'parameterEntries'
+  | 'parameters'
 > {
   parameters: Record<string, ParameterInfo>
   /** The `validate` hook, as a flag — the function itself never travels. */

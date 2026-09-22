@@ -36,6 +36,8 @@
  * regardless.
  */
 
+import { noop } from '../utils'
+
 /** The reason a settled scope carries: the work it covered has finished. */
 export const SCOPE_SETTLED = 'fig-tree:scope-settled'
 
@@ -162,7 +164,7 @@ const bump = () => {
  * trusting their memory; it is `once`, and every signal wrapped here is
  * aborted when its deadline settles, so it never outlives the evaluation.
  */
-export const signalScope = (signal: AbortSignal, settle: () => void = () => {}): AbortScope => {
+export const signalScope = (signal: AbortSignal, settle: () => void = noop): AbortScope => {
   if (signal.aborted) bump()
   else signal.addEventListener('abort', bump, { once: true })
   return {
@@ -282,7 +284,7 @@ export const deadline = (
   // Attached where the promise is created, which is the only point early
   // enough: when the work wins the race nobody ever awaits this, and a
   // runtime reports an unhandled rejection at the microtask checkpoint
-  expiry.catch(() => {})
+  expiry.catch(noop)
   const onAbort = () => expire(signal.reason)
   if (signal.aborted) onAbort()
   else signal.addEventListener('abort', onAbort, { once: true })

@@ -697,6 +697,7 @@ export function defineOperator(
     category: def.category as OperatorCategory,
     description: def.description,
     parameters: validatedParameters,
+    parameterEntries: Object.entries(validatedParameters),
     restParam,
     deliversLazily: Object.values(validatedParameters).some(
       (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
@@ -754,6 +755,8 @@ const deepFreezeArtifact = (
     Object.freeze(parameter)
   }
   Object.freeze(validated.parameters)
+  validated.parameterEntries.forEach((entry) => Object.freeze(entry))
+  Object.freeze(validated.parameterEntries)
   if (typeof validated.returns !== 'string') Object.freeze(validated.returns)
   if (validated.positionalParams !== undefined) Object.freeze(validated.positionalParams)
   return Object.freeze(validated)

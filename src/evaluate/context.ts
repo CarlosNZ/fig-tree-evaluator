@@ -23,11 +23,11 @@ import type { EvaluationOptions, FigTreeOptions } from '../options'
 import type { CompiledNode } from '../parse'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject, noop } from '../utils'
 import type { TraceNode } from '../trace'
 import type { AbortScope } from './abort'
 import type { Bindings } from './bindings'
-import { bodyMemo, type MemoBinding } from './memo'
+import { bodyMemo } from './memo'
 import type { TraceRecorder } from './trace'
 import type { Scope } from './scope'
 
@@ -211,15 +211,14 @@ export const createEvaluationContext = (
 
 /**
  * The context a body receives: the signal, the evaluation's options, the
- * live `memo`, and `note`, which discards until trace lands (Phase 12).
+ * live `memo`, and `note`. One allocation per node — the two wrappers a
+ * body reads through are shared constants unless the node is caching or
+ * the evaluation is tracing, in which case that one is built for real.
  *
- * `signal` is a getter: reading it materialises the node's scope into a
- * real `AbortSignal` (./abort), so a body that never touches it — most of
- * them — costs the evaluation no controller.
- *
- * The binding is passed rather than the node, because both fields it holds
- * are already computed one frame up and this module has no business
- * knowing what a node is.
+ * `signal` is a getter on the prototype: reading it materialises the
+ * node's scope into a real `AbortSignal` (./abort), so a body that never
+ * touches it — most of them — costs the evaluation no controller, and no
+ * closure is built to hold the scope.
  *
  * Options reach a body whole. There is nothing privileged in them to hide,
  * and a per-definition declaration of which blocks a body reads could only
@@ -231,22 +230,43 @@ export const createEvaluationContext = (
  */
 export const createOperatorContext = (
   ctx: EvaluationContext,
-  binding: MemoBinding
+  operator: string,
+  useCache: boolean
 ): OperatorContext => {
   const note = noteChannel(ctx)
-  const { abortScope } = ctx
-  return {
-    get signal() {
-      return abortScope.signal
-    },
-    options: ctx.options,
-    cache: { memo: bodyMemo({ ...binding, note }, ctx.cache) },
-    trace: { note },
+  return new BodyContext(
+    ctx.abortScope,
+    ctx.options,
+    useCache ? { memo: bodyMemo({ operator, useCache, note }, ctx.cache) } : PASSTHROUGH_CACHE,
+    note === noop ? SILENT_TRACE : { note }
+  )
+}
+
+class BodyContext implements OperatorContext {
+  readonly #scope: AbortScope
+
+  constructor(
+    scope: AbortScope,
+    readonly options: EvaluationOptions,
+    readonly cache: OperatorContext['cache'],
+    readonly trace: OperatorContext['trace']
+  ) {
+    this.#scope = scope
+  }
+
+  get signal(): AbortSignal {
+    return this.#scope.signal
   }
 }
 
-/** Discards while trace is off, so a body emits unconditionally. */
-const noop = () => {}
+/** `memo` for a node that is not caching: runs the work, keeps nothing. */
+const PASSTHROUGH_CACHE: OperatorContext['cache'] = { memo: (_key, fn) => fn() }
+
+/**
+ * `note` for an evaluation that is not tracing: discards, so a body emits
+ * unconditionally.
+ */
+const SILENT_TRACE: OperatorContext['trace'] = { note: noop }
 
 /**
  * The live `note`: events land on the node's OWN entry, which the
