@@ -118,7 +118,7 @@ export interface ParameterInfo extends ValidatedParameter {
  * snapshot carries it. The exclusions are the contract's own: the brand
  * (a snapshot must not satisfy `isValidatedOperator`), the two functions
  * (`validate` travels as a flag, `evaluate` not at all) and the two
- * engine-internal derivations, `deliversLazily` and `parameterEntries`.
+ * engine-internal derivations, `deliversLazily` and `resolution`.
  * `parameters` is re-declared only to widen its value to `ParameterInfo`.
  */
 export interface OperatorInfo extends Omit<
@@ -127,7 +127,7 @@ export interface OperatorInfo extends Omit<
   | 'evaluate'
   | 'validate'
   | 'deliversLazily'
-  | 'parameterEntries'
+  | 'resolution'
   | 'parameters'
 > {
   parameters: Record<string, ParameterInfo>

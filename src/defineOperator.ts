@@ -37,6 +37,7 @@ import {
   VALIDATED_OPERATOR,
   isValidatedOperator,
   type CompiledNullPolicy,
+  type DeclarationEntry,
   type EvaluationMode,
   type NullPolicyValue,
   type OperatorCategory,
@@ -44,6 +45,7 @@ import {
   type OperatorEvaluate,
   type ParameterDeclaration,
   type ParameterDeclarations,
+  type ResolutionPlan,
   type ValidatedOperatorDefinition,
   type ValidatedParameter,
 } from './operatorDefinition'
@@ -697,7 +699,7 @@ export function defineOperator(
     category: def.category as OperatorCategory,
     description: def.description,
     parameters: validatedParameters,
-    parameterEntries: Object.entries(validatedParameters),
+    resolution: planResolution(validatedParameters),
     restParam,
     deliversLazily: Object.values(validatedParameters).some(
       (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
@@ -734,6 +736,19 @@ const deepClone = <T>(value: T): T => {
   return value
 }
 
+/** The resolver's three declaration lists (`ResolutionPlan`). */
+const planResolution = (parameters: Record<string, ValidatedParameter>): ResolutionPlan => {
+  const entries: DeclarationEntry[] = Object.entries(parameters)
+  return {
+    entries,
+    whole: entries.filter(
+      ([, declared]) =>
+        declared.replacesNullAt === undefined && declared.evaluation !== 'perElement'
+    ),
+    perElement: entries.filter(([, declared]) => declared.evaluation === 'perElement'),
+  }
+}
+
 /**
  * Freeze the artifact and every structure it owns. `metadata` bags, `default`
  * values and the two host-supplied functions are left unfrozen — host-owned.
@@ -755,8 +770,11 @@ const deepFreezeArtifact = (
     Object.freeze(parameter)
   }
   Object.freeze(validated.parameters)
-  validated.parameterEntries.forEach((entry) => Object.freeze(entry))
-  Object.freeze(validated.parameterEntries)
+  for (const list of Object.values(validated.resolution)) {
+    list.forEach((entry: DeclarationEntry) => Object.freeze(entry))
+    Object.freeze(list)
+  }
+  Object.freeze(validated.resolution)
   if (typeof validated.returns !== 'string') Object.freeze(validated.returns)
   if (validated.positionalParams !== undefined) Object.freeze(validated.positionalParams)
   return Object.freeze(validated)
