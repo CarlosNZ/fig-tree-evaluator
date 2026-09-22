@@ -7,8 +7,8 @@
  * it must refuse anything that cannot be keyed by content, because a
  * refusal only skips the layer.
  */
-import { serializeInput } from '../src/parse/contentKey'
-import { parseExpression, DEPTH_CEILING } from '../src/parse'
+import { serializeInput } from '../src/compile/contentKey'
+import { compileExpression, DEPTH_CEILING } from '../src/compile'
 import { buildRegistry } from '../src/registry'
 import { coreOperators } from '../src/operators'
 
@@ -75,7 +75,7 @@ describe('refusal', () => {
   })
 })
 
-describe('agreement with the parser’s own guard', () => {
+describe('agreement with the compiler’s own guard', () => {
   const registry = buildRegistry({ operators: [coreOperators] })
 
   // The two guards are independent, and this is the direction that must
@@ -89,13 +89,13 @@ describe('agreement with the parser’s own guard', () => {
     ['an array of primitives', [1, 'two', true, null]],
   ])('%s: accepted ⇒ the artifact is not identity-only', (_name, expression) => {
     expect(key(expression)).toBeDefined()
-    expect(parseExpression(expression, registry).identityOnly).toBe(false)
+    expect(compileExpression(expression, registry).identityOnly).toBe(false)
   })
 
-  it('refuses an opaque value under literal, which the parser never walks', () => {
+  it('refuses an opaque value under literal, which the compiler never walks', () => {
     const expression = { $literal: { stamp: new Date(0) } }
-    // The parser cannot see it — `literal` contents are taken verbatim
-    expect(parseExpression(expression, registry).identityOnly).toBe(false)
+    // The compiler cannot see it — `literal` contents are taken verbatim
+    expect(compileExpression(expression, registry).identityOnly).toBe(false)
     // The serializer walks the raw input, so the content layer is protected
     expect(key(expression)).toBeUndefined()
   })

@@ -7,9 +7,9 @@
  */
 import { FigTree } from '../src'
 import type { Issue } from '../src'
-import { parseOps } from './fixtures/parseRegistry'
+import { compileOps } from './fixtures/compileRegistry'
 
-const fig = new FigTree({ operators: [parseOps()] })
+const fig = new FigTree({ operators: [compileOps()] })
 
 const issuesOf = (expression: unknown, options?: Parameters<FigTree['validate']>[1]) =>
   fig.validate(expression, options).issues
@@ -143,7 +143,7 @@ describe('as renaming', () => {
     expect(errorCodes(expression)).toHaveLength(0)
   })
 
-  test('a dynamic as is a parse error — structural means literal', () => {
+  test('a dynamic as is a grammar error — structural means literal', () => {
     expect(errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })).toContain(
       'invalid-as'
     )
@@ -245,7 +245,7 @@ describe('vars cycles, shadowing, unreferenced', () => {
 describe('maxDepth / maxNodes — instance configuration, compared against stored counts', () => {
   const deep = { a: { b: { c: { d: { e: { $plus: [1, 2] } } } } } }
   const withLimits = (limits: { maxDepth?: number; maxNodes?: number }) =>
-    new FigTree({ operators: [parseOps()], ...limits })
+    new FigTree({ operators: [compileOps()], ...limits })
 
   test('limits are compared at validation — the artifact stays option-independent', () => {
     expect(fig.validate(deep).valid).toBe(true)

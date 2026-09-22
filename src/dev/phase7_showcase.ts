@@ -203,7 +203,7 @@ const main = async () => {
     { data: { ...data, notEntries: [{ value: 'no key' }] } }
   )
 
-  section('literal — the parse boundary')
+  section('literal — the compile boundary')
   await show('an expression quoted as OUTPUT, never evaluated', {
     $literal: { operator: 'plus', values: [1, 2, 3] },
   })

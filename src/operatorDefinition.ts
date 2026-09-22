@@ -12,7 +12,7 @@
  */
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
-import type { ValidateHelpers } from './parse/helpers'
+import type { ValidateHelpers } from './compile/helpers'
 import type { OperatorContext } from './runtimeInterface'
 import type { ResolvedParams } from './inference'
 
@@ -104,9 +104,9 @@ export interface ValidateFinding {
 }
 
 /**
- * The static validation hook (contract ledger #11). Runs at parse (Phase 3);
+ * The static validation hook (contract ledger #11). Runs at compile (Phase 3);
  * registration only checks it is a function. The `helpers` toolbox is the
- * frozen primitives object of src/parse/helpers.ts (contract Q7).
+ * frozen primitives object of src/compile/helpers.ts (contract Q7).
  */
 export type OperatorValidate = (
   literalParams: Record<string, unknown>,

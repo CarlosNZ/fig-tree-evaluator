@@ -1,18 +1,18 @@
 /**
- * Chunk 3.2 — the parse walk: one pass over the raw input implementing the
+ * Chunk 3.2 — the compile walk: one pass over the raw input implementing the
  * recognition grammar ("Node grammar & reserved keys", "Shorthand grammar",
  * "Reference grammar" in docs-dev/v3-specs/v3-api.md), normalization to
  * canonical form, constancy classification, skeleton + hole extraction, and
  * the artifact precomputes (docs-dev/v3-specs/v3-artifact-obligations.md).
  *
- * The parser never throws on expression content: every grammar violation
+ * The compiler never throws on expression content: every grammar violation
  * becomes an error-severity issue and the offending subtree compiles to an
  * `invalid` placeholder. The metadata-driven check layer (chunk 3.3,
  * staticChecks.ts) runs as a second pass over the compiled AST.
  *
  * Vocabulary, which the rest of this file assumes:
  *
- * - **artifact** — what `parseExpression` returns: everything derivable
+ * - **artifact** — what `compileExpression` returns: everything derivable
  *   from the input alone (the compiled tree, its holes, the static issues,
  *   the precomputes). It depends on no `data` and on no option but the
  *   registry-affecting three, which is what makes it reusable across
@@ -44,7 +44,7 @@
  * `as` renaming. Renamed bindings (`$order`, `$orderIndex`) are
  * author-named reference strings, so *recognition* — and with it constancy
  * classification — depends on the enclosing `as` frames. `as` values are
- * structural (parse-time literals), which is what keeps this static.
+ * structural (compile-time literals), which is what keeps this static.
  *
  * The steps, in order — 1–12 run per value visited (the walk recurses),
  * 13–16 once it returns:
@@ -76,7 +76,7 @@
  *     (leading, then the rest slice), named arguments, or one
  *     first-position value.
  * 11. They then walk in a fixed order: an iterator's `as` first (it renames
- *     the element bindings, and is a parse-time literal precisely so the
+ *     the element bindings, and is a compile-time literal precisely so the
  *     walk can read it), ordinary parameters next, and the per-element
  *     subtrees last, under the binding it named — the scope concern above.
  * 12. A fragment call resolves its name in the registry — baking the
@@ -120,7 +120,7 @@ import type {
   FragmentCallNode,
   NodePath,
   OperatorNode,
-  ParseArtifact,
+  CompileArtifact,
   Rollups,
   SequencedIssue,
   SkeletonHole,
@@ -154,7 +154,7 @@ interface BindingFrame {
 
 interface WalkState {
   registry: OperatorRegistry
-  issues: ParseArtifact['issues']
+  issues: CompileArtifact['issues']
   order: number
   nodeCount: number
   maxDepth: number
@@ -182,9 +182,9 @@ interface WalkState {
   unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
 }
 
-export interface ParseOptions {
+export interface CompileOptions {
   /**
-   * Where the root sits in the value being parsed. Only fragment-body
+   * Where the root sits in the value being compiled. Only fragment-body
    * compilation supplies one (`['expression']`), so a body's node paths —
    * and so the `fragmentPath` a runtime failure carries — resolve inside
    * the registered definition. Depth still starts at 0, which is what keeps
@@ -194,12 +194,12 @@ export interface ParseOptions {
   basePath?: NodePath
 }
 
-/** Parse an expression into its compile artifact. Never throws on content. */
-export const parseExpression = (
+/** Compile an expression into its artifact. Never throws on content. */
+export const compileExpression = (
   input: unknown,
   registry: OperatorRegistry,
-  options: ParseOptions = {}
-): ParseArtifact => {
+  options: CompileOptions = {}
+): CompileArtifact => {
   const state: WalkState = {
     registry,
     issues: [],
@@ -837,7 +837,7 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
 }
 
 /**
- * `buildString`'s parse-time half, and the one place a template is ever
+ * `buildString`'s compile-time half, and the one place a template is ever
  * scanned for references (References rule 4's sanctioned embedding): a
  * LITERAL template is authored tree, so `{{$data.x}}` in one IS that
  * reference, while a template arriving as data can never mint itself a
@@ -1208,7 +1208,7 @@ const walkEntriesParam = (
 
 /**
  * Validate an `as` value and build its binding frame. `as` is structural —
- * a parse-time literal identifier; a dynamic value is a parse error. Names
+ * a compile-time literal identifier; a dynamic value is a grammar error. Names
  * are checked against the shared legality rule, the reserved namespace
  * words (long and short forms) and every enclosing `as` name, derived
  * `…Index` forms included ("$element / $index and as" in
@@ -1421,7 +1421,7 @@ const collectPositional = (
   }
 }
 
-// ── literal: the parse boundary ─────────────────────────────────────
+// ── literal: the compile boundary ─────────────────────────────────────
 
 const walkLiteral = (
   state: WalkState,
@@ -1831,8 +1831,8 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
       node: hole.node,
       ...withStaticFallback(state, hole.node),
     }))
-  // `root.path` rather than `[]`: a fragment body parses under a base path,
-  // and a hole must still name where its node sits in the value parsed
+  // `root.path` rather than `[]`: a fragment body compiles under a base path,
+  // and a hole must still name where its node sits in the value compiled
   return [{ path: root.path, node: root, ...withStaticFallback(state, root) }]
 }
 
@@ -1848,7 +1848,7 @@ const withStaticFallback = (
  * The shielding precompute (obligation B2): present iff the hole root's
  * fallback subtree is classified constant. An operatorDefaults modifier
  * fallback counts — which is exactly why `operatorDefaults` invalidates the
- * parse cache — and so does the body-root fallback a fragment call lifts.
+ * compile cache — and so does the body-root fallback a fragment call lifts.
  */
 const staticFallbackFor = (
   state: WalkState,
@@ -1860,7 +1860,7 @@ const staticFallbackFor = (
   if (node.kind === 'operator') {
     const defaults = node.entry.instanceDefaults
     // The registry stores operatorDefaults fallbacks unclassified — the
-    // shared probe answers constancy for them (src/parse/probe.ts)
+    // shared probe answers constancy for them (src/compile/probe.ts)
     if (
       defaults !== undefined &&
       'fallback' in defaults &&

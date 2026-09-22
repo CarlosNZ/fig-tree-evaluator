@@ -34,7 +34,7 @@ import { DEPTH_CEILING } from './probe'
  * that cannot be keyed by content.
  *
  * The refusal IS the non-plain-value guard, and it is the load-bearing
- * half of the pair: the parser's `identityOnly` flag only sees values it
+ * half of the pair: the compiler's `identityOnly` flag only sees values it
  * walks, and a `literal` payload is never walked, so an opaque value
  * inside one would slip past it. This walks the raw input instead.
  */

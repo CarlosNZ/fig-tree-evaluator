@@ -3,7 +3,7 @@
  * option ("Fragments" in docs-dev/v3-specs/v3-api.md).
  *
  * A fragment is an expression registered under a name, with declared
- * parameters. Registration *is* its parse moment: `new FigTree()` and
+ * parameters. Registration *is* its compile moment: `new FigTree()` and
  * `updateOptions()` throw on a bad fragment, so a call that registered can
  * only fail at runtime for data-dependent reasons. That posture is what
  * lets a call site splice a precompiled body and lets the static checker
@@ -14,8 +14,8 @@
  *  1. Shape, names and declarations — every entry exists, declarations
  *     filled, before any body compiles. That is what gives batch semantics:
  *     a body may call any fragment in the same batch regardless of key
- *     order, because the lookup it parses against is already complete.
- *  2. Bodies — `parseExpression` + `runStaticChecks` over each `expression`,
+ *     order, because the lookup it compiles against is already complete.
+ *  2. Bodies — `compileExpression` + `runStaticChecks` over each `expression`,
  *     with the declared parameter names as the `$params` scope. Bodies
  *     compile in isolation, which is also where the sealing rules enforce
  *     themselves: a body referencing a caller's var or iterator binding has
@@ -38,15 +38,15 @@ import type { Issue } from './issues'
 import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
 import {
   composeRollups,
-  parseExpression,
+  compileExpression,
   runStaticChecks,
   splice,
   type ArtifactDependencies,
   type ArtifactHole,
   type CompiledNode,
   type NodePath,
-  type ParseArtifact,
-} from './parse'
+  type CompileArtifact,
+} from './compile'
 import type { OperatorRegistry } from './registry'
 import {
   checkConstraints,
@@ -186,10 +186,12 @@ export const registerFragments = (
   // the batch. The composed measurements on these artifacts are not yet
   // meaningful — no target is folded before pass 4 — which is why the fold
   // composes from `artifact.own`, never from them.
-  const compiled = new Map<string, ParseArtifact>()
+  const compiled = new Map<string, CompileArtifact>()
   for (const [name, entry] of registry.fragments) {
     const definition = (definitions as Record<string, FragmentDefinition>)[name]
-    const artifact = parseExpression(definition.expression, registry, { basePath: ['expression'] })
+    const artifact = compileExpression(definition.expression, registry, {
+      basePath: ['expression'],
+    })
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
     for (const { issue } of artifact.issues) {
       if (issue.severity === 'error')
@@ -426,7 +428,7 @@ const validateDeclaration = (
  * registration error — guarded recursion included. Returns whether the
  * graph is acyclic, which is what makes the rollup fold well-founded.
  */
-const checkCycles = (compiled: Map<string, ParseArtifact>, addIssue: AddIssue): boolean => {
+const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue): boolean => {
   const visiting: string[] = []
   const settled = new Set<string>()
   const reported = new Set<string>()
@@ -466,7 +468,7 @@ const checkCycles = (compiled: Map<string, ParseArtifact>, addIssue: AddIssue): 
  * walk, so a call site in an expression and a call site in a body compose
  * identically.
  */
-const foldRollups = (registry: OperatorRegistry, compiled: Map<string, ParseArtifact>) => {
+const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileArtifact>) => {
   const done = new Set<string>()
 
   const fold = (name: string) => {
@@ -503,10 +505,10 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, ParseArti
  * call's. A skeleton root splices its holes' constants into its shape —
  * the same assembly `evaluateShielded` performs, and relying on the same
  * by-construction ordering: the artifact's holes ARE the root skeleton's,
- * in order (`rootHoles` in src/parse/parse.ts).
+ * in order (`rootHoles` in src/compile/compile.ts).
  */
 const liftedFallback = (
-  artifact: ParseArtifact,
+  artifact: CompileArtifact,
   fragments: ReadonlyMap<string, FragmentEntry>
 ): { value: unknown } | undefined => {
   const { root, holes } = artifact

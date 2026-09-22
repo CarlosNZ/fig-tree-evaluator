@@ -1,6 +1,6 @@
 /**
- * The two-layer parse cache ("Cache keying for non-identical inputs" and
- * "Parse-cache sizing and eligibility" in
+ * The two-layer compile cache ("Cache keying for non-identical inputs" and
+ * "Compile-cache sizing and eligibility" in
  * docs-dev/v3-specs/v3-implementation-notes.md; artifact obligations C1
  * and C5; the lifecycle in docs-dev/v3-specs/v3-worked-examples.md).
  *
@@ -26,7 +26,7 @@
  * reach it, which is the specified behaviour.
  */
 import { Lru } from '../lru'
-import type { ParseArtifact } from './artifact'
+import type { CompileArtifact } from './artifact'
 import { serializeInput } from './contentKey'
 import type { ProbeResult } from './probe'
 
@@ -38,7 +38,7 @@ import type { ProbeResult } from './probe'
  * expressions. Two hundred entries is roughly a megabyte including the
  * retained keys, and it is enough because the identity layer already
  * carries the hot set unbounded and free, leaving this layer only the
- * arrivals. A miss is cheap either way: a full cold reparse of that whole
+ * arrivals. A miss is cheap either way: a full cold recompile of that whole
  * working set is about a third of a millisecond, so eviction is a
  * performance event and never a correctness one.
  */
@@ -51,11 +51,11 @@ export const CONTENT_LAYER_SIZE = 200
  * depth because that is what `maxDepth` is compared against.
  */
 export type CacheEntry =
-  { kind: 'artifact'; artifact: ParseArtifact } | { kind: 'inert'; depth: number }
+  { kind: 'artifact'; artifact: CompileArtifact } | { kind: 'inert'; depth: number }
 
-export interface ParseCacheDeps {
-  /** Parse plus the static checks, bound to one registry. */
-  compile: (expression: unknown) => ParseArtifact
+export interface CompileCacheDeps {
+  /** The walk plus the static checks, bound to one registry. */
+  compile: (expression: unknown) => CompileArtifact
   /** The allocation-free constancy probe, bound to the same registry. */
   probe: (expression: unknown) => ProbeResult
 }
@@ -63,15 +63,15 @@ export interface ParseCacheDeps {
 /**
  * `evaluate()` is the only consumer. `validate()` compiles fresh and
  * never touches the cache — it is an authoring tool, its report should
- * cost a parse, and reading the cache would need a second answer shape
+ * cost a compile, and reading the cache would need a second answer shape
  * here (an inert verdict cannot report the unrecognized-`$` warning a
  * full artifact carries).
  */
-export class ParseCache {
+export class CompileCache {
   private readonly identity = new WeakMap<object, CacheEntry>()
-  private readonly content = new Lru<string, ParseArtifact>(CONTENT_LAYER_SIZE)
+  private readonly content = new Lru<string, CompileArtifact>(CONTENT_LAYER_SIZE)
 
-  constructor(private readonly deps: ParseCacheDeps) {}
+  constructor(private readonly deps: CompileCacheDeps) {}
 
   resolve(expression: unknown): CacheEntry {
     // Only an object can key a `WeakMap`; a primitive takes neither layer

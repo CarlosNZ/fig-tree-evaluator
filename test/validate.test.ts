@@ -1,13 +1,13 @@
 /**
  * Phase-3.3 black-box suite: `fig.validate()` signature and behaviour
  * ("Signature and behaviour" under "validate() — the process" in
- * docs-dev/v3-specs/v3-evaluator-methods.md). From this chunk the parser's
+ * docs-dev/v3-specs/v3-evaluator-methods.md). From this chunk the compiler's
  * test surface is the public method — no artifact internals.
  */
 import { FigTree, FigTreeError, type CallOptions } from '../src'
-import { parseOps } from './fixtures/parseRegistry'
+import { compileOps } from './fixtures/compileRegistry'
 
-const fig = new FigTree({ operators: [parseOps()] })
+const fig = new FigTree({ operators: [compileOps()] })
 
 test('validate is synchronous and returns the ValidationResult shape', () => {
   const result = fig.validate({ $plus: [1, 2] })

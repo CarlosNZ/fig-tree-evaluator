@@ -335,7 +335,7 @@ describe('buildObject', () => {
     expect((await failure({ $buildObject: '$data.nope' }, data)).code).toBe('type-check')
   })
 
-  test('output keys are data, never re-parsed — the reserved-word escape', async () => {
+  test('output keys are data, never compiled — the reserved-word escape', async () => {
     expect(
       await ev({
         $buildObject: [

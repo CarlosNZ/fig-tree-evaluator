@@ -88,7 +88,7 @@ export type {
   ValidateFinding,
 } from './operatorDefinition'
 // The toolbox a `validate` hook receives — part of that hook's signature.
-export type { ValidateHelpers } from './parse/helpers'
+export type { ValidateHelpers } from './compile/helpers'
 
 // Phase 1.1 — shared primitives (author-facing helpers). Final subpath /
 // editor-hints packaging is deferred to Phase 14; the main barrel carries them

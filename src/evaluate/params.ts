@@ -43,7 +43,7 @@ import {
   type NullPolicyValue,
   type ValidatedParameter,
 } from '../operatorDefinition'
-import { renamedBinding, type CompiledNode, type OperatorNode } from '../parse'
+import { renamedBinding, type CompiledNode, type OperatorNode } from '../compile'
 import { isTruthy } from '../primitives'
 import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
 import {
@@ -392,7 +392,7 @@ const vetElement = (value: unknown, declared: ValidatedParameter): unknown =>
   declared.truthiness ? isTruthy(value) : value
 
 /**
- * Handles straight off a literal container — the authored shape the parser
+ * Handles straight off a literal container — the authored shape the compiler
  * kept element- and entry-addressable. Undefined when the supplied node is
  * anything else, leaving the caller to take the degeneration path.
  */

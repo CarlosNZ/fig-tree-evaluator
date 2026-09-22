@@ -226,7 +226,7 @@ describe('regex — the pattern', () => {
     expect((await failure({ $regex: ['$data.n', '\\d'] }, { n: 42 })).code).toBe('type-check')
   })
 
-  test('mode is a literal union — a bad literal is caught at parse', () => {
+  test('mode is a literal union — a bad literal is caught at compile', () => {
     expect(codes({ $regex: { value: 'a', pattern: 'a', mode: 'multiline' } })).toContain(
       'type-check'
     )

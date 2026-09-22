@@ -4,7 +4,7 @@
  * docs-dev/v3-specs/v3-api.md).
  *
  * `literal` is grammar rather than a definition — its name is reserved and
- * it never enters `coreOperators` — and the parse boundary itself landed
+ * it never enters `coreOperators` — and the compile boundary itself landed
  * in Phase 3. What is confirmed here is the half only evaluation can show:
  * that a quoted payload reaches the output as the value it is, by
  * identity, and that nothing downstream can re-capture it.

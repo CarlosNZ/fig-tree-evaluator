@@ -1,6 +1,6 @@
 /**
  * Chunk 3.3 — the metadata-driven static-check layer ("The check inventory"
- * in docs-dev/v3-specs/v3-evaluator-methods.md): a second parse-time pass
+ * in docs-dev/v3-specs/v3-evaluator-methods.md): a second compile-time pass
  * over the compiled AST. Constant subtrees are already collapsed, so this
  * pass is proportional to the evaluable structure, not the input size (the
  * two-pass ruling, Phase-3 plan).
@@ -23,7 +23,7 @@ import type {
   FragmentCallNode,
   NodePath,
   OperatorNode,
-  ParseArtifact,
+  CompileArtifact,
   ReferenceNode,
 } from './artifact'
 
@@ -59,7 +59,7 @@ interface IteratorFrame {
 }
 
 interface CheckState {
-  artifact: ParseArtifact
+  artifact: CompileArtifact
   context: StaticCheckContext
   varsFrames: VarsFrame[]
   iteratorFrames: IteratorFrame[]
@@ -69,7 +69,7 @@ interface CheckState {
  * Run the metadata-driven checks, appending to the artifact's issue stream
  * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
-export const runStaticChecks = (artifact: ParseArtifact, context: StaticCheckContext = {}) => {
+export const runStaticChecks = (artifact: CompileArtifact, context: StaticCheckContext = {}) => {
   const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
   visit(state, artifact.root)
   sortIssues(artifact.issues)
@@ -214,7 +214,7 @@ const checkSuppliedParam = (
   declared: ReceivingDeclaration,
   supplied: CompiledNode
 ) => {
-  // Literal values: the parse moment of the one type table. 'as' is owned
+  // Literal values: the compile moment of the one type table. 'as' is owned
   // by the walk (invalid-as); other structural params must be literal too.
   // Null policy runs BEFORE the type check, mirroring the runtime layers:
   // a null at an optional parameter whose type excludes null is unset (the

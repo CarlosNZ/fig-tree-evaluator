@@ -17,7 +17,7 @@
  * value position, parameters in key position; nothing mechanically collides.
  *
  * Internal vocabulary (not barrel surface), consumed by `defineOperator()`
- * now and by the parser (vars, `as`) and fragment registration later.
+ * now and by the compiler (vars, `as`) and fragment registration later.
  */
 
 /**

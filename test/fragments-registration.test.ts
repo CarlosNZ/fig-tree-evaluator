@@ -2,7 +2,7 @@
  * Chunk 11.1 — fragment registration ("Registration-time validation" in the
  * Fragments area of docs-dev/v3-specs/v3-api.md).
  *
- * The posture under test is that registration is the fragment's parse
+ * The posture under test is that registration is the fragment's compile
  * moment: `new FigTree()` throws on a bad fragment rather than deferring to
  * the first call. So most assertions here are on a throw, and the white-box
  * ones read the built registry directly — the `test/registry.test.ts`

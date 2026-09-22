@@ -1,12 +1,12 @@
 /**
- * The parser — internal machinery behind `validate()` (and, from Phase 4,
+ * The compiler — internal machinery behind `validate()` (and, from Phase 4,
  * `evaluate()`). Not barrel surface: tests and the FigTree class import
  * from here directly (the registry precedent); there is no public
- * parse/compile method ("Rulings on the surface" in
+ * compile method ("Rulings on the surface" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  */
-export { composeRollups, parseExpression } from './parse'
-export type { ParseOptions } from './parse'
+export { composeRollups, compileExpression } from './compile'
+export type { CompileOptions } from './compile'
 export { runStaticChecks } from './staticChecks'
 export type { StaticCheckContext } from './staticChecks'
 export { validateHelpers } from './helpers'
@@ -25,7 +25,7 @@ export type {
   InvalidNode,
   NodePath,
   OperatorNode,
-  ParseArtifact,
+  CompileArtifact,
   ReferenceNamespace,
   ReferenceNode,
   Rollups,
@@ -35,7 +35,7 @@ export type {
 } from './artifact'
 export { bindsReference, renamedBinding, splice } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
-export { ParseCache, CONTENT_LAYER_SIZE } from './parseCache'
+export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
 // The result cache's `'auto'` keys use the same serializer (Phase 9.1) —
 // its second consumer, as `lru.ts` is shared with the content layer
 export { serializeInput } from './contentKey'

@@ -282,7 +282,7 @@ describe('the shared contract', () => {
   })
 
   test.each(names)('%s: as, nullInputDefault are named-face only', async (name) => {
-    // A third positional element is the standard surplus parse error
+    // A third positional element is the standard surplus grammar error
     const error = await failure({ [`$${name}`]: [['a'], each[name], 'row'] })
     expect(error).toBeInstanceOf(FigTreeError)
   })

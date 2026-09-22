@@ -20,7 +20,7 @@
  * ever reach one level.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
-import type { CompiledNode } from '../parse'
+import type { CompiledNode } from '../compile'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject, noop, type MaybePromise } from '../utils'

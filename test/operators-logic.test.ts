@@ -131,7 +131,7 @@ describe('match', () => {
   test('a dynamic branch map is evaluated whole, and its value returns verbatim', async () => {
     const labels = { open: 'Open', shut: '$data.neverRead' }
     // Values extracted from a data-sourced map are runtime data, never
-    // re-parsed — the injection path v2 left open
+    // compiled as an expression — the injection path v2 left open
     expect(await ev({ $match: ['shut', '$data.labels'] }, { labels })).toBe('$data.neverRead')
   })
 

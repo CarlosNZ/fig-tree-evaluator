@@ -465,7 +465,7 @@ describe('maxSize', () => {
 })
 
 describe('clearCache()', () => {
-  it('empties the result store and leaves the parse cache alone', async () => {
+  it('empties the result store and leaves the compile cache alone', async () => {
     const counted = countedOp()
     const f = fig({ operators: [counted.definition] })
     const expression = { $cached: 1 }
@@ -561,7 +561,7 @@ describe('the two invalidation stories are opposites', () => {
     await f.evaluate(expression)
     expect([compiles, runs]).toEqual([1, 1])
 
-    // The parse cache drops; the result store is untouched
+    // The compile cache drops; the result store is untouched
     f.updateOptions({ operatorDefaults: { counted: { value: 'a' } } })
     await f.evaluate(expression)
     expect([compiles, runs]).toEqual([2, 1])

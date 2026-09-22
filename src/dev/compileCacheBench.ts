@@ -1,12 +1,12 @@
 /**
- * Parse-cache content-layer benchmark — `pnpm dev parseCacheBench`.
+ * Compile-cache content-layer benchmark — `pnpm dev compileCacheBench`.
  *
  * The question: on a content-layer hit the caller pays a serialization of
  * the whole input plus a string-keyed map lookup, where a miss pays the
  * compile instead. Can the first ever cost more than the second?
  *
  * The two sides scale on different things, which is the whole story: the
- * parser's cost tracks *evaluable nodes* (a constant subtree collapses to
+ * compiler's cost tracks *evaluable nodes* (a constant subtree collapses to
  * one node holding the caller's value by reference), while the key's cost
  * tracks *input bytes* — every one of them serialized, and then every one
  * of them hashed again by the `Map`. So the answer depends on how much
@@ -15,18 +15,18 @@
  *
  * Only registered operators appear in the shapes. An unregistered `$name`
  * earns a did-you-mean warning, whose edit-distance scan over every
- * registered name costs more than the rest of the parse put together —
- * that would measure the suggestion machinery, not the parser.
+ * registered name costs more than the rest of the compile put together —
+ * that would measure the suggestion machinery, not the compiler.
  */
 import { buildRegistry } from '../registry'
 import { coreOperators } from '../operators'
-import { CONTENT_LAYER_SIZE, parseExpression, probeConstant, runStaticChecks } from '../parse'
-import { serializeInput } from '../parse/contentKey'
+import { CONTENT_LAYER_SIZE, compileExpression, probeConstant, runStaticChecks } from '../compile'
+import { serializeInput } from '../compile/contentKey'
 
 const registry = buildRegistry({ operators: [coreOperators] })
 
 const compile = (expression: unknown) => {
-  const artifact = parseExpression(expression, registry)
+  const artifact = compileExpression(expression, registry)
   runStaticChecks(artifact)
   return artifact
 }

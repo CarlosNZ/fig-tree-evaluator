@@ -110,10 +110,10 @@ What now exists inside the instance — and what doesn't:
 | fragment registry            | empty (fragments would be **compiled here**, at registration — none supplied)                                                                                  |
 | validated `operatorDefaults` | `join.delimiter = ', '` — checked against metadata (parameter exists, optional, type `string`); a typo or a _required_-parameter target would have thrown here |
 | options snapshot             | cache config, `operatorDefaults`, everything else                                                                                                              |
-| parse cache                  | identity `WeakMap` + content LRU — **both empty**                                                                                                              |
+| compile cache                | identity `WeakMap` + content LRU — **both empty**                                                                                                              |
 | result cache                 | store bound to `maxSize: 50` — **empty**                                                                                                                       |
 
-Nothing has been parsed, evaluated, or fetched. Construction is pure registration + validation.
+Nothing has been compiled, evaluated, or fetched. Construction is pure registration + validation.
 
 ### Step 1 — evaluate expression A (a config-literal root)
 
@@ -134,14 +134,14 @@ const dataA = { org: 'Acme', currency: 'NZD', team: [{ name: 'Ada' }, { name: 'G
 await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme', team: 'Ada, Grace', rate: 0.61 }
 ```
 
-**Parse** — identity miss, content miss → compile. The artifact (cached under both keys):
+**Compile cache** — identity miss, content miss → compile. The artifact (cached under both keys):
 
 ```js
 // artifact(A) — illustrative rendering
 {
   skeleton: { greeting: ◦, team: ◦, rate: ◦ },            // constant shell + three holes
   holes: [
-    { path: ['greeting'],                                  // shorthand normalized away at parse:
+    { path: ['greeting'],                                  // shorthand normalized away at compile:
       node: { operator: 'buildString', template: 'Welcome to %1', substitutions: [ref('$data.org')] } },
     { path: ['team'],
       node: { operator: 'join', values: ref('$data.team[*].name') } },   // single-value payload → whole-array reading
@@ -151,7 +151,7 @@ await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme',
   issues: [], shielded: false,                             // no hole root carries a static fallback
   nodeCount: 9, maxDepth: 3,                               // stored as numbers; limits compared per call
 }
-// parse cache after: identityMap { exprA → artifact(A) } ; contentLRU { hashA → artifact(A) }
+// compile cache after: identityMap { exprA → artifact(A) } ; contentLRU { hashA → artifact(A) }
 ```
 
 **Evaluate** — three holes, concurrently:
@@ -170,7 +170,7 @@ await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme',
 // node returns 0.61
 ```
 
-State after step 1: parse cache 1 artifact (both layers), result store 1 entry, fetch count **1**.
+State after step 1: compile cache 1 artifact (both layers), result store 1 entry, fetch count **1**.
 
 ### Step 2 — evaluate expression B (a node root, lazy branches)
 
@@ -188,7 +188,7 @@ const exprB = {
 await fig.evaluate(exprB, { data: { tier: 'silver' } }) // → ['standard-support']
 ```
 
-- **Parse**: miss → compile. A node root is the degenerate case — the whole expression is the single hole, at path `[]`, with no constant shell around it:
+- **Compile cache**: miss → compile. A node root is the degenerate case — the whole expression is the single hole, at path `[]`, with no constant shell around it:
 
 ```js
 // artifact(B) — illustrative rendering
@@ -210,10 +210,10 @@ await fig.evaluate(exprB, { data: { tier: 'silver' } }) // → ['standard-suppor
   issues: [], shielded: false,                             // the hole root carries no static fallback
   nodeCount: 6, maxDepth: 3,                               // illustrative
 }
-// parse cache after: identityMap { exprA → artifact(A), exprB → artifact(B) } ; contentLRU { hashA, hashB }
+// compile cache after: identityMap { exprA → artifact(A), exprB → artifact(B) } ; contentLRU { hashA, hashB }
 ```
 
-Three things the compile bound in, all from registry metadata: parameter **delivery modes** (`value` eager, `branches` lazyEntries, `default` lazy — this is where "lazy branches" becomes structure rather than behaviour); **constancy** per entry — `silver` and `default` are constants, compiled to pre-resolved handles (the contract's degeneration rule: the body's uniform `branches[key].evaluate()` works identically for the thunk and the constant), leaving `gold` as the artifact's only genuinely evaluable subunit; and shorthand normalization (`$http` with a single-value payload → the `url` positional). One micro-optimization the artifact _could_ carry (implementation notes, key-skeleton note): `gold`'s http node has all-literal parameters, so its effective-request cache key is fully computable at parse.
+Three things the compile bound in, all from registry metadata: parameter **delivery modes** (`value` eager, `branches` lazyEntries, `default` lazy — this is where "lazy branches" becomes structure rather than behaviour); **constancy** per entry — `silver` and `default` are constants, compiled to pre-resolved handles (the contract's degeneration rule: the body's uniform `branches[key].evaluate()` works identically for the thunk and the constant), leaving `gold` as the artifact's only genuinely evaluable subunit; and shorthand normalization (`$http` with a single-value payload → the `url` positional). One micro-optimization the artifact _could_ carry (implementation notes, key-skeleton note): `gold`'s http node has all-literal parameters, so its effective-request cache key is fully computable at compile.
 
 - **Evaluate**: `'silver'` renders to the branch key `'silver'` → only that entry's handle is demanded → `['standard-support']` by identity. **The `gold` thunk never runs: no fetch, nothing cached.** Fetch count still **1**; result store still 1 entry.
 
@@ -225,11 +225,11 @@ Laziness is observable purely through the mock client — that's the test hook.
 await fig.evaluate(exprA, { data: dataA }) // → same result
 ```
 
-- **Parse**: identity **hit** — a pointer lookup; the input is never walked again.
+- **Compile cache**: identity **hit** — a pointer lookup; the input is never walked again.
 - `greeting`, `team`: recomputed (pure, cheap, uncached by design).
 - `rate`: same resolved query → same effective-request key → result-cache **hit** → no network; `returnPath` re-applied to the shared entry → `0.61`.
 
-Fetch count still **1**. This is the steady-state hot path: O(1) parse lookup + O(holes) work + memoized I/O.
+Fetch count still **1**. This is the steady-state hot path: O(1) compile-cache lookup + O(holes) work + memoized I/O.
 
 ### Step 4 — evaluate B again: _new object instance_, same content
 
@@ -238,7 +238,7 @@ const exprB2 = JSON.parse(JSON.stringify(exprB)) // fresh instance — a new req
 await fig.evaluate(exprB2, { data: { tier: 'silver' } }) // → ['standard-support']
 ```
 
-- **Parse**: identity **miss** (new reference) → serialize + hash → content **hit** (`hashB`) → artifact(B) reused, and **re-registered under `exprB2`'s identity**, so any further calls with `exprB2` are O(1).
+- **Compile cache**: identity **miss** (new reference) → serialize + hash → content **hit** (`hashB`) → artifact(B) reused, and **re-registered under `exprB2`'s identity**, so any further calls with `exprB2` are O(1).
 - Evaluation as step 2. Fetch count still **1**.
 
 ### Step 5 — both expressions again, different data
@@ -257,11 +257,11 @@ await fig.evaluate(exprB2, { data: { tier: 'gold' } })
 // → ['priority-support', 'swag']
 ```
 
-- **Parse: both identity hits.** The artifact is data-independent — one compile serves every data input forever. This is the two-caches split doing its job.
+- **Compile cache: both identity hits.** The artifact is data-independent — one compile serves every data input forever. This is the two-caches split doing its job.
 - `rate`: the resolved query is now `currency=AUD` → **different** effective-request key → miss → fetch #2 → second store entry. Data changes fork result-cache entries _naturally_, because the key is built from resolved values, not from the authored spelling.
 - `exprB2` with `tier: 'gold'`: this time the `gold` branch is demanded → fetch #3 (first time this request has ever run) → cached; `silver` doesn't evaluate on this call.
 
-Fetch count **3**; result store 3 entries; parse cache still exactly 2 artifacts.
+Fetch count **3**; result store 3 entries; compile cache still exactly 2 artifacts.
 
 ### Step 6 — coda: the two invalidation stories
 
@@ -271,13 +271,13 @@ await fig.evaluate(exprA, { data: dataA })
 // → { greeting: 'Welcome to Acme', team: 'Ada | Grace', rate: 0.61 }
 ```
 
-`operatorDefaults` is one of the three parse-cache invalidators (with `operators` and `fragments` — modifier defaults bake into precomputed shielding, so artifacts can't survive the change). Both parse layers drop → this call **recompiles** exprA. The **result store is untouched** — its keys derive from resolved requests, which no option default affects — so `rate` is still a cache hit: recompile, but no fetch.
+`operatorDefaults` is one of the three compile-cache invalidators (with `operators` and `fragments` — modifier defaults bake into precomputed shielding, so artifacts can't survive the change). Both compile-cache layers drop → this call **recompiles** exprA. The **result store is untouched** — its keys derive from resolved requests, which no option default affects — so `rate` is still a cache hit: recompile, but no fetch.
 
 ```js
 fig.clearCache()
 ```
 
-The mirror image: the result store empties (next `rate` evaluation refetches), the parse cache is untouched (nothing recompiles — there is never a correctness reason to clear it).
+The mirror image: the result store empties (next `rate` evaluation refetches), the compile cache is untouched (nothing recompiles — there is never a correctness reason to clear it).
 
 ---
 
@@ -337,7 +337,7 @@ fig.updateOptions({
     },
   },
 })
-// the body compiles and validates HERE — registration is the fragment's parse moment
+// the body compiles and validates HERE — registration is the fragment's compile moment
 
 const expr = {
   banner: { $userSummary: { name: '$data.user.name', role: '$data.user.role' } },

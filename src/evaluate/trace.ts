@@ -18,7 +18,7 @@
  *     are demanded late, so arrival order is exactly what must not
  *     survive. Children are held aside while an entry is open and
  *     materialized, sorted, when it settles — by the node's preorder
- *     position from the parse walk, then by element index for the
+ *     position from the compile walk, then by element index for the
  *     instances that share one static node.
  *   - **`skipped`.** A subtree that was never demanded leaves no trace of
  *     itself by definition, so the absence has to be computed: on settle,
@@ -33,7 +33,7 @@
  */
 import type { Issue } from '../issues'
 import type { FigTreeError } from '../FigTreeError'
-import type { CompiledNode } from '../parse'
+import type { CompiledNode } from '../compile'
 import type { TraceEvent } from '../runtimeInterface'
 import type { TraceKind, TraceNode, TraceStatus } from '../trace'
 import type { FragmentFrame } from './context'
@@ -41,7 +41,7 @@ import type { FragmentFrame } from './context'
 /** Where an entry sits among its siblings, before they are ordered. */
 interface Placed {
   entry: TraceNode
-  /** The node's preorder position in the parse walk. */
+  /** The node's preorder position in the compile walk. */
   order: number
   /** Element index, for instances sharing one static node. */
   index: number

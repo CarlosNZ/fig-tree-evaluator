@@ -5,31 +5,31 @@
  * A `lazyElements` / `race` / `lazyEntries` parameter needs one demandable
  * unit per element or entry, which a skeleton's *maximal* holes cannot
  * express: a partly-constant element dissolves into the enclosing shape and
- * stops being a node at all. These suites pin what the parser produces
+ * stops being a node at all. These suites pin what the compiler produces
  * instead, and — just as load-bearing — what it deliberately still does
  * NOT produce, since an all-constant literal must stay a ConstantNode for
  * the `validate` hooks (which see constant parameters only) to keep working.
  */
 import { FigTree } from '../src'
-import { parseExpression } from '../src/parse'
+import { compileExpression } from '../src/compile'
 import type {
   CompiledNode,
   ElementsNode,
   EntriesNode,
   OperatorNode,
-  ParseArtifact,
-} from '../src/parse'
-import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
+  CompileArtifact,
+} from '../src/compile'
+import { makeCompileRegistry, compileOps } from './fixtures/compileRegistry'
 
-const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
+const registry = makeCompileRegistry()
+const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
 
 /** The compiled value of one parameter of a root operator node. */
 const param = (input: unknown, name: string): CompiledNode =>
-  (parse(input).root as OperatorNode).params[name]
+  (compile(input).root as OperatorNode).params[name]
 
 /** Both layers, as an author sees them. */
-const fig = new FigTree({ operators: [parseOps()] })
+const fig = new FigTree({ operators: [compileOps()] })
 const allCodes = (input: unknown) => fig.validate(input).issues.map((issue) => issue.code)
 
 // ── elements: lazyElements and race ─────────────────────────────────
@@ -135,7 +135,7 @@ describe('a literal map at an entry-addressable parameter', () => {
     // The mode decision runs the standard classification, so the map reads
     // as a node — malformed, or (as here) naming no registered operator.
     // The recorded escape is to supply the map dynamically
-    const issues = parse({
+    const issues = compile({
       $match: { value: '$data.s', branches: { operator: 'Open', shut: '$data.x' } },
     }).issues.map((s) => s.issue)
     expect(issues.some((issue) => issue.severity === 'error')).toBe(true)
@@ -176,18 +176,18 @@ describe('a literal map at an entry-addressable parameter', () => {
 describe('counts and depth', () => {
   test('nodeCount does not count the new shapes — they are structure', () => {
     // one operator + one reference, exactly as the `plus` equivalent
-    expect(parse({ $plus: [1, '$data.x'] }).nodeCount).toBe(2)
-    expect(parse({ $firstOf: [1, '$data.x'] }).nodeCount).toBe(2)
-    expect(parse({ $or: [1, '$data.x'] }).nodeCount).toBe(2)
-    expect(parse({ $match: { value: 1, branches: { a: '$data.x' } } }).nodeCount).toBe(2)
+    expect(compile({ $plus: [1, '$data.x'] }).nodeCount).toBe(2)
+    expect(compile({ $firstOf: [1, '$data.x'] }).nodeCount).toBe(2)
+    expect(compile({ $or: [1, '$data.x'] }).nodeCount).toBe(2)
+    expect(compile({ $match: { value: 1, branches: { a: '$data.x' } } }).nodeCount).toBe(2)
   })
 
   test('maxDepth is the same through either face', () => {
-    expect(parse({ $plus: [1, '$data.x'] }).maxDepth).toBe(
-      parse({ operator: 'plus', values: [1, '$data.x'] }).maxDepth
+    expect(compile({ $plus: [1, '$data.x'] }).maxDepth).toBe(
+      compile({ operator: 'plus', values: [1, '$data.x'] }).maxDepth
     )
-    expect(parse({ $firstOf: [1, '$data.x'] }).maxDepth).toBe(
-      parse({ operator: 'firstOf', values: [1, '$data.x'] }).maxDepth
+    expect(compile({ $firstOf: [1, '$data.x'] }).maxDepth).toBe(
+      compile({ operator: 'firstOf', values: [1, '$data.x'] }).maxDepth
     )
   })
 })

@@ -36,7 +36,7 @@
  * `fragmentPath`, and why an argument written inside an outer body is
  * attributed to that outer body.
  *
- * No caching: `useCache` is a parse error on a call node, and a
+ * No caching: `useCache` is a grammar error on a call node, and a
  * fragment-result cache would need its own key-derivation story
  * (parameters plus everything the body reads). Operator nodes inside the
  * body cache normally, on their own resolved parameters.
@@ -44,7 +44,7 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
-import type { CompiledNode, FragmentCallNode, NodePath } from '../parse'
+import type { CompiledNode, FragmentCallNode, NodePath } from '../compile'
 import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'

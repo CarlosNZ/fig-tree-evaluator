@@ -13,7 +13,7 @@
  * how the I/O operators key the effective request rather than the
  * authored spelling.
  */
-import { serializeInput, type OperatorNode } from '../parse'
+import { serializeInput, type OperatorNode } from '../compile'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 

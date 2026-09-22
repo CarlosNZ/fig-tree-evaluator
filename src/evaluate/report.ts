@@ -16,7 +16,7 @@
  *     the origin and every enclosing wrapper passes it through untouched —
  *     so all this adds is the second.
  *   - Tree order, never completion order. Every compiled node carries its
- *     preorder position from the parse walk, so ordering is a sort on a
+ *     preorder position from the compile walk, so ordering is a sort on a
  *     number rather than a comparison of paths.
  *   - One entry per failing hole. Where one error object degrades two
  *     holes — reachable through a memoized `vars` rejection, which two
@@ -25,7 +25,7 @@
  */
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
-import type { ArtifactHole, NodePath } from '../parse'
+import type { ArtifactHole, NodePath } from '../compile'
 
 export interface ErrorCollector {
   /** Record an uncaught failure against the hole it just degraded. */

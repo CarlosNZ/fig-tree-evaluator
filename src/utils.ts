@@ -30,7 +30,7 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
 
 /**
  * A plain *data* object: prototype is `Object.prototype` or `null`. Class
- * instances, `Date`s, `Map`s etc. fail this — the parser treats them as
+ * instances, `Date`s, `Map`s etc. fail this — the compiler treats them as
  * opaque constants ("Non-plain-object values" in docs-dev/v3-specs/v3-api.md).
  */
 export const isPlainDataObject = (value: unknown): value is Record<string, unknown> => {
@@ -41,7 +41,7 @@ export const isPlainDataObject = (value: unknown): value is Record<string, unkno
 
 /**
  * Levenshtein edit distance — powers the cheap did-you-mean suggestions in
- * parse/validate messages. Plain dynamic-programming, fine for name-length
+ * compile/validate messages. Plain dynamic-programming, fine for name-length
  * strings.
  */
 export const editDistance = (a: string, b: string): number => {

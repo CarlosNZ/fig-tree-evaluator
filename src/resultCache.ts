@@ -7,7 +7,7 @@
  * ./evaluate/memo.ts. This half owns the store, the expiry and the
  * generation.
  *
- * Deliberately disjoint from the parse cache
+ * Deliberately disjoint from the compile cache
  * ("Two caches, deliberately disjoint" in
  * docs-dev/v3-specs/v3-implementation-notes.md): that one keys the
  * authored input before any data exists and is invalidated by replacing

@@ -12,7 +12,7 @@
  * `default` may be the public `EvaluationData` sentinel, which is a symbol
  * (see `ParameterInfo`).
  */
-import type { ArtifactDependencies } from './parse'
+import type { ArtifactDependencies } from './compile'
 import { WILDCARD, type PathSegment } from './primitives'
 import {
   VALIDATED_OPERATOR,
@@ -73,7 +73,7 @@ const segmentClass = (segment: PathSegment): number =>
  * The artifact's record as the public shape. `paths` sorts the record's
  * entries by their segments and reports their keys, which are already the
  * canonical renders — nothing is rendered here. `operators` and
- * `fragments` keep the order the parse walk collected them in, which is
+ * `fragments` keep the order the compile walk collected them in, which is
  * what the recording sets give — the asymmetry is deliberate (a path set
  * is what a host diffs between runs, the other two are for display and the
  * capability probe).

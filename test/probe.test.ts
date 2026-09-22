@@ -1,19 +1,19 @@
 /**
- * Chunk 4.0 — the constancy probe ("Skip the parse for inert inputs" in
+ * Chunk 4.0 — the constancy probe ("Skip the compile for inert inputs" in
  * docs-dev/v3-specs/v3-implementation-notes.md): the allocation-free,
  * early-bailing scan `evaluate()` runs before parsing. It is a second
  * answer to "would evaluation be identity?", so its shipping condition is
  * the property test at the bottom: the probe says constant exactly when the
- * parser would compile the input to a constant node holding the input
+ * compiler would compile the input to a constant node holding the input
  * itself — no normalization (`//`, `vars`, `undefined`), no holes.
  */
-import { parseExpression } from '../src/parse'
-import { probeConstant } from '../src/parse/probe'
-import { makeParseRegistry } from './fixtures/parseRegistry'
+import { compileExpression } from '../src/compile'
+import { probeConstant } from '../src/compile/probe'
+import { makeCompileRegistry } from './fixtures/compileRegistry'
 
-const registry = makeParseRegistry()
+const registry = makeCompileRegistry()
 const probe = (value: unknown) => probeConstant(value, registry)
-const parse = (input: unknown) => parseExpression(input, registry)
+const compile = (input: unknown) => compileExpression(input, registry)
 
 describe('constant inputs', () => {
   test.each([
@@ -33,7 +33,7 @@ describe('constant inputs', () => {
   })
 })
 
-describe('bail conditions — anything the parser would evaluate or normalize', () => {
+describe('bail conditions — anything the compiler would evaluate or normalize', () => {
   test.each([
     ['operator key', { operator: 'plus', values: [1, 2] }],
     ['fragment key', { fragment: 'f' }],
@@ -77,7 +77,7 @@ describe('depth tracking and the ceiling', () => {
   })
 })
 
-// ── The property: probe(x) ⇔ the parse compiles x to a constant node whose
+// ── The property: probe(x) ⇔ the compiler compiles x to a constant node whose
 // value IS x ──────────────────────────────────────────────────────────
 
 /** A few dozen expression shapes the v2 corpus and the v3 specs use. */
@@ -161,11 +161,11 @@ const randomValue = (rand: () => number, depth: number): unknown => {
 }
 
 const isIdentityConstant = (input: unknown) => {
-  const artifact = parse(input)
+  const artifact = compile(input)
   return artifact.root.kind === 'constant' && artifact.root.value === input
 }
 
-test('property: probeConstant(x).constant === (parse(x) is a constant node holding x)', () => {
+test('property: probeConstant(x).constant === (compile(x) is a constant node holding x)', () => {
   const rand = makeRandom(20260918)
   const samples = [...corpus, ...Array.from({ length: 600 }, () => randomValue(rand, 0))]
   const disagreements = samples.filter(

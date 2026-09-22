@@ -5,20 +5,20 @@
  * docs-dev/v3-specs/v3-api.md; "Positional mapping: positionalParams" in
  * docs-dev/v3-specs/v3-operator-parameters.md).
  */
-import { parseExpression } from '../src/parse'
-import type { ParseArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/parse'
-import { makeParseRegistry } from './fixtures/parseRegistry'
+import { compileExpression } from '../src/compile'
+import type { CompileArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/compile'
+import { makeCompileRegistry } from './fixtures/compileRegistry'
 
-const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
+const registry = makeCompileRegistry()
+const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
 
 const rootOp = (input: unknown): OperatorNode => {
-  const artifact = parse(input)
+  const artifact = compile(input)
   expect(artifact.root.kind).toBe('operator')
   return artifact.root as OperatorNode
 }
 
-const errorCodes = (artifact: ParseArtifact) =>
+const errorCodes = (artifact: CompileArtifact) =>
   artifact.issues.filter((s) => s.issue.severity === 'error').map((s) => s.issue.code)
 
 // ── Shorthand payload forms ─────────────────────────────────────────
@@ -79,9 +79,9 @@ test('trailing positional omission is legal when the parameters are optional', (
   expect(iff.params.else).toBeUndefined()
 })
 
-test('surplus positional elements are a parse error naming the mapping', () => {
+test('surplus positional elements are a grammar error naming the mapping', () => {
   for (const input of [{ $not: [1, 2] }, { $clamp: [1, 2, 3, 4] }]) {
-    expect(errorCodes(parse(input))).toContain('positional-arity')
+    expect(errorCodes(compile(input))).toContain('positional-arity')
   }
 })
 
@@ -96,7 +96,7 @@ test('symbol aliases normalize away in both faces', () => {
 
 test('canonical names are case-sensitive — no folding', () => {
   for (const input of [{ operator: 'If' }, { operator: 'PLUS' }]) {
-    expect(errorCodes(parse(input))).toContain('unknown-operator')
+    expect(errorCodes(compile(input))).toContain('unknown-operator')
   }
 })
 
@@ -109,7 +109,7 @@ test('namespace aliases normalize to canonical namespaces', () => {
     ['$i', 'index'],
   ]
   for (const [raw, namespace] of cases) {
-    const artifact = parse({ $not: raw })
+    const artifact = compile({ $not: raw })
     const ref = (artifact.root as OperatorNode).params.value as ReferenceNode
     expect(ref.kind).toBe('reference')
     expect(ref.namespace).toBe(namespace)
@@ -120,29 +120,29 @@ test('namespace aliases normalize to canonical namespaces', () => {
 // ── The reference token rule ────────────────────────────────────────
 
 test('the namespace token must end at end-of-string, dot or bracket', () => {
-  const artifact = parse('$database')
+  const artifact = compile('$database')
   expect(artifact.root.kind).toBe('constant')
 
-  const bare = parse('$data')
+  const bare = compile('$data')
   expect(bare.root.kind).toBe('reference')
   expect((bare.root as ReferenceNode).segments).toEqual([])
 })
 
 test('references are whole-string only — no interpolation', () => {
-  const artifact = parse('Hello $data.name')
+  const artifact = compile('Hello $data.name')
   expect(artifact.root.kind).toBe('constant')
   expect(artifact.holes).toHaveLength(0)
 })
 
 test('references are recognized inside nested plain literals', () => {
-  const artifact = parse({ outer: { list: ['$data.a'] } })
+  const artifact = compile({ outer: { list: ['$data.a'] } })
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['outer', 'list', 0])
 })
 
 test('drilled $index is an error', () => {
   for (const input of ['$index.x', '$i[0]']) {
-    expect(errorCodes(parse({ $not: input }))).toContain('invalid-reference')
+    expect(errorCodes(compile({ $not: input }))).toContain('invalid-reference')
   }
 })
 
@@ -151,18 +151,18 @@ test('drilled $index is an error', () => {
 // (legal, checked for a body by the static layer), and bare $vars is an
 // error of its own — a scope is a chain, not a frame
 test('bare $vars has its own error code', () => {
-  expect(errorCodes(parse({ $not: '$vars' }))).toEqual(['bare-vars'])
-  expect(errorCodes(parse({ $not: '$v' }))).toEqual(['bare-vars'])
+  expect(errorCodes(compile({ $not: '$vars' }))).toEqual(['bare-vars'])
+  expect(errorCodes(compile({ $not: '$v' }))).toEqual(['bare-vars'])
 })
 
 test('bare $params is recognized, and refused only for being outside a body', () => {
-  expect(errorCodes(parse({ $not: '$params' }))).toEqual([])
+  expect(errorCodes(compile({ $not: '$params' }))).toEqual([])
 })
 
 // ── Reserved-key values ─────────────────────────────────────────────
 
 test('useCache must be a literal boolean', () => {
-  const artifact = parse({ $http: 'https://x.test', useCache: 'yes' })
+  const artifact = compile({ $http: 'https://x.test', useCache: 'yes' })
   expect(errorCodes(artifact)).toContain('malformed-node')
 })
 
@@ -185,7 +185,7 @@ test('// keys are stripped everywhere: nodes, parameter maps, plain data', () =>
   const named = rootOp({ $if: { '//': 'in the payload', condition: true, then: 1 } })
   expect(named.params['//']).toBeUndefined()
 
-  const artifact = parse({ '//': 'annotation', kept: 1 })
+  const artifact = compile({ '//': 'annotation', kept: 1 })
   expect(artifact.root.kind).toBe('constant')
   expect((artifact.root as { value?: unknown }).value).toEqual({ kept: 1 })
 })
@@ -193,7 +193,7 @@ test('// keys are stripped everywhere: nodes, parameter maps, plain data', () =>
 // ── undefined normalization (JSON semantics) ────────────────────────
 
 test('undefined object values read as absent keys', () => {
-  const artifact = parse({ a: undefined, b: 2 })
+  const artifact = compile({ a: undefined, b: 2 })
   expect((artifact.root as { value?: unknown }).value).toEqual({ b: 2 })
 })
 
@@ -206,13 +206,13 @@ test('undefined array elements read as null', () => {
 
 test('a fully-constant unchanged input is kept by reference', () => {
   const input = { a: [1, 2], b: { c: 'x' } }
-  const artifact = parse(input)
+  const artifact = compile(input)
   expect((artifact.root as { value?: unknown }).value).toBe(input)
 })
 
 test('skeletons share constant subtrees with the input', () => {
   const constantBranch = { deep: [1, 2, 3] }
-  const artifact = parse({ keep: constantBranch, hole: { $plus: [1, 2] } })
+  const artifact = compile({ keep: constantBranch, hole: { $plus: [1, 2] } })
   const skeleton = (artifact.root as SkeletonNode).skeleton as Record<string, unknown>
   expect(skeleton.keep).toBe(constantBranch)
 })

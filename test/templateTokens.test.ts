@@ -1,7 +1,7 @@
 /**
  * Chunk 7.2 — the `buildString` token grammar (batch 4 in
  * docs-dev/v3-specs/v3-operator-parameters.md). A unit suite over the one
- * scanner both the parser and the operator body consume; the rendering
+ * scanner both the compiler and the operator body consume; the rendering
  * rules built on top of it are asserted in test/operators-renderers.test.ts.
  */
 import { scanTemplate } from '../src/templateTokens'

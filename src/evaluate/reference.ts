@@ -36,7 +36,7 @@
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { resolvePath, type PathSegment } from '../primitives'
-import type { ReferenceNode } from '../parse'
+import type { ReferenceNode } from '../compile'
 import type { EvaluationContext } from './context'
 import { lookupBinding } from './bindings'
 import { internalError } from './internal'

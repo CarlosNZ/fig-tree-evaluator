@@ -19,15 +19,15 @@ v3 ships as `fig-tree-evaluator@3.0.0` — same package identity, clean break in
 
 ## `./convert` — the module surface
 
-Functions and types only; the root entry never imports it; it may import the root (built on the parser's normalizer). Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here:
+Functions and types only; the root entry never imports it; it may import the root (built on the compiler's normalizer). Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here:
 
-| Export             | Kind                                  | Purpose                                                                          |
-| ------------------ | ------------------------------------- | -------------------------------------------------------------------------------- |
-| `convertV2ToV3`    | `(expr: unknown) => ConversionResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3      |
-| `ConversionResult` | type                                  | `{ expression, issues: ConversionIssue[] }` (shape below)                        |
-| `ConversionIssue`  | type                                  | one catalogued divergence, tagged (shape below)                                  |
-| `toShorthand`      | `(expr, definitions) => expr`         | canonical v3 node → shorthand face; needs the definitions for `positionalParams` |
-| `fromShorthand`    | `(expr) => expr`                      | shorthand face → canonical v3 node; the parser's normalizer, exposed standalone  |
+| Export             | Kind                                  | Purpose                                                                           |
+| ------------------ | ------------------------------------- | --------------------------------------------------------------------------------- |
+| `convertV2ToV3`    | `(expr: unknown) => ConversionResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3       |
+| `ConversionResult` | type                                  | `{ expression, issues: ConversionIssue[] }` (shape below)                         |
+| `ConversionIssue`  | type                                  | one catalogued divergence, tagged (shape below)                                   |
+| `toShorthand`      | `(expr, definitions) => expr`         | canonical v3 node → shorthand face; needs the definitions for `positionalParams`  |
+| `fromShorthand`    | `(expr) => expr`                      | shorthand face → canonical v3 node; the compiler's normalizer, exposed standalone |
 
 `toShorthand` / `fromShorthand` are **not migration** — they are the editor's round-trip tools, homed here because `./convert` is the tooling-side subpath and the evaluator-methods ruling already decided they are not instance methods. They operate on v3 syntax only (v3 in, v3 out). Recorded here so the subpath's surface is complete in one place.
 
@@ -102,7 +102,7 @@ This **overrides** [v3-packaging.md](v3-packaging.md)'s v2-root-export table, wh
 
 _(Confirmed with Carl, July 2026.)_ The assessment ([v3-assessment.md:271](v3-assessment.md#L271)) floated an optional runtime flag accepting old aliases and `children` with deprecation warnings for one major cycle. **Rejected.**
 
-- v3's performance model and its entire grammar rest on **parse-once**: recognition, alias normalization and positional mapping happen at parse and never again. A runtime compat flag would resurrect the per-visit alias tables and `standardiseOperatorName` machinery the redesign deliberately deleted — the single biggest simplification, undone by an option.
+- v3's performance model and its entire grammar rest on **compile-once**: recognition, alias normalization and positional mapping happen at compile and never again. A runtime compat flag would resurrect the per-visit alias tables and `standardiseOperatorName` machinery the redesign deliberately deleted — the single biggest simplification, undone by an option.
 - It confuses the layer. Accepting deprecated _syntax_ is an **authoring** concern, and authoring is strict (the disruption-gradient stance: runtime grace, authoring strictness). Runtime grace is about _evaluation_ resilience — a missing datum resolving to `null`, `mode: 'report'` degrading gracefully — never about tolerating dead syntax.
 - The clean-break posture ([v3-packaging.md](v3-packaging.md)) means the upgrade _is_ the conversion step. A flag that let hosts skip it would strand them one `updateOptions` away from silent alias behaviour forever.
 
@@ -114,7 +114,7 @@ A single hand-authored `MIGRATION.md`, rendered into the docs site. Its disposit
 - **Operator disposition** _(generated)_ — the [v3-api.md](v3-api.md) § v2→v3 operator table.
 - **Recycled names — read this** _(hand-written, loud)_ — `!`, `get`, `lower`, `join`, `data`, `convert` ([v3-api.md:366-377](v3-api.md#L366-L377)). The converter handles them; **human muscle memory won't**, so anyone hand-editing or reading converted output needs the callout.
 - **Option disposition** _(generated where possible)_ — the [v3-api.md](v3-api.md) § option table, each deleted option with its v3 replacement.
-- **Method-surface changes** _(hand-written)_ — `FigTreeEvaluator` → `FigTree`; `evaluateExpression(expr)` → `new FigTree().evaluate(expr)` (the one-liner [v3-evaluator-methods.md:484](v3-evaluator-methods.md#L484) defers here, with its parse-cache caveat); the deleted introspection/guard methods and their replacements ([v3-packaging.md](v3-packaging.md) § v2 root-export disposition).
+- **Method-surface changes** _(hand-written)_ — `FigTreeEvaluator` → `FigTree`; `evaluateExpression(expr)` → `new FigTree().evaluate(expr)` (the one-liner [v3-evaluator-methods.md:484](v3-evaluator-methods.md#L484) defers here, with its compile-cache caveat); the deleted introspection/guard methods and their replacements ([v3-packaging.md](v3-packaging.md) § v2 root-export disposition).
 - **Custom functions** _(hand-written, prescriptive)_ — the wrapper recipe below. Prescriptive by necessity: the converter rewrites call sites against **this exact shape**, so an improvised per-host shape would make call-site conversion non-mechanical.
 - **Intentional semantic changes** _(hand-written)_ — no implicit coercion (`outputType`/number-mining → `convert` + `regex`), the null-policy deltas, deep-evaluation-by-default, and **`updateOptions` now merges `data` and `fragments`** where v2 replaced them wholesale (one rule, uniform with per-call options — so a v2 host that relied on replacement to _drop_ a data key or a fragment has no v3 equivalent; see the removal position in the Options area and issue #157). The "your results may differ, on purpose" list.
 - **`getOptions()` no longer reports the registry** _(hand-written, short)_ — the v2 idiom `...exp.getOptions().fragments`, used to extend the fragment set without clobbering it, reads `undefined` in v3. It is also unnecessary: `updateOptions({ fragments })` merges. `getFragments()` is the introspection route, and it returns declarations rather than bodies, so a fragment body cannot be round-tripped out of an instance at all.

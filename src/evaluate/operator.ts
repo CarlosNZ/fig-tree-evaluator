@@ -17,7 +17,7 @@ import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
-import type { OperatorNode } from '../parse'
+import type { OperatorNode } from '../compile'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
@@ -214,7 +214,7 @@ const classifyBodyFailure = (
  * then the definition's metadata default.
  *
  * Total by construction, so it never falls off the end: the authored key
- * reaches the node only as a literal boolean (the parser rejects anything
+ * reaches the node only as a literal boolean (the compiler rejects anything
  * else), the modifier default is boolean-checked at registration, and
  * `defineOperator` normalizes the metadata default to a boolean. A
  * fragment call cannot carry the key at all, so the domain is operator
