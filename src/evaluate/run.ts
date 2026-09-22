@@ -9,9 +9,13 @@
  * as its parent, the `timeout` (if any) as its timer, settled like any
  * node scope when the evaluation settles — so work still in flight after
  * an uncaught failure is cancelled through the same chain, kill switch or
- * not. The recursive evaluator is wrapped, not forked: every node still
- * goes through `evaluateNode`, and the artifact root always goes through
- * it too, which is what gives `trace` one root entry in every mode.
+ * not. With neither option the root is a plain scope — one controller,
+ * whose only abort is its own settling — because the deadline's expiry
+ * promise and listeners exist to answer an abort from above, and nothing
+ * above can abort. The recursive evaluator is wrapped, not forked: every
+ * node still goes through `evaluateNode`, and the artifact root always
+ * goes through it too, which is what gives `trace` one root entry in
+ * every mode.
  *
  * What this module adds is the **hole boundary**: one function wrapped
  * around each of the artifact's root holes, composed here and applied by
@@ -45,7 +49,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { EvaluationOptions, EvaluationResult } from '../options'
 import type { ArtifactHole, ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
-import { EVALUATION_TIMEOUT, deadline, type Deadline } from './abort'
+import { EVALUATION_TIMEOUT, deadline, rootScope, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
 import { evaluateNode } from './evaluate'
 import {
@@ -80,9 +84,17 @@ export const runEvaluation = async (
   // inert (a comment key, a vars block): nothing in it can time out, and
   // nothing in it can fail
   const evaluable = artifact.holes.length > 0
-  const shielded = timeout !== undefined && artifact.shielded && evaluable
 
-  const root = deadline(signal, timeout, EVALUATION_TIMEOUT)
+  // The kill switch, armed only where the caller supplied something that
+  // can pull it. Everything that reads the expiry — the unshielded race,
+  // the shielded boundary, the report row — sits behind `armed`; the root
+  // scope itself is settled either way
+  const armed =
+    timeout !== undefined || signal !== undefined
+      ? deadline(signal, timeout, EVALUATION_TIMEOUT)
+      : undefined
+  const root = armed ?? rootScope()
+  const shielded = armed !== undefined && timeout !== undefined && artifact.shielded && evaluable
   const collector = reporting ? createErrorCollector() : undefined
   const recorder =
     options.trace === true
@@ -93,7 +105,7 @@ export const runEvaluation = async (
   const base = createEvaluationContext(options, cache, root.signal, recorder)
   const boundary =
     evaluable && (collector !== undefined || shielded)
-      ? holeBoundary(artifact, root, collector, shielded, recorder)
+      ? holeBoundary(artifact, collector, shielded ? armed.expiry : undefined, recorder)
       : undefined
   // A skeleton root hands each of its holes to the boundary; any other
   // root IS its single hole, so the boundary wraps the whole call
@@ -106,7 +118,7 @@ export const runEvaluation = async (
     // starts, and the error is the root's. Left to the races below, the
     // first node boundary to notice would win instead — a race between two
     // settled promises goes to the one with fewer hops, which is the node's
-    if (root.signal.aborted) throw killSwitchError(root.signal.reason, [])
+    if (armed !== undefined && armed.signal.aborted) throw killSwitchError(armed.signal.reason, [])
 
     const evaluateRoot = () =>
       atRoot && boundary !== undefined
@@ -117,13 +129,13 @@ export const runEvaluation = async (
     // awaited plainly. Unshielded with a kill switch: the whole evaluation
     // is raced, so the caller gets the call back on time however deaf a
     // driver inside it may be, and the error is the root's
-    const result = await (shielded || (timeout === undefined && signal === undefined)
+    const result = await (shielded || armed === undefined
       ? evaluateRoot()
-      : raced(evaluateRoot, root, timeout))
+      : raced(evaluateRoot, armed, timeout))
 
     // Shielding returns the assembly silently in throw mode — rule 3 — so
     // report mode is the only channel that says the deadline fired at all
-    if (collector !== undefined && shielded && expired(root))
+    if (collector !== undefined && shielded && expired(armed))
       collector.add(killSwitchError(EVALUATION_TIMEOUT, [], { ms: timeout }))
 
     return outcome(result, collector, recorder)
@@ -182,7 +194,9 @@ const raced = (
   ])
 
 /**
- * The boundary itself: the report catch, the shielded race, or both.
+ * The boundary itself: the report catch, the shielded race, or both. The
+ * root's `expiry` is passed only where the artifact is shielded, so its
+ * presence IS the shielded flag.
  *
  * A shielded hole cannot reject with an ordinary failure, its static
  * fallback having caught it. What can still reach the race is a
@@ -193,9 +207,8 @@ const raced = (
  */
 const holeBoundary = (
   artifact: ParseArtifact,
-  root: Deadline,
   collector: ErrorCollector | undefined,
-  shielded: boolean,
+  expiry: Promise<never> | undefined,
   recorder: TraceRecorder | undefined
 ): HoleBoundary => {
   const holes = new Map(artifact.holes.map((hole) => [hole.node, hole]))
@@ -206,7 +219,7 @@ const holeBoundary = (
         `the hole boundary was handed the node at ${JSON.stringify(node.path)}, which is not one of the artifact's holes`
       )
     const attempt = collector === undefined ? run() : degrade(run, hole, collector)
-    if (!shielded) return attempt
+    if (expiry === undefined) return attempt
     // `Promise.race` does not unsubscribe the loser, so the expiry
     // handler below runs for EVERY hole when the deadline fires — the
     // ones that already won included, whose returned fallback is simply
@@ -222,7 +235,7 @@ const holeBoundary = (
     })
     return Promise.race([
       answered,
-      root.expiry.catch((reason) => {
+      expiry.catch((reason) => {
         if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
         if (won) return undefined
         // Which holes contributed a real value and which a static
