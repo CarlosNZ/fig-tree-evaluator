@@ -19,7 +19,13 @@ import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle } from '../runtimeInterface'
-import { REQUEST_EXPIRED, childScope, requestDeadline, type Deadline } from './abort'
+import {
+  DeferredScope,
+  REQUEST_EXPIRED,
+  requestDeadline,
+  signalScope,
+  type Deadline,
+} from './abort'
 import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
@@ -37,10 +43,13 @@ export const evaluateOperator = async (
   const scoped = pushVars(ctx, node.vars)
   // The ABORT scope is deliberately narrower than the vars scope: it covers
   // the attempt only. A fallback runs *after* the body settled, so a
-  // fallback evaluated under this node's own signal would be refused at its
-  // first node boundary
-  const scope = node.entry.definition.deliversLazily ? childScope(scoped.signal) : undefined
-  const attempted = scope === undefined ? scoped : { ...scoped, signal: scope.signal }
+  // fallback evaluated under this node's own scope would be refused at its
+  // first node boundary. Deferred: it materialises a signal only if
+  // something under it asks for one
+  const scope = node.entry.definition.deliversLazily
+    ? new DeferredScope(scoped.abortScope)
+    : undefined
+  const attempted = scope === undefined ? scoped : { ...scoped, abortScope: scope }
   try {
     return await attemptScoped(node, attempted, scope)
   } catch (error) {
@@ -120,8 +129,9 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   // wrapper can decide what a resulting throw MEANS, and only the wrapper
   // can race a driver that will not honour a signal
   const ms = declaredTimeout(definition, params)
-  const deadline = ms === undefined ? undefined : requestDeadline(ctx.signal, ms)
-  const bodyCtx = deadline === undefined ? ctx : { ...ctx, signal: deadline.signal }
+  const deadline = ms === undefined ? undefined : requestDeadline(ctx.abortScope.signal, ms)
+  const bodyCtx =
+    deadline === undefined ? ctx : { ...ctx, abortScope: signalScope(deadline.signal) }
   const context = createOperatorContext(bodyCtx, { operator: definition.name, useCache })
 
   const run = async () => {

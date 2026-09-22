@@ -57,17 +57,17 @@ type Path = (string | number)[]
  * abandonment, the kill switch is a decision that cuts through every
  * fallback.
  *
- * `ctx.signal` is a node's effective signal, never its own deadline, so
+ * `ctx.abortScope` is a node's effective scope, never its own deadline, so
  * "someone upstream aborted me" stays distinguishable from "my own timer
  * fired".
  */
 export const abortedOutcome = (
-  ctx: Pick<EvaluationContext, 'signal' | 'rootSignal'>,
+  ctx: Pick<EvaluationContext, 'abortScope' | 'rootScope'>,
   path: Path,
   operator?: string
 ): Error | undefined => {
-  if (ctx.rootSignal.aborted) return rootOutcome(ctx.rootSignal.reason, path, operator)
-  if (ctx.signal.aborted) return cancellation()
+  if (ctx.rootScope.aborted) return rootOutcome(ctx.rootScope.reason, path, operator)
+  if (ctx.abortScope.aborted) return cancellation()
   return undefined
 }
 

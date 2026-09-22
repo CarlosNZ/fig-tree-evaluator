@@ -33,7 +33,7 @@ export const evaluateNode = async (
   // the evaluation deadline — surfaces as an error that cuts through
   // fallbacks; a scope abort means a sibling already decided the answer,
   // so this branch is simply abandoned and raises nothing anyone will see
-  if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
+  if (ctx.abortScope.aborted) throw abortedOutcome(ctx, node.path)
   return dispatch(node, ctx)
 }
 
@@ -52,7 +52,7 @@ const traced = async (
   const entry = recorder.enter(node, ctx.traceParent, ctx.frame, annotation)
   const started = now()
   try {
-    if (ctx.signal.aborted) throw abortedOutcome(ctx, node.path)
+    if (ctx.abortScope.aborted) throw abortedOutcome(ctx, node.path)
     const value = await dispatch(node, { ...ctx, traceParent: entry })
     recorder.settle(entry, 'value', { value, elapsed: now() - started })
     return value

@@ -25,6 +25,7 @@ import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
 import type { TraceNode } from '../trace'
+import type { AbortScope } from './abort'
 import type { Bindings } from './bindings'
 import { bodyMemo, type MemoBinding } from './memo'
 import type { TraceRecorder } from './trace'
@@ -40,20 +41,25 @@ export interface EvaluationContext {
    * instance's.
    */
   data: Readonly<Record<string, unknown>>
-  /** This node's effective signal: the root's, plus enclosing scopes. */
-  signal: AbortSignal
   /**
-   * The kill switch alone — the root scope's signal, which composes the
-   * caller's `signal` and the evaluation `timeout` (./run.ts), with no
-   * enclosing node scope mixed in. The two are told apart because they
-   * mean opposite things: a scope abort is silent and its branch is simply
-   * abandoned, while a kill-switch abort is the caller's decision and cuts
-   * through every fallback. At the root the two fields hold one signal.
+   * This node's effective cancellation scope: the root's, plus every
+   * enclosing node scope (./abort). Read at the node boundary for
+   * `aborted`; its `signal` is materialised only for a consumer that
+   * needs a real one.
    */
-  rootSignal: AbortSignal
+  abortScope: AbortScope
+  /**
+   * The kill switch alone — the root scope, which composes the caller's
+   * `signal` and the evaluation `timeout` (./run.ts), with no enclosing
+   * node scope mixed in. The two are told apart because they mean
+   * opposite things: a scope abort is silent and its branch is simply
+   * abandoned, while a kill-switch abort is the caller's decision and cuts
+   * through every fallback. At the root the two fields hold one scope.
+   */
+  rootScope: AbortScope
   /**
    * The instance's result store. Carried on the context because it is
-   * constant for the whole evaluation, like `options` and `rootSignal` —
+   * constant for the whole evaluation, like `options` and `rootScope` —
    * threading it through every recursion site would deliver nothing that
    * varies.
    */
@@ -180,23 +186,23 @@ export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
 const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 
 /**
- * The context an evaluation starts from. `signal` is the root scope's —
- * the caller's `signal` composed with the `timeout` — and is built by the
- * caller (./run.ts), because its lifetime is the evaluation's and this
- * module only describes the record. `options` is carried as handed in:
- * the instance's own prepared object when the call supplied nothing, so
- * the common case allocates only this record.
+ * The context an evaluation starts from. `root` is the root scope — the
+ * caller's `signal` composed with the `timeout`, or a deferred scope with
+ * neither — and is built by the caller (./run.ts), because its lifetime is
+ * the evaluation's and this module only describes the record. `options`
+ * is carried as handed in: the instance's own prepared object when the
+ * call supplied nothing, so the common case allocates only this record.
  */
 export const createEvaluationContext = (
   options: EvaluationOptions,
   cache: ResultStore,
-  signal: AbortSignal,
+  root: AbortScope,
   trace?: TraceRecorder
 ): EvaluationContext => ({
   options,
   data: options.data ?? NO_DATA,
-  signal,
-  rootSignal: signal,
+  abortScope: root,
+  rootScope: root,
   cache,
   strictDataPaths: options.strictDataPaths ?? false,
   runtimeTypeCheck: options.runtimeTypeCheck ?? true,
@@ -206,6 +212,10 @@ export const createEvaluationContext = (
 /**
  * The context a body receives: the signal, the evaluation's options, the
  * live `memo`, and `note`, which discards until trace lands (Phase 12).
+ *
+ * `signal` is a getter: reading it materialises the node's scope into a
+ * real `AbortSignal` (./abort), so a body that never touches it — most of
+ * them — costs the evaluation no controller.
  *
  * The binding is passed rather than the node, because both fields it holds
  * are already computed one frame up and this module has no business
@@ -224,8 +234,11 @@ export const createOperatorContext = (
   binding: MemoBinding
 ): OperatorContext => {
   const note = noteChannel(ctx)
+  const { abortScope } = ctx
   return {
-    signal: ctx.signal,
+    get signal() {
+      return abortScope.signal
+    },
     options: ctx.options,
     cache: { memo: bodyMemo({ ...binding, note }, ctx.cache) },
     trace: { note },
