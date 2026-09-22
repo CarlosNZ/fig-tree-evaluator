@@ -25,13 +25,13 @@ _Companion to [v3-assessment.md](v3-assessment.md), which holds the rationale. T
 
 ## Options — **Agreed**
 
-### One shape, three places
+### One shape, two places — and a per-call subset
 
-There is a single `FigTreeOptions` interface, accepted in all three places: the constructor, `updateOptions()`, and per-call as the second argument to `evaluate()`. Instance-level values act as defaults; per-call values override them for that evaluation only.
+There is a single `FigTreeOptions` interface, accepted at the constructor and at `updateOptions()`. These are the instance's **configuration**, and instance-level values act as defaults for every evaluation.
 
-**One exception class — the invocable registry:** `operators` and `fragments` are accepted at construction and via `updateOptions()`, but not per-call. The parsed/normalized form of an expression depends on what's registered (shorthand `$key`s resolve against operator and fragment names alike), and the parse cache assumes a stable registry. Operators and fragments are system-level definitions by design — there is no impromptu per-evaluation invocable; per-request state belongs in `data`, read by an operator as ordinary parameters. Passing either per-call is a validation error.
+**Per-call options are a closed subset** (ruled September 2026, Carl, at the #170 optimisation pass — narrowed from the full interface): the second argument to `evaluate()` and `validate()` is `CallOptions`, the five **request-scoped** keys — `data`, `signal`, `timeout`, `mode` and `trace`. These are what make a shared instance safe under concurrency: a host holding one global instance serving overlapping requests needs per-request data and a per-request signal, where nothing else varies per call site. Every other key is instance configuration, and passing one per call is a validation error (`invalid-options`) — `operators` and `fragments` because the parsed form of an expression depends on what is registered and the parse cache assumes a stable registry (there is no impromptu per-evaluation invocable; per-request state belongs in `data`, read by an operator as ordinary parameters); `cache` because the store is instance-lived; the rest because no call site varies them, and honouring them would mean merging configuration blocks and validating the whole shape on every evaluation. An `undefined` value is "not supplied", never misuse, so `{ maxDepth: config.maxDepth }` with nothing configured passes.
 
-Per-call options are merged into a frozen per-evaluation context and **never mutate the instance** (fixing the v2 bug class where `evaluate(expr, { httpClient })` permanently reconfigured the evaluator). `updateOptions()` is the one sanctioned mutation path. `getOptions()` returns a snapshot, never live internal references.
+Per-call values **replace** the instance value for that evaluation only — `data` included — and are used **by reference**: the `data` object the caller passed is the object every body and `$data` reference reads, uncopied and unfrozen. Nothing is frozen and nothing mutates the instance (the v2 bug class where `evaluate(expr, { httpClient })` permanently reconfigured the evaluator is closed structurally: a per-call override is a fresh object laid over the instance's, and the instance's own object is never written). That an evaluation never mutates the caller's objects is a promise the test suite pins rather than one the code enforces (_ruled September 2026, Carl, withdrawing the earlier per-evaluation freeze: it copied every block per call to have something safe to freeze, cost time proportional to the host's data, and guarded exactly one level — `options.data.foo.bar = x` went straight through to the host's object anyway_). `updateOptions()` is the one sanctioned mutation path. `getOptions()` returns a snapshot, never live internal references.
 
 ### The shape
 
@@ -39,8 +39,11 @@ Per-call options are merged into a frozen per-evaluation context and **never mut
 new FigTree(options?: FigTreeOptions)
 
 interface FigTreeOptions {
+  // Per-call (`CallOptions`): data, signal, timeout, mode, trace. Everything
+  // else is instance configuration — constructor / updateOptions only.
+
   // ── Evaluation environment ─────────────────────────────
-  data?: Record<string, unknown>
+  data?: Record<string, unknown> // held by reference, never copied or frozen; replaces rather than merges
   fragments?: Record<string, FragmentDefinition> // definition shape: see Fragments; not per-call (see below)
 
   // ── Operator registry ──────────────────────────────────
@@ -125,11 +128,15 @@ operatorDefaults: {
 
 ### Merge semantics
 
-One rule, uniform across `updateOptions()` and per-call options:
+One rule for instance configuration, at `updateOptions()`:
 
-> Merge by key at the top level, and again by key one level down inside **plain-data**-object-valued options; anything deeper is replaced wholesale. Arrays always replace, as do class instances, `Date`s, an `AbortSignal` and a `CacheStore` — only plain data objects merge. Keys set to `undefined` are ignored, so an unset variable falls back to the instance value rather than clearing it.
+> Merge by key at the top level, and again by key one level down inside **plain-data**-object-valued options; anything deeper is replaced wholesale. Arrays always replace, as do class instances, `Date`s, an `AbortSignal` and a `CacheStore` — only plain data objects merge. Keys set to `undefined` are ignored, so an unset variable falls back to the stored value rather than clearing it.
 
-Consequences, checked against every nested option:
+**`data` is outside the rule** (ruled September 2026, with the per-call narrowing above): it is the host's state, not the instance's configuration, so it **replaces** wholesale — at `updateOptions()` and per call alike — and is held by reference. Merging it was the one case that made every evaluation copy a block whose size the host controls, and the plausible use (shared reference data on the instance, request data on the call) is served by the host spreading the two into one object, which costs the same copy once, where it is wanted, rather than on every call.
+
+**Per-call options do not merge at all.** The five request-scoped keys are laid flat over the instance's options: a supplied value replaces, an `undefined` one is ignored, and nothing inside a value is looked at.
+
+Consequences for instance configuration, checked against every nested option:
 
 | Update                                          | Result                                                                                                               |
 | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -137,22 +144,22 @@ Consequences, checked against every nested option:
 | `graphQL: { endpoint }`                         | keeps existing `graphQL.headers`                                                                                     |
 | `cache: { maxSize }`                            | keeps `store` / `maxTime`                                                                                            |
 | `fragments: { newFrag }` (`updateOptions` only) | adds without clobbering others; re-supplying an existing name replaces that definition wholesale (no stale sub-keys) |
-| `data: { user: {…} }`                           | merges at top-level data keys; a supplied key replaces its whole value                                               |
+| `data: { user: {…} }`                           | **replaces** the whole block, by reference — the exception above                                                     |
 | `operatorDefaults: { join: {…} }`               | merges at the operator-name level; that operator's block replaces wholesale, other operators' entries survive        |
 
-**Removal, stated honestly.** Merging by key means a _top-level_ key cannot be removed, only overwritten — `undefined` is ignored by the rule above, and `null` is a first-class value here rather than a gap. In practice this strands very little: a `data` key set to `null` behaves exactly as an absent one (both resolve to `null`, and both throw identically under `strictDataPaths`), and a level-2 block such as `http.headers` is cleared by supplying it in full, since second-level values replace as a unit. What remains unreachable is deregistering a fragment, dropping an `operatorDefaults` entry, and unsetting `baseEndpoint` / `endpoint` / `cache.store` — all instance reconfiguration, for which the existing answer is the clients ruling above: build a new instance. A dedicated exported sentinel is the non-breaking addition if demand appears ([issue #157](https://github.com/CarlosNZ/fig-tree-evaluator/issues/157)).
+**Removal, stated honestly.** Merging by key means a _top-level_ configuration key cannot be removed, only overwritten — `undefined` is ignored by the rule above, and `null` is a first-class value here rather than a gap. In practice this strands very little: `data` is replaced whole, so a data key is dropped by leaving it out of the next block (and a `data` key set to `null` behaves exactly as an absent one anyway — both resolve to `null`, and both throw identically under `strictDataPaths`), and a level-2 block such as `http.headers` is cleared by supplying it in full, since second-level values replace as a unit. What remains unreachable is deregistering a fragment, dropping an `operatorDefaults` entry, and unsetting `baseEndpoint` / `endpoint` / `cache.store` — all instance reconfiguration, for which the existing answer is the clients ruling above: build a new instance. A dedicated exported sentinel is the non-breaking addition if demand appears ([issue #157](https://github.com/CarlosNZ/fig-tree-evaluator/issues/157)).
 
 ### `evaluate` signature
 
 ```ts
-await fig.evaluate(expression, options?)
+await fig.evaluate(expression, options?: CallOptions)
 
-fig.evaluate(expr)                                  // constructor data only
-fig.evaluate(expr, { data: formValues })            // everyday case
+fig.evaluate(expr)                                  // instance data only — and no per-call work at all
+fig.evaluate(expr, { data: formValues })            // everyday case: formValues IS the evaluation data
 fig.evaluate(expr, { trace: true })                 // per-call options without per-call data
 ```
 
-`data` is an ordinary option — there is no positional `data` argument (considered, rejected: it would be a second way to say something the options object already says, and forces an `undefined` placeholder when passing options without data). Per-call values merge over instance options with the standard two-level rule. This also matches the v2 signature, so migration continuity comes free.
+`data` is an ordinary option — there is no positional `data` argument (considered, rejected: it would be a second way to say something the options object already says, and forces an `undefined` placeholder when passing options without data). Per-call values replace the instance's for the one call, `data` by reference (Merge semantics above). This also matches the v2 signature, so migration continuity comes free; the one v2 behaviour that does not carry over is instance `data` showing through under per-call `data`.
 
 ### Deep evaluation
 
@@ -185,7 +192,7 @@ Deferred to other areas:
 
 | v2 option                     | Verdict               | Notes                                                                                                                                                                                                                 |
 | ----------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `data`                        | **Kept**              | Unchanged — per-call via `options.data`, merging over constructor `data`                                                                                                                                              |
+| `data`                        | **Modified**          | Per-call via `options.data` as before, but **replacing** instance `data` for the call rather than merging over it; held by reference                                                                                  |
 | `objects`                     | **Deleted**           | Deprecated alias of `data`                                                                                                                                                                                            |
 | `functions`                   | **Deleted**           | No custom-function tier in v3 — each function re-registers as a first-class custom operator via `defineOperator()`, through the `operators` array (see Extensibility; mechanical wrapper recipe in the migration doc) |
 | `fragments`                   | **Modified**          | No longer per-call — constructor/`updateOptions` only (registry stability); definition shape revisited in Fragments (declared params)                                                                                 |
@@ -418,7 +425,7 @@ _The `$` sigil has exactly two jobs: in **key** position it invokes (an operator
 
 | Reference   | Alias | Reads from                                                                              | Absent / unresolved                                                                                               |
 | ----------- | ----- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `$data.…`   | `$d`  | the merged evaluation data (instance `data` + per-call `data`, per Options merge rules) | **`null`** (never `undefined`), null-propagating drill-through; `strictDataPaths: true` restores throw-on-missing |
+| `$data.…`   | `$d`  | the evaluation data — the call's `data` if supplied, else the instance's (never merged) | **`null`** (never `undefined`), null-propagating drill-through; `strictDataPaths: true` restores throw-on-missing |
 | `$vars.…`   | `$v`  | the nearest enclosing `vars` block (lexical)                                            | name not declared in lexical scope = **validation error**                                                         |
 | `$params.…` | `$p`  | the parameters supplied by this fragment's caller                                       | use outside a fragment body, or naming an undeclared parameter = **registration/validation error**                |
 | `$element`  | `$e`  | the innermost enclosing iterator (current element; supports path drilling)              | use outside an iterator = **validation error**                                                                    |

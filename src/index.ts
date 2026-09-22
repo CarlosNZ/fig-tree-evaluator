@@ -64,7 +64,7 @@ export type { Dependencies, FragmentInfo, OperatorInfo, ParameterInfo } from './
 
 // Phase 2.2 — the instance shell. Registry machinery stays internal.
 export { FigTree } from './FigTree'
-export type { EvaluationOptions, FigTreeOptions } from './options'
+export type { CallOptions, EvaluationOptions, FigTreeOptions, OnlyCallOptions } from './options'
 // Phase 12 — the diagnostic surfaces' return shape
 export type { EvaluationResult, Merge, NoOptions, ResultShape } from './options'
 export type {

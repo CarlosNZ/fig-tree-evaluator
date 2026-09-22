@@ -236,8 +236,8 @@ describe('static errors are reported, not thrown', () => {
   })
 
   it('reports a limit breach rather than throwing it', async () => {
-    const fig = setup()
-    const { result, errors } = await report(fig, { $plus: [{ $plus: [1, 2] }, 3] }, { maxDepth: 1 })
+    const fig = setup([], { maxDepth: 1 })
+    const { result, errors } = await report(fig, { $plus: [{ $plus: [1, 2] }, 3] })
     expect(result).toBeNull()
     expect(errors[0].code).toBe(ErrorCodes.maxDepthExceeded)
   })
@@ -256,8 +256,8 @@ describe('the envelope rule', () => {
   })
 
   it('reports an inert input’s depth breach instead of throwing it', async () => {
-    const fig = setup()
-    const { result, errors } = await report(fig, { a: { b: { c: 1 } } }, { maxDepth: 1 })
+    const fig = setup([], { maxDepth: 1 })
+    const { result, errors } = await report(fig, { a: { b: { c: 1 } } })
     expect(result).toBeNull()
     expect(errors[0].code).toBe(ErrorCodes.maxDepthExceeded)
   })

@@ -357,12 +357,14 @@ describe('rollups compose through calls', () => {
   })
 
   test('the total reaches the calling expression, where maxNodes reads it', () => {
-    const fig = new FigTree({
-      fragments: { leaf: { expression: { operator: 'plus', values: ['$data.a', '$data.b'] } } },
-    })
+    const withLimit = (maxNodes: number) =>
+      new FigTree({
+        fragments: { leaf: { expression: { operator: 'plus', values: ['$data.a', '$data.b'] } } },
+        maxNodes,
+      })
     // One call node plus the three the body holds
-    expect(fig.validate({ fragment: 'leaf' }, { maxNodes: 4 }).valid).toBe(true)
-    expect(fig.validate({ fragment: 'leaf' }, { maxNodes: 3 }).issues[0].code).toBe(
+    expect(withLimit(4).validate({ fragment: 'leaf' }).valid).toBe(true)
+    expect(withLimit(3).validate({ fragment: 'leaf' }).issues[0].code).toBe(
       ErrorCodes.maxNodesExceeded
     )
   })

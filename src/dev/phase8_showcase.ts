@@ -12,7 +12,7 @@
  * cost — counted, as the tests count them, by an operator whose validate
  * hook runs once per compile.
  */
-import { FigTree, defineOperator, type FigTreeOptions } from '../index'
+import { FigTree, defineOperator, type CallOptions, type FigTreeOptions } from '../index'
 import { coreOperators } from '../operators'
 import { block, outcome, print, section } from './showcase'
 
@@ -50,36 +50,35 @@ const main = async () => {
     http: { baseEndpoint: 'https://api.example.com', headers: { 'X-App': 'showcase' } },
     maxNodes: 500,
   })
-  const show = async (label: string, expression: unknown, options: FigTreeOptions = {}) =>
+  const show = async (label: string, expression: unknown, options?: CallOptions) =>
     print(label, expression, await outcome(() => fig.evaluate(expression, options)))
 
-  await show('a body receives the whole merged option set', { $peek: 'http' })
+  await show('a body receives the whole option set', { $peek: 'http' })
   await show(
-    'a per-call header merges in — baseEndpoint survives',
+    'a per-call option is one of five request-scoped keys; configuration is refused',
     { $peek: 'http' },
-    { http: { headers: { Authorization: 'Bearer t0ken' } } }
+    { http: { headers: { Authorization: 'Bearer t0ken' } } } as CallOptions
   )
-  await show('and the next call is back to the instance’s own', { $peek: 'http' })
-
-  section('Two levels deep, and no deeper')
-
-  await show('instance data and call data are read by one expression', '$data.org', {
+  await show('per-call data replaces the instance block, by reference', '$data', {
     data: { team: 'Platform' },
   })
-  await show('a supplied key replaces its whole value, so age is gone', '$data.user', {
-    data: { user: { name: 'Grace' } },
+  await show('and the next call is back to the instance’s own', '$data')
+  await show('an undefined value means “not supplied”, never “remove”', '$data', {
+    data: undefined,
   })
-  await show(
-    'an undefined value means “not supplied”, never “remove”',
-    { $peek: 'http' },
-    { http: { baseEndpoint: undefined } }
+
+  section('updateOptions — the one sanctioned mutation, two levels deep and no deeper')
+
+  console.log(`      before: ${block(fig.getOptions().http)}`)
+  fig.updateOptions({ http: { headers: { Authorization: 'Bearer t0ken' } } })
+  console.log(
+    `      after:  ${block(fig.getOptions().http)}   [baseEndpoint survives; headers replaced as a unit]\n`
   )
-
-  section('updateOptions — the one sanctioned mutation')
-
-  console.log(`      before: ${block(fig.getOptions().data)}`)
+  console.log(`      data before: ${block(fig.getOptions().data)}`)
   fig.updateOptions({ data: { team: 'Platform' } })
-  console.log(`      after:  ${block(fig.getOptions().data)}   [merged, not replaced]\n`)
+  console.log(
+    `      data after:  ${block(fig.getOptions().data)}   [replaced — data is state, not configuration]\n`
+  )
 
   const snapshot = fig.getOptions()
   snapshot.data = { org: 'Hacked' }

@@ -4,7 +4,7 @@
  * docs-dev/v3-specs/v3-evaluator-methods.md). From this chunk the parser's
  * test surface is the public method — no artifact internals.
  */
-import { FigTree, FigTreeError } from '../src'
+import { FigTree, FigTreeError, type CallOptions } from '../src'
 import { parseOps } from './fixtures/parseRegistry'
 
 const fig = new FigTree({ operators: [parseOps()] })
@@ -30,9 +30,11 @@ test('validate never throws on expression content', () => {
   }
 })
 
-test('validate throws on per-call operators/fragments — method misuse', () => {
-  expect(() => fig.validate(1, { operators: [] })).toThrow(FigTreeError)
-  expect(() => fig.validate(1, { fragments: {} })).toThrow(FigTreeError)
+test('validate throws on a per-call configuration option — method misuse', () => {
+  // Widened past the signature, as a JS host would reach it
+  expect(() => fig.validate(1, { operators: [] } as CallOptions)).toThrow(FigTreeError)
+  expect(() => fig.validate(1, { fragments: {} } as CallOptions)).toThrow(FigTreeError)
+  expect(() => fig.validate(1, { maxNodes: 3 } as CallOptions)).toThrow(/not a per-call option/)
 })
 
 test('valid means no error-severity issues — warnings do not block', () => {

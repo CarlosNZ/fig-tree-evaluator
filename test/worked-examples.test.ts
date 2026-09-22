@@ -168,7 +168,6 @@ describe('lifecycle — two expressions, one instance, the parse half', () => {
   const spy = compileSpyOp('rate')
   const fig = new FigTree({
     operators: [coreOperators, spy.definition],
-    data: { org: 'Acme' },
     operatorDefaults: { join: { delimiter: ', ' } },
   })
 
@@ -177,7 +176,9 @@ describe('lifecycle — two expressions, one instance, the parse half', () => {
     team: { $join: '$data.team[*].name' },
     rate: { $rate: '$data.currency' },
   }
-  const dataA = { currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
+  // Per-call data replaces rather than merging, so the shared `org` rides
+  // in every call's block
+  const dataA = { org: 'Acme', currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
   const exprB = { $rate: '$data.tier' }
   const exprB2 = JSON.parse(JSON.stringify(exprB)) as typeof exprB
 
@@ -211,7 +212,9 @@ describe('lifecycle — two expressions, one instance, the parse half', () => {
   it('step 5 — both again with different data: still no compile', async () => {
     spy.reset()
     expect(
-      await fig.evaluate(exprA, { data: { currency: 'AUD', team: [{ name: 'Alan' }] } })
+      await fig.evaluate(exprA, {
+        data: { org: 'Acme', currency: 'AUD', team: [{ name: 'Alan' }] },
+      })
     ).toEqual({ greeting: 'Welcome to Acme', team: 'Alan', rate: 'AUD' })
     expect(await fig.evaluate(exprB2, { data: { tier: 'gold' } })).toBe('gold')
     expect(spy.compiles()).toBe(0)
@@ -259,7 +262,6 @@ describe('lifecycle — the full example, fetch counts and all', () => {
   // parsed, evaluated or fetched
   const lifecycle = new FigTree({
     operators: [coreOperators, httpOperators(http), compiles.definition],
-    data: { org: 'Acme' },
     operatorDefaults: { join: { delimiter: ', ' } },
     cache: { maxSize: 50 },
   })
@@ -275,7 +277,7 @@ describe('lifecycle — the full example, fetch counts and all', () => {
     },
     counted: { $counted: 'instrumentation' },
   }
-  const dataA = { currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
+  const dataA = { org: 'Acme', currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
 
   const exprB = {
     operator: 'match',
@@ -292,7 +294,7 @@ describe('lifecycle — the full example, fetch counts and all', () => {
     expect(http.callCount).toBe(0)
   })
 
-  it('step 1 — A: the instance data merges under the call’s, and one fetch fires', async () => {
+  it('step 1 — A: the call’s data is read whole, and one fetch fires', async () => {
     expect(await lifecycle.evaluate(exprA, { data: dataA })).toEqual({
       greeting: 'Welcome to Acme',
       team: 'Ada, Grace',
@@ -326,7 +328,11 @@ describe('lifecycle — the full example, fetch counts and all', () => {
   it('step 5 — different data forks the entry; the gold branch runs at last', async () => {
     expect(
       await lifecycle.evaluate(exprA, {
-        data: { currency: 'AUD', team: [{ name: 'Ada' }, { name: 'Grace' }, { name: 'Alan' }] },
+        data: {
+          org: 'Acme',
+          currency: 'AUD',
+          team: [{ name: 'Ada' }, { name: 'Grace' }, { name: 'Alan' }],
+        },
       })
     ).toMatchObject({ team: 'Ada, Grace, Alan', rate: 0.7301 })
     // A different resolved query is a different effective request

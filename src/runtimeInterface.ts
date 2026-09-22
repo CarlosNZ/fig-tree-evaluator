@@ -71,8 +71,11 @@ export interface OperatorContext {
   /** Caller signal, evaluation timeout, enclosing early-resolution scopes */
   signal: AbortSignal
   /**
-   * The merged instance + per-call options, frozen for the evaluation. The
-   * registry keys are absent by type as well as by value.
+   * The instance options with the call's laid over them, one object shared
+   * by every body in the evaluation. Read-only by contract, not by
+   * mechanism: nothing is frozen, and `options.data` is the host's own
+   * object by reference, so a body that wrote to it would be writing to
+   * the host. The registry keys are absent by type as well as by value.
    */
   options: Readonly<EvaluationOptions>
   cache: {

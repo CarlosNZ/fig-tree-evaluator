@@ -1,16 +1,26 @@
 /**
- * Chunk 8.1 — the two-level merge rule, every consequence-table row
- * ("Merge semantics" in the Options area of docs-dev/v3-specs/v3-api.md).
+ * How options combine ("Merge semantics" and "Per-call options" in the
+ * Options area of docs-dev/v3-specs/v3-api.md), and the promise that
+ * replaced the per-evaluation freeze (ruled September 2026): an
+ * evaluation never mutates the instance and never mutates the caller's
+ * objects. That promise is pinned HERE, by test, rather than enforced by
+ * a per-call walk that could only ever reach one level.
+ *
+ * Two regimes. Instance options — construction and `updateOptions()` —
+ * merge by the two-level rule, with `data` the one block that replaces.
+ * Per-call options are the five request-scoped keys laid flat over the
+ * instance's: no merging inside a value, `data` replacing by reference,
+ * and anything else refused as method misuse.
  *
  * Hand-migrated from test/v2-working/18_optionHandling.test.ts, whose two
- * live cases (`objects` and `functions` merged a level down) become the
- * `data` rows here; its five `excludeOperators` cases die with that option,
- * and its `getOptions` case moves to options-instance.test.ts.
+ * live cases (`objects` and `functions` merged a level down) died with the
+ * merge of `data`; its five `excludeOperators` cases died with that option,
+ * and its `getOptions` case moved to options-instance.test.ts.
  *
- * The merged options are asserted through what a body actually receives on
- * `context.options`, not by reaching into the engine.
+ * The effective options are asserted through what a body actually
+ * receives on `context.options`, not by reaching into the engine.
  */
-import { FigTree } from '../src'
+import { FigTree, type CallOptions } from '../src'
 import { signalProbeOp, spyOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
 
@@ -18,31 +28,28 @@ import { rejection } from './helpers/rejection'
 const withSpy = (instance: object = {}) => {
   const spy = spyOp('peek', {})
   const fig = new FigTree({ operators: [spy.definition], ...instance })
-  const seen = async (call: object = {}) => {
+  const seen = async (call?: CallOptions) => {
     await fig.evaluate({ $peek: {} }, call)
     return spy.contexts[spy.contexts.length - 1].options
   }
   return { fig, spy, seen }
 }
 
-describe('the consequence table', () => {
+describe('instance options merge by the two-level rule (the consequence table)', () => {
   it('row 1 — http merges; baseEndpoint survives, headers replace as a unit', async () => {
-    const { seen } = withSpy({
+    const { fig, seen } = withSpy({
       http: { baseEndpoint: 'https://x.test', headers: { a: '1', b: '2' } },
     })
-    const options = await seen({ http: { headers: { c: '3' } } })
-    expect(options.http).toEqual({ baseEndpoint: 'https://x.test', headers: { c: '3' } })
+    fig.updateOptions({ http: { headers: { c: '3' } } })
+    expect((await seen()).http).toEqual({ baseEndpoint: 'https://x.test', headers: { c: '3' } })
   })
 
   it('row 2 — graphQL endpoint keeps the existing headers', async () => {
-    const { seen } = withSpy({ graphQL: { endpoint: 'https://g.test', headers: { a: '1' } } })
-    const options = await seen({ graphQL: { endpoint: 'https://other.test' } })
-    expect(options.graphQL).toEqual({ endpoint: 'https://other.test', headers: { a: '1' } })
+    const { fig, seen } = withSpy({ graphQL: { endpoint: 'https://g.test', headers: { a: '1' } } })
+    fig.updateOptions({ graphQL: { endpoint: 'https://other.test' } })
+    expect((await seen()).graphQL).toEqual({ endpoint: 'https://other.test', headers: { a: '1' } })
   })
 
-  // Reached through `updateOptions` rather than a per-call block: `cache`
-  // is constructor/updateOptions-only (Phase 9.1), since the store is
-  // instance-lived and a per-call block could only have been ignored
   it('row 3 — cache maxSize keeps store and maxTime, and the store is shared', async () => {
     const store = new Map<string, unknown>()
     const { fig, seen } = withSpy({ cache: { store, maxSize: 10, maxTime: 60 } })
@@ -54,22 +61,13 @@ describe('the consequence table', () => {
     expect(options.cache?.store).toBe(store)
   })
 
-  it('row 3, the other half — a per-call cache block is refused, not ignored', async () => {
-    const { fig } = withSpy({ cache: { maxTime: 60 } })
-    await expect(fig.evaluate({ $peek: {} }, { cache: { maxTime: 5 } })).rejects.toThrow(
-      /not a per-call option/
-    )
-  })
-
-  it('row 5 — data merges at top-level keys; a supplied key replaces its value', async () => {
+  it('row 5 — data is the exception: it replaces, and by reference', async () => {
     const fig = new FigTree({ data: { user: { name: 'Ada', age: 36 }, org: 'Acme' } })
-    const result = await fig.evaluate(
-      { $buildString: ['%1/%2/%3', '$data.org', '$data.user.name', '$data.user.age'] },
-      { data: { user: { name: 'Grace' } } }
-    )
-    // `org` survives the merge; the whole `user` value is replaced, so `age`
-    // is gone
-    expect(result).toBe('Acme/Grace/')
+    const next = { user: { name: 'Grace' } }
+    fig.updateOptions({ data: next })
+    // Nothing survives from the previous block: `org` is gone with it
+    expect(await fig.evaluate('$data')).toBe(next)
+    expect(await fig.evaluate('$data.org')).toBe(null)
   })
 
   it('operatorDefaults merges per operator name; other operators survive', async () => {
@@ -80,41 +78,86 @@ describe('the consequence table', () => {
     expect(await fig.evaluate({ $join: ['a', 'b'] })).toBe('a / b')
     expect(fig.getOptions().operatorDefaults?.buildString).toEqual({ trim: true })
   })
-})
 
-describe('what does not merge', () => {
-  it('ignores undefined at both levels, falling back to the instance value', async () => {
-    const { seen } = withSpy({ http: { baseEndpoint: 'https://x.test' }, maxNodes: 40 })
-    const options = await seen({ maxNodes: undefined, http: { baseEndpoint: undefined } })
+  it('ignores undefined at both levels, keeping the stored value', async () => {
+    const { fig, seen } = withSpy({ http: { baseEndpoint: 'https://x.test' }, maxNodes: 40 })
+    fig.updateOptions({ maxNodes: undefined, http: { baseEndpoint: undefined } })
+    const options = await seen()
     expect(options.maxNodes).toBe(40)
     expect(options.http?.baseEndpoint).toBe('https://x.test')
   })
 
-  it('replaces arrays wholesale, at both levels', async () => {
-    const fig = new FigTree({ data: { list: [1, 2, 3] } })
-    expect(await fig.evaluate('$data.list', { data: { list: [9] } })).toEqual([9])
-  })
-
   it('replaces anything deeper than two levels wholesale', async () => {
-    const fig = new FigTree({ data: { a: { b: { c: 1, d: 2 } } } })
-    const result = await fig.evaluate('$data.a.b', { data: { a: { b: { c: 9 } } } })
-    expect(result).toEqual({ c: 9 })
+    const { fig, seen } = withSpy({ http: { headers: { a: '1', b: '2' } } })
+    fig.updateOptions({ http: { headers: { c: '3' } } })
+    expect((await seen()).http?.headers).toEqual({ c: '3' })
+  })
+})
+
+describe('per-call options: five request-scoped keys, laid flat over the instance', () => {
+  it('data replaces the instance block — no merge — and is the caller’s own object', async () => {
+    const instanceData = { org: 'Acme', user: { name: 'Ada' } }
+    const { seen } = withSpy({ data: instanceData })
+    const callData = { user: { name: 'Grace' } }
+    const options = await seen({ data: callData })
+    expect(options.data).toBe(callData)
+    // Instance keys do not show through
+    expect(options.data).not.toHaveProperty('org')
+    // And the instance's block is untouched and back on the next call
+    expect((await seen()).data).toBe(instanceData)
   })
 
-  it('replaces a non-plain value wholesale rather than spreading it', async () => {
-    class Holder {
-      constructor(readonly tag: string) {}
-    }
-    const { seen } = withSpy({ data: { held: new Holder('first') } })
-    const options = await seen({ data: { held: new Holder('second') } })
-    expect(options.data?.held).toBeInstanceOf(Holder)
-    expect((options.data?.held as Holder).tag).toBe('second')
+  it('mode, trace, timeout and signal override the instance value for the one call', async () => {
+    const controller = new AbortController()
+    const { seen } = withSpy({ mode: 'throw', timeout: 5000 })
+    const options = await seen({ mode: 'report', timeout: 60000, signal: controller.signal })
+    expect(options.mode).toBe('report')
+    expect(options.timeout).toBe(60000)
+    expect(options.signal).toBe(controller.signal)
+    const again = await seen()
+    expect(again.mode).toBe('throw')
+    expect(again.timeout).toBe(5000)
+    expect(again.signal).toBeUndefined()
+  })
+
+  it('ignores an undefined value, so an unset variable falls back to the instance', async () => {
+    const instanceData = { a: 1 }
+    const { seen } = withSpy({ data: instanceData, mode: 'throw' })
+    const options = await seen({ data: undefined, mode: undefined })
+    expect(options.data).toBe(instanceData)
+    expect(options.mode).toBe('throw')
+  })
+
+  it('a call with no options, or only undefined ones, runs under the instance object itself', async () => {
+    const { seen } = withSpy({ data: { a: 1 } })
+    const bare = await seen()
+    expect(await seen({})).toBe(bare)
+    expect(await seen({ data: undefined })).toBe(bare)
+    // A real override is a fresh object, never the instance's
+    expect(await seen({ data: { b: 2 } })).not.toBe(bare)
+  })
+
+  it.each([
+    ['operators', { operators: [] }],
+    ['fragments', { fragments: {} }],
+    ['cache', { cache: { maxTime: 5 } }],
+    ['http', { http: { baseEndpoint: 'https://call.test' } }],
+    ['strictDataPaths', { strictDataPaths: true }],
+    ['maxDepth', { maxDepth: 3 }],
+  ])('refuses %s per call — configuration, not request state', async (_key, misuse) => {
+    const { fig } = withSpy()
+    const error = await rejection<{ code: string; message: string }>(
+      // Widened past the signature, as a JS host would reach it
+      fig.evaluate({ $peek: {} }, misuse as CallOptions)
+    )
+    expect(error.code).toBe('invalid-options')
+    expect(error.message).toMatch(/not a per-call option/)
+    expect(error.message).toMatch(/data, signal, timeout, mode and trace/)
   })
 
   // An AbortSignal has no own enumerable properties, so merging it key by
-  // key yields an object that is no longer a signal and throws at the first
-  // node boundary. It is a plain object to a loose test, which is why the
-  // merge tests for a plain DATA object.
+  // key would yield an object that is no longer a signal. Per-call values
+  // never merge, so a signal arrives intact by construction; this pins it
   it('keeps an AbortSignal intact when both levels supply one', async () => {
     const instance = new AbortController()
     const call = new AbortController()
@@ -138,11 +181,9 @@ describe('what does not merge', () => {
 
 describe('the instance is never written back to', () => {
   it('a per-call override lasts exactly one evaluation', async () => {
-    const { seen } = withSpy({ http: { baseEndpoint: 'https://instance.test' } })
-    expect((await seen({ http: { baseEndpoint: 'https://call.test' } })).http?.baseEndpoint).toBe(
-      'https://call.test'
-    )
-    expect((await seen()).http?.baseEndpoint).toBe('https://instance.test')
+    const { seen } = withSpy({ mode: 'throw' })
+    expect((await seen({ mode: 'report' })).mode).toBe('report')
+    expect((await seen()).mode).toBe('throw')
   })
 
   it('does not capture the caller’s options object, to the merge rule’s depth', async () => {
@@ -156,7 +197,7 @@ describe('the instance is never written back to', () => {
     expect(spy.contexts[0].options.http?.baseEndpoint).toBe('https://x.test')
   })
 
-  it('protects a block’s own keys, but shares what sits below them', async () => {
+  it('protects a configuration block’s own keys, but shares what sits below them', async () => {
     const supplied = { http: { baseEndpoint: 'https://x.test', headers: { a: '1' } } }
     const spy = spyOp('peek', {})
     const fig = new FigTree({ operators: [spy.definition], ...supplied })
@@ -165,37 +206,121 @@ describe('the instance is never written back to', () => {
     await fig.evaluate({ $peek: {} })
     // Copying stops at the merge rule's depth: the block is ours, so its own
     // keys are safe, while `headers` is a level deeper and stays the
-    // caller's object. Level 3 is shared by design — a caller's `data`
-    // values must keep their identity, and a store or signal cannot be
-    // cloned at all, so one uniform depth is the only honest rule.
+    // caller's object. A store or signal cannot be cloned at all, so one
+    // uniform depth is the only honest rule
     expect(spy.contexts[0].options.http?.baseEndpoint).toBe('https://x.test')
     expect(spy.contexts[0].options.http?.headers).toEqual({ a: 'mutated' })
   })
 
-  it('does not freeze a block the caller still holds', async () => {
-    const perCall = { http: { baseEndpoint: 'https://call.test' } }
-    const { fig } = withSpy()
-    await fig.evaluate({ $peek: {} }, perCall)
+  it('holds instance data by reference, so the host’s later edits are seen', async () => {
+    // Data is the one block that is not copied in: it is the host's state,
+    // and the host keeps owning it
+    const data: Record<string, unknown> = { count: 1 }
+    const fig = new FigTree({ data })
+    expect(await fig.evaluate('$data.count')).toBe(1)
+    data.count = 2
+    expect(await fig.evaluate('$data.count')).toBe(2)
+  })
+})
+
+describe('the caller’s objects are never mutated — the promise the freeze used to stand in for', () => {
+  /** A deep snapshot to compare against after the evaluation. */
+  const snapshot = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T
+
+  it('per-call data: same object afterwards, deep-equal to its snapshot', async () => {
+    const data = {
+      user: { name: 'Ada', tags: ['x', 'y'] },
+      orders: [{ total: 1 }, { total: 2 }],
+      nested: { a: { b: { c: 1 } } },
+    }
+    const before = snapshot(data)
+    const fig = new FigTree()
+    // Reads at every depth, a projection, and a result that IS a sub-object
+    const result = await fig.evaluate(
+      {
+        name: '$data.user.name',
+        tags: '$data.user.tags',
+        totals: '$data.orders[*].total',
+        deep: '$data.nested.a',
+        whole: '$data',
+      },
+      { data }
+    )
+    expect(result).toEqual({
+      name: 'Ada',
+      tags: ['x', 'y'],
+      totals: [1, 2],
+      deep: { b: { c: 1 } },
+      whole: before,
+    })
+    expect(data).toEqual(before)
+    // Results share structure with the data rather than copying it
+    expect((result as { whole: unknown }).whole).toBe(data)
+  })
+
+  it('instance data, and the other passed-in blocks, likewise', async () => {
+    const data = { org: 'Acme', members: [{ name: 'Ada' }] }
+    const http = { baseEndpoint: 'https://x.test', headers: { a: '1' } }
+    const operatorDefaults = { join: { delimiter: ' | ' } }
+    const before = {
+      data: snapshot(data),
+      http: snapshot(http),
+      defaults: snapshot(operatorDefaults),
+    }
+    const fig = new FigTree({ data, http, operatorDefaults })
+    expect(await fig.evaluate({ $join: ['$data.org', '$data.members[0].name'] })).toBe('Acme | Ada')
+    expect(data).toEqual(before.data)
+    expect(http).toEqual(before.http)
+    expect(operatorDefaults).toEqual(before.defaults)
+    // And the same objects, not replacements
+    expect(fig.getOptions().data).toEqual(before.data)
+  })
+
+  it('a custom operator handed the data reads it without the engine copying or freezing it', async () => {
+    const spy = spyOp('peek', {})
+    const data = { user: { name: 'Ada' } }
+    const before = snapshot(data)
+    await new FigTree({ operators: [spy.definition] }).evaluate({ $peek: {} }, { data })
+    const seen = spy.contexts[0].options.data
+    expect(seen).toBe(data)
+    expect(Object.isFrozen(seen)).toBe(false)
+    expect(Object.isFrozen(seen?.user)).toBe(false)
+    expect(data).toEqual(before)
+  })
+
+  it('nothing in the options a body receives is frozen', async () => {
+    const perCall = { data: { a: 1 } }
+    const { seen } = withSpy({ http: { baseEndpoint: 'https://x.test' } })
+    const options = await seen(perCall)
+    expect(Object.isFrozen(options)).toBe(false)
+    expect(Object.isFrozen(options.http)).toBe(false)
+    expect(Object.isFrozen(options.data)).toBe(false)
+    // The caller's own object is still theirs to edit
     expect(() => {
-      perCall.http.baseEndpoint = 'https://after.test'
+      perCall.data.a = 2
     }).not.toThrow()
   })
 })
 
-describe('validate() and evaluate() merge identically', () => {
-  it('both see instance data merged under per-call data', async () => {
+describe('validate() and evaluate() see the same data', () => {
+  it('both read the per-call data in place of the instance’s', async () => {
     const fig = new FigTree({ data: { org: 'Acme' } })
-    const expression = { $buildString: ['%1/%2', '$data.org', '$data.team'] }
-    // The sample-data check walks the merged data: `org` is present from the
-    // instance, so only the genuinely absent path warns
+    const expression = { $buildString: ['%1', '$data.team'] }
     const { issues } = fig.validate(expression, { data: { team: 'Platform' } })
     expect(issues).toEqual([])
-    expect(await fig.evaluate(expression, { data: { team: 'Platform' } })).toBe('Acme/Platform')
+    expect(await fig.evaluate(expression, { data: { team: 'Platform' } })).toBe('Platform')
   })
 
-  it('both report a path absent from the merged data', () => {
+  it('both report a path the per-call data lacks, even where the instance has it', () => {
     const fig = new FigTree({ data: { org: 'Acme' } })
-    const { issues } = fig.validate({ $buildString: ['%1', '$data.missing'] }, { data: {} })
+    const { issues } = fig.validate({ $buildString: ['%1', '$data.org'] }, { data: {} })
     expect(issues.map((issue) => issue.severity)).toEqual(['warning'])
+  })
+
+  it('both fall back to the instance data when the call supplies none', async () => {
+    const fig = new FigTree({ data: { org: 'Acme' } })
+    const expression = { $buildString: ['%1', '$data.org'] }
+    expect(fig.validate(expression).issues).toEqual([])
+    expect(await fig.evaluate(expression)).toBe('Acme')
   })
 })

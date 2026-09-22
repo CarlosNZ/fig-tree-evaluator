@@ -11,6 +11,9 @@ import { parseExpression } from '../src/parse'
 import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
 
 const fig = new FigTree({ operators: [parseOps()] })
+/** The limits are instance configuration, so a limit is an instance. */
+const withLimits = (limits: { maxDepth?: number; maxNodes?: number }) =>
+  new FigTree({ operators: [parseOps()], ...limits })
 const registry = makeParseRegistry()
 const parse = (input: unknown) => parseExpression(input, registry)
 
@@ -48,7 +51,9 @@ describe('the built-in depth ceiling', () => {
 
   test('the ceiling is option-independent — no maxDepth needed, and a larger one is moot', () => {
     const deep = nestArrays(5000, 1)
-    const codes = fig.validate(deep, { maxDepth: 100_000 }).issues.map((issue) => issue.code)
+    const codes = withLimits({ maxDepth: 100_000 })
+      .validate(deep)
+      .issues.map((issue) => issue.code)
     expect(codes).toContain('depth-ceiling')
     expect(codes).not.toContain('max-depth')
   })
@@ -56,7 +61,11 @@ describe('the built-in depth ceiling', () => {
   test('ordinary depth is untouched, and the user maxDepth still compares against it', () => {
     const shallow = nestObjects(40, { $plus: [1, 2] })
     expect(fig.validate(shallow).valid).toBe(true)
-    expect(fig.validate(shallow, { maxDepth: 10 }).issues.map((i) => i.code)).toContain('max-depth')
+    expect(
+      withLimits({ maxDepth: 10 })
+        .validate(shallow)
+        .issues.map((i) => i.code)
+    ).toContain('max-depth')
   })
 
   test('the ceiling issue is tagged with the path where descent stopped', () => {
@@ -75,14 +84,14 @@ describe('nodeCount counts evaluable nodes only', () => {
       value: i,
       enabled: i % 2 === 0,
     }))
-    const result = fig.validate({ options }, { maxNodes: 500 })
+    const result = withLimits({ maxNodes: 500 }).validate({ options })
     expect(result.valid).toBe(true)
     expect(result.issues.map((issue) => issue.code)).not.toContain('max-nodes')
   })
 
   test('an expression with 600 operators does', () => {
     const items = Array.from({ length: 600 }, (_, i) => ({ $plus: [i, 1] }))
-    const result = fig.validate({ items }, { maxNodes: 500 })
+    const result = withLimits({ maxNodes: 500 }).validate({ items })
     expect(result.valid).toBe(false)
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
   })

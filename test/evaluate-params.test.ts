@@ -98,12 +98,16 @@ describe('unset detection and the layered default chain', () => {
     expect('p' in spy.calls[1]).toBe(false)
   })
 
-  test('the EvaluationData sentinel delivers the merged data, frozen at the top level', async () => {
+  test('the EvaluationData sentinel delivers the evaluation data: the call’s object, by reference', async () => {
     const spy = spyOp('ctx', { from: { type: ['object', 'array'], default: EvaluationData } })
-    const fig = figWith([spy], { data: { org: 'Acme' } })
-    await fig.evaluate({ $ctx: {} }, { data: { user: 'Ada' } })
-    expect(spy.calls[0].from).toEqual({ org: 'Acme', user: 'Ada' })
-    expect(Object.isFrozen(spy.calls[0].from)).toBe(true)
+    const instanceData = { org: 'Acme' }
+    const fig = figWith([spy], { data: instanceData })
+    const callData = { user: 'Ada' }
+    await fig.evaluate({ $ctx: {} }, { data: callData })
+    // Per-call data replaces rather than merging, and nothing is copied
+    expect(spy.calls[0].from).toBe(callData)
+    await fig.evaluate({ $ctx: {} })
+    expect(spy.calls[1].from).toBe(instanceData)
   })
 })
 
@@ -289,17 +293,16 @@ describe('the runtime type check', () => {
       flag: { type: 'any', truthiness: true, required: false },
       p: { type: ['number', 'null'], required: false },
     })
-    const fig = figWith([spy])
+    // Instance configuration, not a per-call option
+    const fig = figWith([spy], { runtimeTypeCheck: false })
     // literal mismatches are static errors; these arrive dynamically
     const data = { n: 5 }
-    await fig.evaluate({ $loose: { s: '$data.n', flag: 0 } }, { data, runtimeTypeCheck: false })
+    await fig.evaluate({ $loose: { s: '$data.n', flag: 0 } }, { data })
     expect(spy.calls[0]).toEqual({ s: 5, flag: false })
     // null policy is semantics: propagate still propagates
-    expect(await fig.evaluate({ $loose: { s: 'x', p: null } }, { runtimeTypeCheck: false })).toBe(
-      null
-    )
+    expect(await fig.evaluate({ $loose: { s: 'x', p: null } })).toBe(null)
     // the derived reject is part of the type layer, so a null is delivered
-    await fig.evaluate({ $loose: { s: '$data.missing' } }, { runtimeTypeCheck: false })
+    await fig.evaluate({ $loose: { s: '$data.missing' } })
     expect(spy.calls[1]).toEqual({ s: null })
   })
 })

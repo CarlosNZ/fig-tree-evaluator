@@ -3,18 +3,21 @@
  * semantics" in the Options area of docs-dev/v3-specs/v3-api.md; "The
  * runtime interface" in docs-dev/v3-specs/v3-operator-contract.md).
  *
- * Options merge by the one two-level rule: by key at the top level, and
- * again by key one level down inside plain-data-object-valued options;
+ * Instance options merge by the two-level rule: by key at the top level,
+ * and again by key one level down inside plain-data-object-valued options;
  * anything deeper is replaced wholesale, keys set to `undefined` are
  * ignored. Only plain data objects merge — an array, a class instance, an
  * `AbortSignal` or a `CacheStore` replaces as a unit, because merging one
- * key-by-key would spread away everything that makes it what it is.
+ * key-by-key would spread away everything that makes it what it is. The
+ * one block outside the rule is `data`, which is request state rather
+ * than configuration: it replaces, and is held by reference.
  *
- * Two levels is also the depth at which options are copied and frozen, so
- * the three operations agree: `copyOptions` makes every block the
- * instance's own, `mergeOptions` never hands back a caller's block, and
- * the freeze in `createEvaluationContext` can therefore reach every block
- * without ever touching an object the host still owns.
+ * Two levels is also the depth at which `getOptions()` copies, so the two
+ * operations agree on what is the instance's own. Nothing is frozen, per
+ * call or otherwise: the promise that an evaluation never mutates the
+ * instance or the caller's objects is pinned by the test suite, where it
+ * costs nothing per call, rather than by a per-call walk that could only
+ * ever reach one level.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
 import type { CompiledNode } from '../parse'
@@ -31,10 +34,10 @@ export interface EvaluationContext {
   /** The merged instance + per-call options, registry keys stripped. */
   options: EvaluationOptions
   /**
-   * The merged evaluation data — the same object as `options.data`, so a
-   * body and the `$data` resolver read one block. Frozen when it is a
-   * plain data block (ours, rebuilt by the merge); a class instance is the
-   * host's own object and is neither copied nor frozen.
+   * The evaluation data — the same object as `options.data`, so a body
+   * and the `$data` resolver read one block. It is the host's own object,
+   * by reference: the call's block if it supplied one, else the
+   * instance's.
    */
   data: Readonly<Record<string, unknown>>
   /** This node's effective signal: the root's, plus enclosing scopes. */
@@ -124,20 +127,21 @@ export interface FragmentFrame {
 }
 
 /**
- * The two-level merge rule, shared by `evaluate()`, `validate()` and
- * `updateOptions()` — one rule, so an option means the same thing
- * wherever it is supplied.
+ * The two-level merge rule for instance options — construction and
+ * `updateOptions()`. Per-call options do not come through here: they are
+ * a flat override of five request-scoped keys (src/FigTree.ts).
  *
- * An incoming block is always rebuilt rather than stored by reference,
- * even where the instance has no counterpart to merge it with: the result
- * gets frozen per evaluation, and freezing an object the caller still
- * holds would reach outside the library.
+ * An incoming configuration block is rebuilt rather than stored by
+ * reference, even where the instance has no counterpart to merge it with,
+ * so a host that goes on editing its own `http` object does not edit the
+ * instance. `data` is the exception: it is the host's state, not the
+ * instance's configuration, so it replaces and is held by reference.
  */
-export const mergeOptions = (instance: FigTreeOptions, call: FigTreeOptions): FigTreeOptions => {
+export const mergeOptions = (instance: FigTreeOptions, update: FigTreeOptions): FigTreeOptions => {
   const merged: Record<string, unknown> = { ...instance }
-  for (const [key, value] of Object.entries(call)) {
+  for (const [key, value] of Object.entries(update)) {
     if (value === undefined) continue
-    if (!isPlainDataObject(value)) {
+    if (key === 'data' || !isPlainDataObject(value)) {
       merged[key] = value
       continue
     }
@@ -168,50 +172,40 @@ export const copyOptions = <T extends FigTreeOptions>(options: T): T => {
   return copy as T
 }
 
-/** The data block of an evaluation that supplied none. */
+/**
+ * The data block of an evaluation that supplied none. One shared object,
+ * so it is frozen — the one freeze in the evaluation path, guarding
+ * engine-owned state rather than the caller's.
+ */
 const NO_DATA: Readonly<Record<string, unknown>> = Object.freeze({})
 
 /**
  * The context an evaluation starts from. `signal` is the root scope's —
  * the caller's `signal` composed with the `timeout` — and is built by the
  * caller (./run.ts), because its lifetime is the evaluation's and this
- * module only describes the record.
+ * module only describes the record. `options` is carried as handed in:
+ * the instance's own prepared object when the call supplied nothing, so
+ * the common case allocates only this record.
  */
 export const createEvaluationContext = (
-  merged: EvaluationOptions,
+  options: EvaluationOptions,
   cache: ResultStore,
   signal: AbortSignal,
   trace?: TraceRecorder
-): EvaluationContext => {
-  const options = freezeOptions(merged)
-  return {
-    options,
-    data: options.data ?? NO_DATA,
-    signal,
-    rootSignal: signal,
-    cache,
-    strictDataPaths: merged.strictDataPaths ?? false,
-    runtimeTypeCheck: merged.runtimeTypeCheck ?? true,
-    ...(trace !== undefined ? { trace } : {}),
-  }
-}
+): EvaluationContext => ({
+  options,
+  data: options.data ?? NO_DATA,
+  signal,
+  rootSignal: signal,
+  cache,
+  strictDataPaths: options.strictDataPaths ?? false,
+  runtimeTypeCheck: options.runtimeTypeCheck ?? true,
+  ...(trace !== undefined ? { trace } : {}),
+})
 
 /**
- * Frozen at the merge rule's depth, matching the copy above: the object
- * and each of its blocks. Every block is instance-owned by the time this
- * runs, so the freeze never reaches a caller's object. A caller's `data`
- * values sit a level deeper and stay writable.
- */
-const freezeOptions = <T extends FigTreeOptions>(options: T): T => {
-  for (const value of Object.values(options)) {
-    if (isPlainDataObject(value)) Object.freeze(value)
-  }
-  return Object.freeze(options)
-}
-
-/**
- * The context a body receives: the signal, the evaluation's frozen options,
- * the live `memo`, and `note`, which discards until trace lands (Phase 12).
+ * The context a body receives: the signal, the evaluation's options, the
+ * live `memo`, and `note`, which discards until trace lands (Phase 12).
  *
  * The binding is passed rather than the node, because both fields it holds
  * are already computed one frame up and this module has no business
