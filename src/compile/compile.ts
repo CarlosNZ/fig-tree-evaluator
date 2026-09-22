@@ -91,8 +91,8 @@
  *     holes at all collapses the container to one constant — the raw value
  *     by identity where nothing changed.
  * 14. The outermost evaluable nodes become the artifact's holes: the root
- *     itself where it is one, or each hole of a vars-free root skeleton.
- *     A constant root has none.
+ *     itself where it is one, or each hole of a root skeleton, a `vars`
+ *     block on it included. A constant root has none.
  * 15. Each hole takes its shielding precompute — a constant `fallback`,
  *     authored or from `operatorDefaults`. Every hole shielded makes the
  *     artifact `shielded`.
