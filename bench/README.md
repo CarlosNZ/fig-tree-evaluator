@@ -16,11 +16,13 @@ pnpm install
 ## Running a bench
 
 ```bash
-pnpm bench              # list what exists
-pnpm bench holes        # run one
+pnpm bench                    # list what exists
+pnpm bench holes              # run one
+pnpm bench holes parseOnce    # run several, in that order
+pnpm bench all                # run every bench, in listing order
 ```
 
-A bench takes between a few seconds and about a minute. It prints one Markdown table per sweep — copy it straight into an issue — and ends with a `(sink N)` line, which is the harness proving nothing was optimised away, not a result.
+A bench takes between a few seconds and about a minute; `all` runs them one after another, never side by side, since two benches sharing the CPU would each measure the other, and prints a `# name` heading before each so the whole transcript reads as one Markdown document. It prints one Markdown table per sweep — copy it straight into an issue — and ends with a `(sink N)` line, which is the harness proving nothing was optimised away, not a result.
 
 ## What each bench measures
 
