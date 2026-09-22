@@ -275,6 +275,19 @@ export interface SequencedIssue {
 }
 
 /**
+ * Finalize an issue stream: sort it into tree order (a stable sort, so
+ * issues from one node keep their emission order) and report whether it
+ * holds an error. Both places that close a stream — the parse walk and the
+ * static checks that append to it — go through here, so `hasErrors` is
+ * correct whenever the stream is, and the evaluate gate can read one flag
+ * instead of rebuilding and filtering the stream on every call.
+ */
+export const sealIssues = (issues: SequencedIssue[]): boolean => {
+  issues.sort((a, b) => a.order - b.order)
+  return issues.some(({ issue }) => issue.severity === 'error')
+}
+
+/**
  * The measurements a fragment call site composes through — the four the
  * option-dependent checks and the cache read. An artifact carries them
  * twice: composed, under these names, and un-composed as `own`.
@@ -324,6 +337,13 @@ export interface ParseArtifact extends Rollups {
    * against `nodeCount`/`maxDepth`/`dependencies` and are never stored.
    */
   issues: SequencedIssue[]
+  /**
+   * Whether `issues` holds an error-severity entry — the static gate's
+   * answer, precomputed by `sealIssues` so the common call reads a flag
+   * rather than assembling the stream. Derived from the stored stream
+   * alone, so it is as option-independent as the stream is.
+   */
+  hasErrors: boolean
   /** True iff every hole carries a static fallback (B2). */
   shielded: boolean
   /**
