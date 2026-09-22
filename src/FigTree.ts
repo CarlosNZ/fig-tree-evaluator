@@ -352,9 +352,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    */
   isEvaluable(expression: unknown): boolean {
     const artifact = parseExpression(expression, this.state.registry)
-    return (
-      artifact.holes.length > 0 || artifact.issues.some(({ issue }) => issue.severity === 'error')
-    )
+    return artifact.holes.length > 0 || artifact.hasErrors
   }
 
   /**
@@ -417,18 +415,23 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     }
 
     const { artifact } = resolved
-    const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
-    const errors = issues.filter((issue) => issue.severity === 'error')
-    // Under report a static failure is reported like any other, and ALL of
-    // it: the pass collects the whole stream anyway, and a host that chose
-    // resilience did not choose "resilient except for typos". Throw mode
-    // throws the first in tree order, carrying the stream as `issues`
-    if (errors.length > 0) {
-      if (!reporting) throw staticError(errors[0], issues)
-      return envelope(
-        null,
-        errors.map((issue) => staticError(issue))
-      )
+    // The static gate. On the common call it is one flag the compile set
+    // and two option reads; the stream is assembled only when there is
+    // something to say, or a limit to compare against
+    if (artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined) {
+      const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
+      const errors = issues.filter((issue) => issue.severity === 'error')
+      // Under report a static failure is reported like any other, and ALL
+      // of it: the pass collects the whole stream anyway, and a host that
+      // chose resilience did not choose "resilient except for typos". Throw
+      // mode throws the first in tree order, carrying the stream as `issues`
+      if (errors.length > 0) {
+        if (!reporting) throw staticError(errors[0], issues)
+        return envelope(
+          null,
+          errors.map((issue) => staticError(issue))
+        )
+      }
     }
 
     const outcome = await runEvaluation(artifact, options, this.results)

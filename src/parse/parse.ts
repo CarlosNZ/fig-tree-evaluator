@@ -126,6 +126,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
+import { sealIssues } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
@@ -218,8 +219,7 @@ export const parseExpression = (
   const root = walk(state, input, options.basePath ?? [], 0)
   upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
-  // Stable sort — issues from one node keep their emission order
-  state.issues.sort((a, b) => a.order - b.order)
+  const hasErrors = sealIssues(state.issues)
   const own = {
     nodeCount: state.nodeCount,
     maxDepth: state.maxDepth,
@@ -235,6 +235,7 @@ export const parseExpression = (
     root,
     holes,
     issues: state.issues,
+    hasErrors,
     shielded: holes.every((hole) => hole.staticFallback !== undefined),
     own,
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
