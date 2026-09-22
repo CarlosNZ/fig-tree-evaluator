@@ -234,16 +234,15 @@ export const createEvaluationContext = (
 export const createOperatorContext = (
   ctx: EvaluationContext,
   operator: string,
-  useCache: boolean
-): OperatorContext => {
-  const note = noteChannel(ctx)
-  return new BodyContext(
+  useCache: boolean,
+  note: NoteChannel | undefined
+): OperatorContext =>
+  new BodyContext(
     ctx.abortScope,
     ctx.options,
-    useCache ? { memo: bodyMemo({ operator, useCache, note }, ctx.cache) } : PASSTHROUGH_CACHE,
-    note === noop ? SILENT_TRACE : { note }
+    useCache ? { memo: bodyMemo({ operator, note }, ctx.cache) } : PASSTHROUGH_CACHE,
+    note === undefined ? SILENT_TRACE : { note }
   )
-}
 
 class BodyContext implements OperatorContext {
   readonly #scope: AbortScope
@@ -271,13 +270,18 @@ const PASSTHROUGH_CACHE: OperatorContext['cache'] = { memo: (_key, fn) => fn() }
  */
 const SILENT_TRACE: OperatorContext['trace'] = { note: noop }
 
+export type NoteChannel = (event: TraceEvent) => void
+
 /**
  * The live `note`: events land on the node's OWN entry, which the
- * dispatch has already made this context's `traceParent`.
+ * dispatch has already made this context's `traceParent`. Absent when the
+ * evaluation is not tracing, so a caller with an event to build can skip
+ * building it. The wrapper builds one per node and hands it to both the
+ * body's context and the memo layer.
  */
-export const noteChannel = (ctx: EvaluationContext): ((event: TraceEvent) => void) => {
+export const noteChannel = (ctx: EvaluationContext): NoteChannel | undefined => {
   const { trace, traceParent } = ctx
-  if (trace === undefined || traceParent === undefined) return noop
+  if (trace === undefined || traceParent === undefined) return undefined
   return (event) => {
     trace.note(traceParent, event)
   }

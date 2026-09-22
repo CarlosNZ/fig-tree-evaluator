@@ -17,7 +17,7 @@ import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
 import { nearestName } from '../utils'
 import { validateHelpers } from './helpers'
-import { bindsReference, renamedBinding, sealIssues } from './artifact'
+import { bindsReference, hasError, renamedBinding, sortIssues } from './artifact'
 import type {
   CompiledNode,
   FragmentCallNode,
@@ -67,13 +67,13 @@ interface CheckState {
 
 /**
  * Run the metadata-driven checks, appending to the artifact's issue stream
- * (re-sealed — sorted into tree order, `hasErrors` refreshed — before
- * returning).
+ * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
 export const runStaticChecks = (artifact: ParseArtifact, context: StaticCheckContext = {}) => {
   const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
   visit(state, artifact.root)
-  artifact.hasErrors = sealIssues(artifact.issues)
+  sortIssues(artifact.issues)
+  artifact.hasErrors = hasError(artifact.issues)
 }
 
 const emit = (

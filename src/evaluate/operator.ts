@@ -19,13 +19,7 @@ import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
 import type { OperatorNode } from '../parse'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
-import {
-  DeferredScope,
-  REQUEST_EXPIRED,
-  requestDeadline,
-  signalScope,
-  type Deadline,
-} from './abort'
+import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
@@ -122,8 +116,11 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const ms = declaredTimeout(definition, params)
   const deadline = ms === undefined ? undefined : requestDeadline(ctx.abortScope.signal, ms)
   const bodyCtx =
-    deadline === undefined ? ctx : { ...ctx, abortScope: signalScope(deadline.signal) }
-  const context = createOperatorContext(bodyCtx, definition.name, useCache)
+    deadline === undefined
+      ? ctx
+      : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope) }
+  const note = noteChannel(ctx)
+  const context = createOperatorContext(bodyCtx, definition.name, useCache, note)
 
   try {
     // The common node is not caching: straight to the body, with no
@@ -133,7 +130,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
     const key = autoKey(node, params)
     const run = () => runBody(node, ctx, params, context, deadline)
     // An unkeyable node runs uncached rather than sharing a weaker key
-    return await (key === undefined ? run() : through(ctx.cache, key, run, noteChannel(ctx)))
+    return await (key === undefined ? run() : through(ctx.cache, key, run, note))
   } catch (error) {
     throw classifyBodyFailure(error, node, ctx, deadline, ms)
   } finally {
