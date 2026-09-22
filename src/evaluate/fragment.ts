@@ -47,7 +47,7 @@ import type { FragmentEntry, FragmentParameter } from '../fragments'
 import type { CompiledNode, FragmentCallNode, NodePath } from '../parse'
 import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
 import { isPlainObject, once } from '../utils'
-import { childScope } from './abort'
+import { DeferredScope } from './abort'
 import type { EvaluationContext, FragmentFrame, ParamsFrame } from './context'
 import { evaluateNode } from './evaluate'
 import {
@@ -79,7 +79,7 @@ export const evaluateFragment = async (
   // has settled, so a fallback under this signal would be refused at its
   // first node boundary — and settling it here is what refuses an argument
   // demanded after the call returned
-  const scope = childScope(scoped.signal)
+  const scope = new DeferredScope(scoped.abortScope)
   const frame: FragmentFrame = {
     fragment: node.name,
     // Inherited where there is an enclosing frame: a nested call node
@@ -87,7 +87,7 @@ export const evaluateFragment = async (
     // the input, and the outermost call is the location a host can act on
     callPath: ctx.frame?.callPath ?? node.path,
   }
-  const bodyCtx = { ...scoped, signal: scope.signal }
+  const bodyCtx = { ...scoped, abortScope: scope }
   try {
     return await runBodyScoped(node, entry, bodyCtx, scoped, frame, scope)
   } catch (error) {

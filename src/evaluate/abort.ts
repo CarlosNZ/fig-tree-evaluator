@@ -20,6 +20,20 @@
  * an abort does reliably is stop work that has not *started*, and stop
  * anything holding the signal — which is the I/O clients, and where the
  * time actually lives.
+ *
+ * Two kinds of scope, for two kinds of consumer. A node's scope
+ * (`DeferredScope`) answers "am I cancelled?" at every node boundary and
+ * hands out a real `AbortSignal` only to something that asks — an I/O
+ * client, a per-request deadline, a body reading `context.signal` — and
+ * on that first ask it materialises a controller and chains it upward,
+ * exactly as an eager scope would have been built. Everything else
+ * (`plus`, `get`, a fragment call over pure computation) never
+ * materialises anything: a few field reads per boundary check and no
+ * controller, no listener, no abort event. Nothing ever calls `abort()`
+ * on a node scope; settling is the one thing that cancels, so a scope
+ * nobody holds has nobody to tell. The eager controller-backed scopes
+ * below remain for the deadlines, which need a timer and a real signal
+ * regardless.
  */
 
 /** The reason a settled scope carries: the work it covered has finished. */
@@ -31,8 +45,140 @@ export const REQUEST_EXPIRED = 'fig-tree:request-expired'
 /** The reason the whole-evaluation `timeout` carries — the kill switch. */
 export const EVALUATION_TIMEOUT = 'fig-tree:evaluation-timeout'
 
-/** An abort controller, seen from outside: its signal and two verbs. */
+/**
+ * What a node holds of its cancellation state — the field a context
+ * carries as `abortScope`. `aborted` and `reason` are answered without a
+ * signal wherever possible; `signal` is the materialising read.
+ */
 export interface AbortScope {
+  readonly aborted: boolean
+  /** The reason the abort carries; meaningful only while `aborted`. */
+  readonly reason: unknown
+  /** A real signal composing everything above, built on first read. */
+  readonly signal: AbortSignal
+  /** Ends the scope: whatever it materialised aborts with `SCOPE_SETTLED`. */
+  settle(): void
+}
+
+/**
+ * A node's scope, or the root of an evaluation with no kill switch: a
+ * parent (absent at the root), and a controller that exists only once
+ * something asked for the signal. Cancellation state is read through the
+ * chain — this scope's own settling, its controller if it has one, else
+ * its parent's answer — so a boundary check on a pure CPU tree walks a few
+ * fields to the nearest materialised ancestor or the root, and allocates
+ * nothing.
+ *
+ * `signal` materialises the whole chain above it, since a real signal has
+ * to hear the ancestors' aborts: each parent's `signal` is read in turn
+ * and a forwarding listener registered, exactly the eager construction,
+ * paid once by the node that wanted it. `settle()` then detaches and
+ * aborts only what was built.
+ *
+ * The walk is amortised to one step by `epoch`: a scope that walked to
+ * the top and found nothing remembers the epoch it did so in, and answers
+ * from memory while no abort has landed anywhere since. Every event that
+ * can turn an answer from "no" to "yes" bumps the epoch — a settle, or a
+ * real signal's abort (`signalScope` listens for it) — so the memory is
+ * never stale, and a chain of unmaterialised scopes costs each boundary
+ * check a step to the nearest ancestor that remembers, not a walk to the
+ * root. Without it a deep chain paid O(depth) per check, O(depth²) in all,
+ * and the `nesting` bench regressed past ~70 levels.
+ *
+ * The node-level `reason` is not consulted by the engine — classification
+ * reads the ROOT's (./internal.ts) — so a scope settled after an upstream
+ * abort reports `SCOPE_SETTLED` rather than replaying which landed first.
+ */
+export class DeferredScope implements AbortScope {
+  private controller: AbortController | undefined
+  private upstream: AbortSignal | undefined
+  private forward: (() => void) | undefined
+  private settled = false
+  /** The epoch in which this scope last walked up and found no abort. */
+  private verified = -1
+
+  constructor(private readonly parent: AbortScope | undefined) {}
+
+  get aborted(): boolean {
+    if (this.controller !== undefined) return this.controller.signal.aborted
+    if (this.settled) return true
+    if (this.verified === epoch) return false
+    if (this.parent !== undefined && this.parent.aborted) return true
+    this.verified = epoch
+    return false
+  }
+
+  get reason(): unknown {
+    if (this.controller !== undefined) return this.controller.signal.reason
+    return this.settled ? SCOPE_SETTLED : this.parent?.reason
+  }
+
+  get signal(): AbortSignal {
+    if (this.controller === undefined) {
+      const controller = new AbortController()
+      this.controller = controller
+      if (this.settled) controller.abort(SCOPE_SETTLED)
+      else if (this.parent !== undefined) {
+        const upstream = this.parent.signal
+        if (upstream.aborted) controller.abort(upstream.reason)
+        else {
+          this.upstream = upstream
+          this.forward = () => controller.abort(upstream.reason)
+          upstream.addEventListener('abort', this.forward, { once: true })
+        }
+      }
+    }
+    return this.controller.signal
+  }
+
+  settle(): void {
+    if (this.settled) return
+    this.settled = true
+    epoch += 1
+    if (this.controller === undefined) return
+    if (this.upstream !== undefined && this.forward !== undefined)
+      this.upstream.removeEventListener('abort', this.forward)
+    this.controller.abort(SCOPE_SETTLED)
+  }
+}
+
+/**
+ * Counts the aborts that can change a deferred scope's answer, across the
+ * whole process: shared by every evaluation, since a scope's memory is
+ * only a hint and a bump merely costs the next check a walk. Bumped by
+ * every `settle()` and by every real signal a `signalScope` wraps.
+ */
+let epoch = 0
+const bump = () => {
+  epoch += 1
+}
+
+/**
+ * A real signal seen as a scope: the armed root of an evaluation (a
+ * `deadline()` with the caller's `signal` and/or `timeout`), and a body's
+ * view of its own per-request deadline. `settle` is the owner's — the
+ * deadline settles itself — so it defaults to nothing. The listener bumps
+ * the epoch when the signal aborts, so deferred scopes below it stop
+ * trusting their memory; it is `once`, and every signal wrapped here is
+ * aborted when its deadline settles, so it never outlives the evaluation.
+ */
+export const signalScope = (signal: AbortSignal, settle: () => void = () => {}): AbortScope => {
+  if (signal.aborted) bump()
+  else signal.addEventListener('abort', bump, { once: true })
+  return {
+    get aborted() {
+      return signal.aborted
+    },
+    get reason() {
+      return signal.reason
+    },
+    signal,
+    settle,
+  }
+}
+
+/** An eager, controller-backed scope: its signal and two verbs. */
+interface ControllerScope {
   signal: AbortSignal
   /** Aborts this scope alone, with the given reason; any parent is untouched */
   abort: (reason: unknown) => void
@@ -41,14 +187,10 @@ export interface AbortScope {
 }
 
 /**
- * A scope with nothing above it: one controller, no listener, no timer.
- * The root of an evaluation that supplied neither a `signal` nor a
- * `timeout` is one of these — nothing upstream can abort it, so the only
- * abort it ever carries is its own settling, which is what cancels work
- * still in flight when a sibling's failure ends the evaluation. Also the
- * base a `deadline()` with no parent is built on.
+ * An eager scope with nothing above it: one controller, no listener, no
+ * timer. The base a `deadline()` with no parent is built on.
  */
-export const rootScope = (): AbortScope => {
+const rootScope = (): ControllerScope => {
   const controller = new AbortController()
   return {
     signal: controller.signal,
@@ -58,14 +200,14 @@ export const rootScope = (): AbortScope => {
 }
 
 /**
- * A scope chained to an enclosing signal: aborted when the parent is, with
- * the parent's reason, and independently abortable without touching the
- * parent. A node's own scope is one of these — the node wrapper settles it
- * once the body settles, so anything the body did not wait for stops. The
- * listener is removed on settle, so a long-lived caller signal does not
- * accumulate one per node evaluated.
+ * An eager scope chained to an enclosing signal: aborted when the parent
+ * is, with the parent's reason, and independently abortable without
+ * touching the parent. The deadlines are built on one of these; a node's
+ * scope is a `DeferredScope`, which builds exactly this on first demand.
+ * The listener is removed on settle, so a long-lived caller signal does
+ * not accumulate one per scope.
  */
-export const childScope = (parent: AbortSignal): AbortScope => {
+const childScope = (parent: AbortSignal): ControllerScope => {
   const controller = new AbortController()
   if (parent.aborted) controller.abort(parent.reason)
   const forward = () => controller.abort(parent.reason)

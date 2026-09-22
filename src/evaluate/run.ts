@@ -9,10 +9,11 @@
  * as its parent, the `timeout` (if any) as its timer, settled like any
  * node scope when the evaluation settles — so work still in flight after
  * an uncaught failure is cancelled through the same chain, kill switch or
- * not. With neither option the root is a plain scope — one controller,
- * whose only abort is its own settling — because the deadline's expiry
- * promise and listeners exist to answer an abort from above, and nothing
- * above can abort. The recursive evaluator is wrapped, not forked: every
+ * not. With neither option the root is a deferred scope — no controller
+ * until something under it asks for a signal, its only abort its own
+ * settling — because the deadline's expiry promise and listeners exist to
+ * answer an abort from above, and nothing above can abort. The recursive
+ * evaluator is wrapped, not forked: every
  * node still goes through `evaluateNode`, and the artifact root always
  * goes through it too, which is what gives `trace` one root entry in
  * every mode.
@@ -49,7 +50,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { EvaluationOptions, EvaluationResult } from '../options'
 import type { ArtifactHole, ParseArtifact } from '../parse'
 import type { ResultStore } from '../resultCache'
-import { EVALUATION_TIMEOUT, deadline, rootScope, type Deadline } from './abort'
+import { DeferredScope, EVALUATION_TIMEOUT, deadline, signalScope, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
 import { evaluateNode } from './evaluate'
 import {
@@ -93,7 +94,8 @@ export const runEvaluation = async (
     timeout !== undefined || signal !== undefined
       ? deadline(signal, timeout, EVALUATION_TIMEOUT)
       : undefined
-  const root = armed ?? rootScope()
+  const root =
+    armed !== undefined ? signalScope(armed.signal, armed.settle) : new DeferredScope(undefined)
   const shielded = armed !== undefined && timeout !== undefined && artifact.shielded && evaluable
   const collector = reporting ? createErrorCollector() : undefined
   const recorder =
@@ -102,7 +104,7 @@ export const runEvaluation = async (
           artifact.issues.map((s) => s.issue).filter((i) => i.severity !== 'error')
         )
       : undefined
-  const base = createEvaluationContext(options, cache, root.signal, recorder)
+  const base = createEvaluationContext(options, cache, root, recorder)
   const boundary =
     evaluable && (collector !== undefined || shielded)
       ? holeBoundary(artifact, collector, shielded ? armed.expiry : undefined, recorder)
