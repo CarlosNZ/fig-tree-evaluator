@@ -124,18 +124,16 @@ describe('a body is sealed from its caller', () => {
 // ── The declaration layers ──────────────────────────────────────────
 
 describe('declarations govern what a body receives', () => {
-  const fig = () =>
-    build({
-      frag: {
-        expression: '$params',
-        parameters: {
-          required: { type: 'any' },
-          withDefault: { type: 'string', default: 'fallen back' },
-          bare: { required: false },
-          nullable: { type: ['string', 'null'], required: false },
-        },
-      },
-    })
+  const frag: FragmentDefinition = {
+    expression: '$params',
+    parameters: {
+      required: { type: 'any' },
+      withDefault: { type: 'string', default: 'fallen back' },
+      bare: { required: false },
+      nullable: { type: ['string', 'null'], required: false },
+    },
+  }
+  const fig = () => build({ frag })
 
   test('a default applies where the argument is absent', async () => {
     expect(await fig().evaluate({ $frag: { required: 1 } })).toEqual({
@@ -176,10 +174,15 @@ describe('declarations govern what a body receives', () => {
   })
 
   test('runtimeTypeCheck: false removes the check but not the null reading', async () => {
-    const loose = fig()
+    // Instance configuration, not a per-call option
+    const loose = new FigTree({
+      operators: [coreOperators],
+      fragments: { frag },
+      runtimeTypeCheck: false,
+    })
     const result = (await loose.evaluate(
       { $frag: { required: 1, withDefault: '$data.n' } },
-      { data: { n: 7 }, runtimeTypeCheck: false }
+      { data: { n: 7 } }
     )) as Record<string, unknown>
     expect(result.withDefault).toBe(7)
   })

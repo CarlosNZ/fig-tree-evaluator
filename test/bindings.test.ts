@@ -53,8 +53,9 @@ test('a drill miss is null — absence is not failure', async () => {
 
 test('strictDataPaths governs the $element drill too', async () => {
   const data = { users: [{}] }
+  const strict = new FigTree({ operators, strictDataPaths: true })
   await expect(
-    fig.evaluate({ $mapish: ['$data.users', '$element.name'] }, { data, strictDataPaths: true })
+    strict.evaluate({ $mapish: ['$data.users', '$element.name'] }, { data })
   ).rejects.toMatchObject({ code: 'missing-data-path' })
 })
 

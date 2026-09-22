@@ -39,10 +39,12 @@ const main = async () => {
     data: { orders: [{ total: 1 }, { total: 2 }] },
   })
   await show('a missing path is null — absence is not failure', '$data.user.phone', { data: {} })
-  await show('…unless strictDataPaths is on', '$data.user.phone', {
-    data: {},
-    strictDataPaths: true,
-  })
+  await show(
+    '…unless strictDataPaths is on — instance configuration, not a per-call option',
+    '$data.user.phone',
+    { data: {} },
+    new FigTree({ strictDataPaths: true })
+  )
   await show('a literal is data, never evaluated', { $literal: { $plus: [1, 2] } })
   await show('comments and undefined are consumed', { a: 1, '//': 'a note', b: undefined })
   await show('the static gate: a typo is refused before anything evaluates', {

@@ -48,31 +48,35 @@ test('the signal a body received is settled once the evaluation has returned', a
   expect(spy.contexts[0].signal.aborted).toBe(true)
 })
 
-test('context.options is the whole merged option set, frozen, merged per call', async () => {
+test('context.options is the whole option set: instance configuration with the call laid over', async () => {
   const spy = spyOp('opts', {})
   const fig = new FigTree({
     operators: [spy.definition],
     http: { baseEndpoint: 'https://x.test', headers: { a: '1' } },
     graphQL: { endpoint: 'https://g.test' },
+    data: { instance: true },
   })
-  await fig.evaluate({ $opts: {} }, { http: { headers: { b: '2' } } })
+  const data = { call: true }
+  await fig.evaluate({ $opts: {} }, { data, mode: 'throw' })
   const { options } = spy.contexts[0]
   // Blocks the body never declared an interest in are there all the same
-  expect(options.http).toEqual({ baseEndpoint: 'https://x.test', headers: { b: '2' } })
+  expect(options.http).toEqual({ baseEndpoint: 'https://x.test', headers: { a: '1' } })
   expect(options.graphQL).toEqual({ endpoint: 'https://g.test' })
-  expect(Object.isFrozen(options)).toBe(true)
+  expect(options.mode).toBe('throw')
+  // Per-call data is the caller's object, not a merge and not a copy
+  expect(options.data).toBe(data)
 })
 
-test('the per-call merge never writes back to the instance', async () => {
+test('a per-call option never writes back to the instance', async () => {
   const spy = spyOp('writeback', {})
-  const fig = new FigTree({ operators: [spy.definition], http: { baseEndpoint: 'https://x.test' } })
-  await fig.evaluate({ $writeback: {} }, { http: { baseEndpoint: 'https://call.test' } })
+  const fig = new FigTree({ operators: [spy.definition], data: { from: 'instance' } })
+  await fig.evaluate({ $writeback: {} }, { data: { from: 'call' } })
   await fig.evaluate({ $writeback: {} })
-  expect(spy.contexts[0].options.http?.baseEndpoint).toBe('https://call.test')
-  expect(spy.contexts[1].options.http?.baseEndpoint).toBe('https://x.test')
+  expect(spy.contexts[0].options.data).toEqual({ from: 'call' })
+  expect(spy.contexts[1].options.data).toEqual({ from: 'instance' })
 })
 
-test('every body in one evaluation shares the one frozen options object', async () => {
+test('every body in one evaluation shares the one options object', async () => {
   const outer = spyOp('outer', { value: { type: 'any' } })
   const inner = spyOp('inner', {})
   await new FigTree({ operators: [outer.definition, inner.definition] }).evaluate({
@@ -81,20 +85,25 @@ test('every body in one evaluation shares the one frozen options object', async 
   expect(outer.contexts[0].options).toBe(inner.contexts[0].options)
 })
 
-test('options are frozen at the block level too, but not below it', async () => {
-  const user = { name: 'Ada' }
-  const spy = spyOp('frozen', {})
-  await new FigTree({
+test('a call with no options runs under the instance’s own prepared object, unfrozen', async () => {
+  const spy = spyOp('prepared', {})
+  const data = { user: { name: 'Ada' } }
+  const fig = new FigTree({
     operators: [spy.definition],
     http: { baseEndpoint: 'https://x.test' },
-    data: { user },
-  }).evaluate({ $frozen: {} })
+    data,
+  })
+  await fig.evaluate({ $prepared: {} })
+  await fig.evaluate({ $prepared: {} })
   const { options } = spy.contexts[0]
-  expect(Object.isFrozen(options)).toBe(true)
-  expect(Object.isFrozen(options.http)).toBe(true)
-  // A level deeper is the caller's own object — freezing it would reach
-  // outside the library, so results may share it and it stays writable
-  expect(Object.isFrozen(options.data?.user)).toBe(false)
+  // One object for every call that supplies nothing: no merge, no copy
+  expect(spy.contexts[1].options).toBe(options)
+  // Nothing is frozen — the no-mutation promise is pinned by test
+  // (options-merge.test.ts), not enforced by a per-call walk
+  expect(Object.isFrozen(options)).toBe(false)
+  expect(Object.isFrozen(options.http)).toBe(false)
+  // Instance data is the host's object by reference, like per-call data
+  expect(options.data).toBe(data)
 })
 
 test('cache.memo is an identity passthrough when the node is not caching', async () => {

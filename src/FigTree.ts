@@ -32,11 +32,13 @@
  * replaced.
  */
 import type {
+  CallOptions,
   EvaluationOptions,
   EvaluationResult,
   FigTreeOptions,
   Merge,
   NoOptions,
+  OnlyCallOptions,
   ResultShape,
 } from './options'
 import type { Issue, ValidationResult } from './issues'
@@ -68,12 +70,18 @@ import { version } from './version'
 /** Everything an instance may swap, and may only swap together. */
 interface InstanceState {
   /**
-   * The stored options, registry keys included. Those two keys are
-   * stripped at the two points where options leave the instance —
-   * `getOptions()` and the context an evaluation runs under — so the
-   * definitions, and the clients closed inside them, never reach a body.
+   * The stored options, registry keys included — the base the next
+   * `updateOptions()` merges over.
    */
   options: FigTreeOptions
+  /**
+   * The same options with the registry keys stripped, prepared once here
+   * rather than on every call: what `getOptions()` copies, and the object
+   * an evaluation that supplies no options of its own runs under as-is.
+   * The definitions, and the clients closed inside them, never reach a
+   * body.
+   */
+  evaluation: EvaluationOptions
   registry: OperatorRegistry
   /**
    * Built with the registry and discarded with it. An artifact bakes in
@@ -119,8 +127,9 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
   // `operators`, an array, replaces
   const options = mergeOptions(previous === null ? {} : previous.options, update)
   checkKillSwitchOptions(options)
+  const evaluation = withoutRegistryKeys(options)
   if (previous !== null && !touchesRegistry(update))
-    return { options, registry: previous.registry, parseCache: previous.parseCache }
+    return { options, evaluation, registry: previous.registry, parseCache: previous.parseCache }
 
   const registry = buildRegistry({
     // Omitted `operators` means the core set only — no HTTP, no SQL
@@ -132,6 +141,7 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
   })
   return {
     options,
+    evaluation,
     registry,
     parseCache: new ParseCache({
       compile: (expression) => compile(expression, registry),
@@ -140,7 +150,7 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
   }
 }
 
-/** The stored or merged options as they leave the instance. */
+/** The stored options as they leave the instance. */
 const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
   const stripped = { ...options }
   delete stripped.operators
@@ -233,7 +243,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * question here is "what was I configured with".
    */
   getOptions(): EvaluationOptions {
-    return copyOptions(withoutRegistryKeys(this.state.options))
+    return copyOptions(this.state.evaluation)
   }
 
   /**
@@ -267,20 +277,24 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * Full static-issue report ("validate() — the process" in
    * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
    * on expression content — even hard parse errors come back as
-   * error-severity issues. Throws only on misuse of the method itself
-   * (per-call `operators`/`fragments`, which are constructor-only).
+   * error-severity issues. Throws only on misuse of the method itself (a
+   * per-call option that is instance configuration). It takes the same
+   * per-call shape as `evaluate()`, of which only `data` — the sample data
+   * for the missing-path check — has any bearing on a static report.
    */
-  validate(expression: unknown, options: FigTreeOptions = {}): ValidationResult {
-    rejectPerCallRegistry(options)
+  validate(expression: unknown, options?: CallOptions): ValidationResult {
+    const effective =
+      options === undefined
+        ? this.state.evaluation
+        : withCallOptions(this.state.evaluation, options)
     const artifact = compile(expression, this.state.registry)
-    const merged = mergeOptions(this.state.options, options)
-    const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
+    const issues = [...limitIssues(artifact, effective), ...artifact.issues.map((s) => s.issue)]
 
     // The sample-data check walks the stored dependency list, which holds
     // segments — the form `resolvePath` accepts, so nothing is re-parsed
-    if (merged.data !== undefined) {
+    if (effective.data !== undefined) {
       for (const dataPath of artifact.dependencies.dataPaths.values()) {
-        if (!resolvePath(merged.data, dataPath).found)
+        if (!resolvePath(effective.data, dataPath).found)
           issues.push({
             severity: 'warning',
             code: ErrorCodes.missingDataPath,
@@ -351,8 +365,13 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * first uncaught runtime failure, rejects the call with a
    * `FigTreeError`. With `mode: 'report'` or `trace` in effect it returns
    * the `EvaluationResult` envelope instead, and the return TYPE follows
-   * the merged effective options — the instance's, overridden by the
-   * call's, in either direction.
+   * the effective options — the instance's, overridden by the call's, in
+   * either direction.
+   *
+   * The call may supply the five request-scoped options only
+   * (`CallOptions`); anything else is instance configuration and is
+   * refused. A call with no options runs under the instance's prepared
+   * options object as-is, so the everyday call pays no merge at all.
    *
    * Inert input skips the parse entirely: the constancy probe recognizes a
    * value with nothing to evaluate or normalize and returns it by identity
@@ -361,13 +380,11 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * trace to echo — but stays on under `report`, which wants an envelope
    * rather than nodes.
    */
-  evaluate<CallOpts extends FigTreeOptions = NoOptions>(
+  evaluate<CallOpts extends CallOptions = NoOptions>(
     expression: unknown,
-    options?: CallOpts
+    options?: OnlyCallOptions<CallOpts>
   ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
-    return this.run(expression, options ?? {}) as Promise<
-      ResultShape<Merge<InstanceOpts, CallOpts>>
-    >
+    return this.run(expression, options) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
   }
 
   /**
@@ -376,24 +393,23 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * cannot be produced from inside, where the options are values rather
    * than types, so the assertion happens once, above.
    */
-  private async run(expression: unknown, options: FigTreeOptions): Promise<unknown> {
-    rejectPerCallRegistry(options)
-    const merged = mergeOptions(this.state.options, options)
-    checkKillSwitchOptions(merged)
-    const reporting = merged.mode === 'report'
-    const enveloped = reporting || merged.trace === true
+  private async run(expression: unknown, call: CallOptions | undefined): Promise<unknown> {
+    const options =
+      call === undefined ? this.state.evaluation : withCallOptions(this.state.evaluation, call)
+    const reporting = options.mode === 'report'
+    const enveloped = reporting || options.trace === true
 
     // An inert input is returned by identity without being parsed. The
     // verdict is memoized in the cache's identity layer, so a repeated
     // constant container costs a pointer lookup rather than another walk.
     // Under `trace` the skip is off: a skipped parse has no nodes to echo.
     const resolved =
-      merged.trace === true
+      options.trace === true
         ? ({ kind: 'artifact', artifact: compile(expression, this.state.registry) } as const)
         : this.state.parseCache.resolve(expression)
     if (resolved.kind === 'inert') {
-      if (merged.maxDepth !== undefined && resolved.depth > merged.maxDepth) {
-        const issue = depthIssue(resolved.depth, merged.maxDepth)
+      if (options.maxDepth !== undefined && resolved.depth > options.maxDepth) {
+        const issue = depthIssue(resolved.depth, options.maxDepth)
         if (!reporting) throw staticError(issue, [issue])
         return envelope(null, [staticError(issue)])
       }
@@ -401,7 +417,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     }
 
     const { artifact } = resolved
-    const issues = [...limitIssues(artifact, merged), ...artifact.issues.map((s) => s.issue)]
+    const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
     const errors = issues.filter((issue) => issue.severity === 'error')
     // Under report a static failure is reported like any other, and ALL of
     // it: the pass collects the whole stream anyway, and a host that chose
@@ -415,7 +431,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
       )
     }
 
-    const outcome = await runEvaluation(artifact, withoutRegistryKeys(merged), this.results)
+    const outcome = await runEvaluation(artifact, options, this.results)
     return enveloped ? outcome : outcome.result
   }
 }
@@ -431,39 +447,72 @@ const envelope = (result: unknown, errors: FigTreeError[]): EvaluationResult => 
 })
 
 /**
- * The constructor/`updateOptions`-only options. Tested by value, not by key
- * presence, because the merge rule ignores an `undefined` value — so
- * `{ operators: config.operators }` with nothing configured means "not
- * supplied", exactly as it would for any other option.
+ * The request-scoped options — the whole of what a call may supply
+ * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
+ * A `Set` of the keys of `CallOptions`, spelled out because a type has no
+ * runtime form; the two are kept in step by the type-level test.
  */
-const rejectPerCallRegistry = (options: FigTreeOptions) => {
-  if (options.operators !== undefined || options.fragments !== undefined)
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message:
-        "'operators' and 'fragments' are not per-call options — register them at construction or via updateOptions()",
-      path: [],
-    })
-  // The store is instance-lived, so a per-call block could only be
-  // ignored. Refusing is the reversible direction: honouring it later is
-  // additive, where quietly ignoring it and then honouring it would change
-  // the meaning of expressions already in the field
-  if (options.cache !== undefined)
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message:
-        "'cache' is not a per-call option — configure it at construction or via updateOptions()",
-      path: [],
-    })
+const CALL_OPTION_KEYS: ReadonlySet<string> = new Set<keyof CallOptions>([
+  'data',
+  'signal',
+  'timeout',
+  'mode',
+  'trace',
+])
+
+/**
+ * The instance's prepared options with a call's laid over them: a flat
+ * override, one key at a time, with no merging inside a value — per-call
+ * `data` REPLACES the instance block, and is used by reference. Keys set
+ * to `undefined` are ignored, so `{ data: maybeData }` with nothing to
+ * pass means "not supplied". A call naming any other option is refused:
+ * the rest of `FigTreeOptions` is instance configuration, and honouring it
+ * per call would mean merging blocks and validating the whole shape on
+ * every evaluation for a facility no call site needs. The instance object
+ * is never written to — the override is a fresh copy — and a call whose
+ * keys are all `undefined` runs under the instance object itself.
+ */
+const withCallOptions = (instance: EvaluationOptions, call: CallOptions): EvaluationOptions => {
+  let merged: Record<string, unknown> | undefined
+  for (const key in call) {
+    const value = call[key as keyof CallOptions]
+    // Tested before the key is, so `{ maxDepth: config.maxDepth }` with
+    // nothing configured is "not supplied" rather than misuse
+    if (value === undefined) continue
+    if (!CALL_OPTION_KEYS.has(key)) throw notPerCallError(key)
+    merged ??= { ...instance }
+    merged[key] = value
+  }
+  if (merged === undefined) return instance
+  // The instance's own were checked when they were set; only the call's
+  // values are new
+  checkKillSwitchOptions(call)
+  return merged as EvaluationOptions
 }
+
+/**
+ * The refusal names the request-scoped set, since the caller's next
+ * question is what IS allowed. `cache` is the one that might have been
+ * expected to work — the store is instance-lived, so a per-call block
+ * could only ever be ignored, and refusing is the reversible direction:
+ * honouring it later is additive, where quietly ignoring it and then
+ * honouring it would change the meaning of expressions already in the
+ * field.
+ */
+const notPerCallError = (key: string): FigTreeError =>
+  new FigTreeError({
+    code: ErrorCodes.invalidOptions,
+    message: `'${key}' is not a per-call option — a call may supply data, signal, timeout, mode and trace; configure the rest at construction or via updateOptions()`,
+    path: [],
+  })
 
 /**
  * The two kill-switch options ("Resource limits" in the Options area of
  * docs-dev/v3-specs/v3-api.md), checked wherever options arrive — at
  * construction and `updateOptions()` (loud at registration) and on the
- * merged options of every call (a per-call override can be wrong too).
- * `undefined` is the one spelling of "no deadline": zero, a negative, a
- * non-finite number or a non-number is refused rather than read as one.
+ * call's own options (a per-call override can be wrong too). `undefined`
+ * is the one spelling of "no deadline": zero, a negative, a non-finite
+ * number or a non-number is refused rather than read as one.
  */
 const checkKillSwitchOptions = (options: FigTreeOptions) => {
   const { timeout, signal } = options
@@ -501,15 +550,15 @@ const isAbortSignal = (value: unknown): value is AbortSignal =>
  * The two option-dependent checks, run per call against the artifact's
  * stored counts — never stored in the artifact (option-independence).
  */
-const limitIssues = (artifact: ParseArtifact, merged: FigTreeOptions): Issue[] => {
+const limitIssues = (artifact: ParseArtifact, options: EvaluationOptions): Issue[] => {
   const issues: Issue[] = []
-  if (merged.maxDepth !== undefined && artifact.maxDepth > merged.maxDepth)
-    issues.push(depthIssue(artifact.maxDepth, merged.maxDepth))
-  if (merged.maxNodes !== undefined && artifact.nodeCount > merged.maxNodes)
+  if (options.maxDepth !== undefined && artifact.maxDepth > options.maxDepth)
+    issues.push(depthIssue(artifact.maxDepth, options.maxDepth))
+  if (options.maxNodes !== undefined && artifact.nodeCount > options.maxNodes)
     issues.push({
       severity: 'error',
       code: ErrorCodes.maxNodesExceeded,
-      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${merged.maxNodes}`,
+      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${options.maxNodes}`,
       path: [],
     })
   return issues

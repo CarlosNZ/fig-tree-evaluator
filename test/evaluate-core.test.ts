@@ -5,7 +5,7 @@
  * skeleton splicing, `$data` references, the static-error gate, the probe
  * fast path and the per-call limits. Throw mode only.
  */
-import { FigTree, FigTreeError } from '../src'
+import { FigTree, FigTreeError, type CallOptions } from '../src'
 import { boomOp, echoOp } from './fixtures/evalOperators'
 
 const fig = new FigTree({ operators: [echoOp(), boomOp()] })
@@ -99,10 +99,11 @@ describe('$data references', () => {
     expect(result.user).toBe(data.user)
   })
 
-  test('instance data merges under per-call data, one level deep', async () => {
+  test('per-call data replaces instance data wholesale — no merge, no copy', async () => {
     const instance = new FigTree({ operators: [echoOp()], data: { org: 'Acme', user: { a: 1 } } })
-    const result = await instance.evaluate('$data', { data: { user: { b: 2 } } })
-    expect(result).toEqual({ org: 'Acme', user: { b: 2 } })
+    const perCall = { user: { b: 2 } }
+    expect(await instance.evaluate('$data', { data: perCall })).toBe(perCall)
+    expect(await instance.evaluate('$data')).toEqual({ org: 'Acme', user: { a: 1 } })
   })
 
   test('drilled paths, aliases and projection resolve through the shared resolver', async () => {
@@ -121,16 +122,15 @@ describe('$data references', () => {
   })
 
   test('strictDataPaths turns a miss into a catchable runtime failure', async () => {
-    const error = await rejection(fig.evaluate('$data.user.phone', { data, strictDataPaths: true }))
+    // Instance configuration: not one of the per-call options
+    const strict = new FigTree({ operators: [echoOp()], strictDataPaths: true })
+    const error = await rejection(strict.evaluate('$data.user.phone', { data }))
     expect(error).toBeInstanceOf(FigTreeError)
     expect(error.code).toBe('missing-data-path')
     expect(error.path).toEqual([])
-    expect(
-      await fig.evaluate(
-        { $echo: '$data.user.phone', fallback: 'n/a' },
-        { data, strictDataPaths: true }
-      )
-    ).toBe('n/a')
+    expect(await strict.evaluate({ $echo: '$data.user.phone', fallback: 'n/a' }, { data })).toBe(
+      'n/a'
+    )
   })
 })
 
@@ -162,13 +162,15 @@ describe('the static-error gate', () => {
     expect(error.code).toBe('unknown-operator')
   })
 
-  test('per-call operators / fragments are a method-misuse throw', async () => {
-    await expect(fig.evaluate(1, { operators: [] })).rejects.toMatchObject({
-      code: 'invalid-options',
-    })
-    await expect(fig.evaluate(1, { fragments: {} })).rejects.toMatchObject({
-      code: 'invalid-options',
-    })
+  test('a configuration option passed per call is a method-misuse throw', async () => {
+    // Typed out of the signature, so the runtime refusal is reached by
+    // widening — what a JS host, or a TS host spreading a config, would do
+    for (const misuse of [{ operators: [] }, { fragments: {} }, { maxDepth: 5 }, { http: {} }]) {
+      await expect(fig.evaluate(1, misuse as CallOptions)).rejects.toMatchObject({
+        code: 'invalid-options',
+        message: /not a per-call option/,
+      })
+    }
   })
 })
 
@@ -182,15 +184,17 @@ describe('limits at evaluation', () => {
   test('the user maxDepth applies to inert input too, via the probe', async () => {
     const inert = nest(10, 'leaf')
     expect(await fig.evaluate(inert)).toBe(inert)
-    const error = await rejection(fig.evaluate(inert, { maxDepth: 5 }))
+    const limited = new FigTree({ operators: [echoOp()], maxDepth: 5 })
+    const error = await rejection(limited.evaluate(inert))
     expect(error.code).toBe('max-depth')
   })
 
   test('maxNodes counts evaluable nodes', async () => {
+    const limited = new FigTree({ operators: [echoOp()], maxNodes: 500 })
     const items = Array.from({ length: 600 }, (_, i) => ({ $echo: i }))
-    const error = await rejection(fig.evaluate({ items }, { maxNodes: 500 }))
+    const error = await rejection(limited.evaluate({ items }))
     expect(error.code).toBe('max-nodes')
     const options = Array.from({ length: 200 }, (_, i) => ({ label: `L${i}`, value: i }))
-    expect(await fig.evaluate({ options }, { maxNodes: 500 })).toEqual({ options })
+    expect(await limited.evaluate({ options })).toEqual({ options })
   })
 })

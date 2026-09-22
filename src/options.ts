@@ -21,8 +21,39 @@ import type { FragmentDefinition } from './fragments'
  */
 export type EvaluationOptions = Omit<FigTreeOptions, 'operators' | 'fragments'>
 
+/**
+ * The request-scoped options, and so the only ones a call may supply
+ * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md;
+ * ruled September 2026). Everything else in `FigTreeOptions` is instance
+ * configuration, set at construction or via `updateOptions()`. A call
+ * naming any other key is refused (`invalid-options`).
+ *
+ * A per-call value REPLACES the instance value for that evaluation —
+ * `data` included, which is used by reference: the object the caller
+ * passed is the object every body and `$data` reference reads, uncopied
+ * and unfrozen. Keys set to `undefined` are ignored.
+ */
+export type CallOptions = Pick<FigTreeOptions, 'data' | 'signal' | 'timeout' | 'mode' | 'trace'>
+
+/**
+ * `CallOpts` with every key outside `CallOptions` typed `never`, so a
+ * call mixing a legitimate key with a configuration one
+ * (`{ data, maxDepth: 5 }`) is a type error and not only a runtime
+ * refusal. Excess-property checking alone does not reach a type-parameter
+ * position: inference accepts any object literal that overlaps the
+ * constraint by one key.
+ */
+export type OnlyCallOptions<CallOpts> = CallOpts & {
+  [Key in Exclude<keyof CallOpts, keyof CallOptions>]: never
+}
+
 export interface FigTreeOptions {
   // ── Evaluation environment ──────────────────────────────
+  /**
+   * Held by reference and never copied or frozen: the block an evaluation
+   * reads is the object the host supplied, per call or to the instance.
+   * The engine never writes to it (pinned by test, not by code).
+   */
   data?: Record<string, unknown>
   /**
    * Registered at construction or via `updateOptions()`, never per call:

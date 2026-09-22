@@ -242,19 +242,21 @@ describe('vars cycles, shadowing, unreferenced', () => {
   })
 })
 
-describe('maxDepth / maxNodes — per call, from stored counts', () => {
+describe('maxDepth / maxNodes — instance configuration, compared against stored counts', () => {
   const deep = { a: { b: { c: { d: { e: { $plus: [1, 2] } } } } } }
+  const withLimits = (limits: { maxDepth?: number; maxNodes?: number }) =>
+    new FigTree({ operators: [parseOps()], ...limits })
 
-  test('limits are compared per call — the artifact stays option-independent', () => {
+  test('limits are compared at validation — the artifact stays option-independent', () => {
     expect(fig.validate(deep).valid).toBe(true)
-    const limited = fig.validate(deep, { maxDepth: 2 })
+    const limited = withLimits({ maxDepth: 2 }).validate(deep)
     expect(limited.issues.map((issue) => issue.code)).toContain('max-depth')
     expect(fig.validate(deep).valid).toBe(true)
   })
 
   test('maxNodes counts evaluable nodes — the one operator here', () => {
-    expect(fig.validate(deep, { maxNodes: 1 }).valid).toBe(true)
-    const result = fig.validate(deep, { maxNodes: 0 })
+    expect(withLimits({ maxNodes: 1 }).validate(deep).valid).toBe(true)
+    const result = withLimits({ maxNodes: 0 }).validate(deep)
     expect(result.issues.map((issue) => issue.code)).toContain('max-nodes')
   })
 })

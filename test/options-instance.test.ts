@@ -10,7 +10,7 @@
  * the same rule as per-call options. Two of that file's `excludeOperators`
  * cases were really registry-replacement tests and re-express here.
  */
-import { FigTree, ErrorCodes, isFigTreeError, type FigTreeError } from '../src'
+import { FigTree, ErrorCodes, isFigTreeError, type CallOptions, type FigTreeError } from '../src'
 import { spyOp } from './fixtures/evalOperators'
 import { makeOp } from './fixtures/registryOptions'
 
@@ -27,9 +27,10 @@ const updateInvalid = (fig: FigTree, options: Parameters<FigTree['updateOptions'
   throw new Error('expected updateOptions to throw')
 }
 
-describe('updateOptions obeys the same merge rule as a per-call override', () => {
-  // One case table over both entry points: that is what makes "one rule,
-  // uniform" a proof rather than an assertion.
+describe('updateOptions merges by the two-level rule', () => {
+  // The rule is the instance's alone: per-call options are a flat override
+  // of five request-scoped keys and never reach a configuration block
+  // (options-merge.test.ts), so there is one entry point to prove it on
   const cases: { name: string; instance: object; update: object; expected: unknown }[] = [
     {
       name: 'a block merges, keeping untouched keys',
@@ -45,13 +46,6 @@ describe('updateOptions obeys the same merge rule as a per-call override', () =>
     },
   ]
 
-  it.each(cases)('per-call: $name', async ({ instance, update, expected }) => {
-    const spy = spyOp('peek', {})
-    const fig = new FigTree({ operators: [spy.definition], ...instance })
-    await fig.evaluate({ $peek: {} }, update)
-    expect(spy.contexts[0].options.http).toEqual(expected)
-  })
-
   it.each(cases)('updateOptions: $name', async ({ instance, update, expected }) => {
     const spy = spyOp('peek', {})
     const fig = new FigTree({ operators: [spy.definition], ...instance })
@@ -60,21 +54,26 @@ describe('updateOptions obeys the same merge rule as a per-call override', () =>
     expect(spy.contexts[0].options.http).toEqual(expected)
   })
 
-  it('merges data rather than replacing it, where v2 replaced', async () => {
+  it('replaces data rather than merging it — data is state, not configuration', async () => {
     const fig = new FigTree({ data: { one: 1, two: 2 } })
-    fig.updateOptions({ data: { two: 22, three: 3 } })
-    expect(await fig.evaluate(['$data.one', '$data.two', '$data.three'])).toEqual([1, 22, 3])
+    const next = { two: 22, three: 3 }
+    fig.updateOptions({ data: next })
+    expect(await fig.evaluate(['$data.one', '$data.two', '$data.three'])).toEqual([null, 22, 3])
+    // And by reference: the instance holds the host's object, uncopied
+    expect(await fig.evaluate('$data')).toBe(next)
   })
 
   it('accepts the registry keys, which are rejected per call', async () => {
     const fig = new FigTree()
     expect(() => fig.updateOptions({ operators: [namedOp('alpha')] })).not.toThrow()
-    await expect(fig.evaluate({ $alpha: {} }, { operators: [] })).rejects.toMatchObject({
-      code: ErrorCodes.invalidOptions,
-    })
+    await expect(
+      fig.evaluate({ $alpha: {} }, { operators: [] } as CallOptions)
+    ).rejects.toMatchObject({ code: ErrorCodes.invalidOptions })
     // An undefined value means "not supplied", exactly as the merge rule
     // says, so an unset config key is not a misuse of the method
-    await expect(fig.evaluate({ $alpha: {} }, { operators: undefined })).resolves.toBe('alpha')
+    await expect(
+      fig.evaluate({ $alpha: {} }, { operators: undefined } as CallOptions)
+    ).resolves.toBe('alpha')
   })
 
   it('is a no-op when given nothing', async () => {
@@ -148,9 +147,12 @@ describe('getOptions is a snapshot', () => {
   })
 
   it('reports options as supplied, injecting no defaults', () => {
-    const fig = new FigTree({ data: { one: 1 } })
-    fig.updateOptions({ data: { two: 2 } })
-    expect(fig.getOptions()).toStrictEqual({ data: { one: 1, two: 2 } })
+    const fig = new FigTree({ data: { one: 1 }, http: { baseEndpoint: 'https://x.test' } })
+    fig.updateOptions({ data: { two: 2 }, http: { headers: { a: '1' } } })
+    expect(fig.getOptions()).toStrictEqual({
+      data: { two: 2 },
+      http: { baseEndpoint: 'https://x.test', headers: { a: '1' } },
+    })
   })
 
   it('returns a fresh object each call that cannot write back', async () => {

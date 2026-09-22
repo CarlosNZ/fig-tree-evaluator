@@ -134,7 +134,10 @@ describe('inert inputs', () => {
     const { fig } = rig()
     const deep = { a: { b: { c: { d: 1 } } } }
     await fig.evaluate(deep)
-    await expect(fig.evaluate(deep, { maxDepth: 2 })).rejects.toMatchObject({
+    // `maxDepth` touches no registry key, so the update keeps the parse
+    // cache — and the memoized verdict with it
+    fig.updateOptions({ maxDepth: 2 })
+    await expect(fig.evaluate(deep)).rejects.toMatchObject({
       code: ErrorCodes.maxDepthExceeded,
     })
   })

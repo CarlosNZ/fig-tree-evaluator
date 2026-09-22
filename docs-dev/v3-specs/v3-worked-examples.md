@@ -97,7 +97,6 @@ import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
 
 const fig = new FigTree({
   operators: [coreOperators, httpOperators()], // no argument → FetchClient over global fetch (Packaging ruling)
-  data: { org: 'Acme' }, // instance-level data
   operatorDefaults: { join: { delimiter: ', ' } },
   cache: { maxSize: 50 },
 })
@@ -110,7 +109,7 @@ What now exists inside the instance — and what doesn't:
 | operator registry            | canonical name → definition for every core operator plus `http`/`graphQL` (client closed over); alias map (`+` → `plus`, …) — collision-checked at this moment |
 | fragment registry            | empty (fragments would be **compiled here**, at registration — none supplied)                                                                                  |
 | validated `operatorDefaults` | `join.delimiter = ', '` — checked against metadata (parameter exists, optional, type `string`); a typo or a _required_-parameter target would have thrown here |
-| options snapshot             | `data`, cache config, everything else                                                                                                                          |
+| options snapshot             | cache config, `operatorDefaults`, everything else                                                                                                              |
 | parse cache                  | identity `WeakMap` + content LRU — **both empty**                                                                                                              |
 | result cache                 | store bound to `maxSize: 50` — **empty**                                                                                                                       |
 
@@ -129,7 +128,8 @@ const exprA = {
     returnPath: 'rate',
   },
 }
-const dataA = { currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
+// Per-call `data` replaces the instance's (Options), so the shared `org` rides in every call's block
+const dataA = { org: 'Acme', currency: 'NZD', team: [{ name: 'Ada' }, { name: 'Grace' }] }
 
 await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme', team: 'Ada, Grace', rate: 0.61 }
 ```
@@ -156,7 +156,7 @@ await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme',
 
 **Evaluate** — three holes, concurrently:
 
-- `greeting`: instance `data` merges under per-call `data` → `org` resolves → `'Welcome to Acme'`. Pure operator, effective `useCache` false (metadata default) → computed, **not** memoized.
+- `greeting`: `org` resolves from the call's `data` — the one block an evaluation reads, by reference → `'Welcome to Acme'`. Pure operator, effective `useCache` false (metadata default) → computed, **not** memoized.
 - `team`: the `[*]` projection yields `['Ada', 'Grace']`; `join`'s effective `delimiter` comes from `operatorDefaults` → `'Ada, Grace'`.
 - `rate`: I/O, effective `useCache` **true** (metadata default). Result-cache lookup on the **effective request**:
 
@@ -245,7 +245,11 @@ await fig.evaluate(exprB2, { data: { tier: 'silver' } }) // → ['standard-suppo
 
 ```js
 await fig.evaluate(exprA, {
-  data: { currency: 'AUD', team: [{ name: 'Ada' }, { name: 'Grace' }, { name: 'Alan' }] },
+  data: {
+    org: 'Acme',
+    currency: 'AUD',
+    team: [{ name: 'Ada' }, { name: 'Grace' }, { name: 'Alan' }],
+  },
 })
 // → { greeting: 'Welcome to Acme', team: 'Ada, Grace, Alan', rate: 0.7301 }
 

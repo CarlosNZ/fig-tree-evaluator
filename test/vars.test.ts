@@ -71,6 +71,8 @@ describe('a var evaluates at most once, and only if referenced', () => {
 
 describe('the scope chain', () => {
   const fig = () => new FigTree({ operators: [echoOp()] })
+  // `strictDataPaths` is instance configuration, not a per-call option
+  const strict = () => new FigTree({ operators: [echoOp()], strictDataPaths: true })
 
   test('an inner block shadows an outer name', async () => {
     expect(
@@ -111,22 +113,19 @@ describe('the scope chain', () => {
     }
     expect(await fig().evaluate(expression)).toEqual({ value: null })
 
-    const error = await rejection(fig().evaluate(expression, { strictDataPaths: true }))
+    const error = await rejection(strict().evaluate(expression))
     expect(error).toBeInstanceOf(FigTreeError)
     expect(error.code).toBe('missing-data-path')
   })
 
   test('a fallback catches that failure, as it does a data-path miss', async () => {
     expect(
-      await fig().evaluate(
-        {
-          operator: 'echo',
-          vars: { user: { $echo: { value: { name: 'Ada' } } } },
-          value: '$vars.user.nickname',
-          fallback: 'Anonymous',
-        },
-        { strictDataPaths: true }
-      )
+      await strict().evaluate({
+        operator: 'echo',
+        vars: { user: { $echo: { value: { name: 'Ada' } } } },
+        value: '$vars.user.nickname',
+        fallback: 'Anonymous',
+      })
     ).toBe('Anonymous')
   })
 
