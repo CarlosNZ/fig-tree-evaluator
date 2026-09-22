@@ -186,34 +186,18 @@ export class ResultCache {
   }
 
   /**
-   * Make every entry this instance has written so far unreachable, without
-   * touching the store. Sync and total: `store.set()` may be asynchronous,
-   * and a unit may already be in flight, so entries can land after the
-   * call either way — the bump makes every envelope written under this
-   * instance's generation, or a lower one, read as a miss the moment the
-   * method returns, and `write()` refuses a result captured under the old
-   * one. The counter is per instance, so in a store shared between
-   * instances an envelope another instance wrote under a higher generation
-   * stays reachable.
-   *
-   * The instance calls this on a registry-affecting `updateOptions()`: a
-   * result key names the operator and its resolved parameters, nothing of
-   * the definition, so a result an old definition computed would otherwise
-   * be served to a new one registered under the same name.
-   */
-  invalidate(): void {
-    this.current += 1
-  }
-
-  /**
    * Sync and all-or-nothing ("clearCache()" in
-   * docs-dev/v3-specs/v3-evaluator-methods.md): the generation bump plus
-   * the store's own `clear()`, which may be asynchronous and so cannot be
-   * what makes the guarantee hold. In a shared store, entries other
-   * instances wrote stay reachable to them until `store.clear()` lands.
+   * docs-dev/v3-specs/v3-evaluator-methods.md). The generation bump is
+   * what makes it total for this instance: `store.clear()` may be
+   * asynchronous, and a request may already be in flight, so entries can
+   * outlive the call either way — bumping the counter makes every envelope
+   * written under this instance's generation, or a lower one, read as a
+   * miss the moment the method returns. The counter is per instance, so in
+   * a store shared between instances an envelope another instance wrote
+   * under a higher generation stays reachable until `store.clear()` lands.
    */
   clear(): void {
-    this.invalidate()
+    this.current += 1
     try {
       void Promise.resolve(this.store.clear()).catch(noop)
     } catch {

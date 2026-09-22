@@ -120,7 +120,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
       ? ctx
       : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope) }
   const note = noteChannel(ctx)
-  const context = createOperatorContext(bodyCtx, definition.name, useCache, note)
+  const context = createOperatorContext(bodyCtx, definition, useCache, note)
 
   try {
     // The common node is not caching: straight to the body, with no

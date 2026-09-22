@@ -26,13 +26,13 @@
  *
  * The RESULT cache is deliberately not in that record. It keys resolved
  * runtime values where the compile cache keys the authored input, and the
- * two invalidation stories differ: a registry-affecting change drops every
- * artifact and moves the result generation on (a result key names the
- * operator, not its definition), while `clearCache()` does only the
- * latter and drops no artifact. Putting it in a record documented as "may
- * only swap together" would misstate that in the one place the code
- * states it, so it lives beside the record and is reconfigured rather
- * than replaced.
+ * two invalidation stories are opposites: a registry-affecting change
+ * drops every artifact and touches no result (a key carries the
+ * definition's fingerprint, so a redefinition keys apart on its own),
+ * while `clearCache()` does exactly the reverse. Putting it in a record
+ * documented as "may only swap together" would invert that invariant in
+ * the one place the code states it, so it lives beside the record and is
+ * reconfigured rather than replaced.
  */
 import type {
   CallOptions,
@@ -204,12 +204,11 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * too. Any other update carries the registry and the cache across
    * untouched, since nothing about either could have changed.
    *
-   * A registry-affecting update also moves the result store's generation
-   * on, so no result an old definition computed is served to a new one
-   * registered under the same name. A `CompiledExpression` compiled before
-   * the update keeps the old registry and the shared store, so it may
-   * still share results with the new definition; recompile it after such
-   * an update.
+   * The result store is left alone by every update, a redefinition under
+   * the same name included: a result key carries the definition's
+   * fingerprint (src/evaluate/memo.ts), so a new definition keys apart
+   * from its predecessor, and a `CompiledExpression` compiled before the
+   * update keeps answering from its own definition's entries.
    *
    * The static return type of `evaluate()` follows the constructor's
    * options and cannot follow an update: after `updateOptions({ mode })`
@@ -226,7 +225,6 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     const cache = readCacheConfig(next.options.cache)
     this.state = next
     this.results.configure(cache)
-    if (touchesRegistry(options)) this.results.invalidate()
   }
 
   /**
@@ -399,9 +397,15 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     // The conditional shape is a promise to the caller about which of the
     // two the value is; it cannot be produced from inside, where the
     // options are values rather than types, so the assertion happens once
-    return evaluateEntry(this.state, this.results, expression, options) as Promise<
-      ResultShape<Merge<InstanceOpts, CallOpts>>
-    >
+    const { state } = this
+    return evaluateEntry(
+      state.evaluation,
+      this.results,
+      expression,
+      options,
+      () => state.compileCache.resolve(expression),
+      () => compileWithRegistry(expression, state.registry)
+    ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
   }
 
   /**
@@ -412,13 +416,15 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * `evaluate()` that is the tail half of this class's, so the two answer
    * identically for the same data.
    *
-   * A compiled expression is a SNAPSHOT: it closes over the whole instance
-   * state current when it compiled — registry, options, compile cache — so
-   * its answer for given data is fixed however this instance is updated
-   * afterwards. To pick up an `updateOptions()`, compile again. The one
+   * A compiled expression is a SNAPSHOT: it closes over the registry and
+   * the options current when it compiled — the two things its path reads,
+   * and nothing more, so a handle never keeps a superseded compile cache
+   * alive — so its answer for given data is fixed however this instance is
+   * updated afterwards. To pick up an `updateOptions()`, compile again. The one
    * thing it shares live is the result store, which is the point (one
-   * request memoized once per instance, however many handles ask); see
-   * `updateOptions()` for the residual that sharing leaves.
+   * request memoized once per instance, however many handles ask), and
+   * safe because a result key carries its definition's fingerprint: a
+   * handle held across a redefinition keeps its own entries.
    *
    * The name says nothing about serializability, exactly as
    * `new RegExp()` and `Ajv.compile()` say nothing: the handle holds live
@@ -426,49 +432,56 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * serializable thing, and `prettyPrint()` is a rendering of it.
    */
   compile(expression: unknown): CompiledExpression<InstanceOpts> {
+    const { state } = this
     return new CompiledExpression(
       expression,
-      this.state.compileCache.resolve(expression),
-      this.state,
+      state.compileCache.resolve(expression),
+      state.evaluation,
+      state.registry,
       this.results
     )
   }
 }
 
 /**
- * An evaluation under a state, shared by `evaluate()` and
- * `CompiledExpression.evaluate()` — which is what makes a handle answer
- * exactly as the instance would have. `async` so that a refused per-call
- * option rejects rather than throws, like every other failure.
+ * An evaluation, shared by `evaluate()` and `CompiledExpression.evaluate()`
+ * — which is what makes a handle answer exactly as the instance would
+ * have. `async` so that a refused per-call option rejects rather than
+ * throws, like every other failure.
  *
- * The call runs under the state's prepared options object as-is when it
+ * The call runs under the prepared instance options as-is when it
  * supplies none — so the everyday call pays no merge — else the call's
- * laid over it. A handle passes the entry it holds; the instance passes
- * none and the state's cache resolves the expression, after the options
- * have been checked so a refused call compiles nothing.
+ * laid over them. Where the compiled form comes from is the caller's, in
+ * two thunks called only after the options have been checked, so a
+ * refused call compiles nothing: `resolve` answers with the cache entry
+ * (the instance's cache, or the entry a handle holds), and `compile`
+ * answers with a full artifact for the one case an inert verdict will not
+ * do (below).
  *
  * An inert entry is returned by identity without being compiled; the
  * verdict is memoized in the cache's identity layer, so a repeated constant
  * container costs a pointer lookup rather than another walk. Under `trace`
- * the skip is off: a skipped compile has no nodes to echo, so the input is
- * compiled fresh against this state's registry (and cached nowhere, an
- * inert verdict already holding its slot).
+ * the skip is off: a skipped compile has no nodes to echo, so `compile` is
+ * asked for the artifact — fresh from the instance, which caches nothing
+ * for it since the inert verdict already holds its slot; memoized on a
+ * handle, which keeps it for its getters anyway.
  */
 const evaluateEntry = async (
-  state: InstanceState,
+  instance: EvaluationOptions,
   results: ResultCache,
   expression: unknown,
   call: CallOptions | undefined,
-  held?: CacheEntry
+  resolve: () => CacheEntry,
+  compile: () => CompileArtifact
 ): Promise<unknown> => {
-  const options = call === undefined ? state.evaluation : withCallOptions(state.evaluation, call)
+  const options = call === undefined ? instance : withCallOptions(instance, call)
   const reporting = options.mode === 'report'
   const enveloped = reporting || options.trace === true
 
-  const resolved = held ?? state.compileCache.resolve(expression)
+  const resolved = resolve()
   const entry =
     resolved.kind === 'inert' && options.trace === true
-      ? ({ kind: 'artifact', artifact: compileWithRegistry(expression, state.registry) } as const)
+      ? ({ kind: 'artifact', artifact: compile() } as const)
       : resolved
   if (entry.kind === 'inert') {
     if (options.maxDepth !== undefined && entry.depth > options.maxDepth) {
@@ -527,18 +540,32 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   readonly #expression: unknown
   /** The cache's shared artifact, or the memoized inert verdict. */
   readonly #entry: CacheEntry
-  /** The whole instance state as of the compile — the snapshot. */
-  readonly #state: InstanceState
+  /**
+   * The snapshot: the instance's prepared options and its registry as of
+   * the compile — the two things an evaluation reads, and no more. The
+   * compile cache in particular is not held: a handle never reads it, and
+   * holding it would keep a superseded cache's every artifact alive for as
+   * long as the handle lives.
+   */
+  readonly #evaluation: EvaluationOptions
+  readonly #registry: OperatorRegistry
   /** The instance's result store, shared live. */
   readonly #results: ResultCache
   /** The inert flavour's lazy compile, once made. */
   #compiled?: CompileArtifact
   #issues?: readonly Issue[]
 
-  constructor(expression: unknown, entry: CacheEntry, state: InstanceState, results: ResultCache) {
+  constructor(
+    expression: unknown,
+    entry: CacheEntry,
+    evaluation: EvaluationOptions,
+    registry: OperatorRegistry,
+    results: ResultCache
+  ) {
     this.#expression = expression
     this.#entry = entry
-    this.#state = state
+    this.#evaluation = evaluation
+    this.#registry = registry
     this.#results = results
   }
 
@@ -566,18 +593,23 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
    * The tail half of `FigTree.evaluate()`, under the options pinned at
    * compile time with the call's laid over — the same two levels, the same
    * per-call set. The return type follows the options the ORIGINATING
-   * instance was constructed with, and unlike the instance's own method it
-   * stays right for good: the runtime mode is frozen here too.
+   * instance was constructed with, exactly as the instance's own method
+   * does — so a handle compiled after `updateOptions({ mode })` or
+   * `updateOptions({ trace })` carries the same documented mismatch. What
+   * a handle adds is that the mismatch cannot appear later: the runtime
+   * mode is frozen here with everything else, so type and runtime agree
+   * for good once they agree at all.
    */
   evaluate<CallOpts extends CallOptions = NoOptions>(
     options?: OnlyCallOptions<CallOpts>
   ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
     return evaluateEntry(
-      this.#state,
+      this.#evaluation,
       this.#results,
       this.#expression,
       options,
-      this.#entry
+      () => this.#entry,
+      () => this.#artifact()
     ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
   }
 
@@ -597,15 +629,16 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   }
 
   /**
-   * The artifact behind the getters: the cache's, or for an inert verdict
-   * one fresh compile against the pinned registry, kept for the next read.
-   * A constant's artifact is one node holding the value by reference, so
+   * The artifact behind the getters, and the one a traced evaluation of an
+   * inert input runs: the cache's, or for an inert verdict one fresh
+   * compile against the pinned registry, kept for the next read. A
+   * constant's artifact is one node holding the value by reference, so
    * keeping it costs nothing over keeping its stream.
    */
   #artifact(): CompileArtifact {
     return this.#entry.kind === 'artifact'
       ? this.#entry.artifact
-      : (this.#compiled ??= compileWithRegistry(this.#expression, this.#state.registry))
+      : (this.#compiled ??= compileWithRegistry(this.#expression, this.#registry))
   }
 }
 

@@ -252,6 +252,17 @@ export interface ValidatedOperatorDefinition {
   useCache: boolean
   /** How caching is keyed; doubles as the `'manual'` capability flag. */
   cache: 'auto' | 'manual'
+  /**
+   * Derived: a content hash of everything that can change what the body
+   * computes — the name, the declarations and the source of `evaluate`
+   * and `validate`. Part of every result-cache key (src/evaluate/memo.ts),
+   * so two definitions registered under one name never share an entry,
+   * and an entry persisted by a host store stays valid for exactly as
+   * long as the definition is unchanged. Closure state is invisible to
+   * it: two definitions from one factory over different clients hash
+   * alike, as a shared store already cannot tell them apart.
+   */
+  fingerprint: string
   validate?: OperatorValidate
   evaluate: OperatorEvaluate
   returns: ExpectedType

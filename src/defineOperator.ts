@@ -20,7 +20,7 @@
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
-import { isPlainObject } from './utils'
+import { fnv1a, isPlainObject } from './utils'
 import {
   checkConstraints,
   checkType,
@@ -707,6 +707,8 @@ export function defineOperator(
     timeoutParam: def.timeoutParam ?? null,
     useCache: def.useCache ?? false,
     cache: def.cache ?? 'auto',
+    // Stamped below, once every field it reads is in place
+    fingerprint: '',
     evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
@@ -714,9 +716,45 @@ export function defineOperator(
   if (def.metadata !== undefined) validated.metadata = def.metadata
   if (def.positionalParams !== undefined) validated.positionalParams = [...def.positionalParams]
   if (def.validate !== undefined) validated.validate = def.validate
+  validated.fingerprint = fingerprintOf(validated)
 
   return deepFreezeArtifact(validated)
 }
+
+/**
+ * The definition's content fingerprint: the fields that decide what the
+ * body computes, hashed. An allowlist rather than the whole object, so
+ * that "the definition's content" is stated rather than implied:
+ * `description` and `alias` cannot change a result, and hashing them would
+ * invalidate a persisted store's entries on a docs-only edit; `metadata`
+ * is a host-owned bag kept by reference that may hold anything, including
+ * values `JSON.stringify` throws on; `deliversLazily` and `resolution` are
+ * derived from the parameters already in. A field added to the type later
+ * has to be admitted here deliberately. Functions, symbols (the
+ * `EvaluationData` default) and regular expressions render as their source
+ * text, which `JSON.stringify` would otherwise drop.
+ */
+const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
+  fnv1a(
+    JSON.stringify(
+      [
+        d.name,
+        d.parameters,
+        d.positionalParams,
+        d.restParam,
+        d.returns,
+        d.useCache,
+        d.cache,
+        d.timeoutParam,
+        d.evaluate,
+        d.validate,
+      ],
+      (_, value: unknown) =>
+        typeof value === 'function' || typeof value === 'symbol' || value instanceof RegExp
+          ? String(value)
+          : value
+    )
+  )
 
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {

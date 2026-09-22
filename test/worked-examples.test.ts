@@ -240,8 +240,8 @@ describe('lifecycle — two expressions, one instance, the compile half', () => 
  *
  * Binding assertions, per the doc's own list: the result values, the fetch
  * counts 1 / 1 / 1 / 1 / 3 across the steps, and step 6's two invalidation
- * stories — one dropping both caches, the other the result store alone.
- * Not asserted: the cache-key encoding, which the doc marks illustrative.
+ * stories pulling in opposite directions. Not asserted: the cache-key
+ * encoding, which the doc marks illustrative.
  *
  * One deviation from the doc's listing, and it is instrumentation rather
  * than behaviour: expression A carries a fourth hole whose only job is to
@@ -345,28 +345,27 @@ describe('lifecycle — the full example, fetch counts and all', () => {
     expect(http.callCount).toBe(3)
   })
 
-  it('step 6 — operatorDefaults recompiles AND refetches', async () => {
+  it('step 6 — operatorDefaults recompiles without refetching', async () => {
     compiles.reset()
     lifecycle.updateOptions({ operatorDefaults: { join: { delimiter: ' | ' } } })
     expect(await lifecycle.evaluate(exprA, { data: dataA })).toMatchObject({
       team: 'Ada | Grace',
       rate: 0.61,
     })
-    // Both compile-cache layers dropped, and the result generation moved
-    // on with them (#174): a result key names the operator and its
-    // resolved request, nothing of the definition, so the store cannot
-    // tell a result the old registry computed from one the new one would
+    // Both compile-cache layers dropped; the result store is untouched, because
+    // its keys derive from resolved requests and no option default
+    // reaches them
     expect(compiles.compiles()).toBe(1)
-    expect(http.callCount).toBe(4)
+    expect(http.callCount).toBe(3)
   })
 
   it('step 6, the coda — clearCache() refetches without recompiling', async () => {
     compiles.reset()
     lifecycle.clearCache()
     expect(await lifecycle.evaluate(exprA, { data: dataA })).toMatchObject({ rate: 0.61 })
-    // The result half of the step above, on its own
+    // The exact mirror image of the step above
     expect(compiles.compiles()).toBe(0)
-    expect(http.callCount).toBe(5)
+    expect(http.callCount).toBe(4)
   })
 })
 

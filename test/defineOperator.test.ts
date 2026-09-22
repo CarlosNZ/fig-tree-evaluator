@@ -282,3 +282,21 @@ describe('defineOperator — registration errors', () => {
     expect(isValidatedOperator(forged)).toBe(false)
   })
 })
+
+describe('the fingerprint sees source text, not closure state', () => {
+  // A factory closing over a variable produces one source text for every
+  // call, so its definitions hash alike — the documented blind spot, the
+  // same one a store shared between instances already has
+  const fromFactory = (tag: string) =>
+    defineOperator({
+      name: 'factory',
+      category: 'other',
+      description: 'closes over its tag',
+      parameters: {},
+      evaluate: () => tag,
+    })
+
+  it('hashes two closures over the same source alike', () => {
+    expect(fromFactory('a').fingerprint).toBe(fromFactory('b').fingerprint)
+  })
+})

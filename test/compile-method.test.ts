@@ -180,6 +180,34 @@ describe('a compiled expression is a snapshot', () => {
     fig.clearCache()
     expect(await handle.evaluate()).toBe(2)
   })
+
+  it('keeps its own results across a redefinition under the same name', async () => {
+    const { defineOperator } = await import('../src')
+    // Two bodies whose TEXT differs: the fingerprint hashes the source
+    const declaration = {
+      name: 'tagged',
+      category: 'other',
+      description: 'answer with a tag',
+      parameters: { value: { type: 'any', required: false, default: null } },
+      positionalParams: ['value'],
+      useCache: true,
+    } as const
+    const old = defineOperator({ ...declaration, evaluate: ({ value }) => `old:${String(value)}` })
+    const renewed = defineOperator({
+      ...declaration,
+      evaluate: ({ value }) => `new:${String(value)}`,
+    })
+    const fig = new FigTree({ operators: [coreOperators, old] })
+    const handle = fig.compile({ $tagged: 'x' })
+    expect(await handle.evaluate()).toBe('old:x')
+    fig.updateOptions({ operators: [coreOperators, renewed] })
+    // Both definitions are live — one on the instance, one in the handle —
+    // and the shared store must serve each its own: the key carries the
+    // definition's fingerprint, so neither can answer for the other
+    expect(await fig.evaluate({ $tagged: 'x' })).toBe('new:x')
+    expect(await handle.evaluate()).toBe('old:x')
+    expect(await fig.evaluate({ $tagged: 'x' })).toBe('new:x')
+  })
 })
 
 describe('the static gate on the handle', () => {

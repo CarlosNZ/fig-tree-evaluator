@@ -78,6 +78,21 @@ export const nearestName = (name: string, candidates: Iterable<string>): string 
 }
 
 /**
+ * FNV-1a over a string's UTF-16 code units, as eight hex characters. A
+ * content fingerprint, not a security hash: 32 bits is ample where a
+ * collision also needs the same operator name, and the whole thing is
+ * six lines with no dependency.
+ */
+export const fnv1a = (text: string): string => {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
+}
+
+/**
  * Run an async producer at most once and hand every caller the same
  * promise — rejections included, so a failure is memoized like a value. A
  * synchronous throw inside `fn` becomes a rejection.
