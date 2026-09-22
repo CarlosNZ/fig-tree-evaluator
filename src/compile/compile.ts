@@ -237,7 +237,7 @@ export const compileExpression = (
     holes,
     issues: state.issues,
     hasErrors,
-    shielded: holes.every((hole) => hole.staticFallback !== undefined),
+    shielded: holes.every((hole) => hole.timeoutFallback !== undefined),
     own,
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
     fragmentCalls: state.fragmentCalls,
@@ -1829,19 +1829,19 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
     return root.holes.map((hole) => ({
       path: hole.path,
       node: hole.node,
-      ...withStaticFallback(state, hole.node),
+      ...withTimeoutFallback(state, hole.node),
     }))
   // `root.path` rather than `[]`: a fragment body compiles under a base path,
   // and a hole must still name where its node sits in the value compiled
-  return [{ path: root.path, node: root, ...withStaticFallback(state, root) }]
+  return [{ path: root.path, node: root, ...withTimeoutFallback(state, root) }]
 }
 
-const withStaticFallback = (
+const withTimeoutFallback = (
   state: WalkState,
   node: CompiledNode
-): { staticFallback?: { value: unknown } } => {
-  const fallback = staticFallbackFor(state, node)
-  return fallback === undefined ? {} : { staticFallback: fallback }
+): { timeoutFallback?: { value: unknown } } => {
+  const fallback = timeoutFallbackFor(state, node)
+  return fallback === undefined ? {} : { timeoutFallback: fallback }
 }
 
 /**
@@ -1850,7 +1850,7 @@ const withStaticFallback = (
  * fallback counts — which is exactly why `operatorDefaults` invalidates the
  * compile cache — and so does the body-root fallback a fragment call lifts.
  */
-const staticFallbackFor = (
+const timeoutFallbackFor = (
   state: WalkState,
   node: CompiledNode
 ): { value: unknown } | undefined => {
@@ -1874,7 +1874,7 @@ const staticFallbackFor = (
   // IS the body's value, so what the author declared there is exactly what
   // assembly would splice — and without the lift, factoring an expression
   // into a fragment silently unshields it
-  return node.entry?.staticFallback
+  return node.entry?.timeoutFallback
 }
 
 /** Every invocable name — operators, aliases, fragments — for suggestions. */

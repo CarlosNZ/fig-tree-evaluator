@@ -75,8 +75,8 @@ test('static fallbacks shield; a constant null fallback still shields', () => {
     b: { $format: ['Hi %1', '$data.name'], fallback: null },
   })
   expect(artifact.shielded).toBe(true)
-  expect(artifact.holes[0].staticFallback).toEqual({ value: [] })
-  expect(artifact.holes[1].staticFallback).toEqual({ value: null })
+  expect(artifact.holes[0].timeoutFallback).toEqual({ value: [] })
+  expect(artifact.holes[1].timeoutFallback).toEqual({ value: null })
 })
 
 test('a dynamic fallback never counts toward shielding', () => {
@@ -85,7 +85,7 @@ test('a dynamic fallback never counts toward shielding', () => {
     b: { $http: 'https://y.test', fallback: '$data.cached' },
   })
   expect(artifact.shielded).toBe(false)
-  expect(artifact.holes[1].staticFallback).toBeUndefined()
+  expect(artifact.holes[1].timeoutFallback).toBeUndefined()
 })
 
 test('a hole with no fallback at all unshields the expression', () => {
@@ -97,7 +97,7 @@ test('an operatorDefaults modifier fallback counts as a static fallback', () => 
   const withDefaults = makeCompileRegistry({ http: { fallback: 'offline' } })
   const artifact = compileExpression({ a: { $http: 'https://x.test' } }, withDefaults)
   expect(artifact.shielded).toBe(true)
-  expect(artifact.holes[0].staticFallback).toEqual({ value: 'offline' })
+  expect(artifact.holes[0].timeoutFallback).toEqual({ value: 'offline' })
 })
 
 test('a fully-constant expression is vacuously shielded', () => {

@@ -198,9 +198,9 @@ const printNode = (node: CompiledNode, label: string | null, depth: number) => {
 }
 
 const holeFallback = (hole: ArtifactHole): string =>
-  hole.staticFallback === undefined
-    ? '  staticFallback: —'
-    : `  staticFallback: ${preview(hole.staticFallback.value)}`
+  hole.timeoutFallback === undefined
+    ? '  timeoutFallback: —'
+    : `  timeoutFallback: ${preview(hole.timeoutFallback.value)}`
 
 const printArtifactFacts = (artifact: CompileArtifact) => {
   const { dependencies: deps } = artifact

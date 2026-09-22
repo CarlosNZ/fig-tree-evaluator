@@ -250,7 +250,7 @@ const holeBoundary = (
         // fallback is timing-dependent and invisible in the result, so
         // trace is the only channel that can say
         recorder?.noteOn(hole.node, { type: 'shielded-fallback' })
-        return staticFallbackOf(hole)
+        return timeoutFallbackOf(hole)
       }),
     ])
   }
@@ -276,8 +276,8 @@ const degrade = async (
   }
 }
 
-const staticFallbackOf = (hole: ArtifactHole): unknown => {
-  if (hole.staticFallback === undefined)
+const timeoutFallbackOf = (hole: ArtifactHole): unknown => {
+  if (hole.timeoutFallback === undefined)
     throw internalError('a shielded artifact has a hole with no static fallback')
-  return hole.staticFallback.value
+  return hole.timeoutFallback.value
 }

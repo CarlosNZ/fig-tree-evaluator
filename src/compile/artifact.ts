@@ -215,7 +215,7 @@ export type CompiledNode =
   | InvalidNode
 
 /**
- * A top-level hole: a maximal evaluable node (A2). `staticFallback` is the
+ * A top-level hole: a maximal evaluable node (A2). `timeoutFallback` is the
  * shielding precompute (B2) — present iff the hole root's fallback subtree
  * (or its operator's `instanceDefaults.fallback`) is classified constant;
  * the wrapper object distinguishes an absent fallback from a constant
@@ -224,7 +224,7 @@ export type CompiledNode =
 export interface ArtifactHole {
   path: NodePath
   node: CompiledNode
-  staticFallback?: { value: unknown }
+  timeoutFallback?: { value: unknown }
 }
 
 /**

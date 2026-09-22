@@ -134,7 +134,7 @@ export interface FragmentEntry {
    * no `fallback` of its own lifts this for timeout shielding — without the
    * lift, factoring an expression into a fragment silently unshields it.
    */
-  staticFallback?: { value: unknown }
+  timeoutFallback?: { value: unknown }
 }
 
 /** The declaration fields a fragment parameter may carry. */
@@ -483,7 +483,7 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
     entry.maxDepth = rolled.maxDepth
     entry.dependencies = rolled.dependencies
     entry.identityOnly = rolled.identityOnly
-    entry.staticFallback = liftedFallback(artifact, registry.fragments)
+    entry.timeoutFallback = liftedFallback(artifact, registry.fragments)
   }
 
   for (const name of compiled.keys()) fold(name)
@@ -529,7 +529,7 @@ const liftedFallback = (
  * hole is itself a call.
  *
  * The second case cannot come from the artifact: the walk read
- * `entry.staticFallback` while compiling this body, which is pass 2, and
+ * `entry.timeoutFallback` while compiling this body, which is pass 2, and
  * no target has been folded before pass 4. Resolving it here against the
  * registry is what makes the lift transitive — well-founded because the
  * fold runs in reverse topological order, so a target is always complete
@@ -539,10 +539,10 @@ const holeFallback = (
   hole: ArtifactHole,
   fragments: ReadonlyMap<string, FragmentEntry>
 ): { value: unknown } | undefined => {
-  if (hole.staticFallback !== undefined) return hole.staticFallback
+  if (hole.timeoutFallback !== undefined) return hole.timeoutFallback
   const { node } = hole
   // An authored call-site fallback always wins, and a non-constant one
   // disqualifies the hole rather than falling through to the target's
   if (node.kind !== 'fragmentCall' || node.fallback !== undefined) return undefined
-  return fragments.get(node.name)?.staticFallback
+  return fragments.get(node.name)?.timeoutFallback
 }
