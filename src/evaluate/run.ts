@@ -97,6 +97,8 @@ export const runEvaluation = async (
       : undefined
   const root =
     armed !== undefined ? signalScope(armed.signal, armed.settle) : new DeferredScope(undefined)
+  // `armed !== undefined` is implied by the `timeout` clause; it is spelled
+  // out so the compiler narrows `armed` wherever `shielded` is tested below
   const shielded = armed !== undefined && timeout !== undefined && artifact.shielded && evaluable
   const collector = reporting ? createErrorCollector() : undefined
   const recorder =
@@ -121,7 +123,7 @@ export const runEvaluation = async (
     // starts, and the error is the root's. Left to the races below, the
     // first node boundary to notice would win instead — a race between two
     // settled promises goes to the one with fewer hops, which is the node's
-    if (armed !== undefined && armed.signal.aborted) throw killSwitchError(armed.signal.reason, [])
+    if (root.aborted) throw killSwitchError(root.reason, [])
 
     const evaluateRoot = () =>
       atRoot && boundary !== undefined

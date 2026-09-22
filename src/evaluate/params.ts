@@ -76,10 +76,12 @@ export const resolveParams = async (
   const { entries, whole, perElement } = definition.resolution
 
   // ── Pass 1: start everything ──────────────────────────────────────
-  // Every structure here is built only when a parameter needs it, since
-  // the common node has one eager parameter and nothing else
-  let pendingNames: string[] | undefined
-  let pending: unknown[] | undefined
+  // The eager parameters, started here and awaited together below: names
+  // and outcomes pushed in lockstep. The holders record is built only
+  // when a parameter needs it; the common node has one eager parameter
+  // and nothing else
+  const pendingNames: string[] = []
+  const pending: unknown[] = []
   const resolved: Record<string, unknown> = {}
   let holders: Record<string, Thunk> | undefined
   /**
@@ -95,8 +97,8 @@ export const resolveParams = async (
     switch (declared.evaluation) {
       case 'eager':
         if (supplied !== undefined) {
-          ;(pendingNames ??= []).push(name)
-          ;(pending ??= []).push(evaluateNode(supplied, ctx))
+          pendingNames.push(name)
+          pending.push(evaluateNode(supplied, ctx))
         }
         break
       case 'structural':
@@ -135,8 +137,8 @@ export const resolveParams = async (
         // data. Resolve it eagerly through the ordinary layers, then hand
         // the body pre-resolved handles — sequencing becomes iteration and
         // branch selection becomes lookup, with no body-side special case
-        ;(pendingNames ??= []).push(name)
-        ;(pending ??= []).push(evaluateNode(supplied, ctx))
+        pendingNames.push(name)
+        pending.push(evaluateNode(supplied, ctx))
         break
       }
       case 'perElement':
@@ -152,7 +154,7 @@ export const resolveParams = async (
     }
   }
 
-  if (pending !== undefined && pendingNames !== undefined) {
+  if (pending.length > 0) {
     // One eager parameter — the common node — is taken on its own, sparing
     // the `Promise.all` and its result array; and where its leaf answered
     // without a promise, the wait too
@@ -170,7 +172,7 @@ export const resolveParams = async (
   // ── The defaults pass: the layered chain, else removal ────────────
   for (const [name, declared] of whole) {
     // A handle delivered in pass 1 runs its layers on demand
-    if (params[name] !== undefined) continue
+    if (Object.hasOwn(params, name)) continue
     const value = resolved[name]
     const unset =
       value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
@@ -188,7 +190,7 @@ export const resolveParams = async (
   for (const [name, declared] of whole) {
     // A handle delivered in pass 1 is in place already, its layers running
     // on demand, with no whole value here for the unset chain to test
-    if (params[name] !== undefined) continue
+    if (Object.hasOwn(params, name)) continue
     let value = resolved[name]
 
     // 1. absent: nothing supplied and nothing declared a default

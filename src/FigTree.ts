@@ -453,15 +453,17 @@ const envelope = (result: unknown, errors: FigTreeError[]): EvaluationResult => 
  * The request-scoped options — the whole of what a call may supply
  * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
  * A `Set` of the keys of `CallOptions`, spelled out because a type has no
- * runtime form; the two are kept in step by the type-level test.
+ * runtime form. The `satisfies` holds the two in step in both directions:
+ * a `Record` over the type's keys must name every one of them, and an
+ * excess key is refused, so a key added to `CallOptions` and not here (or
+ * the reverse) fails the build. Evaluated once, at module load.
  */
-const CALL_OPTION_KEYS: ReadonlySet<string> = new Set<keyof CallOptions>([
-  'data',
-  'signal',
-  'timeout',
-  'mode',
-  'trace',
-])
+const CALL_OPTION_KEYS: ReadonlySet<string> = new Set(
+  Object.keys({ data: 0, signal: 0, timeout: 0, mode: 0, trace: 0 } satisfies Record<
+    keyof CallOptions,
+    unknown
+  >)
+)
 
 /**
  * The instance's prepared options with a call's laid over them: a flat

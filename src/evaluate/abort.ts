@@ -58,8 +58,23 @@ export interface AbortScope {
   readonly reason: unknown
   /** A real signal composing everything above, built on first read. */
   readonly signal: AbortSignal
+  /** The evaluation's abort clock, shared down the whole chain. */
+  readonly clock: AbortClock
   /** Ends the scope: whatever it materialised aborts with `SCOPE_SETTLED`. */
   settle(): void
+}
+
+/**
+ * Counts the aborts that can change a deferred scope's answer, within one
+ * evaluation: created at the root, handed to every scope built under it,
+ * and bumped by every `settle()` in the chain and by the armed root's real
+ * signal aborting. A scope's memory of "no abort above me" is good while
+ * the count has not moved. Owned by the evaluation rather than the module
+ * so that concurrent evaluations, each settling a node at a time, never
+ * cost each other a re-walk.
+ */
+export interface AbortClock {
+  epoch: number
 }
 
 /**
@@ -77,15 +92,16 @@ export interface AbortScope {
  * paid once by the node that wanted it. `settle()` then detaches and
  * aborts only what was built.
  *
- * The walk is amortised to one step by `epoch`: a scope that walked to
- * the top and found nothing remembers the epoch it did so in, and answers
- * from memory while no abort has landed anywhere since. Every event that
- * can turn an answer from "no" to "yes" bumps the epoch — a settle, or a
- * real signal's abort (`signalScope` listens for it) — so the memory is
- * never stale, and a chain of unmaterialised scopes costs each boundary
- * check a step to the nearest ancestor that remembers, not a walk to the
- * root. Without it a deep chain paid O(depth) per check, O(depth²) in all,
- * and the `nesting` bench regressed past ~70 levels.
+ * The walk is amortised to one step by the evaluation's `AbortClock`: a
+ * scope that walked to the top and found nothing remembers the epoch it
+ * did so in, and answers from memory while no abort has landed in this
+ * evaluation since. Every event that can turn an answer from "no" to
+ * "yes" bumps the clock — a settle anywhere in the chain, or the armed
+ * root's real signal aborting (`signalScope` listens for it) — so the
+ * memory is never stale, and a chain of unmaterialised scopes costs each
+ * boundary check a step to the nearest ancestor that remembers, not a walk
+ * to the root. Without it a deep chain paid O(depth) per check, O(depth²)
+ * in all, and the `nesting` bench regressed past ~70 levels.
  *
  * The node-level `reason` is not consulted by the engine — classification
  * reads the ROOT's (./internal.ts) — so a scope settled after an upstream
@@ -98,15 +114,20 @@ export class DeferredScope implements AbortScope {
   private settled = false
   /** The epoch in which this scope last walked up and found no abort. */
   private verified = -1
+  readonly clock: AbortClock
 
-  constructor(private readonly parent: AbortScope | undefined) {}
+  constructor(private readonly parent: AbortScope | undefined) {
+    // The root of an unarmed evaluation starts the clock; every scope
+    // under it shares its parent's
+    this.clock = parent === undefined ? { epoch: 0 } : parent.clock
+  }
 
   get aborted(): boolean {
     if (this.controller !== undefined) return this.controller.signal.aborted
     if (this.settled) return true
-    if (this.verified === epoch) return false
+    if (this.verified === this.clock.epoch) return false
     if (this.parent !== undefined && this.parent.aborted) return true
-    this.verified = epoch
+    this.verified = this.clock.epoch
     return false
   }
 
@@ -136,7 +157,7 @@ export class DeferredScope implements AbortScope {
   settle(): void {
     if (this.settled) return
     this.settled = true
-    epoch += 1
+    this.clock.epoch += 1
     if (this.controller === undefined) return
     if (this.upstream !== undefined && this.forward !== undefined)
       this.upstream.removeEventListener('abort', this.forward)
@@ -145,28 +166,22 @@ export class DeferredScope implements AbortScope {
 }
 
 /**
- * Counts the aborts that can change a deferred scope's answer, across the
- * whole process: shared by every evaluation, since a scope's memory is
- * only a hint and a bump merely costs the next check a walk. Bumped by
- * every `settle()` and by every real signal a `signalScope` wraps.
+ * The armed root of an evaluation — a `deadline()` with the caller's
+ * `signal` and/or `timeout` — seen as a scope. It starts the evaluation's
+ * clock, and bumps it when the real signal aborts so the deferred scopes
+ * below stop trusting their memory; the listener is `once`, and the
+ * signal is aborted when the deadline settles, so it never outlives the
+ * evaluation. `settle` is the deadline's own.
  */
-let epoch = 0
-const bump = () => {
-  epoch += 1
-}
-
-/**
- * A real signal seen as a scope: the armed root of an evaluation (a
- * `deadline()` with the caller's `signal` and/or `timeout`), and a body's
- * view of its own per-request deadline. `settle` is the owner's — the
- * deadline settles itself — so it defaults to nothing. The listener bumps
- * the epoch when the signal aborts, so deferred scopes below it stop
- * trusting their memory; it is `once`, and every signal wrapped here is
- * aborted when its deadline settles, so it never outlives the evaluation.
- */
-export const signalScope = (signal: AbortSignal, settle: () => void = noop): AbortScope => {
-  if (signal.aborted) bump()
-  else signal.addEventListener('abort', bump, { once: true })
+export const signalScope = (signal: AbortSignal, settle: () => void): AbortScope => {
+  const clock: AbortClock = { epoch: 0 }
+  signal.addEventListener(
+    'abort',
+    () => {
+      clock.epoch += 1
+    },
+    { once: true }
+  )
   return {
     get aborted() {
       return signal.aborted
@@ -175,9 +190,29 @@ export const signalScope = (signal: AbortSignal, settle: () => void = noop): Abo
       return signal.reason
     },
     signal,
+    clock,
     settle,
   }
 }
+
+/**
+ * A body's view of its own per-request deadline, in place of the node's
+ * scope. Nothing is built under it — the node's children and lazy handles
+ * run under the node's scope, not the body's — so it has no memory to
+ * invalidate and registers no listener; it shares the node's clock only
+ * to be a scope. The deadline settles itself, so `settle` is nothing.
+ */
+export const signalView = (signal: AbortSignal, node: AbortScope): AbortScope => ({
+  get aborted() {
+    return signal.aborted
+  },
+  get reason() {
+    return signal.reason
+  },
+  signal,
+  clock: node.clock,
+  settle: noop,
+})
 
 /** An eager, controller-backed scope: its signal and two verbs. */
 interface ControllerScope {

@@ -126,7 +126,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-import { sealIssues } from './artifact'
+import { hasError, sortIssues } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
@@ -219,7 +219,8 @@ export const parseExpression = (
   const root = walk(state, input, options.basePath ?? [], 0)
   upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
-  const hasErrors = sealIssues(state.issues)
+  sortIssues(state.issues)
+  const hasErrors = hasError(state.issues)
   const own = {
     nodeCount: state.nodeCount,
     maxDepth: state.maxDepth,

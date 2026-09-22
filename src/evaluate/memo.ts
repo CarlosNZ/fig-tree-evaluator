@@ -26,12 +26,10 @@ import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 const AUTO = 'A'
 const MANUAL = 'M'
 
-/** What a node contributes to its body's caching: who it is, and whether. */
+/** What a caching node contributes to its body's memo: who it is. */
 export interface MemoBinding {
   /** The canonical name — never the alias the author happened to spell. */
   operator: string
-  /** The four-step chain's verdict for this node. */
-  useCache: boolean
   /** Where a hit or miss is recorded; absent when trace is off. */
   note?: (event: TraceEvent) => void
 }
@@ -96,9 +94,11 @@ export const autoKey = (
 }
 
 /**
- * The live `context.cache.memo` — the `'manual'` layer. An identity
- * passthrough when the node's effective `useCache` is false, so a body
- * calls it unconditionally and the gating stays the engine's.
+ * The live `context.cache.memo` — the `'manual'` layer — for a node whose
+ * effective `useCache` is true. A body calls it unconditionally, and the
+ * gating stays the engine's: a node that is not caching is handed the
+ * shared identity passthrough by `createOperatorContext` instead, so this
+ * layer is built only where it can store something.
  *
  * Keys are namespaced by operator name engine-side, so a body cannot
  * collide with another operator's entries however it spells its own key.
@@ -108,7 +108,6 @@ export const bodyMemo = (
   cache: ResultStore
 ): OperatorContext['cache']['memo'] => {
   return <T>(key: unknown, fn: () => Promise<T>): Promise<T> => {
-    if (!binding.useCache) return fn()
     const full = serializeInput([MANUAL, binding.operator, key])
     // A key holding something that cannot be serialized — a Date off the
     // data, a class instance — runs uncached rather than colliding
