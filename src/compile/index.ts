@@ -1,8 +1,9 @@
 /**
- * The compiler — internal machinery behind `validate()` (and, from Phase 4,
- * `evaluate()`). Not barrel surface: tests and the FigTree class import
- * from here directly (the registry precedent); there is no public
- * compile method ("Rulings on the surface" in
+ * The compiler — internal machinery behind `validate()`, `evaluate()` and
+ * `compile()`. Not barrel surface: tests and the FigTree class import from
+ * here directly (the registry precedent). The public `compile()` returns a
+ * `CompiledExpression` handle over this machinery, and nothing of the
+ * pipeline itself ("Rulings on the surface" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  */
 export { composeRollups, compileExpression } from './compile'
@@ -36,6 +37,7 @@ export type {
 export { bindsReference, renamedBinding, splice } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
+export type { CacheEntry } from './compileCache'
 // The result cache's `'auto'` keys use the same serializer (Phase 9.1) —
 // its second consumer, as `lru.ts` is shared with the content layer
 export { serializeInput } from './contentKey'

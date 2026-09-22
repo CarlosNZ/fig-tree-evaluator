@@ -45,6 +45,15 @@ describe('the identity layer — lifecycle step 3', () => {
     expect(await fig.evaluate(expression, { data: { value: 2 } })).toBe(2)
     expect(spy.compiles()).toBe(1)
   })
+
+  it('serves a traced evaluation too — the artifact has the nodes a trace echoes', async () => {
+    const { fig, spy } = rig()
+    const expression = expr('x')
+    await fig.evaluate(expression)
+    const traced = await fig.evaluate(expression, { trace: true })
+    expect(traced.trace).toBeDefined()
+    expect(spy.compiles()).toBe(1)
+  })
 })
 
 describe('the content layer — lifecycle step 4', () => {

@@ -536,11 +536,11 @@ describe('clearCache()', () => {
   })
 })
 
-describe('the two invalidation stories are opposites', () => {
-  it('an operatorDefaults change recompiles without refetching', async () => {
-    let compiles = 0
-    let runs = 0
-    const counted = defineOperator({
+describe('the two invalidation stories', () => {
+  /** Counts compiles and runs separately, and answers with a tag. */
+  const twoCounters = (tag: string) => {
+    const counts = { compiles: 0, runs: 0 }
+    const definition = defineOperator({
       name: 'counted',
       category: 'other',
       description: 'count compiles and runs separately',
@@ -548,28 +548,61 @@ describe('the two invalidation stories are opposites', () => {
       positionalParams: ['value'],
       useCache: true,
       validate: () => {
-        compiles += 1
+        counts.compiles += 1
         return []
       },
       evaluate: ({ value }) => {
-        runs += 1
-        return `${String(value)}:${runs}`
+        counts.runs += 1
+        return `${tag}:${String(value)}`
       },
     })
-    const f = fig({ operators: [counted] })
+    return { definition, counts }
+  }
+
+  it('a registry-affecting update recompiles AND moves the result generation on', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const f = fig({ operators: [definition] })
     const expression = { $counted: {} }
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([1, 1])
+    await f.evaluate(expression)
+    expect(counts).toEqual({ compiles: 1, runs: 1 })
 
-    // The compile cache drops; the result store is untouched
+    // A result key names the operator and its resolved parameters, nothing
+    // of the definition, so the store cannot tell the old definition's
+    // result from one the new definition would give
     f.updateOptions({ operatorDefaults: { counted: { value: 'a' } } })
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([2, 1])
+    expect(counts).toEqual({ compiles: 2, runs: 2 })
+  })
 
-    // The mirror image: nothing recompiles, the body runs again
+  it('clearCache() runs the body again without recompiling', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const f = fig({ operators: [definition] })
+    const expression = { $counted: {} }
+    await f.evaluate(expression)
     f.clearCache()
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([2, 2])
+    expect(counts).toEqual({ compiles: 1, runs: 2 })
+  })
+
+  it('a result the old definition computed is never served to a new one under the same name', async () => {
+    const before = twoCounters('v1')
+    const after = twoCounters('v2')
+    const f = fig({ operators: [before.definition] })
+    expect(await f.evaluate({ $counted: 'x' })).toBe('v1:x')
+    f.updateOptions({ operators: [after.definition] })
+    expect(await f.evaluate({ $counted: 'x' })).toBe('v2:x')
+    expect([before.counts.runs, after.counts.runs]).toEqual([1, 1])
+  })
+
+  it('an update touching no registry key keeps the cached result', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const f = fig({ operators: [definition] })
+    await f.evaluate({ $counted: 'x' })
+    f.updateOptions({ maxNodes: 500 })
+    f.updateOptions({ data: { a: 1 } })
+    await f.evaluate({ $counted: 'x' })
+    expect(counts).toEqual({ compiles: 1, runs: 1 })
   })
 })
 

@@ -68,6 +68,7 @@ describe('the v2 → v3 method disposition, as a checklist', () => {
 
   test.each([
     'evaluate',
+    'compile',
     'validate',
     'getDependencies',
     'isEvaluable',

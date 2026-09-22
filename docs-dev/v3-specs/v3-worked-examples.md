@@ -271,13 +271,13 @@ await fig.evaluate(exprA, { data: dataA })
 // → { greeting: 'Welcome to Acme', team: 'Ada | Grace', rate: 0.61 }
 ```
 
-`operatorDefaults` is one of the three compile-cache invalidators (with `operators` and `fragments` — modifier defaults bake into precomputed shielding, so artifacts can't survive the change). Both compile-cache layers drop → this call **recompiles** exprA. The **result store is untouched** — its keys derive from resolved requests, which no option default affects — so `rate` is still a cache hit: recompile, but no fetch.
+`operatorDefaults` is one of the three compile-cache invalidators (with `operators` and `fragments` — modifier defaults bake into precomputed shielding, so artifacts can't survive the change). Both compile-cache layers drop → this call **recompiles** exprA. The same three options **move the result store's generation on** ([#174](https://github.com/CarlosNZ/fig-tree-evaluator/issues/174), September 2026): a result key names the operator and its resolved request, nothing of the definition, so the store cannot tell a result the old registry computed from one the new one would give, and every entry this instance wrote reads as a miss — `rate` **refetches** too. (The first cut of this step had the store untouched, on the reading that no option default reaches a request key; that is true of the key and not of the definition behind it, and a redefinition under the same name was the case that showed it.) Fetch count **4**.
 
 ```js
 fig.clearCache()
 ```
 
-The mirror image: the result store empties (next `rate` evaluation refetches), the compile cache is untouched (nothing recompiles — there is never a correctness reason to clear it).
+The result half on its own: the result store empties (next `rate` evaluation refetches — count **5**), the compile cache is untouched (nothing recompiles — there is never a correctness reason to clear it).
 
 ---
 
@@ -389,6 +389,6 @@ Run 1's teaching point: the outcome is **deterministic** regardless of completio
 ## Using these as test cases
 
 - **Inject a scripted mock `HttpClient`** (fixed responses, failure switches, a call counter) and a **recording `CacheStore`** (`{ get, set }` that logs keys). Laziness, memoization, effective-request keying and invalidation all become assertable as _counts and call logs_ — no reaching into engine internals.
-- Binding assertions per example: result values; error `code` / `path` / `holePath` / `fragmentPath` / `cause` presence; `errors` length and tree order; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); recompile-vs-refetch split in step 6; the `timeoutShielded` badge flip; report/throw divergence points.
+- Binding assertions per example: result values; error `code` / `path` / `holePath` / `fragmentPath` / `cause` presence; `errors` length and tree order; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); step 6's recompile-and-refetch against its coda's refetch alone; the `timeoutShielded` badge flip; report/throw divergence points.
 - Non-assertions (illustrative only): cache-key encodings, hash spellings, error message wording, `TraceNode` field names, timing values.
 - These map to testing-strategy **step 2** (hand-authored v3 tests) and are deliberately converter-independent.

@@ -4,9 +4,10 @@
  * readable, for understanding what compile and validate produce.
  *
  * It reaches into internals (`compileExpression`, `runStaticChecks`,
- * `buildRegistry`) exactly as the white-box compile suites do: there is no
- * public compile method, by ruling ("Rulings on the surface" in
- * docs-dev/v3-specs/v3-evaluator-methods.md). Nothing here is barrel
+ * `buildRegistry`) exactly as the white-box compile suites do: the public
+ * `compile()` returns a handle that keeps the artifact private, by ruling
+ * ("Rulings on the surface" in docs-dev/v3-specs/v3-evaluator-methods.md),
+ * so the artifact is only reachable this way. Nothing here is barrel
  * surface, and the artifact types may be reshaped freely by later phases —
  * expect to adjust this file when they are.
  *

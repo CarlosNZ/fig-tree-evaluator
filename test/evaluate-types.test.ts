@@ -110,6 +110,27 @@ const registryChecks = async () => {
   return [a, b]
 }
 
+// ── The handle: the instance's options, frozen at compile ───────────
+
+const handleChecks = async () => {
+  assertType<Equal<Awaited<typeof a>, unknown>>()
+  const a = plain.compile({}).evaluate()
+
+  assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
+  const b = reporting.compile({}).evaluate()
+
+  assertType<Equal<Awaited<typeof c>, EvaluationResult>>()
+  const c = plain.compile({}).evaluate({ trace: true })
+
+  assertType<Equal<Awaited<typeof d>, unknown>>()
+  const d = reporting.compile({}).evaluate({ mode: 'throw' })
+
+  assertType<Equal<Awaited<typeof e>, EvaluationResult>>()
+  const e = tracing.compile({}).evaluate({ mode: 'throw' })
+
+  return [a, b, c, d, e]
+}
+
 // ── The one documented limitation ───────────────────────────────────
 
 // Options hoisted into a variable widen before the class ever sees them,
@@ -132,5 +153,5 @@ test('the return type follows the effective options', async () => {
   // The hoisted-options instance still behaves as an envelope at RUNTIME;
   // it is only the static type that cannot follow
   expect(await fromVariable.evaluate({ a: 1 })).toMatchObject({ result: { a: 1 } })
-  await Promise.all([instanceLevel(), checks(), registryChecks(), limitation()])
+  await Promise.all([instanceLevel(), checks(), registryChecks(), handleChecks(), limitation()])
 })

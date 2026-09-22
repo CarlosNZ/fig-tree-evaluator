@@ -61,11 +61,16 @@ export interface CompileCacheDeps {
 }
 
 /**
- * `evaluate()` is the only consumer. `validate()` compiles fresh and
- * never touches the cache — it is an authoring tool, its report should
- * cost a compile, and reading the cache would need a second answer shape
- * here (an inert verdict cannot report the unrecognized-`$` warning a
- * full artifact carries).
+ * `evaluate()` and `compile()` are the two consumers, and share one cache:
+ * membership tracks intent to evaluate, and a handle is the strongest
+ * statement of it, so after `compile(expr)` a plain `evaluate(expr)` hits
+ * and the reverse. Sound because an artifact is data- and
+ * option-independent and every piece of per-holder state lives on the
+ * handle (obligation C2). `validate()`, `getDependencies()` and
+ * `isEvaluable()` compile fresh and never touch the cache — they are
+ * authoring tools, their report should cost a compile, and reading the
+ * cache would need a second answer shape here (an inert verdict cannot
+ * report the unrecognized-`$` warning a full artifact carries).
  */
 export class CompileCache {
   private readonly identity = new WeakMap<object, CacheEntry>()

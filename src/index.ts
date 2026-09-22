@@ -64,6 +64,9 @@ export type { Dependencies, FragmentInfo, OperatorInfo, ParameterInfo } from './
 
 // Phase 2.2 — the instance shell. Registry machinery stays internal.
 export { FigTree } from './FigTree'
+// Phase 13 — the handle `compile()` returns. Type-only: `compile()` is the
+// one mint, and the constructor takes engine internals.
+export type { CompiledExpression } from './FigTree'
 export type { CallOptions, EvaluationOptions, FigTreeOptions, OnlyCallOptions } from './options'
 // Phase 12 — the diagnostic surfaces' return shape
 export type { EvaluationResult, Merge, NoOptions, ResultShape } from './options'
