@@ -3,6 +3,13 @@
  * domain-free — no knowledge of nodes, operators, or evaluation.
  */
 
+/**
+ * Does nothing. The one no-op the engine shares: the discarding trace
+ * channel, the rejection swallower on a promise nobody may await, the
+ * default `settle` of a scope its owner settles.
+ */
+export const noop = (): void => {}
+
 /** A plain object: an object that is neither null nor an array. */
 export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

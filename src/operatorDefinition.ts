@@ -235,6 +235,12 @@ export interface ValidatedOperatorDefinition {
   /** Derived: the rest-marked positional parameter's name, or null. */
   restParam: string | null
   /**
+   * Derived: `parameters` as `[name, declaration]` pairs, in declaration
+   * order, built once here so the parameter resolver does not rebuild the
+   * pair list on every node it resolves.
+   */
+  parameterEntries: readonly (readonly [string, ValidatedParameter])[]
+  /**
    * Derived: does any parameter reach the body as a handle rather than a
    * value? Only such a node can still have work in flight once its body
    * has settled, so only such a node needs an abort scope of its own.

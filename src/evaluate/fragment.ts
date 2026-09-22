@@ -46,7 +46,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import type { CompiledNode, FragmentCallNode, NodePath } from '../parse'
 import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
-import { isPlainObject, once } from '../utils'
+import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import type { EvaluationContext, FragmentFrame, ParamsFrame } from './context'
 import { evaluateNode } from './evaluate'
@@ -195,7 +195,7 @@ const staticFrame = (
       const pending = thunk()
       // A demand the body then abandons — an `or` that resolved early, a
       // branch cancelled — must not surface as an unhandled rejection
-      pending.catch(() => {})
+      pending.catch(noop)
       return pending
     })
   }
