@@ -1,7 +1,10 @@
-// The benchmark runner: `pnpm bench [name]` runs bench/<name>.ts through
-// tsx. `pnpm bench list` prints what exists. Benches import BOTH engines,
-// so they compile under tsconfig.bench.json rather than the v3 config —
-// see that file for the one interop mapping it carries.
+// The benchmark runner: `pnpm bench <name>…` runs each named bench/<name>.ts
+// through tsx, in the order given; `pnpm bench all` runs every bench in
+// listing order, one after another, so a full sweep is one command and the
+// benches never contend with each other for the CPU. `pnpm bench list`
+// prints what exists. Benches import BOTH engines, so they compile under
+// tsconfig.bench.json rather than the v3 config — see that file for the
+// one interop mapping it carries.
 import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { BENCH_DIR, available, benches } from './benchList.mjs'
@@ -18,10 +21,10 @@ if (major < 22) {
   process.exit(1)
 }
 
-const name = process.argv[2]
+const args = process.argv.slice(2)
 
-if (name === undefined || name === 'list') {
-  console.log('Usage: pnpm bench <name>\n\nBenches:')
+if (args.length === 0 || args[0] === 'list') {
+  console.log('Usage: pnpm bench <name>… | all\n\nBenches:')
   const all = benches()
   const width = Math.max(...all.map(({ name }) => name.length))
   console.log(
@@ -30,14 +33,28 @@ if (name === undefined || name === 'list') {
   process.exit(0)
 }
 
-const file = `${BENCH_DIR}/${name}.ts`
-if (!existsSync(file)) {
-  console.error(`No ${file}. Available: ${available().join(', ')}`)
-  process.exit(1)
+const names = args.includes('all') ? available() : args
+for (const name of names) {
+  if (!existsSync(`${BENCH_DIR}/${name}.ts`)) {
+    console.error(`No ${BENCH_DIR}/${name}.ts. Available: ${available().join(', ')}`)
+    process.exit(1)
+  }
 }
 
-const result = spawnSync('tsx', ['--tsconfig', 'tsconfig.bench.json', file], {
-  stdio: 'inherit',
-  shell: process.platform === 'win32',
-})
-process.exit(result.status ?? 1)
+// Sequential on purpose: two benches sharing the CPU would each measure
+// the other. A heading per bench keeps a multi-bench transcript readable
+// and pasteable into an issue as one Markdown document.
+let failed = false
+for (const name of names) {
+  if (names.length > 1) console.log(`\n# ${name}\n`)
+  const result = spawnSync(
+    'tsx',
+    ['--tsconfig', 'tsconfig.bench.json', `${BENCH_DIR}/${name}.ts`],
+    {
+      stdio: 'inherit',
+      shell: process.platform === 'win32',
+    }
+  )
+  if (result.status !== 0) failed = true
+}
+process.exit(failed ? 1 : 0)
