@@ -10,6 +10,20 @@
  */
 export const noop = (): void => {}
 
+/**
+ * A value or a promise of one: what a node evaluation hands back once a
+ * leaf may answer without a promise. `await` accepts either, so most
+ * callers never look; the ones that collect several check with
+ * `isThenable` and skip the wait when nothing is pending.
+ */
+export type MaybePromise<T> = T | Promise<T>
+
+/** Whether a value is something `await` would wait on. */
+export const isThenable = (value: unknown): value is PromiseLike<unknown> =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof (value as { then?: unknown }).then === 'function'
+
 /** A plain object: an object that is neither null nor an array. */
 export const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

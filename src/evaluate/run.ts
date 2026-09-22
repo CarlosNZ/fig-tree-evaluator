@@ -62,6 +62,7 @@ import {
 } from './internal'
 import { createErrorCollector, type ErrorCollector } from './report'
 import { createTraceRecorder, type TraceRecorder } from './trace'
+import type { MaybePromise } from '../utils'
 
 /**
  * Evaluate a compiled artifact under the merged options. The clock, when
@@ -184,7 +185,7 @@ const expired = (root: Deadline): boolean =>
  * handled.
  */
 const raced = (
-  evaluateRoot: () => Promise<unknown>,
+  evaluateRoot: () => MaybePromise<unknown>,
   root: Deadline,
   ms: number | undefined
 ): Promise<unknown> =>
@@ -220,7 +221,10 @@ const holeBoundary = (
       throw internalError(
         `the hole boundary was handed the node at ${JSON.stringify(node.path)}, which is not one of the artifact's holes`
       )
-    const attempt = collector === undefined ? run() : degrade(run, hole, collector)
+    // The boundary is report mode's and shielding's alone, never the plain
+    // path, so a hole that answered without a promise is wrapped here
+    const attempt: Promise<unknown> =
+      collector === undefined ? Promise.resolve(run()) : degrade(run, hole, collector)
     if (expiry === undefined) return attempt
     // `Promise.race` does not unsubscribe the loser, so the expiry
     // handler below runs for EVERY hole when the deadline fires — the
@@ -257,7 +261,7 @@ const holeBoundary = (
  * be served back as a degraded hole.
  */
 const degrade = async (
-  run: () => Promise<unknown>,
+  run: () => MaybePromise<unknown>,
   hole: ArtifactHole,
   collector: ErrorCollector
 ): Promise<unknown> => {

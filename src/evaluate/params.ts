@@ -52,7 +52,7 @@ import {
   typeNamesNull,
   type ExpectedType,
 } from '../typeCheck'
-import { isPlainObject, noop, once } from '../utils'
+import { isPlainObject, isThenable, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { internalError } from './internal'
@@ -79,7 +79,7 @@ export const resolveParams = async (
   // Every structure here is built only when a parameter needs it, since
   // the common node has one eager parameter and nothing else
   let pendingNames: string[] | undefined
-  let pending: Promise<unknown>[] | undefined
+  let pending: unknown[] | undefined
   const resolved: Record<string, unknown> = {}
   let holders: Record<string, Thunk> | undefined
   /**
@@ -153,10 +153,13 @@ export const resolveParams = async (
   }
 
   if (pending !== undefined && pendingNames !== undefined) {
-    // One pending parameter — the common node — is awaited on its own,
-    // sparing the `Promise.all` and its result array
-    if (pending.length === 1) resolved[pendingNames[0]] = await pending[0]
-    else {
+    // One eager parameter — the common node — is taken on its own, sparing
+    // the `Promise.all` and its result array; and where its leaf answered
+    // without a promise, the wait too
+    if (pending.length === 1) {
+      const only = pending[0]
+      resolved[pendingNames[0]] = isThenable(only) ? await only : only
+    } else {
       const settled = await Promise.all(pending)
       pendingNames.forEach((name, i) => {
         resolved[name] = settled[i]

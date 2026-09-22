@@ -44,8 +44,8 @@ import { lookupVar } from './scope'
 
 /**
  * Returns the value, or a promise of it for a namespace that has to await
- * something. The one caller is `evaluateNode`, which is async and so
- * settles either shape — and a synchronous `$data` read stays free of a
+ * something. The one caller is the node dispatch, which hands either shape
+ * back as it is — so a synchronous `$data` read costs no promise and no
  * microtask hop, which matters at the rate references are resolved.
  */
 export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): unknown => {

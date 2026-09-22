@@ -23,7 +23,7 @@ import type { EvaluationOptions, FigTreeOptions } from '../options'
 import type { CompiledNode } from '../parse'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
-import { isPlainDataObject, noop } from '../utils'
+import { isPlainDataObject, noop, type MaybePromise } from '../utils'
 import type { TraceNode } from '../trace'
 import type { AbortScope } from './abort'
 import type { Bindings } from './bindings'
@@ -121,7 +121,10 @@ export interface EvaluationContext {
  * share. Declared here, beside the field that holds it, so the context
  * does not have to import from the module that builds it.
  */
-export type HoleBoundary = (run: () => Promise<unknown>, node: CompiledNode) => Promise<unknown>
+export type HoleBoundary = (
+  run: () => MaybePromise<unknown>,
+  node: CompiledNode
+) => Promise<unknown>
 
 /** Declared parameter name → its evaluate-at-most-once resolved value. */
 export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
