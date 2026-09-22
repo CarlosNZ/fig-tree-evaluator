@@ -31,13 +31,30 @@ export const REQUEST_EXPIRED = 'fig-tree:request-expired'
 /** The reason the whole-evaluation `timeout` carries — the kill switch. */
 export const EVALUATION_TIMEOUT = 'fig-tree:evaluation-timeout'
 
-/** A chained abort controller, seen from outside: its signal and two verbs. */
+/** An abort controller, seen from outside: its signal and two verbs. */
 export interface AbortScope {
   signal: AbortSignal
-  /** Aborts this scope alone, with the given reason; the parent is untouched */
+  /** Aborts this scope alone, with the given reason; any parent is untouched */
   abort: (reason: unknown) => void
-  /** Ends the scope: detaches from the parent, aborts with `SCOPE_SETTLED` */
+  /** Ends the scope: detaches from any parent, aborts with `SCOPE_SETTLED` */
   settle: () => void
+}
+
+/**
+ * A scope with nothing above it: one controller, no listener, no timer.
+ * The root of an evaluation that supplied neither a `signal` nor a
+ * `timeout` is one of these — nothing upstream can abort it, so the only
+ * abort it ever carries is its own settling, which is what cancels work
+ * still in flight when a sibling's failure ends the evaluation. Also the
+ * base a `deadline()` with no parent is built on.
+ */
+export const rootScope = (): AbortScope => {
+  const controller = new AbortController()
+  return {
+    signal: controller.signal,
+    abort: (reason) => controller.abort(reason),
+    settle: () => controller.abort(SCOPE_SETTLED),
+  }
 }
 
 /**
@@ -102,17 +119,19 @@ const TIMER_CEILING = 2 ** 31 - 1
  * Cancellation is best-effort; the deadline is not.
  *
  * Either half may be absent: no parent makes this the root of a chain, no
- * `ms` arms no timer. With neither it is a plain scope whose only abort is
- * its own settling.
+ * `ms` arms no timer. Not both, though: with neither there is nothing for
+ * `expiry` to wait on, and the caller wants a plain `rootScope()` — one
+ * controller and no listeners, where this builds a promise and two
+ * listeners that could never fire.
  */
 export const deadline = (
   parent: AbortSignal | undefined,
   ms: number | undefined,
   reason: string
 ): Deadline => {
-  // No parent makes this the root of a chain: a fresh signal that never
-  // aborts stands in, so there is one scope constructor rather than two
-  const scope = childScope(parent ?? new AbortController().signal)
+  // No parent makes this the root of a chain, so there is nothing to
+  // listen to
+  const scope = parent === undefined ? rootScope() : childScope(parent)
   const { signal } = scope
   let expire!: (reason: unknown) => void
   const expiry = new Promise<never>((_resolve, reject) => {
