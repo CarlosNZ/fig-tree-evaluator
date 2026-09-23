@@ -777,14 +777,10 @@ const finalizeParams = (
   order: number
 ) => {
   const definition = node.entry.definition
-  const perElement = new Set(
-    Object.entries(definition.parameters)
-      .filter(([, decl]) => decl.evaluation === 'perElement')
-      .map(([name]) => name)
-  )
+  const iterates = definition.resolution.perElement.length > 0
 
   let frame: BindingFrame | undefined
-  if (perElement.size > 0) {
+  if (iterates) {
     const asPending = pending.find(
       (entry) =>
         entry.name === 'as' &&
@@ -796,17 +792,19 @@ const finalizeParams = (
   }
 
   for (const entry of pending) {
-    if (perElement.has(entry.name)) continue
     const evaluation = definition.parameters[entry.name]?.evaluation
-    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
+    if (evaluation !== 'perElement')
+      node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
-  if (frame !== undefined) state.renamedBindings.push(frame)
-  for (const entry of pending) {
-    if (!perElement.has(entry.name)) continue
-    const evaluation = definition.parameters[entry.name]?.evaluation
-    node.params[entry.name] = walkPending(state, entry, evaluation, depth)
+  if (iterates) {
+    if (frame !== undefined) state.renamedBindings.push(frame)
+    for (const entry of pending) {
+      const evaluation = definition.parameters[entry.name]?.evaluation
+      if (evaluation === 'perElement')
+        node.params[entry.name] = walkPending(state, entry, evaluation, depth)
+    }
+    if (frame !== undefined) state.renamedBindings.pop()
   }
-  if (frame !== undefined) state.renamedBindings.pop()
 
   recordGetDependency(state, node)
   compileTemplate(state, node)
@@ -1403,17 +1401,19 @@ const collectPositional = (
     )
     return
   }
-  const leading = positional.filter((entry) => !entry.startsWith('...'))
   const rest = definition.restParam
+  // A rest entry is always the last positional one (`defineOperator`
+  // enforces it), so the leading entries are the list up to it
+  const leading = rest === null ? positional.length : positional.length - 1
 
-  if (payload.length > leading.length && rest === null) {
+  if (payload.length > leading && rest === null) {
     emit(
       state,
       'error',
       ErrorCodes.positionalArity,
-      `'${node.name}' takes at most ${leading.length} positional argument${
-        leading.length === 1 ? '' : 's'
-      } (${leading.join(', ')}), got ${payload.length}`,
+      `'${node.name}' takes at most ${leading} positional argument${
+        leading === 1 ? '' : 's'
+      } (${positional.join(', ')}), got ${payload.length}`,
       payloadPath,
       order,
       node.name
@@ -1421,10 +1421,10 @@ const collectPositional = (
     return
   }
 
-  const boundLeading = Math.min(payload.length, leading.length)
+  const boundLeading = Math.min(payload.length, leading)
   for (let i = 0; i < boundLeading; i++) {
     pending.push({
-      name: leading[i],
+      name: positional[i],
       kind: 'value',
       value: payload[i],
       path: extendPath(payloadPath, i),
@@ -1434,13 +1434,13 @@ const collectPositional = (
   // payload binds an empty array ({ $and: [] } → values: []), which is the
   // vacuous-identity / empty-aggregate case the passes define, not an
   // omission
-  if (rest !== null && payload.length >= leading.length) {
+  if (rest !== null && payload.length >= leading) {
     pending.push({
       name: rest,
       kind: 'slice',
-      elements: payload.slice(leading.length),
+      elements: payload.slice(leading),
       basePath: payloadPath,
-      offset: leading.length,
+      offset: leading,
     })
   }
 }

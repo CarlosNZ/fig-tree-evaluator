@@ -149,7 +149,8 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   if (node.fallback !== undefined) visit(state, node.fallback)
 
   const definition = node.entry.definition
-  for (const [name, declared] of Object.entries(definition.parameters)) {
+  const owner = operatorOwner(node)
+  for (const [name, declared] of definition.resolution.entries) {
     const supplied = node.params[name]
     if (supplied === undefined) {
       if (declared.required)
@@ -164,7 +165,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
-    checkSuppliedParam(state, operatorOwner(node), name, declared, supplied)
+    checkSuppliedParam(state, owner, name, declared, supplied)
   }
 
   runValidateHook(state, node)

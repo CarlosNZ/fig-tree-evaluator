@@ -275,7 +275,10 @@ export type DeclarationEntry = readonly [name: string, declared: ValidatedParame
  * The parameter resolver's passes, each over exactly the declarations it
  * can apply to (src/evaluate/params.ts). Three lists rather than three
  * guards in three loops: which declarations carry a whole value and which
- * are built last is a fact about the definition, not about the node.
+ * are built last is a fact about the definition, not about the node. The
+ * compiler reads the plan for the same reason: the static checks walk
+ * `entries`, and the walk asks `perElement` whether a node opens a binding
+ * scope.
  */
 export interface ResolutionPlan {
   /** Every declaration, in order — the start pass dispatches over all. */
