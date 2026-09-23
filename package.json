@@ -10,6 +10,10 @@
     ".": {
       "types": "./build/index.d.ts",
       "default": "./build/index.js"
+    },
+    "./editor-hints": {
+      "types": "./build/editor-hints/index.d.ts",
+      "default": "./build/editor-hints/index.js"
     }
   },
   "files": [

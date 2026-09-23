@@ -42,6 +42,7 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'codegen/bundleSize.mjs'
+              - 'codegen/entries.mjs'
 
   size:
     needs: detect

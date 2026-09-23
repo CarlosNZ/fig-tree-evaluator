@@ -198,13 +198,13 @@ Sketch of the resulting manifest (mechanics, not contract — final paths are im
 }
 ```
 
-The root-entry half of this manifest is live in the repo already (July 2026, the toolchain-modernization pass): `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map, and the single-bundle rollup output. The `./convert` / `./editor-hints` subpaths still land at their owning phases.
+The manifest is live except for `./convert`, which lands with its contents at Phase 15: `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map for `.` and `./editor-hints` (built at 14.3), `files` and `sideEffects`.
 
 ## Build & CI mechanics
 
 Implementation notes for Phase 14, not contract — free to reshape provided the published surface above holds:
 
-- **Rollup stays** (three inputs, three ESM bundles + three `.d.ts` rollups — halved by the ESM-only ruling); no reason to switch tooling for its own sake. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
+- **Rollup stays**; no reason to switch tooling for its own sake. _Built at 14.3:_ the entry points are one list, `codegen/entries.mjs`, which drives the build's inputs, the size report and the PR comment, and the build fails if package.json's `exports` map disagrees with it. The ESM build is **one pass over every entry**, so a module two entries share is emitted once, as an unhashed chunk under `build/chunks/`, rather than copied into each: a copy per entry would split the brand symbol, `EvaluationData` and `FigTreeError` across subpaths, the dual-load failure the ESM-only ruling prevents. Each entry gets its own self-contained `.d.ts`, from a separate declaration pass, since the types two entries share are structural. Checked at 14.3 with a throwaway entry importing `FigTreeError` and `EvaluationData`: rollup emitted one shared chunk, both values were the same object from either entry, and an error from one was `instanceof` the other's class. No Phase-14 entry shares runtime code (`./editor-hints` has no imports at all); Phase 15.1 asserts the same for `./convert`. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
 - **Two CI checks**, added at Phase 14 and kept forever:
   1. _Tree-shake fixture_: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, `./convert`, `./editor-hints` or `defineOperator()`-check code (marker-identifier scan). This is principle 5 made executable.
   2. _Size budget_: bundle-size assertion on the root ESM entry. The number is set from measurement at Phase 14; the check existing is the contract, the number is maintenance.

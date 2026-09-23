@@ -1,34 +1,53 @@
+import { readFileSync } from 'node:fs'
 import typescript from '@rollup/plugin-typescript'
 import terser from '@rollup/plugin-terser'
 import dts from 'rollup-plugin-dts'
 import { collectBundleSize, printBundleSize } from './codegen/bundleSize.mjs'
+import { CHUNKS_DIR, ENTRIES } from './codegen/entries.mjs'
+
+// package.json's `exports` must name exactly the entries built here, with
+// the paths the build writes — checked before building anything
+const exportsMap = JSON.parse(readFileSync('package.json', 'utf8')).exports
+const expected = Object.fromEntries(
+  ENTRIES.map(({ subpath, name }) => [
+    subpath,
+    { types: `./build/${name}.d.ts`, default: `./build/${name}.js` },
+  ])
+)
+if (JSON.stringify(exportsMap) !== JSON.stringify(expected))
+  throw new Error(
+    `package.json "exports" does not match codegen/entries.mjs — expected:\n` +
+      JSON.stringify(expected, null, 2)
+  )
 
 export default [
   {
-    input: 'src/index.ts',
+    // One pass over every entry, so shared code is emitted once as a chunk
+    // (codegen/entries.mjs), never copied per entry
+    input: Object.fromEntries(ENTRIES.map(({ name, source }) => [name, source])),
     // ESM-only (docs-dev/v3-specs/v3-packaging.md, open Q1 resolved July
     // 2026): a CJS copy riding along can dual-load in one process and break
     // the identity machinery (brand symbol, EvaluationData sentinel,
-    // instanceof FigTreeError). CJS consumers on Node >=20.19 use
+    // instanceof FigTreeError). CJS consumers on Node >=22.12 use
     // require(esm); older consumers stay on v2.
-    output: [
-      {
-        file: 'build/index.js',
-        format: 'esm',
-      },
-    ],
+    output: {
+      dir: 'build',
+      format: 'esm',
+      entryFileNames: '[name].js',
+      chunkFileNames: `${CHUNKS_DIR}/[name].js`,
+    },
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides
     plugins: [typescript(), terser(), collectBundleSize()],
-    // dequal is v3's one runtime dependency (docs-dev/v3-specs/v3-packaging.md)
-    external: ['dequal', 'dequal/lite'],
   },
-  {
-    // Bundle the per-file declarations (build/dts, emitted by the pass above)
-    // into the single published index.d.ts
-    input: './build/dts/index.d.ts',
-    output: [{ file: 'build/index.d.ts', format: 'es' }],
-    // The size report runs last, so it can weigh the declarations too
-    plugins: [dts(), printBundleSize()],
-  },
+  // Bundle each entry's per-file declarations (build/dts, emitted by the
+  // pass above) into one self-contained .d.ts beside its bundle. Separate
+  // passes, so no entry's types import from another's: the types shared by
+  // two entries are structural, so a copy in each is the same type
+  ...ENTRIES.map(({ name }, i) => ({
+    input: `./build/dts/${name}.d.ts`,
+    output: { file: `build/${name}.d.ts`, format: 'es' },
+    // The size report runs last, so it can weigh every declaration file
+    plugins: [dts(), ...(i === ENTRIES.length - 1 ? [printBundleSize()] : [])],
+  })),
 ]
