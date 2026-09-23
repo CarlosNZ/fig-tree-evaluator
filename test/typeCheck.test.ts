@@ -1,3 +1,4 @@
+import type { Constraints } from '../src'
 import {
   checkType,
   checkConstraints,
@@ -5,8 +6,7 @@ import {
   isLiteralType,
   isExpectedType,
   validateConstraintsShape,
-  type Constraints,
-} from '../src'
+} from '../src/typeCheck'
 
 describe('checkType — basic tokens', () => {
   it('matches string / number / boolean / array / object / null', () => {
