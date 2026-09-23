@@ -43,7 +43,7 @@ Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decision
 
 Decision 4. The core and I/O definitions are `declareOperator()` literals built by the internal `buildOperator` ([src/buildOperator.ts](src/buildOperator.ts)), which skips the checks. They're checked by [test/package-definitions.test.ts](test/package-definitions.test.ts) (each shipped artifact equals `defineOperator()`'s output) and by [codegen/checkDefinitions.ts](codegen/checkDefinitions.ts) in `pnpm build`. Engine-only consumer: 31.23 → 29.41 kB brotli.
 
-### 14.2 · `./editor-hints`
+### 14.2 · `./editor-hints` (module and drift tests built; the build entry is 14.3)
 
 - Create `src/editor-hints/index.ts` with two typed maps:
   - operator name → colours, per-parameter seeds and probably a display name;
