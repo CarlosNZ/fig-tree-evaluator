@@ -21,15 +21,17 @@ v3 ships as `fig-tree-evaluator@3.0.0` — same package identity, clean break in
 
 Functions and types only; the root entry never imports it; it may import the root (built on the compiler's normalizer). Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here:
 
-| Export             | Kind                                  | Purpose                                                                           |
-| ------------------ | ------------------------------------- | --------------------------------------------------------------------------------- |
-| `convertV2ToV3`    | `(expr: unknown) => ConversionResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3       |
-| `ConversionResult` | type                                  | `{ expression, issues: ConversionIssue[] }` (shape below)                         |
-| `ConversionIssue`  | type                                  | one catalogued divergence, tagged (shape below)                                   |
-| `toShorthand`      | `(expr, definitions) => expr`         | canonical v3 node → shorthand face; needs the definitions for `positionalParams`  |
-| `fromShorthand`    | `(expr) => expr`                      | shorthand face → canonical v3 node; the compiler's normalizer, exposed standalone |
+| Export             | Kind                                  | Purpose                                                                     |
+| ------------------ | ------------------------------------- | --------------------------------------------------------------------------- |
+| `convertV2ToV3`    | `(expr: unknown) => ConversionResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3 |
+| `ConversionResult` | type                                  | `{ expression, issues: ConversionIssue[] }` (shape below)                   |
+| `ConversionIssue`  | type                                  | one catalogued divergence, tagged (shape below)                             |
 
-`toShorthand` / `fromShorthand` are **not migration** — they are the editor's round-trip tools, homed here because `./convert` is the tooling-side subpath and the evaluator-methods ruling already decided they are not instance methods. They operate on v3 syntax only (v3 in, v3 out). Recorded here so the subpath's surface is complete in one place.
+### Parked: no shorthand round-trip utilities in 3.0
+
+**Ruled (Carl, September 2026, Phase-14 review).** `./convert` is for converting v2 expressions to v3, and nothing else: `convertV2ToV3` and its two types. The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
+
+One constraint for that design, found at the same review: any such utility needs registry input, in both directions. `{ $plus: [1, 2] }` is an operator node only if `plus` is registered, mapping `[1, 2]` to named parameters needs `plus`'s `positionalParams`, and fragments are called with `$name` too — the limit that ruled out the structural node guards ("v2 root-export disposition" in [v3-packaging.md](v3-packaging.md)).
 
 ### Ruling: `convertV2ToV3` is a pure function carrying its own v2 tables
 
