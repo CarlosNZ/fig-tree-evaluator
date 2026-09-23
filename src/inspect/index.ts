@@ -14,7 +14,6 @@
  * to change, and so is outside semver: it may change in any release.
  * `version` says which release produced a report.
  */
-import { WILDCARD } from '../primitives'
 import type { ArtifactDependencies } from '../compile'
 import { viewHandle, type CompiledExpression } from '../FigTree'
 import type { Issue } from '../issues'
@@ -22,10 +21,10 @@ import type { CallOptions, EvaluationOptions, FigTreeOptions } from '../options'
 import { validationIssues } from '../validation'
 import { version } from '../version'
 import { renderTree, type InspectNode } from './nodes'
-import { toJson, type Json, type Path } from './values'
+import { toJson, type Json } from './values'
 
-export type { InspectNode, TimeoutFallback } from './nodes'
-export type { Json, Opaque, Path } from './values'
+export type { InspectNode } from './nodes'
+export type { Json, Path } from './values'
 
 /**
  * An entry of `validate()`'s list. `order` is present exactly on the
@@ -37,8 +36,11 @@ export type InspectIssue = Issue & { order?: number }
 
 /** The artifact's dependency record, as it is rather than reshaped. */
 export interface InspectDependencies {
-  /** Each statically known `$data` path, in the order the compile met it. */
-  dataPaths: Path[]
+  /**
+   * Each statically known `$data` path in its canonical render, in the
+   * order the compile met it.
+   */
+  dataPaths: string[]
   /** True when the read-set is not statically enumerable. */
   dynamic: boolean
   operators: string[]
@@ -156,20 +158,18 @@ const renderBlock = (block: unknown, special: string, render: (value: unknown) =
     : toJson(block)
 
 /**
- * The record's content in the record's order — not `getDependencies()`'s
- * reshaping, which sorts the paths and reports them as strings — made JSON.
- * The `dataPaths` Map becomes its values: its keys are the rendered paths,
- * there only as the lookup key the record deduplicates on. The `[*]`
- * projection, a symbol in the record, is written `"[*]"`, which a data key
- * literally named `[*]` would read the same as — a collision accepted for
- * readability. And the name lists are copied, because the artifact is the
- * compile cache's: a `push` on the report must not change what
- * `getDependencies()` answers for every other holder.
+ * The record's content in the record's order — `getDependencies()` sorts
+ * the paths, the report does not — made JSON. The `dataPaths` Map becomes
+ * its keys: the canonical render the record deduplicates on, and the
+ * spelling `getDependencies()` and the `missing-data-path` messages use.
+ * The render is unambiguous where a segment array is not JSON — the `[*]`
+ * projection is a symbol there — so `items[*].id` and a key literally named
+ * `[*]` (`items["[*]"].id`) stay apart. The name lists are copied, because
+ * the artifact is the compile cache's: a `push` on the report must not
+ * change what `getDependencies()` answers for every other holder.
  */
 const renderDependencies = (dependencies: ArtifactDependencies): InspectDependencies => ({
-  dataPaths: [...dependencies.dataPaths.values()].map((segments) =>
-    segments.map((segment) => (segment === WILDCARD ? '[*]' : segment))
-  ),
+  dataPaths: [...dependencies.dataPaths.keys()],
   dynamic: dependencies.dynamic,
   operators: [...dependencies.operators],
   fragments: [...dependencies.fragments],

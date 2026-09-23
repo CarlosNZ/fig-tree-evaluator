@@ -22,12 +22,11 @@
 import { FigTree } from '../FigTree'
 import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
-import type { PathSegment } from '../primitives'
 import { buildRegistry } from '../registry'
 import { isPlainDataObject } from '../utils'
 import {
   compileExpression,
-  renderSegments,
+  renderReference,
   runStaticChecks,
   type ArtifactHole,
   type CompiledNode,
@@ -104,13 +103,6 @@ const renderPath = (path: NodePath): string => {
       typeof segment === 'number' ? `[${segment}]` : i === 0 ? String(segment) : `.${segment}`
     )
     .join('')
-}
-
-/** The canonical spelling of a reference node: `$data.user.name`. */
-const renderReference = (namespace: string, segments: PathSegment[]): string => {
-  const drill = renderSegments(segments)
-  const joiner = drill === '' || drill.startsWith('[') ? '' : '.'
-  return `$${namespace}${joiner}${drill}`
 }
 
 /** One line's worth of description — the node's kind and its own detail. */

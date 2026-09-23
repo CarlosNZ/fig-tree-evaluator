@@ -33,8 +33,8 @@ One consequence for [v3-artifact-obligations.md](v3-artifact-obligations.md), wh
 | `hasErrors`             | Dropped — `issues` states it: any error-severity entry is what `validate()` calls invalid and `evaluate()` would refuse, and an error carrying an `order` is the compile stream's own                                                          |
 | `timeoutShielded`       | Agreed — the artifact's flag, renamed from `shielded` to match `validate()`'s badge                                                                                                                                                            |
 | `nodeCount`, `maxDepth` | Agreed — the artifact's numbers as they are: composed through fragment calls, the values the limits compare against                                                                                                                            |
-| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as segment arrays                                                                                                                                         |
-| `identityOnly`          | Dropped — a compile-cache eligibility flag, so machinery; the `opaque` lists show more, literal payloads included                                                                                                                              |
+| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders                                                                                                                         |
+| `identityOnly`          | Dropped — a compile-cache eligibility flag, so machinery; the markers in `canonicalForm` show more, literal payloads included                                                                                                                  |
 | `own`                   | Agreed, provisionally (Carl may revisit) — the uncomposed `nodeCount`, `maxDepth` and `dependencies`                                                                                                                                           |
 | `fragmentCalls`         | Dropped — each call site is a `fragmentCall` node in `canonicalForm`; the per-call depth only feeds `maxDepth` composition                                                                                                                     |
 | `fragments`             | Dropped — the names are in `dependencies.fragments` (everything reachable) and `own.dependencies.fragments` (direct calls); declarations, body warnings and each fragment's own reads are `getFragments()`'s, which withholds bodies by ruling |
@@ -43,7 +43,7 @@ Nothing of the handle's machinery appears: not the registry, the compile cache o
 
 ### `expression`
 
-The source exactly as provided — the handle's `x.expression` — converted by the value rules. Authored `//` comments and spellings survive here, which is what lets `canonicalForm` drop them. It carries no `opaque` list: `canonicalForm` records exactly where each substitution was made.
+The source exactly as provided — the handle's `x.expression` — converted by the value rules. Authored `//` comments and spellings survive here, which is what lets `canonicalForm` drop them. Its markers are the same as `canonicalForm`'s, by the same rule.
 
 ### `options`
 
@@ -64,20 +64,8 @@ The artifact's `root`: the compiled tree in canonical form, one object per compi
 type Path = (string | number)[]
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 
-/** One authored value replaced during conversion. */
-interface Opaque {
-  at: Path
-  type: string
-}
-
-/** The constant a top-level hole's timeout assembly splices in. */
-interface TimeoutFallback {
-  value: Json
-  opaque?: Opaque[]
-}
-
 type InspectNode = { order: number; path: Path } & (
-  | { kind: 'constant'; value: Json; opaque?: Opaque[] }
+  | { kind: 'constant'; value: Json }
   | { kind: 'reference'; reference: string; authored: string; binding?: string }
   | {
       kind: 'operator'
@@ -85,7 +73,7 @@ type InspectNode = { order: number; path: Path } & (
       operator: string
       params: Record<string, InspectNode>
       fallback?: InspectNode
-      timeoutFallback?: TimeoutFallback
+      timeoutFallback?: Json // the constant a timeout splices in; present iff shielded
       useCache?: boolean
       instanceDefaults?: string[]
     }
@@ -97,18 +85,17 @@ type InspectNode = { order: number; path: Path } & (
       argumentsMode: 'static' | 'dynamic'
       parameters?: Record<string, InspectNode> | InspectNode
       fallback?: InspectNode
-      timeoutFallback?: TimeoutFallback
+      timeoutFallback?: Json
     }
   | {
       kind: 'skeleton'
       vars?: Record<string, InspectNode>
       shape: Json
       holes: { at: Path; node: InspectNode }[]
-      opaque?: Opaque[]
     }
   | { kind: 'elements'; elements: InspectNode[] }
   | { kind: 'entries'; vars?: Record<string, InspectNode>; entries: Record<string, InspectNode> }
-  | { kind: 'invalid'; raw: Json; opaque?: Opaque[] }
+  | { kind: 'invalid'; raw: Json }
 )
 ```
 
@@ -120,8 +107,8 @@ type InspectNode = { order: number; path: Path } & (
 - **`reference`** — the canonical spelling: namespace aliases normalized (`$d.customer.name` → `$data.customer.name`), the drill path rendered by `renderSegments` (so a `[*]` projection survives), and an `as` binding under its bound name (`$item.name`, with `binding: "item"`). `authored` keeps the raw spelling.
 - **`operator`** — the canonical name only; the registry entry behind it is machinery. `instanceDefaults` lists the keys `operatorDefaults` applied to the node; the values are in `options.operatorDefaults`.
 - **`fragmentCall`** — `resolved` is false only where the name resolved to nothing, which is already an error issue. The body is not in the report at all: the names of every fragment reachable are in `dependencies.fragments`, and the rest is `getFragments()`'s (see `fragments` in the table).
-- **`timeoutFallback`** — on an `operator` or `fragmentCall` node that is a top-level hole, where the hole has one. See "Timeout shielding" below.
-- **`skeleton`** — `shape` is the constant container with each hole's slot holding `"<hole>"`, and `holes` lists each hole's splice position `at` (relative to the shape) with its node. The `at` list is what identifies the holes, so an authored `"<hole>"` string cannot be mistaken for one. A hole's absolute path is its node's `path`. In an object shape the hole keys follow the constant ones rather than keeping their authored places: the artifact's skeleton holds a hole's key only as its `at`, so the placeholders are written in after the constants.
+- **`timeoutFallback`** — on an `operator` or `fragmentCall` node that is a top-level hole, where the hole has one: the constant itself, converted like any authored value. The key's presence is the fact, so a constant `null` fallback reads as `timeoutFallback: null`. See "Timeout shielding" below.
+- **`skeleton`** — `shape` is the constant container with each hole's slot holding `"<hole>"`, and `holes` lists each hole's splice position `at` (relative to the shape) with its node. The `at` list is what identifies the holes, so an authored `"<hole>"` string cannot be mistaken for one. A hole's absolute path is its node's `path`. The shape is filled by the engine's own `splice()`, a placeholder standing in for each hole's value, so it is assembled exactly as evaluation assembles a result. In an object shape the hole keys therefore follow the constant ones rather than keeping their authored places — the artifact's skeleton holds a hole's key only as its `at` — and a `__proto__` key reads as the engine treats it, dropped beside a hole ([#182](https://github.com/CarlosNZ/fig-tree-evaluator/issues/182)).
 - **`elements`, `entries`** — one node per element or entry, for the reason below.
 - **Left out:** the artifact's `precomputed` slot — nothing sets it.
 
@@ -140,9 +127,9 @@ The rule: a constant is a node where it fills a slot that needs one — a parame
 
 A top-level hole takes its `timeoutFallback` from one of three sources, and only the first is visible on the node without it:
 
-- its own constant `fallback` — `total`, `{ "value": 0 }`, beside its `fallback` node;
-- a constant `fallback` in `operatorDefaults` — `contact`, `{ "value": "unknown" }`, which the node otherwise shows only as `instanceDefaults: ["fallback"]`;
-- for a fragment call with no `fallback` of its own, the timeout fallback of its target's body, lifted — `greeting`, `{ "value": "Hello!" }`, invisible at the call site.
+- its own constant `fallback` — `total`, `0`, beside its `fallback` node;
+- a constant `fallback` in `operatorDefaults` — `contact`, `"unknown"`, which the node otherwise shows only as `instanceDefaults: ["fallback"]`;
+- for a fragment call with no `fallback` of its own, the timeout fallback of its target's body, lifted — `greeting`, `"Hello!"`, invisible at the call site.
 
 A dynamic `fallback` (`fallback: '$data.x'`) never counts, since it could start new work past the deadline.
 
@@ -181,15 +168,15 @@ The artifact's two measurements as they are — the numbers the `maxNodes` / `ma
 
 The artifact's dependency record (obligation B6) as it is, rather than `getDependencies()`'s reshaping of it:
 
-- **`dataPaths`** — each statically known `$data` path as an array of segments, in the order the compile found them; `getDependencies()` sorts them, the report does not. The record also keys each path by its rendered string, which is what it deduplicates on. The report drops that key — it is only the lookup key, and it follows from the segments — which leaves the same array shape as every `path` in the report. The `[*]` projection, a symbol in the record, is written `"[*]"`:
+- **`dataPaths`** — each statically known `$data` path in its canonical render, in the order the compile found them; `getDependencies()` spells them the same way and sorts them, the report does not. The render is the key the record already deduplicates on, and the spelling the `missing-data-path` messages use too. It is unambiguous, where the record's segment arrays are not JSON — the `[*]` projection is a symbol there — so the projection and a data key literally named `[*]` stay apart:
 
   <!-- prettier-ignore -->
   ```ts
-  '$data.items[*].id'                        // → ["items", "[*]", "id"]
-  { $get: { path: ['items', '[*]', 'id'] } } // → ["items", "[*]", "id"] too: a data key named "[*]"
+  '$data.items[*].id'                        // → "items[*].id"
+  { $get: { path: ['items', '[*]', 'id'] } } // → 'items["[*]"].id'
   ```
 
-  The second line is a collision accepted for readability. A data key literally named `[*]` is legal and distinct from the projection — the engine renders it `items["[*]"].id` and resolves it as a key — but the report writes both alike. Such a key is vanishingly unlikely, and these paths are a reading aid, not something to resolve.
+  Segment arrays were the first cut, for the same array shape as every `path` in the report. Dropped at the PR #180 review: a `path` is a location in the authored expression, where these are paths into data, which have a canonical spelling of their own — and writing the symbol as `"[*]"` made the two lines above read alike.
 
 - **`dynamic`** — true when the read-set is not statically enumerable: a computed `get` path, a bare `$data`, or a dynamic-arguments fragment call. The listed paths still hold beside it.
 - **`operators`, `fragments`** — canonical operator names and fragment names, in the order found.
@@ -203,20 +190,20 @@ Internally the artifact keeps these for fragment registration, which composes bo
 
 ## Converting authored values
 
-Authored data reaches the report in `expression`, in `options`, and in three node fields: `constant.value`, `skeleton.shape` and `invalid.raw`. JSON values pass through unchanged. Anything else is converted:
+Authored data reaches the report in `expression`, in `options`, in three node fields — `constant.value`, `skeleton.shape` and `invalid.raw` — and in `timeoutFallback`. JSON values pass through unchanged. Anything else follows one rule: **it prints as a marker string naming its type, and a value whose `toJSON` returns a string carries that string** (ruled at the PR #180 review, Carl, September 2026):
 
-1. A value with a **`toJSON` method** is replaced by its result, converted recursively — the object's own declared JSON form, and what the host's `JSON.stringify` would print. A `Date` becomes its ISO string this way with no special case, and so do Luxon, Moment, the Decimal libraries and `Buffer`. A `toJSON` that throws falls through to rule 2.
-2. Otherwise, a **marker string**: `[function name]`, `[Symbol(desc)]`, `[bigint 12]`, `[undefined]`, `[NaN]` / `[Infinity]` / `[-0]`, and `[Name]` from the constructor for any other non-plain object (`[Map]`, `[Foo]`). Never `String(value)`, which is timezone-dependent for a `Date`, `[object Object]` for most instances, and a function's whole source text. `-0` is on the list although it is a number, because JSON writes it as `0` and the round-trip promise would not hold; it still evaluates as `-0`, the marker being only how the report prints it.
+- a non-plain object: `[Name]` from its constructor — `[Map]`, `[Widget]`, `[Object]` for an anonymous class — and, where its own `toJSON` returns a string, that string too: `[Date 2026-09-23T00:00:00.000Z]`, and the same for a Luxon or Moment value or a `Decimal`. A `toJSON` that throws or returns anything else (`Buffer`'s `{ type, data }`) leaves the name alone;
+- anything else outside JSON: `[function name]` (or `[function]`), `[Symbol(desc)]`, `[bigint 12]`, `[undefined]`, `[NaN]` / `[Infinity]` / `[-Infinity]`, and `[-0]` — on the list although it is a number, because JSON writes it as `0` and the round-trip promise would not hold; it still evaluates as `-0`, the marker being only how the report prints it.
 
-A **cycle**, or nesting past the walk's own ceiling (`DEPTH_CEILING`, 500), can only reach the report through what the compiler never walks — the source itself, or a `literal` payload — and would otherwise never finish converting. A revisited container prints `[circular]` and one past the ceiling `[too deep]`, each recorded like any other replacement, and a `toJSON` that hands back its own object (`return this`) meets the same guard.
+A `Date` prints as a marker rather than as its bare ISO string because the marker is what the engine holds: the artifact carries the `Date` itself, and evaluation returns the object, not its text. Never `String(value)`, which is timezone-dependent for a `Date`, `[object Object]` for most instances, and a function's whole source text.
+
+A **cycle**, or nesting past the walk's own ceiling (`DEPTH_CEILING`, 500), can only reach the report through what the compiler never walks — the source itself, or a `literal` payload — and would otherwise never finish converting. A revisited container prints `[circular]` and one past the ceiling `[too deep]`.
 
 An **unassigned array slot** (`[1, , 3]`, which only an expression built in JavaScript can contain) converts exactly as `undefined` does, since reading it gives `undefined`.
 
-`undefined` shows the difference between the two fields that hold authored data. In `expression` it appears wherever it was written — object keys included, which `JSON.stringify` would drop silently. In `canonicalForm` it is rare, because the compiler has already normalized it: an array element becomes `null`, an object key or a modifier is dropped, and a whole-input `undefined` compiles to a `null` constant. It survives only inside a `literal` payload, which is never walked, so that is the one place its marker and `opaque` entry appear there. The example has one of each: `note` is gone from the root's shape, and `defaults.discount` keeps its marker. An unassigned slot compiles to `null` in the same way once [#178](https://github.com/CarlosNZ/fig-tree-evaluator/issues/178) is fixed; until then the compiler throws on it.
+`undefined` shows the difference between the two fields that hold authored data. In `expression` it appears wherever it was written — object keys included, which `JSON.stringify` would drop silently. In `canonicalForm` it is rare, because the compiler has already normalized it: an array element becomes `null`, an object key or a modifier is dropped, and a whole-input `undefined` compiles to a `null` constant. It survives only inside a `literal` payload, which is never walked, so that is the one place its marker appears there. The example has one of each: `note` is gone from the root's shape, and `defaults.discount` keeps its marker. An unassigned slot compiles to `null` in the same way once [#178](https://github.com/CarlosNZ/fig-tree-evaluator/issues/178) is fixed; until then the compiler throws on it.
 
-Every conversion is recorded out of band on the node, in `opaque: [{ at, type }]` — `at` relative to the node's value or shape, `type` the constructor name or the `typeof`. A replacement is always a string, and authored data can hold any string, so the list is what makes the replacements unambiguous: the same device `holes[].at` is for `"<hole>"`. For a `toJSON` value it is also the only record of what the value was, since an ISO string alone does not say it was a `Date`. `opaque` is the artifact's own term (`identityOnly`: "the input contains opaque constants"). `expression` and `options` carry no list (above).
-
-**Where a marker could be mistaken for data.** Inside `canonicalForm`, nothing is ambiguous: `holes[].at` says which `"<hole>"` slots are holes, and `opaque` says which strings are replacements. Everywhere else a rare collision is accepted, the report being a reading aid rather than data to act on. `expression` and `options` carry markers with no list, so an authored `"[undefined]"` string reads like a replaced `undefined` there; `dependencies.dataPaths` writes the projection as `"[*]"`, which a data key of that name would match. The `options` renderings of `data`, `signal`, `cache.store` and header values lose nothing either way — the first three are never strings, and every header value is redacted.
+**A marker could be mistaken for data**, and that is accepted throughout: a marker is a string, authored data can hold any string, and the report is a reading aid rather than data to act on — an authored `"[undefined]"` reads like a replaced `undefined`, and a `[*]` key in authored data reads like the projection in a reference's text. The places the report stays exact are structure rather than records: a skeleton's holes, because `holes[].at` says which `"<hole>"` slots are holes, and `dependencies.dataPaths`, whose canonical renders keep the projection and a `[*]` key apart. An earlier cut also kept an out-of-band `opaque: [{ at, type }]` list on each node, dropped at the PR #180 review: it made `canonicalForm` exact where `expression`, holding the same authored values, was not, and it cost a path allocated per converted value for values expressions rarely hold. What it alone recorded — the type behind a converted string — the marker now carries. The `options` renderings of `data`, `signal`, `cache.store` and header values lose nothing either way: the first three are never strings, and every header value is redacted.
 
 ## Example
 
@@ -267,7 +254,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
   "expression": {
     "//": "Order summary",
     "vars": { "sum": { "$plus": ["$data.subtotal", "$data.shipping"] } },
-    "createdAt": "2026-09-23T00:00:00.000Z",
+    "createdAt": "[Date 2026-09-23T00:00:00.000Z]",
     "greeting": { "$greet": { "name": "$d.customer.name" } },
     "lines": {
       "$map": {
@@ -305,7 +292,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     "path": [],
     "vars": { "sum": { /* #1–4: plus over $data.subtotal, $data.shipping */ } },
     "shape": {
-      "createdAt": "2026-09-23T00:00:00.000Z",
+      "createdAt": "[Date 2026-09-23T00:00:00.000Z]",
       "defaults": { "currency": "NZD", "discount": "[undefined]" },
       "extras": { "$colour": "red" },
       "greeting": "<hole>",
@@ -354,7 +341,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
               ]
             }
           },
-          "timeoutFallback": { "value": "unknown" },
+          "timeoutFallback": "unknown",
           "instanceDefaults": ["fallback"]
         }
       },
@@ -386,7 +373,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
             }
           },
           "fallback": { "order": 30, "kind": "constant", "path": ["total", "fallback"], "value": 0 },
-          "timeoutFallback": { "value": 0 },
+          "timeoutFallback": 0,
           "useCache": false
         }
       },
@@ -399,10 +386,6 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
           "raw": { "operator": "flibble" }
         }
       }
-    ],
-    "opaque": [
-      { "at": ["createdAt"], "type": "Date" },
-      { "at": ["defaults", "discount"], "type": "undefined" }
     ]
   },
   "issues": [
@@ -450,13 +433,13 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
   "maxDepth": 5,
   "dependencies": {
     "dataPaths": [
-      ["subtotal"],
-      ["shipping"],
-      ["customer", "name"],
-      ["items"],
-      ["status"],
-      ["customer", "email"],
-      ["customer", "phone"]
+      "subtotal",
+      "shipping",
+      "customer.name",
+      "items",
+      "status",
+      "customer.email",
+      "customer.phone"
     ],
     "dynamic": false,
     "operators": ["plus", "map", "join", "match", "firstOf"],
@@ -467,13 +450,13 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     "maxDepth": 5,
     "dependencies": {
       "dataPaths": [
-        ["subtotal"],
-        ["shipping"],
-        ["customer", "name"],
-        ["items"],
-        ["status"],
-        ["customer", "email"],
-        ["customer", "phone"]
+        "subtotal",
+        "shipping",
+        "customer.name",
+        "items",
+        "status",
+        "customer.email",
+        "customer.phone"
       ],
       "dynamic": false,
       "operators": ["plus", "map", "join", "match", "firstOf"],
@@ -485,14 +468,14 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
 
 ## Implementation
 
-_Built (September 2026): the standalone `inspect()`, in `src/inspect/` — `index.ts` holds the function, the report's types and the `options` and `dependencies` renderings, `nodes.ts` the `canonicalForm` tree, `values.ts` the conversion rules. The report for the example above is exactly the one shown there, key for key._
+_Built (September 2026): the standalone `inspect()`, in `src/inspect/` — `index.ts` holds the function, the report's types and the `options` and `dependencies` renderings, `nodes.ts` the `canonicalForm` tree, `values.ts` the conversion rule. A skeleton's shape is filled by the engine's own `splice()`. The report for the example above is exactly the one shown there, key for key._
 
 - **The shared checks.** `validate()`'s option-dependent checks moved out of `src/FigTree.ts` into `src/validation.ts`. `validationIssues(artifact, options, entry)` assembles the whole list for both callers, `entry` shaping each compile-stream issue — the bare `Issue` for `validate()`, the issue with its `order` for `inspect()` — so the two lists agree by construction, and a test compares them entry for entry. `evaluate()`'s static gate imports the limit checks from there too.
-- **The handle accessor.** The handle's state is `#`-private, so `src/FigTree.ts` exports `viewHandle`: the one reader of that state outside the class, assigned from a `static {}` block inside it, which may name `#` fields. It is not barrel surface. A brand check (`#entry in value`) turns away anything the constructor did not make, and a call option that is instance configuration is refused exactly as `evaluate()` refuses it. The imports run one way, from the inspector to the engine.
+- **The handle accessor.** The handle's state is `#`-private, so `src/FigTree.ts` exports `viewHandle`: the one reader of that state outside the class, an `export let` declared ahead of the class and assigned from a `static {}` block inside it, which may name `#` fields. An importer cannot reassign an imported binding, so the `let` is fixed from outside. It is not barrel surface. A brand check (`#entry in value`) turns away anything the constructor did not make, and a call option that is instance configuration is refused exactly as `evaluate()` refuses it. The check stays although reading a `#` field off anything else throws natively: the native message names an internal private field, where `inspect()`'s own says what to pass. The imports run one way, from the inspector to the engine.
 - **A `TypeError` for anything but a handle**, not a `FigTreeError`: a wrong-typed argument is a programming error in the host, not a finding about an expression.
 - **Nothing shared with the artifact.** The artifact is the compile cache's, handed to every holder, so every path is copied and every authored value converted into new containers. A test scribbles on one report and takes another.
-- **Exported types:** `InspectReport`, `InspectNode`, `InspectIssue`, `InspectDependencies`, `InspectOpaque` and `InspectTimeoutFallback` — the last two renamed at the root so the package's namespace does not carry a bare `Opaque`.
-- **Tree-shaking, checked by hand.** Bundling an app that imports only `{ FigTree, coreOperators }` from `build/` with rollup carries none of the inspector — none of its marker strings are in the output — and importing `inspect` as well adds about 5 kB before minification. The accessor itself stays in the engine, a few lines in the class. The Phase-14 tree-shake fixture should assert the absence.
+- **Exported types:** `InspectReport`, `InspectNode`, `InspectIssue` and `InspectDependencies`.
+- **Tree-shaking, checked by hand.** Bundling an app that imports only `{ FigTree, coreOperators }` from `build/` with rollup carries none of the inspector — none of its marker strings are in the output — and importing `inspect` as well adds about 4 kB before minification. The accessor itself stays in the engine, a few lines in the class. The Phase-14 tree-shake fixture should assert the absence.
 - **Tests:** [test/inspect.test.ts](../../test/inspect.test.ts).
 
 ## Open

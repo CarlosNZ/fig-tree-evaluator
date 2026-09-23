@@ -71,14 +71,7 @@ export type { CompiledExpression } from './FigTree'
 // nothing in the engine, so a bundle that never imports it never carries
 // it. The report's shape follows the compiler and is outside semver.
 export { inspect } from './inspect'
-export type {
-  InspectDependencies,
-  InspectIssue,
-  InspectNode,
-  InspectReport,
-  Opaque as InspectOpaque,
-  TimeoutFallback as InspectTimeoutFallback,
-} from './inspect'
+export type { InspectDependencies, InspectIssue, InspectNode, InspectReport } from './inspect'
 export type { CallOptions, EvaluationOptions, FigTreeOptions, OnlyCallOptions } from './options'
 // Phase 12 — the diagnostic surfaces' return shape
 export type { EvaluationResult, Merge, NoOptions, ResultShape } from './options'

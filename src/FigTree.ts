@@ -502,12 +502,19 @@ const evaluateEntry = async (
 }
 
 /**
+ * A handle's view, or `undefined` for anything that is not a handle —
  * `CompiledExpression`'s own accessor for the inspector, assigned by the
- * class's static block and exposed as `viewHandle` after the class.
- * Declared ahead of the class because the block runs as the class is
- * defined, when a `let` declared later would not exist yet.
+ * class's static block. It lives beside the class rather than on it
+ * because anything on the class is public: an instance method would hand
+ * the artifact to every holder, and a static one would be reachable
+ * through `handle.constructor`. An importer cannot reassign an imported
+ * binding, so the `let` is fixed from outside; it is declared ahead of the
+ * class because the block runs as the class is defined, when a `let`
+ * declared later would not exist yet. Internal, not barrel surface: it is
+ * what lets the inspector live in its own module and stay out of any
+ * bundle that never imports it.
  */
-let readHandle: (value: object, call: CallOptions | undefined) => HandleView | undefined
+export let viewHandle: (value: unknown, call?: CallOptions) => HandleView | undefined
 
 /**
  * What `compile()` returns ("compile()" in
@@ -548,13 +555,14 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   #compiled?: CompileArtifact
   #issues?: readonly Issue[]
 
-  // The handle's accessor for the inspector (`viewHandle`, after the
+  // The handle's accessor for the inspector (`viewHandle`, above the
   // class) — the one reader of this state from outside. A static block is
   // inside the class body, so it may name `#` fields, and the brand check
-  // turns away anything the constructor did not make
+  // turns away anything the constructor did not make; it throws on a
+  // primitive, so an object is checked for first
   static {
-    readHandle = (value, call) => {
-      if (!(#entry in value)) return undefined
+    viewHandle = (value, call) => {
+      if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
       const options =
         call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
       return { expression: value.#expression, artifact: value.#artifact(), options }
@@ -649,18 +657,6 @@ export interface HandleView {
   artifact: CompileArtifact
   options: EvaluationOptions
 }
-
-/**
- * The handle's view, or `undefined` for anything that is not a handle —
- * `CompiledExpression`'s accessor, living beside the class rather than on
- * it because anything on the class is public: an instance method would
- * hand the artifact to every holder, and a static one would be reachable
- * through `handle.constructor`. Internal, not barrel surface; it is what
- * lets the inspector live in its own module and stay out of any bundle
- * that never imports it.
- */
-export const viewHandle = (value: unknown, call?: CallOptions): HandleView | undefined =>
-  typeof value === 'object' && value !== null ? readHandle(value, call) : undefined
 
 /**
  * The envelope for a return that never ran: a static refusal, or an inert
