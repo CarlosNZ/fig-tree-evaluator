@@ -36,9 +36,7 @@ Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decision
 
   The spec's principle 3 says everything exported is contract, so each one either gets added to the list or is removed.
 
-- **`isOperatorNode` / `isFragmentNode` don't exist**, and the spec doesn't say what they check. A guard that doesn't consult the registry can only recognise the canonical form (`{ operator: … }` / `{ fragment: … }`). It can't tell what a `$name` key is without a registry.
-- **Several listed types don't exist:** `FigTreeExpression` (question 4), `OperatorNode`, `FragmentNode` and `OperatorName`. Also, the compiler has an internal `OperatorNode` in [src/compile/artifact.ts](src/compile/artifact.ts) that would clash by name.
-- **An exports test.** It would check the root's full list of exported names against the spec's list, and confirm that every export the v2 disposition table deletes is absent. Phase 13.2 explicitly left this for Phase 14 ("the standalone structural export stays Phase 14's").
+- **An exports test.** It checks the root's exported names against the spec's list exactly, so any deleted v2 export that reappears fails it without the test having to name one.
 - **Comment cleanup.** Rewrite the file's comments: the header still says "Phase-0 skeleton … exposes only the version", and one comment says packaging is "deferred to Phase 14 … for now".
 
 ### 14.2 · `./editor-hints`
