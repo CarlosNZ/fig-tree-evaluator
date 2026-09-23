@@ -4,15 +4,18 @@
  * tool about what it needs. Every phase closes with one of these
  * (implementation-plan working rule 7).
  *
- * Runs offline, and nothing here evaluates anything: every call below is
- * a synchronous read. The thread through it is that the whole editing
+ * Runs offline. The first half evaluates nothing: every call in it is a
+ * synchronous read, and the thread through it is that the whole editing
  * surface — an operator dropdown with sections, a parameter form with
  * defaults, a cache-invalidation key, a "does this do anything?" badge —
- * is answerable from four methods and a property.
+ * is answerable from four methods and a property. The second half is the
+ * two later chunks: `compile()`, a handle an expression is compiled into
+ * once and evaluated through many times, and `inspect()`, the report of
+ * what the compiler made of it.
  */
-import { FigTree, coreOperators, defineOperator, httpOperators } from '../index'
+import { FigTree, coreOperators, defineOperator, httpOperators, inspect } from '../index'
 import type { OperatorInfo } from '../index'
-import { block, section } from './showcase'
+import { block, outcome, section } from './showcase'
 
 const clamp = defineOperator({
   name: 'clamp',
@@ -41,6 +44,9 @@ const fig = new FigTree({
     http: { fallback: null },
     clamp: { max: 100, useCache: true },
   },
+  // A credential, so the inspector's options block has something to
+  // withhold
+  http: { headers: { Authorization: 'Bearer s3cret' } },
   fragments: {
     themeColour: {
       expression: { $get: 'settings.theme.colour' },
@@ -63,6 +69,46 @@ const fig = new FigTree({
   },
 })
 
+/** Bodies of `shout` that actually ran, across both definitions. */
+let runs = 0
+
+/**
+ * Two definitions of one operator, as a host ships a fix to it. Their
+ * bodies differ, so their fingerprints do, and the result store keys the
+ * two apart. Both are written out in full: a factory closing over the
+ * difference would give both one body text, and one fingerprint.
+ */
+const shout = defineOperator({
+  name: 'shout',
+  category: 'string',
+  description: 'Upper-case a string',
+  parameters: { text: { type: 'string' } },
+  positionalParams: ['text'],
+  returns: 'string',
+  useCache: true,
+  evaluate: ({ text }) => {
+    runs++
+    return text.toUpperCase()
+  },
+})
+
+const shoutEmphatic = defineOperator({
+  name: 'shout',
+  category: 'string',
+  description: 'Upper-case a string, with emphasis',
+  parameters: { text: { type: 'string' } },
+  positionalParams: ['text'],
+  returns: 'string',
+  useCache: true,
+  evaluate: ({ text }) => {
+    runs++
+    return `${text.toUpperCase()}!`
+  },
+})
+
+/** A second instance, so the redefinition below leaves `fig` untouched. */
+const live = new FigTree({ operators: [coreOperators, shout] })
+
 /** One parameter, as a form-builder would read it. */
 const parameterLine = (name: string, info: OperatorInfo): string => {
   const parameter = info.parameters[name]
@@ -75,7 +121,7 @@ const parameterLine = (name: string, info: OperatorInfo): string => {
   return `      ${name.padEnd(16)}${bits.join(', ')}`
 }
 
-const main = () => {
+const main = async () => {
   const operators = fig.getOperators()
 
   section('getOperators(): an operator dropdown, grouped by category')
@@ -200,6 +246,103 @@ const main = () => {
 
   section('version')
   console.log(`  fig.version — ${fig.version}\n`)
+
+  section('compile(): compile once, hold the handle, evaluate many times')
+
+  const template = {
+    greeting: { $shout: '$data.name' },
+    total: { $plus: ['$data.subtotal', '$data.shipping'] },
+  }
+  const ada = { name: 'ada', subtotal: 40, shipping: 5 }
+  const grace = { name: 'grace', subtotal: 12, shipping: 0 }
+
+  const card = live.compile(template)
+  console.log(`  const card = live.compile(template)\n      ${block(template)}`)
+  console.log(
+    `    → hasErrors ${card.hasErrors}, ${card.issues.length} issues, ` +
+      `reads ${block(card.getDependencies().data.paths)}\n`
+  )
+
+  const run = async (label: string, evaluation: () => Promise<unknown>) =>
+    console.log(`  ${label.padEnd(40)}${await outcome(evaluation)}   bodies run: ${runs}`)
+
+  await run('card.evaluate({ data: ada })', () => card.evaluate({ data: ada }))
+  await run('card.evaluate({ data: grace })', () => card.evaluate({ data: grace }))
+  await run('live.evaluate(template, { data: ada })', () => live.evaluate(template, { data: ada }))
+
+  console.log(
+    '\n  One result store: the instance is served the answer the handle\n' +
+      '  cached, and the body does not run again.\n'
+  )
+
+  live.updateOptions({ operators: [coreOperators, shoutEmphatic] })
+  console.log('  live.updateOptions({ operators: [coreOperators, shoutEmphatic] })\n')
+
+  await run('live.evaluate(template, { data: ada })', () => live.evaluate(template, { data: ada }))
+  await run('card.evaluate({ data: ada })', () => card.evaluate({ data: ada }))
+
+  console.log(
+    '\n  The redefinition keys apart from its predecessor by fingerprint, so\n' +
+      '  the instance is not served the old answer. The handle is a snapshot\n' +
+      '  of the instance as it was at compile(), and keeps answering from its\n' +
+      "  own definition's entries.\n"
+  )
+
+  const config = { title: 'Report', tags: ['a', 'b'] }
+  const plain = live.compile(config)
+  console.log(`  inert input\n      ${block(config)}`)
+  console.log(
+    `    → hasErrors ${plain.hasErrors}, and evaluate() hands back the ` +
+      `input itself: ${(await plain.evaluate()) === config}\n`
+  )
+
+  const broken = { a: { $round: ['ten'] }, b: { operator: 'flibble' } }
+  const refused = live.compile(broken)
+  console.log(`  a static error\n      ${block(broken)}`)
+  console.log(`    → hasErrors ${refused.hasErrors}, and issues says why before anything runs:`)
+  for (const issue of refused.issues)
+    console.log(`        ${issue.code} at ${JSON.stringify(issue.path)}: ${issue.message}`)
+  console.log(`      evaluate() ${await outcome(() => refused.evaluate())}\n`)
+
+  section('inspect(): how the engine sees an expression')
+
+  const order = {
+    heading: { $banner: { title: '$data.title' } },
+    total: { $round: '$data.total' },
+    badge: { $colour: 'red' },
+  }
+  const report = inspect(fig.compile(order), { data: { title: 'Q3' } })
+  console.log(`  const report = inspect(fig.compile(order), { data })\n      ${block(order)}\n`)
+
+  console.log(`  canonicalForm — the compiled tree, in the artifact's own shapes`)
+  console.log(`      ${block(report.canonicalForm)}\n`)
+
+  // `badge` is inert data folded into the root's shape, so its warning's
+  // order names a value the tree has no node for
+  console.log("  issues — validate()'s list, a compile-stream entry carrying its order")
+  for (const issue of report.issues)
+    console.log(
+      `      ${issue.order === undefined ? '  ' : `#${issue.order}`} ` +
+        `${issue.severity} ${issue.code}: ${issue.message}`
+    )
+
+  console.log('\n  dependencies — composed through the fragment call, beside its own')
+  console.log(`      composed  ${block(report.dependencies)}`)
+  console.log(`      own       ${block(report.own.dependencies)}`)
+
+  console.log('\n  options — only those set, the credential withheld, data summarized')
+  console.log(`      ${block(report.options)}`)
+  console.log(
+    `\n  nodeCount ${report.nodeCount} (own ${report.own.nodeCount}), ` +
+      `maxDepth ${report.maxDepth}, timeoutShielded ${report.timeoutShielded}\n`
+  )
+
+  console.log(
+    '  One plain object, JSON through and through, so a tool can log it,\n' +
+      '  diff two of them, or send it to a browser panel. Its shape follows\n' +
+      "  the compiler's and is outside semver; `version` says which release\n" +
+      `  made it (${report.version}).\n`
+  )
 }
 
 main()

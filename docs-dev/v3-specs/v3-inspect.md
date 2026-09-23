@@ -481,4 +481,4 @@ _Built (September 2026): the standalone `inspect()`, in `src/inspect/` — `inde
 ## Open
 
 - **The dev [src/dev/inspect.ts](../../src/dev/inspect.ts)**: a thin console-printing wrapper over the report, or replaced.
-- **The Phase-14 tree-shake fixture** should assert the inspector's absence from an engine-only bundle — checked by hand so far (see "Implementation").
+- **The Phase-14 tree-shake fixture** should assert the inspector's absence from an engine-only bundle — checked by hand so far (see "Implementation"), and carried into Phase 14's entry in [v3-implementation-plan.md](v3-implementation-plan.md).
