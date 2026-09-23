@@ -2,9 +2,10 @@
 /**
  * Renders the PR bundle-size comment from two `bundleSize.mjs --json`
  * measurements. Used by .github/workflows/pr-bundle-size.yml; adapted from the
- * equivalent in CarlosNZ/json-edit-react, reduced to this package's single
- * bundle and extended with brotli, which is the figure v3 tracks
- * (docs-dev/v3-specs/v3-implementation-plan.md).
+ * equivalent in CarlosNZ/json-edit-react and extended with brotli, which is
+ * the figure v3 tracks (docs-dev/v3-specs/v3-implementation-plan.md). One
+ * row per file `bundleSize.mjs --json` measures — every entry's bundle and
+ * declarations, and any shared chunk — matched to the base by path.
  *
  * Reads two files and writes markdown to stdout — no git, no network, so it
  * runs identically on a laptop and in CI.
