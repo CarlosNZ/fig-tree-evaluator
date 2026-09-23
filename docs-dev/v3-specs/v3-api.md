@@ -48,7 +48,7 @@ interface FigTreeOptions {
 
   // ── Operator registry ──────────────────────────────────
   operators?: (OperatorDefinition | OperatorDefinition[])[] // flattened one level; default: coreOperators only
-  operatorDefaults?: { [operator: OperatorName]: { [param: string]: unknown } }
+  operatorDefaults?: { [operator: string]: { [param: string]: unknown } }
 
   // ── I/O configuration ──────────────────────────────────
   http?: { baseEndpoint?: string; headers?: Record<string, string> }
