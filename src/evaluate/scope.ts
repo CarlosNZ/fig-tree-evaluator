@@ -12,7 +12,7 @@
  * Every name in a block exists before any of its definitions runs, and each
  * thunk captures the context with its OWN scope already pushed, so a var
  * may reference its siblings and its outer scopes. That mirrors the static
- * checker's frame handling exactly (src/parse/staticChecks.ts) — which is
+ * checker's frame handling exactly (src/compile/staticChecks.ts) — which is
  * what makes its cycle detection true of the runtime: `{ vars: { x:
  * '$vars.x' } }` resolves to the inner `x` in both, and is refused before
  * evaluation. There is no runtime cycle guard, and it could not be a simple
@@ -28,7 +28,7 @@
  * poison. A consumer that wants to stop waiting races the thunk at its own
  * demand site instead.
  */
-import type { CompiledNode } from '../parse'
+import type { CompiledNode } from '../compile'
 import { once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'

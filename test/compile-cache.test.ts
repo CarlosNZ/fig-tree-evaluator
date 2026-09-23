@@ -1,6 +1,6 @@
 /**
- * Chunk 8.2 — the two-layer parse cache ("Cache keying for non-identical
- * inputs" and "Parse-cache sizing and eligibility" in
+ * Chunk 8.2 — the two-layer compile cache ("Cache keying for non-identical
+ * inputs" and "Compile-cache sizing and eligibility" in
  * docs-dev/v3-specs/v3-implementation-notes.md; lifecycle steps 3, 4 and 6
  * in docs-dev/v3-specs/v3-worked-examples.md; artifact obligations C1, C5).
  *
@@ -10,7 +10,7 @@
  * would see it: by whether work happened.
  */
 import { ErrorCodes, FigTree } from '../src'
-import { CONTENT_LAYER_SIZE } from '../src/parse'
+import { CONTENT_LAYER_SIZE } from '../src/compile'
 import { compileSpyOp, type CompileSpy } from './fixtures/evalOperators'
 import { coreOperators } from '../src/operators'
 import { makeOp } from './fixtures/registryOptions'
@@ -43,6 +43,15 @@ describe('the identity layer — lifecycle step 3', () => {
     const expression = { $counted: '$data.value' }
     expect(await fig.evaluate(expression, { data: { value: 1 } })).toBe(1)
     expect(await fig.evaluate(expression, { data: { value: 2 } })).toBe(2)
+    expect(spy.compiles()).toBe(1)
+  })
+
+  it('serves a traced evaluation too — the artifact has the nodes a trace echoes', async () => {
+    const { fig, spy } = rig()
+    const expression = expr('x')
+    await fig.evaluate(expression)
+    const traced = await fig.evaluate(expression, { trace: true })
+    expect(traced.trace).toBeDefined()
     expect(spy.compiles()).toBe(1)
   })
 })
@@ -104,7 +113,7 @@ describe('the content layer — lifecycle step 4', () => {
 
 describe('the identity-only guard', () => {
   // Two independent guards, one per route an opaque value can take.
-  it('never serves an opaque constant the parser walked', async () => {
+  it('never serves an opaque constant the compiler walked', async () => {
     const { fig } = rig()
     const stampA = new Date(0)
     const stampB = new Date(0)
@@ -134,7 +143,7 @@ describe('inert inputs', () => {
     const { fig } = rig()
     const deep = { a: { b: { c: { d: 1 } } } }
     await fig.evaluate(deep)
-    // `maxDepth` touches no registry key, so the update keeps the parse
+    // `maxDepth` touches no registry key, so the update keeps the compile
     // cache — and the memoized verdict with it
     fig.updateOptions({ maxDepth: 2 })
     await expect(fig.evaluate(deep)).rejects.toMatchObject({

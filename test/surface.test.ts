@@ -10,7 +10,7 @@ const fig = new FigTree({
   fragments: { summary: { expression: 'a summary' } },
 })
 
-describe('isEvaluable — does the parse find anything to evaluate?', () => {
+describe('isEvaluable — does the compile find anything to evaluate?', () => {
   test.each([
     ['an operator node', { $plus: [1, 2] }, true],
     ['a canonical-face node', { operator: 'plus', values: [1, 2] }, true],
@@ -68,6 +68,7 @@ describe('the v2 → v3 method disposition, as a checklist', () => {
 
   test.each([
     'evaluate',
+    'compile',
     'validate',
     'getDependencies',
     'isEvaluable',

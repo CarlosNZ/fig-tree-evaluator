@@ -14,7 +14,7 @@
  * unhandled rejection at the microtask checkpoint, so attaching later is
  * already too late.
  */
-import type { CompiledNode } from '../parse'
+import type { CompiledNode } from '../compile'
 import { LAZY_HANDLE, type Settlement, type SettlementStream } from '../runtimeInterface'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'

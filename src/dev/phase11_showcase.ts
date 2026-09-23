@@ -5,7 +5,7 @@
  * 7).
  *
  * Runs offline. The thread through it is that registration is the
- * fragment's parse moment — a bad fragment never reaches a call site —
+ * fragment's compile moment — a bad fragment never reaches a call site —
  * and that a call behaves as its expansion does, laziness, scoping and
  * timeout shielding included.
  */
@@ -182,7 +182,7 @@ const main = async () => {
     { user: 42 }
   )
 
-  section('Registration is the fragment’s parse moment')
+  section('Registration is the fragment’s compile moment')
 
   console.log(
     [

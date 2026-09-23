@@ -1,12 +1,13 @@
 /**
- * Dev-only inspector for the parser's intermediate forms. The library
- * itself logs nothing — this is the printer that makes a `ParseArtifact`
- * readable, for understanding what parse and validate produce.
+ * Dev-only inspector for the compiler's intermediate forms. The library
+ * itself logs nothing — this is the printer that makes a `CompileArtifact`
+ * readable, for understanding what compile and validate produce.
  *
- * It reaches into internals (`parseExpression`, `runStaticChecks`,
- * `buildRegistry`) exactly as the white-box parse suites do: there is no
- * public compile method, by ruling ("Rulings on the surface" in
- * docs-dev/v3-specs/v3-evaluator-methods.md). Nothing here is barrel
+ * It reaches into internals (`compileExpression`, `runStaticChecks`,
+ * `buildRegistry`) exactly as the white-box compile suites do: the public
+ * `compile()` returns a handle that keeps the artifact private, by ruling
+ * ("Rulings on the surface" in docs-dev/v3-specs/v3-evaluator-methods.md),
+ * so the artifact is only reachable this way. Nothing here is barrel
  * surface, and the artifact types may be reshaped freely by later phases —
  * expect to adjust this file when they are.
  *
@@ -14,26 +15,26 @@
  *   input            — the expression as authored
  *   compiled tree    — the artifact's node tree, canonical form
  *   artifact         — counts, holes, shielding, dependencies
- *   parse issues     — what the walk (pass 1) emitted
+ *   grammar issues   — what the walk (pass 1) emitted
  *   static issues    — what the metadata layer (pass 2) added
  *   validate()       — the public view, option-dependent checks included
  */
 import { FigTree } from '../FigTree'
 import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
-import type { PathSegment } from '../primitives'
 import { buildRegistry } from '../registry'
 import { isPlainDataObject } from '../utils'
 import {
-  parseExpression,
-  renderSegments,
+  compileExpression,
+  renderReference,
   runStaticChecks,
+  toNodePath,
   type ArtifactHole,
   type CompiledNode,
   type NodePath,
-  type ParseArtifact,
+  type CompileArtifact,
   type SkeletonHole,
-} from '../parse'
+} from '../compile'
 import { demoOperators } from './demoOperators'
 import { httpOperators, sqlOperators } from '../operators/io'
 import { coreOperators } from '../operators'
@@ -103,13 +104,6 @@ const renderPath = (path: NodePath): string => {
       typeof segment === 'number' ? `[${segment}]` : i === 0 ? String(segment) : `.${segment}`
     )
     .join('')
-}
-
-/** The canonical spelling of a reference node: `$data.user.name`. */
-const renderReference = (namespace: string, segments: PathSegment[]): string => {
-  const drill = renderSegments(segments)
-  const joiner = drill === '' || drill.startsWith('[') ? '' : '.'
-  return `$${namespace}${joiner}${drill}`
 }
 
 /** One line's worth of description — the node's kind and its own detail. */
@@ -192,22 +186,22 @@ const printNode = (node: CompiledNode, label: string | null, depth: number) => {
   const head = label === null ? '' : `${label}: `
   const text = `${'  '.repeat(depth)}${head}${describeNode(node)}`
   const gap = Math.max(ANNOTATION_COLUMN - text.length, 2)
-  console.log(`${text}${' '.repeat(gap)}#${node.order}  ${renderPath(node.path)}`)
+  console.log(`${text}${' '.repeat(gap)}#${node.order}  ${renderPath(toNodePath(node.path))}`)
   for (const child of childrenOf(node)) printNode(child.node, child.label, depth + 1)
 }
 
 const holeFallback = (hole: ArtifactHole): string =>
-  hole.staticFallback === undefined
-    ? '  staticFallback: —'
-    : `  staticFallback: ${preview(hole.staticFallback.value)}`
+  hole.timeoutFallback === undefined
+    ? '  timeoutFallback: —'
+    : `  timeoutFallback: ${preview(hole.timeoutFallback.value)}`
 
-const printArtifactFacts = (artifact: ParseArtifact) => {
+const printArtifactFacts = (artifact: CompileArtifact) => {
   const { dependencies: deps } = artifact
   const list = (values: string[]) => (values.length === 0 ? '—' : values.join(', '))
   console.log('\nartifact:')
   console.log(
     `  nodeCount ${artifact.nodeCount}   maxDepth ${artifact.maxDepth}` +
-      `   shielded ${artifact.shielded}   identityOnly ${artifact.identityOnly}`
+      `   timeoutShielded ${artifact.timeoutShielded}   identityOnly ${artifact.identityOnly}`
   )
   console.log(`  operators    ${list(deps.operators)}`)
   console.log(
@@ -244,13 +238,13 @@ const printIssues = (heading: string, issues: Issue[]) => {
 }
 
 /**
- * Parse and validate one expression, printing every intermediate form.
+ * Compile and validate one expression, printing every intermediate form.
  * `options` are ordinary `FigTreeOptions` — supply `operators` to use your
  * own registry instead of the demo set, `data` to exercise the sample-data
  * warning, `maxNodes`/`maxDepth` for the limit checks.
  */
 /**
- * The I/O operators, wired to a client that cannot run: `inspect` parses
+ * The I/O operators, wired to a client that cannot run: `inspect` compiles
  * and validates and never evaluates, so what matters is that the
  * definitions are REGISTERED — otherwise an `http` node inspects as
  * invalid. A stub rather than `httpOperators()` so the tool needs no
@@ -281,21 +275,21 @@ export const inspect = (expression: unknown, options: InspectOptions = {}): void
 
   // Pass 1 — the walk. Its issues are snapshotted before pass 2 runs, so
   // the two layers can be told apart; they share one stream in the artifact.
-  const artifact = parseExpression(expression, registry)
-  const parseIssues = artifact.issues.map((sequenced) => sequenced.issue)
+  const artifact = compileExpression(expression, registry)
+  const grammarIssues = artifact.issues.map((sequenced) => sequenced.issue)
   // Pass 2 — the metadata layer appends to that same stream, in place
   runStaticChecks(artifact)
   const staticIssues = artifact.issues
     .map((sequenced) => sequenced.issue)
-    .filter((issue) => !parseIssues.includes(issue))
+    .filter((issue) => !grammarIssues.includes(issue))
 
   console.log('\ncompiled tree:')
   printNode(artifact.root, null, 0)
   printArtifactFacts(artifact)
-  printIssues('parse issues (pass 1 — grammar)', parseIssues)
-  printIssues('static issues (pass 2 — metadata)', staticIssues)
+  printIssues('grammar issues (pass 1)', grammarIssues)
+  printIssues('static issues (pass 2)', staticIssues)
 
-  // The public view: parses again behind validate(), then adds the
+  // The public view: compiles again behind validate(), then adds the
   // option-dependent checks (maxDepth/maxNodes, sample data) the artifact
   // deliberately never stores
   const result = new FigTree({ ...figOptions, operators }).validate(expression)

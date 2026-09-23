@@ -12,7 +12,7 @@
  */
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
-import type { ValidateHelpers } from './parse/helpers'
+import type { ValidateHelpers } from './compile/helpers'
 import type { OperatorContext } from './runtimeInterface'
 import type { ResolvedParams } from './inference'
 
@@ -104,9 +104,9 @@ export interface ValidateFinding {
 }
 
 /**
- * The static validation hook (contract ledger #11). Runs at parse (Phase 3);
+ * The static validation hook (contract ledger #11). Runs at compile (Phase 3);
  * registration only checks it is a function. The `helpers` toolbox is the
- * frozen primitives object of src/parse/helpers.ts (contract Q7).
+ * frozen primitives object of src/compile/helpers.ts (contract Q7).
  */
 export type OperatorValidate = (
   literalParams: Record<string, unknown>,
@@ -252,6 +252,17 @@ export interface ValidatedOperatorDefinition {
   useCache: boolean
   /** How caching is keyed; doubles as the `'manual'` capability flag. */
   cache: 'auto' | 'manual'
+  /**
+   * Derived: a content hash of everything that can change what the body
+   * computes — the name, the declarations and the source of `evaluate`
+   * and `validate`. Part of every result-cache key (src/evaluate/memo.ts),
+   * so two definitions registered under one name never share an entry,
+   * and an entry persisted by a host store stays valid for exactly as
+   * long as the definition is unchanged. Closure state is invisible to
+   * it: two definitions from one factory over different clients hash
+   * alike, as a shared store already cannot tell them apart.
+   */
+  fingerprint: string
   validate?: OperatorValidate
   evaluate: OperatorEvaluate
   returns: ExpectedType
@@ -264,7 +275,10 @@ export type DeclarationEntry = readonly [name: string, declared: ValidatedParame
  * The parameter resolver's passes, each over exactly the declarations it
  * can apply to (src/evaluate/params.ts). Three lists rather than three
  * guards in three loops: which declarations carry a whole value and which
- * are built last is a fact about the definition, not about the node.
+ * are built last is a fact about the definition, not about the node. The
+ * compiler reads the plan for the same reason: the static checks walk
+ * `entries`, and the walk asks `perElement` whether a node opens a binding
+ * scope.
  */
 export interface ResolutionPlan {
   /** Every declaration, in order — the start pass dispatches over all. */

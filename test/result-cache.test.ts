@@ -465,7 +465,7 @@ describe('maxSize', () => {
 })
 
 describe('clearCache()', () => {
-  it('empties the result store and leaves the parse cache alone', async () => {
+  it('empties the result store and leaves the compile cache alone', async () => {
     const counted = countedOp()
     const f = fig({ operators: [counted.definition] })
     const expression = { $cached: 1 }
@@ -537,10 +537,10 @@ describe('clearCache()', () => {
 })
 
 describe('the two invalidation stories are opposites', () => {
-  it('an operatorDefaults change recompiles without refetching', async () => {
-    let compiles = 0
-    let runs = 0
-    const counted = defineOperator({
+  /** Counts compiles and runs separately, and answers with a tag. */
+  const twoCounters = (tag: string) => {
+    const counts = { compiles: 0, runs: 0 }
+    const definition = defineOperator({
       name: 'counted',
       category: 'other',
       description: 'count compiles and runs separately',
@@ -548,28 +548,92 @@ describe('the two invalidation stories are opposites', () => {
       positionalParams: ['value'],
       useCache: true,
       validate: () => {
-        compiles += 1
+        counts.compiles += 1
         return []
       },
       evaluate: ({ value }) => {
-        runs += 1
-        return `${String(value)}:${runs}`
+        counts.runs += 1
+        return `${tag}:${String(value)}`
       },
     })
-    const f = fig({ operators: [counted] })
+    return { definition, counts }
+  }
+
+  it('an operatorDefaults change recompiles without re-running', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const f = fig({ operators: [definition] })
     const expression = { $counted: {} }
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([1, 1])
+    expect(counts).toEqual({ compiles: 1, runs: 1 })
 
-    // The parse cache drops; the result store is untouched
+    // The compile cache drops; the result store is untouched. A default
+    // reaches the key through the resolved parameters, so the SAME default
+    // is the same key and a changed one is simply a different entry
     f.updateOptions({ operatorDefaults: { counted: { value: 'a' } } })
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([2, 1])
+    expect(counts).toEqual({ compiles: 2, runs: 1 })
+    f.updateOptions({ operatorDefaults: { counted: { value: 'b' } } })
+    expect(await f.evaluate(expression)).toBe('v1:b')
+    expect(counts).toEqual({ compiles: 3, runs: 2 })
+  })
 
-    // The mirror image: nothing recompiles, the body runs again
+  it('clearCache() re-runs the body without recompiling', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const f = fig({ operators: [definition] })
+    const expression = { $counted: {} }
+    await f.evaluate(expression)
     f.clearCache()
     await f.evaluate(expression)
-    expect([compiles, runs]).toEqual([2, 2])
+    expect(counts).toEqual({ compiles: 1, runs: 2 })
+  })
+
+  it('re-registering the same definitions keeps every cached result', async () => {
+    const { definition, counts } = twoCounters('v1')
+    const extra = countedOp('extra')
+    const f = fig({ operators: [definition] })
+    await f.evaluate({ $counted: 'x' })
+    f.updateOptions({ operators: [definition, extra.definition] })
+    await f.evaluate({ $counted: 'x' })
+    expect(counts).toEqual({ compiles: 2, runs: 1 })
+  })
+
+  it('a redefinition under the same name keys apart from its predecessor (#174)', async () => {
+    // Two bodies that differ in their TEXT — the fingerprint hashes the
+    // source, so a factory closing over a variable would hash alike
+    const runs = { before: 0, after: 0 }
+    const before = defineOperator({
+      name: 'counted',
+      category: 'other',
+      description: 'the first definition',
+      parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+      positionalParams: ['value'],
+      useCache: true,
+      evaluate: ({ value }) => {
+        runs.before += 1
+        return `v1:${String(value)}`
+      },
+    })
+    const after = defineOperator({
+      name: 'counted',
+      category: 'other',
+      description: 'the second definition',
+      parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+      positionalParams: ['value'],
+      useCache: true,
+      evaluate: ({ value }) => {
+        runs.after += 1
+        return `v2:${String(value)}`
+      },
+    })
+    const f = fig({ operators: [before] })
+    expect(await f.evaluate({ $counted: 'x' })).toBe('v1:x')
+    // The key carries the definition's fingerprint, so nothing the old
+    // definition computed can answer for the new one — no store clear, no
+    // generation bump, and every other operator's entries untouched
+    f.updateOptions({ operators: [after] })
+    expect(await f.evaluate({ $counted: 'x' })).toBe('v2:x')
+    expect(await f.evaluate({ $counted: 'x' })).toBe('v2:x')
+    expect(runs).toEqual({ before: 1, after: 1 })
   })
 })
 

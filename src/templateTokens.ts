@@ -3,11 +3,11 @@
  * grammar cannot drift ("buildString" in
  * docs-dev/v3-specs/v3-operator-parameters.md, batch 4).
  *
- * The parser scans a LITERAL template to recognize reference tokens and to
+ * The compiler scans a LITERAL template to recognize reference tokens and to
  * report literal-face slips; the operator body scans whatever template it
  * is given, literal or data-sourced, to render it. Token recognition is the
  * only thing that ever happens to a template — it is never re-scanned for
- * references, never re-parsed as a node, and a substituted value is never
+ * references, never compiled as a node, and a substituted value is never
  * scanned at all (References rule 4's sibling at the token level).
  *
  * Two styles, one per `substitutions` shape: positional `%N` pairs with an

@@ -4,10 +4,10 @@
  * docs-dev/v3-specs/v3-operator-contract.md).
  *
  * One table, three moments: registration validates declarations and their
- * defaults; `validate()` checks literal argument values at parse; the runtime
+ * defaults; `validate()` checks literal argument values at compile; the runtime
  * checks dynamic values as they arrive. This module owns the table and returns
  * a *structured* `TypeCheckResult` that each moment adapts — a registration
- * throw, a parse-time `Issue`, or a runtime `FigTreeError` (all code
+ * throw, a compile-time `Issue`, or a runtime `FigTreeError` (all code
  * `type-check`). v2 accumulated joined strings ([v2-src/typeCheck.ts]); v3
  * keeps the token set and the single/union/literal dispatch but returns
  * structure, and changes `any` to admit `null` (there is no `undefined` in the

@@ -1,7 +1,7 @@
 /**
  * The recursive evaluator core — the four-kind dispatch over the compile
  * artifact ("One spine, three views" in
- * docs-dev/v3-specs/v3-evaluator-methods.md; "Parse → compile → evaluate"
+ * docs-dev/v3-specs/v3-evaluator-methods.md; "Compile → evaluate"
  * in docs-dev/v3-specs/v3-implementation-notes.md). A constant is returned
  * by identity, a reference is resolved, a skeleton evaluates its holes
  * concurrently and splices them into a copy-on-write copy of its constant
@@ -10,7 +10,7 @@
  * their phases: the static gate refuses every error-severity issue before
  * evaluation starts.
  */
-import { splice, type CompiledNode, type SkeletonNode } from '../parse'
+import { splice, type CompiledNode, type SkeletonNode } from '../compile'
 import type { EvaluationContext } from './context'
 import { isFigTreeError } from '../FigTreeError'
 import { abortedOutcome, internalError, isCancellation } from './internal'
@@ -114,7 +114,7 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
   const boundary = ctx.rootBoundary
   const inner = boundary === undefined ? ctx : { ...ctx, rootBoundary: undefined }
   // `vars` is functional and consumed on a plain object literal, scoping
-  // the whole subtree — and the parser has already stripped the key, so
+  // the whole subtree — and the compiler has already stripped the key, so
   // the scope is all that is left to apply
   const scoped = pushVars(inner, node.vars)
   const outcomes = node.holes.map((hole) =>

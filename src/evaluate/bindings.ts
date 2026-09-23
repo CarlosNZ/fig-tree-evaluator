@@ -10,10 +10,10 @@
  * spans a node's parameters and its fallback, while a binding frame exists
  * only for one element of one `each` subtree.
  *
- * Which frame answers a reference is `bindsReference` (src/parse/artifact),
+ * Which frame answers a reference is `bindsReference` (src/compile/artifact),
  * the same predicate the static checker resolves through.
  */
-import { bindsReference } from '../parse'
+import { bindsReference } from '../compile'
 import type { EvaluationContext } from './context'
 
 export interface Bindings {

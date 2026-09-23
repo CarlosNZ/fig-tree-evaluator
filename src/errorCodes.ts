@@ -36,7 +36,7 @@ export const ErrorCodes = {
   escapedHandle: 'escaped-handle', // a body returned a LazyValue / PerElement handle instead of demanding it
   emptyAggregate: 'empty-aggregate', // { $plus: [] } with no mode pinned, { $min: [] } — no identity to return
 
-  // Phase 3 — parse / static validation
+  // Phase 3 — compile / static validation
   malformedNode: 'malformed-node', // { operator: 'plus', fragment: 'f' } — a node-grammar hard error
   unknownFragment: 'unknown-fragment', // { fragment: 'flibble' } — names no registered fragment
   positionalArity: 'positional-arity', // { $not: [1, 2] } — surplus positional arguments

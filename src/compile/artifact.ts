@@ -1,10 +1,10 @@
 /**
- * The compile artifact — internal types for the Phase-3 parser.
+ * The compile artifact — internal types for the Phase-3 compiler.
  *
  * The contract these types serve is the obligations checklist in
  * docs-dev/v3-specs/v3-artifact-obligations.md (chunk-3.1 deliverable):
  * the checklist, not these shapes, is binding. Nothing here is barrel
- * surface — tests import from src/parse directly (the registry precedent)
+ * surface — tests import from src/compile directly (the registry precedent)
  * and later phases may reshape these types freely provided every checklist
  * obligation still holds.
  *
@@ -20,16 +20,37 @@ import type { Issue } from '../issues'
 export type NodePath = (string | number)[]
 
 /**
+ * A compiled node's location, held as its parent's location plus its own
+ * key; `null` is the root of the value compiled. Extending one is O(1),
+ * where a node holding its own array costs a copy of every ancestor key —
+ * O(d²) down a chain of depth d. Only a reported location is ever wanted
+ * as an array (an issue, an error, a trace entry, a top-level hole), and
+ * `toNodePath` builds it there.
+ */
+export type LinkedPath = { readonly parent: LinkedPath; readonly key: string | number } | null
+
+export const extendPath = (parent: LinkedPath, key: string | number): LinkedPath => ({
+  parent,
+  key,
+})
+
+export const toNodePath = (path: LinkedPath): NodePath => {
+  const keys: NodePath = []
+  for (let link = path; link !== null; link = link.parent) keys.push(link.key)
+  return keys.reverse()
+}
+
+/**
  * Fields every compiled node carries.
  *
  * `path` is the node's as-authored location (obligation A2): the path
  * `FigTreeError` is tagged with, and the path issues report. `order` is the
- * node's preorder position in the parse walk — the sort key that lets the
+ * node's preorder position in the compile walk — the sort key that lets the
  * grammar layer (3.2) and the metadata layer (3.3) emit issues independently
  * and still produce one deterministic tree-ordered stream (A3).
  */
 interface CompiledBase {
-  path: NodePath
+  path: LinkedPath
   order: number
 }
 
@@ -48,7 +69,7 @@ export type ReferenceNamespace = 'data' | 'vars' | 'params' | 'element' | 'index
 
 /**
  * A recognized reference string (References area). Namespace aliases are
- * normalized away at parse (A1) — `$d.x` compiles identically to `$data.x`.
+ * normalized away at compile (A1) — `$d.x` compiles identically to `$data.x`.
  * `segments` is the drill path from the shared path grammar ([*] projection
  * included); empty for a bare namespace. `raw` keeps the authored spelling
  * for messages.
@@ -57,7 +78,7 @@ export type ReferenceNamespace = 'data' | 'vars' | 'params' | 'element' | 'index
  * iterator's `as` renaming (`as: 'order'` → `$order` / `$orderIndex`): the
  * as-name the reference resolves through. Recognition of renamed bindings
  * is scope-dependent, so it happens in the walk — `as` values are
- * structural (parse-time literals), which is what makes this static.
+ * structural (compile-time literals), which is what makes this static.
  */
 export interface ReferenceNode extends CompiledBase {
   kind: 'reference'
@@ -86,14 +107,14 @@ export interface OperatorNode extends CompiledBase {
   /** The node's vars block: static names → compiled expressions. */
   vars?: Record<string, CompiledNode>
   /**
-   * Operator-owned parse-time precompute slot (B5, B7): compiled literal
-   * regex patterns (Phase 7.2). Opaque to the parser.
+   * Operator-owned compile-time precompute slot (B5, B7): compiled literal
+   * regex patterns (Phase 7.2). Opaque to the compiler.
    *
    * Result-key skeletons, the other use obligation B7 anticipated, are
    * **not built** (assessed at Phase-9 planning, confirming the
    * implementation notes): a skeleton rides one artifact, so a second
    * expression spelling the same request gets no shortcut although it
-   * still shares the result entry — and parse-time work is unconditional
+   * still shares the result entry — and compile-time work is unconditional
    * where evaluation is not, so it would pay for every never-taken branch
    * on the cold call to save sub-milliseconds behind a network round trip.
    */
@@ -146,7 +167,7 @@ export interface SkeletonNode extends CompiledBase {
  * rest-slice positional payload), so both are stored.
  */
 export interface SkeletonHole {
-  path: NodePath
+  path: LinkedPath
   at: NodePath
   node: CompiledNode
 }
@@ -215,7 +236,7 @@ export type CompiledNode =
   | InvalidNode
 
 /**
- * A top-level hole: a maximal evaluable node (A2). `staticFallback` is the
+ * A top-level hole: a maximal evaluable node (A2). `timeoutFallback` is the
  * shielding precompute (B2) — present iff the hole root's fallback subtree
  * (or its operator's `instanceDefaults.fallback`) is classified constant;
  * the wrapper object distinguishes an absent fallback from a constant
@@ -224,7 +245,7 @@ export type CompiledNode =
 export interface ArtifactHole {
   path: NodePath
   node: CompiledNode
-  staticFallback?: { value: unknown }
+  timeoutFallback?: { value: unknown }
 }
 
 /**
@@ -301,7 +322,7 @@ export interface Rollups {
   nodeCount: number
   /**
    * Measured nesting of the walked input, containers included, capped by
-   * the walk's built-in ceiling (src/parse/probe.ts). What `maxDepth`
+   * the walk's built-in ceiling (src/compile/probe.ts). What `maxDepth`
    * compares against.
    */
   maxDepth: number
@@ -317,7 +338,7 @@ export interface Rollups {
 }
 
 /**
- * The compile artifact — the four products of the parse pass (A1–A4) plus
+ * The compile artifact — the four products of the compile pass (A1–A4) plus
  * the precomputations (B). Option-independent (C1) and data-independent
  * (C2) by construction: nothing here may derive from any option outside
  * the registry-affecting three, and nothing from `data`.
@@ -326,7 +347,7 @@ export interface Rollups {
  * expression makes — the reading every consumer wants, under the plain
  * names so the safe reading is the default one.
  */
-export interface ParseArtifact extends Rollups {
+export interface CompileArtifact extends Rollups {
   root: CompiledNode
   /** Maximal evaluable nodes; empty for a fully-constant input. */
   holes: ArtifactHole[]
@@ -339,14 +360,14 @@ export interface ParseArtifact extends Rollups {
   /**
    * Whether `issues` holds an error-severity entry — the static gate's
    * answer, precomputed so the common call reads a flag rather than
-   * assembling the stream. Both places that close the stream — the parse
+   * assembling the stream. Both places that close the stream — the compile
    * walk and the static checks that append to it — set it from
    * `hasError`, so it is correct whenever the stream is. Derived from the
    * stored stream alone, so it is as option-independent as the stream is.
    */
   hasErrors: boolean
   /** True iff every hole carries a static fallback (B2). */
-  shielded: boolean
+  timeoutShielded: boolean
   /**
    * What the walk measured of this expression alone, before composition.
    * With `fragmentCalls` it is the material composition works from, kept

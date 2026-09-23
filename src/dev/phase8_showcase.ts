@@ -1,7 +1,7 @@
 /**
  * Phase 8 showcase — `pnpm dev phase8_showcase`. The instance layer: how
  * options combine, what an instance will and will not remember, and the
- * parse cache underneath it all. Every phase closes with one of these
+ * compile cache underneath it all. Every phase closes with one of these
  * (implementation-plan working rule 7).
  *
  * This phase reads differently from its predecessors, because almost none
@@ -92,7 +92,7 @@ const main = async () => {
     `      the valid key that rode along is not applied either: maxNodes is still ${String(fig.getOptions().maxNodes)}\n`
   )
 
-  section('The parse cache')
+  section('The compile cache')
 
   const cached = new FigTree({ operators: [coreOperators, counted] })
   const expression = { $counted: '$data.value' }
@@ -119,7 +119,7 @@ const main = async () => {
   const before = compiles
   const returned = await cached.evaluate(inert)
   print(
-    'inert data is never parsed at all',
+    'inert data is never compiled at all',
     inert,
     `→ ${block(returned)}`,
     `${compiles - before} compile(s), and returned by identity: ${String(returned === inert)}`

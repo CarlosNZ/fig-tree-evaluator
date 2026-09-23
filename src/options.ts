@@ -57,7 +57,7 @@ export interface FigTreeOptions {
   data?: Record<string, unknown>
   /**
    * Registered at construction or via `updateOptions()`, never per call:
-   * an artifact bakes in which `$name` keys invoke, so the parse cache is
+   * an artifact bakes in which `$name` keys invoke, so the compile cache is
    * only sound against a stable registry. Definitions validate loudly where
    * they are supplied (src/fragments.ts).
    */

@@ -20,7 +20,8 @@
  * ever reach one level.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
-import type { CompiledNode } from '../parse'
+import type { CompiledNode, LinkedPath } from '../compile'
+import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 import { isPlainDataObject, noop, type MaybePromise } from '../utils'
@@ -132,7 +133,7 @@ export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
 /** Where a failure inside a fragment body is to be attributed. */
 export interface FragmentFrame {
   fragment: string
-  callPath: (string | number)[]
+  callPath: LinkedPath
 }
 
 /**
@@ -233,14 +234,21 @@ export const createEvaluationContext = (
  */
 export const createOperatorContext = (
   ctx: EvaluationContext,
-  operator: string,
+  definition: ValidatedOperatorDefinition,
   useCache: boolean,
   note: NoteChannel | undefined
 ): OperatorContext =>
   new BodyContext(
     ctx.abortScope,
     ctx.options,
-    useCache ? { memo: bodyMemo({ operator, note }, ctx.cache) } : PASSTHROUGH_CACHE,
+    useCache
+      ? {
+          memo: bodyMemo(
+            { operator: definition.name, fingerprint: definition.fingerprint, note },
+            ctx.cache
+          ),
+        }
+      : PASSTHROUGH_CACHE,
     note === undefined ? SILENT_TRACE : { note }
   )
 

@@ -1,6 +1,6 @@
 /**
  * Chunk 3.3 — the metadata-driven static-check layer ("The check inventory"
- * in docs-dev/v3-specs/v3-evaluator-methods.md): a second parse-time pass
+ * in docs-dev/v3-specs/v3-evaluator-methods.md): a second compile-time pass
  * over the compiled AST. Constant subtrees are already collapsed, so this
  * pass is proportional to the evaluable structure, not the input size (the
  * two-pass ruling, Phase-3 plan).
@@ -17,13 +17,20 @@ import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
 import { nearestName } from '../utils'
 import { validateHelpers } from './helpers'
-import { bindsReference, hasError, renamedBinding, sortIssues } from './artifact'
+import {
+  bindsReference,
+  extendPath,
+  hasError,
+  renamedBinding,
+  sortIssues,
+  toNodePath,
+} from './artifact'
 import type {
   CompiledNode,
   FragmentCallNode,
-  NodePath,
+  LinkedPath,
   OperatorNode,
-  ParseArtifact,
+  CompileArtifact,
   ReferenceNode,
 } from './artifact'
 
@@ -38,7 +45,7 @@ export interface StaticCheckContext {
 
 interface VarEntry {
   node: CompiledNode
-  declaredAt: NodePath
+  declaredAt: LinkedPath
   order: number
   referenced: boolean
 }
@@ -59,7 +66,7 @@ interface IteratorFrame {
 }
 
 interface CheckState {
-  artifact: ParseArtifact
+  artifact: CompileArtifact
   context: StaticCheckContext
   varsFrames: VarsFrame[]
   iteratorFrames: IteratorFrame[]
@@ -69,7 +76,7 @@ interface CheckState {
  * Run the metadata-driven checks, appending to the artifact's issue stream
  * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
-export const runStaticChecks = (artifact: ParseArtifact, context: StaticCheckContext = {}) => {
+export const runStaticChecks = (artifact: CompileArtifact, context: StaticCheckContext = {}) => {
   const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
   visit(state, artifact.root)
   sortIssues(artifact.issues)
@@ -81,11 +88,11 @@ const emit = (
   severity: Severity,
   code: string,
   message: string,
-  path: NodePath,
+  path: LinkedPath,
   order: number,
   extra: { operator?: string; fragment?: string; parameter?: string } = {}
 ) => {
-  const issue: Issue = { severity, code, message, path }
+  const issue: Issue = { severity, code, message, path: toNodePath(path) }
   if (extra.operator !== undefined) issue.operator = extra.operator
   if (extra.fragment !== undefined) issue.fragment = extra.fragment
   if (extra.parameter !== undefined) issue.parameter = extra.parameter
@@ -116,7 +123,7 @@ const visit = (state: CheckState, node: CompiledNode) => {
       return
     case 'entries': {
       const frame = pushVars(state, node.vars, node.path)
-      for (const value of Object.values(node.entries)) visit(state, value)
+      for (const key in node.entries) visit(state, node.entries[key])
       popVars(state, frame)
       return
     }
@@ -142,7 +149,8 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   if (node.fallback !== undefined) visit(state, node.fallback)
 
   const definition = node.entry.definition
-  for (const [name, declared] of Object.entries(definition.parameters)) {
+  const owner = operatorOwner(node)
+  for (const [name, declared] of definition.resolution.entries) {
     const supplied = node.params[name]
     if (supplied === undefined) {
       if (declared.required)
@@ -157,7 +165,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
-    checkSuppliedParam(state, operatorOwner(node), name, declared, supplied)
+    checkSuppliedParam(state, owner, name, declared, supplied)
   }
 
   runValidateHook(state, node)
@@ -165,7 +173,8 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   // Binding scopes: exactly the perElement subtrees ("The binding scope is
   // exactly the each subtree" — batch 5). Everything else visits outside.
   const perElement: [string, CompiledNode][] = []
-  for (const [name, supplied] of Object.entries(node.params)) {
+  for (const name in node.params) {
+    const supplied = node.params[name]
     if (definition.parameters[name]?.evaluation === 'perElement') perElement.push([name, supplied])
     else visit(state, supplied)
   }
@@ -214,7 +223,7 @@ const checkSuppliedParam = (
   declared: ReceivingDeclaration,
   supplied: CompiledNode
 ) => {
-  // Literal values: the parse moment of the one type table. 'as' is owned
+  // Literal values: the compile moment of the one type table. 'as' is owned
   // by the walk (invalid-as); other structural params must be literal too.
   // Null policy runs BEFORE the type check, mirroring the runtime layers:
   // a null at an optional parameter whose type excludes null is unset (the
@@ -332,7 +341,8 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   // to check a call against
   if (declarations !== undefined && node.argumentsMode === 'static') {
     const owner = { label: node.name, extra: { fragment: node.name } }
-    for (const [name, declared] of Object.entries(declarations)) {
+    for (const name in declarations) {
+      const declared = declarations[name]
       const argument = supplied?.[name]
       if (argument === undefined) {
         if (declared.required)
@@ -349,24 +359,27 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       }
       checkSuppliedParam(state, owner, name, declared, argument)
     }
-    for (const [name, argument] of Object.entries(supplied ?? {}))
-      if (declarations[name] === undefined) {
-        const suggestion = nearestName(name, Object.keys(declarations))
-        emit(
-          state,
-          'error',
-          ErrorCodes.unknownNodeKey,
-          `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
-          argument.path,
-          argument.order,
-          { parameter: name }
-        )
+    if (supplied !== undefined)
+      for (const name in supplied) {
+        const argument = supplied[name]
+        if (declarations[name] === undefined) {
+          const suggestion = nearestName(name, Object.keys(declarations))
+          emit(
+            state,
+            'error',
+            ErrorCodes.unknownNodeKey,
+            `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+            argument.path,
+            argument.order,
+            { parameter: name }
+          )
+        }
       }
   }
 
   if (node.parameters !== undefined) {
     if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-    else for (const argument of Object.values(node.parameters)) visit(state, argument)
+    else for (const key in node.parameters) visit(state, node.parameters[key])
   }
   popVars(state, frame)
 }
@@ -379,7 +392,8 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 
   // Literal parameter values only — dynamic values simply aren't present
   const literalParams: Record<string, unknown> = {}
-  for (const [name, supplied] of Object.entries(node.params)) {
+  for (const name in node.params) {
+    const supplied = node.params[name]
     if (supplied.kind === 'constant') literalParams[name] = supplied.value
   }
 
@@ -520,12 +534,15 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
 const pushVars = (
   state: CheckState,
   vars: Record<string, CompiledNode> | undefined,
-  holderPath: NodePath
+  holderPath: LinkedPath
 ): VarsFrame | null => {
   if (vars === undefined) return null
   const frame: VarsFrame = { names: new Map(), currentVar: null, edges: new Map() }
 
-  for (const [name, node] of Object.entries(vars)) {
+  const varsPath = extendPath(holderPath, 'vars')
+  for (const name in vars) {
+    const node = vars[name]
+    const declaredAt = extendPath(varsPath, name)
     for (const outer of state.varsFrames) {
       if (outer.names.has(name)) {
         emit(
@@ -533,7 +550,7 @@ const pushVars = (
           'warning',
           ErrorCodes.shadowedVar,
           `'${name}' shadows a var of the same name from an enclosing scope`,
-          [...holderPath, 'vars', name],
+          declaredAt,
           node.order
         )
         break
@@ -541,7 +558,7 @@ const pushVars = (
     }
     frame.names.set(name, {
       node,
-      declaredAt: [...holderPath, 'vars', name],
+      declaredAt,
       order: node.order,
       referenced: false,
     })

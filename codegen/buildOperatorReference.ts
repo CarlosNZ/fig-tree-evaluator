@@ -134,7 +134,7 @@ const PENDING: Record<string, PendingEntry> = {
     st: 'grammar',
     ret: 'any',
     pos: [],
-    d: 'Quote a value — the parse boundary: its contents are never parsed, validated or evaluated',
+    d: 'Quote a value — the compile boundary: its contents are never compiled, validated or evaluated',
     p: [
       {
         n: 'value',

@@ -1,9 +1,9 @@
 /**
- * The constancy probe ("Skip the parse for inert inputs" in
+ * The constancy probe ("Skip the compile for inert inputs" in
  * docs-dev/v3-specs/v3-implementation-notes.md): a recognition-only scan
  * over a raw value that answers "would evaluating this be identity?"
  * without allocating a compiled tree. It bails at the first thing the
- * parser would evaluate OR normalize, because either makes the parse result
+ * compiler would evaluate OR normalize, because either makes the compile result
  * differ from the input:
  *
  * - evaluable: an `operator` / `fragment` key, a recognized `$name`
@@ -14,14 +14,14 @@
  *
  * Plain strings, unrecognized `$strings`, primitives and opaque values are
  * constant and pass through by identity. The probe is the single shared
- * implementation of this question (the parser consumes it too), and the
- * property test in test/probe.test.ts pins it to the parser:
- * `probeConstant(x).constant === (parse(x).root is a constant holding x)`.
+ * implementation of this question (the compiler consumes it too), and the
+ * property test in test/probe.test.ts pins it to the compiler:
+ * `probeConstant(x).constant === (compile(x).root is a constant holding x)`.
  *
  * `evaluate()` runs it before parsing and returns the input untouched when
  * it says constant. It recurses, so it carries the same depth ceiling as
  * the walk; a value beyond the ceiling is reported not-constant so the
- * parse gets to report the error. `depth` is the measured nesting (a
+ * compile gets to report the error. `depth` is the measured nesting (a
  * constant input's `maxDepth`), so the user's `maxDepth` still applies to
  * inert input.
  */
@@ -30,7 +30,7 @@ import { resolveOperator, type OperatorRegistry } from '../registry'
 import { recognizeReference } from './references'
 
 /**
- * The built-in, option-independent nesting ceiling for the parse walk and
+ * The built-in, option-independent nesting ceiling for the compile walk and
  * this probe. Measured September 2026 on Node's default stack: the walk
  * survives 1,000 input levels and overflows before 1,500; browsers allow
  * less, so the ceiling sits well inside both.
@@ -70,11 +70,11 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
     return true
   }
   if (isPlainDataObject(value)) {
-    for (const key of Object.keys(value)) {
+    for (const key in value) {
       if (key === 'operator' || key === 'fragment' || key === 'vars' || key === '//') return false
       if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) return false
     }
-    for (const key of Object.keys(value)) {
+    for (const key in value) {
       if (!scan(state, value[key], depth + 1)) return false
     }
     return true

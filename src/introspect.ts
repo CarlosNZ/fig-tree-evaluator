@@ -12,7 +12,7 @@
  * `default` may be the public `EvaluationData` sentinel, which is a symbol
  * (see `ParameterInfo`).
  */
-import type { ArtifactDependencies } from './parse'
+import type { ArtifactDependencies } from './compile'
 import { WILDCARD, type PathSegment } from './primitives'
 import {
   VALIDATED_OPERATOR,
@@ -73,7 +73,7 @@ const segmentClass = (segment: PathSegment): number =>
  * The artifact's record as the public shape. `paths` sorts the record's
  * entries by their segments and reports their keys, which are already the
  * canonical renders — nothing is rendered here. `operators` and
- * `fragments` keep the order the parse walk collected them in, which is
+ * `fragments` keep the order the compile walk collected them in, which is
  * what the recording sets give — the asymmetry is deliberate (a path set
  * is what a host diffs between runs, the other two are for display and the
  * capability probe).
@@ -117,9 +117,10 @@ export interface ParameterInfo extends ValidatedParameter {
  * re-declared, so a field added there is a compile error here until the
  * snapshot carries it. The exclusions are the contract's own: the brand
  * (a snapshot must not satisfy `isValidatedOperator`), the two functions
- * (`validate` travels as a flag, `evaluate` not at all) and the two
- * engine-internal derivations, `deliversLazily` and `resolution`.
- * `parameters` is re-declared only to widen its value to `ParameterInfo`.
+ * (`validate` travels as a flag, `evaluate` not at all) and the three
+ * engine-internal derivations, `deliversLazily`, `resolution` and the
+ * result-key `fingerprint`. `parameters` is re-declared only to widen its
+ * value to `ParameterInfo`.
  */
 export interface OperatorInfo extends Omit<
   ValidatedOperatorDefinition,
@@ -128,6 +129,7 @@ export interface OperatorInfo extends Omit<
   | 'validate'
   | 'deliversLazily'
   | 'resolution'
+  | 'fingerprint'
   | 'parameters'
 > {
   parameters: Record<string, ParameterInfo>

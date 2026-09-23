@@ -7,15 +7,15 @@
  * input; the narrowing is what stops inert data tripping `maxNodes`.
  */
 import { FigTree } from '../src'
-import { parseExpression } from '../src/parse'
-import { makeParseRegistry, parseOps } from './fixtures/parseRegistry'
+import { compileExpression } from '../src/compile'
+import { makeCompileRegistry, compileOps } from './fixtures/compileRegistry'
 
-const fig = new FigTree({ operators: [parseOps()] })
+const fig = new FigTree({ operators: [compileOps()] })
 /** The limits are instance configuration, so a limit is an instance. */
 const withLimits = (limits: { maxDepth?: number; maxNodes?: number }) =>
-  new FigTree({ operators: [parseOps()], ...limits })
-const registry = makeParseRegistry()
-const parse = (input: unknown) => parseExpression(input, registry)
+  new FigTree({ operators: [compileOps()], ...limits })
+const registry = makeCompileRegistry()
+const compile = (input: unknown) => compileExpression(input, registry)
 
 /** `depth` nested single-element arrays around `leaf`. */
 const nestArrays = (depth: number, leaf: unknown): unknown => {
@@ -97,30 +97,30 @@ describe('nodeCount counts evaluable nodes only', () => {
   })
 
   test('constants and plain containers count nothing', () => {
-    expect(parse(42).nodeCount).toBe(0)
-    expect(parse('just text').nodeCount).toBe(0)
-    expect(parse({ a: { b: [1, 2, { c: 'd' }] } }).nodeCount).toBe(0)
-    expect(parse({ $flibble: 'inert', '$typo.x': 1 }).nodeCount).toBe(0)
+    expect(compile(42).nodeCount).toBe(0)
+    expect(compile('just text').nodeCount).toBe(0)
+    expect(compile({ a: { b: [1, 2, { c: 'd' }] } }).nodeCount).toBe(0)
+    expect(compile({ $flibble: 'inert', '$typo.x': 1 }).nodeCount).toBe(0)
   })
 
   test('operators, references and invalid placeholders count once each', () => {
     // one operator node + one reference; the literal 1 is a constant
-    expect(parse({ $plus: [1, '$data.x'] }).nodeCount).toBe(2)
+    expect(compile({ $plus: [1, '$data.x'] }).nodeCount).toBe(2)
     // a skeleton holding three reference holes
-    expect(parse({ a: '$data.a', b: ['$data.b', '$d.c'] }).nodeCount).toBe(3)
+    expect(compile({ a: '$data.a', b: ['$data.b', '$d.c'] }).nodeCount).toBe(3)
     // the malformed node is a broken expression, counted as one
-    expect(parse({ operator: 'nope' }).nodeCount).toBe(1)
+    expect(compile({ operator: 'nope' }).nodeCount).toBe(1)
     // nested operators: outer + inner + reference
-    expect(parse({ $not: { '$>': ['$data.age', 18] } }).nodeCount).toBe(3)
+    expect(compile({ $not: { '$>': ['$data.age', 18] } }).nodeCount).toBe(3)
   })
 
   test('literal contents are uncounted however node-like they look', () => {
     const quoted = { $literal: { operator: 'plus', values: ['$data.x', { $plus: [1, 2] }] } }
-    expect(parse(quoted).nodeCount).toBe(0)
+    expect(compile(quoted).nodeCount).toBe(0)
   })
 
   test('maxDepth still measures the walked structure, containers included', () => {
-    expect(parse(nestObjects(6, 1)).maxDepth).toBe(6)
-    expect(parse(nestObjects(6, { $plus: [1, 2] })).maxDepth).toBeGreaterThan(6)
+    expect(compile(nestObjects(6, 1)).maxDepth).toBe(6)
+    expect(compile(nestObjects(6, { $plus: [1, 2] })).maxDepth).toBeGreaterThan(6)
   })
 })

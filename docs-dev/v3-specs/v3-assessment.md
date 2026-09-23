@@ -6,9 +6,9 @@ _Codebase review of fig-tree-evaluator v2.23.0, July 2026._
 
 The core idea is excellent and worth a v3: a sandboxed, JSON-serializable expression language with async evaluation, pluggable I/O, and editor-grade introspection is a genuinely useful niche that JSONLogic (no async, no metadata) and JSONata/expr-eval (string languages, no structural editing) don't fill. The operator module pattern, the tiny dependency footprint, and the inject-your-own-client design are all right.
 
-What has accumulated over 2.x is **syntax sprawl and permissiveness debt**. The same expression can be written roughly six ways; `$` means four different things; every operator carries 3–7 aliases per name _and_ per property; per-call options mutate instance state; metadata defaults disagree with runtime defaults systemically; and the whole engine re-runs shorthand preprocessing on every node visit of every evaluation because there is no parse/compile phase. The converter layer's bug history (nearly every release from v2.21.4 to v2.22.1 was a `convertToShorthand` fix) is the tell: the input grammar is too irregular to round-trip mechanically, which means it's also too irregular for humans to hold in their heads.
+What has accumulated over 2.x is **syntax sprawl and permissiveness debt**. The same expression can be written roughly six ways; `$` means four different things; every operator carries 3–7 aliases per name _and_ per property; per-call options mutate instance state; metadata defaults disagree with runtime defaults systemically; and the whole engine re-runs shorthand preprocessing on every node visit of every evaluation because there is no compile phase. The converter layer's bug history (nearly every release from v2.21.4 to v2.22.1 was a `convertToShorthand` fix) is the tell: the input grammar is too irregular to round-trip mechanically, which means it's also too irregular for humans to hold in their heads.
 
-V3's theme should be: **one way to say each thing, a real parsing phase, and lexical scoping** — while keeping the operator metadata system, which is the project's crown jewel.
+V3's theme should be: **one way to say each thing, a real compile phase, and lexical scoping** — while keeping the operator metadata system, which is the project's crown jewel.
 
 ---
 
@@ -75,7 +75,7 @@ There is no `NOT`. No iteration (`map`/`filter`/`find` — issue [#92](https://g
 
 Keep the verbose `{ operator: ... }` node as the **canonical AST**, and keep shorthand — but redefine the relationship:
 
-- **Shorthand is specified sugar, normalized exactly once** at parse time (not per node visit, per evaluation, as [shorthandSyntax.ts](../../v2-src/shorthandSyntax.ts) does today). The editor and all tooling operate on canonical form; the normalization is total and lossless by construction.
+- **Shorthand is specified sugar, normalized exactly once** at compile time (not per node visit, per evaluation, as [shorthandSyntax.ts](../../v2-src/shorthandSyntax.ts) does today). The editor and all tooling operate on canonical form; the normalization is total and lossless by construction.
 - **Kill the public `children` form.** Positional parameters survive _only_ as the shorthand array form (`{ $if: [cond, a, b] }`), and the mapping becomes **declarative metadata** — `positionalParams: ['condition', 'then', 'else']` in each operator's data — instead of 24 imperative `parseChildren` functions. This single change deletes the AND-imports-everywhere coupling, the `parseChildrenGET` hack, most of `convert/`'s special cases, and the class of "shorthand can't reach parameter X" bugs.
 - **Kill root-level hoisting** in MATCH and fragment nodes. Branches live in `branches`, parameters in `parameters`. One way.
 - **Fragment calls share the operator shorthand face** — `{ $getCapital: { country: 'NZ' } }` — but take **named parameters only**: no positional-array or single-value forms for fragments (continuing v2's stance). The reason is that fragment parameter lists are user-defined and evolve — a positional call silently re-maps when a parameter is added or reordered, and a single-value form becomes ambiguous the moment the value is an object (params map, or the value of the one param?). Operators don't have this problem because their positional order is fixed library metadata. Canonically, fragment shorthand still normalizes to a distinct `{ fragment: ... }` node, so tooling can tell registry sources apart. Registration-time checks keep the shared `$key` invocation namespace safe: a fragment or custom operator whose name collides with an operator is rejected (issue [#136](https://github.com/CarlosNZ/fig-tree-evaluator/issues/136)), as is a fragment parameter named after a reserved key (`fallback`, `vars`, `outputType`).
@@ -190,26 +190,26 @@ The honest trade-off: null-on-missing can mask path typos (`$data.user.frstName`
 
 One downstream cost to budget for: with nulls flowing as ordinary values, every operator needs a defined null policy (does `+` skip nulls or error? what does `stringSubstitution` render for null?). Issue [#138](https://github.com/CarlosNZ/fig-tree-evaluator/issues/138) is already this question in miniature. V2 pays this cost too — just implicitly, through JS coercion.
 
-### 3.3 Evaluation model: an internal parse → validate → evaluate pipeline
+### 3.3 Evaluation model: an internal compile → validate → evaluate pipeline
 
 The pipeline is engine architecture, not consumer ceremony — there is no consumer-facing "compile" step. Runtime consumers keep exactly the API they have today:
 
 ```ts
 const fig = new FigTree(options)
-await fig.evaluate(expression, data) // parse (cached) → validate → evaluate
+await fig.evaluate(expression, data) // compile (cached) → validate → evaluate
 fig.evaluateSync(expression, data) // same, synchronous; throws if the tree contains async operators
 fig.validate(expression) // tooling: editor diagnostics, build-time config linting
 fig.getDependencies(expression) // tooling: { dataPaths, fragments, functions, operators }
 ```
 
-Compile-once performance comes for free via internal memoization: the engine caches the parsed/normalized form in a `WeakMap` keyed on the expression object. Config expressions are typically parsed from JSON once and held by the consumer, so object identity is stable — repeated evaluation (including hot loops over rows) hits the cached form with zero API overhead. `validate` and `getDependencies` exist for the editor and for CI-style config linting; production code never needs to call them, but the validate phase still runs (cached) inside every `evaluate`, because it changes _when_ errors surface: a malformed expression fails fast with a good message before any network request fires.
+Compile-once performance comes for free via internal memoization: the engine caches the compiled form in a `WeakMap` keyed on the expression object. Config expressions are typically parsed from JSON once and held by the consumer, so object identity is stable — repeated evaluation (including hot loops over rows) hits the cached form with zero API overhead. `validate` and `getDependencies` exist for the editor and for CI-style config linting; production code never needs to call them, but the validate phase still runs (cached) inside every `evaluate`, because it changes _when_ errors surface: a malformed expression fails fast with a good message before any network request fires.
 
 - **Validation is structural, and layered with the runtime type-check.** It cannot know what dynamic children will return, and doesn't try. What it catches without evaluating anything: unknown operators, misspelled or unknown parameter keys, missing required parameters, positional-arity errors, unresolved `$vars`/`$param` references, unknown fragments, fragment cycles — plus type errors on parameters that are _literals_, which in practice is most of them (paths, URLs, flags, delimiters, branch keys). V2's evaluate-then-type-check remains as the second layer, scoped to what genuinely can't be known earlier: values arriving from `getData`, HTTP/SQL, or custom functions. The v2 gap isn't that runtime checking exists — it's that it's the _only_ layer, so a misspelled operator name is undiscoverable until the expression runs against real data. Combined with "don't evaluate until required params are non-null" semantics on I/O operators, this resolves issue [#132](https://github.com/CarlosNZ/fig-tree-evaluator/issues/132) properly.
 - **Return-type inference is an optional later refinement**: operator metadata can declare result types (`equal` → boolean, `split` → array), letting validation flag _provable_ mismatches in dynamic parameters too (a `count` whose child is an `equal` node can never receive an array). `unknown` (from `getData`, HTTP, custom functions) propagates silently, so this only ever reports certain errors — gradual typing, not a type system.
 - **`getDependencies` is an editor gold mine**: prefetch data, show "this expression uses `user.firstName`", invalidate caches precisely.
 - **Trace/explain mode**: `fig.evaluate(expr, data, { trace: true })` returns the result plus a node-annotated tree of intermediate values. For a language whose selling point is debuggable config logic, this is the single most valuable new feature you can ship, and the editor can render it directly.
 - **Resource limits**: `maxDepth`, `maxNodes`, `timeout`, and an `AbortSignal` threaded through to HTTP/SQL clients.
-- **Deterministic scoping** falls out of the parse phase: `vars` resolve lexically, memoized per evaluation, no shared-object mutation.
+- **Deterministic scoping** falls out of the compile phase: `vars` resolve lexically, memoized per evaluation, no shared-object mutation.
 
 ### 3.4 Operator set — drop / merge / fix / add
 
@@ -266,7 +266,7 @@ I/O operators become **opt-in by construction** — better security default than
 
 ### 3.7 Migration story
 
-- Ship `convertV2ToV3` in `./convert`, built on the parse-phase normalizer (which, unlike today's converters, works on a regular grammar — most of the current converter fragility evaporates).
+- Ship `convertV2ToV3` in `./convert`, built on the compile-phase normalizer (which, unlike today's converters, works on a regular grammar — most of the current converter fragility evaporates).
 - Since most real-world v2 expressions are "named properties + a handful of common aliases," the converter plus a published alias-mapping table covers the bulk mechanically. Publish a migration doc generated from the alias table.
 - Optionally ship a `v2Compat` flag for one major cycle that accepts the old alias table and `children`, warning on use — then delete it.
 
@@ -286,11 +286,11 @@ These stand on their own even if v3 takes a while:
 
 ## Priority summary
 
-|              | Item                                                                                                                                                                                                                                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Drop**     | `children` (public), root hoisting, PASSTHRU, COUNT, `type` alias, `objects`, deprecated value nodes, `allowJSONStringInput`, `returnErrorAsString`, mega-alias tables, case-insensitive names, custom-function lookup chain, editor utils from main entry                                         |
-| **Redesign** | `$` → namespaced references (`$data`/`$vars`/`$param`/`$item`); alias nodes → lexical `vars`; internal parse/validate/evaluate pipeline; immutable options; operator registry as opt-in plugins; one `defineOperator` extension API; GET/POST → single `http` operator (GraphQL kept, built on it) |
-| **Improve**  | metadata as single source of truth + generated docs; structured cache keys + pluggable store; error envelope mode; strict coercion rules; consistent parameter naming; REGEX modes; resource limits + AbortSignal                                                                                  |
-| **Add**      | iteration operators, `NOT`, `coalesce`, math/string batches, trace/explain mode, `getDependencies` introspection, `evaluateSync`, subpath exports, optional date plugin                                                                                                                            |
+|              | Item                                                                                                                                                                                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Drop**     | `children` (public), root hoisting, PASSTHRU, COUNT, `type` alias, `objects`, deprecated value nodes, `allowJSONStringInput`, `returnErrorAsString`, mega-alias tables, case-insensitive names, custom-function lookup chain, editor utils from main entry                                           |
+| **Redesign** | `$` → namespaced references (`$data`/`$vars`/`$param`/`$item`); alias nodes → lexical `vars`; internal compile/validate/evaluate pipeline; immutable options; operator registry as opt-in plugins; one `defineOperator` extension API; GET/POST → single `http` operator (GraphQL kept, built on it) |
+| **Improve**  | metadata as single source of truth + generated docs; structured cache keys + pluggable store; error envelope mode; strict coercion rules; consistent parameter naming; REGEX modes; resource limits + AbortSignal                                                                                    |
+| **Add**      | iteration operators, `NOT`, `coalesce`, math/string batches, trace/explain mode, `getDependencies` introspection, `evaluateSync`, subpath exports, optional date plugin                                                                                                                              |
 
-The two features to call _make-or-break_ for v3, if only two things are taken from this report: the **reference/`vars` scoping redesign** (§3.2) — it fixes the most confusing syntax, the most subtle semantics, and the biggest editor pain in one move — and the **internal parse/validate pipeline with trace mode** (§3.3), which converts FigTree from "an evaluator" into "a language with tooling," which is where its editor-centric ecosystem is already trying to go.
+The two features to call _make-or-break_ for v3, if only two things are taken from this report: the **reference/`vars` scoping redesign** (§3.2) — it fixes the most confusing syntax, the most subtle semantics, and the biggest editor pain in one move — and the **internal compile/validate pipeline with trace mode** (§3.3), which converts FigTree from "an evaluator" into "a language with tooling," which is where its editor-centric ecosystem is already trying to go.

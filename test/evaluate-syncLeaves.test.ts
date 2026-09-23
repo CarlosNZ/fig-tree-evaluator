@@ -16,7 +16,7 @@
  */
 import { FigTree, coreOperators } from '../src'
 import { buildRegistry } from '../src/registry'
-import { parseExpression } from '../src/parse'
+import { compileExpression } from '../src/compile'
 import { DeferredScope } from '../src/evaluate/abort'
 import { createEvaluationContext } from '../src/evaluate/context'
 import { evaluateNode } from '../src/evaluate/evaluate'
@@ -32,7 +32,7 @@ const contextOver = (data: Record<string, unknown>) =>
     new DeferredScope(undefined)
   )
 const registry = buildRegistry({ operators: [coreOperators] })
-const compiled = (expression: unknown) => parseExpression(expression, registry).root
+const compiled = (expression: unknown) => compileExpression(expression, registry).root
 
 describe('a leaf that already has its value answers without a promise', () => {
   test('a constant', () => {

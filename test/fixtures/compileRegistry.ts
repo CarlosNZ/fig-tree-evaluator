@@ -1,7 +1,7 @@
 /**
- * A ready registry of realistic stand-in operators for the Phase-3 parser
+ * A ready registry of realistic stand-in operators for the Phase-3 compiler
  * suites. Core operators don't exist until Phase 4, so these fixtures model
- * the shapes the parser must handle — canonical names match the real core
+ * the shapes the compiler must handle — canonical names match the real core
  * set where a real operator is being modelled, but the definitions are
  * test-local and deliberately minimal.
  */
@@ -250,7 +250,7 @@ export const matchOp = () =>
     evaluate: noop,
   })
 
-/** `get` — the parser records its literal paths as data dependencies. */
+/** `get` — the compiler records its literal paths as data dependencies. */
 export const getOp = () =>
   defineOperator({
     name: 'get',
@@ -265,7 +265,7 @@ export const getOp = () =>
     evaluate: noop,
   })
 
-export const parseOps = (): ValidatedOperatorDefinition[] => [
+export const compileOps = (): ValidatedOperatorDefinition[] => [
   orOp(),
   firstOfOp(),
   pickOp(),
@@ -284,22 +284,22 @@ export const parseOps = (): ValidatedOperatorDefinition[] => [
 ]
 
 /** A fresh registry over the stand-in set, optional operatorDefaults. */
-export const makeParseRegistry = (
+export const makeCompileRegistry = (
   operatorDefaults?: Record<string, Record<string, unknown>>
 ): OperatorRegistry =>
   buildRegistry({
-    operators: [parseOps()],
+    operators: [compileOps()],
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),
   })
 
 /**
- * A registry with two fragments registered, for the parse-side cases that
+ * A registry with two fragments registered, for the compile-side cases that
  * need a KNOWN name: the shorthand face and the entry the walk bakes in.
  * Bodies are trivial — what is under test is recognition, not the body.
  */
 export const withFragments = (): OperatorRegistry =>
   buildRegistry({
-    operators: [parseOps()],
+    operators: [compileOps()],
     fragments: {
       summary: { expression: 'a summary', parameters: { title: { type: 'string' } } },
       plain: { expression: 1 },

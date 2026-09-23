@@ -38,7 +38,7 @@ Recorded from Carl's eyeball passes; the entries below are updated to match. Any
 - **value** — null is consumed as an ordinary operating value; the note says what it does there.
 - **unset** — fixed point 3: the default applies (see the question above).
 - **reject** — Type error; under the rule this is just "null not in the type", spelled out only where worth flagging.
-- **structural** — not a value position (parse-time grammar or a parse boundary); the null question doesn't arise.
+- **structural** — not a value position (compile-time grammar or a compile boundary); the null question doesn't arise.
 - _(req)_ in the Default column marks required parameters. Evaluation modes (lazy, sequential, per-element) are omitted — see the passes.
 - `any` includes `null` throughout.
 

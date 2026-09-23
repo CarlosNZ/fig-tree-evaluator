@@ -1,5 +1,5 @@
 /**
- * The bounded LRU behind the parse cache's content layer and the result
+ * The bounded LRU behind the compile cache's content layer and the result
  * cache's built-in store ("Cache keying for non-identical inputs" in
  * docs-dev/v3-specs/v3-implementation-notes.md).
  */

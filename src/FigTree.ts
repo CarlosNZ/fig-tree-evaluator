@@ -4,12 +4,14 @@
  * instance registry via `buildRegistry()` and throws `FigTreeError` (code
  * `invalid-options`) on any bad input — the loud-at-registration posture.
  *
- * `validate()` and `evaluate()` share one spine: the same compile (parse +
- * static checks) and the same per-call limit checks; `validate()` returns
- * the issue stream, `evaluate()` refuses on the first error-severity issue
- * and evaluates the holes otherwise. Only `evaluate()` goes through the
- * parse cache; `validate()` compiles fresh every time, so its report always
- * costs a parse and the cache holds only what evaluation asked for.
+ * `validate()`, `evaluate()` and `compile()` share one spine: the same
+ * compile (the walk + static checks) and the same per-call limit checks;
+ * `validate()` returns the issue stream, `evaluate()` refuses on the first
+ * error-severity issue and evaluates the holes otherwise, and `compile()`
+ * hands back a `CompiledExpression` that does what `evaluate()` does from
+ * the compiled artifact onward. `evaluate()` and `compile()` go through the
+ * compile cache; `validate()` compiles fresh every time, so its report always
+ * costs a compile and the cache holds only what evaluation asked for.
  * The two diagnostic options shape what comes back rather than how the
  * spine works: with `mode: 'report'` or `trace` in effect the method
  * returns an `EvaluationResult` envelope instead of the bare value, and
@@ -17,19 +19,20 @@
  * follows the effective ones.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
- * atomically. The registry, the options and (from 8.2) the parse cache are
+ * atomically. The registry, the options and (from 8.2) the compile cache are
  * derived from each other, so they may only change together: an artifact
  * bakes in registry resolution, and a cache built against one registry
  * must never answer against another.
  *
  * The RESULT cache is deliberately not in that record. It keys resolved
- * runtime values where the parse cache keys the authored input, and the
- * two invalidation stories are opposites: an `operatorDefaults` change
- * must drop every artifact and touch no result, while `clearCache()` does
- * exactly the reverse. Putting it in a record documented as "may only swap
- * together" would invert that invariant in the one place the code states
- * it, so it lives beside the record and is reconfigured rather than
- * replaced.
+ * runtime values where the compile cache keys the authored input, and the
+ * two invalidation stories are opposites: a registry-affecting change
+ * drops every artifact and touches no result (a key carries the
+ * definition's fingerprint, so a redefinition keys apart on its own),
+ * while `clearCache()` does exactly the reverse. Putting it in a record
+ * documented as "may only swap together" would invert that invariant in
+ * the one place the code states it, so it lives beside the record and is
+ * reconfigured rather than replaced.
  */
 import type {
   CallOptions,
@@ -44,13 +47,13 @@ import type {
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry } from './registry'
 import {
-  ParseCache,
-  parseExpression,
+  CompileCache,
+  compileExpression,
   probeConstant,
-  renderDataReference,
   runStaticChecks,
-  type ParseArtifact,
-} from './parse'
+  type CacheEntry,
+  type CompileArtifact,
+} from './compile'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
 import {
@@ -63,7 +66,7 @@ import {
 } from './introspect'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import { resolvePath } from './primitives'
+import { depthIssue, limitIssues, validationIssues } from './validation'
 import { coreOperators } from './operators'
 import { version } from './version'
 
@@ -90,7 +93,7 @@ interface InstanceState {
    * and `operatorDefaults` are the whole invalidation set, and why
    * invalidation is this field being replaced rather than a method call.
    */
-  parseCache: ParseCache
+  compileCache: CompileCache
 }
 
 /**
@@ -118,7 +121,7 @@ const touchesRegistry = (update: FigTreeOptions): boolean =>
  * ever assign a complete, valid record.
  *
  * An update naming none of the registry-affecting options carries the
- * registry and the parse cache across untouched. Nothing about either
+ * registry and the compile cache across untouched. Nothing about either
  * could have changed, so rebuilding would only throw away artifacts.
  */
 const buildState = (previous: InstanceState | null, update: FigTreeOptions): InstanceState => {
@@ -129,7 +132,7 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
   checkKillSwitchOptions(options)
   const evaluation = withoutRegistryKeys(options)
   if (previous !== null && !touchesRegistry(update))
-    return { options, evaluation, registry: previous.registry, parseCache: previous.parseCache }
+    return { options, evaluation, registry: previous.registry, compileCache: previous.compileCache }
 
   const registry = buildRegistry({
     // Omitted `operators` means the core set only — no HTTP, no SQL
@@ -143,8 +146,8 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
     options,
     evaluation,
     registry,
-    parseCache: new ParseCache({
-      compile: (expression) => compile(expression, registry),
+    compileCache: new CompileCache({
+      compile: (expression) => compileWithRegistry(expression, registry),
       probe: (expression) => probeConstant(expression, registry),
     }),
   }
@@ -159,12 +162,13 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
 }
 
 /**
- * The one compile: parse plus the metadata-driven static checks, against a
- * registry. `validate()` calls it directly; `evaluate()` reaches it through
- * the parse cache, which is what makes the two report identically.
+ * The one compile: the walk plus the metadata-driven static checks, against a
+ * registry. `validate()` calls it directly; `evaluate()` and `compile()`
+ * reach it through the compile cache, which is what makes the three report
+ * identically.
  */
-const compile = (expression: unknown, registry: OperatorRegistry): ParseArtifact => {
-  const artifact = parseExpression(expression, registry)
+const compileWithRegistry = (expression: unknown, registry: OperatorRegistry): CompileArtifact => {
+  const artifact = compileExpression(expression, registry)
   runStaticChecks(artifact)
   return artifact
 }
@@ -190,7 +194,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * docs-dev/v3-specs/v3-evaluator-methods.md). Merges by the same rule as
    * per-call options, rebuilds what the update can have changed, and swaps.
    *
-   * The registry and the parse cache are rebuilt only when the update names
+   * The registry and the compile cache are rebuilt only when the update names
    * one of the three registry-affecting options (`touchesRegistry` is the
    * one place that set is defined), and the rebuild re-validates the whole
    * registry: a merged `operatorDefaults` has to be re-checked against a
@@ -198,6 +202,12 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * registers is an error reachable no other way — and the converse holds
    * too. Any other update carries the registry and the cache across
    * untouched, since nothing about either could have changed.
+   *
+   * The result store is left alone by every update, a redefinition under
+   * the same name included: a result key carries the definition's
+   * fingerprint (src/evaluate/memo.ts), so a new definition keys apart
+   * from its predecessor, and a `CompiledExpression` compiled before the
+   * update keeps answering from its own definition's entries.
    *
    * The static return type of `evaluate()` follows the constructor's
    * options and cannot follow an update: after `updateOptions({ mode })`
@@ -222,7 +232,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * when the host knows external state moved and wants the next evaluation
    * fresh without waiting out `maxTime` or building a new instance.
    *
-   * The parse cache is deliberately untouched. It is semantically
+   * The compile cache is deliberately untouched. It is semantically
    * transparent — keyed on input identity against a stable registry — so
    * there is never a correctness reason to clear it, and it has no
    * clearing API for this method to reach.
@@ -276,7 +286,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   /**
    * Full static-issue report ("validate() — the process" in
    * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
-   * on expression content — even hard parse errors come back as
+   * on expression content — even hard grammar errors come back as
    * error-severity issues. Throws only on misuse of the method itself (a
    * per-call option that is instance configuration). It takes the same
    * per-call shape as `evaluate()`, of which only `data` — the sample data
@@ -287,27 +297,12 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
       options === undefined
         ? this.state.evaluation
         : withCallOptions(this.state.evaluation, options)
-    const artifact = compile(expression, this.state.registry)
-    const issues = [...limitIssues(artifact, effective), ...artifact.issues.map((s) => s.issue)]
-
-    // The sample-data check walks the stored dependency list, which holds
-    // segments — the form `resolvePath` accepts, so nothing is re-parsed
-    if (effective.data !== undefined) {
-      for (const dataPath of artifact.dependencies.dataPaths.values()) {
-        if (!resolvePath(effective.data, dataPath).found)
-          issues.push({
-            severity: 'warning',
-            code: ErrorCodes.missingDataPath,
-            message: `'${renderDataReference(dataPath)}' is absent from the supplied sample data`,
-            path: [],
-          })
-      }
-    }
-
+    const artifact = compileWithRegistry(expression, this.state.registry)
+    const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
       issues,
-      timeoutShielded: artifact.shielded,
+      timeoutShielded: artifact.timeoutShielded,
     }
   }
 
@@ -316,23 +311,24 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * docs-dev/v3-specs/v3-evaluator-methods.md): the statically-known
    * `$data` paths with the honesty bit beside them, the operators invoked
    * and the fragments called — transitively, since a call site composes
-   * its target's record in at parse time.
+   * its target's record in at compile time.
    *
    * Never throws: a malformed expression reports whatever the partial
-   * parse found, like `validate()`, because a tooling method that can
-   * throw is one every caller wraps. It parses without the static-check
+   * compile found, like `validate()`, because a tooling method that can
+   * throw is one every caller wraps. It compiles without the static-check
    * pass, which only appends issues, and — again like `validate()` —
-   * compiles fresh rather than going through the parse cache: an editor
+   * compiles fresh rather than going through the compile cache: an editor
    * calling this per keystroke is exactly the content-layer churn that
    * exclusion exists to prevent.
    */
   getDependencies(expression: unknown): Dependencies {
-    return toDependencies(parseExpression(expression, this.state.registry).dependencies)
+    return toDependencies(compileExpression(expression, this.state.registry).dependencies)
   }
 
   /**
-   * Does this instance's parse find anything to evaluate? ("isEvaluable(expr)"
-   * in docs-dev/v3-specs/v3-evaluator-methods.md.) Deep evaluation made
+   * Does this instance's compile find anything to evaluate?
+   * ("isEvaluable(expr)" in docs-dev/v3-specs/v3-evaluator-methods.md.)
+   * Deep evaluation made
    * "is this a FigTree expression" meaningless — any JSON evaluates — so
    * the question is whether there is a hole to fill or a malformed node
    * to reject. Not "would the output differ from the input": normalization
@@ -341,7 +337,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * in such an input is an expression.
    *
    * Two halves, as the spec names them: a hole, or a static error. A
-   * malformed node usually IS a hole — the parser classifies it as
+   * malformed node usually IS a hole — the compiler classifies it as
    * evaluable-never-constant, so a sibling-key violation counts and an
    * unrecognized `$` key (inert data with a warning) does not — but an
    * error raised from a structural key (`vars: 'high'`) folds its
@@ -351,7 +347,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * are holes already, so a second walk could never change the answer.
    */
   isEvaluable(expression: unknown): boolean {
-    const artifact = parseExpression(expression, this.state.registry)
+    const artifact = compileExpression(expression, this.state.registry)
     return artifact.holes.length > 0 || artifact.hasErrors
   }
 
@@ -371,10 +367,10 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * refused. A call with no options runs under the instance's prepared
    * options object as-is, so the everyday call pays no merge at all.
    *
-   * Inert input skips the parse entirely: the constancy probe recognizes a
+   * Inert input skips the compile entirely: the constancy probe recognizes a
    * value with nothing to evaluate or normalize and returns it by identity
    * (the user's `maxDepth` still applies to its measured depth). The skip is
-   * off when `trace` is requested — a skipped parse has no nodes for the
+   * off when `trace` is requested — a skipped compile has no nodes for the
    * trace to echo — but stays on under `report`, which wants an envelope
    * rather than nodes.
    */
@@ -382,61 +378,284 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     expression: unknown,
     options?: OnlyCallOptions<CallOpts>
   ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
-    return this.run(expression, options) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
+    // The conditional shape is a promise to the caller about which of the
+    // two the value is; it cannot be produced from inside, where the
+    // options are values rather than types, so the assertion happens once
+    const { state } = this
+    return evaluateEntry(
+      state.evaluation,
+      this.results,
+      expression,
+      options,
+      () => state.compileCache.resolve(expression),
+      () => compileWithRegistry(expression, state.registry)
+    ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
   }
 
   /**
-   * `evaluate()`'s body, at one fixed return type. The conditional shape
-   * is a promise to the caller about which of these two the value is; it
-   * cannot be produced from inside, where the options are values rather
-   * than types, so the assertion happens once, above.
+   * Compile once, hold the result ("compile()" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md): the same input as
+   * `evaluate()`, through the same compile cache, and a `CompiledExpression`
+   * back — what the compiler found, what the expression depends on, and an
+   * `evaluate()` that is the tail half of this class's, so the two answer
+   * identically for the same data.
+   *
+   * A compiled expression is a SNAPSHOT: it closes over the registry and
+   * the options current when it compiled — the two things its path reads,
+   * and nothing more, so a handle never keeps a superseded compile cache
+   * alive — so its answer for given data is fixed however this instance is
+   * updated afterwards. To pick up an `updateOptions()`, compile again. The one
+   * thing it shares live is the result store, which is the point (one
+   * request memoized once per instance, however many handles ask), and
+   * safe because a result key carries its definition's fingerprint: a
+   * handle held across a redefinition keeps its own entries.
+   *
+   * The name says nothing about serializability, exactly as
+   * `new RegExp()` and `Ajv.compile()` say nothing: the handle holds live
+   * registry entries and cannot be written out. `x.expression` is the
+   * serializable thing, and the standalone `inspect(x)` reports what the
+   * compiler made of it.
    */
-  private async run(expression: unknown, call: CallOptions | undefined): Promise<unknown> {
-    const options =
-      call === undefined ? this.state.evaluation : withCallOptions(this.state.evaluation, call)
-    const reporting = options.mode === 'report'
-    const enveloped = reporting || options.trace === true
-
-    // An inert input is returned by identity without being parsed. The
-    // verdict is memoized in the cache's identity layer, so a repeated
-    // constant container costs a pointer lookup rather than another walk.
-    // Under `trace` the skip is off: a skipped parse has no nodes to echo.
-    const resolved =
-      options.trace === true
-        ? ({ kind: 'artifact', artifact: compile(expression, this.state.registry) } as const)
-        : this.state.parseCache.resolve(expression)
-    if (resolved.kind === 'inert') {
-      if (options.maxDepth !== undefined && resolved.depth > options.maxDepth) {
-        const issue = depthIssue(resolved.depth, options.maxDepth)
-        if (!reporting) throw staticError(issue, [issue])
-        return envelope(null, [staticError(issue)])
-      }
-      return enveloped ? envelope(expression, []) : expression
-    }
-
-    const { artifact } = resolved
-    // The static gate. On the common call it is one flag the compile set
-    // and two option reads; the stream is assembled only when there is
-    // something to say, or a limit to compare against
-    if (artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined) {
-      const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
-      const errors = issues.filter((issue) => issue.severity === 'error')
-      // Under report a static failure is reported like any other, and ALL
-      // of it: the pass collects the whole stream anyway, and a host that
-      // chose resilience did not choose "resilient except for typos". Throw
-      // mode throws the first in tree order, carrying the stream as `issues`
-      if (errors.length > 0) {
-        if (!reporting) throw staticError(errors[0], issues)
-        return envelope(
-          null,
-          errors.map((issue) => staticError(issue))
-        )
-      }
-    }
-
-    const outcome = await runEvaluation(artifact, options, this.results)
-    return enveloped ? outcome : outcome.result
+  compile(expression: unknown): CompiledExpression<InstanceOpts> {
+    const { state } = this
+    return new CompiledExpression(
+      expression,
+      state.compileCache.resolve(expression),
+      state.evaluation,
+      state.registry,
+      this.results
+    )
   }
+}
+
+/**
+ * An evaluation, shared by `evaluate()` and `CompiledExpression.evaluate()`
+ * — which is what makes a handle answer exactly as the instance would
+ * have. `async` so that a refused per-call option rejects rather than
+ * throws, like every other failure.
+ *
+ * The call runs under the prepared instance options as-is when it
+ * supplies none — so the everyday call pays no merge — else the call's
+ * laid over them. Where the compiled form comes from is the caller's, in
+ * two thunks called only after the options have been checked, so a
+ * refused call compiles nothing: `resolve` answers with the cache entry
+ * (the instance's cache, or the entry a handle holds), and `compile`
+ * answers with a full artifact for the one case an inert verdict will not
+ * do (below).
+ *
+ * An inert entry is returned by identity without being compiled; the
+ * verdict is memoized in the cache's identity layer, so a repeated constant
+ * container costs a pointer lookup rather than another walk. Under `trace`
+ * the skip is off: a skipped compile has no nodes to echo, so `compile` is
+ * asked for the artifact — fresh from the instance, which caches nothing
+ * for it since the inert verdict already holds its slot; memoized on a
+ * handle, which keeps it for its getters anyway.
+ */
+const evaluateEntry = async (
+  instance: EvaluationOptions,
+  results: ResultCache,
+  expression: unknown,
+  call: CallOptions | undefined,
+  resolve: () => CacheEntry,
+  compile: () => CompileArtifact
+): Promise<unknown> => {
+  const options = call === undefined ? instance : withCallOptions(instance, call)
+  const reporting = options.mode === 'report'
+  const enveloped = reporting || options.trace === true
+
+  const resolved = resolve()
+  const entry =
+    resolved.kind === 'inert' && options.trace === true
+      ? ({ kind: 'artifact', artifact: compile() } as const)
+      : resolved
+  if (entry.kind === 'inert') {
+    if (options.maxDepth !== undefined && entry.depth > options.maxDepth) {
+      const issue = depthIssue(entry.depth, options.maxDepth)
+      if (!reporting) throw staticError(issue, [issue])
+      return envelope(null, [staticError(issue)])
+    }
+    return enveloped ? envelope(expression, []) : expression
+  }
+
+  const { artifact } = entry
+  // The static gate. On the common call it is one flag the compile set
+  // and two option reads; the stream is assembled only when there is
+  // something to say, or a limit to compare against
+  if (artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined) {
+    const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
+    const errors = issues.filter((issue) => issue.severity === 'error')
+    // Under report a static failure is reported like any other, and ALL
+    // of it: the pass collects the whole stream anyway, and a host that
+    // chose resilience did not choose "resilient except for typos". Throw
+    // mode throws the first in tree order, carrying the stream as `issues`
+    if (errors.length > 0) {
+      if (!reporting) throw staticError(errors[0], issues)
+      return envelope(
+        null,
+        errors.map((issue) => staticError(issue))
+      )
+    }
+  }
+
+  const outcome = await runEvaluation(artifact, options, results)
+  return enveloped ? outcome : outcome.result
+}
+
+/**
+ * A handle's view, or `undefined` for anything that is not a handle —
+ * `CompiledExpression`'s own accessor for the inspector, assigned by the
+ * class's static block. It lives beside the class rather than on it
+ * because anything on the class is public: an instance method would hand
+ * the artifact to every holder, and a static one would be reachable
+ * through `handle.constructor`. An importer cannot reassign an imported
+ * binding, so the `let` is fixed from outside; it is declared ahead of the
+ * class because the block runs as the class is defined, when a `let`
+ * declared later would not exist yet. Internal, not barrel surface: it is
+ * what lets the inspector live in its own module and stay out of any
+ * bundle that never imports it.
+ */
+export let viewHandle: (value: unknown, call?: CallOptions) => HandleView | undefined
+
+/**
+ * What `compile()` returns ("compile()" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md): a holdable, nameable
+ * compiled expression. A handle rather than the artifact itself, which
+ * cannot evaluate on its own, holds live registry entries (and through
+ * them any client the host registered), is free to change shape, and is
+ * shared by the cache with every other holder — so everything belonging to
+ * one holder lives here, and the artifact is never annotated.
+ *
+ * Two flavours behind one type, told apart by the cache entry: an
+ * expression with an artifact, and an inert constant with only the probe's
+ * verdict. The inert flavour compiles lazily, once, on the first read of
+ * `issues`, `hasErrors` or `getDependencies()` — the probe calls
+ * `{ $flibble: 1 }` constant where a full compile emits the unrecognized-`$`
+ * warning, so the stream cannot simply be empty — and writes nothing to the
+ * cache.
+ *
+ * Private state is in `#` fields and the surface is getters and methods,
+ * so `JSON.stringify(handle)` is `{}`: nothing about it looks reusable.
+ */
+export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions> {
+  readonly #expression: unknown
+  /** The cache's shared artifact, or the memoized inert verdict. */
+  readonly #entry: CacheEntry
+  /**
+   * The snapshot: the instance's prepared options and its registry as of
+   * the compile — the two things an evaluation reads, and no more. The
+   * compile cache in particular is not held: a handle never reads it, and
+   * holding it would keep a superseded cache's every artifact alive for as
+   * long as the handle lives.
+   */
+  readonly #evaluation: EvaluationOptions
+  readonly #registry: OperatorRegistry
+  /** The instance's result store, shared live. */
+  readonly #results: ResultCache
+  /** The inert flavour's lazy compile, once made. */
+  #compiled?: CompileArtifact
+  #issues?: readonly Issue[]
+
+  // The handle's accessor for the inspector (`viewHandle`, above the
+  // class) — the one reader of this state from outside. A static block is
+  // inside the class body, so it may name `#` fields, and the brand check
+  // turns away anything the constructor did not make; it throws on a
+  // primitive, so an object is checked for first
+  static {
+    viewHandle = (value, call) => {
+      if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
+      const options =
+        call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
+      return { expression: value.#expression, artifact: value.#artifact(), options }
+    }
+  }
+
+  constructor(
+    expression: unknown,
+    entry: CacheEntry,
+    evaluation: EvaluationOptions,
+    registry: OperatorRegistry,
+    results: ResultCache
+  ) {
+    this.#expression = expression
+    this.#entry = entry
+    this.#evaluation = evaluation
+    this.#registry = registry
+    this.#results = results
+  }
+
+  /** The source, by reference — the serializable thing. */
+  get expression(): unknown {
+    return this.#expression
+  }
+
+  /**
+   * What the compiler found: the option-independent stream, grammar and
+   * static checks both. Not `validate()`, which adds the limit and
+   * sample-data checks for given options and data; those run inside
+   * `evaluate()` here, per call.
+   */
+  get issues(): readonly Issue[] {
+    return (this.#issues ??= this.#artifact().issues.map((s) => s.issue))
+  }
+
+  /** Whether `issues` holds an error — the static gate's answer. */
+  get hasErrors(): boolean {
+    return this.#artifact().hasErrors
+  }
+
+  /**
+   * The tail half of `FigTree.evaluate()`, under the options pinned at
+   * compile time with the call's laid over — the same two levels, the same
+   * per-call set. The return type follows the options the ORIGINATING
+   * instance was constructed with, exactly as the instance's own method
+   * does — so a handle compiled after `updateOptions({ mode })` or
+   * `updateOptions({ trace })` carries the same documented mismatch. What
+   * a handle adds is that the mismatch cannot appear later: the runtime
+   * mode is frozen here with everything else, so type and runtime agree
+   * for good once they agree at all.
+   */
+  evaluate<CallOpts extends CallOptions = NoOptions>(
+    options?: OnlyCallOptions<CallOpts>
+  ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
+    return evaluateEntry(
+      this.#evaluation,
+      this.#results,
+      this.#expression,
+      options,
+      () => this.#entry,
+      () => this.#artifact()
+    ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
+  }
+
+  /** As `FigTree.getDependencies()`, read from the held artifact. */
+  getDependencies(): Dependencies {
+    return toDependencies(this.#artifact().dependencies)
+  }
+
+  /**
+   * The artifact behind the getters, and the one a traced evaluation of an
+   * inert input runs: the cache's, or for an inert verdict one fresh
+   * compile against the pinned registry, kept for the next read. A
+   * constant's artifact is one node holding the value by reference, so
+   * keeping it costs nothing over keeping its stream.
+   */
+  #artifact(): CompileArtifact {
+    return this.#entry.kind === 'artifact'
+      ? this.#entry.artifact
+      : (this.#compiled ??= compileWithRegistry(this.#expression, this.#registry))
+  }
+}
+
+/**
+ * What `inspect()` (src/inspect) reads of a handle: the source, the
+ * artifact behind it, and the options the report's checks run under — the
+ * pinned ones with the call's laid over, a call option that is instance
+ * configuration refused exactly as `evaluate()` refuses it.
+ */
+export interface HandleView {
+  expression: unknown
+  artifact: CompileArtifact
+  options: EvaluationOptions
 }
 
 /**
@@ -550,31 +769,6 @@ const isAbortSignal = (value: unknown): value is AbortSignal =>
   typeof (value as AbortSignal).aborted === 'boolean' &&
   typeof (value as AbortSignal).addEventListener === 'function' &&
   typeof (value as AbortSignal).removeEventListener === 'function'
-
-/**
- * The two option-dependent checks, run per call against the artifact's
- * stored counts — never stored in the artifact (option-independence).
- */
-const limitIssues = (artifact: ParseArtifact, options: EvaluationOptions): Issue[] => {
-  const issues: Issue[] = []
-  if (options.maxDepth !== undefined && artifact.maxDepth > options.maxDepth)
-    issues.push(depthIssue(artifact.maxDepth, options.maxDepth))
-  if (options.maxNodes !== undefined && artifact.nodeCount > options.maxNodes)
-    issues.push({
-      severity: 'error',
-      code: ErrorCodes.maxNodesExceeded,
-      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${options.maxNodes}`,
-      path: [],
-    })
-  return issues
-}
-
-const depthIssue = (measured: number, limit: number): Issue => ({
-  severity: 'error',
-  code: ErrorCodes.maxDepthExceeded,
-  message: `the expression nests ${measured} levels deep — maxDepth is ${limit}`,
-  path: [],
-})
 
 /**
  * One error-severity issue as a `FigTreeError`.

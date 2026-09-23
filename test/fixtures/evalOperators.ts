@@ -100,7 +100,7 @@ export const spyOp = (
  * times it has been run.
  *
  * The hook runs inside the compile seam, once per node of this operator
- * per compile, and not at all when the parse cache answers — so with one
+ * per compile, and not at all when the compile cache answers — so with one
  * such node in an expression the count IS the number of compiles. That is
  * how cache behaviour is asserted without any engine internal appearing
  * in a test.

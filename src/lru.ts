@@ -2,7 +2,7 @@
  * A bounded least-recently-used map ("Cache keying for non-identical
  * inputs" in docs-dev/v3-specs/v3-implementation-notes.md).
  *
- * Domain-free on purpose: the parse cache's content layer is one
+ * Domain-free on purpose: the compile cache's content layer is one
  * consumer, and the result cache's built-in store is the other — which is
  * why the shape is a superset of `CacheStore` (get/set/delete/clear), so
  * an instance can be handed straight to the result cache as its store.

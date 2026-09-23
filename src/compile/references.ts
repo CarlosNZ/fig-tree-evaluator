@@ -24,8 +24,11 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
 }
 
 export type ReferenceRecognition =
-  /** A recognized, well-formed reference. */
-  | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[] }
+  /**
+   * A recognized, well-formed reference. `drill` is its text after the
+   * namespace token (`.a[0]`, `[2].b`, or empty), as authored.
+   */
+  | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[]; drill: string }
   /**
    * A recognized namespace used illegally (drilled $index, an unterminated
    * `$data.items[`…).
@@ -78,14 +81,14 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
         code: ErrorCodes.bareVars,
         reason: "'$vars' must name a var — there is no whole-scope value",
       }
-    return { kind: 'reference', namespace, segments: [] }
+    return { kind: 'reference', namespace, segments: [], drill: rest }
   }
 
   if (namespace === 'index')
     return { kind: 'invalid', namespace, reason: "'$index' is bare-only — it cannot be drilled" }
 
   try {
-    return { kind: 'reference', namespace, segments: parseDrill(rest) }
+    return { kind: 'reference', namespace, segments: parseDrill(rest), drill: rest }
   } catch (error) {
     return { kind: 'invalid', namespace, reason: (error as Error).message }
   }
@@ -121,11 +124,30 @@ const renderKey = (key: string, first: boolean): string => {
 }
 
 /**
- * A `$data` read in the reference grammar, for messages: `$data.user.name`,
- * and `$data[0].x` where the path opens with an index or a quoted key.
+ * Identifier keys joined by dots: a path spelling that is already its own
+ * canonical render, `renderSegments(canonicalSegments(parsePath(s))) === s`.
+ * It restates two rules in another form — no key is empty or needs quoting
+ * (`NEEDS_QUOTING`), and none is digit-only (which `canonicalSegments`
+ * turns into an index) — so a change to either changes this with it. A
+ * test in test/compile-classification.test.ts holds the two together.
  */
-export const renderDataReference = (segments: PathSegment[]): string => {
+const PLAIN_SPELLING = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/
+
+/** Is this path spelling its own canonical render (`PLAIN_SPELLING`)? */
+export const rendersAsWritten = (spelling: string): boolean => PLAIN_SPELLING.test(spelling)
+
+/**
+ * A reference in the reference grammar, under `name` — a namespace or an
+ * `as` binding: `$data.user.name`, `$item.id`, and `$data[0].x` where the
+ * drill opens with an index or a quoted key. The one statement of how a
+ * name and its drill join.
+ */
+export const renderReference = (name: string, segments: PathSegment[]): string => {
   const rendered = renderSegments(segments)
-  if (rendered === '') return '$data'
-  return rendered.startsWith('[') ? `$data${rendered}` : `$data.${rendered}`
+  if (rendered === '') return `$${name}`
+  return rendered.startsWith('[') ? `$${name}${rendered}` : `$${name}.${rendered}`
 }
+
+/** A `$data` read in the reference grammar, for messages. */
+export const renderDataReference = (segments: PathSegment[]): string =>
+  renderReference('data', segments)

@@ -12,7 +12,7 @@
  * branches are blessed as defined behaviour. Every other non-plain value
  * (`Map`, `Set`, typed arrays, class instances) compares by dequal's rules,
  * which is deterministic but unspecified — equality stays total rather than
- * erroring, and the parser's opaque-constant rule (what counts as a node)
+ * erroring, and the compiler's opaque-constant rule (what counts as a node)
  * is a different question from what `equal` answers over data.
  *
  * Vendored from `dequal` 2.0.3 (https://github.com/lukeed/dequal) so the

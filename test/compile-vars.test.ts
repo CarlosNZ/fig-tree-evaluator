@@ -4,34 +4,34 @@
  * ("`vars` on plain object literals" in docs-dev/v3-specs/v3-api.md).
  * Scope resolution (unresolved vars, cycles, shadowing) is chunk 3.3.
  */
-import { parseExpression } from '../src/parse'
-import type { ParseArtifact, OperatorNode, SkeletonNode } from '../src/parse'
-import { makeParseRegistry } from './fixtures/parseRegistry'
+import { compileExpression } from '../src/compile'
+import type { CompileArtifact, OperatorNode, SkeletonNode } from '../src/compile'
+import { makeCompileRegistry } from './fixtures/compileRegistry'
 
-const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
+const registry = makeCompileRegistry()
+const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
 
-const errorCodes = (artifact: ParseArtifact) =>
+const errorCodes = (artifact: CompileArtifact) =>
   artifact.issues.filter((s) => s.issue.severity === 'error').map((s) => s.issue.code)
 
 test('the shape rule is loud: a non-object vars value is a hard error', () => {
   for (const vars of [[1, 2], 'high', 42, null]) {
-    const artifact = parse({ operator: 'plus', values: [1], vars })
+    const artifact = compile({ operator: 'plus', values: [1], vars })
     expect(errorCodes(artifact)).toContain('invalid-vars')
   }
 })
 
 test('vars names follow the shared legality rule', () => {
-  const artifact = parse({ operator: 'plus', values: [1], vars: { $bad: 1 } })
+  const artifact = compile({ operator: 'plus', values: [1], vars: { $bad: 1 } })
   expect(errorCodes(artifact)).toContain('invalid-name')
 
-  const dotted = parse({ operator: 'plus', values: [1], vars: { 'a.b': 1 } })
+  const dotted = compile({ operator: 'plus', values: [1], vars: { 'a.b': 1 } })
   expect(errorCodes(dotted)).toContain('invalid-name')
 })
 
 test('a vars block is structural, never a node', () => {
   // vars: { operator: 'x' } declares a var NAMED operator
-  const artifact = parse({
+  const artifact = compile({
     operator: 'plus',
     values: ['$vars.operator'],
     vars: { operator: 'x' },
@@ -44,7 +44,7 @@ test('a vars block is structural, never a node', () => {
 })
 
 test('vars values are ordinary expressions, compiled', () => {
-  const artifact = parse({
+  const artifact = compile({
     operator: 'if',
     vars: { country: { $http: 'https://x.test/country' } },
     condition: '$vars.country',
@@ -55,7 +55,7 @@ test('vars values are ordinary expressions, compiled', () => {
 })
 
 test('comments are legal inside vars blocks and are consumed', () => {
-  const artifact = parse({
+  const artifact = compile({
     operator: 'plus',
     values: ['$vars.x'],
     vars: { '//': 'a note', x: 1 },
@@ -65,7 +65,7 @@ test('comments are legal inside vars blocks and are consumed', () => {
 })
 
 test('vars on a plain object literal scope the subtree and are consumed', () => {
-  const artifact = parse({
+  const artifact = compile({
     vars: { name: '$data.user.name' },
     title: { $format: ['Hi %1', '$vars.name'] },
     footer: 'constant',
@@ -79,7 +79,7 @@ test('vars on a plain object literal scope the subtree and are consumed', () => 
 })
 
 test('a vars-only object evaluates to {}', () => {
-  const artifact = parse({ vars: { x: 1 } })
+  const artifact = compile({ vars: { x: 1 } })
   // No holes, vars dead — the compiled shape is the empty object
   expect(artifact.holes).toHaveLength(0)
   const value = (artifact.root as { value?: unknown }).value
@@ -87,7 +87,7 @@ test('a vars-only object evaluates to {}', () => {
 })
 
 test('a vars-carrying plain literal with holes stays its own evaluable unit', () => {
-  const artifact = parse({
+  const artifact = compile({
     outer: {
       vars: { x: '$data.a' },
       inner: { $plus: ['$vars.x', 1] },

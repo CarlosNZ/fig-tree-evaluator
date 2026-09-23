@@ -48,7 +48,7 @@
 import { isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import type { EvaluationOptions, EvaluationResult } from '../options'
-import type { ArtifactHole, ParseArtifact } from '../parse'
+import { toNodePath, type ArtifactHole, type CompileArtifact } from '../compile'
 import type { ResultStore } from '../resultCache'
 import { DeferredScope, EVALUATION_TIMEOUT, deadline, signalScope, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
@@ -76,7 +76,7 @@ import type { MaybePromise } from '../utils'
  * than absent where nothing collected them — throw mode having thrown.
  */
 export const runEvaluation = async (
-  artifact: ParseArtifact,
+  artifact: CompileArtifact,
   options: EvaluationOptions,
   cache: ResultStore
 ): Promise<EvaluationResult> => {
@@ -99,7 +99,8 @@ export const runEvaluation = async (
     armed !== undefined ? signalScope(armed.signal, armed.settle) : new DeferredScope(undefined)
   // `armed !== undefined` is implied by the `timeout` clause; it is spelled
   // out so the compiler narrows `armed` wherever `shielded` is tested below
-  const shielded = armed !== undefined && timeout !== undefined && artifact.shielded && evaluable
+  const shielded =
+    armed !== undefined && timeout !== undefined && artifact.timeoutShielded && evaluable
   const collector = reporting ? createErrorCollector() : undefined
   const recorder =
     options.trace === true
@@ -211,7 +212,7 @@ const raced = (
  * being masked by a degraded answer.
  */
 const holeBoundary = (
-  artifact: ParseArtifact,
+  artifact: CompileArtifact,
   collector: ErrorCollector | undefined,
   expiry: Promise<never> | undefined,
   recorder: TraceRecorder | undefined
@@ -221,7 +222,7 @@ const holeBoundary = (
     const hole = holes.get(node)
     if (hole === undefined)
       throw internalError(
-        `the hole boundary was handed the node at ${JSON.stringify(node.path)}, which is not one of the artifact's holes`
+        `the hole boundary was handed the node at ${JSON.stringify(toNodePath(node.path))}, which is not one of the artifact's holes`
       )
     // The boundary is report mode's and shielding's alone, never the plain
     // path, so a hole that answered without a promise is wrapped here
@@ -250,7 +251,7 @@ const holeBoundary = (
         // fallback is timing-dependent and invisible in the result, so
         // trace is the only channel that can say
         recorder?.noteOn(hole.node, { type: 'shielded-fallback' })
-        return staticFallbackOf(hole)
+        return timeoutFallbackOf(hole)
       }),
     ])
   }
@@ -276,8 +277,8 @@ const degrade = async (
   }
 }
 
-const staticFallbackOf = (hole: ArtifactHole): unknown => {
-  if (hole.staticFallback === undefined)
+const timeoutFallbackOf = (hole: ArtifactHole): unknown => {
+  if (hole.timeoutFallback === undefined)
     throw internalError('a shielded artifact has a hole with no static fallback')
-  return hole.staticFallback.value
+  return hole.timeoutFallback.value
 }

@@ -99,7 +99,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 Exists so that no conversion code can ever ride the runtime bundle again — the direct fix for v2's entanglement finding. Packaging fixes only:
 
 - The subpath name: `fig-tree-evaluator/convert`.
-- **Isolation**: the root entry never imports from it (lint-enforced); it _may_ import from the root (it is built on the parser's normalizer — Phase 15.1) — the dependency arrow points one way.
+- **Isolation**: the root entry never imports from it (lint-enforced); it _may_ import from the root (it is built on the compiler's normalizer — Phase 15.1) — the dependency arrow points one way.
 - Its exports are functions and types only, same module formats and `.d.ts` treatment as the root.
 - Contents — `convertV2ToV3` (+ its `ConversionResult` / `ConversionIssue` types) and the v3 shorthand round-trip utilities (`toShorthand` / `fromShorthand`, per the evaluator-methods ruling that these are not instance methods) — are fixed by the **Migration area** ([v3-migration.md](v3-migration.md) § module surface). v1 support is **dropped** (no `convertV1ToV2` here — Migration § v1 ruling).
 
@@ -193,7 +193,7 @@ Every export of v2's `src/index.ts`, accounted for:
 | v2 export                                                                | Disposition                                                                                                                     |
 | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
 | `FigTreeEvaluator`                                                       | **Renamed** `FigTree` (evaluator-methods)                                                                                       |
-| `evaluateExpression`                                                     | **Deleted** — evaluator-methods ruling (throwaway instance discards the parse cache; one-liner shown in migration doc)          |
+| `evaluateExpression`                                                     | **Deleted** — evaluator-methods ruling (throwaway instance discards the compile cache; one-liner shown in migration doc)        |
 | `SQLNodePostgres`, `SQLite`                                              | **Replaced** by `SqlConnection` wrappers + `sqlOperators(connection)` (names: open Q2)                                          |
 | `AxiosClient`, `FetchClient`                                             | **Kept** — now implementing the contract's `HttpClient`; the FetchClient `console.log`s die with the no-console principle       |
 | `FigTreeError`, `isFigTreeError`                                         | **Kept** — shape respecified in evaluator-methods                                                                               |
@@ -201,7 +201,7 @@ Every export of v2's `src/index.ts`, accounted for:
 | `isFigTreeExpression`                                                    | **Deleted as standalone** — registry-aware question becomes the `isEvaluable()` method; structural question is `isOperatorNode` |
 | `isAliasString`                                                          | **Deleted** — v2 alias nodes died; `vars` is grammar, not string convention                                                     |
 | `isObject`                                                               | **Deleted** — generic utility, never our contract                                                                               |
-| `preProcessShorthand`                                                    | **Deleted** — normalization is parse-internal; round-trip utilities live in `./convert`                                         |
+| `preProcessShorthand`                                                    | **Deleted** — normalization is compile-internal; round-trip utilities live in `./convert`                                       |
 | `standardiseOperatorName`                                                | **Deleted** — no case folding, no alias machinery                                                                               |
 | `truncateString`                                                         | **Deleted** — editor-owned display concern                                                                                      |
 | `convertToShorthand`, `convertFromShorthand`                             | **Moved & reshaped** → `./convert` as `toShorthand` / `fromShorthand` (Migration area § module surface)                         |

@@ -6,9 +6,9 @@
  * runtime is asserted in test/evaluate-timeout.test.ts.
  */
 import { FigTree } from '../src'
-import { parseOps } from './fixtures/parseRegistry'
+import { compileOps } from './fixtures/compileRegistry'
 
-const fig = new FigTree({ operators: [parseOps()] })
+const fig = new FigTree({ operators: [compileOps()] })
 
 test('worked example 3: the badge flips when one fallback goes dynamic', () => {
   const banner = {
@@ -39,7 +39,7 @@ test('a node root shields on its own static fallback', () => {
 
 test('an operatorDefaults modifier fallback counts as a static fallback', () => {
   const shieldedByDefaults = new FigTree({
-    operators: [parseOps()],
+    operators: [compileOps()],
     operatorDefaults: { http: { fallback: 'offline' } },
   })
   expect(shieldedByDefaults.validate({ a: { $http: 'https://x.test' } }).timeoutShielded).toBe(true)

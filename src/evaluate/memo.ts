@@ -13,7 +13,7 @@
  * how the I/O operators key the effective request rather than the
  * authored spelling.
  */
-import { serializeInput, type OperatorNode } from '../parse'
+import { serializeInput, type OperatorNode } from '../compile'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
 
@@ -30,6 +30,13 @@ const MANUAL = 'M'
 export interface MemoBinding {
   /** The canonical name — never the alias the author happened to spell. */
   operator: string
+  /**
+   * The definition's fingerprint (src/defineOperator.ts). Two definitions
+   * registered under one name — in turn on one instance, or held by a
+   * compiled expression across a redefinition — must never share an
+   * entry, and the name alone cannot tell them apart.
+   */
+  fingerprint: string
   /** Where a hit or miss is recorded; absent when trace is off. */
   note?: (event: TraceEvent) => void
 }
@@ -62,10 +69,14 @@ export const through = async <T>(
 }
 
 /**
- * The `'auto'` layer's key: the operator's canonical name and the exact
- * record the body would receive. Nothing else — options are deliberately
- * out, so an operator whose result depends on one it reads takes
- * `'manual'` and folds that dependency into its own key.
+ * The `'auto'` layer's key: the operator's canonical name, its
+ * definition's fingerprint and the exact record the body would receive.
+ * Nothing else — options are deliberately out, so an operator whose
+ * result depends on one it reads takes `'manual'` and folds that
+ * dependency into its own key. The fingerprint is what keeps a result
+ * with the definition that computed it: a redefinition under the same
+ * name keys apart from its predecessor, and a compiled expression holding
+ * the predecessor keeps its own entries.
  *
  * Parameter order is declaration order (`resolveParams` iterates the
  * declarations), so two spellings of one call — positional, named, keys
@@ -89,8 +100,9 @@ export const autoKey = (
   // three-element streams would key alike. Past this line every value is
   // an eager result — already through the escaped-handle guard — or an
   // authored constant, so no handle can be present
-  if (node.entry.definition.deliversLazily) return undefined
-  return serializeInput([AUTO, node.entry.definition.name, params])
+  const { definition } = node.entry
+  if (definition.deliversLazily) return undefined
+  return serializeInput([AUTO, definition.name, definition.fingerprint, params])
 }
 
 /**
@@ -100,15 +112,16 @@ export const autoKey = (
  * shared identity passthrough by `createOperatorContext` instead, so this
  * layer is built only where it can store something.
  *
- * Keys are namespaced by operator name engine-side, so a body cannot
- * collide with another operator's entries however it spells its own key.
+ * Keys are namespaced by operator name and fingerprint engine-side, so a
+ * body cannot collide with another operator's entries, or with another
+ * definition's under the same name, however it spells its own key.
  */
 export const bodyMemo = (
   binding: MemoBinding,
   cache: ResultStore
 ): OperatorContext['cache']['memo'] => {
   return <T>(key: unknown, fn: () => Promise<T>): Promise<T> => {
-    const full = serializeInput([MANUAL, binding.operator, key])
+    const full = serializeInput([MANUAL, binding.operator, binding.fingerprint, key])
     // A key holding something that cannot be serialized — a Date off the
     // data, a class instance — runs uncached rather than colliding
     return full === undefined ? fn() : through(cache, full, fn, binding.note)

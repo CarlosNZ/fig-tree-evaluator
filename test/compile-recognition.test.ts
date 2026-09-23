@@ -4,14 +4,14 @@
  * docs-dev/v3-specs/v3-api.md). Asserts internal artifacts + the issue
  * stream; the black-box surface arrives with validate() (3.3).
  */
-import { parseExpression } from '../src/parse'
-import type { ParseArtifact, OperatorNode, FragmentCallNode } from '../src/parse'
-import { makeParseRegistry, withFragments } from './fixtures/parseRegistry'
+import { compileExpression } from '../src/compile'
+import type { CompileArtifact, OperatorNode, FragmentCallNode } from '../src/compile'
+import { makeCompileRegistry, withFragments } from './fixtures/compileRegistry'
 
-const registry = makeParseRegistry()
-const parse = (input: unknown): ParseArtifact => parseExpression(input, registry)
+const registry = makeCompileRegistry()
+const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
 
-const issueCodes = (artifact: ParseArtifact, severity?: string) =>
+const issueCodes = (artifact: CompileArtifact, severity?: string) =>
   artifact.issues
     .filter((s) => severity === undefined || s.issue.severity === severity)
     .map((s) => s.issue.code)
@@ -20,7 +20,7 @@ const issueCodes = (artifact: ParseArtifact, severity?: string) =>
 
 test('primitive roots are constants with no holes', () => {
   for (const input of [42, 'hello', true, null]) {
-    const artifact = parse(input)
+    const artifact = compile(input)
     expect(artifact.root.kind).toBe('constant')
     expect(artifact.holes).toHaveLength(0)
     expect(issueCodes(artifact)).toHaveLength(0)
@@ -28,14 +28,14 @@ test('primitive roots are constants with no holes', () => {
 })
 
 test('an operator node root is the single hole at path []', () => {
-  const artifact = parse({ operator: 'plus', values: [1, 2] })
+  const artifact = compile({ operator: 'plus', values: [1, 2] })
   expect(artifact.root.kind).toBe('operator')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual([])
 })
 
 test('a plain-literal root with an embedded node compiles to a skeleton', () => {
-  const artifact = parse({ a: { $plus: [1, 2] }, b: 'inert' })
+  const artifact = compile({ a: { $plus: [1, 2] }, b: 'inert' })
   expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['a'])
@@ -43,14 +43,14 @@ test('a plain-literal root with an embedded node compiles to a skeleton', () => 
 })
 
 test('a reference-string root is an evaluable hole', () => {
-  const artifact = parse('$data.user.name')
+  const artifact = compile('$data.user.name')
   expect(artifact.root.kind).toBe('reference')
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual([])
 })
 
 test('non-plain objects are opaque constants, never traversed', () => {
-  const artifact = parse({ when: new Date(0), fn: () => 1 })
+  const artifact = compile({ when: new Date(0), fn: () => 1 })
   expect(artifact.root.kind).toBe('constant')
   expect(artifact.holes).toHaveLength(0)
   expect(issueCodes(artifact)).toHaveLength(0)
@@ -66,29 +66,29 @@ test.each([
   ['two recognized $name keys', { $plus: [1, 2], $not: true }],
   ['non-reserved sibling on a shorthand node', { $plus: [1, 2], colour: 'red' }],
 ])('malformed hard error: %s', (_label, input) => {
-  const artifact = parse(input)
+  const artifact = compile(input)
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
   expect(artifact.root.kind).toBe('invalid')
 })
 
 test('unknown operator: name is a hard error — an operator key is intent', () => {
-  const artifact = parse({ operator: 'flibble' })
+  const artifact = compile({ operator: 'flibble' })
   expect(issueCodes(artifact, 'error')).toContain('unknown-operator')
   expect(artifact.root.kind).toBe('invalid')
 })
 
 test('operator: keys in authored plain data still error (deep evaluation rule)', () => {
-  const artifact = parse({ people: [{ operator: 'Alice' }] })
+  const artifact = compile({ people: [{ operator: 'Alice' }] })
   expect(issueCodes(artifact, 'error')).toContain('unknown-operator')
 })
 
 test('unknown fragment: name is a hard error', () => {
-  const artifact = parse({ fragment: 'nope' })
+  const artifact = compile({ fragment: 'nope' })
   expect(issueCodes(artifact, 'error')).toContain('unknown-fragment')
 })
 
 test('unknown key on a node is a hard error (no hoisting — the thn: typo)', () => {
-  const artifact = parse({ operator: 'if', condition: true, then: 1, thn: 2 })
+  const artifact = compile({ operator: 'if', condition: true, then: 1, thn: 2 })
   const unknownKey = artifact.issues.find((s) => s.issue.code === 'unknown-node-key')
   expect(unknownKey).toBeDefined()
   expect(unknownKey!.issue.severity).toBe('error')
@@ -98,20 +98,20 @@ test('unknown key on a node is a hard error (no hoisting — the thn: typo)', ()
 // ── The $typo contrast and the sibling-key rule ─────────────────────
 
 test('an unrecognized $name key is inert data with a warning, not an error', () => {
-  const artifact = parse({ $flibble: [1, 2], fallback: 2 })
+  const artifact = compile({ $flibble: [1, 2], fallback: 2 })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   expect(issueCodes(artifact, 'warning')).toContain('unrecognized-identifier')
   expect(artifact.root.kind).toBe('constant')
 })
 
 test('plain-literal contents under an unrecognized key still traverse', () => {
-  const artifact = parse({ $typo: { inner: { $plus: [1, 2] } } })
+  const artifact = compile({ $typo: { inner: { $plus: [1, 2] } } })
   expect(artifact.holes).toHaveLength(1)
   expect(artifact.holes[0].path).toEqual(['$typo', 'inner'])
 })
 
 test('reserved siblings are legal on a shorthand node', () => {
-  const artifact = parse({ $http: 'https://x.test/api', fallback: null, useCache: false })
+  const artifact = compile({ $http: 'https://x.test/api', fallback: null, useCache: false })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   const root = artifact.root as OperatorNode
   expect(root.kind).toBe('operator')
@@ -120,25 +120,25 @@ test('reserved siblings are legal on a shorthand node', () => {
 })
 
 test('reserved modifier keys alone do not make an object a node', () => {
-  const artifact = parse({ fallback: 1, useCache: true })
+  const artifact = compile({ fallback: 1, useCache: true })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   expect(artifact.root.kind).toBe('constant')
   expect(artifact.holes).toHaveLength(0)
 })
 
-// ── literal: the parse boundary ─────────────────────────────────────
+// ── literal: the compile boundary ─────────────────────────────────────
 
 test('literal contents are never walked, validated or counted', () => {
   const quoted = { operator: 'plus', vars: [1, 2], '//': 'kept', $flibble: true }
-  const artifact = parse({ $literal: quoted })
+  const artifact = compile({ $literal: quoted })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   expect(issueCodes(artifact, 'warning')).toHaveLength(0)
   expect(artifact.root.kind).toBe('constant')
   const rootValue = (artifact.root as { value?: unknown }).value
   expect(rootValue).toBe(quoted)
 
-  const bare = parse({ deep: { nesting: { here: [1, '$data.x', { $plus: [1, 2] }] } } })
-  const viaLiteral = parse({
+  const bare = compile({ deep: { nesting: { here: [1, '$data.x', { $plus: [1, 2] }] } } })
+  const viaLiteral = compile({
     $literal: { deep: { nesting: { here: [1, '$data.x', { $plus: [1, 2] }] } } },
   })
   expect(bare.nodeCount).toBe(2)
@@ -146,12 +146,12 @@ test('literal contents are never walked, validated or counted', () => {
 })
 
 test('shorthand literal payload is never disambiguated by JSON type', () => {
-  const artifact = parse({ $literal: { value: 1 } })
+  const artifact = compile({ $literal: { value: 1 } })
   expect((artifact.root as { value?: unknown }).value).toEqual({ value: 1 })
 })
 
 test('canonical literal takes its content from the value key', () => {
-  const artifact = parse({ operator: 'literal', value: { $plus: [1, 2] } })
+  const artifact = compile({ operator: 'literal', value: { $plus: [1, 2] } })
   expect(artifact.root.kind).toBe('constant')
   expect((artifact.root as { value?: unknown }).value).toEqual({ $plus: [1, 2] })
   expect(artifact.holes).toHaveLength(0)
@@ -160,7 +160,7 @@ test('canonical literal takes its content from the value key', () => {
 // ── Fragment-call grammar ───────────────────────────────────────────
 
 test('fragment parameters: plain object is the static mode', () => {
-  const artifact = parse({ fragment: 'f', parameters: { x: 1 } })
+  const artifact = compile({ fragment: 'f', parameters: { x: 1 } })
   const root = artifact.root as FragmentCallNode
   expect(root.kind).toBe('fragmentCall')
   expect(root.argumentsMode).toBe('static')
@@ -170,29 +170,29 @@ test('fragment parameters: plain object is the static mode', () => {
 
 test('fragment parameters: a node or reference is the dynamic mode', () => {
   for (const parameters of [{ $plus: [1, 2] }, '$data.formValues']) {
-    const artifact = parse({ fragment: 'f', parameters })
+    const artifact = compile({ fragment: 'f', parameters })
     expect((artifact.root as FragmentCallNode).argumentsMode).toBe('dynamic')
   }
 })
 
 test('fragment parameters that are neither object nor node are a hard error', () => {
-  const artifact = parse({ fragment: 'f', parameters: [1, 2] })
+  const artifact = compile({ fragment: 'f', parameters: [1, 2] })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
 })
 
 test('useCache is banned on fragment calls', () => {
-  const artifact = parse({ fragment: 'f', useCache: true })
+  const artifact = compile({ fragment: 'f', useCache: true })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
 })
 
 test('parameters is reserved-unused on operator nodes', () => {
-  const artifact = parse({ operator: 'plus', values: [1], parameters: { x: 1 } })
+  const artifact = compile({ operator: 'plus', values: [1], parameters: { x: 1 } })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
 })
 
 // ── Registered fragments: the shorthand face and the baked entry ────
 
-const withFragment = (input: unknown): ParseArtifact => parseExpression(input, withFragments())
+const withFragment = (input: unknown): CompileArtifact => compileExpression(input, withFragments())
 
 test('a registered name makes its $key a call, not inert data', () => {
   const artifact = withFragment({ $summary: { title: 'x' } })
@@ -232,20 +232,20 @@ test('v2 alias-definition keys beside a shorthand key are now hard errors', () =
   // v2 23_shorthand "with alias fallback": { $plus: [...], $myFallback: … }
   // defined an alias node. v3: an unrecognized $name is a non-reserved
   // sibling on a shorthand node — the sibling-key rule errors loudly.
-  const artifact = parse({ $plus: [1, 2], $myFallback: 'EMPIRE' })
+  const artifact = compile({ $plus: [1, 2], $myFallback: 'EMPIRE' })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
 })
 
 test('v2 alias references are inert data with a warning', () => {
   // v2 19_aliasNodes: '$myAlias' strings resolved against alias nodes; v3
   // deleted alias nodes (→ vars) and '$myAlias' matches no namespace.
-  const artifact = parse({ $not: '$myAlias' })
+  const artifact = compile({ $not: '$myAlias' })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   expect(issueCodes(artifact, 'warning')).toContain('unrecognized-identifier')
 })
 
 test('the v2 children key fails as an ordinary unknown key — no tombstone', () => {
-  const artifact = parse({ operator: 'plus', children: [1, 2] })
+  const artifact = compile({ operator: 'plus', children: [1, 2] })
   const codes = issueCodes(artifact, 'error')
   expect(codes).toContain('unknown-node-key')
 })

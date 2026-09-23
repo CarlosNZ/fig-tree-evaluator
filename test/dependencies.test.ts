@@ -3,7 +3,7 @@
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  *
  * Black-box throughout: the method is the public face of a record the
- * parse walk already builds, so what is under test is the reshape — what
+ * compile walk already builds, so what is under test is the reshape — what
  * counts as a read, what makes the read-set unenumerable, and the two
  * orderings (traversal for paths, discovery for the other two).
  */
@@ -196,7 +196,7 @@ describe('the method’s own posture', () => {
     expect(fig.getDependencies(expression).data.paths).toEqual(['a', 'b'])
   })
 
-  test('does not warm the parse cache', () => {
+  test('does not warm the compile cache', () => {
     const spy = compileSpyOp()
     const instance = new FigTree({ operators: [coreOperators, spy.definition] })
     const expression = { $counted: '$data.a' }

@@ -30,8 +30,13 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
 
 /**
  * A plain *data* object: prototype is `Object.prototype` or `null`. Class
- * instances, `Date`s, `Map`s etc. fail this — the parser treats them as
+ * instances, `Date`s, `Map`s etc. fail this — the compiler treats them as
  * opaque constants ("Non-plain-object values" in docs-dev/v3-specs/v3-api.md).
+ *
+ * The compiler iterates what passes this with `for…in`, unguarded, which
+ * visits only own keys provided `Object.prototype` carries no enumerable
+ * property ("The engine assumes an unpolluted `Object.prototype`" in
+ * docs-dev/v3-specs/v3-implementation-notes.md).
  */
 export const isPlainDataObject = (value: unknown): value is Record<string, unknown> => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
@@ -41,7 +46,7 @@ export const isPlainDataObject = (value: unknown): value is Record<string, unkno
 
 /**
  * Levenshtein edit distance — powers the cheap did-you-mean suggestions in
- * parse/validate messages. Plain dynamic-programming, fine for name-length
+ * compile/validate messages. Plain dynamic-programming, fine for name-length
  * strings.
  */
 export const editDistance = (a: string, b: string): number => {
@@ -75,6 +80,21 @@ export const nearestName = (name: string, candidates: Iterable<string>): string 
     }
   }
   return best
+}
+
+/**
+ * FNV-1a over a string's UTF-16 code units, as eight hex characters. A
+ * content fingerprint, not a security hash: 32 bits is ample where a
+ * collision also needs the same operator name, and the whole thing is
+ * six lines with no dependency.
+ */
+export const fnv1a = (text: string): string => {
+  let hash = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i)
+    hash = Math.imul(hash, 0x01000193) >>> 0
+  }
+  return hash.toString(16).padStart(8, '0')
 }
 
 /**

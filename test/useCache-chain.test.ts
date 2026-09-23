@@ -5,13 +5,13 @@
  *
  * Node key → operatorDefaults modifier → blanket option → metadata
  * default. The result cache that consumes this lands in Phase 9.1, so the
- * chain is exercised directly against parsed nodes: there is nothing yet
+ * chain is exercised directly against compiled nodes: there is nothing yet
  * whose behaviour would differ.
  */
 import { defineOperator, ErrorCodes } from '../src'
 import { effectiveUseCache } from '../src/evaluate'
 import { buildRegistry } from '../src/registry'
-import { parseExpression, type OperatorNode } from '../src/parse'
+import { compileExpression, type OperatorNode } from '../src/compile'
 
 const cachingOp = defineOperator({
   name: 'fetchish',
@@ -31,7 +31,7 @@ const pureOp = defineOperator({
   evaluate: () => 'ok',
 })
 
-/** Parse one expression and hand back its single operator node. */
+/** Compile one expression and hand back its single operator node. */
 const nodeOf = (
   expression: unknown,
   operatorDefaults?: Record<string, Record<string, unknown>>
@@ -40,7 +40,7 @@ const nodeOf = (
     operators: [cachingOp, pureOp],
     ...(operatorDefaults !== undefined ? { operatorDefaults } : {}),
   })
-  const artifact = parseExpression(expression, registry)
+  const artifact = compileExpression(expression, registry)
   return artifact.root as OperatorNode
 }
 
@@ -77,9 +77,12 @@ describe('each step of the chain', () => {
 })
 
 describe('what the chain can rely on', () => {
-  it('the parser admits only a literal boolean, so the chain never sees anything else', () => {
+  it('the compiler admits only a literal boolean, so the chain never sees anything else', () => {
     const registry = buildRegistry({ operators: [pureOp] })
-    const artifact = parseExpression({ operator: 'pureish', useCache: { $pureish: {} } }, registry)
+    const artifact = compileExpression(
+      { operator: 'pureish', useCache: { $pureish: {} } },
+      registry
+    )
     expect(artifact.issues.map((sequenced) => sequenced.issue.code)).toContain(
       ErrorCodes.malformedNode
     )

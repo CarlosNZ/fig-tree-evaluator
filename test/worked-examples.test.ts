@@ -155,7 +155,7 @@ describe('worked example 1 — failures at different depths, different fates', (
  * (docs-dev/v3-specs/v3-worked-examples.md § 2).
  *
  * The example runs two expressions across one instance and asserts two
- * things per step: how many times the parse cache compiled, and how many
+ * things per step: how many times the compile cache compiled, and how many
  * times the mock client fetched. Only the first half is reachable here —
  * the clients and the I/O operators are Phase 9, which is where the fetch
  * counts and the M4 milestone live. So the `http` node is stood in for by
@@ -164,7 +164,7 @@ describe('worked example 1 — failures at different depths, different fates', (
  * Run as one sequence rather than independent cases, because the point of
  * the example is the state carried from step to step.
  */
-describe('lifecycle — two expressions, one instance, the parse half', () => {
+describe('lifecycle — two expressions, one instance, the compile half', () => {
   const spy = compileSpyOp('rate')
   const fig = new FigTree({
     operators: [coreOperators, spy.definition],
@@ -259,7 +259,7 @@ describe('lifecycle — the full example, fetch counts and all', () => {
   })
 
   // Step 0 — construction. Pure registration and validation: nothing is
-  // parsed, evaluated or fetched
+  // compiled, evaluated or fetched
   const lifecycle = new FigTree({
     operators: [coreOperators, httpOperators(http), compiles.definition],
     operatorDefaults: { join: { delimiter: ', ' } },
@@ -352,7 +352,7 @@ describe('lifecycle — the full example, fetch counts and all', () => {
       team: 'Ada | Grace',
       rate: 0.61,
     })
-    // Both parse layers dropped; the result store is untouched, because
+    // Both compile-cache layers dropped; the result store is untouched, because
     // its keys derive from resolved requests and no option default
     // reaches them
     expect(compiles.compiles()).toBe(1)

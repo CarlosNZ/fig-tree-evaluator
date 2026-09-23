@@ -356,9 +356,9 @@ describe('events', () => {
   })
 })
 
-// ── Parse warnings, and the failing run ─────────────────────────────
+// ── Compile warnings, and the failing run ─────────────────────────────
 
-describe('the root echoes the parse warnings', () => {
+describe('the root echoes the compile warnings', () => {
   it('carries the unrecognized-$ warning a trace consumer would otherwise miss', async () => {
     const trace = await traceOf(setup(), { a: { $flibble: 1 } })
     expect(trace.warnings?.map((issue) => issue.code)).toContain(ErrorCodes.unrecognizedIdentifier)

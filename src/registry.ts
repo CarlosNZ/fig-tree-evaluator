@@ -42,7 +42,7 @@ export interface RegistryEntry {
 export interface OperatorRegistry {
   /** Canonical name → entry; insertion order is registration order. */
   operators: Map<string, RegistryEntry>
-  /** Alias → canonical name; consulted by parse-time normalization. */
+  /** Alias → canonical name; consulted by compile-time normalization. */
   aliases: Map<string, string>
   /**
    * Registered fragments, keyed by name — the same invocation namespace the
@@ -217,7 +217,7 @@ const validateOperatorDefaults = (
       const keyPath: Path = [...path, key]
       if (MODIFIER_KEYS.includes(key)) {
         // fallback: any constant (constancy classification is a Phase-3
-        // parser concern); useCache: boolean
+        // compiler concern); useCache: boolean
         if (key === 'useCache' && typeof value !== 'boolean') {
           addIssue(
             ErrorCodes.invalidOptions,
@@ -282,7 +282,7 @@ const validateOperatorDefaults = (
 }
 
 /**
- * Canonical-first, then alias — the lookup the Phase-3 parser normalizes
+ * Canonical-first, then alias — the lookup the Phase-3 compiler normalizes
  * through. Case-sensitive, exact-match, no folding.
  */
 export const resolveOperator = (

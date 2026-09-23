@@ -70,7 +70,7 @@ export interface TraceNode {
   /** Wall-clock milliseconds. */
   elapsed?: number
   /**
-   * Root entry only: the parse pass's warnings and hints, echoed so a
+   * Root entry only: the compile pass's warnings and hints, echoed so a
    * trace consumer sees the unrecognized-`$` class without a second call.
    */
   warnings?: Issue[]

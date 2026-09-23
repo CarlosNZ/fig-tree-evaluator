@@ -64,6 +64,14 @@ export type { Dependencies, FragmentInfo, OperatorInfo, ParameterInfo } from './
 
 // Phase 2.2 — the instance shell. Registry machinery stays internal.
 export { FigTree } from './FigTree'
+// Phase 13 — the handle `compile()` returns. Type-only: `compile()` is the
+// one mint, and the constructor takes engine internals.
+export type { CompiledExpression } from './FigTree'
+// #156 — the compiled-expression inspector. Standalone, and imported by
+// nothing in the engine, so a bundle that never imports it never carries
+// it. The report's shape follows the compiler and is outside semver.
+export { inspect } from './inspect'
+export type { InspectDependencies, InspectIssue, InspectNode, InspectReport } from './inspect'
 export type { CallOptions, EvaluationOptions, FigTreeOptions, OnlyCallOptions } from './options'
 // Phase 12 — the diagnostic surfaces' return shape
 export type { EvaluationResult, Merge, NoOptions, ResultShape } from './options'
@@ -88,7 +96,7 @@ export type {
   ValidateFinding,
 } from './operatorDefinition'
 // The toolbox a `validate` hook receives — part of that hook's signature.
-export type { ValidateHelpers } from './parse/helpers'
+export type { ValidateHelpers } from './compile/helpers'
 
 // Phase 1.1 — shared primitives (author-facing helpers). Final subpath /
 // editor-hints packaging is deferred to Phase 14; the main barrel carries them

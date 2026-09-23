@@ -1,5 +1,5 @@
 import { resolvePath, parsePath, WILDCARD } from '../src'
-import { renderSegments } from '../src/parse'
+import { renderSegments } from '../src/compile'
 import type { PathSegment } from '../src'
 
 describe('parsePath', () => {
