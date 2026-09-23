@@ -224,6 +224,8 @@ Subpath exports, rollup build, `editor-hints` module, bundle-size checks, tree-s
 
 _Carried in from Phase 13: the tree-shake fixture asserts that an engine-only bundle carries none of the inspector ("Open" in [v3-inspect.md](v3-inspect.md))._
 
+_Stock-take, proposed chunks and open decisions: [Phase14-details.md](../../Phase14-details.md) at the repo root — a temporary working file, deleted when this phase closes._
+
 ---
 
 ## Phase 15 — Converter & differential (testing-strategy steps 4–5)
