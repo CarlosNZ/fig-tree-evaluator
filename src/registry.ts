@@ -11,11 +11,13 @@
  * compiles against a finished operator set.
  *
  * The brand is the entry ticket (ruled July 2026): every flattened entry
- * must be a `defineOperator()`-validated definition, trusted wholesale —
- * there is no second validation path here. Cross-registry work only:
- * one-level flattening, name/alias collision checks across the one
- * namespace ("no silent precedence" — identity duplicates included), the
- * alias map, and `operatorDefaults` resolution against operator metadata.
+ * must carry it — from `defineOperator()`, or from `buildOperator` for the
+ * package's own definitions, which are checked in CI and at build instead —
+ * and is trusted wholesale: there is no second validation path here.
+ * Cross-registry work only: one-level flattening, name/alias collision
+ * checks across the one namespace ("no silent precedence" — identity
+ * duplicates included), the alias map, and `operatorDefaults` resolution
+ * against operator metadata.
  *
  * Internal machinery behind `new FigTree()` — not barrel surface.
  */

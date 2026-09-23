@@ -5,7 +5,7 @@
  * (`deepEqual`); ordering is one shared relation over homogeneous
  * number|string pairs, parameterized by direction and inclusivity.
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { compareValues, deepEqual } from '../primitives'
 import { fewerThanTwoWarning } from './shared'
 
@@ -31,7 +31,7 @@ const equalityParameters = {
   },
 } as const
 
-export const equal = defineOperator({
+export const equal = declareOperator({
   name: 'equal',
   alias: '=',
   category: 'comparison',
@@ -44,7 +44,7 @@ export const equal = defineOperator({
   evaluate: ({ values, caseInsensitive }) => allEqual(values, caseInsensitive),
 })
 
-export const notEqual = defineOperator({
+export const notEqual = declareOperator({
   name: 'notEqual',
   alias: '!=',
   category: 'comparison',
@@ -62,7 +62,7 @@ const ordering = (
   description: string,
   holds: (comparison: number) => boolean
 ) =>
-  defineOperator({
+  declareOperator({
     name,
     alias,
     category: 'comparison',

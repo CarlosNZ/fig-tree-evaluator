@@ -193,7 +193,9 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
 /**
  * The brand key. The symbol value is internal (never exported from the
  * barrel), so external code can neither forge the property nor satisfy the
- * validated type structurally — `defineOperator()` is the only mint.
+ * validated type structurally — `defineOperator()` is the only public mint.
+ * The package's own definitions are minted by `buildOperator`
+ * (src/buildOperator.ts), which is not exported.
  */
 export const VALIDATED_OPERATOR: unique symbol = Symbol('fig-tree:validated-operator')
 

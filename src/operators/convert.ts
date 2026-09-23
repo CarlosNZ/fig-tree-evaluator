@@ -5,7 +5,7 @@
  * propagates for number/string/array and is consumed (→ false) for
  * boolean, declared, never hand-rolled in the body.
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { isTruthy, renderText } from '../primitives'
 import { describeType } from '../typeCheck'
 import { isPlainObject } from '../utils'
@@ -14,7 +14,7 @@ import { OperatorFailure } from '../OperatorFailure'
 const cannot = (value: unknown, to: string) =>
   new OperatorFailure(`cannot convert ${describeType(value)} to ${to}`)
 
-export const convert = defineOperator({
+export const convert = declareOperator({
   name: 'convert',
   category: 'other',
   description:

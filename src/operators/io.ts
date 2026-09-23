@@ -28,7 +28,7 @@
  * would be inconsistent. The enforcement that works is a read-only role on
  * the connection.
  */
-import { defineOperator } from '../defineOperator'
+import { buildOperator, declareOperator } from '../buildOperator'
 import { FetchClient } from '../clients/http'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
@@ -64,8 +64,8 @@ const RETURN_PATH = {
   description: 'Dot/bracket path or segments array applied to the response; a miss is null',
 } as const
 
-const httpDefinition = (client: HttpClient) =>
-  defineOperator({
+export const httpDefinition = (client: HttpClient) =>
+  declareOperator({
     name: 'http',
     category: 'io',
     description: 'One HTTP request — GET or POST — returning the parsed JSON response',
@@ -141,8 +141,8 @@ const httpDefinition = (client: HttpClient) =>
     },
   })
 
-const graphQLDefinition = (client: HttpClient) =>
-  defineOperator({
+export const graphQLDefinition = (client: HttpClient) =>
+  declareOperator({
     name: 'graphQL',
     category: 'io',
     description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
@@ -206,8 +206,8 @@ const graphQLDefinition = (client: HttpClient) =>
     },
   })
 
-const sqlDefinition = (connection: SqlConnection) =>
-  defineOperator({
+export const sqlDefinition = (connection: SqlConnection) =>
+  declareOperator({
     name: 'sql',
     category: 'io',
     description:
@@ -293,7 +293,10 @@ const bodyFindings = (method: unknown, body: unknown) =>
  */
 export const httpOperators = (
   client: HttpClient = new FetchClient()
-): ValidatedOperatorDefinition[] => [httpDefinition(client), graphQLDefinition(client)]
+): ValidatedOperatorDefinition[] => [
+  buildOperator(httpDefinition(client)),
+  buildOperator(graphQLDefinition(client)),
+]
 
 /**
  * `sql`. No default: there is no ambient database connection to adopt,
@@ -301,7 +304,7 @@ export const httpOperators = (
  * stated rather than inferred.
  */
 export const sqlOperators = (connection: SqlConnection): ValidatedOperatorDefinition[] => [
-  sqlDefinition(connection),
+  buildOperator(sqlDefinition(connection)),
 ]
 
 /**

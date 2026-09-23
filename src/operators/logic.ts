@@ -9,7 +9,7 @@
  * layers it passes on the way out — so these read as the semantics and
  * nothing else.
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { OperatorFailure } from '../OperatorFailure'
 import { renderText } from '../primitives'
 import { decide, emptyAggregateWarning } from './shared'
@@ -18,7 +18,7 @@ import { decide, emptyAggregateWarning } from './shared'
  * Exported as `ifOperator` — `if` is a reserved word. The canonical
  * operator name is unaffected; only this binding is renamed.
  */
-export const ifOperator = defineOperator({
+export const ifOperator = declareOperator({
   name: 'if',
   alias: '?',
   category: 'logic',
@@ -46,7 +46,7 @@ export const ifOperator = defineOperator({
     condition ? then.evaluate() : otherwise.evaluate(),
 })
 
-export const match = defineOperator({
+export const match = declareOperator({
   name: 'match',
   category: 'logic',
   description: 'Dispatch on a value — only the matching branch evaluates',
@@ -84,7 +84,7 @@ export const match = defineOperator({
   },
 })
 
-export const firstOf = defineOperator({
+export const firstOf = declareOperator({
   name: 'firstOf',
   category: 'logic',
   description:
@@ -111,7 +111,7 @@ export const firstOf = defineOperator({
   },
 })
 
-export const and = defineOperator({
+export const and = declareOperator({
   name: 'and',
   category: 'logic',
   description: 'True when every value is truthy — operands run in parallel',
@@ -129,7 +129,7 @@ export const and = defineOperator({
   evaluate: ({ values }) => decide(values, false),
 })
 
-export const or = defineOperator({
+export const or = declareOperator({
   name: 'or',
   category: 'logic',
   description: 'True when any value is truthy — operands run in parallel',
@@ -147,7 +147,7 @@ export const or = defineOperator({
   evaluate: ({ values }) => decide(values, true),
 })
 
-export const not = defineOperator({
+export const not = declareOperator({
   name: 'not',
   alias: '!',
   category: 'logic',

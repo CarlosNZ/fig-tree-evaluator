@@ -39,6 +39,10 @@ Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decision
 - **An exports test.** It checks the root's exported names against the spec's list exactly, so any deleted v2 export that reappears fails it without the test having to name one.
 - **Comment cleanup.** Rewrite the file's comments: the header still says "Phase-0 skeleton … exposes only the version", and one comment says packaging is "deferred to Phase 14 … for now".
 
+### 14.1a · Tree-shakeable definition checks (done)
+
+Decision 4. The core and I/O definitions are `declareOperator()` literals built by the internal `buildOperator` ([src/buildOperator.ts](src/buildOperator.ts)), which skips the checks. They're checked by [test/package-definitions.test.ts](test/package-definitions.test.ts) (each shipped artifact equals `defineOperator()`'s output) and by [codegen/checkDefinitions.ts](codegen/checkDefinitions.ts) in `pnpm build`. Engine-only consumer: 31.23 → 29.41 kB brotli.
+
 ### 14.2 · `./editor-hints`
 
 - Create `src/editor-hints/index.ts` with two typed maps:
@@ -69,7 +73,7 @@ Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decision
 - **Tree-shake fixture.** It bundles the published `build/` with default settings and scans the output for marker strings.
   - Markers have to be string literals such as error messages, because minification renames classes and functions. Searching for a name like `FetchClient` would pass even if the code were there.
   - Each marker is first checked to be present in an `import *` bundle, so a marker that a refactor removed fails the check instead of passing it.
-  - The fixture asserts that the I/O toolkit, the inspector (carried in from Phase 13, "Open" in [v3-inspect.md](docs-dev/v3-specs/v3-inspect.md)) and both subpaths are absent.
+  - The fixture asserts that the I/O toolkit, the inspector (carried in from Phase 13, "Open" in [v3-inspect.md](docs-dev/v3-specs/v3-inspect.md)), `defineOperator()`'s checks (14.1a; a validator message such as "is named for the '…Default' family" is a usable marker) and both subpaths are absent.
 - **Size budget.** Add a threshold on the root entry's brotli size, and probably on the engine-only fixture too, run as `bundleSize.mjs --check`. Set the number from what we measure now plus a small margin.
 - **Import-direction lint.** Extend `no-restricted-imports` in [eslint.config.mjs](eslint.config.mjs): the root source may not import `editor-hints/` or `convert/`, and editor-hints may use type-only imports only (`allowTypeImports`).
 - **Globals check.** The library tsconfig includes `@types/node`, so an accidental Node-only global would compile without complaint. Typechecking `src` with only the ES2022 library and no ambient types shows that, beyond the sanctioned `AbortSignal`/`AbortController`, it uses:

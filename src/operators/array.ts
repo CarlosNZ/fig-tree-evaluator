@@ -19,12 +19,12 @@
  * evaluation STARTS, so order-dependent or skip-dependent side effects do
  * not belong in an `each`.
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { toCodePoints } from '../primitives'
 import type { Settlement } from '../runtimeInterface'
 import { collectAll, decide, emptyInputWarning } from './shared'
 
-export const length = defineOperator({
+export const length = declareOperator({
   name: 'length',
   category: 'array',
   description: "An array's element count, or a string's Unicode code-point count",
@@ -88,7 +88,7 @@ const predicateEach = {
   description: 'The predicate, per element — a truthiness position, so null is falsy',
 } as const
 
-export const map = defineOperator({
+export const map = declareOperator({
   name: 'map',
   category: 'array',
   description: 'Transform every element of an array',
@@ -99,7 +99,7 @@ export const map = defineOperator({
   evaluate: ({ each }) => collectAll(each.settle()),
 })
 
-export const filter = defineOperator({
+export const filter = declareOperator({
   name: 'filter',
   category: 'array',
   description: 'Keep the elements of an array whose predicate is truthy',
@@ -128,7 +128,7 @@ export const filter = defineOperator({
  * default is null. It fires on no-match ONLY: a found null element passes
  * through unchanged, which is the distinction a bare null could not carry.
  */
-export const find = defineOperator({
+export const find = declareOperator({
   name: 'find',
   category: 'array',
   description: 'The first element of an array whose predicate is truthy',
@@ -165,7 +165,7 @@ export const find = defineOperator({
   },
 })
 
-export const some = defineOperator({
+export const some = declareOperator({
   name: 'some',
   category: 'array',
   description: 'True when any element satisfies the predicate',
@@ -176,7 +176,7 @@ export const some = defineOperator({
   evaluate: ({ each }) => decide(each.settle(), true),
 })
 
-export const every = defineOperator({
+export const every = declareOperator({
   name: 'every',
   category: 'array',
   description: 'True when every element satisfies the predicate',

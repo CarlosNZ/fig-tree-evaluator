@@ -10,22 +10,19 @@
  * `operatorDefaults` resolution) belong to instance registration
  * (src/registry.ts), which trusts the brand and never re-validates.
  *
- * The returned definition is a fresh, deep-frozen, normalized object: every
- * documented default filled, `required` computed once, any conditional null
- * policy compiled to its table (the source function is dropped), `restParam`
- * and `timeoutParam` derived. The input literal is never mutated or branded;
- * `metadata` and `default` values are kept by reference and unfrozen
- * (host-owned, opaque).
+ * A definition that passes is assembled by src/buildOperator.ts into a
+ * fresh, deep-frozen, normalized artifact. The assembly lives there, apart
+ * from these checks, because the package's own definitions are built
+ * without them: a bundle that never imports this module never carries them.
  */
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
-import { fnv1a, isPlainObject } from './utils'
+import { isPlainObject } from './utils'
 import {
   checkConstraints,
   checkType,
   isExpectedType,
-  isLiteralType,
   typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
@@ -34,23 +31,19 @@ import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } fr
 import {
   EvaluationData,
   OPERATOR_CATEGORIES,
-  VALIDATED_OPERATOR,
   isValidatedOperator,
-  type CompiledNullPolicy,
-  type DeclarationEntry,
-  type EvaluationMode,
-  type NullPolicyValue,
-  type OperatorCategory,
   type OperatorDefinition,
-  type OperatorEvaluate,
   type ParameterDeclaration,
   type ParameterDeclarations,
-  type ResolutionPlan,
   type ValidatedOperatorDefinition,
-  type ValidatedParameter,
 } from './operatorDefinition'
-
-type Path = (string | number)[]
+import {
+  NULL_POLICY_VALUES,
+  REST_PREFIX,
+  assembleOperator,
+  compileNullPolicies,
+  type Path,
+} from './buildOperator'
 
 /**
  * The `…Default` naming family (contract, Registration & validation). The
@@ -77,11 +70,6 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
  * genuinely fits nowhere picks `other` deliberately.
  */
 const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
-
-const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
-
-/** The rest marker on a `positionalParams` entry (`'...values'`). */
-const REST_PREFIX = '...'
 
 /** Does a declared type admit an array (the `over` target requirement)? */
 const typeAdmitsArray = (type: ExpectedType): boolean => {
@@ -460,7 +448,6 @@ export function defineOperator(
 
   // positionalParams: entries name declared parameters; rest entry last
   // only; no duplicates
-  let restParam: string | null = null
   if (
     Array.isArray(def.positionalParams) &&
     def.positionalParams.every((p) => typeof p === 'string')
@@ -470,15 +457,12 @@ export function defineOperator(
     entries.forEach((entry, i) => {
       const isRest = entry.startsWith(REST_PREFIX)
       const entryName = isRest ? entry.slice(REST_PREFIX.length) : entry
-      if (isRest) {
-        if (i !== entries.length - 1)
-          addIssue(
-            ErrorCodes.invalidDefinition,
-            `the rest entry '${entry}' must be the last positional entry`,
-            ['positionalParams', i]
-          )
-        else restParam = entryName
-      }
+      if (isRest && i !== entries.length - 1)
+        addIssue(
+          ErrorCodes.invalidDefinition,
+          `the rest entry '${entry}' must be the last positional entry`,
+          ['positionalParams', i]
+        )
       if (!(entryName in declarations))
         addIssue(
           ErrorCodes.invalidDefinition,
@@ -595,58 +579,9 @@ export function defineOperator(
     )
   }
 
-  // Conditional null policies: exactly one literal-union selector in the
-  // definition; enumerate its members into a total compiled table
-  const literalUnionParams = Object.entries(effectiveTypes)
-    .filter(([, type]) => isLiteralType(type))
-    .map(([name]) => name)
-  const compiledPolicies = new Map<string, CompiledNullPolicy>()
-
-  for (const [paramName, d] of Object.entries(declarations)) {
-    if (typeof d.nullPolicy !== 'function') continue
-    const path: Path = ['parameters', paramName, 'nullPolicy']
-    if (literalUnionParams.length !== 1) {
-      addIssue(
-        ErrorCodes.invalidNullPolicy,
-        `a conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
-        path,
-        paramName
-      )
-      continue
-    }
-    const selector = literalUnionParams[0]
-    const selectorType = effectiveTypes[selector]
-    if (!isLiteralType(selectorType)) continue // unreachable; narrows the type
-    const table: CompiledNullPolicy['table'] = []
-    let compiled = true
-    for (const member of selectorType.literal) {
-      let policy: unknown
-      try {
-        policy = d.nullPolicy(member)
-      } catch (error) {
-        addIssue(
-          ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
-          path,
-          paramName
-        )
-        compiled = false
-        break
-      }
-      if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
-        addIssue(
-          ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'value' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
-          path,
-          paramName
-        )
-        compiled = false
-        break
-      }
-      table.push({ value: member, policy: policy as NullPolicyValue })
-    }
-    if (compiled) compiledPolicies.set(paramName, { selector, table })
-  }
+  // Conditional null policies, compiled here so that a failure reports
+  // beside every other violation
+  const compiledPolicies = compileNullPolicies(declarations, effectiveTypes, addIssue)
 
   // timeoutParam: names a declared integer-typed parameter (Q5 resolution —
   // one field names one parameter, so at-most-one holds by construction)
@@ -666,164 +601,5 @@ export function defineOperator(
 
   if (issues.length > 0) throwDefinitionError(issues, operator)
 
-  // ── Build the normalized, branded, frozen artifact ─────────────────────
-  const validatedParameters: Record<string, ValidatedParameter> = {}
-  for (const [paramName, d] of Object.entries(declarations)) {
-    const compiled = compiledPolicies.get(paramName)
-    const declaredPolicy = typeof d.nullPolicy === 'string' ? d.nullPolicy : undefined
-    const type = effectiveTypes[paramName] ?? 'any'
-    // truthiness implies 'value' where the type admits null at all
-    const impliedPolicy: NullPolicyValue =
-      d.truthiness === true && typeNamesNull(type) ? 'value' : 'propagate'
-
-    const parameter: ValidatedParameter = {
-      type: cloneTypeExpression(type),
-      required: d.required ?? !('default' in d),
-      evaluation: (d.evaluation as EvaluationMode) ?? 'eager',
-      truthiness: d.truthiness ?? false,
-      nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
-    }
-    if ('default' in d) parameter.default = d.default
-    if (d.description !== undefined) parameter.description = d.description
-    if (d.metadata !== undefined) parameter.metadata = d.metadata
-    if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
-    if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
-    if (d.over !== undefined) parameter.over = d.over
-    if (d.replacesNullAt !== undefined) parameter.replacesNullAt = [...d.replacesNullAt]
-    validatedParameters[paramName] = parameter
-  }
-
-  const validated: ValidatedOperatorDefinition = {
-    [VALIDATED_OPERATOR]: true,
-    name: def.name,
-    category: def.category as OperatorCategory,
-    description: def.description,
-    parameters: validatedParameters,
-    resolution: planResolution(validatedParameters),
-    restParam,
-    deliversLazily: Object.values(validatedParameters).some(
-      (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
-    ),
-    timeoutParam: def.timeoutParam ?? null,
-    useCache: def.useCache ?? false,
-    cache: def.cache ?? 'auto',
-    // Stamped below, once every field it reads is in place
-    fingerprint: '',
-    evaluate: def.evaluate as OperatorEvaluate,
-    returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
-  }
-  if (def.alias !== undefined) validated.alias = def.alias
-  if (def.metadata !== undefined) validated.metadata = def.metadata
-  if (def.positionalParams !== undefined) validated.positionalParams = [...def.positionalParams]
-  if (def.validate !== undefined) validated.validate = def.validate
-  validated.fingerprint = fingerprintOf(validated)
-
-  return deepFreezeArtifact(validated)
-}
-
-/**
- * The definition's content fingerprint: the fields that decide what the
- * body computes, hashed. An allowlist rather than the whole object, so
- * that "the definition's content" is stated rather than implied:
- * `description` and `alias` cannot change a result, and hashing them would
- * invalidate a persisted store's entries on a docs-only edit; `metadata`
- * is a host-owned bag kept by reference that may hold anything, including
- * values `JSON.stringify` throws on; `deliversLazily` and `resolution` are
- * derived from the parameters already in. A field added to the type later
- * has to be admitted here deliberately. Functions, symbols (the
- * `EvaluationData` default) and regular expressions render as their source
- * text, which `JSON.stringify` would otherwise drop.
- */
-const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
-  fnv1a(
-    JSON.stringify(
-      [
-        d.name,
-        d.parameters,
-        d.positionalParams,
-        d.restParam,
-        d.returns,
-        d.useCache,
-        d.cache,
-        d.timeoutParam,
-        d.evaluate,
-        d.validate,
-      ],
-      (_, value: unknown) =>
-        typeof value === 'function' || typeof value === 'symbol' || value instanceof RegExp
-          ? String(value)
-          : value
-    )
-  )
-
-/** A fresh copy of a type expression, so freezing never touches the input. */
-const cloneTypeExpression = (type: ExpectedType): ExpectedType => {
-  if (typeof type === 'string') return type
-  if (isLiteralType(type)) return { literal: [...type.literal] }
-  return [...type]
-}
-
-/** Plain-data deep clone for owned declaration structures (constraints). */
-const deepClone = <T>(value: T): T => {
-  if (Array.isArray(value)) return value.map(deepClone) as T
-  if (isPlainObject(value)) {
-    const copy: Record<string, unknown> = {}
-    for (const [key, child] of Object.entries(value)) copy[key] = deepClone(child)
-    return copy as T
-  }
-  return value
-}
-
-/** The resolver's three declaration lists (`ResolutionPlan`). */
-const planResolution = (parameters: Record<string, ValidatedParameter>): ResolutionPlan => {
-  const entries: DeclarationEntry[] = Object.entries(parameters)
-  return {
-    entries,
-    whole: entries.filter(
-      ([, declared]) =>
-        declared.replacesNullAt === undefined && declared.evaluation !== 'perElement'
-    ),
-    perElement: entries.filter(([, declared]) => declared.evaluation === 'perElement'),
-  }
-}
-
-/**
- * Freeze the artifact and every structure it owns. `metadata` bags, `default`
- * values and the two host-supplied functions are left unfrozen — host-owned.
- */
-const deepFreezeArtifact = (
-  validated: ValidatedOperatorDefinition
-): ValidatedOperatorDefinition => {
-  for (const parameter of Object.values(validated.parameters)) {
-    if (typeof parameter.type !== 'string') Object.freeze(parameter.type)
-    if (typeof parameter.type === 'object' && 'literal' in parameter.type)
-      Object.freeze(parameter.type.literal)
-    if (typeof parameter.nullPolicy === 'object') {
-      parameter.nullPolicy.table.forEach((row) => Object.freeze(row))
-      Object.freeze(parameter.nullPolicy.table)
-      Object.freeze(parameter.nullPolicy)
-    }
-    if (parameter.constraints !== undefined) deepFreezePlain(parameter.constraints)
-    if (parameter.replacesNullAt !== undefined) Object.freeze(parameter.replacesNullAt)
-    Object.freeze(parameter)
-  }
-  Object.freeze(validated.parameters)
-  for (const list of Object.values(validated.resolution)) {
-    list.forEach((entry: DeclarationEntry) => Object.freeze(entry))
-    Object.freeze(list)
-  }
-  Object.freeze(validated.resolution)
-  if (typeof validated.returns !== 'string') Object.freeze(validated.returns)
-  if (validated.positionalParams !== undefined) Object.freeze(validated.positionalParams)
-  return Object.freeze(validated)
-}
-
-const deepFreezePlain = (value: unknown): void => {
-  if (Array.isArray(value)) {
-    value.forEach(deepFreezePlain)
-    Object.freeze(value)
-  } else if (isPlainObject(value)) {
-    Object.values(value).forEach(deepFreezePlain)
-    Object.freeze(value)
-  }
+  return assembleOperator(def, compiledPolicies)
 }

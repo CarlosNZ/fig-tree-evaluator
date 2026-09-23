@@ -8,14 +8,14 @@
  * keys computed at runtime, and output that must CONTAIN reserved words as
  * data.
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { EvaluationData } from '../operatorDefinition'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
 import { renderText, resolvePath } from '../primitives'
 import { emptyEntriesWarning, pathFindings, toSegments } from './shared'
 
-export const get = defineOperator({
+export const get = declareOperator({
   name: 'get',
   category: 'data',
   description:
@@ -65,7 +65,7 @@ export const get = defineOperator({
 const renderPath = (path: string | unknown[]): string =>
   typeof path === 'string' ? path : path.map((segment) => String(segment)).join('.')
 
-export const buildObject = defineOperator({
+export const buildObject = declareOperator({
   name: 'buildObject',
   category: 'data',
   description:

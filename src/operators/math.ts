@@ -7,7 +7,7 @@
  * polices NaN or Infinity — the engine's finite guard turns any non-finite
  * result into a runtime failure (ledger #10).
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import { compareValues, roundDecimal } from '../primitives'
 import { describeType } from '../typeCheck'
 import { isPlainObject } from '../utils'
@@ -36,7 +36,7 @@ const plusKind = (value: unknown): PlusMode | undefined => {
   return undefined
 }
 
-export const plus = defineOperator({
+export const plus = declareOperator({
   name: 'plus',
   alias: '+',
   category: 'math',
@@ -97,7 +97,7 @@ export const plus = defineOperator({
   },
 })
 
-export const subtract = defineOperator({
+export const subtract = declareOperator({
   name: 'subtract',
   alias: '-',
   category: 'math',
@@ -111,7 +111,7 @@ export const subtract = defineOperator({
   evaluate: ({ value, minus }) => value - minus,
 })
 
-export const divide = defineOperator({
+export const divide = declareOperator({
   name: 'divide',
   alias: '/',
   category: 'math',
@@ -125,7 +125,7 @@ export const divide = defineOperator({
   evaluate: ({ value, by }) => value / by,
 })
 
-export const modulo = defineOperator({
+export const modulo = declareOperator({
   name: 'modulo',
   category: 'math',
   description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
@@ -138,7 +138,7 @@ export const modulo = defineOperator({
   evaluate: ({ value, mod }) => ((value % mod) + mod) % mod,
 })
 
-export const multiply = defineOperator({
+export const multiply = declareOperator({
   name: 'multiply',
   alias: '*',
   category: 'math',
@@ -164,7 +164,7 @@ export const multiply = defineOperator({
   evaluate: ({ values }) => (values as number[]).reduce((product, value) => product * value, 1),
 })
 
-export const power = defineOperator({
+export const power = declareOperator({
   name: 'power',
   alias: '^',
   category: 'math',
@@ -178,7 +178,7 @@ export const power = defineOperator({
   evaluate: ({ base, exponent }) => base ** exponent,
 })
 
-export const round = defineOperator({
+export const round = declareOperator({
   name: 'round',
   category: 'math',
   description:
@@ -197,7 +197,7 @@ export const round = defineOperator({
 })
 
 const unary = (name: string, description: string, compute: (value: number) => number) =>
-  defineOperator({
+  declareOperator({
     name,
     category: 'math',
     description,
@@ -217,7 +217,7 @@ const extremum = (
   description: string,
   wins: (comparison: number) => boolean
 ) =>
-  defineOperator({
+  declareOperator({
     name,
     category: 'math',
     description,
