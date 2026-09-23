@@ -63,6 +63,7 @@ Decision 4. The core and I/O definitions are `declareOperator()` literals built 
 ### 14.3 · Build more than one entry point
 
 - **One rollup pass with several inputs, so shared code goes into shared chunks. Not one config per entry.** At Phase 15, `./convert` will import compiler internals. A bundle built separately for it would carry its own copy of the `defineOperator` brand symbol, `EvaluationData` and `FigTreeError`. That is the same failure as loading two copies of the package, which the ESM-only ruling was made to prevent. Editor-hints shares no runtime code, but the build should be right before Phase 15 needs it.
+- **Checking the shared chunk:** nothing in Phase 14 imports the root's runtime from a subpath (editor-hints imports types only). Confirm the config with a throwaway entry that imports `FigTreeError`, check rollup emits a shared chunk, and don't commit the entry. Phase 15.1 asserts it for real.
 - **Declarations:** one `.d.ts` rollup per entry point.
 - **`exports`:** add `./editor-hints` to the map.
 - **Stale config:** remove `external: ['dequal', 'dequal/lite']` and its "one runtime dependency" comment from [rollup.config.mjs](rollup.config.mjs).

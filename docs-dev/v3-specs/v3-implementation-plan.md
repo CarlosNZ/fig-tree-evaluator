@@ -230,7 +230,7 @@ _Stock-take, proposed chunks and open decisions: [Phase14-details.md](../../Phas
 
 ## Phase 15 — Converter & differential (testing-strategy steps 4–5)
 
-**15.1 · `convertV2ToV3`** in `./convert`, built on the compiler's normalizer.
+**15.1 · `convertV2ToV3`** in `./convert`, built on the compiler's normalizer. Adds `./convert` to the entry list Phase 14 builds from, and asserts that the one-pass build shares the root's runtime: a `FigTreeError` thrown from `./convert` must be an `instanceof` the root's ("`./convert`" in [v3-packaging.md](v3-packaging.md)).
 **15.2 · The differential runner** over the frozen `V2/` corpus: `evaluate(convert(v2Tree))` vs recorded expected values; the **divergence catalog** (non-convertible / intentional-semantic-change / lossy-default) as a first-class output feeding the migration docs. Expect this phase to surface spec gaps — treat each as a spec-refinement loop, per the testing-strategy note.
 
 ---
@@ -335,5 +335,6 @@ Two things to watch, not yet act on. **`defineOperator` has stopped being option
 
 - **Spec gates**: discharged July 2026 — evaluator-methods signed off (Qs 1–3 + 11 settled at close-off; Q12's operatorDefaults-required ban signed off and amended into Options); Packaging drafted in [v3-packaging.md](v3-packaging.md), awaiting review before Phase 14.
 - **`/v2-src` runnability**: the frozen engine is load-bearing twice over — Phase 15's converter oracle and Phase 16's other arm — and it is **currently broken** (`dequal` left `package.json` at Phase 4; v2's `EQUAL` still imports `dequal/lite`). Restored as a devDependency September 2026, and `pnpm test:v2` is green again at **516 of 517** — the one failure is `25_metaData`, where Jest 30's `toStrictEqual` no longer lets `expect.objectContaining` match a function, so the corpus records a v2 behaviour the runner can no longer express. That is a runner artifact, not a v2 regression, and the record is never edited to accommodate it. Keep the suite on tap until 16b deletes the folder; nothing in CI runs it, so it rots unwatched. _A second interop hazard lives outside the folder and is worked around in `tsconfig.bench.json`: `object-property-extractor` ships an ESM build that declares no `"type": "module"`, which only bites an ESM importer — jest never sees it._
+- **Parked until after 3.0**: shorthand round-trip utilities (converting an expression between v3's faces — canonical, shorthand with named arguments, shorthand with positional arguments) — Carl, September 2026, Phase-14 review; "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md).
 - **Environment**: 9.3's live-network and Northwind-SQL tests are tagged, never blocking CI; the mock client is the primary oracle.
 - **Contract watch-list**: the chunks most likely to bounce details back to [v3-operator-contract.md](v3-operator-contract.md) are 5.2/5.3 (mode vocabulary, Q1), 9.1 (caching split, Q2), 4.1 (absent-key delivery, Q4) — budget review time there.
