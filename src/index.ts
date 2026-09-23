@@ -54,7 +54,8 @@ export type {
 } from './typeCheck'
 
 // Phase 2.1 — operator definitions. The brand symbol itself stays internal:
-// `defineOperator()` is the only mint, `isValidatedOperator` the only probe.
+// `defineOperator()` is the one public mint, `isValidatedOperator` the only
+// probe.
 export { defineOperator } from './defineOperator'
 export { EvaluationData, isValidatedOperator, OPERATOR_CATEGORIES } from './operatorDefinition'
 

@@ -8,7 +8,7 @@
  * type error, never `"42"`. One shared whitespace set, one code-point
  * segmentation and one renderer throughout (src/primitives).
  */
-import { defineOperator } from '../defineOperator'
+import { declareOperator } from '../buildOperator'
 import type { ValidateFinding } from '../operatorDefinition'
 import { OperatorFailure } from '../OperatorFailure'
 import {
@@ -22,7 +22,7 @@ import { scanTemplate } from '../templateTokens'
 import { emptyAggregateWarning } from './shared'
 
 const normalizer = (name: string, description: string, transform: (value: string) => string) =>
-  defineOperator({
+  declareOperator({
     name,
     category: 'string',
     description,
@@ -48,7 +48,7 @@ export const trim = normalizer(
   trimText
 )
 
-export const split = defineOperator({
+export const split = declareOperator({
   name: 'split',
   category: 'string',
   description:
@@ -141,7 +141,7 @@ const closeTheGaps = (parts: Part[]): string[] => {
   return closed
 }
 
-export const buildString = defineOperator({
+export const buildString = declareOperator({
   name: 'buildString',
   category: 'string',
   description: 'Render a template, filling its tokens — the result is always a string',
@@ -227,7 +227,7 @@ export const buildString = defineOperator({
   },
 })
 
-export const join = defineOperator({
+export const join = declareOperator({
   name: 'join',
   category: 'string',
   description: 'Render array elements to text and concatenate them with a delimiter',
@@ -302,7 +302,7 @@ export const checkFlags = (flags: string): string | undefined => {
   return `unknown regex flag${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}${hint}`
 }
 
-export const regex = defineOperator({
+export const regex = declareOperator({
   name: 'regex',
   category: 'string',
   description: 'Test, extract or match a string against a regular expression',
