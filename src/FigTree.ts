@@ -50,7 +50,6 @@ import {
   CompileCache,
   compileExpression,
   probeConstant,
-  renderDataReference,
   runStaticChecks,
   type CacheEntry,
   type CompileArtifact,
@@ -67,7 +66,7 @@ import {
 } from './introspect'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import { resolvePath } from './primitives'
+import { depthIssue, limitIssues, validationIssues } from './validation'
 import { coreOperators } from './operators'
 import { version } from './version'
 
@@ -299,22 +298,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
         ? this.state.evaluation
         : withCallOptions(this.state.evaluation, options)
     const artifact = compileWithRegistry(expression, this.state.registry)
-    const issues = [...limitIssues(artifact, effective), ...artifact.issues.map((s) => s.issue)]
-
-    // The sample-data check walks the stored dependency list, which holds
-    // segments — the form `resolvePath` accepts, so nothing is re-parsed
-    if (effective.data !== undefined) {
-      for (const dataPath of artifact.dependencies.dataPaths.values()) {
-        if (!resolvePath(effective.data, dataPath).found)
-          issues.push({
-            severity: 'warning',
-            code: ErrorCodes.missingDataPath,
-            message: `'${renderDataReference(dataPath)}' is absent from the supplied sample data`,
-            path: [],
-          })
-      }
-    }
-
+    const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
       issues,
@@ -517,6 +501,14 @@ const evaluateEntry = async (
 }
 
 /**
+ * `CompiledExpression`'s own accessor for the inspector, assigned by the
+ * class's static block and exposed as `viewHandle` after the class.
+ * Declared ahead of the class because the block runs as the class is
+ * defined, when a `let` declared later would not exist yet.
+ */
+let readHandle: (value: object, call: CallOptions | undefined) => HandleView | undefined
+
+/**
  * What `compile()` returns ("compile()" in
  * docs-dev/v3-specs/v3-evaluator-methods.md): a holdable, nameable
  * compiled expression. A handle rather than the artifact itself, which
@@ -554,6 +546,19 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   /** The inert flavour's lazy compile, once made. */
   #compiled?: CompileArtifact
   #issues?: readonly Issue[]
+
+  // The handle's accessor for the inspector (`viewHandle`, after the
+  // class) — the one reader of this state from outside. A static block is
+  // inside the class body, so it may name `#` fields, and the brand check
+  // turns away anything the constructor did not make
+  static {
+    readHandle = (value, call) => {
+      if (!(#entry in value)) return undefined
+      const options =
+        call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
+      return { expression: value.#expression, artifact: value.#artifact(), options }
+    }
+  }
 
   constructor(
     expression: unknown,
@@ -641,6 +646,30 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
       : (this.#compiled ??= compileWithRegistry(this.#expression, this.#registry))
   }
 }
+
+/**
+ * What `inspect()` (src/inspect) reads of a handle: the source, the
+ * artifact behind it, and the options the report's checks run under — the
+ * pinned ones with the call's laid over, a call option that is instance
+ * configuration refused exactly as `evaluate()` refuses it.
+ */
+export interface HandleView {
+  expression: unknown
+  artifact: CompileArtifact
+  options: EvaluationOptions
+}
+
+/**
+ * The handle's view, or `undefined` for anything that is not a handle —
+ * `CompiledExpression`'s accessor, living beside the class rather than on
+ * it because anything on the class is public: an instance method would
+ * hand the artifact to every holder, and a static one would be reachable
+ * through `handle.constructor`. Internal, not barrel surface; it is what
+ * lets the inspector live in its own module and stay out of any bundle
+ * that never imports it.
+ */
+export const viewHandle = (value: unknown, call?: CallOptions): HandleView | undefined =>
+  typeof value === 'object' && value !== null ? readHandle(value, call) : undefined
 
 /**
  * The envelope for a return that never ran: a static refusal, or an inert
@@ -753,31 +782,6 @@ const isAbortSignal = (value: unknown): value is AbortSignal =>
   typeof (value as AbortSignal).aborted === 'boolean' &&
   typeof (value as AbortSignal).addEventListener === 'function' &&
   typeof (value as AbortSignal).removeEventListener === 'function'
-
-/**
- * The two option-dependent checks, run per call against the artifact's
- * stored counts — never stored in the artifact (option-independence).
- */
-const limitIssues = (artifact: CompileArtifact, options: EvaluationOptions): Issue[] => {
-  const issues: Issue[] = []
-  if (options.maxDepth !== undefined && artifact.maxDepth > options.maxDepth)
-    issues.push(depthIssue(artifact.maxDepth, options.maxDepth))
-  if (options.maxNodes !== undefined && artifact.nodeCount > options.maxNodes)
-    issues.push({
-      severity: 'error',
-      code: ErrorCodes.maxNodesExceeded,
-      message: `the expression holds ${artifact.nodeCount} evaluable nodes — maxNodes is ${options.maxNodes}`,
-      path: [],
-    })
-  return issues
-}
-
-const depthIssue = (measured: number, limit: number): Issue => ({
-  severity: 'error',
-  code: ErrorCodes.maxDepthExceeded,
-  message: `the expression nests ${measured} levels deep — maxDepth is ${limit}`,
-  path: [],
-})
 
 /**
  * One error-severity issue as a `FigTreeError`.
