@@ -24,8 +24,11 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
 }
 
 export type ReferenceRecognition =
-  /** A recognized, well-formed reference. */
-  | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[] }
+  /**
+   * A recognized, well-formed reference. `drill` is its text after the
+   * namespace token (`.a[0]`, `[2].b`, or empty), as authored.
+   */
+  | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[]; drill: string }
   /**
    * A recognized namespace used illegally (drilled $index, an unterminated
    * `$data.items[`…).
@@ -78,14 +81,14 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
         code: ErrorCodes.bareVars,
         reason: "'$vars' must name a var — there is no whole-scope value",
       }
-    return { kind: 'reference', namespace, segments: [] }
+    return { kind: 'reference', namespace, segments: [], drill: rest }
   }
 
   if (namespace === 'index')
     return { kind: 'invalid', namespace, reason: "'$index' is bare-only — it cannot be drilled" }
 
   try {
-    return { kind: 'reference', namespace, segments: parseDrill(rest) }
+    return { kind: 'reference', namespace, segments: parseDrill(rest), drill: rest }
   } catch (error) {
     return { kind: 'invalid', namespace, reason: (error as Error).message }
   }

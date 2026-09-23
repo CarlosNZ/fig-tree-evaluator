@@ -4,8 +4,9 @@
  * identity-only flag (obligations A2/A4/B1/B2/B4/B6/C5 in
  * docs-dev/v3-specs/v3-artifact-obligations.md).
  */
-import { compileExpression } from '../src/compile'
+import { compileExpression, renderSegments } from '../src/compile'
 import type { CompileArtifact } from '../src/compile'
+import { canonicalSegments, parsePath } from '../src/primitives'
 import { makeCompileRegistry } from './fixtures/compileRegistry'
 
 const registry = makeCompileRegistry()
@@ -179,6 +180,18 @@ test('a dotted key and a two-level path are different reads, and stay so', () =>
     b: '$data.first.last',
   })
   expect(paths(artifact).sort()).toEqual(['["first.last"]', 'first.last'])
+})
+
+test('every spelling of a read is keyed by its canonical render', () => {
+  // A dotted run of identifier keys keys the record as written, skipping
+  // the render; every other spelling is canonicalized and rendered. Both
+  // routes have to land on the key the render would give
+  const spellings = ['user.name', '$x.y_1', 'a.0', 'a[0]', 'a.b-c', 'orders[*].total', "['a'].b"]
+  for (const spelling of spellings) {
+    const key = renderSegments(canonicalSegments(parsePath(spelling)))
+    expect(paths(compile({ $get: spelling }))).toEqual([key])
+    expect(paths(compile(`$data.${spelling}`))).toEqual([key])
+  }
 })
 
 test('invoked operators and called fragments are recorded by canonical name', () => {

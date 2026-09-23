@@ -458,10 +458,10 @@ const walkString = (
       )
       return invalid(raw, path, order)
     case 'reference': {
-      const { namespace, segments } = recognition
+      const { namespace, segments, drill } = recognition
       if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
-        else recordDataPath(state, segments)
+        else recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined)
       }
       return { kind: 'reference', namespace, segments, raw, path, order }
     }
@@ -1005,11 +1005,23 @@ const reportTemplateFace = (
  * The segments are canonicalized first so that the render is injective on
  * READS rather than on spellings: `x.0` parses to a key and `x[0]` to an
  * index, and `resolvePath` reads both the same way.
+ *
+ * `spelling` is the read's authored text, where the caller has it. A
+ * dotted run of identifier keys is already its own canonical render — no
+ * key in it is digit-only or needs quoting — so it keys the record as
+ * written, and only the other spellings pay to canonicalize and render.
  */
-const recordDataPath = (state: WalkState, segments: PathSegment[]) => {
+const recordDataPath = (state: WalkState, segments: PathSegment[], spelling?: string) => {
+  if (spelling !== undefined && PLAIN_SPELLING.test(spelling)) {
+    state.dataPaths.set(spelling, segments)
+    return
+  }
   const canonical = canonicalSegments(segments)
   state.dataPaths.set(renderSegments(canonical), canonical)
 }
+
+/** Identifier keys joined by dots: a path spelling that is its own render. */
+const PLAIN_SPELLING = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/
 
 /**
  * `get` reads `$data` too, so its paths belong in the dependency list
@@ -1043,7 +1055,7 @@ const recordGetDependency = (state: WalkState, node: OperatorNode) => {
       state.dynamic = true
       return
     }
-    recordDataPath(state, segments)
+    recordDataPath(state, segments, typeof path.value === 'string' ? path.value : undefined)
   } catch {
     // A path string the grammar rejects is the validate hook's finding to
     // report; the read-set is still not enumerable
