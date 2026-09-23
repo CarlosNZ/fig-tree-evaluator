@@ -10,7 +10,7 @@ Entry point and public API surface: [src/index.ts](src/index.ts). The main class
 
 ## Commands
 
-The package manager is **pnpm** (version pinned in `package.json#packageManager`; migrated from yarn classic July 2026 — there is no yarn.lock). Scripts run TypeScript via **tsx** (ts-node is gone). Node floor is 22 (`engines`).
+The package manager is **pnpm** (version pinned in `package.json#packageManager`; migrated from yarn classic July 2026 — there is no yarn.lock). Scripts run TypeScript via **tsx** (ts-node is gone). Node floor is 22.12 (`engines`) — the first 22 release with `require(esm)` unflagged, which CommonJS consumers of this ESM-only package rely on.
 
 ```bash
 pnpm test                 # Jest, v3 suite only (see testing gotchas below)
