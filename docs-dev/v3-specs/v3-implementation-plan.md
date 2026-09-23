@@ -222,7 +222,7 @@ _Deliberately **not** here: the global cache bypass ([#166](https://github.com/C
 
 Subpath exports, rollup build, `editor-hints` module, bundle-size checks, tree-shaking verification. **Spec: [v3-packaging.md](v3-packaging.md)** — drafted July 2026, awaiting review (7 open questions at its end).
 
-_Carried in from Phase 13: the tree-shake fixture asserts that an engine-only bundle carries none of the inspector ("Open" in [v3-inspect.md](v3-inspect.md)); and the published types carry the `CompiledExpression` constructor, whose parameters pull the compile artifact's internal types into `index.d.ts` — most of the 4.6 kB the types grew at 13.3 — where the handle is only ever made by `compile()`._
+_Carried in from Phase 13: the tree-shake fixture asserts that an engine-only bundle carries none of the inspector ("Open" in [v3-inspect.md](v3-inspect.md))._
 
 ---
 
@@ -320,9 +320,10 @@ One caveat the figure cannot carry: the HTTP/SQL clients are deliberately consum
 | Phase 13.1–13.2 — introspection reads                  | 120.32 kB | 36.15 kB | 31.94 kB | 21.23 kB | `compile` 16%, `defineOperator` 10%, `staticChecks` 5%, `string` 5%, `params` 4%, `fragments` 4% |
 | #170 — evaluator optimisation pass                     | 122.37 kB | 36.80 kB | 32.50 kB | 21.79 kB | `compile` 16%, `defineOperator` 10%, `staticChecks` 5%, `string` 4%, `params` 4%, `fragments` 4% |
 | Phase 13.3–13.4 — `compile()` handle + `inspect()`     | 127.43 kB | 38.53 kB | 33.98 kB | 28.23 kB | `compile` 15%, `defineOperator` 9%, `staticChecks` 5%, `string` 4%, `params` 4%, `fragments` 4%  |
-| #171 — compile optimisation pass, closing Phase 13     | 128.25 kB | 38.91 kB | 34.30 kB | 28.33 kB | `compile` 15%, `defineOperator` 9%, `staticChecks` 5%, `string` 4%, `params` 4%, `fragments` 4%  |
+| #171 — compile optimisation pass                       | 128.25 kB | 38.91 kB | 34.30 kB | 28.33 kB | `compile` 15%, `defineOperator` 9%, `staticChecks` 5%, `string` 4%, `params` 4%, `fragments` 4%  |
+| Phase 13 close — private handle constructor            | 128.29 kB | 38.93 kB | 34.29 kB | 24.21 kB | `compile` 15%, `defineOperator` 9%, `staticChecks` 5%, `string` 4%, `params` 4%, `fragments` 4%  |
 
-Phase 13 has four rows because two off-plan passes landed inside its span, and each is measured at its own last commit so the phase's growth reads apart from theirs: 13.1–13.2 at the Phase-13 PR (#169), the #170 pass at its PR (#173), 13.3–13.4 at the `inspect()` PR's last commit (#180), and the #171 pass at its merge (#181), which closes the phase. Of the phase's 7.93 kB, 5.06 kB is its own (1.11 kB for the handle and the fingerprint, 3.95 kB for the inspector) and 2.87 kB the two passes. The types figure grew most at 13.3, for the reason recorded under Phase 14.
+Phase 13 has five rows because two off-plan passes landed inside its span, and each is measured at its own last commit so the phase's growth reads apart from theirs: 13.1–13.2 at the Phase-13 PR (#169), the #170 pass at its PR (#173), 13.3–13.4 at the `inspect()` PR's last commit (#180), and the #171 pass at its merge (#181). Of the 7.93 kB minified those four rows add, 5.06 kB is the phase's own (1.11 kB for the handle and the fingerprint, 3.95 kB for the inspector) and 2.87 kB the two passes. The fifth row is a finding of the close-out: the types figure grew 4.6 kB at 13.3, most of it because the handle's public constructor was declared with its parameter types, which carried the compile artifact's internal type graph into `index.d.ts` for a constructor no consumer can reach, the class being a type-only export. The constructor is private now, so the declaration is bare, and the types figure fell 4.12 kB.
 
 Phases 0–2 were measured retroactively by building each phase's `src/` with the current toolchain, so the columns are apples to apples (the Phase-3 row reproduces the live build exactly). The package has no runtime dependency to understate: `dequal` was vendored into the bundle with Phase 4's `equal`. The Phase-0 gzip figure exceeding its minified figure is just container overhead on a 40-byte file.
 

@@ -418,7 +418,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    */
   compile(expression: unknown): CompiledExpression<InstanceOpts> {
     const { state } = this
-    return new CompiledExpression(
+    return createHandle<InstanceOpts>(
       expression,
       state.compileCache.resolve(expression),
       state.evaluation,
@@ -517,6 +517,22 @@ const evaluateEntry = async (
 export let viewHandle: (value: unknown, call?: CallOptions) => HandleView | undefined
 
 /**
+ * The one mint of handles, which `compile()` calls — assigned by the same
+ * static block, which as part of the class body may call the private
+ * constructor. The constructor is private because its parameters are
+ * engine internals: a declaration keeps a public constructor's parameter
+ * types, which would carry the compile artifact's whole type graph into
+ * the published `index.d.ts`, where a private one is declared bare.
+ */
+let createHandle: <InstanceOpts extends FigTreeOptions>(
+  expression: unknown,
+  entry: CacheEntry,
+  evaluation: EvaluationOptions,
+  registry: OperatorRegistry,
+  results: ResultCache
+) => CompiledExpression<InstanceOpts>
+
+/**
  * What `compile()` returns ("compile()" in
  * docs-dev/v3-specs/v3-evaluator-methods.md): a holdable, nameable
  * compiled expression. A handle rather than the artifact itself, which
@@ -555,12 +571,15 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   #compiled?: CompileArtifact
   #issues?: readonly Issue[]
 
-  // The handle's accessor for the inspector (`viewHandle`, above the
-  // class) — the one reader of this state from outside. A static block is
-  // inside the class body, so it may name `#` fields, and the brand check
+  // The mint and the inspector's accessor (`createHandle` and `viewHandle`,
+  // above the class) — the one maker of handles and the one reader of this
+  // state from outside. A static block is inside the class body, so it may
+  // call the private constructor and name `#` fields. The brand check
   // turns away anything the constructor did not make; it throws on a
   // primitive, so an object is checked for first
   static {
+    createHandle = (expression, entry, evaluation, registry, results) =>
+      new CompiledExpression(expression, entry, evaluation, registry, results)
     viewHandle = (value, call) => {
       if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
       const options =
@@ -569,7 +588,7 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
     }
   }
 
-  constructor(
+  private constructor(
     expression: unknown,
     entry: CacheEntry,
     evaluation: EvaluationOptions,

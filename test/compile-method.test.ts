@@ -12,7 +12,7 @@
  * compile counter — never from internals.
  */
 import { ErrorCodes, FigTree } from '../src'
-import type { CallOptions, EvaluationResult } from '../src'
+import type { CallOptions, CompiledExpression, EvaluationResult } from '../src'
 import { compileSpyOp, type CompileSpy } from './fixtures/evalOperators'
 import { coreOperators } from '../src/operators'
 
@@ -235,5 +235,19 @@ describe('nothing of the engine leaks through the handle', () => {
     expect(JSON.stringify(handle)).toBe('{}')
     expect(handle.expression).toBe(expression)
     expect(Object.keys(handle)).toEqual([])
+  })
+
+  it('is minted by compile() alone, which the types say too', () => {
+    // A private constructor is what keeps the engine internals its
+    // parameters are typed with out of the published declaration; a
+    // public one is assignable to a construct signature, and `false`
+    // would then fail to typecheck here
+    type Constructible = typeof CompiledExpression extends abstract new (
+      ...args: never[]
+    ) => unknown
+      ? true
+      : false
+    const constructible: Constructible = false
+    expect(constructible).toBe(false)
   })
 })
