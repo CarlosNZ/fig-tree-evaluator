@@ -1,6 +1,6 @@
 # FigTree v3 — Packaging & exports
 
-_Working document — first sketch (Claude, July 2026), awaiting review. This area discharges the packaging deferrals scattered across the other docs: export grouping (Operators § Deferred), the editor-hints module mechanics ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), the subpath sketch ([v3-assessment.md](v3-assessment.md) §3.6), and the client-factory homes (Options § Operator registration). It unblocks [implementation-plan](v3-implementation-plan.md) Phase 14. Open questions are collected at the end._
+_Working document — first sketch (Claude, July 2026); reviewed at Phase 14.0 (Carl, September 2026), which resolved every open question and recorded the rulings in place. This area discharges the packaging deferrals scattered across the other docs: export grouping (Operators § Deferred), the editor-hints module mechanics ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), the subpath sketch ([v3-assessment.md](v3-assessment.md) §3.6), and the client-factory homes (Options § Operator registration). It unblocks [implementation-plan](v3-implementation-plan.md) Phase 14. Open questions are collected at the end._
 
 ## The package at a glance
 

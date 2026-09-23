@@ -220,7 +220,7 @@ _Deliberately **not** here: the global cache bypass ([#166](https://github.com/C
 
 ## Phase 14 — Packaging ⚠
 
-Subpath exports, rollup build, `editor-hints` module, bundle-size checks, tree-shaking verification. **Spec: [v3-packaging.md](v3-packaging.md)** — drafted July 2026, awaiting review (7 open questions at its end).
+Subpath exports, rollup build, `editor-hints` module, bundle-size checks, tree-shaking verification. **Spec: [v3-packaging.md](v3-packaging.md)** — drafted July 2026; reviewed at 14.0 (Carl, September 2026), with all seven open questions resolved and the rulings recorded in place.
 
 _Carried in from Phase 13: the tree-shake fixture asserts that an engine-only bundle carries none of the inspector ("Open" in [v3-inspect.md](v3-inspect.md))._
 
@@ -269,6 +269,25 @@ Output: a recorded results doc — the release notes' performance story; a non-b
 
 ---
 
+## Phase 17 — Release prep
+
+A checklist rather than a build phase (Carl, September 2026, at the Phase-14 review): what has to happen before 3.0.0 is published, gathered here so that none of it lives only in a conversation.
+
+- [ ] **Cut `v2.x` from `main`** before `v3.0-dev` merges into it (Carl). v2 patch releases are cut from that branch by hand; it does not carry `pnpm release`.
+- [ ] **Merge `v3.0-dev` into `main`.**
+- [ ] **Rewrite the README for v3.** It is still entirely v2. Includes the generated operator reference ("Build & CI mechanics" in [v3-packaging.md](v3-packaging.md)), a section on writing custom operators with `defineOperator()`, which has no user-facing guide yet, and removing the stale `demo/` and `yarn` references.
+- [ ] **Point each operator's `docUrl` at its README section**, the TO-DO in [src/editor-hints/index.ts](../../src/editor-hints/index.ts); every one is the repository root until then.
+- [ ] **Write the migration guide** ([v3-migration.md](v3-migration.md); its open Q1 settles where it lives). Check its custom-function wrapper recipe against the contract: the recipe's `parameters` spelling predates it, and it omits the required `description` and `category`.
+- [ ] **Write the 3.0.0 CHANGELOG entry**, which `pnpm release` requires. Phase 16's results doc supplies its performance story.
+- [ ] **Retire the v2 assets** once 16b is done: `/v2-src`, `test/V2`, `test/v2-working`, `jest.v2.config.js` and the `test:v2` script, and the v2-only codegen (`queryBuilder`, `generateMassiveQuery`).
+- [ ] **Refresh CLAUDE.md** for the post-v3 repo; several sections still describe v2 (for example "Generated files").
+- [ ] **Review the parked items** ("Parked until after 3.0" under Standing dependencies & flags, below) and open an issue for each one that stays parked.
+- [ ] **Publish 3.0.0** with `pnpm release`; `latest` moves to 3.x.
+- [ ] **Tag the last 2.x as `v2` on npm** (`npm dist-tag add fig-tree-evaluator@<last 2.x> v2`), so v2 users can still install it by name ("Publishing & versioning" in [v3-packaging.md](v3-packaging.md)).
+- [ ] **Release the ported editor**, [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react), against 3.0.0.
+
+---
+
 ## Milestones
 
 | #   | After     | You can…                                                                                     |
@@ -281,6 +300,7 @@ Output: a recorded results doc — the release notes' performance story; a non-b
 | M6  | Phase 16a | the claims ledger measured against v2 — the performance story, ahead of packaging            |
 | M7  | Phase 15  | converter + differential green — migration-ready                                             |
 | M8  | Phase 16b | the story confirmed over real v2 config — and `/v2-src` retired                              |
+| M9  | Phase 17  | install `fig-tree-evaluator@3.0.0` from npm                                                  |
 
 ## Bundle size by phase
 
@@ -333,7 +353,7 @@ Two things to watch, not yet act on. **`defineOperator` has stopped being option
 
 ## Standing dependencies & flags
 
-- **Spec gates**: discharged July 2026 — evaluator-methods signed off (Qs 1–3 + 11 settled at close-off; Q12's operatorDefaults-required ban signed off and amended into Options); Packaging drafted in [v3-packaging.md](v3-packaging.md), awaiting review before Phase 14.
+- **Spec gates**: discharged July 2026 — evaluator-methods signed off (Qs 1–3 + 11 settled at close-off; Q12's operatorDefaults-required ban signed off and amended into Options); Packaging drafted in [v3-packaging.md](v3-packaging.md) and reviewed at Phase 14.0 (September 2026).
 - **`/v2-src` runnability**: the frozen engine is load-bearing twice over — Phase 15's converter oracle and Phase 16's other arm — and it is **currently broken** (`dequal` left `package.json` at Phase 4; v2's `EQUAL` still imports `dequal/lite`). Restored as a devDependency September 2026, and `pnpm test:v2` is green again at **516 of 517** — the one failure is `25_metaData`, where Jest 30's `toStrictEqual` no longer lets `expect.objectContaining` match a function, so the corpus records a v2 behaviour the runner can no longer express. That is a runner artifact, not a v2 regression, and the record is never edited to accommodate it. Keep the suite on tap until 16b deletes the folder; nothing in CI runs it, so it rots unwatched. _A second interop hazard lives outside the folder and is worked around in `tsconfig.bench.json`: `object-property-extractor` ships an ESM build that declares no `"type": "module"`, which only bites an ESM importer — jest never sees it._
 - **Parked until after 3.0**: shorthand round-trip utilities (converting an expression between v3's faces — canonical, shorthand with named arguments, shorthand with positional arguments) — Carl, September 2026, Phase-14 review; "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md).
 - **Environment**: 9.3's live-network and Northwind-SQL tests are tagged, never blocking CI; the mock client is the primary oracle.

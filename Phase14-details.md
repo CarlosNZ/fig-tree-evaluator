@@ -22,7 +22,7 @@ _Temporary working file for Phase 14 of [the implementation plan](docs-dev/v3-sp
 
 ## Proposed chunks
 
-### 14.0 · Finish the spec review
+### 14.0 · Finish the spec review (done)
 
 Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decisions](#decisions), and write the rulings back into [v3-packaging.md](docs-dev/v3-specs/v3-packaging.md) before building.
 
