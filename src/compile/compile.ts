@@ -1438,7 +1438,8 @@ const collectPositional = (
     pending.push({
       name: rest,
       kind: 'slice',
-      elements: payload.slice(leading),
+      // Uncopied where nothing leads the rest — the payload is the slice
+      elements: leading === 0 ? payload : payload.slice(leading),
       basePath: payloadPath,
       offset: leading,
     })
