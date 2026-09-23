@@ -137,11 +137,17 @@ const PLAIN_SPELLING = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/
 export const rendersAsWritten = (spelling: string): boolean => PLAIN_SPELLING.test(spelling)
 
 /**
- * A `$data` read in the reference grammar, for messages: `$data.user.name`,
- * and `$data[0].x` where the path opens with an index or a quoted key.
+ * A reference in the reference grammar, under `name` — a namespace or an
+ * `as` binding: `$data.user.name`, `$item.id`, and `$data[0].x` where the
+ * drill opens with an index or a quoted key. The one statement of how a
+ * name and its drill join.
  */
-export const renderDataReference = (segments: PathSegment[]): string => {
+export const renderReference = (name: string, segments: PathSegment[]): string => {
   const rendered = renderSegments(segments)
-  if (rendered === '') return '$data'
-  return rendered.startsWith('[') ? `$data${rendered}` : `$data.${rendered}`
+  if (rendered === '') return `$${name}`
+  return rendered.startsWith('[') ? `$${name}${rendered}` : `$${name}.${rendered}`
 }
+
+/** A `$data` read in the reference grammar, for messages. */
+export const renderDataReference = (segments: PathSegment[]): string =>
+  renderReference('data', segments)

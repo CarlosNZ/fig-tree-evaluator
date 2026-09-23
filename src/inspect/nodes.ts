@@ -15,19 +15,16 @@
  * — which is why each kind is built by its own case.
  */
 import {
-  renderSegments,
+  renderReference,
+  splice,
   toNodePath,
   type CompileArtifact,
   type CompiledNode,
-  type ReferenceNode,
 } from '../compile'
-import { HOLE, slotKey, toJson, type Json, type Opaque, type Path } from './values'
+import { toJson, type Json, type Path } from './values'
 
-/** The constant a top-level hole's timeout assembly splices in. */
-export interface TimeoutFallback {
-  value: Json
-  opaque?: Opaque[]
-}
+/** What a skeleton's reserved slots print as (see `holes[].at`). */
+const HOLE = '<hole>'
 
 /**
  * A type alias only: the shape of the four fields that map names to nodes —
@@ -41,7 +38,7 @@ type NodeMap = Record<string, InspectNode>
  * source as authored.
  */
 export type InspectNode = { order: number; path: Path } & (
-  | { kind: 'constant'; value: Json; opaque?: Opaque[] }
+  | { kind: 'constant'; value: Json }
   | { kind: 'reference'; reference: string; authored: string; binding?: string }
   | {
       kind: 'operator'
@@ -49,7 +46,8 @@ export type InspectNode = { order: number; path: Path } & (
       operator: string
       params: NodeMap
       fallback?: InspectNode
-      timeoutFallback?: TimeoutFallback
+      /** The constant a top-level hole's timeout assembly splices in. */
+      timeoutFallback?: Json
       useCache?: boolean
       instanceDefaults?: string[]
     }
@@ -61,18 +59,17 @@ export type InspectNode = { order: number; path: Path } & (
       argumentsMode: 'static' | 'dynamic'
       parameters?: NodeMap | InspectNode
       fallback?: InspectNode
-      timeoutFallback?: TimeoutFallback
+      timeoutFallback?: Json
     }
   | {
       kind: 'skeleton'
       vars?: NodeMap
       shape: Json
       holes: { at: Path; node: InspectNode }[]
-      opaque?: Opaque[]
     }
   | { kind: 'elements'; elements: InspectNode[] }
   | { kind: 'entries'; vars?: NodeMap; entries: NodeMap }
-  | { kind: 'invalid'; raw: Json; opaque?: Opaque[] }
+  | { kind: 'invalid'; raw: Json }
 )
 
 /**
@@ -88,12 +85,11 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
   const renderAll = (nodes: Record<string, CompiledNode>): NodeMap =>
     Object.fromEntries(Object.entries(nodes).map(([key, node]) => [key, render(node)]))
 
+  // The key's presence is the fact: a constant `null` fallback reads as
+  // `timeoutFallback: null`, where a hole with none has no key
   const shielding = (node: CompiledNode) => {
     const fallback = fallbacks.get(node)
-    if (fallback === undefined) return {}
-    const opaque: Opaque[] = []
-    const value = toJson(fallback.value, opaque)
-    return { timeoutFallback: { value, ...listed(opaque) } }
+    return fallback === undefined ? {} : { timeoutFallback: toJson(fallback.value) }
   }
 
   const render = (node: CompiledNode): InspectNode => {
@@ -101,15 +97,14 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
     // Compiled first and in scope for everything below it, so it leads
     const vars = 'vars' in node && node.vars !== undefined ? { vars: renderAll(node.vars) } : {}
     switch (node.kind) {
-      case 'constant': {
-        const opaque: Opaque[] = []
-        return { ...base, kind: node.kind, value: toJson(node.value, opaque), ...listed(opaque) }
-      }
+      case 'constant':
+        return { ...base, kind: node.kind, value: toJson(node.value) }
       case 'reference':
         return {
           ...base,
           kind: node.kind,
-          reference: renderReference(node),
+          // The canonical spelling: normalized namespace, bound name, `[*]`
+          reference: renderReference(node.binding ?? node.namespace, node.segments),
           authored: node.raw,
           ...(node.binding === undefined ? {} : { binding: node.binding }),
         }
@@ -147,58 +142,30 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
           ...shielding(node),
         }
       case 'skeleton': {
-        const opaque: Opaque[] = []
-        const shape = toJson(node.skeleton, opaque, new Set(node.holes.map((h) => slotKey(h.at))))
-        // A reserved array slot is already marked; a hole's object key is
-        // absent from the skeleton, so it is written in after the constants
-        for (const hole of node.holes) markSlot(shape, hole.at)
+        // Filled by the engine's own `splice`, a placeholder standing in for
+        // each hole's value: the shape is assembled exactly as evaluation
+        // assembles a result, hole keys landing after the constant ones
+        const filled = splice(
+          node.skeleton,
+          node.holes,
+          node.holes.map(() => HOLE)
+        )
         return {
           ...base,
           kind: node.kind,
           ...vars,
-          shape,
+          shape: toJson(filled),
           holes: node.holes.map((hole) => ({ at: [...hole.at], node: render(hole.node) })),
-          ...listed(opaque),
         }
       }
       case 'elements':
         return { ...base, kind: node.kind, elements: node.nodes.map(render) }
       case 'entries':
         return { ...base, kind: node.kind, ...vars, entries: renderAll(node.entries) }
-      case 'invalid': {
-        const opaque: Opaque[] = []
-        return { ...base, kind: node.kind, raw: toJson(node.raw, opaque), ...listed(opaque) }
-      }
+      case 'invalid':
+        return { ...base, kind: node.kind, raw: toJson(node.raw) }
     }
   }
 
   return render(artifact.root)
-}
-
-/** The canonical spelling: normalized namespace, bound name, `[*]` kept. */
-const renderReference = (node: ReferenceNode): string => {
-  const drill = renderSegments(node.segments)
-  const joiner = drill === '' || drill.startsWith('[') ? '' : '.'
-  return `$${node.binding ?? node.namespace}${joiner}${drill}`
-}
-
-const listed = (opaque: Opaque[]) => (opaque.length === 0 ? {} : { opaque })
-
-/**
- * Write `HOLE` at a hole's splice position. Defined rather than assigned,
- * so a `__proto__` key lands as data rather than resetting a prototype.
- */
-const markSlot = (shape: Json, at: Path) => {
-  let container: Json = shape
-  for (const key of at.slice(0, -1)) {
-    if (typeof container !== 'object' || container === null) return
-    container = (container as Record<string | number, Json>)[key]
-  }
-  if (typeof container !== 'object' || container === null) return
-  Object.defineProperty(container, at[at.length - 1], {
-    value: HOLE,
-    writable: true,
-    enumerable: true,
-    configurable: true,
-  })
 }

@@ -103,7 +103,7 @@ describe('the report', () => {
     const { expression: source } = report(expression)
     expect(source).toMatchObject({
       '//': 'Order summary',
-      createdAt: '2026-09-23T00:00:00.000Z',
+      createdAt: '[Date 2026-09-23T00:00:00.000Z]',
       greeting: { $greet: { name: '$d.customer.name' } },
       note: '[undefined]',
     })
@@ -248,7 +248,6 @@ describe('canonicalForm', () => {
   test('a reserved array slot is a hole, not an unassigned slot', () => {
     const { canonicalForm } = report({ list: [1, '$data.x'] })
     expect(canonicalForm).toMatchObject({ shape: { list: [1, '<hole>'] } })
-    expect(canonicalForm).not.toHaveProperty('opaque')
   })
 
   test('operatorDefaults show as the keys they apply; useCache as authored', () => {
@@ -276,13 +275,13 @@ describe('timeoutFallback', () => {
     )
     if (canonicalForm.kind !== 'skeleton') throw new Error('unreachable')
     const hole = (key: string) => canonicalForm.holes.find((entry) => entry.at[0] === key)?.node
-    expect(hole('authored')).toMatchObject({ timeoutFallback: { value: 0 } })
+    expect(hole('authored')).toMatchObject({ timeoutFallback: 0 })
     expect(hole('defaulted')).toMatchObject({
-      timeoutFallback: { value: 'unknown' },
+      timeoutFallback: 'unknown',
       instanceDefaults: ['fallback'],
     })
     expect(hole('defaulted')).not.toHaveProperty('fallback')
-    expect(hole('lifted')).toMatchObject({ timeoutFallback: { value: 'Hello!' } })
+    expect(hole('lifted')).toMatchObject({ timeoutFallback: 'Hello!' })
     expect(hole('lifted')).not.toHaveProperty('fallback')
     // A constant fallback below the top level catches failures, not timeouts
     expect(hole('nested')).not.toHaveProperty('timeoutFallback')
@@ -298,21 +297,21 @@ describe('timeoutFallback', () => {
 
   test('a node root is its own hole', () => {
     const result = report({ $plus: [1, '$data.x'], fallback: 0 })
-    expect(result.canonicalForm).toMatchObject({ kind: 'operator', timeoutFallback: { value: 0 } })
+    expect(result.canonicalForm).toMatchObject({ kind: 'operator', timeoutFallback: 0 })
     expect(result.timeoutShielded).toBe(true)
   })
 
-  test('the value is converted, and records its own replacements', () => {
+  test('the value is converted like any authored value', () => {
     const { canonicalForm } = report({
       $plus: [1, '$data.x'],
       fallback: { $literal: new Date('2026-01-01T00:00:00Z') },
     })
-    expect(canonicalForm).toMatchObject({
-      timeoutFallback: {
-        value: '2026-01-01T00:00:00.000Z',
-        opaque: [{ at: [], type: 'Date' }],
-      },
-    })
+    expect(canonicalForm).toMatchObject({ timeoutFallback: '[Date 2026-01-01T00:00:00.000Z]' })
+  })
+
+  test('a constant null fallback is present as null', () => {
+    const { canonicalForm } = report({ $plus: [1, '$data.x'], fallback: null })
+    expect(canonicalForm).toHaveProperty('timeoutFallback', null)
   })
 
   test('timeoutShielded needs every top-level hole, and holds vacuously for a constant', () => {
@@ -340,6 +339,11 @@ describe('authored values', () => {
       return this
     }
   }
+  class Money {
+    toJSON() {
+      return 'NZD 5.00'
+    }
+  }
   const named = function greet() {}
   const cyclic: Record<string, unknown> = { a: 1 }
   cyclic.self = cyclic
@@ -353,17 +357,17 @@ describe('authored values', () => {
 
   test.each([
     [
-      'a Date, through its toJSON',
+      'a Date, carrying its toJSON string',
       new Date('2026-09-23T00:00:00Z'),
-      '2026-09-23T00:00:00.000Z',
-      'Date',
+      '[Date 2026-09-23T00:00:00.000Z]',
     ],
-    ['a Map', new Map([[1, 2]]), '[Map]', 'Map'],
-    ['a class instance', new Widget(), '[Widget]', 'Widget'],
-    ['an instance of an anonymous class', new (class {})(), '[Object]', 'Object'],
-    ['a toJSON that throws', new Thrower(), '[Thrower]', 'Thrower'],
-    ['a toJSON returning its own object', new Self(), '[circular]', 'Self'],
-    ['a named function', named, '[function greet]', 'function'],
+    ["any class's toJSON string", new Money(), '[Money NZD 5.00]'],
+    ['a Map', new Map([[1, 2]]), '[Map]'],
+    ['a class instance', new Widget(), '[Widget]'],
+    ['an instance of an anonymous class', new (class {})(), '[Object]'],
+    ['a toJSON that throws', new Thrower(), '[Thrower]'],
+    ['a toJSON returning a non-string', new Self(), '[Self]'],
+    ['a named function', named, '[function greet]'],
     [
       'an anonymous function',
       (
@@ -371,41 +375,36 @@ describe('authored values', () => {
           1
       )(),
       '[function]',
-      'function',
     ],
-    ['a symbol', Symbol('tag'), '[Symbol(tag)]', 'symbol'],
-    ['a bigint', BigInt(12), '[bigint 12]', 'bigint'],
-    ['NaN', NaN, '[NaN]', 'number'],
-    ['Infinity', Infinity, '[Infinity]', 'number'],
-    ['-Infinity', -Infinity, '[-Infinity]', 'number'],
-    ['-0', -0, '[-0]', 'number'],
-    ['undefined', undefined, '[undefined]', 'undefined'],
-  ])('%s', (_, value, printed, type) => {
-    expect(constantOf([value])).toMatchObject({
-      value: [printed],
-      opaque: [{ at: [0], type }],
-    })
+    ['a symbol', Symbol('tag'), '[Symbol(tag)]'],
+    ['a bigint', BigInt(12), '[bigint 12]'],
+    ['NaN', NaN, '[NaN]'],
+    ['Infinity', Infinity, '[Infinity]'],
+    ['-Infinity', -Infinity, '[-Infinity]'],
+    ['-0', -0, '[-0]'],
+    ['undefined', undefined, '[undefined]'],
+  ])('%s', (_, value, printed) => {
+    expect(constantOf([value]).value).toEqual([printed])
   })
 
-  test('JSON values pass through with nothing recorded', () => {
+  test('JSON values pass through unchanged', () => {
     const value = { s: 'x', n: 1.5, zero: 0, t: true, nil: null, list: [1, [2]], nested: { a: {} } }
     expect(constantOf(value).value).toEqual(value)
-    expect(constantOf(value)).not.toHaveProperty('opaque')
   })
 
   test('an unassigned array slot converts as undefined does', () => {
     // eslint-disable-next-line no-sparse-arrays
-    expect(constantOf([1, , 3])).toMatchObject({
-      value: [1, '[undefined]', 3],
-      opaque: [{ at: [1], type: 'undefined' }],
-    })
+    expect(constantOf([1, , 3]).value).toEqual([1, '[undefined]', 3])
   })
 
   test('a cycle is cut where it closes', () => {
-    expect(constantOf(cyclic)).toMatchObject({
-      value: { a: 1, self: '[circular]' },
-      opaque: [{ at: ['self'], type: 'Object' }],
-    })
+    expect(constantOf(cyclic).value).toEqual({ a: 1, self: '[circular]' })
+  })
+
+  test('nesting past the walk ceiling is cut there', () => {
+    let deep: unknown = 'bottom'
+    for (let level = 0; level < 600; level++) deep = [deep]
+    expect(JSON.stringify(constantOf(deep).value)).toContain('"[too deep]"')
   })
 
   test('a cyclic source still reports: the compile stops at its ceiling', () => {
@@ -416,11 +415,10 @@ describe('authored values', () => {
     expect(result.issues.some((issue) => issue.code === ErrorCodes.depthCeiling)).toBe(true)
   })
 
-  test('replacements folded into a skeleton are recorded on it, relative to the shape', () => {
+  test('an opaque constant folded into a skeleton prints as its marker in the shape', () => {
     const { canonicalForm } = report({ when: new Date('2026-09-23T00:00:00Z'), x: '$data.x' })
     expect(canonicalForm).toMatchObject({
-      shape: { when: '2026-09-23T00:00:00.000Z', x: '<hole>' },
-      opaque: [{ at: ['when'], type: 'Date' }],
+      shape: { when: '[Date 2026-09-23T00:00:00.000Z]', x: '<hole>' },
     })
   })
 
@@ -437,14 +435,13 @@ describe('authored values', () => {
     })
     expect(result.canonicalForm).toMatchObject({
       shape: { list: [1, null, '<hole>'], kept: { discount: '[undefined]' } },
-      opaque: [{ at: ['kept', 'discount'], type: 'undefined' }],
     })
     expect(result.canonicalForm).not.toHaveProperty('shape.note')
   })
 
-  test('expression carries markers but no list', () => {
+  test('expression carries the same markers as the tree', () => {
     const result = report({ when: new Date('2026-09-23T00:00:00Z'), x: '$data.x' })
-    expect(result.expression).toEqual({ when: '2026-09-23T00:00:00.000Z', x: '$data.x' })
+    expect(result.expression).toEqual({ when: '[Date 2026-09-23T00:00:00.000Z]', x: '$data.x' })
   })
 })
 
@@ -566,28 +563,25 @@ describe('options', () => {
 // ── dependencies and own ────────────────────────────────────────────
 
 describe('dependencies', () => {
-  test('segment arrays in the order the compile met them', () => {
+  test('the canonical renders, in the order the compile met them', () => {
     const fig = build()
     const expression = { b: '$data.z', a: '$data.a.b' }
     expect(inspect(fig.compile(expression)).dependencies).toEqual({
-      dataPaths: [['z'], ['a', 'b']],
+      dataPaths: ['z', 'a.b'],
       dynamic: false,
       operators: [],
       fragments: [],
     })
-    // getDependencies() sorts; the record does not
+    // getDependencies() spells them alike, and sorts; the record does not
     expect(fig.getDependencies(expression).data.paths).toEqual(['a.b', 'z'])
   })
 
-  test('the projection is "[*]" — as a key literally named "[*]" is too', () => {
+  test('the projection and a key literally named "[*]" stay apart', () => {
     const { dependencies } = report({
       projected: '$data.items[*].id',
       literal: { $get: { path: ['items', '[*]', 'id'] } },
     })
-    expect(dependencies.dataPaths).toEqual([
-      ['items', '[*]', 'id'],
-      ['items', '[*]', 'id'],
-    ])
+    expect(dependencies.dataPaths).toEqual(['items[*].id', 'items["[*]"].id'])
   })
 
   test('composed through fragment calls; own is the expression alone', () => {
@@ -600,7 +594,7 @@ describe('dependencies', () => {
     })
     const result = inspect(fig.compile({ greeting: { $outer: {} }, x: '$data.x' }))
     expect(result.dependencies).toEqual({
-      dataPaths: [['x'], ['first'], ['last']],
+      dataPaths: ['x', 'first', 'last'],
       dynamic: false,
       operators: ['join'],
       fragments: ['outer', 'inner'],
@@ -608,7 +602,7 @@ describe('dependencies', () => {
     expect(result.own).toEqual({
       nodeCount: 2,
       maxDepth: 1,
-      dependencies: { dataPaths: [['x']], dynamic: false, operators: [], fragments: ['outer'] },
+      dependencies: { dataPaths: ['x'], dynamic: false, operators: [], fragments: ['outer'] },
     })
     expect(result.nodeCount).toBeGreaterThan(result.own.nodeCount)
   })
