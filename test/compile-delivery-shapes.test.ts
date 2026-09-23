@@ -11,7 +11,7 @@
  * the `validate` hooks (which see constant parameters only) to keep working.
  */
 import { FigTree } from '../src'
-import { compileExpression } from '../src/compile'
+import { compileExpression, toNodePath } from '../src/compile'
 import type {
   CompiledNode,
   ElementsNode,
@@ -96,7 +96,7 @@ test('an element index is its position in the parameter, not in the payload', ()
   // Authored at indices 1 and 2; elements 0 and 1 of the parameter. The
   // paths keep the authored spelling (that is what errors are tagged with),
   // so the two numberings really do disagree here
-  expect(values.nodes.map((n) => n.path)).toEqual([
+  expect(values.nodes.map((n) => toNodePath(n.path))).toEqual([
     ['$pick', 1],
     ['$pick', 2],
   ])

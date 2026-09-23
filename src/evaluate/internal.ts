@@ -18,6 +18,7 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
+import { toNodePath, type LinkedPath } from '../compile'
 import { EVALUATION_TIMEOUT, SCOPE_SETTLED } from './abort'
 import type { EvaluationContext } from './context'
 
@@ -63,7 +64,7 @@ type Path = (string | number)[]
  */
 export const abortedOutcome = (
   ctx: Pick<EvaluationContext, 'abortScope' | 'rootScope'>,
-  path: Path,
+  path: LinkedPath,
   operator?: string
 ): Error | undefined => {
   if (ctx.rootScope.aborted) return rootOutcome(ctx.rootScope.reason, path, operator)
@@ -77,8 +78,10 @@ export const abortedOutcome = (
  * call has returned is silent abandonment, exactly as under a node scope.
  * Any other reason is the kill switch.
  */
-const rootOutcome = (reason: unknown, path: Path, operator: string | undefined): Error =>
-  reason === SCOPE_SETTLED ? cancellation() : killSwitchError(reason, path, { operator })
+const rootOutcome = (reason: unknown, path: LinkedPath, operator: string | undefined): Error =>
+  reason === SCOPE_SETTLED
+    ? cancellation()
+    : killSwitchError(reason, toNodePath(path), { operator })
 
 /**
  * The kill switch as an error: the whole-evaluation `timeout`, told apart

@@ -17,7 +17,7 @@ import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
 import type { FigTreeOptions } from '../options'
-import type { OperatorNode } from '../compile'
+import { toNodePath, type OperatorNode } from '../compile'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
@@ -250,14 +250,14 @@ const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
     throw new FigTreeError({
       code: ErrorCodes.nonFiniteResult,
       message: `${node.name} – produced a non-finite number (${String(result)})`,
-      path: node.path,
+      path: toNodePath(node.path),
       operator: node.name,
     })
   if (isEngineHandle(result))
     throw new FigTreeError({
       code: ErrorCodes.escapedHandle,
       message: `${node.name} – returned a lazy handle instead of evaluating it`,
-      path: node.path,
+      path: toNodePath(node.path),
       operator: node.name,
     })
   return result
@@ -273,7 +273,7 @@ const wrapFailure = (error: unknown, node: OperatorNode): FigTreeError => {
     return new FigTreeError({
       code: error.code ?? ErrorCodes.operatorFailure,
       message: `${node.name} – ${error.message}`,
-      path: node.path,
+      path: toNodePath(node.path),
       operator: node.name,
       ...(error.errorData !== undefined ? { errorData: error.errorData } : {}),
     })
@@ -281,7 +281,7 @@ const wrapFailure = (error: unknown, node: OperatorNode): FigTreeError => {
   return new FigTreeError({
     code: ErrorCodes.operatorFailure,
     message: `${node.name} – ${message}`,
-    path: node.path,
+    path: toNodePath(node.path),
     operator: node.name,
   })
 }

@@ -36,7 +36,7 @@
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { resolvePath, type PathSegment } from '../primitives'
-import type { ReferenceNode } from '../compile'
+import { toNodePath, type ReferenceNode } from '../compile'
 import type { EvaluationContext } from './context'
 import { lookupBinding } from './bindings'
 import { internalError } from './internal'
@@ -159,7 +159,7 @@ const drill = (
   throw new FigTreeError({
     code: ErrorCodes.missingDataPath,
     message: `'${node.raw}' ${absence} (strictDataPaths)`,
-    path: node.path,
+    path: toNodePath(node.path),
   })
 }
 

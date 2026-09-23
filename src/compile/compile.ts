@@ -118,6 +118,7 @@ import type {
   EntriesNode,
   FragmentCall,
   FragmentCallNode,
+  LinkedPath,
   NodePath,
   OperatorNode,
   CompileArtifact,
@@ -126,7 +127,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-import { hasError, sortIssues } from './artifact'
+import { extendPath, hasError, sortIssues, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
@@ -216,7 +217,8 @@ export const compileExpression = (
     asNames: new Set(),
     unrecognized: [],
   }
-  const root = walk(state, input, options.basePath ?? [], 0)
+  const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
+  const root = walk(state, input, basePath, 0)
   upgradeOutOfScopeBindings(state)
   const holes = rootHoles(state, root)
   sortIssues(state.issues)
@@ -330,7 +332,7 @@ const emit = (
   severity: Severity,
   code: string,
   message: string,
-  path: NodePath,
+  path: LinkedPath,
   order: number,
   operator?: string
 ): SequencedIssue => {
@@ -339,7 +341,7 @@ const emit = (
       severity,
       code,
       message,
-      path,
+      path: toNodePath(path),
       ...(operator !== undefined ? { operator } : {}),
     },
     order,
@@ -350,7 +352,7 @@ const emit = (
 
 // ── The walk ────────────────────────────────────────────────────────
 
-const walk = (state: WalkState, raw: unknown, path: NodePath, depth: number): CompiledNode => {
+const walk = (state: WalkState, raw: unknown, path: LinkedPath, depth: number): CompiledNode => {
   const order = state.order++
   if (depth > state.maxDepth) state.maxDepth = depth
 
@@ -388,7 +390,7 @@ const walk = (state: WalkState, raw: unknown, path: NodePath, depth: number): Co
 const compileValue = (
   state: WalkState,
   raw: unknown,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -404,14 +406,14 @@ const compileValue = (
   return constant(raw, path, order)
 }
 
-const constant = (value: unknown, path: NodePath, order: number): ConstantNode => ({
+const constant = (value: unknown, path: LinkedPath, order: number): ConstantNode => ({
   kind: 'constant',
   value,
   path,
   order,
 })
 
-const invalid = (raw: unknown, path: NodePath, order: number): CompiledNode => ({
+const invalid = (raw: unknown, path: LinkedPath, order: number): CompiledNode => ({
   kind: 'invalid',
   raw,
   path,
@@ -420,7 +422,12 @@ const invalid = (raw: unknown, path: NodePath, order: number): CompiledNode => (
 
 // ── Strings: the reference token rule ───────────────────────────────
 
-const walkString = (state: WalkState, raw: string, path: NodePath, order: number): CompiledNode => {
+const walkString = (
+  state: WalkState,
+  raw: string,
+  path: LinkedPath,
+  order: number
+): CompiledNode => {
   const recognition = recognizeReference(raw)
   switch (recognition.kind) {
     case 'plain':
@@ -465,7 +472,7 @@ const walkString = (state: WalkState, raw: string, path: NodePath, order: number
 const recognizeRenamedBinding = (
   state: WalkState,
   raw: string,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ): CompiledNode | null => {
   const split = splitSigilToken(raw)
@@ -528,14 +535,14 @@ const recognizeRenamedBinding = (
 const walkArray = (
   state: WalkState,
   raw: unknown[],
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
   const entries = raw.map((element, i) => ({
     key: i as string | number,
     rawChild: element === undefined ? null : element,
-    node: walk(state, element === undefined ? null : element, [...path, i], depth + 1),
+    node: walk(state, element === undefined ? null : element, extendPath(path, i), depth + 1),
   }))
   const changed = raw.some((element) => element === undefined)
   return assembleContainer(state, raw, entries, true, changed, undefined, path, order)
@@ -557,7 +564,7 @@ const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
 const walkObject = (
   state: WalkState,
   raw: Record<string, unknown>,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -612,13 +619,13 @@ const walkObject = (
  * any perElement subtree walks.
  */
 type PendingParam =
-  | { name: string; kind: 'value'; value: unknown; path: NodePath }
-  | { name: string; kind: 'slice'; elements: unknown[]; basePath: NodePath; offset: number }
+  | { name: string; kind: 'value'; value: unknown; path: LinkedPath }
+  | { name: string; kind: 'slice'; elements: unknown[]; basePath: LinkedPath; offset: number }
 
 const walkOperatorCanonical = (
   state: WalkState,
   raw: Record<string, unknown>,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -661,13 +668,13 @@ const walkOperatorCanonical = (
         'error',
         ErrorCodes.malformedNode,
         "'parameters' is reserved and unused on operator nodes",
-        [...path, key],
+        extendPath(path, key),
         order,
         node.name
       )
       continue
     }
-    collectNamedParam(state, node, pending, key, value, [...path, key], order)
+    collectNamedParam(state, node, pending, key, value, extendPath(path, key), order)
   }
   finalizeParams(state, node, pending, depth, order)
   return node
@@ -677,7 +684,7 @@ const walkOperatorCanonical = (
 const startOperatorNode = (
   state: WalkState,
   entry: RegistryEntry,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ): OperatorNode => {
   state.operators.add(entry.definition.name)
@@ -701,12 +708,12 @@ const applyOperatorModifier = (
   node: OperatorNode,
   key: string,
   value: unknown,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): boolean => {
   if (key === 'fallback') {
-    node.fallback = walk(state, value, [...path, 'fallback'], depth + 1)
+    node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
     return true
   }
   if (key === 'useCache') {
@@ -717,7 +724,7 @@ const applyOperatorModifier = (
         'error',
         ErrorCodes.malformedNode,
         "'useCache' must be a literal boolean — the cache lookup happens before evaluation",
-        [...path, 'useCache'],
+        extendPath(path, 'useCache'),
         order,
         node.name
       )
@@ -737,7 +744,7 @@ const collectNamedParam = (
   pending: PendingParam[],
   key: string,
   value: unknown,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ) => {
   if (node.entry.definition.parameters[key] === undefined) {
@@ -907,7 +914,7 @@ const growSubstitutions = (
           // The authored object is copied, never mutated (obligation C4)
           skeleton: supplied?.kind === 'constant' ? { ...(supplied.value as object) } : {},
           holes: [],
-          path: supplied?.path ?? [...node.path, 'substitutions'],
+          path: supplied?.path ?? extendPath(node.path, 'substitutions'),
           order: supplied?.order ?? state.order++,
         }
   base.holes.push(...injected)
@@ -1115,7 +1122,7 @@ const openSynthetic = (
 const sliceChildren = (
   state: WalkState,
   elements: unknown[],
-  basePath: NodePath,
+  basePath: LinkedPath,
   offset: number,
   containerDepth: number
 ): ContainerEntry[] =>
@@ -1125,7 +1132,7 @@ const sliceChildren = (
     node: walk(
       state,
       element === undefined ? null : element,
-      [...basePath, offset + j],
+      extendPath(basePath, offset + j),
       containerDepth + 1
     ),
   }))
@@ -1218,7 +1225,7 @@ const buildBindingFrame = (
   state: WalkState,
   node: OperatorNode,
   value: unknown,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ): BindingFrame | undefined => {
   const asError = (message: string) => {
@@ -1249,7 +1256,7 @@ const walkShorthand = (
   state: WalkState,
   raw: Record<string, unknown>,
   shorthandKey: string,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -1267,7 +1274,7 @@ const walkShorthand = (
         'error',
         ErrorCodes.malformedNode,
         `'${key}' may not sit beside the shorthand key '${shorthandKey}' — reserved modifiers only`,
-        [...path, key],
+        extendPath(path, key),
         order
       )
       return invalid(raw, path, order)
@@ -1275,7 +1282,7 @@ const walkShorthand = (
   }
 
   const payload = raw[shorthandKey]
-  const payloadPath = [...path, shorthandKey]
+  const payloadPath = extendPath(path, shorthandKey)
 
   if (isLiteral) {
     // Dead modifiers: legal, warned, never compiled (nothing can run)
@@ -1286,7 +1293,7 @@ const walkShorthand = (
           'warning',
           ErrorCodes.uselessModifier,
           `'${key}' on 'literal' is dead — contents are never evaluated`,
-          [...path, key],
+          extendPath(path, key),
           order
         )
     }
@@ -1313,7 +1320,7 @@ const collectShorthandPayload = (
   node: OperatorNode,
   pending: PendingParam[],
   payload: unknown,
-  payloadPath: NodePath,
+  payloadPath: LinkedPath,
   order: number
 ) => {
   if (Array.isArray(payload)) {
@@ -1327,7 +1334,7 @@ const collectShorthandPayload = (
   if (isPlainDataObject(payload) && !classifiesAsNode(state, payload)) {
     for (const [key, value] of Object.entries(payload)) {
       if (key === '//' || value === undefined) continue
-      collectNamedParam(state, node, pending, key, value, [...payloadPath, key], order)
+      collectNamedParam(state, node, pending, key, value, extendPath(payloadPath, key), order)
     }
     return
   }
@@ -1340,7 +1347,7 @@ const collectSinglePositional = (
   node: OperatorNode,
   pending: PendingParam[],
   payload: unknown,
-  payloadPath: NodePath,
+  payloadPath: LinkedPath,
   order: number
 ) => {
   const definition = node.entry.definition
@@ -1367,7 +1374,7 @@ const collectPositional = (
   node: OperatorNode,
   pending: PendingParam[],
   payload: unknown[],
-  payloadPath: NodePath,
+  payloadPath: LinkedPath,
   order: number
 ) => {
   const definition = node.entry.definition
@@ -1404,7 +1411,12 @@ const collectPositional = (
 
   const boundLeading = Math.min(payload.length, leading.length)
   for (let i = 0; i < boundLeading; i++) {
-    pending.push({ name: leading[i], kind: 'value', value: payload[i], path: [...payloadPath, i] })
+    pending.push({
+      name: leading[i],
+      kind: 'value',
+      value: payload[i],
+      path: extendPath(payloadPath, i),
+    })
   }
   // The rest slice binds whenever the payload is an array — an empty
   // payload binds an empty array ({ $and: [] } → values: []), which is the
@@ -1428,7 +1440,7 @@ const walkLiteral = (
   raw: Record<string, unknown>,
   content: unknown,
   hasContent: boolean,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ): CompiledNode => {
   // Canonical face: check keys (dead modifiers warn, unknown keys error)
@@ -1441,7 +1453,7 @@ const walkLiteral = (
           'warning',
           ErrorCodes.uselessModifier,
           `'${key}' on 'literal' is dead — contents are never evaluated`,
-          [...path, key],
+          extendPath(path, key),
           order
         )
         continue
@@ -1451,7 +1463,7 @@ const walkLiteral = (
         'error',
         ErrorCodes.unknownNodeKey,
         `'${key}' is not a key of 'literal' — content goes in 'value'`,
-        [...path, key],
+        extendPath(path, key),
         order,
         'literal'
       )
@@ -1478,7 +1490,7 @@ const walkLiteral = (
 const walkFragmentCanonical = (
   state: WalkState,
   raw: Record<string, unknown>,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -1505,11 +1517,11 @@ const walkFragmentCanonical = (
   for (const [key, value] of Object.entries(raw)) {
     if (key === 'fragment' || key === '//' || value === undefined) continue
     if (key === 'parameters') {
-      compileFragmentParameters(state, node, value, [...path, 'parameters'], depth, order)
+      compileFragmentParameters(state, node, value, extendPath(path, 'parameters'), depth, order)
       continue
     }
     if (key === 'fallback') {
-      node.fallback = walk(state, value, [...path, 'fallback'], depth + 1)
+      node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
       continue
     }
     if (key === 'vars') {
@@ -1522,7 +1534,7 @@ const walkFragmentCanonical = (
         'error',
         ErrorCodes.malformedNode,
         "'useCache' is not available on fragment calls — caching stays operator-level",
-        [...path, 'useCache'],
+        extendPath(path, 'useCache'),
         order
       )
       continue
@@ -1532,7 +1544,7 @@ const walkFragmentCanonical = (
       'error',
       ErrorCodes.unknownNodeKey,
       `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`,
-      [...path, key],
+      extendPath(path, key),
       order
     )
   }
@@ -1544,7 +1556,7 @@ const walkFragmentShorthand = (
   raw: Record<string, unknown>,
   name: string,
   payload: unknown,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -1558,18 +1570,19 @@ const walkFragmentShorthand = (
   resolveFragment(state, node, depth)
   for (const [key, value] of Object.entries(raw)) {
     if (key === `$${name}` || key === '//' || value === undefined) continue
-    if (key === 'fallback') node.fallback = walk(state, value, [...path, 'fallback'], depth + 1)
+    if (key === 'fallback')
+      node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
     if (key === 'vars') node.vars = compileVars(state, value, path, depth, order)
   }
   if (isPlainDataObject(payload)) {
-    compileFragmentParameters(state, node, payload, [...path, `$${name}`], depth, order)
+    compileFragmentParameters(state, node, payload, extendPath(path, `$${name}`), depth, order)
   } else {
     emit(
       state,
       'error',
       ErrorCodes.malformedNode,
       `fragments have no single-value or positional form — '$${name}' takes a named-arguments object`,
-      [...path, `$${name}`],
+      extendPath(path, `$${name}`),
       order
     )
   }
@@ -1611,7 +1624,7 @@ const compileFragmentParameters = (
   state: WalkState,
   node: FragmentCallNode,
   value: unknown,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ) => {
@@ -1629,7 +1642,7 @@ const compileFragmentParameters = (
     const parameters: Record<string, CompiledNode> = {}
     for (const [key, argument] of Object.entries(value)) {
       if (key === '//' || argument === undefined) continue
-      parameters[key] = walk(state, argument, [...path, key], depth + 1)
+      parameters[key] = walk(state, argument, extendPath(path, key), depth + 1)
     }
     node.parameters = parameters
     return
@@ -1653,7 +1666,7 @@ const compileFragmentParameters = (
 const compileVars = (
   state: WalkState,
   value: unknown,
-  nodePath: NodePath,
+  nodePath: LinkedPath,
   depth: number,
   order: number
 ): Record<string, CompiledNode> | undefined => {
@@ -1663,7 +1676,7 @@ const compileVars = (
       'error',
       ErrorCodes.invalidVars,
       "a 'vars' block must be an object of name → expression entries",
-      [...nodePath, 'vars'],
+      extendPath(nodePath, 'vars'),
       order
     )
     return undefined
@@ -1671,6 +1684,7 @@ const compileVars = (
   const map: Record<string, CompiledNode> = {}
   for (const [name, expression] of Object.entries(value)) {
     if (name === '//' || expression === undefined) continue
+    const path = extendPath(extendPath(nodePath, 'vars'), name)
     const legality = checkNameLegality(name)
     if (!legality.ok) {
       emit(
@@ -1678,12 +1692,12 @@ const compileVars = (
         'error',
         ErrorCodes.invalidName,
         `'${name}' is not a legal var name — ${legality.reason}`,
-        [...nodePath, 'vars', name],
+        path,
         order
       )
       continue
     }
-    map[name] = walk(state, expression, [...nodePath, 'vars', name], depth + 1)
+    map[name] = walk(state, expression, path, depth + 1)
   }
   return map
 }
@@ -1693,7 +1707,7 @@ const compileVars = (
 const walkPlainObject = (
   state: WalkState,
   raw: Record<string, unknown>,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): CompiledNode => {
@@ -1710,7 +1724,7 @@ const walkPlainObject = (
 const collectPlainObject = (
   state: WalkState,
   raw: Record<string, unknown>,
-  path: NodePath,
+  path: LinkedPath,
   depth: number,
   order: number
 ): { entries: ContainerEntry[]; vars?: Record<string, CompiledNode>; changed: boolean } => {
@@ -1748,7 +1762,11 @@ const collectPlainObject = (
         order
       )
     }
-    entries.push({ key, rawChild: value, node: walk(state, value, [...path, key], depth + 1) })
+    entries.push({
+      key,
+      rawChild: value,
+      node: walk(state, value, extendPath(path, key), depth + 1),
+    })
   }
   return { entries, vars, changed }
 }
@@ -1768,7 +1786,7 @@ const assembleContainer = (
   isArray: boolean,
   alreadyChanged: boolean,
   vars: Record<string, CompiledNode> | undefined,
-  path: NodePath,
+  path: LinkedPath,
   order: number
 ): CompiledNode => {
   const holes: SkeletonHole[] = []
@@ -1803,7 +1821,7 @@ const assembleContainer = (
         'warning',
         ErrorCodes.unreferencedVar,
         'this vars block declares names nothing in its scope references',
-        [...path, 'vars'],
+        extendPath(path, 'vars'),
         order
       )
     }
@@ -1827,13 +1845,13 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
   // itself stays on the root node, which is where evaluation reads it.
   if (root.kind === 'skeleton')
     return root.holes.map((hole) => ({
-      path: hole.path,
+      path: toNodePath(hole.path),
       node: hole.node,
       ...withTimeoutFallback(state, hole.node),
     }))
   // `root.path` rather than `[]`: a fragment body compiles under a base path,
   // and a hole must still name where its node sits in the value compiled
-  return [{ path: root.path, node: root, ...withTimeoutFallback(state, root) }]
+  return [{ path: toNodePath(root.path), node: root, ...withTimeoutFallback(state, root) }]
 }
 
 const withTimeoutFallback = (

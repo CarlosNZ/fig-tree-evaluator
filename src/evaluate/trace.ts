@@ -33,7 +33,7 @@
  */
 import type { Issue } from '../issues'
 import type { FigTreeError } from '../FigTreeError'
-import type { CompiledNode } from '../compile'
+import { toNodePath, type CompiledNode } from '../compile'
 import type { TraceEvent } from '../runtimeInterface'
 import type { TraceKind, TraceNode, TraceStatus } from '../trace'
 import type { FragmentFrame } from './context'
@@ -135,7 +135,7 @@ export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
       const operator = nameOf(node)
       const ref = refOf(node)
       const entry: TraceNode = {
-        path: node.path,
+        path: toNodePath(node.path),
         kind: kindOf(node),
         status: 'value',
         ...(frame !== undefined ? { source: { fragment: frame.fragment } } : {}),
@@ -175,7 +175,7 @@ const skippedChildren = (holder: Open): Placed[] =>
   staticChildren(holder.node)
     .filter((child) => !holder.seen.has(child))
     .map((child) => ({
-      entry: { path: child.path, kind: kindOf(child), status: 'skipped' as const },
+      entry: { path: toNodePath(child.path), kind: kindOf(child), status: 'skipped' as const },
       order: child.order,
       index: 0,
     }))

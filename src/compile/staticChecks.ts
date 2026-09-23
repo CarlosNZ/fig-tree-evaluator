@@ -17,11 +17,18 @@ import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
 import { nearestName } from '../utils'
 import { validateHelpers } from './helpers'
-import { bindsReference, hasError, renamedBinding, sortIssues } from './artifact'
+import {
+  bindsReference,
+  extendPath,
+  hasError,
+  renamedBinding,
+  sortIssues,
+  toNodePath,
+} from './artifact'
 import type {
   CompiledNode,
   FragmentCallNode,
-  NodePath,
+  LinkedPath,
   OperatorNode,
   CompileArtifact,
   ReferenceNode,
@@ -38,7 +45,7 @@ export interface StaticCheckContext {
 
 interface VarEntry {
   node: CompiledNode
-  declaredAt: NodePath
+  declaredAt: LinkedPath
   order: number
   referenced: boolean
 }
@@ -81,11 +88,11 @@ const emit = (
   severity: Severity,
   code: string,
   message: string,
-  path: NodePath,
+  path: LinkedPath,
   order: number,
   extra: { operator?: string; fragment?: string; parameter?: string } = {}
 ) => {
-  const issue: Issue = { severity, code, message, path }
+  const issue: Issue = { severity, code, message, path: toNodePath(path) }
   if (extra.operator !== undefined) issue.operator = extra.operator
   if (extra.fragment !== undefined) issue.fragment = extra.fragment
   if (extra.parameter !== undefined) issue.parameter = extra.parameter
@@ -520,12 +527,13 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
 const pushVars = (
   state: CheckState,
   vars: Record<string, CompiledNode> | undefined,
-  holderPath: NodePath
+  holderPath: LinkedPath
 ): VarsFrame | null => {
   if (vars === undefined) return null
   const frame: VarsFrame = { names: new Map(), currentVar: null, edges: new Map() }
 
   for (const [name, node] of Object.entries(vars)) {
+    const declaredAt = extendPath(extendPath(holderPath, 'vars'), name)
     for (const outer of state.varsFrames) {
       if (outer.names.has(name)) {
         emit(
@@ -533,7 +541,7 @@ const pushVars = (
           'warning',
           ErrorCodes.shadowedVar,
           `'${name}' shadows a var of the same name from an enclosing scope`,
-          [...holderPath, 'vars', name],
+          declaredAt,
           node.order
         )
         break
@@ -541,7 +549,7 @@ const pushVars = (
     }
     frame.names.set(name, {
       node,
-      declaredAt: [...holderPath, 'vars', name],
+      declaredAt,
       order: node.order,
       referenced: false,
     })

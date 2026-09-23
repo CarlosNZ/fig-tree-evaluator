@@ -16,6 +16,7 @@
  */
 import {
   renderSegments,
+  toNodePath,
   type CompileArtifact,
   type CompiledNode,
   type ReferenceNode,
@@ -96,7 +97,7 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
   }
 
   const render = (node: CompiledNode): InspectNode => {
-    const base = { order: node.order, kind: node.kind, path: [...node.path] }
+    const base = { order: node.order, kind: node.kind, path: toNodePath(node.path) }
     // Compiled first and in scope for everything below it, so it leads
     const vars = 'vars' in node && node.vars !== undefined ? { vars: renderAll(node.vars) } : {}
     switch (node.kind) {

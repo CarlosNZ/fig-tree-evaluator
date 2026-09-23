@@ -20,7 +20,7 @@
  * ever reach one level.
  */
 import type { EvaluationOptions, FigTreeOptions } from '../options'
-import type { CompiledNode } from '../compile'
+import type { CompiledNode, LinkedPath } from '../compile'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
@@ -133,7 +133,7 @@ export type ParamsFrame = ReadonlyMap<string, () => Promise<unknown>>
 /** Where a failure inside a fragment body is to be attributed. */
 export interface FragmentFrame {
   fragment: string
-  callPath: (string | number)[]
+  callPath: LinkedPath
 }
 
 /**

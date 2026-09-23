@@ -43,7 +43,7 @@ import {
   type NullPolicyValue,
   type ValidatedParameter,
 } from '../operatorDefinition'
-import { renamedBinding, type CompiledNode, type OperatorNode } from '../compile'
+import { renamedBinding, toNodePath, type CompiledNode, type OperatorNode } from '../compile'
 import { isTruthy } from '../primitives'
 import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
 import {
@@ -450,7 +450,7 @@ const typeError = (
   return new FigTreeError({
     code: ErrorCodes.typeCheck,
     message: `${node.name} – parameter '${name}': expected ${result.expected}, received ${result.actual}`,
-    path: node.path,
+    path: toNodePath(node.path),
     operator: node.name,
   })
 }

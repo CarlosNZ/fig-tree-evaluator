@@ -29,6 +29,7 @@ import {
   compileExpression,
   renderSegments,
   runStaticChecks,
+  toNodePath,
   type ArtifactHole,
   type CompiledNode,
   type NodePath,
@@ -193,7 +194,7 @@ const printNode = (node: CompiledNode, label: string | null, depth: number) => {
   const head = label === null ? '' : `${label}: `
   const text = `${'  '.repeat(depth)}${head}${describeNode(node)}`
   const gap = Math.max(ANNOTATION_COLUMN - text.length, 2)
-  console.log(`${text}${' '.repeat(gap)}#${node.order}  ${renderPath(node.path)}`)
+  console.log(`${text}${' '.repeat(gap)}#${node.order}  ${renderPath(toNodePath(node.path))}`)
   for (const child of childrenOf(node)) printNode(child.node, child.label, depth + 1)
 }
 

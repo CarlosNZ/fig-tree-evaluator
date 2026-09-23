@@ -276,7 +276,7 @@ const validateDefinition = (
     name,
     parameters: {},
     // Replaced in pass 2 — an entry never escapes this module uncompiled
-    body: { kind: 'constant', value: null, path: [], order: 0 },
+    body: { kind: 'constant', value: null, path: null, order: 0 },
     warnings: [],
     nodeCount: 0,
     maxDepth: 0,

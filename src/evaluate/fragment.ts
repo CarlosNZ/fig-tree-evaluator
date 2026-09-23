@@ -44,7 +44,7 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
-import type { CompiledNode, FragmentCallNode, NodePath } from '../compile'
+import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
 import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
@@ -250,7 +250,7 @@ const unsuppliedValue = (
   name: string,
   declared: FragmentParameter,
   ctx: EvaluationContext,
-  path: NodePath = node.path
+  path: LinkedPath = node.path
 ): unknown => {
   if (!declared.required) return declared.default ?? null
   throw anchor(callFailure(node, ErrorCodes.missingRequired, `requires '${name}'`, path), ctx.frame)
@@ -269,7 +269,7 @@ const resolveArgument = (
   name: string,
   declared: FragmentParameter,
   value: unknown,
-  path: NodePath,
+  path: LinkedPath,
   ctx: EvaluationContext
 ): unknown => {
   const normalized = value === undefined ? null : value
@@ -316,8 +316,13 @@ const callFailure = (
   node: FragmentCallNode,
   code: string,
   message: string,
-  path: NodePath
-): FigTreeError => new FigTreeError({ code, message: `fragment '${node.name}' – ${message}`, path })
+  path: LinkedPath
+): FigTreeError =>
+  new FigTreeError({
+    code,
+    message: `fragment '${node.name}' – ${message}`,
+    path: toNodePath(path),
+  })
 
 const describe = (value: unknown): string =>
   value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
@@ -340,6 +345,6 @@ export const anchor = (error: unknown, frame: FragmentFrame | undefined): unknow
   if (frame === undefined) return error
   error.fragment = frame.fragment
   error.fragmentPath = error.path
-  error.path = frame.callPath
+  error.path = toNodePath(frame.callPath)
   return error
 }

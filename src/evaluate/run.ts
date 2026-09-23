@@ -48,7 +48,7 @@
 import { isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import type { EvaluationOptions, EvaluationResult } from '../options'
-import type { ArtifactHole, CompileArtifact } from '../compile'
+import { toNodePath, type ArtifactHole, type CompileArtifact } from '../compile'
 import type { ResultStore } from '../resultCache'
 import { DeferredScope, EVALUATION_TIMEOUT, deadline, signalScope, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
@@ -222,7 +222,7 @@ const holeBoundary = (
     const hole = holes.get(node)
     if (hole === undefined)
       throw internalError(
-        `the hole boundary was handed the node at ${JSON.stringify(node.path)}, which is not one of the artifact's holes`
+        `the hole boundary was handed the node at ${JSON.stringify(toNodePath(node.path))}, which is not one of the artifact's holes`
       )
     // The boundary is report mode's and shielding's alone, never the plain
     // path, so a hole that answered without a promise is wrapped here

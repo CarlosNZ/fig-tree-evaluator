@@ -20,6 +20,27 @@ import type { Issue } from '../issues'
 export type NodePath = (string | number)[]
 
 /**
+ * A compiled node's location, held as its parent's location plus its own
+ * key; `null` is the root of the value compiled. Extending one is O(1),
+ * where a node holding its own array costs a copy of every ancestor key —
+ * O(d²) down a chain of depth d. Only a reported location is ever wanted
+ * as an array (an issue, an error, a trace entry, a top-level hole), and
+ * `toNodePath` builds it there.
+ */
+export type LinkedPath = { readonly parent: LinkedPath; readonly key: string | number } | null
+
+export const extendPath = (parent: LinkedPath, key: string | number): LinkedPath => ({
+  parent,
+  key,
+})
+
+export const toNodePath = (path: LinkedPath): NodePath => {
+  const keys: NodePath = []
+  for (let link = path; link !== null; link = link.parent) keys.push(link.key)
+  return keys.reverse()
+}
+
+/**
  * Fields every compiled node carries.
  *
  * `path` is the node's as-authored location (obligation A2): the path
@@ -29,7 +50,7 @@ export type NodePath = (string | number)[]
  * and still produce one deterministic tree-ordered stream (A3).
  */
 interface CompiledBase {
-  path: NodePath
+  path: LinkedPath
   order: number
 }
 
@@ -146,7 +167,7 @@ export interface SkeletonNode extends CompiledBase {
  * rest-slice positional payload), so both are stored.
  */
 export interface SkeletonHole {
-  path: NodePath
+  path: LinkedPath
   at: NodePath
   node: CompiledNode
 }
