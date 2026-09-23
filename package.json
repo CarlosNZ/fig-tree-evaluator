@@ -26,7 +26,10 @@
       "unrs-resolver"
     ]
   },
-  "repository": "git+https://github.com/CarlosNZ/fig-tree-evaluator.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CarlosNZ/fig-tree-evaluator.git"
+  },
   "author": "Carl Smith <5456533+CarlosNZ@users.noreply.github.com>",
   "license": "MIT",
   "scripts": {
@@ -50,6 +53,7 @@
     "bench": "node codegen/bench.mjs",
     "bench:browser": "node codegen/benchBrowser.mjs",
     "bench:serve": "node codegen/benchServe.mjs",
+    "release": "node codegen/release.mjs",
     "prepublishOnly": "pnpm build"
   },
   "devDependencies": {
