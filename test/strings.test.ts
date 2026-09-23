@@ -1,4 +1,4 @@
-import { trim, toCodePoints } from '../src'
+import { trim, toCodePoints } from '../src/primitives'
 
 describe('trim', () => {
   it('strips leading and trailing whitespace of all kinds', () => {

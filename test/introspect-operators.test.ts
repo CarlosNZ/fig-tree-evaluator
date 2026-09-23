@@ -8,7 +8,8 @@
  * `operatorDefaults` override reported BESIDE the authored value rather
  * than merged over it.
  */
-import { EvaluationData, FigTree, coreOperators, defineOperator, isValidatedOperator } from '../src'
+import { EvaluationData, FigTree, coreOperators, defineOperator } from '../src'
+import { isValidatedOperator } from '../src/operatorDefinition'
 import type { OperatorInfo } from '../src'
 
 const bag = { hint: 'a host-owned bag', render: () => 'not clonable' }

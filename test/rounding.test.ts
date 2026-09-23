@@ -1,4 +1,4 @@
-import { roundDecimal } from '../src'
+import { roundDecimal } from '../src/primitives'
 
 describe('roundDecimal', () => {
   it('rounds ties half away from zero (sign-symmetric), not like Math.round', () => {

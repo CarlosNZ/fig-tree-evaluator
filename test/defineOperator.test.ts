@@ -10,13 +10,13 @@
  */
 import {
   defineOperator,
-  isValidatedOperator,
   isFigTreeError,
   EvaluationData,
   ErrorCodes,
   FigTreeError,
   type ValidatedOperatorDefinition,
 } from '../src'
+import { isValidatedOperator } from '../src/operatorDefinition'
 import {
   validDefinition,
   clampLike,

@@ -26,7 +26,7 @@ _Temporary working file for Phase 14 of [the implementation plan](docs-dev/v3-sp
 
 Rule on the open questions (3, 4, 6, 7) plus the new ones listed under [Decisions](#decisions), and write the rulings back into [v3-packaging.md](docs-dev/v3-specs/v3-packaging.md) before building.
 
-### 14.1 · Bring the root exports into line with the spec
+### 14.1 · Bring the root exports into line with the spec (done)
 
 - The root exports 37 values, and 17 of them aren't in the spec's list:
   - `checkType`, `checkConstraints`, `describeType`, `isLiteralType`, `isExpectedType`, `validateConstraintsShape`
