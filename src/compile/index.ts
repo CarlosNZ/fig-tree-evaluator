@@ -35,7 +35,7 @@ export type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-export { bindsReference, extendPath, renamedBinding, splice, toNodePath } from './artifact'
+export { bindsReference, renamedBinding, splice, toNodePath } from './artifact'
 export { probeConstant, DEPTH_CEILING } from './probe'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
 export type { CacheEntry } from './compileCache'

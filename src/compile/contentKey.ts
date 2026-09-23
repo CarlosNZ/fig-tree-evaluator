@@ -65,13 +65,18 @@ const SERIALIZED = '~'
 
 /**
  * Longer strings take the serializer, which never looks inside a string.
- * `JSON.stringify` scans every character for escaping, and on Node 22 the
- * scan steps from about 0.3 µs to 0.6 µs a string at 244 characters, then
- * grows at 1.7 ns a character, where the serializer stays flat — so one
- * long description or query outweighs what `JSON.stringify` saves on
- * structure. Measured on one engine; re-measure on the runtimes that matter.
+ * `JSON.stringify` scans every character for escaping — on Node 22 about
+ * 1.7 ns a character past 243 — where the serializer stays flat, but it
+ * saves far more than that on structure. So where the two break even
+ * depends on the input's size: a string of about 1,000 characters in a
+ * one-hole expression, 6,000 in a 50-section config, past 50,000 in a
+ * 500-section one. The limit sits where a tiny expression holding a
+ * string just under it pays about 7 µs, and a mid-sized config keeps
+ * the faster route. One string over it sends the whole input to the
+ * serializer. Measured on one engine; re-measure on the runtimes that
+ * matter.
  */
-const LONG_STRING = 200
+const LONG_STRING = 4096
 
 /**
  * Which route spells the input: `json` for plain JSON data, `serializer`
@@ -125,6 +130,8 @@ const spelling = (value: unknown, depth: number): 'json' | 'serializer' | 'refus
  * The serialized form, or `undefined` where the input holds something
  * that cannot be keyed by content. The content layer reaches it through
  * `contentKey`; the result cache's keys use it directly.
+ *
+ * TO-DO: one key function for both caches (#183).
  */
 export const serializeInput = (value: unknown): string | undefined => serialize(value, [])
 

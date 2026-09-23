@@ -108,7 +108,13 @@ import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../r
 import { checkNameLegality } from '../names'
 import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
 import { scanTemplate, type TemplateSegment } from '../templateTokens'
-import { parseDrill, recognizeReference, renderSegments, splitSigilToken } from './references'
+import {
+  parseDrill,
+  recognizeReference,
+  renderSegments,
+  rendersAsWritten,
+  splitSigilToken,
+} from './references'
 import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
 import type {
   ArtifactHole,
@@ -800,6 +806,9 @@ const finalizeParams = (
     if (evaluation !== 'perElement')
       node.params[entry.name] = walkPending(state, entry, evaluation, depth)
   }
+  // Guarded because most operators iterate nothing, and on an
+  // operator-dense tree a second pass over every node's parameters costs
+  // a measurable few percent of the compile
   if (iterates) {
     if (frame !== undefined) state.renamedBindings.push(frame)
     for (const entry of pending) {
@@ -1008,22 +1017,18 @@ const reportTemplateFace = (
  * READS rather than on spellings: `x.0` parses to a key and `x[0]` to an
  * index, and `resolvePath` reads both the same way.
  *
- * `spelling` is the read's authored text, where the caller has it. A
- * dotted run of identifier keys is already its own canonical render — no
- * key in it is digit-only or needs quoting — so it keys the record as
- * written, and only the other spellings pay to canonicalize and render.
+ * `spelling` is the read's authored text, where the caller has it. One
+ * that is already its own canonical render keys the record as written,
+ * and only the other spellings pay to canonicalize and render.
  */
 const recordDataPath = (state: WalkState, segments: PathSegment[], spelling?: string) => {
-  if (spelling !== undefined && PLAIN_SPELLING.test(spelling)) {
+  if (spelling !== undefined && rendersAsWritten(spelling)) {
     state.dataPaths.set(spelling, segments)
     return
   }
   const canonical = canonicalSegments(segments)
   state.dataPaths.set(renderSegments(canonical), canonical)
 }
-
-/** Identifier keys joined by dots: a path spelling that is its own render. */
-const PLAIN_SPELLING = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/
 
 /**
  * `get` reads `$data` too, so its paths belong in the dependency list
@@ -1692,13 +1697,14 @@ const compileVars = (
   depth: number,
   order: number
 ): Record<string, CompiledNode> | undefined => {
+  const varsPath = extendPath(nodePath, 'vars')
   if (!isPlainDataObject(value)) {
     emit(
       state,
       'error',
       ErrorCodes.invalidVars,
       "a 'vars' block must be an object of name → expression entries",
-      extendPath(nodePath, 'vars'),
+      varsPath,
       order
     )
     return undefined
@@ -1707,7 +1713,7 @@ const compileVars = (
   for (const name in value) {
     const expression = value[name]
     if (name === '//' || expression === undefined) continue
-    const path = extendPath(extendPath(nodePath, 'vars'), name)
+    const path = extendPath(varsPath, name)
     const legality = checkNameLegality(name)
     if (!legality.ok) {
       emit(

@@ -539,9 +539,10 @@ const pushVars = (
   if (vars === undefined) return null
   const frame: VarsFrame = { names: new Map(), currentVar: null, edges: new Map() }
 
+  const varsPath = extendPath(holderPath, 'vars')
   for (const name in vars) {
     const node = vars[name]
-    const declaredAt = extendPath(extendPath(holderPath, 'vars'), name)
+    const declaredAt = extendPath(varsPath, name)
     for (const outer of state.varsFrames) {
       if (outer.names.has(name)) {
         emit(

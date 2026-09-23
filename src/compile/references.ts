@@ -124,6 +124,19 @@ const renderKey = (key: string, first: boolean): string => {
 }
 
 /**
+ * Identifier keys joined by dots: a path spelling that is already its own
+ * canonical render, `renderSegments(canonicalSegments(parsePath(s))) === s`.
+ * It restates two rules in another form — no key is empty or needs quoting
+ * (`NEEDS_QUOTING`), and none is digit-only (which `canonicalSegments`
+ * turns into an index) — so a change to either changes this with it. A
+ * test in test/compile-classification.test.ts holds the two together.
+ */
+const PLAIN_SPELLING = /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*$/
+
+/** Is this path spelling its own canonical render (`PLAIN_SPELLING`)? */
+export const rendersAsWritten = (spelling: string): boolean => PLAIN_SPELLING.test(spelling)
+
+/**
  * A `$data` read in the reference grammar, for messages: `$data.user.name`,
  * and `$data[0].x` where the path opens with an index or a quoted key.
  */

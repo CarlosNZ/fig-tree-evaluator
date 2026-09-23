@@ -119,8 +119,8 @@ describe('contentKey’s two routes', () => {
   })
 
   it.each([
-    ['a long string', { a: 'x'.repeat(1000) }],
-    ['a long key', { ['k'.repeat(1000)]: 1 }],
+    ['a long string', { a: 'x'.repeat(5000) }],
+    ['a long key', { ['k'.repeat(5000)]: 1 }],
     ['NaN', { a: NaN }],
     ['negative zero', [-0]],
     ['undefined', { a: undefined }],
@@ -137,6 +137,6 @@ describe('contentKey’s two routes', () => {
 
   it('refuses a non-plain value found after a value that needs the serializer', () => {
     expect(contentKey({ a: NaN, b: new Date(0) })).toBeUndefined()
-    expect(contentKey({ a: 'x'.repeat(1000), b: () => 1 })).toBeUndefined()
+    expect(contentKey({ a: 'x'.repeat(5000), b: () => 1 })).toBeUndefined()
   })
 })
