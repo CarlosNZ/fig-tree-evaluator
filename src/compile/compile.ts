@@ -551,10 +551,13 @@ const walkArray = (
 // ── Objects: node-kind classification ───────────────────────────────
 
 /** The `$name` keys of an object that resolve against what's known. */
-const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] =>
-  Object.keys(raw).filter(
-    (key) => key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))
-  )
+const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] => {
+  const keys: string[] = []
+  for (const key in raw) {
+    if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) keys.push(key)
+  }
+  return keys
+}
 
 /** Would this value classify as a node (kinds 1–3, 5)? */
 const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
@@ -659,7 +662,8 @@ const walkOperatorCanonical = (
 
   const node = startOperatorNode(state, entry, path, order)
   const pending: PendingParam[] = []
-  for (const [key, value] of Object.entries(raw)) {
+  for (const key in raw) {
+    const value = raw[key]
     if (key === 'operator' || key === '//' || value === undefined) continue
     if (applyOperatorModifier(state, node, key, value, path, depth, order)) continue
     if (key === 'parameters') {
@@ -1275,7 +1279,7 @@ const walkShorthand = (
   const isFragment = !isLiteral && state.registry.fragments.has(name)
 
   // The sibling-key rule: reserved modifiers only
-  for (const key of Object.keys(raw)) {
+  for (const key in raw) {
     if (key === shorthandKey) continue
     const allowed = SHORTHAND_SIBLINGS.has(key) && !(isFragment && key === 'useCache')
     if (!allowed) {
@@ -1314,7 +1318,8 @@ const walkShorthand = (
 
   const entry = resolveOperator(state.registry, name)!
   const node = startOperatorNode(state, entry, path, order)
-  for (const [key, value] of Object.entries(raw)) {
+  for (const key in raw) {
+    const value = raw[key]
     if (key === shorthandKey || key === '//' || value === undefined) continue
     applyOperatorModifier(state, node, key, value, path, depth, order)
   }
@@ -1342,7 +1347,8 @@ const collectShorthandPayload = (
   // sound for the same reason as the fragments disambiguation: parameter
   // names cannot start with '$', and 'operator'/'fragment' are reserved
   if (isPlainDataObject(payload) && !classifiesAsNode(state, payload)) {
-    for (const [key, value] of Object.entries(payload)) {
+    for (const key in payload) {
+      const value = payload[key]
       if (key === '//' || value === undefined) continue
       collectNamedParam(state, node, pending, key, value, extendPath(payloadPath, key), order)
     }
@@ -1458,7 +1464,7 @@ const walkLiteral = (
 ): CompiledNode => {
   // Canonical face: check keys (dead modifiers warn, unknown keys error)
   if ('operator' in raw) {
-    for (const key of Object.keys(raw)) {
+    for (const key in raw) {
       if (key === 'operator' || key === 'value' || key === '//') continue
       if (key === 'fallback' || key === 'vars' || key === 'useCache') {
         emit(
@@ -1527,7 +1533,8 @@ const walkFragmentCanonical = (
     order,
   }
   resolveFragment(state, node, depth)
-  for (const [key, value] of Object.entries(raw)) {
+  for (const key in raw) {
+    const value = raw[key]
     if (key === 'fragment' || key === '//' || value === undefined) continue
     if (key === 'parameters') {
       compileFragmentParameters(state, node, value, extendPath(path, 'parameters'), depth, order)
@@ -1581,7 +1588,8 @@ const walkFragmentShorthand = (
     order,
   }
   resolveFragment(state, node, depth)
-  for (const [key, value] of Object.entries(raw)) {
+  for (const key in raw) {
+    const value = raw[key]
     if (key === `$${name}` || key === '//' || value === undefined) continue
     if (key === 'fallback')
       node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
@@ -1653,7 +1661,8 @@ const compileFragmentParameters = (
   }
   if (isPlainDataObject(value)) {
     const parameters: Record<string, CompiledNode> = {}
-    for (const [key, argument] of Object.entries(value)) {
+    for (const key in value) {
+      const argument = value[key]
       if (key === '//' || argument === undefined) continue
       parameters[key] = walk(state, argument, extendPath(path, key), depth + 1)
     }
@@ -1695,7 +1704,8 @@ const compileVars = (
     return undefined
   }
   const map: Record<string, CompiledNode> = {}
-  for (const [name, expression] of Object.entries(value)) {
+  for (const name in value) {
+    const expression = value[name]
     if (name === '//' || expression === undefined) continue
     const path = extendPath(extendPath(nodePath, 'vars'), name)
     const legality = checkNameLegality(name)
@@ -1745,7 +1755,8 @@ const collectPlainObject = (
   let changed = false
   const entries: ContainerEntry[] = []
 
-  for (const [key, value] of Object.entries(raw)) {
+  for (const key in raw) {
+    const value = raw[key]
     if (key === '//') {
       changed = true
       continue

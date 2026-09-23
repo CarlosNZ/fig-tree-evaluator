@@ -113,7 +113,7 @@ const spelling = (value: unknown, depth: number): 'json' | 'serializer' | 'refus
     return 'json'
   }
   if (!isPlainDataObject(value)) return 'refused'
-  for (const key of Object.keys(value)) {
+  for (const key in value) {
     if (key.length > LONG_STRING) return 'serializer'
     const route = spelling(value[key], depth + 1)
     if (route !== 'json') return route
@@ -157,9 +157,9 @@ const write = (value: unknown, depth: number, out: string[]): boolean => {
   }
   if (!isPlainDataObject(value)) return false
   out.push('{')
-  for (const [key, child] of Object.entries(value)) {
+  for (const key in value) {
     out.push(`s${key.length}:${key}`)
-    if (!write(child, depth + 1, out)) return false
+    if (!write(value[key], depth + 1, out)) return false
   }
   return push(out, '}')
 }

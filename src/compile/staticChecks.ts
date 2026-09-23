@@ -123,7 +123,7 @@ const visit = (state: CheckState, node: CompiledNode) => {
       return
     case 'entries': {
       const frame = pushVars(state, node.vars, node.path)
-      for (const value of Object.values(node.entries)) visit(state, value)
+      for (const key in node.entries) visit(state, node.entries[key])
       popVars(state, frame)
       return
     }
@@ -173,7 +173,8 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   // Binding scopes: exactly the perElement subtrees ("The binding scope is
   // exactly the each subtree" — batch 5). Everything else visits outside.
   const perElement: [string, CompiledNode][] = []
-  for (const [name, supplied] of Object.entries(node.params)) {
+  for (const name in node.params) {
+    const supplied = node.params[name]
     if (definition.parameters[name]?.evaluation === 'perElement') perElement.push([name, supplied])
     else visit(state, supplied)
   }
@@ -340,7 +341,8 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   // to check a call against
   if (declarations !== undefined && node.argumentsMode === 'static') {
     const owner = { label: node.name, extra: { fragment: node.name } }
-    for (const [name, declared] of Object.entries(declarations)) {
+    for (const name in declarations) {
+      const declared = declarations[name]
       const argument = supplied?.[name]
       if (argument === undefined) {
         if (declared.required)
@@ -357,24 +359,27 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       }
       checkSuppliedParam(state, owner, name, declared, argument)
     }
-    for (const [name, argument] of Object.entries(supplied ?? {}))
-      if (declarations[name] === undefined) {
-        const suggestion = nearestName(name, Object.keys(declarations))
-        emit(
-          state,
-          'error',
-          ErrorCodes.unknownNodeKey,
-          `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
-          argument.path,
-          argument.order,
-          { parameter: name }
-        )
+    if (supplied !== undefined)
+      for (const name in supplied) {
+        const argument = supplied[name]
+        if (declarations[name] === undefined) {
+          const suggestion = nearestName(name, Object.keys(declarations))
+          emit(
+            state,
+            'error',
+            ErrorCodes.unknownNodeKey,
+            `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+            argument.path,
+            argument.order,
+            { parameter: name }
+          )
+        }
       }
   }
 
   if (node.parameters !== undefined) {
     if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-    else for (const argument of Object.values(node.parameters)) visit(state, argument)
+    else for (const key in node.parameters) visit(state, node.parameters[key])
   }
   popVars(state, frame)
 }
@@ -387,7 +392,8 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 
   // Literal parameter values only — dynamic values simply aren't present
   const literalParams: Record<string, unknown> = {}
-  for (const [name, supplied] of Object.entries(node.params)) {
+  for (const name in node.params) {
+    const supplied = node.params[name]
     if (supplied.kind === 'constant') literalParams[name] = supplied.value
   }
 
@@ -533,7 +539,8 @@ const pushVars = (
   if (vars === undefined) return null
   const frame: VarsFrame = { names: new Map(), currentVar: null, edges: new Map() }
 
-  for (const [name, node] of Object.entries(vars)) {
+  for (const name in vars) {
+    const node = vars[name]
     const declaredAt = extendPath(extendPath(holderPath, 'vars'), name)
     for (const outer of state.varsFrames) {
       if (outer.names.has(name)) {

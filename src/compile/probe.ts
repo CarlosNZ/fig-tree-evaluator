@@ -70,11 +70,11 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
     return true
   }
   if (isPlainDataObject(value)) {
-    for (const key of Object.keys(value)) {
+    for (const key in value) {
       if (key === 'operator' || key === 'fragment' || key === 'vars' || key === '//') return false
       if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) return false
     }
-    for (const key of Object.keys(value)) {
+    for (const key in value) {
       if (!scan(state, value[key], depth + 1)) return false
     }
     return true
