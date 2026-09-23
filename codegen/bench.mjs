@@ -4,7 +4,9 @@
 // benches never contend with each other for the CPU. `pnpm bench list`
 // prints what exists. Benches import BOTH engines, so they compile under
 // tsconfig.bench.json rather than the v3 config — see that file for the
-// one interop mapping it carries.
+// one interop mapping it carries. `--packaged` measures v3 as the built
+// package (build/index.js) instead of as tsx compiles it from src/
+// (bench/packaged.mjs); run `pnpm build` first.
 import { existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import { BENCH_DIR, available, benches } from './benchList.mjs'
@@ -21,10 +23,15 @@ if (major < 22) {
   process.exit(1)
 }
 
-const args = process.argv.slice(2)
+const packaged = process.argv.includes('--packaged')
+const args = process.argv.slice(2).filter((arg) => arg !== '--packaged')
+if (packaged && !existsSync('build/index.js')) {
+  console.error('pnpm bench --packaged measures build/index.js — run `pnpm build` first.')
+  process.exit(1)
+}
 
 if (args.length === 0 || args[0] === 'list') {
-  console.log('Usage: pnpm bench <name>… | all\n\nBenches:')
+  console.log('Usage: pnpm bench <name>… | all [--packaged]\n\nBenches:')
   const all = benches()
   const width = Math.max(...all.map(({ name }) => name.length))
   console.log(
@@ -47,9 +54,15 @@ for (const name of names) {
 let failed = false
 for (const name of names) {
   if (names.length > 1) console.log(`\n# ${name}\n`)
+  if (packaged) console.log('_v3 measured as the packaged build, build/index.js_\n')
   const result = spawnSync(
     'tsx',
-    ['--tsconfig', 'tsconfig.bench.json', `${BENCH_DIR}/${name}.ts`],
+    [
+      '--tsconfig',
+      'tsconfig.bench.json',
+      ...(packaged ? ['--import', './bench/packaged.mjs'] : []),
+      `${BENCH_DIR}/${name}.ts`,
+    ],
     {
       stdio: 'inherit',
       shell: process.platform === 'win32',

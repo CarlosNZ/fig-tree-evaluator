@@ -7,11 +7,22 @@
  * list, failing when the two disagree.
  *
  * `name` is the output path under build/, without extension: the bundle is
- * `build/<name>.js`, its declarations `build/<name>.d.ts`.
+ * `build/<name>.js`, its declarations `build/<name>.d.ts`. `budget` is the
+ * bundle's brotli ceiling in bytes, set from measurement plus about 5%;
+ * raising one is a deliberate edit, visible in review. `marker` is a string
+ * literal only this entry's code contains, which `pnpm check:package` finds
+ * in the entry's own bundle and requires to be absent from an engine-only
+ * one — every entry but the root needs one.
  */
 export const ENTRIES = [
-  { subpath: '.', name: 'index', source: 'src/index.ts' },
-  { subpath: './editor-hints', name: 'editor-hints/index', source: 'src/editor-hints/index.ts' },
+  { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
+  {
+    subpath: './editor-hints',
+    name: 'editor-hints/index',
+    source: 'src/editor-hints/index.ts',
+    budget: 2_000,
+    marker: 'String builder',
+  },
 ]
 
 /**

@@ -6,7 +6,7 @@
  *  2. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it.
  *  3. Bumps package.json and regenerates src/version.ts.
  *  4. Runs what CI runs (.github/workflows/ci.yml): lint, format check,
- *     typecheck, tests, build.
+ *     typecheck, tests, build, and the packaging checks.
  *  5. Commits the bump as `vX.Y.Z` and tags it (annotated, `vX.Y.Z`).
  *  6. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
  *     the upload: npm prompts for a 2FA code itself, and applies no branch
@@ -32,7 +32,7 @@ const VERSION_FILE = 'src/version.ts'
 const CHANGELOG = 'CHANGELOG.md'
 
 /** The checks CI runs, in its order (.github/workflows/ci.yml). */
-const CHECKS = ['lint', 'format:check', 'typecheck', 'test', 'build']
+const CHECKS = ['lint', 'format:check', 'typecheck', 'test', 'build', 'check:package']
 
 // ── Versions ───────────────────────────────────────────────────────────────
 

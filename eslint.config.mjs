@@ -3,6 +3,23 @@ import tseslint from 'typescript-eslint'
 import commentLength from 'eslint-plugin-comment-length'
 import globals from 'globals'
 
+const V2_BAN = {
+  group: ['**/v2-src', '**/v2-src/**'],
+  message:
+    'v3 source must not import from the frozen v2 engine (/v2-src). Mine it as data (Phase 15), never wire it in.',
+}
+
+// The root source never imports a subpath ("Principles" in
+// docs-dev/v3-specs/v3-packaging.md). TO-DO: add `./convert`'s source at
+// Phase 15.1, in a folder whose name no pattern can confuse with
+// src/operators/convert.ts — the patterns match the import string, not the
+// file it resolves to
+const SUBPATH_BAN = {
+  group: ['**/editor-hints', '**/editor-hints/**'],
+  message:
+    'The root entry never imports a subpath: editor-hints is tooling-side data, so importing it here would ship it to every host.',
+}
+
 export default tseslint.config(
   {
     // The frozen v2 engine and the v2 test copies are never linted (v2-src is
@@ -47,16 +64,35 @@ export default tseslint.config(
     },
   },
   {
+    // An ambient global is declared with `var`, as TypeScript's own lib files
+    // do: only a `var` becomes a property of `globalThis`
+    files: ['**/*.d.ts'],
+    rules: { 'no-var': 'off' },
+  },
+  {
     files: ['src/**/*.ts'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN] }] },
+  },
+  {
+    // The root side of src/ — everything but the subpaths themselves and the
+    // playground, which may import anything
+    files: ['src/**/*.ts'],
+    ignores: ['src/editor-hints/**', 'src/dev/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN, SUBPATH_BAN] }] },
+  },
+  {
+    // editor-hints is data only: type imports erase at build, any value
+    // import would pull code into the subpath's bundle
+    files: ['src/editor-hints/**/*.ts'],
     rules: {
-      'no-restricted-imports': [
+      '@typescript-eslint/no-restricted-imports': [
         'error',
         {
           patterns: [
             {
-              group: ['**/v2-src', '**/v2-src/**'],
-              message:
-                'v3 source must not import from the frozen v2 engine (/v2-src). Mine it as data (Phase 15), never wire it in.',
+              group: ['**'],
+              allowTypeImports: true,
+              message: 'editor-hints is a data-only module: import types only (`import type`).',
             },
           ],
         },

@@ -12,84 +12,46 @@
  * so the page cannot quietly keep describing a spec where an
  * implementation now exists.
  *
- * `CANONICAL` is the running order and the completeness check: every
- * registered operator must appear in it, so a newly registered operator
- * that nobody listed fails the build rather than vanishing from the page.
+ * The page follows the package's own data rather than restating it: the
+ * sections and their labels are editor-hints' `categoryHints`, in their
+ * `order`; each operator sits in its definition's `category`, in
+ * registration order. A newly registered operator therefore appears without
+ * anyone listing it. Only the one-line note under each section heading is
+ * this page's own.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { coreOperators } from '../src/operators/index'
 import { httpOperators, sqlOperators } from '../src/operators/io'
-import type { ValidatedOperatorDefinition, ValidatedParameter } from '../src/operatorDefinition'
+import { categoryHints } from '../src/editor-hints'
+import type {
+  OperatorCategory,
+  ValidatedOperatorDefinition,
+  ValidatedParameter,
+} from '../src/operatorDefinition'
 import type { Constraints, ExpectedType } from '../src/typeCheck'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const TEMPLATE = resolve(here, 'templates/operatorReference.html')
 const OUTPUT = resolve(here, '../docs-artifacts/figtree-v3-operators.html')
 
-/** Group keys, labels, and the one-line note each section carries. */
-const GROUPS: [string, string, string][] = [
-  ['logic', 'Logic & control', 'Short-circuiting is delivery metadata, not operator code'],
-  ['comparison', 'Comparison', 'Equality is total; ordering propagates null'],
-  ['math', 'Arithmetic & math', 'Numbers only — no coercion, ever'],
-  ['string', 'String', 'Renderers take anything; value operators take strict strings'],
-  ['array', 'Arrays & iteration', 'Elements evaluate in parallel, always'],
-  ['data', 'Data & objects', 'For dynamic paths — a literal "$data.a.b" is sugar for get'],
-  ['special', 'Special', ''],
-  ['io', 'I/O', 'Registered via httpOperators(client) / sqlOperators(connection), never in core'],
-]
+/** The one-line note under each section heading. */
+const NOTES: Record<OperatorCategory, string> = {
+  logic: 'Short-circuiting is delivery metadata, not operator code',
+  comparison: 'Equality is total; ordering propagates null',
+  math: 'Numbers only — no coercion, ever',
+  string: 'Renderers take anything; value operators take strict strings',
+  array: 'Elements evaluate in parallel, always',
+  data: 'For dynamic paths — a literal "$data.a.b" is sugar for get',
+  io: 'Registered via httpOperators(client) / sqlOperators(connection), never in core',
+  other: '',
+}
 
-/**
- * Canonical-list order ("The canonical list" in
- * docs-dev/v3-specs/v3-api.md).
- */
-const CANONICAL: [string, string][] = [
-  ['and', 'logic'],
-  ['or', 'logic'],
-  ['not', 'logic'],
-  ['if', 'logic'],
-  ['match', 'logic'],
-  ['firstOf', 'logic'],
-  ['equal', 'comparison'],
-  ['notEqual', 'comparison'],
-  ['greaterThan', 'comparison'],
-  ['greaterThanOrEqual', 'comparison'],
-  ['lessThan', 'comparison'],
-  ['lessThanOrEqual', 'comparison'],
-  ['plus', 'math'],
-  ['subtract', 'math'],
-  ['multiply', 'math'],
-  ['divide', 'math'],
-  ['modulo', 'math'],
-  ['power', 'math'],
-  ['round', 'math'],
-  ['floor', 'math'],
-  ['ceil', 'math'],
-  ['min', 'math'],
-  ['max', 'math'],
-  ['abs', 'math'],
-  ['buildString', 'string'],
-  ['split', 'string'],
-  ['join', 'string'],
-  ['lower', 'string'],
-  ['upper', 'string'],
-  ['trim', 'string'],
-  ['regex', 'string'],
-  ['length', 'array'],
-  ['map', 'array'],
-  ['filter', 'array'],
-  ['find', 'array'],
-  ['some', 'array'],
-  ['every', 'array'],
-  ['get', 'data'],
-  ['buildObject', 'data'],
-  ['literal', 'special'],
-  ['convert', 'special'],
-  ['http', 'io'],
-  ['graphQL', 'io'],
-  ['sql', 'io'],
-]
+/** Section key, label and note, in listing order. */
+const GROUPS: [string, string, string][] = Object.entries(categoryHints)
+  .sort(([, a], [, b]) => a.order - b.order)
+  .map(([key, { displayName }]) => [key, displayName, NOTES[key as OperatorCategory]])
 
 type PageParam = {
   n: string
@@ -112,11 +74,8 @@ type PageOperator = {
   p: PageParam[]
 }
 
-/**
- * A pending operator's page entry, minus the group the canonical list
- * gives it.
- */
-type PendingEntry = Omit<PageOperator, 'g'>
+/** A spec-sourced page entry, which names its own section. */
+type PendingEntry = PageOperator
 
 /**
  * Spec-sourced entries for operators not yet registered. `st` is the
@@ -131,6 +90,7 @@ type PendingEntry = Omit<PageOperator, 'g'>
 const PENDING: Record<string, PendingEntry> = {
   literal: {
     n: 'literal',
+    g: 'other',
     st: 'grammar',
     ret: 'any',
     pos: [],
@@ -171,10 +131,10 @@ const withElements = (type: string, constraints?: Constraints): string => {
   return `array[${homogeneous.map(formatType).join(' | ')}]`
 }
 
-const fromDefinition = (op: ValidatedOperatorDefinition, group: string): PageOperator => ({
+const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
   n: op.name,
   ...(op.alias ? { a: op.alias } : {}),
-  g: group,
+  g: op.category,
   st: 'live',
   ret: formatType(op.returns),
   pos: op.positionalParams ?? [],
@@ -201,38 +161,23 @@ const build = (): PageOperator[] => {
   const unreachable = () => {
     throw new Error('the reference never evaluates')
   }
-  const live = new Map<string, ValidatedOperatorDefinition>(
-    [
-      ...coreOperators,
-      ...httpOperators({ request: unreachable }),
-      ...sqlOperators({ query: unreachable }),
-    ].map((op) => [op.name, op])
-  )
-  const listed = new Set(CANONICAL.map(([name]) => name))
+  const registered = [
+    ...coreOperators,
+    ...httpOperators({ request: unreachable }),
+    ...sqlOperators({ query: unreachable }),
+  ]
+  const names = new Set(registered.map((op) => op.name))
   const problems: string[] = []
 
-  for (const name of live.keys()) {
-    if (!listed.has(name))
-      problems.push(
-        `'${name}' is registered but missing from CANONICAL — add it in canonical-list order`
-      )
-  }
-  for (const name of Object.keys(PENDING)) {
-    if (live.has(name))
+  for (const name of Object.keys(PENDING))
+    if (names.has(name))
       problems.push(
         `'${name}' has a definition now — delete its PENDING entry so the page reads from the code`
       )
-    if (!listed.has(name)) problems.push(`PENDING '${name}' is not in CANONICAL`)
-  }
-
-  const ops = CANONICAL.map(([name, group]) => {
-    const definition = live.get(name)
-    if (definition) return fromDefinition(definition, group)
-    const pending = PENDING[name]
-    if (pending) return { ...pending, g: group }
-    problems.push(`'${name}' has neither a definition nor a PENDING entry`)
-    return null
-  }).filter((op): op is PageOperator => op !== null)
+  const ops = [...registered.map(fromDefinition), ...Object.values(PENDING)]
+  const sections = new Set(GROUPS.map(([key]) => key))
+  for (const op of ops)
+    if (!sections.has(op.g)) problems.push(`'${op.n}' is in '${op.g}', which has no section`)
 
   if (problems.length) {
     console.error('Operator reference is out of step with the registry:\n')
