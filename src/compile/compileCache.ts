@@ -10,8 +10,8 @@
  * for an input holding opaque constants. The content layer catches the
  * fresh-instance pattern: a React host re-creating expressions per render,
  * a back-end host loading the same config per request. A content hit
- * re-registers under the new object's identity, so that object pays one
- * serialization and is O(1) from then on.
+ * re-registers under the new object's identity, so that object pays for
+ * one key and is O(1) from then on.
  *
  * Eligibility, straight from the measurement: primitives take neither
  * layer (a `WeakMap` cannot key one, and letting them into the LRU would
@@ -27,7 +27,7 @@
  */
 import { Lru } from '../lru'
 import type { CompileArtifact } from './artifact'
-import { serializeInput } from './contentKey'
+import { contentKey } from './contentKey'
 import type { ProbeResult } from './probe'
 
 /**
@@ -95,16 +95,16 @@ export class CompileCache {
     }
 
     // Reached only by genuine expressions, since constant containers have
-    // exited above — so the O(input) serialization never runs on inert data
-    const key = weakKey === undefined ? undefined : serializeInput(expression)
+    // exited above — so the O(input) key never runs on inert data
+    const key = weakKey === undefined ? undefined : contentKey(expression)
     const held = key === undefined ? undefined : this.content.get(key)
     const artifact = held ?? this.deps.compile(expression)
     const entry: CacheEntry = { kind: 'artifact', artifact }
     if (weakKey !== undefined) this.identity.set(weakKey, entry)
     // Identity-only artifacts must never be served by content: two inputs
     // holding different opaque constants can serialize alike, and splicing
-    // the wrong constants in would be silent. The serializer refuses those
-    // too, so this is the second of two independent guards
+    // the wrong constants in would be silent. The key refuses those too,
+    // so this is the second of two independent guards
     if (
       key !== undefined &&
       held === undefined &&
