@@ -228,13 +228,12 @@ describe('the static gate on the handle', () => {
 })
 
 describe('nothing of the engine leaks through the handle', () => {
-  it('serializes to nothing, and renders as a string', () => {
+  it('serializes to nothing', () => {
     const { fig } = rig()
     const expression = expr('$data.v')
     const handle = fig.compile(expression)
     expect(JSON.stringify(handle)).toBe('{}')
     expect(handle.expression).toBe(expression)
-    expect(typeof handle.prettyPrint()).toBe('string')
     expect(Object.keys(handle)).toEqual([])
   })
 })

@@ -413,7 +413,8 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * The name says nothing about serializability, exactly as
    * `new RegExp()` and `Ajv.compile()` say nothing: the handle holds live
    * registry entries and cannot be written out. `x.expression` is the
-   * serializable thing, and `prettyPrint()` is a rendering of it.
+   * serializable thing, and the standalone `inspect(x)` reports what the
+   * compiler made of it.
    */
   compile(expression: unknown): CompiledExpression<InstanceOpts> {
     const { state } = this
@@ -621,16 +622,6 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   /** As `FigTree.getDependencies()`, read from the held artifact. */
   getDependencies(): Dependencies {
     return toDependencies(this.#artifact().dependencies)
-  }
-
-  /**
-   * A string rendering of the expression. TO-DO: the real rendering, with
-   * its options, is #156's; this is a stand-in so the method has its place
-   * on the handle.
-   */
-  prettyPrint(options?: CallOptions): string {
-    void options
-    return JSON.stringify(this.#expression, null, 2) ?? String(this.#expression)
   }
 
   /**
