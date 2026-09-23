@@ -1,0 +1,21 @@
+{
+  // The globals check (`pnpm typecheck`): the library source against ES2022
+  // and the sanctioned runtime globals in codegen/runtime-globals.d.ts, with
+  // no @types/node. See that file for why.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": [],
+    "noEmit": true,
+    "strict": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  // src/dev is the playground, run under Node and never bundled
+  "include": ["src", "codegen/runtime-globals.d.ts"],
+  "exclude": ["src/dev"]
+}

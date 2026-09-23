@@ -17,12 +17,13 @@ pnpm test                 # Jest, v3 suite only (see testing gotchas below)
 pnpm test <substring>     # run test files matching substring, e.g. `pnpm test string`
 pnpm test:v2              # frozen v2 corpus (test/V2) against /v2-src — on demand, never CI
 pnpm lint                 # eslint (flat config, eslint.config.mjs)
+pnpm typecheck            # test/ (ts-jest is transpile-only), plus src/ against the sanctioned runtime globals only
 pnpm format               # prettier --write over the repo (scope: .prettierignore)
 pnpm format:check         # the same check CI runs — fails on anything unformatted
 pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
+pnpm check:package        # after build: size budgets, tree-shake fixture, packed-package smoke test
 pnpm size                 # re-print the bundle-size report for the existing build/
 pnpm compile              # tsc only (typecheck + emit, no bundling)
-pnpm generate             # regenerate v2-src/operators/operatorAliases.ts (v2-only tooling)
 pnpm getVersion           # regenerate src/version.ts from package.json
 pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
@@ -35,7 +36,7 @@ There is no watch/dev-server — this is a library. Note pnpm does not run impli
 
 Every PR that can move the bundle gets a size-diff comment automatically (`.github/workflows/pr-bundle-size.yml`): it builds both sides and posts one sticky comment rendered by `codegen/formatSizeDiff.mjs`. Both sides are measured by the PR's own copy of `codegen/bundleSize.mjs --json`, so the PR comment and the local report are the same measurement by construction — change what a size means in that one file and everything follows.
 
-The package is **ESM-only** (`"type": "module"`, single `build/index.js` bundle — packaging ruling, docs-dev/v3-specs/v3-packaging.md). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
+The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with two entry points: the root (`build/index.js`) and `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`); `./convert` joins at Phase 15. The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 
 The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`, and `pnpm dev phase<N>_showcase` to see a phase's features run (one showcase file per phase, written at the phase's close).
 
@@ -67,12 +68,13 @@ src/
 
 ### Generated files — do not hand-edit
 
-- **`src/operators/operatorAliases.ts`** — built by `codegen/buildOperatorAliasReference.ts`. Edit aliases in the operator's `data.ts`, then run `pnpm generate`.
-- **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`).
+- **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`; `pnpm build` runs it first).
+
+There is no alias table: v3's aliases live on their operators' definitions, and the registry builds its lookup at construction. `v2-src/operators/operatorAliases.ts` is part of the frozen v2 engine; its generator is not in this branch, and the `v2.x` maintenance branch keeps its own copy.
 
 ### Things easy to get wrong
 
-- The `convert/` folder and several extra exports in `index.ts` exist only for the external [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) editor (the package that now hosts the demo/playground) — they are not part of the evaluation path. Don't assume an export is "internal-only."
+- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints` now, `./convert` at Phase 15.
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
 - `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.
 

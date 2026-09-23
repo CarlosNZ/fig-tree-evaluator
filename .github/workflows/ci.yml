@@ -31,10 +31,16 @@ jobs:
       # nothing else does — ts-jest runs transpile-only (isolatedModules), so
       # a type error in a test is otherwise invisible. That is how three
       # assertions in inference.test.ts came to be quietly false, and how the
-      # driver-shape check in clients-types.test.ts is kept honest.
+      # driver-shape check in clients-types.test.ts is kept honest. It also
+      # runs the globals check: src/ against ES2022 and the sanctioned
+      # runtime globals only (codegen/runtime-globals.d.ts), no @types/node
       - run: pnpm typecheck
       - run: pnpm test
       # The build has to stay green from Phase 0 on: it typechecks the whole
       # library source and prints the bundle-size report recorded per phase in
       # docs-dev/v3-specs/v3-implementation-plan.md
       - run: pnpm build
+      # Needs the built package: the size budgets, the tree-shake fixture,
+      # and the packed package imported, required and typechecked as a
+      # consumer would (codegen/checkPackage.mjs)
+      - run: pnpm check:package

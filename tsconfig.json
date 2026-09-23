@@ -1,10 +1,11 @@
 {
   // Base config: the v3 library source, as the rollup build and the IDE see
-  // it. `yarn compile` runs it directly; tsconfig.test.json / tsconfig.v2.json
+  // it. `pnpm compile` runs it directly; tsconfig.test.json / tsconfig.v2.json
   // extend it for the jest suites (overriding module/resolution for jest's
-  // CommonJS world); the ts-node block below covers codegen/ and the
-  // playground. Targets per docs-dev/v3-specs/v3-packaging.md: ES2022,
-  // Node >= 20.
+  // CommonJS world), and tsconfig.bench.json for the benchmarks. tsx runs
+  // codegen/ and the playground from source. tsconfig.globals.json checks
+  // the same source against the sanctioned runtime globals only. Targets per
+  // docs-dev/v3-specs/v3-packaging.md: ES2022, Node >= 22.12.
   "compilerOptions": {
     /* Language and environment */
     "target": "ES2022",
@@ -33,15 +34,6 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
-  },
-  // ts-node runs CommonJS (codegen scripts, yarn dev playground)
-  "ts-node": {
-    "compilerOptions": {
-      "module": "CommonJS",
-      "moduleResolution": "Node10",
-      "noUnusedLocals": false,
-      "noUnusedParameters": false
-    }
   },
   // v3 library source only. /v2-src (the frozen v2 engine) and test/ are excluded
   // from this build config; the test runners use tsconfig.test.json / tsconfig.v2.json.

@@ -5,11 +5,14 @@
      charset it depends on the server sending one for its em-dashes and
      multiplication signs to survive. A duplicate meta is harmless — the
      first declaration wins. -->
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>FigTree v3 Operators</title>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+/>
 
 <style>
   :root {
@@ -71,7 +74,9 @@
     --focus: #e894b7;
   }
 
-  * { box-sizing: border-box; }
+  * {
+    box-sizing: border-box;
+  }
 
   body {
     margin: 0;
@@ -92,7 +97,9 @@
 
   /* ── Masthead ─────────────────────────────────────────────── */
 
-  header.masthead { padding-block: 48px 28px; }
+  header.masthead {
+    padding-block: 48px 28px;
+  }
 
   .eyebrow {
     font-family: var(--mono);
@@ -114,7 +121,10 @@
     text-wrap: balance;
   }
 
-  h1 em { font-style: italic; color: var(--fig); }
+  h1 em {
+    font-style: italic;
+    color: var(--fig);
+  }
 
   .standfirst {
     font-family: var(--serif);
@@ -136,7 +146,11 @@
     padding-top: 14px;
   }
 
-  .tally b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tally b {
+    color: var(--ink);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
 
   /* ── Toolbar ──────────────────────────────────────────────── */
 
@@ -177,8 +191,13 @@
     padding: 7px 10px 7px 28px;
   }
 
-  .search input::placeholder { color: var(--ink-3); }
-  .search input:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .search input::placeholder {
+    color: var(--ink-3);
+  }
+  .search input:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
 
   .search .sigil {
     position: absolute;
@@ -192,7 +211,11 @@
     pointer-events: none;
   }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
 
   .chip {
     font-family: var(--sans);
@@ -206,8 +229,14 @@
     cursor: pointer;
   }
 
-  .chip:hover { border-color: var(--ink-3); color: var(--ink); }
-  .chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .chip:hover {
+    border-color: var(--ink-3);
+    color: var(--ink);
+  }
+  .chip:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
 
   .chip[aria-pressed='true'] {
     background: var(--ink);
@@ -225,7 +254,9 @@
 
   /* ── Group sections ───────────────────────────────────────── */
 
-  section.group { padding-block: 34px 6px; }
+  section.group {
+    padding-block: 34px 6px;
+  }
 
   .group-head {
     display: flex;
@@ -291,8 +322,13 @@
     text-decoration: none;
   }
 
-  .op-name:hover { color: var(--fig); }
-  .op-name:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .op-name:hover {
+    color: var(--fig);
+  }
+  .op-name:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
 
   .alias {
     font-family: var(--mono);
@@ -323,8 +359,13 @@
     background: var(--leaf);
   }
 
-  .status.pending .dot { background: transparent; border: 1.5px solid var(--ochre); }
-  .status.pending { color: var(--ochre); }
+  .status.pending .dot {
+    background: transparent;
+    border: 1.5px solid var(--ochre);
+  }
+  .status.pending {
+    color: var(--ochre);
+  }
 
   .op-desc {
     font-size: 13.5px;
@@ -349,9 +390,17 @@
     white-space: pre;
   }
 
-  .shape .sig { color: var(--fig); font-weight: 700; }
-  .shape .slot { color: var(--ink-2); font-style: italic; }
-  .shape .punc { color: var(--ink-3); }
+  .shape .sig {
+    color: var(--fig);
+    font-weight: 700;
+  }
+  .shape .slot {
+    color: var(--ink-2);
+    font-style: italic;
+  }
+  .shape .punc {
+    color: var(--ink-3);
+  }
 
   .ret {
     font-family: var(--mono);
@@ -360,11 +409,17 @@
     margin-bottom: 14px;
   }
 
-  .ret span { color: var(--type); }
+  .ret span {
+    color: var(--type);
+  }
 
   /* ── Parameters ───────────────────────────────────────────── */
 
-  .params { display: flex; flex-direction: column; gap: 11px; }
+  .params {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
 
   .param {
     display: grid;
@@ -379,7 +434,9 @@
     background: var(--rule);
   }
 
-  .param.req::before { background: var(--fig); }
+  .param.req::before {
+    background: var(--fig);
+  }
 
   .p-line {
     display: flex;
@@ -407,7 +464,11 @@
     color: var(--ink-3);
   }
 
-  .tags { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+  .tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
 
   .tag {
     font-family: var(--sans);
@@ -420,10 +481,22 @@
     white-space: nowrap;
   }
 
-  .tag.lazy { color: var(--ochre); background: var(--ochre-soft); }
-  .tag.named { color: var(--ink-2); background: var(--rule-soft); }
-  .tag.truth { color: var(--type); background: var(--type-soft); }
-  .tag.pres { color: var(--ink-2); background: var(--rule-soft); }
+  .tag.lazy {
+    color: var(--ochre);
+    background: var(--ochre-soft);
+  }
+  .tag.named {
+    color: var(--ink-2);
+    background: var(--rule-soft);
+  }
+  .tag.truth {
+    color: var(--type);
+    background: var(--type-soft);
+  }
+  .tag.pres {
+    color: var(--ink-2);
+    background: var(--rule-soft);
+  }
 
   .p-desc {
     font-size: 12.5px;
@@ -443,7 +516,11 @@
     text-align: center;
   }
 
-  .empty code { font-family: var(--mono); font-size: 0.9em; color: var(--fig); }
+  .empty code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    color: var(--fig);
+  }
 
   .legend {
     border-top: 1px solid var(--rule);
@@ -455,9 +532,19 @@
     color: var(--ink-2);
   }
 
-  .legend div { display: flex; gap: 8px; align-items: baseline; }
-  .legend .k { flex: none; }
-  .legend .k .tag, .legend .k .alias { position: relative; top: -1px; }
+  .legend div {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+  }
+  .legend .k {
+    flex: none;
+  }
+  .legend .k .tag,
+  .legend .k .alias {
+    position: relative;
+    top: -1px;
+  }
 
   .legend .bar {
     display: inline-block;
@@ -469,7 +556,9 @@
     top: 2px;
   }
 
-  .legend .bar.opt { background: var(--rule); }
+  .legend .bar.opt {
+    background: var(--rule);
+  }
 
   footer {
     border-top: 1px solid var(--rule);
@@ -492,7 +581,9 @@
     max-width: 78ch;
   }
 
-  footer li { margin-bottom: 6px; }
+  footer li {
+    margin-bottom: 6px;
+  }
 
   footer code {
     font-family: var(--mono);
@@ -512,7 +603,9 @@
     margin-bottom: 20px;
   }
 
-  .flag b { color: var(--ink); }
+  .flag b {
+    color: var(--ink);
+  }
 
   .colophon {
     font-family: var(--mono);
@@ -522,20 +615,33 @@
   }
 
   @media (max-width: 560px) {
-    header.masthead { padding-block: 30px 22px; }
-    .grid { gap: 0 20px; }
-    .search { flex-basis: 100%; }
+    header.masthead {
+      padding-block: 30px 22px;
+    }
+    .grid {
+      gap: 0 20px;
+    }
+    .search {
+      flex-basis: 100%;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    * { transition: none !important; animation: none !important; }
+    * {
+      transition: none !important;
+      animation: none !important;
+    }
   }
 </style>
 
 <header class="masthead wrap">
   <p class="eyebrow">fig-tree-evaluator · v3 spec</p>
   <h1>Every v3 operator, <em>its aliases and parameters</em></h1>
-  <p class="standfirst">The whole operator surface on one page: the shorthand call shape, every parameter with its type, default and delivery mode, and what each returns. Compiled from the v3 spec docs and read back out of the definitions themselves.</p>
+  <p class="standfirst">
+    The whole operator surface on one page: the shorthand call shape, every parameter with its type,
+    default and delivery mode, and what each returns. Compiled from the v3 spec docs and read back
+    out of the definitions themselves.
+  </p>
   <div class="tally" id="tally"></div>
 </header>
 
@@ -543,7 +649,13 @@
   <div class="toolbar-inner">
     <label class="search">
       <span class="sigil" aria-hidden="true">$</span>
-      <input id="q" type="search" placeholder="filter operators, aliases, parameters…" aria-label="Filter operators" autocomplete="off">
+      <input
+        id="q"
+        type="search"
+        placeholder="filter operators, aliases, parameters…"
+        aria-label="Filter operators"
+        autocomplete="off"
+      />
     </label>
     <div class="chips" id="chips" role="group" aria-label="Filter by group"></div>
   </div>
@@ -553,32 +665,77 @@
 
 <div class="wrap">
   <div class="legend">
-    <div><span class="k"><span class="bar"></span></span><span>Required parameter — the bar runs solid alongside it</span></div>
-    <div><span class="k"><span class="bar opt"></span></span><span>Optional parameter</span></div>
-    <div><span class="k"><span class="tag named">named</span></span><span>Named face only — never travels positionally</span></div>
-    <div><span class="k"><span class="tag lazy">lazy</span></span><span>Evaluated only if and when it is needed</span></div>
-    <div><span class="k"><span class="tag truth">truthiness</span></span><span>A truthiness position: <code>false</code>, <code>null</code>, <code>0</code>, <code>""</code> are falsy</span></div>
-    <div><span class="k"><span class="tag pres">presence-sensitive</span></span><span>Unsupplied and supplied-as-null differ; no runtime default</span></div>
+    <div>
+      <span class="k"><span class="bar"></span></span
+      ><span>Required parameter — the bar runs solid alongside it</span>
+    </div>
+    <div>
+      <span class="k"><span class="bar opt"></span></span><span>Optional parameter</span>
+    </div>
+    <div>
+      <span class="k"><span class="tag named">named</span></span
+      ><span>Named face only — never travels positionally</span>
+    </div>
+    <div>
+      <span class="k"><span class="tag lazy">lazy</span></span
+      ><span>Evaluated only if and when it is needed</span>
+    </div>
+    <div>
+      <span class="k"><span class="tag truth">truthiness</span></span
+      ><span
+        >A truthiness position: <code>false</code>, <code>null</code>, <code>0</code>,
+        <code>""</code> are falsy</span
+      >
+    </div>
+    <div>
+      <span class="k"><span class="tag pres">presence-sensitive</span></span
+      ><span>Unsupplied and supplied-as-null differ; no runtime default</span>
+    </div>
   </div>
 </div>
 
 <footer class="wrap">
   <h3>What this page leaves out</h3>
   <ul>
-    <li><b>Null policies.</b> Every parameter has one, and they are decided per parameter — <code>propagate</code>, <code>value</code>, or reject-by-type. The consolidated view is the null-policy review sheet; a second copy here would fall out of sync on its first edit.</li>
-    <li><b>Node-level reserved keys</b>, which are not parameters: <code>fallback</code>, <code>vars</code>, <code>useCache</code>, and the <code>//</code> comment key.</li>
-    <li><b>Candidate parameters</b> not yet adopted: <code>emptyDefault</code> on <code>min</code>/<code>max</code>, and <code>missingPathDefault</code> on <code>http</code>/<code>graphQL</code>.</li>
-    <li><b>Parameter-name aliases</b> — they do not exist in v3, so each name shown is the only spelling.</li>
+    <li>
+      <b>Null policies.</b> Every parameter has one, and they are decided per parameter —
+      <code>propagate</code>, <code>value</code>, or reject-by-type. The consolidated view is the
+      null-policy review sheet; a second copy here would fall out of sync on its first edit.
+    </li>
+    <li>
+      <b>Node-level reserved keys</b>, which are not parameters: <code>fallback</code>,
+      <code>vars</code>, <code>useCache</code>, and the <code>//</code> comment key.
+    </li>
+    <li>
+      <b>Candidate parameters</b> not yet adopted: <code>emptyDefault</code> on
+      <code>min</code>/<code>max</code>, and <code>missingPathDefault</code> on
+      <code>http</code>/<code>graphQL</code>.
+    </li>
+    <li>
+      <b>Parameter-name aliases</b> — they do not exist in v3, so each name shown is the only
+      spelling.
+    </li>
   </ul>
 
   <h3>A count discrepancy, since resolved</h3>
   <div class="flag">
-    <b>The canonical list used to head itself “42 core + 3 I/O operators” over a table of 41 core rows</b>, and the M3 milestone in the implementation plan said “all 42 core operators” — both consistent with <code>substring</code> having been cut from core during the string batch without the headline counts following. Corrected in the specs at Phase 7, to <b>41 core</b>: 40 <code>defineOperator()</code> definitions plus <code>literal</code>, which is grammar and has none. The 13 symbolic aliases were correct as stated.
+    <b
+      >The canonical list used to head itself “42 core + 3 I/O operators” over a table of 41 core
+      rows</b
+    >, and the M3 milestone in the implementation plan said “all 42 core operators” — both
+    consistent with <code>substring</code> having been cut from core during the string batch without
+    the headline counts following. Corrected in the specs at Phase 7, to <b>41 core</b>: 40
+    <code>defineOperator()</code> definitions plus <code>literal</code>, which is grammar and has
+    none. The 13 symbolic aliases were correct as stated.
   </div>
 
   <p class="colophon">
     <span id="stamp"></span>
-    Names, aliases and grouping from the canonical list in v3-api.md · parameters, types, defaults and positional faces from the batch 1–8 parameter passes · types shown post-review, per the type-driven admission rule that adds <code>| null</code> to every propagate holder · descriptions, delivery modes and return types read out of the live definitions in src/operators · pending operators carry the implementation-plan phase that lands them.
+    Names, aliases and grouping from the canonical list in v3-api.md · parameters, types, defaults
+    and positional faces from the batch 1–8 parameter passes · types shown post-review, per the
+    type-driven admission rule that adds <code>| null</code> to every propagate holder ·
+    descriptions, delivery modes and return types read out of the live definitions in src/operators
+    · pending operators carry the implementation-plan phase that lands them.
   </p>
 </footer>
 
@@ -586,34 +743,38 @@
   // Injected by codegen/buildOperatorReference.ts: { groups, ops, meta }.
   // Registered operators are described by their own definitions; the rest
   // come from the generator's PENDING table.
-  const DATA = {"groups":[["logic","Logic & control","Short-circuiting is delivery metadata, not operator code"],["comparison","Comparison","Equality is total; ordering propagates null"],["math","Arithmetic & math","Numbers only — no coercion, ever"],["string","String","Renderers take anything; value operators take strict strings"],["array","Arrays & iteration","Elements evaluate in parallel, always"],["data","Data & objects","For dynamic paths — a literal \"$data.a.b\" is sugar for get"],["special","Special",""],["io","I/O","Registered via httpOperators(client) / sqlOperators(connection), never in core"]],"ops":[{"n":"and","g":"logic","st":"live","ret":"boolean","pos":["...values"],"d":"True when every value is truthy — operands run in parallel","p":[{"n":"values","t":"array","r":true,"ev":"race","tr":true,"d":"Operands, judged by FigTree truthiness; null is falsy"}]},{"n":"or","g":"logic","st":"live","ret":"boolean","pos":["...values"],"d":"True when any value is truthy — operands run in parallel","p":[{"n":"values","t":"array","r":true,"ev":"race","tr":true,"d":"Operands, judged by FigTree truthiness; null is falsy"}]},{"n":"not","a":"!","g":"logic","st":"live","ret":"boolean","pos":["value"],"d":"Negate the truthiness of a value","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":true,"d":"Judged by FigTree truthiness; null is falsy, so not(null) is true"}]},{"n":"if","a":"?","g":"logic","st":"live","ret":"any","pos":["condition","then","else"],"d":"Choose between two branches — only the chosen branch evaluates","p":[{"n":"condition","t":"any","r":true,"ev":null,"tr":true,"d":"Judged by FigTree truthiness; null is falsy"},{"n":"then","t":"any","r":true,"ev":"lazy","tr":false,"d":"The value when the condition holds"},{"n":"else","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The value when it does not; omitted means null"}]},{"n":"match","g":"logic","st":"live","ret":"any","pos":["value","branches","default"],"d":"Dispatch on a value — only the matching branch evaluates","p":[{"n":"value","t":"string | number | boolean | null","r":true,"ev":null,"tr":false,"d":"Matched against branch keys by its canonical string form"},{"n":"branches","t":"object","r":true,"ev":"lazyEntries","tr":false,"d":"A literal map of branches, or an expression computing one"},{"n":"default","t":"any","r":false,"ev":"lazy","tr":false,"d":"The branch taken when none matches; absent means failure"}]},{"n":"firstOf","g":"logic","st":"live","ret":"any","pos":["...values"],"d":"The first candidate that is not null (SQL COALESCE) — later candidates never evaluate","p":[{"n":"values","t":"array","r":true,"ev":"lazyElements","tr":false,"d":"Candidates, tried in order; only null is skipped"}]},{"n":"equal","a":"=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The values compared; null is comparable (null equals null)"},{"n":"caseInsensitive","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Fold string operands to one case before comparing (shallow)"}]},{"n":"notEqual","a":"!=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Are the values NOT all equal? The exact negation of equal (never \"all distinct\")","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The values compared; null is comparable (null equals null)"},{"n":"caseInsensitive","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Fold string operands to one case before comparing (shallow)"}]},{"n":"greaterThan","a":">","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value strictly greater than the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"greaterThanOrEqual","a":">=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value greater than or equal to the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"lessThan","a":"<","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value strictly less than the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"lessThanOrEqual","a":"<=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value less than or equal to the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"plus","a":"+","g":"math","st":"live","ret":"number | string | array | object","pos":["...values"],"d":"Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The operands; homogeneous: all numbers, strings, arrays or objects"},{"n":"expect","t":"'number' | 'string' | 'array' | 'object'","r":false,"ev":null,"tr":false,"d":"Pin the mode: every operand must be this type, and an empty input yields its identity"},{"n":"nullValueDefault","t":"number | string | array | object","r":false,"ev":"lazy","tr":false,"d":"Replaces any null operand before the addition"}]},{"n":"subtract","a":"-","g":"math","st":"live","ret":"number","pos":["value","minus"],"d":"Subtract one number from another","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"minus","t":"number | null","r":true,"ev":null,"tr":false,"d":"The amount subtracted from value"}]},{"n":"multiply","a":"*","g":"math","st":"live","ret":"number","pos":["...values"],"d":"Multiply numbers together — an empty input is 1, the empty product","p":[{"n":"values","t":"array[number]","r":true,"ev":null,"tr":false,"d":"The factors"},{"n":"nullValueDefault","t":"number","r":false,"ev":"lazy","tr":false,"d":"Replaces any null factor before multiplying"}]},{"n":"divide","a":"/","g":"math","st":"live","ret":"number","pos":["value","by"],"d":"Divide one number by another — true division; zero divisors fail","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"by","t":"number | null","r":true,"ev":null,"tr":false,"d":"The divisor"}]},{"n":"modulo","g":"math","st":"live","ret":"number","pos":["value","mod"],"d":"The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"mod","t":"number | null","r":true,"ev":null,"tr":false,"d":"The modulus"}]},{"n":"power","a":"^","g":"math","st":"live","ret":"number","pos":["base","exponent"],"d":"Raise a base to an exponent — overflow and complex results fail","p":[{"n":"base","t":"number | null","r":true,"ev":null,"tr":false,"d":null},{"n":"exponent","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"round","g":"math","st":"live","ret":"number","pos":["value","decimals"],"d":"Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null},{"n":"decimals","t":"integer","r":false,"def":"0","ev":null,"tr":false,"d":"Decimal places to keep; negative values round to powers of ten"}]},{"n":"floor","g":"math","st":"live","ret":"number","pos":["value"],"d":"Round down toward negative infinity","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"ceil","g":"math","st":"live","ret":"number","pos":["value"],"d":"Round up toward positive infinity","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"min","g":"math","st":"live","ret":"number | string","pos":["...values"],"d":"The smallest of the values — numbers numerically, strings in codepoint order","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"The candidates: all numbers, or all strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces any null candidate before comparing"}]},{"n":"max","g":"math","st":"live","ret":"number | string","pos":["...values"],"d":"The largest of the values — numbers numerically, strings in codepoint order","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"The candidates: all numbers, or all strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces any null candidate before comparing"}]},{"n":"abs","g":"math","st":"live","ret":"number","pos":["value"],"d":"The absolute value","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"buildString","g":"string","st":"live","ret":"string","pos":["template","...substitutions"],"d":"Render a template, filling its tokens — the result is always a string","p":[{"n":"template","t":"string | null","r":true,"ev":null,"tr":false,"d":"The text, with %N or {{name}} tokens; in a literal template, {{$data.x}} is that reference"},{"n":"substitutions","t":"array | object","r":false,"def":"[]","ev":null,"tr":false,"d":"An array pairs with %N tokens, an object with {{name}} tokens; the mode dispatches on which arrives"},{"n":"trim","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Trim whitespace from each rendered value, never from the template text"},{"n":"closeGaps","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"A value that renders empty also takes one run of adjacent template whitespace"},{"n":"nullValueDefault","t":"string | number | boolean","r":false,"ev":"lazy","tr":false,"d":"Rendered in place of a null value, instead of \"\""}]},{"n":"split","g":"string","st":"live","ret":"array","pos":["value","delimiter"],"d":"Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":"The string to divide"},{"n":"delimiter","t":"string","r":false,"def":"\" \"","ev":null,"tr":false,"d":"Split on each occurrence; \"\" splits into code points"},{"n":"trim","t":"boolean","r":false,"def":"true","ev":null,"tr":false,"d":"Trim whitespace from each piece"}]},{"n":"join","g":"string","st":"live","ret":"string","pos":["...values"],"d":"Render array elements to text and concatenate them with a delimiter","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"Elements of any type, rendered by the stringification table; a null renders \"\" and still occupies its slot"},{"n":"delimiter","t":"string","r":false,"def":"\" \"","ev":null,"tr":false,"d":"Placed between each adjacent pair — shares its contract with split"},{"n":"nullValueDefault","t":"string | number | boolean","r":false,"ev":"lazy","tr":false,"d":"Rendered in place of a null element, instead of \"\""}]},{"n":"lower","g":"string","st":"live","ret":"string","pos":["value"],"d":"Lowercase a string — Unicode default case mapping, locale-independent","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"upper","g":"string","st":"live","ret":"string","pos":["value"],"d":"Uppercase a string — Unicode default case mapping, locale-independent","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"trim","g":"string","st":"live","ret":"string","pos":["value"],"d":"Strip whitespace (the JS trim set) from both ends of a string","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"regex","g":"string","st":"live","ret":"boolean | string | array | null","pos":["value","pattern"],"d":"Test, extract or match a string against a regular expression","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":"The subject string"},{"n":"pattern","t":"string | null","r":true,"ev":null,"tr":false,"d":"The regular expression source"},{"n":"flags","t":"string","r":false,"def":"\"\"","ev":null,"tr":false,"d":"The admitted subset: i, m, s, u"},{"n":"mode","t":"'test' | 'extract' | 'match'","r":false,"def":"\"test\"","ev":null,"tr":false,"d":"test gives a boolean, extract the first matching substring, match every one of them"},{"n":"noMatchDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The extract answer when nothing matches — a matched empty string still passes through"}]},{"n":"length","g":"array","st":"live","ret":"integer","pos":["...value"],"d":"An array's element count, or a string's Unicode code-point count","p":[{"n":"value","t":"string | array | null","r":true,"ev":null,"tr":false,"d":"The array or string measured"}]},{"n":"map","g":"array","st":"live","ret":"array","pos":["input","each"],"d":"Transform every element of an array","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":false,"d":"Evaluated per element, with $element and $index bound"}]},{"n":"filter","g":"array","st":"live","ret":"array","pos":["input","each"],"d":"Keep the elements of an array whose predicate is truthy","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"find","g":"array","st":"live","ret":"any","pos":["input","each"],"d":"The first element of an array whose predicate is truthy","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"},{"n":"noMatchDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The answer when nothing matches; a found null passes through unchanged"}]},{"n":"some","g":"array","st":"live","ret":"boolean","pos":["input","each"],"d":"True when any element satisfies the predicate","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"every","g":"array","st":"live","ret":"boolean","pos":["input","each"],"d":"True when every element satisfies the predicate","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"get","g":"data","st":"live","ret":"any","pos":["path","missingPathDefault"],"d":"Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference","p":[{"n":"path","t":"string | array | null","r":true,"ev":null,"tr":false,"d":"Dot and bracket segments, quoted keys and the [*] projection — or an array of segments, taken verbatim"},{"n":"from","t":"any","r":false,"def":"Symbol(fig-tree:EvaluationData)","ev":null,"tr":false,"d":"The object searched instead of the evaluation data — replace, never merge; a null source is one where every path is missing"},{"n":"missingPathDefault","t":"any","r":false,"ev":"lazy","tr":false,"d":"The answer when the path is missing — a stored null passes through unchanged; supplying it also opts out of strictDataPaths"}]},{"n":"buildObject","g":"data","st":"live","ret":"object","pos":["...entries"],"d":"Assemble an object from computed key/value entries — for keys known only at runtime","p":[{"n":"entries","t":"array","r":true,"ev":null,"tr":false,"d":"Objects with a \"key\" and a \"value\"; a null value keeps its key"}]},{"n":"literal","st":"grammar","ret":"any","pos":[],"d":"Quote a value — the parse boundary: its contents are never parsed, validated or evaluated","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":false,"d":"The payload is the content itself, never read as a positional list or a named map"}],"g":"special"},{"n":"convert","g":"special","st":"live","ret":"number | string | boolean | array","pos":["value","to"],"d":"Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":false,"d":"The value to convert; null propagates except for boolean, where it is false"},{"n":"to","t":"'number' | 'string' | 'boolean' | 'array'","r":true,"ev":null,"tr":false,"d":"The target type"}]},{"n":"http","g":"io","st":"live","ret":"any","pos":["url"],"d":"One HTTP request — GET or POST — returning the parsed JSON response","p":[{"n":"url","t":"string","r":true,"ev":null,"tr":false,"d":"A full http(s) URL is used verbatim; anything else — including an empty string — joins http.baseEndpoint"},{"n":"method","t":"'get' | 'post'","r":false,"def":"\"get\"","ev":null,"tr":false,"d":"Lowercase; the mutating verbs are deliberately absent — an expression is a read"},{"n":"query","t":"object","r":false,"ev":null,"tr":false,"d":"Query-string pairs; a null value omits its pair, a composite one is an error"},{"n":"body","t":"string | number | boolean | array | object","r":false,"ev":null,"tr":false,"d":"The JSON payload; a whole-null body means NO body, while nulls inside one are JSON nulls"},{"n":"headers","t":"object","r":false,"ev":null,"tr":false,"d":"Merged over the http.headers option per key; a null value removes an inherited pair"},{"n":"returnPath","t":"string | array","r":false,"ev":null,"tr":false,"d":"Dot/bracket path or segments array applied to the response; a miss is null"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]},{"n":"graphQL","g":"io","st":"live","ret":"any","pos":["query","variables"],"d":"One GraphQL query — a POST of { query, variables } — returning the data field","p":[{"n":"query","t":"string","r":true,"ev":null,"tr":false,"d":"The GraphQL document — the protocol’s own word, as sql.query is"},{"n":"variables","t":"object","r":false,"ev":null,"tr":false,"d":"Query variables; a null value is CARRIED as JSON null, a nullable argument being meaningful GraphQL"},{"n":"url","t":"string","r":false,"ev":null,"tr":false,"d":"Per-node endpoint override; unset means the graphQL.endpoint option"},{"n":"headers","t":"object","r":false,"ev":null,"tr":false,"d":"Merged over http.headers then graphQL.headers; a null value removes a pair"},{"n":"returnPath","t":"string | array","r":false,"ev":null,"tr":false,"d":"Dot/bracket path or segments array applied to the response; a miss is null"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]},{"n":"sql","g":"io","st":"live","ret":"any","pos":["query","...values"],"d":"One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side","p":[{"n":"query","t":"string","r":true,"ev":null,"tr":false,"d":"SQL text with the driver’s own placeholders — FigTree never parses SQL"},{"n":"values","t":"array | object","r":false,"ev":null,"tr":false,"d":"Bind values — positional as an array, named as an object; a null binds SQL NULL"},{"n":"shape","t":"'rows' | 'firstRow' | 'column' | 'firstValue'","r":false,"def":"\"rows\"","ev":null,"tr":false,"d":"rows: every row object; firstRow: the first; column: one column’s values; firstValue: one scalar"},{"n":"noRowDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The answer when firstRow / firstValue find no row — never for rows / column, never on failure"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]}],"meta":{"generated":"2026-09-20","live":43,"pending":1}};
-  const GROUPS = DATA.groups;
-  const OPS = DATA.ops;
-  const LIVE = 'live';
+  const DATA = {"groups":[["logic","Logic & control","Short-circuiting is delivery metadata, not operator code"],["comparison","Comparison","Equality is total; ordering propagates null"],["math","Arithmetic & math","Numbers only — no coercion, ever"],["string","Strings","Renderers take anything; value operators take strict strings"],["array","Arrays & iteration","Elements evaluate in parallel, always"],["data","Data & objects","For dynamic paths — a literal \"$data.a.b\" is sugar for get"],["io","I/O","Registered via httpOperators(client) / sqlOperators(connection), never in core"],["other","Other",""]],"ops":[{"n":"and","g":"logic","st":"live","ret":"boolean","pos":["...values"],"d":"True when every value is truthy — operands run in parallel","p":[{"n":"values","t":"array","r":true,"ev":"race","tr":true,"d":"Operands, judged by FigTree truthiness; null is falsy"}]},{"n":"or","g":"logic","st":"live","ret":"boolean","pos":["...values"],"d":"True when any value is truthy — operands run in parallel","p":[{"n":"values","t":"array","r":true,"ev":"race","tr":true,"d":"Operands, judged by FigTree truthiness; null is falsy"}]},{"n":"not","a":"!","g":"logic","st":"live","ret":"boolean","pos":["value"],"d":"Negate the truthiness of a value","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":true,"d":"Judged by FigTree truthiness; null is falsy, so not(null) is true"}]},{"n":"if","a":"?","g":"logic","st":"live","ret":"any","pos":["condition","then","else"],"d":"Choose between two branches — only the chosen branch evaluates","p":[{"n":"condition","t":"any","r":true,"ev":null,"tr":true,"d":"Judged by FigTree truthiness; null is falsy"},{"n":"then","t":"any","r":true,"ev":"lazy","tr":false,"d":"The value when the condition holds"},{"n":"else","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The value when it does not; omitted means null"}]},{"n":"match","g":"logic","st":"live","ret":"any","pos":["value","branches","default"],"d":"Dispatch on a value — only the matching branch evaluates","p":[{"n":"value","t":"string | number | boolean | null","r":true,"ev":null,"tr":false,"d":"Matched against branch keys by its canonical string form"},{"n":"branches","t":"object","r":true,"ev":"lazyEntries","tr":false,"d":"A literal map of branches, or an expression computing one"},{"n":"default","t":"any","r":false,"ev":"lazy","tr":false,"d":"The branch taken when none matches; absent means failure"}]},{"n":"firstOf","g":"logic","st":"live","ret":"any","pos":["...values"],"d":"The first candidate that is not null (SQL COALESCE) — later candidates never evaluate","p":[{"n":"values","t":"array","r":true,"ev":"lazyElements","tr":false,"d":"Candidates, tried in order; only null is skipped"}]},{"n":"equal","a":"=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The values compared; null is comparable (null equals null)"},{"n":"caseInsensitive","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Fold string operands to one case before comparing (shallow)"}]},{"n":"notEqual","a":"!=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Are the values NOT all equal? The exact negation of equal (never \"all distinct\")","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The values compared; null is comparable (null equals null)"},{"n":"caseInsensitive","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Fold string operands to one case before comparing (shallow)"}]},{"n":"greaterThan","a":">","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value strictly greater than the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"greaterThanOrEqual","a":">=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value greater than or equal to the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"lessThan","a":"<","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value strictly less than the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"lessThanOrEqual","a":"<=","g":"comparison","st":"live","ret":"boolean","pos":["...values"],"d":"Is the first value less than or equal to the second?","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"Exactly two operands: both numbers, or both strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces a null operand before comparing"}]},{"n":"plus","a":"+","g":"math","st":"live","ret":"number | string | array | object","pos":["...values"],"d":"Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"The operands; homogeneous: all numbers, strings, arrays or objects"},{"n":"expect","t":"'number' | 'string' | 'array' | 'object'","r":false,"ev":null,"tr":false,"d":"Pin the mode: every operand must be this type, and an empty input yields its identity"},{"n":"nullValueDefault","t":"number | string | array | object","r":false,"ev":"lazy","tr":false,"d":"Replaces any null operand before the addition"}]},{"n":"subtract","a":"-","g":"math","st":"live","ret":"number","pos":["value","minus"],"d":"Subtract one number from another","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"minus","t":"number | null","r":true,"ev":null,"tr":false,"d":"The amount subtracted from value"}]},{"n":"multiply","a":"*","g":"math","st":"live","ret":"number","pos":["...values"],"d":"Multiply numbers together — an empty input is 1, the empty product","p":[{"n":"values","t":"array[number]","r":true,"ev":null,"tr":false,"d":"The factors"},{"n":"nullValueDefault","t":"number","r":false,"ev":"lazy","tr":false,"d":"Replaces any null factor before multiplying"}]},{"n":"divide","a":"/","g":"math","st":"live","ret":"number","pos":["value","by"],"d":"Divide one number by another — true division; zero divisors fail","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"by","t":"number | null","r":true,"ev":null,"tr":false,"d":"The divisor"}]},{"n":"modulo","g":"math","st":"live","ret":"number","pos":["value","mod"],"d":"The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":"The main operand"},{"n":"mod","t":"number | null","r":true,"ev":null,"tr":false,"d":"The modulus"}]},{"n":"power","a":"^","g":"math","st":"live","ret":"number","pos":["base","exponent"],"d":"Raise a base to an exponent — overflow and complex results fail","p":[{"n":"base","t":"number | null","r":true,"ev":null,"tr":false,"d":null},{"n":"exponent","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"round","g":"math","st":"live","ret":"number","pos":["value","decimals"],"d":"Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null},{"n":"decimals","t":"integer","r":false,"def":"0","ev":null,"tr":false,"d":"Decimal places to keep; negative values round to powers of ten"}]},{"n":"floor","g":"math","st":"live","ret":"number","pos":["value"],"d":"Round down toward negative infinity","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"ceil","g":"math","st":"live","ret":"number","pos":["value"],"d":"Round up toward positive infinity","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"abs","g":"math","st":"live","ret":"number","pos":["value"],"d":"The absolute value","p":[{"n":"value","t":"number | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"min","g":"math","st":"live","ret":"number | string","pos":["...values"],"d":"The smallest of the values — numbers numerically, strings in codepoint order","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"The candidates: all numbers, or all strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces any null candidate before comparing"}]},{"n":"max","g":"math","st":"live","ret":"number | string","pos":["...values"],"d":"The largest of the values — numbers numerically, strings in codepoint order","p":[{"n":"values","t":"array[number | string]","r":true,"ev":null,"tr":false,"d":"The candidates: all numbers, or all strings (codepoint order)"},{"n":"nullValueDefault","t":"number | string","r":false,"ev":"lazy","tr":false,"d":"Replaces any null candidate before comparing"}]},{"n":"buildString","g":"string","st":"live","ret":"string","pos":["template","...substitutions"],"d":"Render a template, filling its tokens — the result is always a string","p":[{"n":"template","t":"string | null","r":true,"ev":null,"tr":false,"d":"The text, with %N or {{name}} tokens; in a literal template, {{$data.x}} is that reference"},{"n":"substitutions","t":"array | object","r":false,"def":"[]","ev":null,"tr":false,"d":"An array pairs with %N tokens, an object with {{name}} tokens; the mode dispatches on which arrives"},{"n":"trim","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"Trim whitespace from each rendered value, never from the template text"},{"n":"closeGaps","t":"boolean","r":false,"def":"false","ev":null,"tr":false,"d":"A value that renders empty also takes one run of adjacent template whitespace"},{"n":"nullValueDefault","t":"string | number | boolean","r":false,"ev":"lazy","tr":false,"d":"Rendered in place of a null value, instead of \"\""}]},{"n":"split","g":"string","st":"live","ret":"array","pos":["value","delimiter"],"d":"Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":"The string to divide"},{"n":"delimiter","t":"string","r":false,"def":"\" \"","ev":null,"tr":false,"d":"Split on each occurrence; \"\" splits into code points"},{"n":"trim","t":"boolean","r":false,"def":"true","ev":null,"tr":false,"d":"Trim whitespace from each piece"}]},{"n":"join","g":"string","st":"live","ret":"string","pos":["...values"],"d":"Render array elements to text and concatenate them with a delimiter","p":[{"n":"values","t":"array","r":true,"ev":null,"tr":false,"d":"Elements of any type, rendered by the stringification table; a null renders \"\" and still occupies its slot"},{"n":"delimiter","t":"string","r":false,"def":"\" \"","ev":null,"tr":false,"d":"Placed between each adjacent pair — shares its contract with split"},{"n":"nullValueDefault","t":"string | number | boolean","r":false,"ev":"lazy","tr":false,"d":"Rendered in place of a null element, instead of \"\""}]},{"n":"lower","g":"string","st":"live","ret":"string","pos":["value"],"d":"Lowercase a string — Unicode default case mapping, locale-independent","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"upper","g":"string","st":"live","ret":"string","pos":["value"],"d":"Uppercase a string — Unicode default case mapping, locale-independent","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"trim","g":"string","st":"live","ret":"string","pos":["value"],"d":"Strip whitespace (the JS trim set) from both ends of a string","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":null}]},{"n":"regex","g":"string","st":"live","ret":"boolean | string | array | null","pos":["value","pattern"],"d":"Test, extract or match a string against a regular expression","p":[{"n":"value","t":"string | null","r":true,"ev":null,"tr":false,"d":"The subject string"},{"n":"pattern","t":"string | null","r":true,"ev":null,"tr":false,"d":"The regular expression source"},{"n":"flags","t":"string","r":false,"def":"\"\"","ev":null,"tr":false,"d":"The admitted subset: i, m, s, u"},{"n":"mode","t":"'test' | 'extract' | 'match'","r":false,"def":"\"test\"","ev":null,"tr":false,"d":"test gives a boolean, extract the first matching substring, match every one of them"},{"n":"noMatchDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The extract answer when nothing matches — a matched empty string still passes through"}]},{"n":"length","g":"array","st":"live","ret":"integer","pos":["...value"],"d":"An array's element count, or a string's Unicode code-point count","p":[{"n":"value","t":"string | array | null","r":true,"ev":null,"tr":false,"d":"The array or string measured"}]},{"n":"map","g":"array","st":"live","ret":"array","pos":["input","each"],"d":"Transform every element of an array","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":false,"d":"Evaluated per element, with $element and $index bound"}]},{"n":"filter","g":"array","st":"live","ret":"array","pos":["input","each"],"d":"Keep the elements of an array whose predicate is truthy","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"find","g":"array","st":"live","ret":"any","pos":["input","each"],"d":"The first element of an array whose predicate is truthy","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"},{"n":"noMatchDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The answer when nothing matches; a found null passes through unchanged"}]},{"n":"some","g":"array","st":"live","ret":"boolean","pos":["input","each"],"d":"True when any element satisfies the predicate","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"every","g":"array","st":"live","ret":"boolean","pos":["input","each"],"d":"True when every element satisfies the predicate","p":[{"n":"input","t":"array","r":true,"ev":null,"tr":false,"d":"The collection iterated over; a null input is a type error"},{"n":"as","t":"string","r":false,"ev":"structural","tr":false,"d":"Rename the bindings: as: 'row' binds $row and $rowIndex"},{"n":"nullInputDefault","t":"array","r":false,"ev":"lazy","tr":false,"d":"Used as the collection when input evaluates to null — typically []"},{"n":"each","t":"any","r":true,"ev":"perElement","tr":true,"d":"The predicate, per element — a truthiness position, so null is falsy"}]},{"n":"get","g":"data","st":"live","ret":"any","pos":["path","missingPathDefault"],"d":"Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference","p":[{"n":"path","t":"string | array | null","r":true,"ev":null,"tr":false,"d":"Dot and bracket segments, quoted keys and the [*] projection — or an array of segments, taken verbatim"},{"n":"from","t":"any","r":false,"def":"Symbol(fig-tree:EvaluationData)","ev":null,"tr":false,"d":"The object searched instead of the evaluation data — replace, never merge; a null source is one where every path is missing"},{"n":"missingPathDefault","t":"any","r":false,"ev":"lazy","tr":false,"d":"The answer when the path is missing — a stored null passes through unchanged; supplying it also opts out of strictDataPaths"}]},{"n":"buildObject","g":"data","st":"live","ret":"object","pos":["...entries"],"d":"Assemble an object from computed key/value entries — for keys known only at runtime","p":[{"n":"entries","t":"array","r":true,"ev":null,"tr":false,"d":"Objects with a \"key\" and a \"value\"; a null value keeps its key"}]},{"n":"convert","g":"other","st":"live","ret":"number | string | boolean | array","pos":["value","to"],"d":"Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":false,"d":"The value to convert; null propagates except for boolean, where it is false"},{"n":"to","t":"'number' | 'string' | 'boolean' | 'array'","r":true,"ev":null,"tr":false,"d":"The target type"}]},{"n":"http","g":"io","st":"live","ret":"any","pos":["url"],"d":"One HTTP request — GET or POST — returning the parsed JSON response","p":[{"n":"url","t":"string","r":true,"ev":null,"tr":false,"d":"A full http(s) URL is used verbatim; anything else — including an empty string — joins http.baseEndpoint"},{"n":"method","t":"'get' | 'post'","r":false,"def":"\"get\"","ev":null,"tr":false,"d":"Lowercase; the mutating verbs are deliberately absent — an expression is a read"},{"n":"query","t":"object","r":false,"ev":null,"tr":false,"d":"Query-string pairs; a null value omits its pair, a composite one is an error"},{"n":"body","t":"string | number | boolean | array | object","r":false,"ev":null,"tr":false,"d":"The JSON payload; a whole-null body means NO body, while nulls inside one are JSON nulls"},{"n":"headers","t":"object","r":false,"ev":null,"tr":false,"d":"Merged over the http.headers option per key; a null value removes an inherited pair"},{"n":"returnPath","t":"string | array","r":false,"ev":null,"tr":false,"d":"Dot/bracket path or segments array applied to the response; a miss is null"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]},{"n":"graphQL","g":"io","st":"live","ret":"any","pos":["query","variables"],"d":"One GraphQL query — a POST of { query, variables } — returning the data field","p":[{"n":"query","t":"string","r":true,"ev":null,"tr":false,"d":"The GraphQL document — the protocol’s own word, as sql.query is"},{"n":"variables","t":"object","r":false,"ev":null,"tr":false,"d":"Query variables; a null value is CARRIED as JSON null, a nullable argument being meaningful GraphQL"},{"n":"url","t":"string","r":false,"ev":null,"tr":false,"d":"Per-node endpoint override; unset means the graphQL.endpoint option"},{"n":"headers","t":"object","r":false,"ev":null,"tr":false,"d":"Merged over http.headers then graphQL.headers; a null value removes a pair"},{"n":"returnPath","t":"string | array","r":false,"ev":null,"tr":false,"d":"Dot/bracket path or segments array applied to the response; a miss is null"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]},{"n":"sql","g":"io","st":"live","ret":"any","pos":["query","...values"],"d":"One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side","p":[{"n":"query","t":"string","r":true,"ev":null,"tr":false,"d":"SQL text with the driver’s own placeholders — FigTree never parses SQL"},{"n":"values","t":"array | object","r":false,"ev":null,"tr":false,"d":"Bind values — positional as an array, named as an object; a null binds SQL NULL"},{"n":"shape","t":"'rows' | 'firstRow' | 'column' | 'firstValue'","r":false,"def":"\"rows\"","ev":null,"tr":false,"d":"rows: every row object; firstRow: the first; column: one column’s values; firstValue: one scalar"},{"n":"noRowDefault","t":"any","r":false,"def":"null","ev":"lazy","tr":false,"d":"The answer when firstRow / firstValue find no row — never for rows / column, never on failure"},{"n":"timeout","t":"integer","r":false,"ev":null,"tr":false,"d":"Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches"}]},{"n":"literal","g":"other","st":"grammar","ret":"any","pos":[],"d":"Quote a value — the compile boundary: its contents are never compiled, validated or evaluated","p":[{"n":"value","t":"any","r":true,"ev":null,"tr":false,"d":"The payload is the content itself, never read as a positional list or a named map"}]}],"meta":{"generated":"2026-09-23","live":43,"pending":1}}
+  const GROUPS = DATA.groups
+  const OPS = DATA.ops
+  const LIVE = 'live'
 
-  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const esc = (s) =>
+    String(s).replace(
+      /[&<>"]/g,
+      (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+    )
 
   const callShape = (op) => {
-    const sig = `<span class="sig">$${esc(op.n)}</span>`;
-    const byName = Object.fromEntries(op.p.map((p) => [p.n, p]));
-    const slot = (t) => `<span class="slot">${esc(t)}</span>`;
-    if (!op.pos.length) return `{ ${sig}: ${slot('<content>')} }`;
+    const sig = `<span class="sig">$${esc(op.n)}</span>`
+    const byName = Object.fromEntries(op.p.map((p) => [p.n, p]))
+    const slot = (t) => `<span class="slot">${esc(t)}</span>`
+    if (!op.pos.length) return `{ ${sig}: ${slot('<content>')} }`
     const parts = op.pos.map((entry) => {
-      if (entry.startsWith('...')) return slot('...' + entry.slice(3));
-      const p = byName[entry];
-      return slot(entry + (p && !p.r ? '?' : ''));
-    });
-    if (op.pos.length === 1 && !op.pos[0].startsWith('...')) return `{ ${sig}: ${parts[0]} }`;
-    return `{ ${sig}: <span class="punc">[</span>${parts.join('<span class="punc">, </span>')}<span class="punc">]</span> }`;
-  };
+      if (entry.startsWith('...')) return slot('...' + entry.slice(3))
+      const p = byName[entry]
+      return slot(entry + (p && !p.r ? '?' : ''))
+    })
+    if (op.pos.length === 1 && !op.pos[0].startsWith('...')) return `{ ${sig}: ${parts[0]} }`
+    return `{ ${sig}: <span class="punc">[</span>${parts.join('<span class="punc">, </span>')}<span class="punc">]</span> }`
+  }
 
   const paramEl = (p, positionalNames) => {
-    const tags = [];
-    if (!positionalNames.has(p.n)) tags.push('<span class="tag named">named</span>');
-    if (p.ev === 'lazy') tags.push('<span class="tag lazy">lazy</span>');
-    else if (p.ev) tags.push(`<span class="tag lazy">${esc(p.ev)}</span>`);
-    if (p.tr) tags.push('<span class="tag truth">truthiness</span>');
-    if (!p.r && p.def === undefined) tags.push('<span class="tag pres">presence-sensitive</span>');
+    const tags = []
+    if (!positionalNames.has(p.n)) tags.push('<span class="tag named">named</span>')
+    if (p.ev === 'lazy') tags.push('<span class="tag lazy">lazy</span>')
+    else if (p.ev) tags.push(`<span class="tag lazy">${esc(p.ev)}</span>`)
+    if (p.tr) tags.push('<span class="tag truth">truthiness</span>')
+    if (!p.r && p.def === undefined) tags.push('<span class="tag pres">presence-sensitive</span>')
     return `<div class="param ${p.r ? 'req' : ''}">
       <div>
         <div class="p-line">
@@ -624,13 +785,13 @@
         </div>
         ${p.d ? `<p class="p-desc">${esc(p.d)}</p>` : ''}
       </div>
-    </div>`;
-  };
+    </div>`
+  }
 
   const opEl = (op) => {
-    const positionalNames = new Set(op.pos.map((e) => (e.startsWith('...') ? e.slice(3) : e)));
-    const live = op.st === LIVE;
-    const statusLabel = live ? 'live' : op.st === 'grammar' ? 'grammar' : 'phase ' + op.st;
+    const positionalNames = new Set(op.pos.map((e) => (e.startsWith('...') ? e.slice(3) : e)))
+    const live = op.st === LIVE
+    const statusLabel = live ? 'live' : op.st === 'grammar' ? 'grammar' : 'phase ' + op.st
     return `<article class="op" id="op-${esc(op.n)}">
       <div class="op-head">
         <a class="op-name" href="#op-${esc(op.n)}">${esc(op.n)}</a>
@@ -641,32 +802,38 @@
       <div class="shape">${callShape(op)}</div>
       <p class="ret">returns <span>${esc(op.ret)}</span></p>
       <div class="params">${op.p.map((p) => paramEl(p, positionalNames)).join('')}</div>
-    </article>`;
-  };
+    </article>`
+  }
 
-  const out = document.getElementById('out');
-  const chips = document.getElementById('chips');
-  const q = document.getElementById('q');
-  let activeGroup = null;
+  const out = document.getElementById('out')
+  const chips = document.getElementById('chips')
+  const q = document.getElementById('q')
+  let activeGroup = null
 
   const matches = (op, term) => {
-    if (!term) return true;
-    const hay = [op.n, op.a || '', op.d, op.ret, ...op.p.map((p) => p.n + ' ' + p.t + ' ' + (p.d || ''))]
+    if (!term) return true
+    const hay = [
+      op.n,
+      op.a || '',
+      op.d,
+      op.ret,
+      ...op.p.map((p) => p.n + ' ' + p.t + ' ' + (p.d || '')),
+    ]
       .join(' ')
-      .toLowerCase();
-    return hay.includes(term);
-  };
+      .toLowerCase()
+    return hay.includes(term)
+  }
 
   const render = () => {
-    const term = q.value.trim().toLowerCase();
-    const shown = OPS.filter((op) => matches(op, term) && (!activeGroup || op.g === activeGroup));
+    const term = q.value.trim().toLowerCase()
+    const shown = OPS.filter((op) => matches(op, term) && (!activeGroup || op.g === activeGroup))
     if (!shown.length) {
-      out.innerHTML = `<p class="empty">No operator matches <code>${esc(q.value.trim())}</code>.</p>`;
-      return;
+      out.innerHTML = `<p class="empty">No operator matches <code>${esc(q.value.trim())}</code>.</p>`
+      return
     }
     out.innerHTML = GROUPS.map(([key, label, note]) => {
-      const ops = shown.filter((op) => op.g === key);
-      if (!ops.length) return '';
+      const ops = shown.filter((op) => op.g === key)
+      if (!ops.length) return ''
       return `<section class="group">
         <div class="group-head">
           <h2>${esc(label)}</h2>
@@ -674,71 +841,75 @@
           ${note ? `<span class="note">${note}</span>` : ''}
         </div>
         <div class="grid">${ops.map(opEl).join('')}</div>
-      </section>`;
-    }).join('');
-  };
+      </section>`
+    }).join('')
+  }
 
   const buildChips = () => {
-    const all = document.createElement('button');
-    all.className = 'chip';
-    all.type = 'button';
-    all.innerHTML = 'All<span class="n">' + OPS.length + '</span>';
-    all.setAttribute('aria-pressed', 'true');
-    all.onclick = () => setGroup(null);
-    chips.appendChild(all);
+    const all = document.createElement('button')
+    all.className = 'chip'
+    all.type = 'button'
+    all.innerHTML = 'All<span class="n">' + OPS.length + '</span>'
+    all.setAttribute('aria-pressed', 'true')
+    all.onclick = () => setGroup(null)
+    chips.appendChild(all)
     GROUPS.forEach(([key, label]) => {
-      const n = OPS.filter((o) => o.g === key).length;
-      const b = document.createElement('button');
-      b.className = 'chip';
-      b.type = 'button';
-      b.dataset.group = key;
-      b.innerHTML = esc(label) + '<span class="n">' + n + '</span>';
-      b.setAttribute('aria-pressed', 'false');
-      b.onclick = () => setGroup(key);
-      chips.appendChild(b);
-    });
-  };
+      const n = OPS.filter((o) => o.g === key).length
+      const b = document.createElement('button')
+      b.className = 'chip'
+      b.type = 'button'
+      b.dataset.group = key
+      b.innerHTML = esc(label) + '<span class="n">' + n + '</span>'
+      b.setAttribute('aria-pressed', 'false')
+      b.onclick = () => setGroup(key)
+      chips.appendChild(b)
+    })
+  }
 
   const setGroup = (key) => {
-    activeGroup = key;
-    [...chips.children].forEach((c) => c.setAttribute('aria-pressed', String((c.dataset.group || null) === key)));
-    render();
-  };
+    activeGroup = key
+    ;[...chips.children].forEach((c) =>
+      c.setAttribute('aria-pressed', String((c.dataset.group || null) === key))
+    )
+    render()
+  }
 
   const tally = () => {
-    const core = OPS.filter((o) => o.g !== 'io').length;
-    const io = OPS.length - core;
-    const live = OPS.filter((o) => o.st === LIVE).length;
-    const aliases = OPS.filter((o) => o.a).length;
-    const params = OPS.reduce((n, o) => n + o.p.length, 0);
+    const core = OPS.filter((o) => o.g !== 'io').length
+    const io = OPS.length - core
+    const live = OPS.filter((o) => o.st === LIVE).length
+    const aliases = OPS.filter((o) => o.a).length
+    const params = OPS.reduce((n, o) => n + o.p.length, 0)
     document.getElementById('tally').innerHTML = [
       `<b>${core}</b> core operators`,
       `<b>${io}</b> I/O`,
       `<b>${aliases}</b> symbolic aliases`,
       `<b>${params}</b> parameters`,
       `<b>${live}</b> registered today`,
-    ].map((s) => `<span>${s}</span>`).join('');
-  };
+    ]
+      .map((s) => `<span>${s}</span>`)
+      .join('')
+  }
 
   document.getElementById('stamp').innerHTML =
     `Generated from the definitions on ${esc(DATA.meta.generated)} — ` +
     `${DATA.meta.live} operators read from their own metadata, ` +
-    `${DATA.meta.pending} still spec-sourced. Rebuild with <code>pnpm generate:operators</code>.<br>`;
+    `${DATA.meta.pending} still spec-sourced. Rebuild with <code>pnpm generate:operators</code>.<br>`
 
-  buildChips();
-  tally();
-  render();
+  buildChips()
+  tally()
+  render()
 
-  q.addEventListener('input', render);
+  q.addEventListener('input', render)
   document.addEventListener('keydown', (e) => {
     if (e.key === '/' && document.activeElement !== q) {
-      e.preventDefault();
-      q.focus();
+      e.preventDefault()
+      q.focus()
     }
     if (e.key === 'Escape' && document.activeElement === q) {
-      q.value = '';
-      render();
-      q.blur();
+      q.value = ''
+      render()
+      q.blur()
     }
-  });
+  })
 </script>

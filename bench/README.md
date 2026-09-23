@@ -20,7 +20,10 @@ pnpm bench                    # list what exists
 pnpm bench holes              # run one
 pnpm bench holes parseOnce    # run several, in that order
 pnpm bench all                # run every bench, in listing order
+pnpm bench holes --packaged   # v3 as the built package, build/index.js (run `pnpm build` first)
 ```
+
+By default v3 runs from `src/` through tsx, which compiles with esbuild's `keepNames`: every function is wrapped in a `__name()` call, and v3's compiler pays for it on every closure it creates. `--packaged` resolves the benches' import of v3 to the built package instead (`bench/packaged.mjs`), so v3 is measured as a host installs it — about 2–5% faster warm and 11–14% faster cold than from source (measured at the Phase-14 close; see 16a.1 in the implementation plan). The v2 arm is unchanged either way, which makes it a noise gauge when comparing the two.
 
 A bench takes between a few seconds and about a minute; `all` runs them one after another, never side by side, since two benches sharing the CPU would each measure the other, and prints a `# name` heading before each so the whole transcript reads as one Markdown document. It prints one Markdown table per sweep — copy it straight into an issue — and ends with a `(sink N)` line, which is the harness proving nothing was optimised away, not a result.
 
