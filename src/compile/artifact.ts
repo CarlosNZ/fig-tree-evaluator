@@ -346,7 +346,7 @@ export interface CompileArtifact extends Rollups {
    */
   hasErrors: boolean
   /** True iff every hole carries a static fallback (B2). */
-  shielded: boolean
+  timeoutShielded: boolean
   /**
    * What the walk measured of this expression alone, before composition.
    * With `fragmentCalls` it is the material composition works from, kept

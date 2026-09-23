@@ -148,7 +148,7 @@ await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme',
     { path: ['rate'],
       node: { operator: 'http', url: '…/rates', query: { currency: ref('$data.currency') }, returnPath: 'rate' } },
   ],
-  issues: [], shielded: false,                             // no hole root carries a static fallback
+  issues: [], timeoutShielded: false,                      // no hole root carries a static fallback
   nodeCount: 9, maxDepth: 3,                               // stored as numbers; limits compared per call
 }
 // compile cache after: identityMap { exprA → artifact(A) } ; contentLRU { hashA → artifact(A) }
@@ -207,7 +207,7 @@ await fig.evaluate(exprB, { data: { tier: 'silver' } }) // → ['standard-suppor
         default: constant([]),                             // declared lazy, but constant — nothing to defer
       } },
   ],
-  issues: [], shielded: false,                             // the hole root carries no static fallback
+  issues: [], timeoutShielded: false,                      // the hole root carries no static fallback
   nodeCount: 6, maxDepth: 3,                               // illustrative
 }
 // compile cache after: identityMap { exprA → artifact(A), exprB → artifact(B) } ; contentLRU { hashA, hashB }

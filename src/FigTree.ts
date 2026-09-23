@@ -318,7 +318,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
       issues,
-      timeoutShielded: artifact.shielded,
+      timeoutShielded: artifact.timeoutShielded,
     }
   }
 

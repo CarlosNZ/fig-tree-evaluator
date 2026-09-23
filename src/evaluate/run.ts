@@ -99,7 +99,8 @@ export const runEvaluation = async (
     armed !== undefined ? signalScope(armed.signal, armed.settle) : new DeferredScope(undefined)
   // `armed !== undefined` is implied by the `timeout` clause; it is spelled
   // out so the compiler narrows `armed` wherever `shielded` is tested below
-  const shielded = armed !== undefined && timeout !== undefined && artifact.shielded && evaluable
+  const shielded =
+    armed !== undefined && timeout !== undefined && artifact.timeoutShielded && evaluable
   const collector = reporting ? createErrorCollector() : undefined
   const recorder =
     options.trace === true

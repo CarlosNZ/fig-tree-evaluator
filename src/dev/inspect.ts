@@ -208,7 +208,7 @@ const printArtifactFacts = (artifact: CompileArtifact) => {
   console.log('\nartifact:')
   console.log(
     `  nodeCount ${artifact.nodeCount}   maxDepth ${artifact.maxDepth}` +
-      `   shielded ${artifact.shielded}   identityOnly ${artifact.identityOnly}`
+      `   timeoutShielded ${artifact.timeoutShielded}   identityOnly ${artifact.identityOnly}`
   )
   console.log(`  operators    ${list(deps.operators)}`)
   console.log(

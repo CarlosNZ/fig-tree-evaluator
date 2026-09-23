@@ -37,8 +37,8 @@
  *   returns them to the order a reader sees in the document.
  * - **shielding** — a hole whose `fallback` is constant can be filled
  *   without evaluating anything. When every hole has one the expression is
- *   `shielded`: a timeout becomes constant assembly, and the editor gets
- *   its `timeoutShielded` badge.
+ *   `timeoutShielded`: a timeout becomes constant assembly, and the flag is
+ *   the `validate()` badge of the same name.
  *
  * One scope concern lives here rather than in the check layer: iterator
  * `as` renaming. Renamed bindings (`$order`, `$orderIndex`) are
@@ -95,7 +95,7 @@
  *     block on it included. A constant root has none.
  * 15. Each hole takes its shielding precompute — a constant `fallback`,
  *     authored or from `operatorDefaults`. Every hole shielded makes the
- *     artifact `shielded`.
+ *     artifact `timeoutShielded`.
  * 16. The issue stream is sorted into tree order (stably, so several issues
  *     on one node keep their emission order), and the counts and dependency
  *     lists ride out with the tree.
@@ -237,7 +237,7 @@ export const compileExpression = (
     holes,
     issues: state.issues,
     hasErrors,
-    shielded: holes.every((hole) => hole.timeoutFallback !== undefined),
+    timeoutShielded: holes.every((hole) => hole.timeoutFallback !== undefined),
     own,
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
     fragmentCalls: state.fragmentCalls,
