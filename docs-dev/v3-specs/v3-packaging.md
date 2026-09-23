@@ -113,7 +113,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 - **Clients**: `HttpClient`, `SqlConnection`.
 - **Fragments**: `FragmentDefinition` (+ its parameter-declaration types).
 - **Methods & results**: `EvaluationResult`, the report envelope and trace shapes (names reserved; shapes deferred per evaluator-methods), `Issue`, the `getDependencies()` report shape, `FigTreeError` (class doubles as type).
-- **Editor hints**: the hint-map type — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module).
+- **Editor hints**: `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap`, `TypeSeeds` — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), and for a fragment's `metadata`.
 
 ## `./convert`
 
@@ -130,9 +130,20 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 Discharges the deferral from the parameter passes ("final name and packaging mechanics → Packaging area"):
 
 - **Name confirmed: `editor-hints`** — self-describing, and the awkwardness of typing it is borne by tooling authors, not expression authors.
-- A **data-only module**: two plain typed maps — canonical operator names to display values (colours, per-parameter editor seeds), and `category` values to their presentation (display label, listing position, colour; added at Phase-13 planning, where the field itself was ruled onto the definition). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorCategory`) are fine, since they erase at build.
+- A **data-only module**: three plain typed values — canonical operator names to display values (display name, colours, per-parameter editor seeds), `category` values to their presentation (display label, listing position, colour; added at Phase-13 planning, where the field itself was ruled onto the definition), and a starting value per type (added at the Phase-14 review). No functions, no engine imports at runtime — type-only imports from the root (e.g. `OperatorCategory`) are fine, since they erase at build.
 - The exported map type is the documented key convention for plugin/custom-operator authors who want their definitions to display well in the same tools (settled in the parameters doc; the type itself exports from the root per the Types rule above).
 - Co-versioned here rather than in the editor repo so an operator/parameter change and its hint update land in the same PR (rationale recorded in the parameters doc).
+
+### Ruling: the shape of the hints (Carl, September 2026, Phase-14 review)
+
+Built at 14.2 in `src/editor-hints/index.ts`, with the types in `src/editorHintTypes.ts`.
+
+- **Three exports.** `operatorHints` maps each core and I/O operator to an `OperatorHints`: `displayName`, `docUrl` (the operator's documentation, which the editor links each node to — required), `backgroundColor`, `textColor` and an optional `seeds` object keyed by parameter name. Every `docUrl` is the repository root until the v3 README has a section per operator. `categoryHints` maps each `category` to a `CategoryHints`: `displayName`, `order` (from 0) and the category's own `backgroundColor` / `textColor`. `typeSeeds` holds one starting value per type in the metadata vocabulary: `'Replace me'` for `string` and `any`, `1` for `number` and `integer`, `true` for `boolean`, `[]`, `{}` and `null`. The types `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap` and `TypeSeeds` export from the root.
+- **`seeds`, not `defaults`.** `default` already names the runtime default on a parameter declaration. The colour fields keep CSS's names and the v2 editor's (`backgroundColor`, `textColor`), flat rather than nested, so the editor's port is a change of keys, not of shape.
+- **A parameter's starting value** is the operator's seed for it; otherwise the type seed for its declared type: a literal union's first member, a union's first non-null member's entry, otherwise the type's own entry. The runtime `default` is deliberately not a step, because a parameter is usually added to change it from its default. The module is data only, so the rule is documented on `OperatorHints.seeds` and implemented by the editor. Per-parameter seeds are given where a type seed would not make a working example: mostly required parameters, pairs that must agree (`buildString`'s template and substitutions), a flag that defaults on (`split.trim`), and `timeout`, where the integer seed of 1 ms would expire every request.
+- **The palette** gives each category a hue, shown at full strength in `categoryHints`, and each operator a light shade of its category's hue. Display names are rewritten for v3 (`'String builder'`, `'Get data'`). Chosen by Claude on Carl's instruction, and open to change.
+- **Fragments** have no entry here, since they are host-defined. A host describes one by putting a `FragmentHints` object in the fragment definition's `metadata` — a convention only, since the engine never reads `metadata`. `FragmentHints` is `OperatorHints` with `docUrl` optional (`Omit<OperatorHints, 'docUrl'> & { docUrl?: string }`), because a host's own fragments rarely have published documentation. The editor owns the colour for a fragment that carries none.
+- **Drift tests** (test/editor-hints.test.ts): one entry per core and I/O operator and per category, and no others; unique display names; every `docUrl` an https URL; `order` running 0 to n−1; every colour pair at 4.5:1 contrast or better (WCAG AA); every seed naming a declared parameter and passing its type and constraints; every type seed passing its own type; and, using the starting-value rule, each operator's starting node — its required parameters — validating without errors, both alone and with any one optional parameter added. An iterator's `as` is checked with its bindings renamed through the node, since adding it is a rename.
 
 ## Ruling: no `./internal`
 

@@ -131,6 +131,18 @@ export type {
   TraceEvent,
 } from './runtimeInterface'
 export type { ResolvedParams, ParamValue, TypeOf } from './inference'
+
+// Phase 14.2 — the shapes of the `./editor-hints` subpath's data, exported
+// here so the subpath stays a data module; also the key convention for
+// plugin operators and for a fragment's `metadata`.
+export type {
+  CategoryHintMap,
+  CategoryHints,
+  FragmentHints,
+  OperatorHintMap,
+  OperatorHints,
+  TypeSeeds,
+} from './editorHintTypes'
 export type { ParameterDeclarations } from './operatorDefinition'
 
 // Phase 4.2 — the core operators (the eager set so far; later phases add
