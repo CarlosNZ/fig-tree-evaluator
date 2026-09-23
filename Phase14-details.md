@@ -58,7 +58,6 @@ Decision 4. The core and I/O definitions are `declareOperator()` literals built 
   - every key names a registered operator;
   - every seed names a declared parameter and passes `checkType` against its declared type;
   - the category map covers exactly the values in `OPERATOR_CATEGORIES`.
-- **Follow-on:** the reference generator can read labels and order from editor-hints and categories from the definitions. That deletes its hand-maintained operator→group table, which is the duplication flagged at Phase 13.
 
 ### 14.3 · Build more than one entry point
 
@@ -88,11 +87,12 @@ Decision 4. The core and I/O definitions are `declareOperator()` literals built 
 
 ### 14.5 · Publishing and housekeeping
 
-- **Publishing:** Q6 (trusted publishing) and Q7 (`next` pre-releases).
+- **Publishing (done):** `pnpm release [--dry-run]` ([codegen/release.mjs](codegen/release.mjs)); betas are `-beta.N` under `beta`. Q6 and Q7 resolved in the packaging spec. CI trusted publishing stays a later improvement.
 - **Stale files:**
   - [tsconfig.json](tsconfig.json)'s comments still mention yarn, a ts-node block and Node >= 20.
   - [CLAUDE.md](CLAUDE.md)'s "Generated files" section describes the v2 alias table.
   - `buildOperatorAliasReference` is due to die anyway (packaging, "Codegen disposition").
+- **Reference generator:** [codegen/buildOperatorReference.ts](codegen/buildOperatorReference.ts) reads section labels and order from `categoryHints`, each operator's section from its definition's `category`, and order within a section from `coreOperators`. That deletes the hand-maintained `CANONICAL` table and `GROUPS`' labels (the duplication flagged at Phase 13, [v3-implementation-plan.md](docs-dev/v3-specs/v3-implementation-plan.md) 13.x close-out), keeping only the one-line section notes and `literal`'s `PENDING` entry. Visible on the page: "Special" becomes "Other", "String" becomes "Strings", `abs` follows `ceil`.
 
 ## Decisions
 

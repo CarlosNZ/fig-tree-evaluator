@@ -24,6 +24,7 @@ pnpm size                 # re-print the bundle-size report for the existing bui
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm generate             # regenerate v2-src/operators/operatorAliases.ts (v2-only tooling)
 pnpm getVersion           # regenerate src/version.ts from package.json
+pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
 ```
