@@ -299,6 +299,7 @@ A checklist rather than a build phase (Carl, September 2026, at the Phase-14 rev
 - [ ] **Write the 3.0.0 CHANGELOG entry**, which `pnpm release` requires. Phase 16's results doc supplies its performance story.
 - [ ] **Retire the v2 assets** once 16b is done: `/v2-src`, `test/V2`, `test/v2-working`, `jest.v2.config.js` and the `test:v2` script, and the v2-only codegen (`queryBuilder`, `generateMassiveQuery`).
 - [ ] **Refresh CLAUDE.md** for the post-v3 repo; several sections still describe v2 (for example "Generated files").
+- [ ] **Decide whether deep evaluation keeps the input's key order.** Found at Phase-15 planning (September 2026): evaluating a whole object that holds nodes puts its constant keys first and its computed ones after, so `{ a: <node>, b: 1, c: <node>, d: 2 }` evaluates to `{ b, d, a, c }`. v2's `evaluateFullObject` kept the input's order. JSON promises no key order, but a host that renders an object's fields in key order, such as a form, would see them move. Either the skeleton assembly keeps the order, or "Deep evaluation" in [v3-api.md](v3-api.md) says it does not.
 - [ ] **Review the parked items** ("Parked until after 3.0" under Standing dependencies & flags, below) and open an issue for each one that stays parked.
 - [ ] **Publish 3.0.0** with `pnpm release`; `latest` moves to 3.x.
 - [ ] **Tag the last 2.x as `v2` on npm** (`npm dist-tag add fig-tree-evaluator@<last 2.x> v2`), so v2 users can still install it by name ("Publishing & versioning" in [v3-packaging.md](v3-packaging.md)).
