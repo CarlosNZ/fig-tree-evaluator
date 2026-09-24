@@ -157,5 +157,10 @@ export type {
 } from './editorHintTypes'
 
 // ── Migration ────────────────────────────────────────────────────────────
-// The shapes `migrateV2Expression` returns, from the `./migrate` subpath.
-export type { MigrationIssue, MigrationResult } from './migrationTypes'
+// The shapes the `./migrate` subpath's two functions take and return.
+export type {
+  FragmentMigrationResult,
+  MigrationIssue,
+  MigrationResult,
+  V2Options,
+} from './migrationTypes'

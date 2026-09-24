@@ -20,8 +20,8 @@ export const ENTRIES = [
     subpath: './migrate',
     name: 'migrate/index',
     source: 'src/migrate/index.ts',
-    budget: 130,
-    marker: 'migrateV2Expression is a placeholder',
+    budget: 19_200,
+    marker: 'is not a v2 operator',
   },
   {
     subpath: './editor-hints',

@@ -1079,7 +1079,7 @@ const BATCH_3: Example[] = [
     differs: { v2: { value: '{{n}} is 1' }, v3: { value: '\\1 is 1' } },
   },
   {
-    name: '`substitutionCharacter` means nothing in named mode',
+    name: '`substitutionCharacter` means nothing in named mode, though v2 evaluated it',
     input: {
       operator: 'stringSubstitution',
       string: '[{{a}}]',
@@ -1092,6 +1092,7 @@ const BATCH_3: Example[] = [
       substitutions: { a: 1 },
       trim: true,
     },
+    issues: [{ code: 'discarded-expression', path: ['substitutionCharacter'] }],
   },
   {
     name: 'a computed named template',

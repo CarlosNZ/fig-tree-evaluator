@@ -15,8 +15,8 @@
  * computed `type` on SQL, MATCH branches on the node beside a computed
  * `branches`, and call-node arguments beside a computed `parameters`.
  */
-import type { V2Options } from '../migrationTypes'
-import { issue, type Issue, type Path } from './issues'
+import type { MigrationIssue, V2Options } from '../migrationTypes'
+import { isUnder, issue, type Path } from './issues'
 import { V2_BEHAVIOUR } from './v2/behaviour'
 import { V2_CHILDREN, mapChildren } from './v2/children'
 import { v2OperatorFor } from './v2/names'
@@ -34,10 +34,11 @@ export interface NodeSource {
    */
   ignored?: Record<string, unknown>
   /**
-   * Why a node was left as written, for stage 2 to quote: the issue, and the
-   * place of the key that decided it
+   * Why a node was left as written, for stage 2 to quote: the issue, the
+   * place of the key that decided it, and the operator as the input spelled
+   * it, where the message names it
    */
-  quoted?: { code: QuotedCode; at: Path }
+  quoted?: { code: QuotedCode; at: Path; name?: string }
 }
 
 /** The issues of a node left as written ("What it leaves as written") */
@@ -53,7 +54,7 @@ export interface Normalized {
    */
   sources: Map<object, NodeSource>
   /** What stage 1 dropped */
-  issues: Issue[]
+  issues: MigrationIssue[]
 }
 
 type PlainObject = Record<string, unknown>
@@ -110,9 +111,6 @@ const isComputed = (value: unknown) =>
 const below = (source: Source, key: string | number): Source =>
   source.entries?.[key] ?? { path: [...source.path, key] }
 
-const isUnder = (path: Path, parent: Path) =>
-  parent.length <= path.length && parent.every((segment, i) => path[i] === segment)
-
 /** A path as an author reads it, relative to its node: `$plus.values` */
 const display = (path: Path, node: Path) => {
   const relative = isUnder(path, node) && path.length > node.length ? path.slice(node.length) : path
@@ -121,6 +119,18 @@ const display = (path: Path, node: Path) => {
       typeof segment === 'number' ? `[${segment}]` : i === 0 ? segment : `.${segment}`
     )
     .join('')
+}
+
+/**
+ * A node's operator as the input spelled it: a shorthand key's name, unless
+ * the payload's own `operator` replaced it
+ */
+const spelling = (draft: Draft) => {
+  const operator = draft.get('operator')
+  const key = operator?.source.path.at(-1)
+  if (typeof key === 'string' && isAlias(key)) return key.slice(1)
+  const value = operator?.value
+  return typeof value === 'string' ? value : (JSON.stringify(value) ?? String(value))
 }
 
 /** Marks where a `children` mapping put a child, so its source can follow */
@@ -139,7 +149,7 @@ class Draft {
   constructor(
     /** The node's own source */
     readonly source: Source,
-    readonly issues: Issue[]
+    readonly issues: MigrationIssue[]
   ) {}
 
   get(key: string) {
@@ -178,7 +188,7 @@ class Draft {
 
 class Normalizer {
   readonly sources = new Map<object, NodeSource>()
-  readonly issues: Issue[] = []
+  readonly issues: MigrationIssue[] = []
   private readonly fragments: PlainObject
   private readonly functions: Set<string>
   private readonly shorthand: boolean
@@ -227,6 +237,24 @@ class Normalizer {
   }
 
   /**
+   * Whether v2 evaluated anything in a value as it is written: a node, a
+   * call or shorthand, in an array, or in a plain object when v2 walked them
+   */
+  evaluates(value: unknown): boolean {
+    if (Array.isArray(value)) return value.some((element) => this.evaluates(element))
+    if (!isPlainObject(value)) return false
+    if (hasNodeKey(value)) return true
+    const shorthand = (key: string) =>
+      this.shorthand &&
+      isAlias(key) &&
+      (v2OperatorFor(key.slice(1)) !== undefined ||
+        Object.hasOwn(this.fragments, key.slice(1)) ||
+        this.functions.has(key.slice(1)))
+    if (Object.keys(value).some(shorthand)) return true
+    return this.fullObject && Object.values(value).some((element) => this.evaluates(element))
+  }
+
+  /**
    * A plain object with each of its values normalized, apart from those of
    * the keys `skip` names
    */
@@ -257,7 +285,7 @@ class Normalizer {
    * with the object's other keys laid over the result. `undefined` when no key
    * resolves, so the object is data.
    */
-  private expandShorthand(input: PlainObject, source: Source, issues: Issue[]) {
+  private expandShorthand(input: PlainObject, source: Source, issues: MigrationIssue[]) {
     if (!this.shorthand) return undefined
     const draft = new Draft(source, issues)
     let resolved = false
@@ -335,6 +363,7 @@ class Normalizer {
       return this.asWritten(input, source, mark, {
         code: 'unknown-operator',
         at: draft.get('operator')?.source.path ?? source.path,
+        name: spelling(draft),
       })
 
     // Step 5
@@ -351,6 +380,7 @@ class Normalizer {
         return this.asWritten(input, source, mark, {
           code: 'computed-children',
           at: children.source.path,
+          name: spelling(draft),
         })
     }
 
@@ -654,8 +684,14 @@ class Normalizer {
         )
       for (const [key, value] of Object.entries((parameters?.value ?? {}) as PlainObject)) {
         const entry = { value, source: below(at, key) }
-        if (this.fullObject && shadowing.has(key)) shadowed(key, entry.source.path)
-        else args.set(key, entry)
+        if (!this.fullObject || !shadowing.has(key)) {
+          args.set(key, entry)
+          continue
+        }
+        shadowed(key, entry.source.path)
+        // v2 evaluated it among the caller's aliases, then read the body's
+        if (this.evaluates(value))
+          draft.issues.push(issue('discarded-expression', entry.source.path))
       }
       for (const [key, entry] of draft.entries) {
         if (!isAlias(key)) continue

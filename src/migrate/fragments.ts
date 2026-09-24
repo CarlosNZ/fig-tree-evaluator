@@ -13,8 +13,8 @@
  * until no walk finds a new parameter. The walk is stage 2's, passed in.
  */
 import type { FragmentDefinition, FragmentParameterDeclaration } from '../fragments'
-import type { V2Options } from '../migrationTypes'
-import { issue, type Issue, type Path } from './issues'
+import type { MigrationIssue, V2Options } from '../migrationTypes'
+import { isUnder, issue, type Path } from './issues'
 import { normalizeV2, type NodeSource } from './normalize'
 import type { V2Operator } from './v2/operators.generated'
 import { V3_NAMES } from './v3Names.generated'
@@ -80,7 +80,7 @@ export interface FragmentInfo {
   description?: string
   metadata?: PlainObject
   /** What was found before the body is converted */
-  issues: Issue[]
+  issues: MigrationIssue[]
 }
 
 export interface Catalogue {
@@ -242,7 +242,8 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
   }
   if (description !== undefined) parameter.description = description
   if (Object.keys(others).length > 0) parameter.metadata = others
-  if (Object.hasOwn(entry, 'default')) {
+  // v2 inserted only a default that was not `undefined`
+  if (value !== undefined) {
     const path = [...at, 'default']
     const normalized = normalizeV2(value, options, path)
     normalized.sources.forEach((source, object) => info.sources.set(object, source))
@@ -284,6 +285,8 @@ const topDefaults = (
         ? [own, parameter.default]
         : [parameter.default, own]
       const fill = { key: shown(loser.path), winner: shown(winner.path) }
+      // v2 never evaluated the loser, so what stage 1 found in it goes
+      info.issues = info.issues.filter(({ path }) => !isUnder(path, loser.path))
       info.issues.push(issue('overridden-value', loser.path, fill))
       parameter.default = winner
     }
@@ -422,7 +425,7 @@ export const fragmentCatalogue = (options: V2Options, walk: BodyWalk): Catalogue
 const declaration = (
   parameter: ParameterInfo,
   converted: ConvertedDefault | undefined,
-  issues: Issue[]
+  issues: MigrationIssue[]
 ): FragmentParameterDeclaration => {
   const constant = converted !== undefined && converted !== 'computed' ? converted : undefined
   let { type } = parameter
@@ -449,7 +452,7 @@ export const definitionOf = (
   fragment: FragmentInfo,
   expression: unknown,
   defaults: ReadonlyMap<string, ConvertedDefault>,
-  issues: Issue[]
+  issues: MigrationIssue[]
 ): FragmentDefinition => {
   const all = [...fragment.parameters.values()]
   const ordered = [

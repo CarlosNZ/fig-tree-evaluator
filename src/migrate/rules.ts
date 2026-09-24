@@ -13,6 +13,7 @@ import { V3_NAMES } from './v3Names.generated'
 import {
   DRILLABLE,
   dataReference,
+  hasComputed,
   isComputed,
   isLiteral,
   isNode,
@@ -40,6 +41,12 @@ export interface RuleContext {
   issue: <C extends IssueCode>(code: C, at: string | Path | undefined, ...fill: Fill<C>) => void
   /** A var name nothing in reach uses, for a value the rule binds */
   freshVar: (base: string) => string
+  /**
+   * Leaves out of the result a v2 key's value, or a value below one
+   * (`['properties', 2]`), or the elements of an array from `from` on
+   * ("Values the output discards")
+   */
+  discard: (at: string | Path, from?: number) => void
 }
 
 /**
@@ -121,10 +128,12 @@ const instanceCaseInsensitive = (draft: V3Draft, context: RuleContext) => {
   return toNode(draft)
 }
 
-/** v2 used the first two values and ignored the rest */
+/** v2 used the first two values, though it evaluated them all */
 const firstTwo = (values: unknown[], context: RuleContext) => {
-  if (values.length > 2)
+  if (values.length > 2) {
     context.issue('values-cut', 'values', { removed: values.slice(2).map(render).join(', ') })
+    context.discard('values', 2)
+  }
   return values.slice(0, 2)
 }
 
@@ -141,6 +150,7 @@ const ordering = (inclusive: string) => (draft: V3Draft, context: RuleContext) =
       wrote: `\`${draft.to}\``,
       key: 'strict',
     })
+  context.discard('strict')
   const { values } = draft.params
   if (Array.isArray(values)) draft.params.values = firstTwo(values, context)
   return toNode(draft, operator)
@@ -163,6 +173,7 @@ const unescapedDelimiter = (value: unknown, context: RuleContext) => {
  */
 const trailingEmpty = (draft: V3Draft, context: RuleContext) => {
   if (draft.v2.excludeTrailing !== false) context.issue('split-trailing-empty', undefined)
+  context.discard('excludeTrailing')
   return toNode(draft)
 }
 
@@ -175,6 +186,7 @@ const trailingEmpty = (draft: V3Draft, context: RuleContext) => {
  */
 const plusType = (draft: V3Draft, context: RuleContext) => {
   if (!Object.hasOwn(draft.v2, 'type')) return toNode(draft)
+  context.discard('type')
   const { type } = draft.v2
   const { values } = draft.params
   switch (type) {
@@ -219,11 +231,13 @@ const binary =
 
     const winner = String(context.at('values').at(-1))
     for (const name of [first, second])
-      if (Object.hasOwn(draft.v2, name))
+      if (Object.hasOwn(draft.v2, name)) {
         context.issue('overridden-value', name, {
           key: String(context.at(name).at(-1)),
           winner,
         })
+        context.discard(name)
+      }
     if (Array.isArray(values)) {
       const [value, other] = firstTwo(values, context)
       return operands(value, other)
@@ -242,6 +256,7 @@ const division = binary('dividend', 'divisor', 'by')
 
 /** DIVIDE's `output`: v2's default was true division */
 const divideOutput = (draft: V3Draft, context: RuleContext) => {
+  context.discard('output')
   const { vars, ...divide } = division(draft, context)
   const { output } = draft.v2
   const withVars = (node: PlainObject) => ({ ...node, ...(vars !== undefined && { vars }) })
@@ -327,13 +342,19 @@ const literalEntries = (value: unknown, context: RuleContext) => {
   if (!value.every(isEntry)) {
     for (let i = 0; i < value.length; i += 2)
       if (i + 1 < value.length) entries.push({ key: value[i], value: value[i + 1] })
-      else context.issue('malformed-entry', ['properties', i])
+      else {
+        context.issue('malformed-entry', ['properties', i])
+        context.discard(['properties', i])
+      }
     return entries
   }
   value.forEach((element, i) => {
     if (isNode(element) || (Object.hasOwn(element, 'key') && Object.hasOwn(element, 'value')))
       entries.push(element)
-    else context.issue('malformed-entry', ['properties', i])
+    else {
+      context.issue('malformed-entry', ['properties', i])
+      context.discard(['properties', i])
+    }
   })
   return entries
 }
@@ -368,7 +389,8 @@ const matchBranches = (draft: V3Draft, context: RuleContext) => {
   if (Object.keys(draft.extra).length === 0) return toNode(draft)
   let matched = value
   let vars: PlainObject | undefined
-  if (isNode(value) && !isLiteral(value)) {
+  // Written twice, so anything but a reference or a constant is bound once
+  if (typeof value !== 'string' && hasComputed(value)) {
     const name = context.freshVar('value')
     matched = `$vars.${name}`
     vars = { [name]: value }
@@ -389,7 +411,13 @@ const matchBranches = (draft: V3Draft, context: RuleContext) => {
  */
 const splitUrl = (params: PlainObject) => {
   const given = unquote(params.url)
-  if (isComputed(params.url) || !isPlainObject(given)) return
+  // Only data has the form: not a node, nor an object v2 walked for its nodes
+  if (
+    isComputed(params.url) ||
+    !isPlainObject(given) ||
+    (!isLiteral(params.url) && hasComputed(params.url))
+  )
+    return
   const { url, headers } = given
   params.url = quoted(url)
   if (headers === undefined) return
@@ -466,6 +494,7 @@ const sqlShape = (draft: V3Draft, context: RuleContext) => {
       wrote: `\`shape: '${shape}'\``,
       key,
     })
+  for (const key of ['single', 'flatten', 'type']) context.discard(key)
   return { ...toNode(draft), ...(shape !== 'rows' && { shape }) }
 }
 
@@ -633,11 +662,13 @@ export const applyRule = (
 ): unknown => {
   const params: PlainObject = {}
   for (const [name, fate] of Object.entries(rule.params)) {
-    if (!Object.hasOwn(node.v2, name) || fate === 'consumed' || fate === 'omitted') continue
-    if (typeof fate === 'string') params[fate] = node.v2[name]
+    if (!Object.hasOwn(node.v2, name) || fate === 'consumed') continue
+    if (fate === 'omitted') context.discard(name)
+    else if (typeof fate === 'string') params[fate] = node.v2[name]
     else {
       const value = fate.value(node.v2[name], context)
       if (value !== undefined) params[fate.to] = value
+      else context.discard(name)
     }
   }
   Object.assign(params, rule.add)

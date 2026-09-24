@@ -178,6 +178,9 @@ export const templateRewrite = (draft: V3Draft, context: RuleContext) => {
   // v2 trimmed each substitution unless told not to; v3 trims none by default
   const trim =
     trimWhiteSpace === undefined ? true : trimWhiteSpace === false ? undefined : trimWhiteSpace
+  if (trim === undefined) context.discard('trimWhiteSpace')
+  context.discard('substitutionCharacter')
+  context.discard('numberMapping')
   return {
     operator: 'buildString',
     ...(given !== undefined && { template: rewritten }),

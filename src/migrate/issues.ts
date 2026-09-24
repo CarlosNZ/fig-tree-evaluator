@@ -1,13 +1,20 @@
 /**
  * The issues the converter emits, by code ("The issue catalogue" in
  * docs-dev/v3-specs/v3-converter.md): each code's tag, and its message,
- * filled from the node.
+ * filled from the node. The catalogue has exactly the codes of
+ * `MigrationIssue['code']`, which the compiler holds it to.
  */
 import type { MigrationIssue } from '../migrationTypes'
 
 export type Path = MigrationIssue['path']
 
-const CATALOGUE = {
+export type IssueCode = MigrationIssue['code']
+
+/** Whether `path` is `parent` or lies beneath it */
+export const isUnder = (path: Path, parent: Path) =>
+  parent.length <= path.length && parent.every((segment, i) => path[i] === segment)
+
+export const CATALOGUE = {
   // intentional-semantic-change
   'split-trailing-empty': {
     tag: 'intentional-semantic-change',
@@ -107,6 +114,12 @@ const CATALOGUE = {
     tag: 'lossy-default',
     message: ({ key, winner }: { key: string; winner: string }) =>
       `v2 never read \`${key}\`: \`${winner}\` gave the same parameter and won. Removed.`,
+  },
+  'discarded-expression': {
+    tag: 'lossy-default',
+    message: () =>
+      'v2 evaluated this and then discarded it, so a failure in it failed the node, and any ' +
+      'request, query or function call in it ran. v3 never evaluates it. Removed.',
   },
   'unreachable-branches': {
     tag: 'lossy-default',
@@ -238,25 +251,19 @@ const CATALOGUE = {
       `\`${name}\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`,
   },
 } as const satisfies Record<
-  string,
+  IssueCode,
   { tag: MigrationIssue['tag']; message: (fill: never) => string }
 >
-
-export type IssueCode = keyof typeof CATALOGUE
-
-/**
- * A catalogued issue. TO-DO: `code` joins `MigrationIssue` itself (Phase
- * 15.1, chunk 7).
- */
-export interface Issue extends MigrationIssue {
-  code: IssueCode
-}
 
 /** What fills a code's message: nothing, or one object of named parts */
 export type Fill<C extends IssueCode> = Parameters<(typeof CATALOGUE)[C]['message']>
 
 /** The issue `code` raises at `path`, its message filled from `fill` */
-export const issue = <C extends IssueCode>(code: C, path: Path, ...[fill]: Fill<C>): Issue => {
+export const issue = <C extends IssueCode>(
+  code: C,
+  path: Path,
+  ...[fill]: Fill<C>
+): MigrationIssue => {
   const { tag, message } = CATALOGUE[code]
   return { code, tag, path, message: (message as (fill: unknown) => string)(fill) }
 }

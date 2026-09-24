@@ -95,6 +95,47 @@ export default tseslint.config(
     },
   },
   {
+    // The converter shares no runtime code with the root ("Packaging" in
+    // docs-dev/v3-specs/v3-converter.md): type imports erase at build, and a
+    // value import from outside src/migrate/ would pull root code into the
+    // subpath's bundle. The patterns match an import's text, so each depth of
+    // the folder has its own: `./` here, and `./` or `../` in src/migrate/v2/.
+    files: ['src/migrate/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(?!\\./)',
+              allowTypeImports: true,
+              message:
+                'src/migrate/ imports values from inside the folder only (`import type` from anywhere).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/migrate/*/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(?!\\.\\.?/)|^\\.\\./\\.\\./',
+              allowTypeImports: true,
+              message:
+                'src/migrate/ imports values from inside the folder only (`import type` from anywhere).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // editor-hints is data only: type imports erase at build, any value
     // import would pull code into the subpath's bundle
     files: ['src/editor-hints/**/*.ts'],

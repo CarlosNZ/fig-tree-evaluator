@@ -20,6 +20,9 @@ export const DRILLABLE = /^\$(?:data|d|vars|v|params|p|element|e)(?:$|[.[])/
 // A `$data` reference, whole or drilled
 export const DATA_REFERENCE = /^\$(?:data|d)(?:$|[.[])/
 
+// The start of every placeholder's note, so a search finds what is left
+export const NOTE = 'v2 conversion: '
+
 export const literal = (value: unknown, note?: string) => ({
   ...(note !== undefined && { '//': note }),
   operator: 'literal',
@@ -28,6 +31,16 @@ export const literal = (value: unknown, note?: string) => ({
 
 export const isLiteral = (value: unknown): value is { operator: 'literal'; value: unknown } =>
   isPlainObject(value) && value.operator === 'literal'
+
+/**
+ * A placeholder that quotes the input where the converter could not read a
+ * node: a `literal` with a note ("Placeholders")
+ */
+export const isPlaceholder = (value: unknown) =>
+  isLiteral(value) &&
+  [(value as PlainObject)['//']]
+    .flat()
+    .some((note) => typeof note === 'string' && note.startsWith(NOTE))
 
 /** A quoted constant's value, or the value itself */
 export const unquote = (value: unknown): unknown => (isLiteral(value) ? value.value : value)
@@ -48,11 +61,14 @@ export const isNode = (value: unknown): boolean => {
 }
 
 /**
- * Whether v3 works a value out at evaluation: a node or a reference. A
- * `literal` quotes a constant.
+ * Whether a value is worked out at evaluation: a node or a reference. A
+ * `literal` quotes a constant, unless it is a placeholder, which stands
+ * where v2 evaluated a node.
  */
 export const isComputed = (value: unknown): boolean =>
-  typeof value === 'string' ? V3_REFERENCE.test(value) : isNode(value) && !isLiteral(value)
+  typeof value === 'string'
+    ? V3_REFERENCE.test(value)
+    : isNode(value) && (!isLiteral(value) || isPlaceholder(value))
 
 /** Whether anything inside a value is computed */
 export const hasComputed = (value: unknown): boolean => {
@@ -83,10 +99,14 @@ export const needsQuote = (value: unknown): boolean => {
 /** A value v2 took as data, quoted where v3 would read it differently */
 export const quoted = (value: unknown) => (needsQuote(value) ? literal(value) : value)
 
-/** A value as a message shows it: `'text'`, `[1,2]` */
+/**
+ * A value as a message shows it, as the input wrote it: `'text'`, `[1,2]`.
+ * What JSON cannot show, such as `undefined`, shows as JavaScript does.
+ */
 export const render = (value: unknown): string => {
-  const constant = unquote(value)
-  const text = typeof constant === 'string' ? `'${constant}'` : JSON.stringify(constant)
+  const constant = constantOf(value)
+  const text =
+    typeof constant === 'string' ? `'${constant}'` : (JSON.stringify(constant) ?? String(constant))
   return text.length > 60 ? `${text.slice(0, 57)}...` : text
 }
 

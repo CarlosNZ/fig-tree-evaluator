@@ -290,6 +290,51 @@ describe('definitions', () => {
       calls: [{ input: { fragment: 'nodeDefault' }, data: { x: 7 } }],
     },
     {
+      name: 'a default holding a placeholder is bound the same way, so its note has a place',
+      fragments: { quoting: { operator: '+', values: ['$b', 1], $b: { operator: 'nope' } } },
+      expected: {
+        quoting: {
+          expression: {
+            operator: 'plus',
+            values: ['$vars.b', 1],
+            vars: {
+              b: {
+                operator: 'firstOf',
+                values: [
+                  '$params.b',
+                  {
+                    '//': `${NOTE}\`nope\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`,
+                    operator: 'literal',
+                    value: { operator: 'nope' },
+                  },
+                ],
+              },
+            },
+          },
+          parameters: { b: { type: 'any', required: false } },
+        },
+      },
+      issues: [{ code: 'unknown-operator', path: ['quoting', '$b', 'operator'] }],
+      calls: [{ input: { fragment: 'quoting', parameters: { $b: 2 } } }],
+    },
+    {
+      name: 'a declared `default: undefined` is no default, as v2 read it',
+      fragments: {
+        typed: {
+          operator: '+',
+          values: ['$a', 1],
+          metadata: { parameters: [{ name: '$a', type: 'number', default: undefined }] },
+        },
+      },
+      expected: {
+        typed: {
+          expression: { operator: 'plus', values: ['$params.a', 1] },
+          parameters: { a: { type: 'number', required: false } },
+        },
+      },
+      calls: [{ input: { fragment: 'typed', parameters: { $a: 2 } } }],
+    },
+    {
       name: 'a name a called fragment reads from the body is a parameter of the body',
       fragments: {
         inner: { operator: '+', values: ['$m', 100] },
@@ -556,6 +601,8 @@ describe('definitions', () => {
 })
 
 describe('calls', () => {
+  // A read of a missing path, which failed in v2
+  const missing = { operator: 'getData', property: 'missing' }
   const FRAGMENTS = {
     adder: { operator: '+', values: '$values' },
     pair: { operator: '+', values: ['$a', '$b'] },
@@ -683,6 +730,33 @@ describe('calls', () => {
       issues: [{ code: 'unknown-argument', path: ['parameters', '$c'] }],
     },
     {
+      name: 'an argument the definition does not have, which v2 evaluated',
+      input: { fragment: 'pair', parameters: { $a: 1, $b: 2, $c: missing } },
+      expected: { fragment: 'pair', parameters: { a: 1, b: 2 } },
+      issues: [
+        { code: 'unknown-argument', path: ['parameters', '$c'] },
+        { code: 'discarded-expression', path: ['parameters', '$c'] },
+      ],
+      differs: { v2: { error: true }, v3: { value: 3 } },
+    },
+    {
+      name: 'a call-node argument the body shadows, which v2 never evaluated',
+      input: { fragment: 'withDefault', $n: missing },
+      expected: { fragment: 'withDefault' },
+      issues: [{ code: 'shadowed-argument', path: ['$n'] }],
+    },
+    {
+      name: 'with `evaluateFullObject`, a shadowed `parameters` argument, which v2 evaluated',
+      input: { fragment: 'withDefault', parameters: { $n: missing } },
+      options: { evaluateFullObject: true },
+      expected: { fragment: 'withDefault' },
+      issues: [
+        { code: 'shadowed-argument', path: ['parameters', '$n'] },
+        { code: 'discarded-expression', path: ['parameters', '$n'] },
+      ],
+      differs: { v2: { error: true }, v3: { value: 11 } },
+    },
+    {
       name: 'an argument to a body that is not an operator node',
       input: { fragment: 'constant', $x: 1 },
       expected: { fragment: 'constant' },
@@ -705,6 +779,16 @@ describe('calls', () => {
       input: { fragment: 'adder', parameters: { $values: [1], values: [2] } },
       expected: { fragment: 'adder', parameters: { values: [2] } },
       issues: [{ code: 'overridden-value', path: ['parameters', '$values'] }],
+    },
+    {
+      name: 'the `$` one, which v2 evaluated all the same',
+      input: { fragment: 'adder', parameters: { $values: [missing], values: [2] } },
+      expected: { fragment: 'adder', parameters: { values: [2] } },
+      issues: [
+        { code: 'overridden-value', path: ['parameters', '$values'] },
+        { code: 'discarded-expression', path: ['parameters', '$values'] },
+      ],
+      differs: { v2: { error: true }, v3: { value: 2 } },
     },
     {
       name: 'an unprefixed key naming nothing on the body',

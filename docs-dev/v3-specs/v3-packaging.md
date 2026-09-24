@@ -199,7 +199,7 @@ Sketch of the resulting manifest (mechanics, not contract — final paths are im
 }
 ```
 
-The manifest is live: `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map (`.` and `./editor-hints` built at 14.3, `./migrate` added at 15.1 with a placeholder `migrateV2Expression` ahead of the converter), `files` and `sideEffects`.
+The manifest is live: `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map (`.` and `./editor-hints` built at 14.3, `./migrate` added at 15.1, first as a placeholder, and holding the converter from 15.1's seventh chunk), `files` and `sideEffects`.
 
 ## Build & CI mechanics
 

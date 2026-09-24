@@ -267,8 +267,8 @@ describe('aliases → `vars`', () => {
       input: { operator: '=', '$a.b': 1, $a_b: 1, '$c[0]': 2, values: ['$a.b', '$a_b'] },
       expected: {
         operator: 'equal',
-        values: ['$vars.a_b', '$vars.a_b_2'],
-        vars: { a_b: 1, a_b_2: 1, c_0_: 2 },
+        values: ['$vars.a_b_2', '$vars.a_b'],
+        vars: { a_b_2: 1, a_b: 1, c_0_: 2 },
       },
     },
     {
@@ -285,6 +285,24 @@ describe('aliases → `vars`', () => {
       name: 'a definition of itself, with none outside, was its own text',
       input: { operator: '=', $a: '$a', values: ['$a', '$a'] },
       expected: { operator: 'equal', values: ['$vars.a', '$vars.a'], vars: { a: '$a' } },
+    },
+    {
+      name: 'a name that needs no change keeps it, whatever the key order',
+      input: { operator: '=', $a_b: 2, '$a.b': 1, values: ['$a.b', '$a_b'] },
+      expected: {
+        operator: 'equal',
+        values: ['$vars.a_b_2', '$vars.a_b'],
+        vars: { a_b: 2, a_b_2: 1 },
+      },
+    },
+    {
+      name: 'renamed names take suffixes in sorted order',
+      input: { operator: '=', '$a]': 2, '$a[': 1, values: ['$a[', '$a]'] },
+      expected: {
+        operator: 'equal',
+        values: ['$vars.a_', '$vars.a__2'],
+        vars: { a__2: 2, a_: 1 },
+      },
     },
     {
       name: 'with `evaluateFullObject`, a plain object’s `$` keys are its `vars`',
@@ -557,6 +575,120 @@ describe('a result that is not a node', () => {
       name: 'comments merge, the inner first',
       input: { operator: 'pass', value: { operator: '+', values: [1], note: 'in' }, note: 'out' },
       expected: { '//': [{ note: 'in' }, { note: 'out' }], operator: 'plus', values: [1] },
+    },
+  ]
+  test.each(EXAMPLES)('$name', (example) => check(example))
+})
+
+describe('values the output discards', () => {
+  // A read of a missing path, which failed in v2, so a node that evaluated
+  // it failed too
+  const missing = { operator: 'getData', property: 'missing' }
+  const EXAMPLES: Example[] = [
+    {
+      name: 'a cut value that v2 evaluated',
+      input: { operator: '>', values: [3, 2, missing] },
+      expected: { operator: 'greaterThan', values: [3, 2] },
+      issues: [
+        { code: 'values-cut', path: ['values'] },
+        { code: 'discarded-expression', path: ['values', 2] },
+      ],
+      differs: { v2: { error: true }, v3: { value: true } },
+    },
+    {
+      name: 'a cut constant, which could not fail, has nothing more to say',
+      input: { operator: '>', values: [3, 2, 1] },
+      expected: { operator: 'greaterThan', values: [3, 2] },
+      issues: [{ code: 'values-cut', path: ['values'] }],
+    },
+    {
+      name: "SUBTRACT's named pair beside `values`, which v2 evaluated",
+      input: { operator: '-', values: [5, 2], from: missing },
+      expected: { operator: 'subtract', value: 5, minus: 2 },
+      issues: [
+        { code: 'overridden-value', path: ['from'] },
+        { code: 'discarded-expression', path: ['from'] },
+      ],
+      differs: { v2: { error: true }, v3: { value: 3 } },
+    },
+    {
+      name: 'a computed `nullEqualsUndefined`, which v3 has no place for',
+      input: { operator: '=', values: [1, 1], nullEqualsUndefined: missing },
+      expected: { operator: 'equal', values: [1, 1] },
+      issues: [{ code: 'discarded-expression', path: ['nullEqualsUndefined'] }],
+      differs: { v2: { error: true }, v3: { value: true } },
+    },
+    {
+      name: 'a computed `excludeTrailing`',
+      input: { operator: 'split', value: 'a,b', delimiter: ',', excludeTrailing: missing },
+      expected: { operator: 'split', value: 'a,b', delimiter: ',' },
+      issues: [
+        { code: 'split-trailing-empty', path: [] },
+        { code: 'discarded-expression', path: ['excludeTrailing'] },
+      ],
+      differs: { v2: { error: true }, v3: { value: ['a', 'b'] } },
+    },
+    {
+      name: 'a computed `substitutionCharacter` in named mode, which v2 then ignored',
+      input: {
+        operator: 'stringSubstitution',
+        string: '{{x}}',
+        substitutions: { x: 1 },
+        substitutionCharacter: missing,
+      },
+      expected: {
+        operator: 'buildString',
+        template: '{{x}}',
+        substitutions: { x: 1 },
+        trim: true,
+      },
+      issues: [{ code: 'discarded-expression', path: ['substitutionCharacter'] }],
+      differs: { v2: { error: true }, v3: { value: '1' } },
+    },
+    {
+      name: 'alias definitions a constant result cannot carry',
+      input: { operator: 'pass', value: 5, $x: missing },
+      expected: 5,
+      issues: [{ code: 'discarded-expression', path: ['$x'] }],
+      differs: { v2: { error: true }, v3: { value: 5 } },
+    },
+    {
+      name: 'a `fallback` that could never answer goes, with what was inside it',
+      input: { operator: 'pass', value: 5, fallback: { operator: 'nope' } },
+      expected: 5,
+    },
+    {
+      name: 'the issues inside a deciding value go with it',
+      input: { operator: '>', values: [1, 2], strict: { operator: 'nope' } },
+      expected: {
+        '//': decidingNote('`strict` is computed', '`greaterThan`'),
+        operator: 'greaterThan',
+        values: [1, 2],
+      },
+      issues: [{ code: 'deciding-value', path: ['strict'] }],
+      differs: { v2: { error: true }, v3: { value: false } },
+    },
+    {
+      name: "stage 1's issues inside a discarded value go too",
+      input: { operator: '>', values: [1, 2], strict: { $plus: { values: [1] }, values: [2] } },
+      expected: {
+        '//': decidingNote('`strict` is computed', '`greaterThan`'),
+        operator: 'greaterThan',
+        values: [1, 2],
+      },
+      issues: [{ code: 'deciding-value', path: ['strict'] }],
+      differs: { v2: { error: true }, v3: { value: false } },
+    },
+    {
+      name: 'a deciding value that was data is quoted in its message as written',
+      input: { operator: '>', values: [1, 2], strict: [{ $y: 1 }] },
+      expected: {
+        '//': decidingNote('`[{"$y":1}]` is not a value v2 accepted for `strict`', '`greaterThan`'),
+        operator: 'greaterThan',
+        values: [1, 2],
+      },
+      issues: [{ code: 'deciding-value', path: ['strict'] }],
+      differs: { v2: { error: true }, v3: { value: false } },
     },
   ]
   test.each(EXAMPLES)('$name', (example) => check(example))
@@ -840,6 +972,47 @@ describe('placeholders', () => {
         value: input,
       },
       issues: [{ code: 'computed-children', path: ['children'] }],
+      differs: { v2: { value: 1 }, v3: { value: input } },
+    })
+  })
+
+  test('a shorthand whose payload names an unknown operator is quoted whole', async () => {
+    const input = { $or: { operator: 'nope' } }
+    await check({
+      name: '',
+      input,
+      expected: { '//': unknownNote('nope'), operator: 'literal', value: input },
+      issues: [{ code: 'unknown-operator', path: ['$or', 'operator'] }],
+      differs: { v2: { error: true }, v3: { value: input } },
+    })
+  })
+
+  test('so is one inside an alias definition, with `evaluateFullObject`', () => {
+    const inner = { $or: { operator: 1 } }
+    const { expression, issues } = convert({ $c: inner, x: '$c' }, { evaluateFullObject: true })
+    expect(expression).toEqual({
+      x: '$vars.c',
+      vars: { c: { '//': unknownNote('1'), operator: 'literal', value: inner } },
+    })
+    expect(issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'unknown-operator', path: ['$c', '$or', 'operator'] },
+    ])
+  })
+
+  test('a shorthand with a computed `children` that cannot be split is quoted whole', async () => {
+    const input = { '$?': { children: '$c' }, $c: [true, 1, 2] }
+    await check({
+      name: '',
+      input,
+      expected: {
+        '//':
+          `${NOTE}\`children\` is computed, and \`?\` sends its children to different ` +
+          'parameters, which cannot be split before evaluation. The node is quoted unconverted. ' +
+          'Rewrite it with named parameters.',
+        operator: 'literal',
+        value: input,
+      },
+      issues: [{ code: 'computed-children', path: ['$?', 'children'] }],
       differs: { v2: { value: 1 }, v3: { value: input } },
     })
   })
