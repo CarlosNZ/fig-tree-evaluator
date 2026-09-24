@@ -17,6 +17,13 @@
 export const ENTRIES = [
   { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
   {
+    subpath: './convert',
+    name: 'convert/index',
+    source: 'src/converter/index.ts',
+    budget: 130,
+    marker: 'convertV2ToV3 is a placeholder',
+  },
+  {
     subpath: './editor-hints',
     name: 'editor-hints/index',
     source: 'src/editor-hints/index.ts',

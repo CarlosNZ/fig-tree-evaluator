@@ -10,15 +10,21 @@ const V2_BAN = {
 }
 
 // The root source never imports a subpath ("Principles" in
-// docs-dev/v3-specs/v3-packaging.md). TO-DO: add `./convert`'s source at
-// Phase 15.1, in a folder whose name no pattern can confuse with
-// src/operators/convert.ts — the patterns match the import string, not the
-// file it resolves to
-const SUBPATH_BAN = {
-  group: ['**/editor-hints', '**/editor-hints/**'],
-  message:
-    'The root entry never imports a subpath: editor-hints is tooling-side data, so importing it here would ship it to every host.',
-}
+// docs-dev/v3-specs/v3-packaging.md). `./convert`'s source is src/converter,
+// not src/convert: the patterns match the import string, not the file it
+// resolves to, so `**/convert` would also ban src/operators/convert.ts
+const SUBPATH_BANS = [
+  {
+    group: ['**/editor-hints', '**/editor-hints/**'],
+    message:
+      'The root entry never imports a subpath: editor-hints is tooling-side data, so importing it here would ship it to every host.',
+  },
+  {
+    group: ['**/converter', '**/converter/**'],
+    message:
+      'The root entry never imports a subpath: the v2 converter is migration tooling, so importing it here would ship it to every host.',
+  },
+]
 
 export default tseslint.config(
   {
@@ -77,8 +83,8 @@ export default tseslint.config(
     // The root side of src/ — everything but the subpaths themselves and the
     // playground, which may import anything
     files: ['src/**/*.ts'],
-    ignores: ['src/editor-hints/**', 'src/dev/**'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN, SUBPATH_BAN] }] },
+    ignores: ['src/editor-hints/**', 'src/converter/**', 'src/dev/**'],
+    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN, ...SUBPATH_BANS] }] },
   },
   {
     // editor-hints is data only: type imports erase at build, any value

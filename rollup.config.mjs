@@ -41,11 +41,12 @@ export default [
     plugins: [typescript(), terser(), collectBundleSize()],
   },
   // Bundle each entry's per-file declarations (build/dts, emitted by the
-  // pass above) into one self-contained .d.ts beside its bundle. Separate
-  // passes, so no entry's types import from another's: the types shared by
-  // two entries are structural, so a copy in each is the same type
-  ...ENTRIES.map(({ name }, i) => ({
-    input: `./build/dts/${name}.d.ts`,
+  // pass above under the source's own path) into one self-contained .d.ts
+  // beside its bundle. Separate passes, so no entry's types import from
+  // another's: the types shared by two entries are structural, so a copy in
+  // each is the same type
+  ...ENTRIES.map(({ name, source }, i) => ({
+    input: source.replace(/^src\//, './build/dts/').replace(/\.ts$/, '.d.ts'),
     output: { file: `build/${name}.d.ts`, format: 'es' },
     // The size report runs last, so it can weigh every declaration file
     plugins: [dts(), ...(i === ENTRIES.length - 1 ? [printBundleSize()] : [])],

@@ -11,6 +11,10 @@
       "types": "./build/index.d.ts",
       "default": "./build/index.js"
     },
+    "./convert": {
+      "types": "./build/convert/index.d.ts",
+      "default": "./build/convert/index.js"
+    },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
       "default": "./build/editor-hints/index.js"

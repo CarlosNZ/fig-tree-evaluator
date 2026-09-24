@@ -155,3 +155,7 @@ export type {
   OperatorHints,
   TypeSeeds,
 } from './editorHintTypes'
+
+// ── Conversion ───────────────────────────────────────────────────────────
+// The shapes `convertV2ToV3` returns, from the `./convert` subpath.
+export type { ConversionIssue, ConversionResult } from './conversionTypes'
