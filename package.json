@@ -11,9 +11,9 @@
       "types": "./build/index.d.ts",
       "default": "./build/index.js"
     },
-    "./convert": {
-      "types": "./build/convert/index.d.ts",
-      "default": "./build/convert/index.js"
+    "./migrate": {
+      "types": "./build/migrate/index.d.ts",
+      "default": "./build/migrate/index.js"
     },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",

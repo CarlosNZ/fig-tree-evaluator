@@ -1,6 +1,6 @@
 # FigTree v3 — Migration & conversion
 
-_Working document — first sketch (Claude, July 2026), awaiting review. This is the last v3 design area. It discharges every deferral tagged "→ migration doc" or "→ Migration area" across the other docs: the `./convert` module contents ([v3-packaging.md](v3-packaging.md) § `./convert`), the CUSTOM_FUNCTIONS wrapper recipe ([v3-api.md](v3-api.md) Extensibility § Migration; [v3-operator-contract.md](v3-operator-contract.md)), the recycled-names callouts and operator/option disposition tables ([v3-api.md](v3-api.md)), the `evaluateExpression` one-liner ([v3-evaluator-methods.md](v3-evaluator-methods.md)), and the round-trip-utility homes. It unblocks [implementation-plan](v3-implementation-plan.md) Phase 15. Open questions collected at the end._
+_Working document — first sketch (Claude, July 2026), awaiting review. This is the last v3 design area. It discharges every deferral tagged "→ migration doc" or "→ Migration area" across the other docs: the `./migrate` module contents ([v3-packaging.md](v3-packaging.md) § `./migrate`), the CUSTOM_FUNCTIONS wrapper recipe ([v3-api.md](v3-api.md) Extensibility § Migration; [v3-operator-contract.md](v3-operator-contract.md)), the recycled-names callouts and operator/option disposition tables ([v3-api.md](v3-api.md)), the `evaluateExpression` one-liner ([v3-evaluator-methods.md](v3-evaluator-methods.md)), and the round-trip-utility homes. It unblocks [implementation-plan](v3-implementation-plan.md) Phase 15. Open questions collected at the end._
 
 _It leans on [v3-testing-strategy.md](v3-testing-strategy.md), which owns the converter's *validation* method (the frozen V2 corpus as oracle, the differential runner) and the divergence-catalog tags — this doc owns the converter's *shape and behaviour*, and the scope of the human-facing guide the catalog feeds._
 
@@ -8,7 +8,7 @@ _It leans on [v3-testing-strategy.md](v3-testing-strategy.md), which owns the co
 
 The area produces two things that are easy to conflate:
 
-1. **The converter** — code shipped in the `./convert` subpath. Mechanical, best-effort, testable against the oracle. Turns stored v2 expression trees into v3 ones.
+1. **The converter** — code shipped in the `./migrate` subpath. Mechanical, best-effort, testable against the oracle. Turns stored v2 expression trees into v3 ones.
 2. **The migration guide** — prose shipped in the repo (`MIGRATION.md`, rendered into the docs site). What a human reads to upgrade: what changed, what the converter can't do for them, what to watch for. Partly generated from operator/option metadata, partly hand-written.
 
 The division of labour is the spine of this whole area: **the converter does everything mechanical; the guide covers everything that needs a human.** Every ruling below serves that split.
@@ -17,37 +17,37 @@ The division of labour is the spine of this whole area: **the converter does eve
 
 v3 ships as `fig-tree-evaluator@3.0.0` — same package identity, clean break in content ([v3-packaging.md](v3-packaging.md) § Publishing). Upgrading is: bump the dependency, run the converter over your stored expression trees once, review its report, hand-fix what it flags. Conversion is an **author-time / build-time step over your config, not a runtime accommodation** — this is the frame that kills the `v2Compat` flag (ruling below).
 
-## `./convert` — the module surface
+## `./migrate` — the module surface
 
 Functions and types only; the root entry never imports it; it may import the root (built on the compiler's normalizer). Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here:
 
-| Export             | Kind                                  | Purpose                                                                     |
-| ------------------ | ------------------------------------- | --------------------------------------------------------------------------- |
-| `convertV2ToV3`    | `(expr: unknown) => ConversionResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3 |
-| `ConversionResult` | type                                  | `{ expression, issues: ConversionIssue[] }` (shape below)                   |
-| `ConversionIssue`  | type                                  | one catalogued divergence, tagged (shape below)                             |
+| Export                | Kind                                 | Purpose                                                                     |
+| --------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
+| `migrateV2Expression` | `(expr: unknown) => MigrationResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3 |
+| `MigrationResult`     | type                                 | `{ expression, issues: MigrationIssue[] }` (shape below)                    |
+| `MigrationIssue`      | type                                 | one catalogued divergence, tagged (shape below)                             |
 
 ### Parked: no shorthand round-trip utilities in 3.0
 
-**Ruled (Carl, September 2026, Phase-14 review).** `./convert` is for converting v2 expressions to v3, and nothing else: `convertV2ToV3` and its two types. The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
+**Ruled (Carl, September 2026, Phase-14 review).** `./migrate` is for converting v2 expressions to v3, and nothing else: `migrateV2Expression` and its two types. The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
 
 One constraint for that design, found at the same review: any such utility needs registry input, in both directions. `{ $plus: [1, 2] }` is an operator node only if `plus` is registered, mapping `[1, 2]` to named parameters needs `plus`'s `positionalParams`, and fragments are called with `$name` too — the limit that ruled out the structural node guards ("v2 root-export disposition" in [v3-packaging.md](v3-packaging.md)).
 
-### Ruling: `convertV2ToV3` is a pure function carrying its own v2 tables
+### Ruling: `migrateV2Expression` is a pure function carrying its own v2 tables
 
 No `FigTree` instance argument (v2's converters took one, to read live operator metadata). v3 **deleted** the alias machinery and `parseChildren` functions the v2 converter leaned on, so the converter instead carries a **static, embedded v2-reference table** — the ~95 operator-name aliases, the property aliases, and the positional `parseChildren` mappings, mined from the v2 source as data (Phase 0's "mined, never ported" asset). That table _is_ the v2→v3 rule delta in machine form; it is the converter's, not the runtime's, and the runtime never sees it. A pure `(expr) => result` signature also means the converter runs anywhere — a CLI over a directory of config files, a CI check, the editor — with no evaluator construction.
 
 ### Ruling: best-effort, never throws
 
-`convertV2ToV3` always returns a `ConversionResult`. A node it cannot convert becomes a **best-effort placeholder** (the closest v3 node, or the original subtree wrapped in `literal` when nothing safe exists) plus a tagged `issue` — it does **not** throw. Rationale: the common job is batch-converting a directory of stored configs; throwing on the first hard node would abort the whole run and force whack-a-mole. This mirrors `mode: 'report'`'s production-resilience posture ([v3-evaluator-methods.md](v3-evaluator-methods.md)) — collect everything, decide what to fix from the full picture. The result's `issues` array is the machine-readable divergence catalog for that tree.
+`migrateV2Expression` always returns a `MigrationResult`. A node it cannot convert becomes a **best-effort placeholder** (the closest v3 node, or the original subtree wrapped in `literal` when nothing safe exists) plus a tagged `issue` — it does **not** throw. Rationale: the common job is batch-converting a directory of stored configs; throwing on the first hard node would abort the whole run and force whack-a-mole. This mirrors `mode: 'report'`'s production-resilience posture ([v3-evaluator-methods.md](v3-evaluator-methods.md)) — collect everything, decide what to fix from the full picture. The result's `issues` array is the machine-readable divergence catalog for that tree.
 
 ```ts
-interface ConversionResult {
+interface MigrationResult {
   expression: unknown // the converted v3 tree (best-effort where issues exist)
-  issues: ConversionIssue[] // empty ⇒ clean, fully-mechanical conversion
+  issues: MigrationIssue[] // empty ⇒ clean, fully-mechanical conversion
 }
 
-interface ConversionIssue {
+interface MigrationIssue {
   tag: 'non-convertible' | 'intentional-semantic-change' | 'lossy-default'
   path: (string | number)[] // location in the *source* tree
   message: string // what happened and what the human must check
@@ -90,15 +90,15 @@ These are the null-policy / gradient rulings the testing-strategy anticipated la
 
 ## Ruling: v1 (`children`) support is dropped from v3
 
-_(Confirmed with Carl, July 2026.)_ `./convert` is **v2→v3 only**. v3 carries no dedicated v1 path and no `convertV1ToV2`. Rationale:
+_(Confirmed with Carl, July 2026.)_ `./migrate` is **v2→v3 only**. v3 carries no dedicated v1 path and no `convertV1ToV2`. Rationale:
 
-- v1's `children`-array syntax predates v2 by years; anyone still on it in 2026 has a two-hop path via the **still-published v2** (`v2` dist-tag, fix-only — [v3-packaging.md](v3-packaging.md) § Publishing): run v2's `convertV1ToV2`, then v3's `convertV2ToV3`.
+- v1's `children`-array syntax predates v2 by years; anyone still on it in 2026 has a two-hop path via the **still-published v2** (`v2` dist-tag, fix-only — [v3-packaging.md](v3-packaging.md) § Publishing): run v2's `convertV1ToV2`, then v3's `migrateV2Expression`.
 - v1 has **no frozen test corpus** (the oracle is the v2 suite), so a first-class v1→v3 path would ship untested by the one mechanism that makes the converter trustworthy.
 - It is exactly the relic-carrying v2 itself over-served (`supportDeprecatedValueNodes`, kept longer than it earned — [v3-api.md:652](v3-api.md#L652)).
 
-**One concession, free:** because `children` is just v2's positional form and the converter already owns the positional-mapping table, `convertV2ToV3` **recognizes a stray `children` array and maps it as positional input** on a best-effort basis — enough that a mostly-v2 tree with a v1 remnant doesn't hard-fail. This is a courtesy inside the v2 converter, not a supported, tested v1→v3 product. The guide states plainly: v1 users convert via v2 first.
+**One concession, free:** because `children` is just v2's positional form and the converter already owns the positional-mapping table, `migrateV2Expression` **recognizes a stray `children` array and maps it as positional input** on a best-effort basis — enough that a mostly-v2 tree with a v1 remnant doesn't hard-fail. This is a courtesy inside the v2 converter, not a supported, tested v1→v3 product. The guide states plainly: v1 users convert via v2 first.
 
-This **overrides** [v3-packaging.md](v3-packaging.md)'s v2-root-export table, which provisionally listed `convertV1ToV2` / `isV1Node` as "moved & reshaped → `./convert`". Under this ruling they are **deleted**, not moved (packaging doc amended to match).
+This **overrides** [v3-packaging.md](v3-packaging.md)'s v2-root-export table, which provisionally listed `convertV1ToV2` / `isV1Node` as "moved & reshaped → `./migrate`". Under this ruling they are **deleted**, not moved (packaging doc amended to match).
 
 ## Ruling: no `v2Compat` runtime flag
 
@@ -156,11 +156,11 @@ The author keeps their function body verbatim; only the registration wrapper is 
 
 ## Divergence catalog — the shared output
 
-The catalog is [v3-testing-strategy.md](v3-testing-strategy.md)'s first-class deliverable (it feeds these guide sections) and this doc's `ConversionIssue` stream is its runtime form — same three tags. Phase 15.2's differential runner accumulates every tree's issues into the master catalog; the `intentional-semantic-change` and `lossy-default` entries become the guide's "semantic changes" prose, and the `non-convertible` entries become its "you must do this by hand" list. Writing the converter is expected to surface spec gaps (testing-strategy § Notes on sequencing) — each is a spec-refinement loop, not a coding decision.
+The catalog is [v3-testing-strategy.md](v3-testing-strategy.md)'s first-class deliverable (it feeds these guide sections) and this doc's `MigrationIssue` stream is its runtime form — same three tags. Phase 15.2's differential runner accumulates every tree's issues into the master catalog; the `intentional-semantic-change` and `lossy-default` entries become the guide's "semantic changes" prose, and the `non-convertible` entries become its "you must do this by hand" list. Writing the converter is expected to surface spec gaps (testing-strategy § Notes on sequencing) — each is a spec-refinement loop, not a coding decision.
 
 ## Open questions
 
 1. **Guide home & format.** `MIGRATION.md` at repo root vs `docs/MIGRATION.md` vs a docs-site page; and how much is generated vs hand-written (the tables clearly generated — is anything else?). Low stakes, decide at Phase 15.
-2. **Does the converter accept an options object too, or expressions only?** The option-disposition rewrite (moved cache keys, `returnErrorAsString` → `mode`, client factories) is useful but a different input shape than an expression tree. Ship `convertV2ToV3` for trees only and document option changes as a manual table, or add a sibling `convertV2Options`? Leaning trees-only (options are edited by hand once per host; expressions are the bulk data) — confirm.
+2. **Does the converter accept an options object too, or expressions only?** The option-disposition rewrite (moved cache keys, `returnErrorAsString` → `mode`, client factories) is useful but a different input shape than an expression tree. Ship `migrateV2Expression` for trees only and document option changes as a manual table, or add a sibling `convertV2Options`? Leaning trees-only (options are edited by hand once per host; expressions are the bulk data) — confirm.
 3. **CLI wrapper?** A tiny `npx fig-tree-convert <glob>` over a directory would make the batch story real, but it's a bin script with its own arg-parsing and file-IO surface, arguably out of a zero-dependency library's scope. In-package bin, separate tiny package, or documented "here's the 10-line script" recipe? Leaning recipe.
 4. **`literal`-wrap heuristic for deep-eval loss.** What exactly triggers the converter to wrap a bare object (§ lossy-default)? Any object with no recognized node keys anywhere in its subtree is the safe-but-aggressive rule; a narrower heuristic risks under-wrapping. Settle when Phase 15 has the corpus to measure against — this is the likeliest spec-gap the differential surfaces.

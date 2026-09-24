@@ -17,11 +17,11 @@
 export const ENTRIES = [
   { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
   {
-    subpath: './convert',
-    name: 'convert/index',
-    source: 'src/converter/index.ts',
+    subpath: './migrate',
+    name: 'migrate/index',
+    source: 'src/migrate/index.ts',
     budget: 130,
-    marker: 'convertV2ToV3 is a placeholder',
+    marker: 'migrateV2Expression is a placeholder',
   },
   {
     subpath: './editor-hints',

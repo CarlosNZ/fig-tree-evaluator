@@ -7,7 +7,7 @@
  * inventory in "The root entry" there, which test/exports.test.ts holds this
  * file to; the types follow that doc's "Types" list.
  *
- * The root never imports the `./editor-hints` or `./convert` subpaths. The
+ * The root never imports the `./editor-hints` or `./migrate` subpaths. The
  * types of editor-hints' data are exported here instead, so that subpath
  * stays a data module.
  */
@@ -156,6 +156,6 @@ export type {
   TypeSeeds,
 } from './editorHintTypes'
 
-// ── Conversion ───────────────────────────────────────────────────────────
-// The shapes `convertV2ToV3` returns, from the `./convert` subpath.
-export type { ConversionIssue, ConversionResult } from './conversionTypes'
+// ── Migration ────────────────────────────────────────────────────────────
+// The shapes `migrateV2Expression` returns, from the `./migrate` subpath.
+export type { MigrationIssue, MigrationResult } from './migrationTypes'

@@ -1,51 +1,53 @@
 # FigTree v3 — the v2 converter
 
-_Status: **Draft** (September 2026, Phase-15 planning), with every section written and both open questions resolved. The other specs change as "Changes to other specs" lists once this doc is agreed. Nothing here is built beyond the placeholder `./convert` entry._
+_Status: **Agreed** (September 2026, signed off by Carl at Phase-15 planning). The other specs change as "Changes to other specs" lists, as 15.1's first chunk. Nothing here is built beyond the placeholder `./migrate` entry._
 
 ## Purpose
 
-The design for Phase 15's `./convert` subpath: how v2 expressions and fragments become v3. [v3-migration.md](v3-migration.md) stays the contract for what conversion promises (the best-effort ruling, the three issue tags, the migration guide), and this doc cites it rather than restating it. Where a decision here changes that contract, the change is listed under "Changes to other specs" and written back when this doc is agreed.
+The design for Phase 15's `./migrate` subpath: how v2 expressions and fragments become v3. [v3-migration.md](v3-migration.md) stays the contract for what conversion promises (the best-effort ruling, the three issue tags, the migration guide), and this doc cites it rather than restating it. Where a decision here changes that contract, the change is listed under "Changes to other specs" and written back when this doc is agreed.
 
 ## The setting
 
 Conversion is a one-time step over a host's stored expressions, as the opening of [v3-migration.md](v3-migration.md) frames it: "an author-time / build-time step over your config, not a runtime accommodation". It has three callers:
 
 - **A migration script**, in the host's own code, run once over its stored expressions. It has the host's v2 options to hand.
-- **A stand-alone conversion page**, where a person pastes their v2 options and expressions and copies out the result. It knows only what the person pastes. It lives in the fig-tree-editor-react repo, and imports `fig-tree-evaluator/convert` and a `FigTree` to validate its output; this doc covers only what the surface owes it.
-- **The Phase-15.2 differential**, which runs the frozen v2 corpus through the converter with each test file's v2 options.
+- **A stand-alone conversion page**, where a person pastes their v2 options and expressions and copies out the result. It knows only what the person pastes. It lives in the fig-tree-editor-react repo, and imports `fig-tree-evaluator/migrate` and a `FigTree` to validate its output; this doc covers only what the surface owes it.
+- **The Phase-15.2 differential**, which runs the v2 tests' expression cases through the converter, with the options each test used.
 
 **The converter assumes its input is v2.** It never has to decide, because each of these callers knows. There is no detection function: telling v2 from v3 has no reliable general answer, since the two share most of their syntax and reuse five names for different operators (see the last section). The v3 editor stays v3-only and carries no v2 knowledge. An unconverted v2 expression loaded into it shows v3's validation errors, apart from the silent cases in the last section.
 
-**The v2 it converts from is the latest v2 release**, since that is what hosts migrate from: 2.23.2 as this is written. v2 is maintained until v3's release and frozen then, with no API changes in the meantime. The converter's tooling reads the published package, never `/v2-src`, which stays unchanged until it is deleted ("The v2 package", below). `/v2-src` is exactly 2.23.0, and 2.23.1 and 2.23.2 fixed six things after the freeze. Three change what the converter writes, and each rule below says so: DIVIDE's `output: 'decimal'`, SPLIT's escaped delimiters and STRING_SUBSTITUTION's null values. The others fixed `notEqual` with `nullEqualsUndefined`, the un-escaping of repeated placeholders, and primitive `inputDefault` values in custom-function definitions, which the converter never sees. For a host on 2.23.0, each of the three changes follows 2.23.2: it writes what that version did, where 2.23.0 failed or did what nobody could have wanted. No name or alias changed, so the reference table is the same from either. The measurements in this doc ran against `/v2-src`, and where 2.23.2 gives a different answer, the entry says so. Its links into `/v2-src` are to 2.23.0's code, and move to that tag on GitHub when `/v2-src` is deleted.
+**The v2 it converts from is the latest v2 release**, since that is what hosts migrate from: 2.23.2 as this is written. v2 is maintained until v3's release and frozen then, with no API changes in the meantime. The converter's tooling reads the published package, never `/v2-src`, which stays unchanged until it is deleted ("The v2 package", below). `/v2-src` is exactly 2.23.0, and 2.23.1 and 2.23.2 fixed six things after the freeze. Two change what the converter writes: DIVIDE's `output: 'decimal'` and SPLIT's escaped delimiters. Two change only what a converted node is measured against: `notEqual` with `nullEqualsUndefined`, and STRING_SUBSTITUTION's null values. Each rule below says so. The last two fixed the un-escaping of repeated placeholders, which the converter flags anyway, and primitive `inputDefault` values in custom-function definitions, which it never sees. For a host on 2.23.0, each of the two changes follows 2.23.2: it writes what that version did, where 2.23.0 failed or did what nobody could have wanted. No name or alias changed, so the reference table is the same from either. The measurements in this doc ran against `/v2-src`, and where 2.23.2 gives a different answer, the entry says so. Its links into `/v2-src` are to 2.23.0's code, and move to that tag on GitHub when `/v2-src` is deleted.
 
-Assuming v2 has a cost, and the guide states it plainly: **the converter is not safe on v3 input, and it is not idempotent.** Its output can contain `get` and `convert`, which a second pass would read as v2's HTTP GET and PASSTHRU. Each expression is converted once. The page does that naturally; a script keeps the originals and records what it has converted.
+Assuming v2 has a cost, and the guide states it plainly: **the converter is not safe on v3 input, and it is not idempotent.** Its output can contain `get`, `join` and `convert`, which a second pass would read as v2's HTTP GET, PLUS and PASSTHRU. Each expression is converted once. The page does that naturally; a script keeps the originals and records what it has converted.
 
 ## Surface
 
-`fig-tree-evaluator/convert` exports two functions:
+`fig-tree-evaluator/migrate` exports two functions:
 
-| Export               | Signature                                                        | Converts                                        |
-| -------------------- | ---------------------------------------------------------------- | ----------------------------------------------- |
-| `convertV2ToV3`      | `(expression: unknown, options?: V2Options) => ConversionResult` | one v2 expression                               |
-| `convertV2Fragments` | `(options: V2Options) => FragmentConversionResult`               | the fragment definitions in `options.fragments` |
+| Export                | Signature                                                       | Converts                                        |
+| --------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
+| `migrateV2Expression` | `(expression: unknown, options?: V2Options) => MigrationResult` | one v2 expression                               |
+| `migrateV2Fragments`  | `(options: V2Options) => FragmentMigrationResult`               | the fragment definitions in `options.fragments` |
 
-Both are pure functions over their arguments and the converter's own embedded v2 table ("Ruling: `convertV2ToV3` is a pure function carrying its own v2 tables" in [v3-migration.md](v3-migration.md), which stands). They take no `FigTree` and import nothing from the engine at runtime. So `./convert` imports types only from the root, as `./editor-hints` does, and the same lint rule enforces it. Checking that the output validates is the caller's job: the page and the script both have an instance.
+The subpath is `migrate` rather than `convert`, which is a v3 operator's name.
+
+Both are pure functions over their arguments and the converter's own embedded v2 table ("Ruling: `migrateV2Expression` is a pure function carrying its own v2 tables" in [v3-migration.md](v3-migration.md), which stands). They take no `FigTree` and import nothing from the engine at runtime. So `./migrate` imports types only from the root, as `./editor-hints` does, and the same lint rule enforces it. Checking that the output validates is the caller's job: the page and the script both have an instance.
 
 `V2Options` is the part of v2's options that changes how an expression is read ("What the converter reads", below). Any other key is ignored, so a script can pass its real v2 options object unchanged.
 
 ```ts
-interface ConversionResult {
+interface MigrationResult {
   expression: unknown // the converted v3 tree, best-effort wherever there are issues
-  issues: ConversionIssue[] // empty only for a clean conversion
+  issues: MigrationIssue[] // empty only for a clean conversion
 }
 
-interface FragmentConversionResult {
+interface FragmentMigrationResult {
   fragments: Record<string, FragmentDefinition> // every definition, keyed as in the input unless renamed
-  issues: ConversionIssue[] // paths rooted at the fragments object: ['getFlag', …]
+  issues: MigrationIssue[] // paths rooted at the fragments object: ['getFlag', …]
 }
 ```
 
-`ConversionIssue` is migration's shape (`tag`, `path` in the source, `message`), with a `code` added ("The issue catalogue"). All the types (`V2Options`, `ConversionResult`, `FragmentConversionResult`, `ConversionIssue`) export from the root, per "Types" in [v3-packaging.md](v3-packaging.md).
+`MigrationIssue` is migration's shape (`tag`, `path` in the source, `message`), with a `code` added ("The issue catalogue"). All the types (`V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue`) export from the root, per "Types" in [v3-packaging.md](v3-packaging.md).
 
 Fragment definitions get their own function for two reasons. A fragment body is read differently from an expression: its `$name` strings are parameter placeholders, and its `metadata` key belongs to the definition. And converting them is a once-per-host job, where expressions are converted by the hundred.
 
@@ -53,19 +55,19 @@ Fragment definitions get their own function for two reasons. A fragment body is 
 
 Written back when this doc is agreed:
 
-- **[v3-migration.md](v3-migration.md), "`./convert` — the module surface":** `convertV2ToV3` takes the optional `V2Options`; add `convertV2Fragments` and the `V2Options` and `FragmentConversionResult` types. This amends the Phase-14 ruling that `./convert` holds `convertV2ToV3` and nothing else. Conversion is still all it is for.
+- **[v3-migration.md](v3-migration.md), "`./migrate` — the module surface":** `migrateV2Expression` takes the optional `V2Options`; add `migrateV2Fragments` and the `V2Options` and `FragmentMigrationResult` types. This amends the Phase-14 ruling that `./migrate` holds `migrateV2Expression` and nothing else. Conversion is still all it is for.
 - **v3-migration.md, "The custom-function wrapper recipe" and the CUSTOM_FUNCTIONS entry under "`non-convertible`":** the recipe becomes a suggestion rather than the shape the converter targets. A host's v3 operator can declare whatever parameters suit it, so the converter cannot know a call's v3 shape. It rewrites each call to the nearest v3 call on the function's name, since the arguments are v2 expressions that need converting regardless. It then puts a `non-convertible` issue on every call site, not one per function name, saying the call must be checked against the operator's definition.
-- **v3-migration.md, the "Moved options" bullet:** the converter reads options, it does not rewrite them. Fragments are the exception, through `convertV2Fragments`; the rest stays the guide's table.
+- **v3-migration.md, the "Moved options" bullet:** the converter reads options, it does not rewrite them. Fragments are the exception, through `migrateV2Fragments`; the rest stays the guide's table.
 - **v3-migration.md, the "Null policy" bullet under `intentional-semantic-change`:** "the converter flags the corners the null-policy review catalogued" has nothing to point at, since the review catalogues no v2 corners, and null-policy differences depend on the data. The guide lists them, and the converter does not flag them ("Per operator").
 - **[v3-operator-parameters.md](v3-operator-parameters.md), "v2 disposition" for `plus`:** `type` → `expect` holds for `'array'` and `'number'`. `type: 'string'` converts to `join` with `delimiter: ''` instead, since v2 coerced the operands to text and `expect: 'string'` would reject the numbers it was used to concatenate ("Batch 2").
 - **[v3-operator-parameters-2.md](v3-operator-parameters-2.md), "v2 disposition" for `get`:** `additionalData` converts to `from: { operator: 'plus', values: ['$data', …] }`, which keeps v2's merge, so the "merge to replace" behaviour change concerns hand edits, not converted nodes ("Batch 3").
 - **[v3-operator-parameters.md](v3-operator-parameters.md), "v2 disposition" for `buildString`:** of the behaviour it kills, rank compaction, the fallback to `data` and path drilling in a token are reproduced by the converter for literal templates (renumbering, and reference tokens), so they are behaviour changes for hand edits and computed templates only ("Batch 3").
 - **[v3-operator-parameters-2.md](v3-operator-parameters-2.md), "v2 disposition" for `http` and `graphQL`:** the dropped collapse is a migration-doc line there. The converter also puts an issue on every converted `http` and `graphQL` node, since whether it fired depends on the response, and gives the `[*]` fix ("Batch 4").
 - **v3-migration.md, the "Deep-evaluation object wrapping" bullet under `lossy-default`:** with `evaluateFullObject` read, the wrap is a rule rather than "a flagged guess", and carries no issue ("The `literal` wrap").
-- **v3-migration.md, the `ConversionIssue` shape and "What emits an issue":** the shape gains `code`, and the section becomes a pointer to "The issue catalogue", which lists every issue with its code, tag, path and message.
+- **v3-migration.md, the `MigrationIssue` shape and "What emits an issue":** the shape gains `code`, and the section becomes a pointer to "The issue catalogue", which lists every issue with its code, tag, path and message.
 - **v3-migration.md, open question 2** (options or trees only): answered. Options are read as context, fragments are converted, and the other options are migrated by hand.
 - **v3-migration.md, open question 4** (the `literal`-wrap heuristic): answered by `evaluateFullObject`, which makes the wrap a rule ("What the converter reads").
-- **[v3-packaging.md](v3-packaging.md), "`./convert`" and "Types":** the contents (two functions, four types), with the four types added to the "Types" list. The isolation line becomes "imports types only from the root", in place of "may import from the root (it is built on the compiler's normalizer)". The `instanceof FigTreeError` assertion goes: the entries share no runtime code, and the type-only rule replaces it.
+- **[v3-packaging.md](v3-packaging.md), "`./migrate`" and "Types":** the contents (two functions, four types), with the four types added to the "Types" list. The isolation line becomes "imports types only from the root", in place of "may import from the root (it is built on the compiler's normalizer)". The `instanceof FigTreeError` assertion goes: the entries share no runtime code, and the type-only rule replaces it.
 - **[v3-testing-strategy.md](v3-testing-strategy.md), step 5, and [v3-implementation-plan.md](v3-implementation-plan.md), 15.2:** the differential compares live v2 (the published package, following v2's releases) with v3, rather than v3 with the recorded expected values. Its corpus is a data module extracted from the v2 tests, and not the frozen files run in place. An accepted baseline and its CI check are added ("The differential runner"). The plan's `/v2-src` runnability risk no longer covers Phase 15, only Phase 16.
 - **[v3-implementation-plan.md](v3-implementation-plan.md), 15.1:** the same, including "built on the compiler's normalizer", which no longer holds.
 
@@ -75,7 +77,7 @@ Written back when this doc is agreed:
 
 | `V2Options` key      | How it changes the reading                                                                                                                                                                                                                                                                                                                                                                             |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fragments`          | The names, so `{ $name: … }` and `{ fragment: … }` calls are recognized, and each definition's declared parameters (`metadata.parameters`), so a call's `$country` arguments can be mapped and checked. `convertV2Fragments` converts the definitions themselves.                                                                                                                                      |
+| `fragments`          | The names, so `{ $name: … }` and `{ fragment: … }` calls are recognized, and each definition's declared parameters (`metadata.parameters`), so a call's `$country` arguments can be mapped and checked. `migrateV2Fragments` converts the definitions themselves.                                                                                                                                      |
 | `functions`          | The names of the host's custom functions, as a list or as v2's `functions` object (only its keys are read, since the functions are JS that cannot be pasted). They let `{ $name: … }` and `{ operator: name }` be recognized as custom-function calls.                                                                                                                                                 |
 | `evaluateFullObject` | Whether v2 looked for nodes inside plain objects. Off, which is v2's default, a plain object was data however node-like its contents, so one holding anything v3 would evaluate is wrapped in `literal`. On, plain objects are walked and converted, and `$` keys on them are read as alias definitions ([evaluate.ts:281](../../v2-src/evaluate.ts#L281)).                                            |
 | `noShorthand`        | On, `$name` keys were never shorthand, so an object carrying one is data.                                                                                                                                                                                                                                                                                                                              |
@@ -96,26 +98,26 @@ What v2 recognized, which the conversion rules take one construct at a time:
   - the modifiers `fallback`, `useCache` and `outputType` (alias `type`), the last of whose values may be computed;
   - alias definitions: any other `$` key ([evaluate.ts:243](../../v2-src/evaluate.ts#L243)).
 
-  Keys an operator did not declare were ignored, with two exceptions: MATCH read its branches from the node's own keys, and a custom-function call gathered them into its `input`.
+  Keys an operator did not declare were ignored, with two exceptions: MATCH read its branches from the node's own keys, and a call naming a function in `operator` gathered them into its `input`.
 
 - **Custom-function calls**: `operator: 'customFunctions'` (or an alias) with `functionName`, `args` and `input`, or `operator` naming a function directly ([helpers.ts:121](../../v2-src/helpers.ts#L121)). A `functionName` can be computed, and can be a dotted path into `functions`.
 - **Fragment calls**: objects with a `fragment` key. The name can be computed, and so can the `parameters` object. `$` keys on the call node itself are arguments too. When v2 expanded a call, the call node's own keys went beneath the body's and the arguments over both ([evaluate.ts:115](../../v2-src/evaluate.ts#L115)), so a call's `fallback` applies unless the body sets one.
-- **Shorthand**: `$name` keys on a plain object, resolved in the order operator, fragment, custom function ([shorthandSyntax.ts:47-67](../../v2-src/shorthandSyntax.ts#L47-L67)). An unresolved `$name` stays data. The payload is read as follows:
-  - an array becomes `children`;
-  - a plain object with no `$` keys becomes named parameters;
-  - anything else becomes a single child.
+- **Shorthand**: `$name` keys on a plain object, resolved in the order operator, fragment, custom function ([shorthandSyntax.ts:47-67](../../v2-src/shorthandSyntax.ts#L47-L67)). An unresolved `$name` stays data. The payload is read by what the name resolved to:
+  - **an operator**: an array becomes `children`, a plain object with no `$` keys becomes named parameters, and anything else becomes a single child;
+  - **a fragment**: it is spread into `parameters`, so an object's keys become arguments, and anything else supplies none;
+  - **a function**: an array becomes `args`, an object holding `input` or `args` becomes the call's own keys, any other object becomes `input`, and anything else becomes a single argument.
 
   Other keys stay beside the `$name` key. An object with several resolved `$` keys is merged into one node.
 
 - **Alias references**: whole `"$name"` strings, resolved from the definitions on enclosing nodes. An unresolved reference stays a literal string.
 - **Plain objects** are data unless `evaluateFullObject` is on. **Arrays** are evaluated element by element, always.
-- **Fragment definitions** (for `convertV2Fragments`): any value as the body. An operator-node body can carry `metadata` among its own keys, holding `description`, `textColor`, `backgroundColor` and a `parameters` array of `{ name: '$country', type, required, default, description }`. Inside the body, `"$country"` strings are the parameter placeholders.
+- **Fragment definitions** (for `migrateV2Fragments`): any value as the body. An operator-node body can carry `metadata` among its own keys, holding `description`, `textColor`, `backgroundColor` and a `parameters` array of `{ name: '$country', type, required, default, description }`. Inside the body, `"$country"` strings are the parameter placeholders.
 
 ## What the converter writes
 
 Conversion runs in two stages:
 
-1. **Normalize: v2 to canonical v2.** Shorthand is expanded, names are resolved to their v2 operator, property aliases become parameter names, `children` is mapped to named parameters, `type` is spelled `outputType`, and a fragment call's `$` arguments move into `parameters`. That is the order v2 itself normalized a node in, at every evaluation ([evaluate.ts](../../v2-src/evaluate.ts)); the converter does it once, statically. The result is still a v2 expression, so v2 evaluates it to the same value as the original, which gives this stage a test oracle of its own.
+1. **Normalize: v2 to canonical v2.** Shorthand is expanded, names are resolved to their v2 operator, property aliases become parameter names, `children` is mapped to named parameters, `type` is spelled `outputType` (apart from PLUS's parameter and SQL's rider), and a fragment call's `$` arguments move into `parameters`. That is the order v2 itself normalized a node in, at every evaluation ([evaluate.ts](../../v2-src/evaluate.ts)); the converter does it once, statically. The result is still a v2 expression, so v2 evaluates it to the same value as the original, which gives this stage a test oracle of its own.
 2. **Convert: canonical v2 to canonical v3.** Each node goes through its operator's rule and the rules that cut across operators. Each rule sees one shape, not every form a v2 author could have written.
 
 What comes out:
@@ -123,13 +125,13 @@ What comes out:
 1. **Canonical v3 throughout**, as the compiler's canonical form has it: `operator` nodes with v3's canonical names (no symbols, no shorthand) and named parameters, fragment calls as `{ fragment, parameters }`, and data read through references (`"$data.…"`, `"$vars.…"`). The author's form is not kept: `{ $plus: [1, 2] }`, `{ operator: '+', children: [1, 2] }` and `{ operator: 'add', values: [1, 2] }` all come out as `{ operator: 'plus', values: [1, 2] }`. Moving between v3's forms is parked until after 3.0 ("Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md)). One exception: a call on a converted v2 custom function is written in the shorthand positional form, since canonical form needs the operator's parameter names and only the host knows them ("Batch 5").
 2. **A fixed key order**: `//` first, as v3's own example has it ("Comments: the `//` key" in [v3-api.md](v3-api.md)), then the defining key (`operator` or `fragment`), then parameters in the order the rule writes them, then `fallback`, `useCache` and `vars`. The input's key order does not matter, so the same expression always converts to the same output.
 3. **The input is never mutated.** The output is new structure, sharing by reference only the values it passes through unchanged: constants, opaque values, and the contents of `literal`.
-4. **A clean conversion.** Empty `issues` means the output means in v3 what the input meant in v2. It also means the output validates with no errors on an instance holding the core operators, the host's fragments (as `convertV2Fragments` produced them) and custom operators that accept the calls as written. The converter cannot check this, since it carries no engine; its tests and the page do. The converter does not validate v2: a node that could never have evaluated in v2, such as a subtraction given one value, converts as far as it goes, and v3's `validate()` reports what it becomes.
+4. **A clean conversion.** The aim is that empty `issues` means the output means in v3 what the input meant in v2, and validates with no errors on an instance holding the core and I/O operators, the host's fragments (as `migrateV2Fragments` produced them) and custom operators that accept the calls as written. The known exceptions are the differences this doc sends to the guide, which follow from v3's general rules or which v3's own checks report. The converter cannot check the aim, since it carries no engine. The differential tests it: a case with no issues and a different result is ✗, and each ✗ is looked at closely and resolved by a converter fix, a new issue, or a reviewed guide difference ("The differential runner"). The converter does not validate v2: a node that could never have evaluated in v2, such as a subtraction given one value, converts as far as it goes, and v3's `validate()` reports what it becomes.
 
 Where a node cannot convert cleanly, it becomes the best-effort placeholder of migration's never-throws ruling: the closest v3 node, or the original subtree wrapped in `literal`, plus an issue. "Placeholders", under "The two stages in detail", says which applies where.
 
 ## The v2 reference table
 
-Everything the converter knows about v2, mined from v2 itself (Phase 0's "mined, never ported" asset): the published package's operator data, and v2's behaviour as its source records it. It lives in `src/converter/v2/` as three modules, joined by operator: one generated from the package, two written by hand. They serve the normalizer. What each v2 operator becomes in v3 is the other half of the converter's knowledge, and that is "The v2→v3 rules".
+Everything the converter knows about v2, mined from v2 itself (Phase 0's "mined, never ported" asset): the published package's operator data, and v2's behaviour as its source records it. It lives in `src/migrate/v2/` as three modules, joined by operator: one generated from the package, two written by hand. They serve the normalizer. What each v2 operator becomes in v3 is the other half of the converter's knowledge, and that is "The v2→v3 rules".
 
 ### `operators.generated.ts`: names and parameters
 
@@ -159,7 +161,7 @@ interface V2Parameter {
 
 `V2_PARAMETERS` holds 68 parameters with 69 property aliases. It carries names and aliases only. Each `data.ts` also has a `description`, a `type`, `required` and a `default`, and none of them is needed. The `default` would mislead: it was the editor's placeholder value, not a runtime default (PLUS's `values` default is `[1, 2, 3]`). MATCH declares a pseudo-parameter literally named `[...branches]`, meaning "branches may sit on the node itself". The extractor drops it, and `V2_BEHAVIOUR` records the behaviour instead.
 
-**Generated, not transcribed.** `codegen/extractV2Table.ts` reads the published v2 package's `getOperators()`, which carries every operator's name, aliases and parameters with their aliases, and writes this module, which is checked in and listed with `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. A test extracts afresh and compares the result with the checked-in module, so `pnpm test` fails when they differ. Copying 95 names and 69 aliases by hand is exactly where a typo would hide, and the source is already data. The package's names are v2's alias table exactly, all 95 (measured against `operatorAliases.ts`). The check catches both an edit to the generated file and a v2 release that changes a name or alias. `src/` never imports the package, since only the codegen script and the tests read it.
+**Generated, not transcribed.** `codegen/extractV2Table.ts` reads the published v2 package's `getOperators()`, which carries every operator's name, aliases and parameters with their aliases, and writes this module, which is checked in and listed with `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. A test extracts afresh and compares the result with the checked-in module, so `pnpm test` fails when they differ. Copying 95 names and 69 aliases by hand is exactly where a typo would hide, and the source is already data. The package's names are v2's alias table exactly, all 95 (measured against `operatorAliases.ts`). The check catches both an edit to the generated file and a v2 release that changes a name or alias. `src/` never imports the package, since only the codegen script, the tests and the differential read it.
 
 ### `children.ts`: the positional mappings
 
@@ -204,7 +206,7 @@ export const V2_BEHAVIOUR: Partial<Record<V2Operator, V2OperatorBehaviour>> = {
   GRAPHQL: { evaluatesContents: ['variables'] },
   BUILD_OBJECT: { evaluatesContents: ['properties'] },
   MATCH: { evaluatesContents: ['branches'], extraKeys: 'branches' },
-  CUSTOM_FUNCTIONS: { evaluatesContents: ['input'], extraKeys: 'input' },
+  CUSTOM_FUNCTIONS: { evaluatesContents: ['input'] },
 }
 
 interface V2OperatorBehaviour {
@@ -219,15 +221,15 @@ interface V2OperatorBehaviour {
   - CUSTOM_FUNCTIONS calls it on `input`.
   - BUILD_OBJECT evaluates the `key` and `value` of each element of `properties`.
   - MATCH evaluates the branch that matches.
-- **`extraKeys`** tells the normalizer where a node's undeclared keys go. Most operators ignored such keys. MATCH read branches from the node itself, and a custom-function call gathered them into its `input` ([helpers.ts:121](../../v2-src/helpers.ts#L121)).
+- **`extraKeys`** tells the normalizer where a node's undeclared keys go. Most operators ignored such keys, and MATCH read branches from the node itself. A call that names a function in `operator` also had its undeclared keys gathered into `input` ([helpers.ts:121](../../v2-src/helpers.ts#L121)), but that is how v2 rewrote the call (stage 1, step 3), not how CUSTOM_FUNCTIONS behaved: its explicit form ignored undeclared keys.
 
 ### The name rule
 
-v2's standardization is behaviour, not data, and names are open-ended strings, so the converter implements it itself. It camel-cases the name, keeping stand-alone punctuation (`+`, `?`) as it is ([helpers.ts:194](../../v2-src/helpers.ts#L194)). A test holds it to v2's function, the package's `standardiseOperatorName`, over a list of awkward names: symbols, `SCREAMING_CASE`, spaces and hyphens, mixed case, digits, and the empty string.
+v2's standardization is behaviour, not data, and names are open-ended strings, so the converter implements it itself. It camel-cases the name ([helpers.ts:194](../../v2-src/helpers.ts#L194)), and keeps a name that camel-cases to nothing, such as `+` or `?`, as it is ([helpers.ts:35-37](../../v2-src/helpers.ts#L35-L37)). A test holds it to v2's function, the package's `standardiseOperatorName`, over a list of awkward names: symbols, `SCREAMING_CASE`, spaces and hyphens, mixed case, digits, and the empty string.
 
 ## The v2→v3 rules
 
-What each canonical v2 node becomes in v3: the other half of the converter's knowledge, beside the v2 table. They live in `src/converter/rules.ts`, one entry per v2 operator.
+What each canonical v2 node becomes in v3: the other half of the converter's knowledge, beside the v2 table. They live in `src/migrate/rules.ts`, one entry per v2 operator.
 
 ### Where rules sit
 
@@ -256,7 +258,7 @@ type ParamFate =
   | { to: string; value: (value: unknown, context: RuleContext) => unknown } // renamed and rewritten
   | 'consumed' // read by `build`, not carried over
   | 'omitted' // not carried over, and nothing is lost: v3 has nothing for it to mean
-  | { dropped: ConversionIssueTag; message: string } // no v3 counterpart: removed, with an issue
+  | { dropped: MigrationIssueTag; message: string } // no v3 counterpart: removed, with an issue
 ```
 
 The fates and `add` produce a **draft**: the node's v3 operator, its v3 parameters, the original v2 parameter values and its modifiers. Without a `build`, the draft is the result. A `build` returns the node's final v3 value, which can be anything:
@@ -283,18 +285,19 @@ CONDITIONAL: {
 GREATER_THAN: {
   to: 'greaterThan',
   params: { values: 'values', strict: 'consumed' },
-  build: orEqualWhenNotStrict('greaterThanOrEqual'),
+  build: ordering('greaterThanOrEqual'),
 },
 
 POST: {
   to: 'http',
   add: { method: 'post' },
   params: { url: 'url', parameters: 'body', headers: 'headers', returnProperty: 'returnPath' },
+  build: httpRequest,
 },
 
 OBJECT_PROPERTIES: {
   to: 'get',
-  params: { property: 'path', additionalData: 'from' },
+  params: { property: 'path', additionalData: { to: 'from', value: mergedWithData } },
   build: preferReference,
 },
 
@@ -303,7 +306,7 @@ PASSTHRU: { params: { value: 'consumed' }, build: ({ v2 }) => v2.value },
 
 **A computed or unrecognized deciding value.** When the parameter a `build` chooses by is a node rather than a literal (GREATER_THAN's `strict` computed at runtime), or a literal v2 did not accept (DIVIDE's `output: 'nope'`, a v2 type error), the rule takes its default target and emits a `non-convertible` issue. Writing an `if` that picks between the two nodes at runtime would be lossless, but nobody writes such an expression in practice, and the `if` would duplicate the node's parameters.
 
-The `{ to, value }` fate is for a parameter whose values v3 spells differently. If the per-operator pass finds no use for it, it goes.
+The `{ to, value }` fate is for a parameter whose values v3 spells differently, such as `additionalData`, `properties` and `branches` in batch 3.
 
 ### Checks
 
@@ -315,7 +318,7 @@ The shape is chosen so that every rule, including the ones with a `build`, can b
 
 ### v3's operator names
 
-The converter needs v3's operator names in two places: a v2 function whose name a core operator already uses must be registered under another ("Batch 5"), and so must a fragment ("Fragments"). `src/converter/v3Names.generated.ts` lists the core and I/O operators' names and aliases. It is generated from their definitions by the same script as the v2 table, and the same test holds it to a fresh extraction. Nothing at runtime imports the engine.
+The converter needs v3's operator names in two places: a v2 function whose name a core operator already uses must be registered under another ("Batch 5"), and so must a fragment ("Fragments"). `src/migrate/v3Names.generated.ts` lists the core and I/O operators' names and aliases. It is generated from their definitions by the same script as the v2 table, and the same test holds it to a fresh extraction. Nothing at runtime imports the engine.
 
 ### Paths
 
@@ -332,8 +335,8 @@ v2 silently projected a key across an array, and v3 needs an explicit `[*]` ("Re
 
 - **The migration guide** lists implicit projection as an intentional semantic change, with the `[*]` fix.
 - **v3's own sample-data check finds the cases.** `fig.validate(expression, { data })` warns with `missing-data-path` about a `$data` path the sample does not contain, and a path that relied on projection is exactly one v3 finds nothing at. That covers references and `get`'s literal paths. The page offers an optional sample-data box, and a script passes a representative data object.
-- **`returnPath` on `http` and `graphQL` is the gap**, since a response's shape is not known until the request runs. The guide covers it.
-- **The differential measures it.** If the frozen corpus shows projection is common, the converter could take sample data and insert `[*]` itself. Not before.
+- **`returnPath` on `http` and `graphQL`** cannot be checked, since a response's shape is not known until the request runs. Every converted `http` and `graphQL` node already carries the `response-collapse` issue, and its message covers projection too ("Batch 4").
+- **The differential measures it.** If the v2 tests show projection is common, the converter could take sample data and insert `[*]` itself. Not before.
 
 ### Per operator
 
@@ -373,17 +376,17 @@ SPLIT: {
 
 **EQUAL, NOT_EQUAL.** A node's own `caseInsensitive` carries over. v2's instance-wide `caseInsensitive` option applied to every node that did not set one, and v3's counterpart is `operatorDefaults` ("v2 disposition" for `equal`), which lives in the host's options rather than the expression. So when `V2Options.caseInsensitive` is `true`, `instanceCaseInsensitiveIssue` puts a `lossy-default` issue on each converted node that does not set its own: the node compares case-sensitively until the host adds `operatorDefaults: { equal: { caseInsensitive: true }, notEqual: { caseInsensitive: true } }` or the node sets `caseInsensitive: true` itself. `nullEqualsUndefined` is omitted: v3 has no `undefined` for it to equate. v2 folded case only when every value was a string, and v3 folds each string value. No input gives a different answer, since a string never equals a non-string either way. Up to 2.23.1, v2's NOT_EQUAL with `nullEqualsUndefined: true` returned `false` whenever the first value was null ([NOT_EQUAL/operator.ts:39](../../v2-src/operators/NOT_EQUAL/operator.ts#L39), `value === null && value === undefined`). 2.23.2 fixed it, and v3 answers as 2.23.2 does.
 
-**GREATER_THAN, LESS_THAN.** `ordering(orEqual)` picks the operator from `strict`, reading it as v2 did, with `!strict` ([GREATER_THAN/operator.ts:21](../../v2-src/operators/GREATER_THAN/operator.ts#L21)):
+**GREATER_THAN, LESS_THAN.** `ordering(orEqual)` picks the operator from `strict`. v2 type-checked `strict` as a boolean, so only `true` and `false` ever evaluated (measured: `0`, `''`, `null`, `1` and `'yes'` all fail v2's type check):
 
-- a falsy literal (`false`, `0`, `""`, `null`) gives the `…OrEqual` operator;
-- a truthy literal, or no `strict` at all, gives the strict operator, since v2's default was `true`;
-- a computed `strict` gives the strict operator and a `non-convertible` issue.
+- `false` gives the `…OrEqual` operator;
+- `true`, or no `strict` at all, gives the strict operator, since v2's default was `true` ([GREATER_THAN/operator.ts:9](../../v2-src/operators/GREATER_THAN/operator.ts#L9));
+- any other literal, or a computed `strict`, is the deciding-value case: the strict operator, and a `non-convertible` issue.
 
 v3 compares exactly two values, and v2 compared the first two and ignored any others. A literal `values` longer than two is cut to its first two, with a `lossy-default` issue naming what was removed. A computed one fails at runtime in v3 and is the guide's. Two differences depend on the data and go to the guide: mixed types (v2 coerced, so `5 > '3'` was `true`; v3 raises a type error), and null operands (v2 coerced null to `0`, so `null < 1` was `true`; v3 propagates null).
 
 **SPLIT.** `trimWhiteSpace` becomes `trim`, with the same default (`true`). `excludeTrailing` dies with no successor, and the converter does not wrap ("v2 disposition" for `split`). v2 dropped one trailing empty piece by default, so `'a,b,'` split to `['a', 'b']` and `''` to `[]`; v3 keeps them, giving `['a', 'b', '']` and `['']`. Whether an input ends in the delimiter or is empty depends on the data, and no v3 check can find it later. So `trailingEmptyIssue` puts an `intentional-semantic-change` issue on every converted `split` except one whose `excludeTrailing` was a literal `false`, where v2 already kept the empties. The issue gives the recipe: `filter` the result where empty pieces must go.
 
-2.23.2 also turned `\n`, `\t` and `\r` typed as text in a delimiter into the characters they name, since an editor's single-line field cannot hold a real newline, and v3 splits on the text as written (measured). `unescapedDelimiter` makes the same change to a literal delimiter, so `'\\n'` is written as `'\n'`. A computed delimiter that yields such text depends on the data, and goes to the guide.
+2.23.2 also turned `\n`, `\t` and `\r` typed as text in a delimiter into the characters they name, since an editor's single-line field cannot hold a real newline, and v3 splits on the text as written (measured). `unescapedDelimiter` makes the same change to a literal delimiter, so `'\\n'` is written as `'\n'`. A computed delimiter that yields such text depends on the data, and nothing in v3 finds it later, so a computed delimiter gets an `intentional-semantic-change` issue.
 
 **Measured differences on converted nodes**, beyond the renames:
 
@@ -433,7 +436,7 @@ The result is already the requested type for `'string'`, `'array'` and `'number'
 **SUBTRACT, DIVIDE.** v2 took the two operands as `values: [a, b]` or as a named pair (SUBTRACT's `from` and `subtract`, DIVIDE's `dividend` and `divisor`), and `values` won when both were present ([SUBTRACT/operator.ts:15](../../v2-src/operators/SUBTRACT/operator.ts#L15)). v3 has one spelling, `value` plus the infix parameter (`minus`, `by`). `binary(named, second)` reads the operands as v2 did:
 
 - a literal `values` array: its first element becomes `value` and its second the infix parameter. The named pair is ignored, as v2 ignored it. Elements past the second are cut with a `lossy-default` issue, as for GREATER_THAN;
-- a computed `values`: bound with `vars` and indexed, so it is still evaluated once: `{ operator: 'subtract', vars: { values: <node> }, value: '$vars.values[0]', minus: '$vars.values[1]' }`. The var takes a name the node does not already use;
+- a computed `values`: bound with `vars` and indexed, so it is still evaluated once: `{ operator: 'subtract', value: '$vars.values[0]', minus: '$vars.values[1]', vars: { values: <node> } }`. The var takes a name the node does not already use;
 - no `values`: the named pair, renamed.
 
 `divideOutput` then applies DIVIDE's `output`:
@@ -521,7 +524,7 @@ Three renderings still differ, and go to the guide:
 - arrays and objects were `'1,2'` and `'[object Object]'`, and v3 renders a placeholder;
 - a malformed token such as `{{ name }}` swallowed its whole fragment in v2 and renders literally in v3.
 
-v2 also evaluated a value it read from `data` as an expression, and v3 never does. That is the injection path References rule 4 closed, and it goes to the guide too.
+v2 also evaluated a value it read from `data` as an expression, and v3 never does. That is the injection path closed by rule 4 of "Reference grammar" in [v3-api.md](v3-api.md), and it goes to the guide too.
 
 **BUILD_OBJECT.** `properties` → `entries`, and `literalEntries` rewrites a literal array. An alternating one (any element a literal non-object) is paired into `{ key, value }` objects, as v2 paired it. An element missing its `key` or `value`, which v2 dropped silently, is dropped with a `lossy-default` issue naming it. A computed `properties` carries over, and its alternating or malformed shapes fail loudly in v3 at runtime, which is the guide's. The rulings are "v2 disposition" for `buildObject` in [v3-operator-parameters-2.md](v3-operator-parameters-2.md).
 
@@ -530,7 +533,7 @@ v2 also evaluated a value it read from `data` as an expression, and v3 never doe
 - a key already in `branches` wins over the node's own;
 - when `branches` holds a `fallback`, v2 answered with it before looking at the node's keys at all, so those keys were unreachable and are dropped, with a `lossy-default` issue.
 
-A computed `branches` carries over as v3's dynamic mode. v2 evaluated the matched value it extracted, and treated a `fallback` key in the computed object as the default; v3 does neither. Both are the guide's.
+A computed `branches` carries over as v3's dynamic mode. v2 evaluated the matched value it extracted, and treated a `fallback` key in the computed object as the default; v3 does neither. Whether that matters depends on the object computed, and nothing in v3 finds it later, so a computed `branches` gets an `intentional-semantic-change` issue.
 
 **PASSTHRU** becomes its value, never `literal`: v2 evaluated it ("v2 disposition" for `literal`). The modifiers it carried attach to that value, and where the value is a constant or a reference, "Rules that cut across operators" decides.
 
@@ -573,7 +576,7 @@ SQL: {
 
 The renames are the rulings: "v2 disposition" for `http`, `graphQL` and `sql` in [v3-operator-parameters-2.md](v3-operator-parameters-2.md). `useCache`, a parameter on all four in v2, is the node modifier in v3 and is handled with the other modifiers. These examples were measured against mock clients on both sides, comparing the request each version sent as well as the result.
 
-**The collapse, on GET, POST and GRAPHQL.** v2 passed every response through `extractAndSimplify` ([operatorUtils.ts](../../v2-src/operators/operatorUtils.ts)): each element of an array result, and a `returnProperty` result that was an object, was reduced to its value when it had exactly one key. So a GraphQL query for `{ countries { name } }` with `returnNode: 'countries'` returned `['NZ', 'AU']`, and v3 returns `[{ name: 'NZ' }, { name: 'AU' }]`. v3 dropped the collapse ("v2 disposition" for `http`), and whether it fired depends on the response, which nothing in v3 can check. It is also the likeliest silent difference in this batch, since querying a single field is everyday GraphQL. So `httpRequest` and `graphQLRequest` put an `intentional-semantic-change` issue on every converted node, giving the fix: v3's projection segment says what v2 inferred, so `returnPath: 'countries[*].name'` returns the names.
+**The collapse, on GET, POST and GRAPHQL.** v2 passed every response through `extractAndSimplify` ([operatorUtils.ts](../../v2-src/operators/operatorUtils.ts)): each element of an array result, and a `returnProperty` result that was an object, was reduced to its value when it had exactly one key. So a GraphQL query for `{ countries { name } }` with `returnNode: 'countries'` returned `['NZ', 'AU']`, and v3 returns `[{ name: 'NZ' }, { name: 'AU' }]`. v3 dropped the collapse ("v2 disposition" for `http`), and whether it fired depends on the response, which nothing in v3 can check. It is also the likeliest silent difference in this batch, since querying a single field is everyday GraphQL. So `httpRequest` and `graphQLRequest` put an `intentional-semantic-change` issue on every converted node, giving the fix: v3's projection segment says what v2 inferred, so `returnPath: 'countries[*].name'` returns the names. The same message covers a `returnPath` that crosses an array, which v2 projected silently ("Paths").
 
 **GET, POST.** `httpRequest` also does the following:
 
@@ -581,21 +584,21 @@ The renames are the rulings: "v2 disposition" for `http`, `graphQL` and `sql` in
 - **POST with no `parameters`** gets `body: {}`, since v2 always sent a JSON body and v3 sends none when `body` is absent.
 - **POST's cache default.** A converted POST without its own `useCache` gets `useCache: false`, unless `V2Options.useCache` is `true`. v2 left POST uncached by default, where v3's `http` caches.
 
-**GRAPHQL.** `graphQLRequest` drops a `url` of `''` or v2's placeholder `'graphQLEndpoint'` (any case), which both meant "the configured endpoint" in v2, as an omitted `url` does in v3. It splits a `url` object as `httpRequest` does. v2 joined a relative `url` to the GraphQL endpoint option, and v3 joins it to `http.baseEndpoint`, so a literal relative `url` gets an `intentional-semantic-change` issue. v2 also returned `data` even when the response carried `errors`, and v3 fails the node instead, which is a ruled change (register row 30) and the guide's.
+**GRAPHQL.** `graphQLRequest` drops a `url` of `''` or v2's placeholder `'graphQLEndpoint'` (any case), which both meant "the configured endpoint" in v2, as an omitted `url` does in v3. It splits a `url` object as `httpRequest` does. v2 joined a relative `url` to the GraphQL endpoint option, and v3 joins it to `http.baseEndpoint`, so a literal relative `url` gets an `intentional-semantic-change` issue. v2 also returned `data` even when the response carried `errors`, and v3 fails the node instead, which is a ruled change (row 30 of the gradient register, [v3-cases-for-review.md](v3-cases-for-review.md)) and the guide's.
 
-**SQL.** `sqlShape` maps `single` and `flatten` to `shape` as ruled: neither gives `'rows'` (the default, so omitted), `single` gives `'firstRow'`, `flatten` gives `'column'`, and both give `'firstValue'`. A computed `single` or `flatten` is a deciding value: `'rows'`, and a `non-convertible` issue. v2 also read the node's `type` as `flatten` when it was `'array'`, `'string'` or `'number'` ([SQL/operator.ts](../../v2-src/operators/SQL/operator.ts), a compatibility rider for v2.15 and earlier). The normalizer makes that explicit, setting `flatten: true` beside the `outputType` the same `type` becomes, which v2 evaluates identically. v2's `flatten` over a multi-column result gave arrays of values, which v3's `'column'` rejects at runtime. That is the ruling's loud migration line, and the guide's.
+**SQL.** `sqlShape` maps `single` and `flatten` to `shape` as ruled: neither gives `'rows'` (the default, so omitted), `single` gives `'firstRow'`, `flatten` gives `'column'`, and both give `'firstValue'`. A computed `single` or `flatten` is a deciding value: `'rows'`, and a `non-convertible` issue. v2 also read the node's `type` as `flatten` when it was `'array'`, `'string'` or `'number'` ([SQL/operator.ts](../../v2-src/operators/SQL/operator.ts), a compatibility rider for v2.15 and earlier). The normalizer makes that explicit, setting `flatten: true` beside the node's `outputType`, which is its own or else the one the same `type` becomes. v2 evaluates that identically. v2's `flatten` over a multi-column result gave arrays of values, which v3's `'column'` rejects at runtime. That is the ruling's loud migration line, and the guide's.
 
 **Measured differences on converted nodes**, beyond the renames:
 
-| v2 node, and response                                                 | v2                                            | converted, in v3                             | Disposition                         |
-| --------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------- | ----------------------------------- |
-| GET, response `[{ name: 'x' }, { name: 'y' }]`                        | `['x', 'y']`                                  | `[{ name: 'x' }, { name: 'y' }]`             | `intentional-semantic-change` issue |
-| GET with `returnProperty: 'a'`, response `{ a: { only: 5 } }`         | `5`                                           | `{ only: 5 }`                                | the same issue                      |
-| GRAPHQL with `returnNode: 'countries'`, response a list of `{ name }` | `['NZ', 'AU']`                                | the list of objects                          | the same issue                      |
-| GRAPHQL with `url: 'v2/graphql'`                                      | posts to the GraphQL endpoint + `/v2/graphql` | posts to `http.baseEndpoint` + `/v2/graphql` | `intentional-semantic-change` issue |
-| GRAPHQL, response with `errors`                                       | the `data`                                    | failure                                      | guide: ruled                        |
-| GET with `returnProperty: 'zz'`, missing                              | error                                         | `null`                                       | none: v3 is more lenient            |
-| SQL with `flatten: true`, two columns                                 | `[[1, 2]]`                                    | type error                                   | guide: ruled                        |
+| v2 node, and response                                                 | v2                                            | converted, in v3                             | Disposition                                                                |
+| --------------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------- |
+| GET, response `[{ name: 'x' }, { name: 'y' }]`                        | `['x', 'y']`                                  | `[{ name: 'x' }, { name: 'y' }]`             | `intentional-semantic-change` issue                                        |
+| GET with `returnProperty: 'a'`, response `{ a: { only: 5 } }`         | `5`                                           | `{ only: 5 }`                                | the same issue                                                             |
+| GRAPHQL with `returnNode: 'countries'`, response a list of `{ name }` | `['NZ', 'AU']`                                | the list of objects                          | the same issue                                                             |
+| GRAPHQL with `url: 'v2/graphql'`                                      | posts to the GraphQL endpoint + `/v2/graphql` | posts to `http.baseEndpoint` + `/v2/graphql` | `intentional-semantic-change` issue                                        |
+| GRAPHQL, response with `errors`                                       | the `data`                                    | failure                                      | guide: ruled                                                               |
+| GET with `returnProperty: 'zz'`, missing                              | error                                         | `null`                                       | none, unless a `fallback` caught it ("Fallbacks that caught missing data") |
+| SQL with `flatten: true`, two columns                                 | `[[1, 2]]`                                    | type error                                   | guide: ruled                                                               |
 
 The other measured cases give the same answer and send the same request in both: GET plain, with query parameters, with a relative URL, with a `returnProperty`, over multi-key objects and with a `url` object; POST with and without a body; GRAPHQL with a full URL, the placeholder, or none; and SQL as rows, `single`, `flatten` over one column, both together, `single` with no rows, and the `type` rider.
 
@@ -613,7 +616,7 @@ A v2 custom function becomes a host-registered custom operator of the same name.
 - a `$name` key is a call only when the name is neither a v2 operator nor a fragment ([shorthandSyntax.ts:47-67](../../v2-src/shorthandSyntax.ts#L47-L67));
 - the explicit form, `{ operator: 'customFunctions', functionName, … }`, needs no list.
 
-Each form normalizes to the explicit one. The node's undeclared keys go into `input` (`extraKeys`, above), as `replaceCustomOperator` put them ([helpers.ts:121](../../v2-src/helpers.ts#L121)).
+Each form normalizes to the explicit one. A call that names the function in `operator` has its undeclared keys put into `input`, unless it has an `input` already, as `replaceCustomOperator` did ([helpers.ts:121](../../v2-src/helpers.ts#L121)). The explicit form's undeclared keys were ignored, and go to `//` ("Keys v2 ignored").
 
 **What `functionCall` writes.** v2 called the function as `f(input, ...args)`, with `input` first when present ([CUSTOM_FUNCTIONS/operator.ts:34-37](../../v2-src/operators/CUSTOM_FUNCTIONS/operator.ts#L34-L37)).
 
@@ -687,7 +690,7 @@ Measured the same in both: a node inside a PASSTHRU's object and at the root, wi
 
 ### Keys v2 ignored
 
-An operator node's undeclared keys, meaning anything that is not a parameter, a property alias, a modifier or an alias definition of its v2 operator, go into a `//` comment object on the result: `{ operator: '+', values: [1, 2], comment: 'adds' }` becomes `{ '//': { comment: 'adds' }, operator: 'plus', values: [1, 2] }`. v2 ignored them, and v3 strips `//` everywhere, so nothing changes and no issue is raised. MATCH and CUSTOM_FUNCTIONS are the exceptions, since they read such keys (`extraKeys`).
+An operator node's undeclared keys, meaning anything that is not a parameter, a property alias, a modifier or an alias definition of its v2 operator, go into a `//` comment object on the result: `{ operator: '+', values: [1, 2], comment: 'adds' }` becomes `{ '//': { comment: 'adds' }, operator: 'plus', values: [1, 2] }`. v2 ignored them, and v3 strips `//` everywhere, so nothing changes and no issue is raised. MATCH is the exception, since it read such keys as branches (`extraKeys`), and so is a call naming a function in `operator`, whose keys went into `input` (stage 1, step 3).
 
 ### Fallbacks that caught missing data
 
@@ -700,13 +703,15 @@ v2 failed on a missing path, since OBJECT_PROPERTIES threw ([OBJECT_PROPERTIES/o
 
 That depends on the data, and nothing in v3 finds it later. So each `fallback` with a converted read beneath it that has no default of its own gets an `intentional-semantic-change` issue: the innermost such fallback, since that is the one that caught the failure in v2. The issue gives both fixes: the host's `strictDataPaths: true`, which restores v2's behaviour everywhere, or a default at the read (`missingPathDefault`, `firstOf`). The guide recommends `strictDataPaths` to hosts whose configs lean on the pattern.
 
+A read here includes an `http` or `graphQL` node's `returnPath`: v2 failed when a response lacked it, and v3 returns `null` ("Batch 4"). `strictDataPaths` deliberately does not reach a response, which is operator output rather than a reference namespace ([ioHelpers.ts:175](../../src/operators/ioHelpers.ts#L175)). So for these, the issue gives `firstOf`, or reading the path with a `get` and its `missingPathDefault` around the request.
+
 ### Computed `children`
 
 A computed `children` converts for the eleven operators whose mapping is `{ into }`, as `children.ts` says, and is `non-convertible` for the rest.
 
 ## Fragments
 
-v2's fragments were bodies with `$name` placeholders, which a call's arguments filled by being spread over the body as alias definitions ([evaluate.ts:75-117](../../v2-src/evaluate.ts#L75-L117)). v3's are definitions with declared parameters, read through `$params.…` ("Fragments" in [v3-api.md](v3-api.md), whose v2 disposition table this section follows). `convertV2Fragments` converts the definitions, and `convertV2ToV3` converts the calls, reading the definitions from `V2Options.fragments`. Measured like the batches, against definitions converted by these rules.
+v2's fragments were bodies with `$name` placeholders, which a call's arguments filled by being spread over the body as alias definitions ([evaluate.ts:75-117](../../v2-src/evaluate.ts#L75-L117)). v3's are definitions with declared parameters, read through `$params.…` ("Fragments" in [v3-api.md](v3-api.md), whose v2 disposition table this section follows). `migrateV2Fragments` converts the definitions, and `migrateV2Expression` converts the calls, reading the definitions from `V2Options.fragments`. Measured like the batches, against definitions converted by these rules.
 
 ### Definitions
 
@@ -729,7 +734,7 @@ Each v2 fragment `name: body` becomes `{ expression, parameters?, description?, 
 - a fragment name equal to a core or I/O operator's name or alias (`round`, `+`, `http`), or to a function's in `V2Options.functions`, which becomes an operator of that name (batch 5);
 - a parameter name containing `.`, `[` or `]`, or equal to a reserved node key (`fallback`, `vars`, `operator`).
 
-The rename is the vars rule: `.`, `[` and `]` become `_` and a leading `$` goes. A name that still clashes, with a reserved key, an operator or another name, gets a numeric suffix (`round_2`), assigned in sorted order so the same fragments always get the same names. `convertV2ToV3` derives the same renames from `V2Options.fragments`, so calls and their arguments follow. The host sees the new names, in `getFragments()` and its editor, so each rename gets a `lossy-default` issue.
+The rename is the vars rule: `.`, `[` and `]` become `_` and a leading `$` goes. A name that still clashes, with a reserved key, an operator or another name, gets a numeric suffix (`round_2`), assigned in sorted order so the same fragments always get the same names. `migrateV2Expression` derives the same renames from `V2Options.fragments`, so calls and their arguments follow. The host sees the new names, in `getFragments()` and its editor, so each rename gets a `lossy-default` issue.
 
 **The result holds every fragment**, keyed as in the input unless renamed, and none is left out. Two failures cannot be foreseen: a collision with one of the host's own v3 operators, and a cycle, since v2 had no recursion guard and v3 rejects one. Registering the result reports both.
 
@@ -787,12 +792,12 @@ Anything else is data. A node-shaped object inside data is not normalized, and s
    - The object's other keys are laid over the result, and a later `$` key's result over an earlier one's.
    - An unresolved `$` key stays. It is an alias definition if the object has become a node, and data otherwise: `{ $plus: ['$n', 2], $n: 5 }` is `7`.
 2. **What it is.** A `fragment` key makes a fragment call, even beside an `operator` key, since v2's expansion replaced the operator (measured). An `operator` key makes an operator node. Anything else is a plain value, and stage 1 is done with it, apart from walking it under `evaluateFullObject`. An operator node goes through steps 3 to 7, and a fragment call through step 8.
-3. **A custom-function call** is an `operator` that names a listed function exactly, checked before any operator lookup, as v2 checked it ([helpers.ts:122](../../v2-src/helpers.ts#L122)). It becomes the explicit form, with its undeclared keys in `input` (`extraKeys`) unless it has an `input` already.
+3. **A custom-function call** is an `operator` that names a listed function exactly, checked before any operator lookup, as v2 checked it ([helpers.ts:122](../../v2-src/helpers.ts#L122)). It becomes the explicit form, with its undeclared keys in `input` unless it has an `input` already.
 4. **The operator name** is standardized and looked up. A name that is neither a v2 operator's nor a listed function's cannot be read any further, since its parameters are unknown, so the node is left as written (below).
 5. **Parameter names.**
    - Property aliases become names.
-   - `type` becomes `outputType`, except on PLUS.
-   - SQL's `type` rider becomes `flatten: true` beside that `outputType` ("Batch 4").
+   - `type` becomes `outputType`, except on PLUS, where it is a parameter, and on SQL.
+   - On SQL, a `type` of `'array'`, `'string'` or `'number'` becomes `flatten: true`, since v2's SQL read `type` for its rider whatever `outputType` said ([SQL/operator.ts:51](../../v2-src/operators/SQL/operator.ts#L51)). `type` also becomes `outputType` when the node has none ("Batch 4").
 6. **`children`** becomes named parameters through `V2_CHILDREN`. It overrides any named parameter it fills, as v2's `parseChildren` did ([CONDITIONAL/operator.ts:28](../../v2-src/operators/CONDITIONAL/operator.ts#L28)). A computed `children` whose mapping is not `{ into }` is left as written.
 7. **Undeclared keys** move where `extraKeys` says. MATCH's go into `branches`, with the precedence in "Batch 3". Any others stay where they are, for stage 2's `//` object.
 8. **Fragment arguments.** The call node's `$` keys move into `parameters`, beneath its own keys ("Calls", under "Fragments").
@@ -804,7 +809,7 @@ Each value v2 evaluated is then normalized in turn.
 - the part of a shorthand result that something overwrote: another key of the object (`{ $plus: { values: [1, 2] }, values: [3, 4] }` is `7`), or a later `$` key's result (`{ $plus: [1, 2], $multiply: [3, 4] }` is `12`);
 - a parameter spelled twice, by name and by alias, where v2 kept whichever came later in the object (measured both ways);
 - a named parameter that `children` also fills;
-- `type` beside `outputType`, since v2 read `outputType` first;
+- `type` beside `outputType`, since v2 read `outputType` first, except on PLUS and SQL, where `type` also had a job of its own;
 - MATCH's unreachable root branches ("Batch 3");
 - a call-node fragment argument that the body shadows ("Calls");
 - the payload of a fragment shorthand that is not an object. v2 spread it into `parameters`, where it named nothing (measured: `{ $g: 5 }` left `$n` unfilled).
@@ -813,7 +818,7 @@ Each value v2 evaluated is then normalized in turn.
 
 **What it does not do.** It does not expand fragments, insert declared defaults or resolve aliases. v2 did all three at every evaluation, but in v3 they belong to the converted definition and to `vars`.
 
-**The oracle.** Given the same options and data, v2 evaluates the canonical tree to the input's value. The tests use the published 2.23.2 that the differential imports. Stage 1's tests run each example through both, and "The differential runner" runs the frozen corpus the same way.
+**The oracle.** Given the same options and data, v2 evaluates the canonical tree to the input's value. The tests use the published package that the differential imports. Stage 1's tests run each example through both, and "The differential runner" runs the v2 tests' cases the same way. There is one exception, the quirk below: a call-node argument named after a v2 operator (`$count`) moves into `parameters`, where v2 reads the object as shorthand, so v2 loses the argument in the canonical call where the input kept it. The oracle tests expect that difference.
 
 One v2 quirk is not kept. A `parameters` object whose argument name is also a v2 operator's (`$count`, `$data`) was itself read as shorthand when v2 evaluated it, so that argument never arrived, and the body saw the placeholder's text (measured). No one could have relied on that. The argument converts as written, and the guide lists the quirk.
 
@@ -858,13 +863,13 @@ Migration's never-throws ruling allows two kinds, and each comes with a `non-con
 | a computed `functionName`                                                                                                | `literal`                                                           | "Batch 5"        |
 | a computed fragment name                                                                                                 | `literal`                                                           | "Fragments"      |
 
-A person who forgot to list a custom function sees every call on it quoted, each with an issue naming it, and gets calls by converting again with the function listed.
+A person who forgot to list a custom function sees every call in the `operator: 'fn'` form quoted, each with an `unknown-operator` issue naming it, and gets calls by converting again with the function listed. A shorthand call, `{ $fn: … }`, was data to v2 when `fn` was not listed, so it converts as data, quoted in `literal` with no issue. That is why the page asks for function names first.
 
 **The note in the output.** Each placeholder also carries its issue's message in a `//` key:
 
 ```json
 {
-  "//": "v2 conversion: the fragment name is computed, and v3 fragment names are literal. Rewrite by hand, for example as a match over the fragments it can name.",
+  "//": "v2 conversion: The fragment name is computed, and v3 fragment names are literal. The call is quoted unconverted. Rewrite it by hand, for example as a `match` over the fragments it can name.",
   "operator": "literal",
   "value": { "fragment": { "operator": "getData", "property": "which" }, "parameters": { "$x": 1 } }
 }
@@ -883,7 +888,7 @@ Every issue the converter emits, as a reference table. The rules above say when 
 ### The issue shape
 
 ```ts
-interface ConversionIssue {
+interface MigrationIssue {
   code: 'split-trailing-empty' | 'remainder-sign' | … // one of the codes below
   tag: 'non-convertible' | 'intentional-semantic-change' | 'lossy-default'
   path: (string | number)[] // in the input
@@ -894,37 +899,39 @@ interface ConversionIssue {
 `code` is added to migration's shape ("Changes to other specs"). Three tags are too coarse to act on, and a code lets the page group issues ("12 × `split-trailing-empty`"), a script accept the ones it has checked, tests assert without matching text, and the differential match a divergence to its issue. Codes are kebab-case, like `validate()`'s, and stable: a code keeps its meaning, and its message can be reworded. The union stays inline, as `tag` does, so the root's type exports are still the four in "Surface".
 
 - **Messages** are templates, filled from the node where the tables show `{…}`. Each says what differs, when it matters, and the fix. A `non-convertible` message is also the placeholder's `//` note, with `v2 conversion: ` in front.
-- **Paths.** The tables name a key by its canonical v2 name, and the issue reports it at the input path its value came from ("Source paths"). "The node" means the node's own path. `convertV2Fragments`' paths are rooted at the fragments object.
+- **Paths.** The tables name a key by its canonical v2 name, and the issue reports it at the input path its value came from ("Source paths"). "The node" means the node's own path. `migrateV2Fragments`' paths are rooted at the fragments object.
 
 ### `intentional-semantic-change`
 
-| Code                    | Emitted when                                                                   | Path         | Message                                                                                                                                                                                                                                                                   | Ruled in                             |
-| ----------------------- | ------------------------------------------------------------------------------ | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `split-trailing-empty`  | every converted `split`, unless `excludeTrailing` was a literal `false`        | the node     | v2 dropped one trailing empty piece, so `'a,b,'` split to `['a', 'b']` and `''` to `[]`. v3 keeps it, giving `['a', 'b', '']` and `['']`. Where empty pieces must go, `filter` the result.                                                                                | "Batch 1"                            |
-| `remainder-sign`        | every DIVIDE with `output: 'remainder'`                                        | `output`     | v2's remainder took the sign of the dividend (−7 remainder 3 was −1), and v3's `modulo` takes the sign of `mod` (2). They differ only when exactly one operand is negative. For v2's answer there, take the `modulo` of the `abs` values and give it the dividend's sign. | "Batch 2"                            |
-| `template-numbering`    | a computed template in positional mode                                         | `string`     | The template is computed, so its tokens cannot be renumbered. v2 matched tokens to substitutions by rank (`'%1 %3'` used the first two), and v3 matches by number. Check that the template's tokens have no gaps.                                                         | "Batch 3"                            |
-| `named-token-source`    | a computed template or `substitutions` in named mode                           | `string`     | The template or `substitutions` is computed, so the converter cannot tell which `{{…}}` tokens read `data` in v2, which any name missing from `substitutions` did. In v3 such a token is written `{{$data.name}}`. Rewrite those tokens.                                  | "Batch 3"                            |
-| `response-collapse`     | every converted `http` and `graphQL`                                           | the node     | v2 reduced each single-key object in the response to its value, so a list of `{ name }` objects came back as a list of names. v3 returns the response as sent. To keep v2's result, project the field in `returnPath`, as in `'countries[*].name'`.                       | "Batch 4"                            |
-| `graphql-relative-url`  | a literal relative `url` on GRAPHQL                                            | `url`        | v2 joined a relative `url` to its GraphQL endpoint option, and v3 joins it to `http.baseEndpoint`. Check the host's `http.baseEndpoint`, or write the full URL.                                                                                                           | "Batch 4"                            |
-| `output-type`           | every converted `outputType`                                                   | `outputType` | v3's `convert` is strict where v2 guessed: {the differences for this type, from the table in "The modifiers"}. Check that this node's result can never be one of them.                                                                                                    | "The modifiers"                      |
-| `missing-data-fallback` | the innermost `fallback` above a converted read that has no default of its own | `fallback`   | In v2 a missing data path failed, and this `fallback` answered. In v3 the read gives `null` and the node carries on. Set the host option `strictDataPaths: true` to fail as v2 did, or give the read its own default (`missingPathDefault`, `firstOf`).                   | "Fallbacks that caught missing data" |
+| Code                    | Emitted when                                                                                                                                         | Path         | Message                                                                                                                                                                                                                                                                                                                                                                                                        | Ruled in                             |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `split-trailing-empty`  | every converted `split`, unless `excludeTrailing` was a literal `false`                                                                              | the node     | v2 dropped one trailing empty piece, so `'a,b,'` split to `['a', 'b']` and `''` to `[]`. v3 keeps it, giving `['a', 'b', '']` and `['']`. Where empty pieces must go, `filter` the result.                                                                                                                                                                                                                     | "Batch 1"                            |
+| `remainder-sign`        | every DIVIDE with `output: 'remainder'`                                                                                                              | `output`     | v2's remainder took the sign of the dividend (−7 remainder 3 was −1), and v3's `modulo` takes the sign of `mod` (2). They differ only when exactly one operand is negative. For v2's answer there, take the `modulo` of the `abs` values and give it the dividend's sign.                                                                                                                                      | "Batch 2"                            |
+| `template-numbering`    | a computed template in positional mode                                                                                                               | `string`     | The template is computed, so its tokens cannot be renumbered. v2 matched tokens to substitutions by rank (`'%1 %3'` used the first two), and v3 matches by number. Check that the template's tokens have no gaps.                                                                                                                                                                                              | "Batch 3"                            |
+| `named-token-source`    | a computed template or `substitutions` in named mode                                                                                                 | `string`     | The template or `substitutions` is computed, so the converter cannot tell which `{{…}}` tokens read `data` in v2, which any name missing from `substitutions` did. In v3 such a token is written `{{$data.name}}`. Rewrite those tokens.                                                                                                                                                                       | "Batch 3"                            |
+| `response-collapse`     | every converted `http` and `graphQL`                                                                                                                 | the node     | v2 reduced each single-key object in the response to its value, so a list of `{ name }` objects came back as a list of names. v3 returns the response as sent. To keep v2's result, project the field in `returnPath`, as in `'countries[*].name'`. The same `[*]` is needed wherever `returnPath` crosses an array, since v2 projected a key across one silently.                                             | "Batch 4"                            |
+| `computed-delimiter`    | a computed `split` delimiter                                                                                                                         | `delimiter`  | The delimiter is computed. v2 turned `\n`, `\t` and `\r` typed as text in a delimiter into the characters they name, and v3 splits on the text as written. If the delimiter can hold such text, make it the real character.                                                                                                                                                                                    | "Batch 1"                            |
+| `computed-branches`     | a computed MATCH `branches`                                                                                                                          | `branches`   | `branches` is computed. v2 evaluated the branch it picked when that was an expression, and answered with a `fallback` key when nothing matched. v3 returns the branch as it is, and reads `fallback` as an ordinary key. Check that the object holds plain values, and give the no-match answer with `default`.                                                                                                | "Batch 3"                            |
+| `graphql-relative-url`  | a literal relative `url` on GRAPHQL                                                                                                                  | `url`        | v2 joined a relative `url` to its GraphQL endpoint option, and v3 joins it to `http.baseEndpoint`. Check the host's `http.baseEndpoint`, or write the full URL.                                                                                                                                                                                                                                                | "Batch 4"                            |
+| `output-type`           | every converted `outputType`                                                                                                                         | `outputType` | v3's `convert` is strict where v2 guessed: {the differences for this type, from the table in "The modifiers"}. Check that this node's result can never be one of them.                                                                                                                                                                                                                                         | "The modifiers"                      |
+| `missing-data-fallback` | the innermost `fallback` above a converted read that has no default of its own: a `$data` reference, a `get`, or an `http` or `graphQL` `returnPath` | `fallback`   | In v2 a missing path failed, and this `fallback` answered. In v3 the read gives `null` and the node carries on. For data, set the host option `strictDataPaths: true` to fail as v2 did, or give the read its own default (`missingPathDefault`, `firstOf`). For a response's `returnPath`, which `strictDataPaths` does not reach, use `firstOf`, or read the path with a `get` and its `missingPathDefault`. | "Fallbacks that caught missing data" |
 
 ### `lossy-default`
 
-| Code                         | Emitted when                                                                                                                                                                                                                                                                   | Path                                                          | Message                                                                                                                                                                                                                             | Ruled in             |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| `instance-case-insensitive`  | `equal` or `notEqual` without its own `caseInsensitive`, when `V2Options.caseInsensitive` is `true`                                                                                                                                                                            | the node                                                      | v2's `caseInsensitive` option applied to this node. v3 compares case-sensitively until the host adds `operatorDefaults: { {operator}: { caseInsensitive: true } }`, or this node sets `caseInsensitive: true`.                      | "Batch 1"            |
-| `values-cut`                 | a literal `values` longer than two, on GREATER_THAN, LESS_THAN, SUBTRACT or DIVIDE                                                                                                                                                                                             | `values`                                                      | v2 used the first two values and ignored the rest. Removed: {the values}.                                                                                                                                                           | "Batch 1", "Batch 2" |
-| `fallback-converted`         | an OBJECT_PROPERTIES `fallback` beside `outputType`, when it is a literal not already of the target type                                                                                                                                                                       | `fallback`                                                    | This `fallback` becomes `missingPathDefault`, which v3's `convert` then converts to {type}. v2 returned it as it was, and {the value} is not a {type}. Give a default of that type.                                                 | "The modifiers"      |
-| `malformed-entry`            | a BUILD_OBJECT element with no `key` or no `value`                                                                                                                                                                                                                             | the element                                                   | v2 skipped an entry with no `key` or no `value`. Removed.                                                                                                                                                                           | "Batch 3"            |
-| `unreachable-branches`       | a MATCH root branch, when `branches` holds a `fallback`                                                                                                                                                                                                                        | the root key                                                  | `branches` has a `fallback`, which v2 answered with before it read the node's own keys, so this branch was never reached. Removed.                                                                                                  | "Batch 3"            |
-| `overridden-value`           | a value v2 never read because another spelling won: a shorthand payload's key under another key of the object, an earlier `$` key's result under a later one's, a parameter given by name and by alias, a named parameter that `children` fills, or `type` beside `outputType` | the losing key                                                | v2 never read {key}: {winner} gave the same parameter and won. Removed.                                                                                                                                                             | "Stage 1"            |
-| `fragment-shorthand-payload` | a fragment shorthand whose payload is not an object                                                                                                                                                                                                                            | the `$name` key                                               | A fragment shorthand takes an object of arguments. v2 spread this one into `parameters`, where it named nothing, so the call had no arguments. Removed.                                                                             | "Stage 1"            |
-| `shadowed-argument`          | a call-node argument that the body's top level also defines, when the definition is known                                                                                                                                                                                      | the argument's key                                            | The body of `{fragment}` sets its own `${name}`, which beat this argument in v2, so the argument never applied. Removed.                                                                                                            | "Calls"              |
-| `unknown-argument`           | an argument the definition does not have, when the definition is known                                                                                                                                                                                                         | the argument's key                                            | `{fragment}` has no parameter `{name}`. v2 ignored the argument, and v3 rejects it. Removed.                                                                                                                                        | "Calls"              |
-| `fragment-use-cache`         | a `useCache` on a fragment call                                                                                                                                                                                                                                                | `useCache`                                                    | A v3 fragment call takes no `useCache`, since caching is set on the operators inside the body. v2 applied this one to the body's node, unless the body set its own. Removed. Set `useCache` in the definition if the body needs it. | "Calls"              |
-| `name-renamed`               | a fragment or parameter name v3 cannot register, renamed                                                                                                                                                                                                                       | the fragment's key, or the parameter in `metadata.parameters` | `{name}` cannot be registered in v3 ({the reason}), so it is renamed `{new name}`, and calls follow. Update anything outside expressions that uses the old name.                                                                    | "Definitions"        |
-| `unknown-parameter-type`     | a declared fragment parameter whose type v3 does not have                                                                                                                                                                                                                      | the parameter's `type`                                        | `{type}` is not a v3 type, so the parameter takes `'any'`.                                                                                                                                                                          | "Definitions"        |
+| Code                         | Emitted when                                                                                                                                                                                                                                                                                        | Path                                                          | Message                                                                                                                                                                                                                             | Ruled in             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `instance-case-insensitive`  | `equal` or `notEqual` without its own `caseInsensitive`, when `V2Options.caseInsensitive` is `true`                                                                                                                                                                                                 | the node                                                      | v2's `caseInsensitive` option applied to this node. v3 compares case-sensitively until the host adds `operatorDefaults: { {operator}: { caseInsensitive: true } }`, or this node sets `caseInsensitive: true`.                      | "Batch 1"            |
+| `values-cut`                 | a literal `values` longer than two, on GREATER_THAN, LESS_THAN, SUBTRACT or DIVIDE                                                                                                                                                                                                                  | `values`                                                      | v2 used the first two values and ignored the rest. Removed: {the values}.                                                                                                                                                           | "Batch 1", "Batch 2" |
+| `fallback-converted`         | an OBJECT_PROPERTIES `fallback` beside `outputType`, unless it is a literal already of the target type                                                                                                                                                                                              | `fallback`                                                    | This `fallback` becomes `missingPathDefault`, which v3's `convert` then converts to {type}, where v2 returned it as it was. Unless it is already a {type}, the default fails or changes. Give a default of that type.               | "The modifiers"      |
+| `malformed-entry`            | a BUILD_OBJECT element with no `key` or no `value`                                                                                                                                                                                                                                                  | the element                                                   | v2 skipped an entry with no `key` or no `value`. Removed.                                                                                                                                                                           | "Batch 3"            |
+| `unreachable-branches`       | a MATCH root branch, when `branches` holds a `fallback`                                                                                                                                                                                                                                             | the root key                                                  | `branches` has a `fallback`, which v2 answered with before it read the node's own keys, so this branch was never reached. Removed.                                                                                                  | "Batch 3"            |
+| `overridden-value`           | a value v2 never read because another spelling won: a shorthand payload's key under another key of the object, an earlier `$` key's result under a later one's, a parameter given by name and by alias, a named parameter that `children` fills, or `type` beside `outputType` (not on PLUS or SQL) | the losing key                                                | v2 never read {key}: {winner} gave the same parameter and won. Removed.                                                                                                                                                             | "Stage 1"            |
+| `fragment-shorthand-payload` | a fragment shorthand whose payload is not an object                                                                                                                                                                                                                                                 | the `$name` key                                               | A fragment shorthand takes an object of arguments. v2 spread this one into `parameters`, where it named nothing, so the call had no arguments. Removed.                                                                             | "Stage 1"            |
+| `shadowed-argument`          | a call-node argument that the body's top level also defines, when the definition is known                                                                                                                                                                                                           | the argument's key                                            | The body of `{fragment}` sets its own `${name}`, which beat this argument in v2, so the argument never applied. Removed.                                                                                                            | "Calls"              |
+| `unknown-argument`           | an argument the definition does not have, when the definition is known                                                                                                                                                                                                                              | the argument's key                                            | `{fragment}` has no parameter `{name}`. v2 ignored the argument, and v3 rejects it. Removed.                                                                                                                                        | "Calls"              |
+| `fragment-use-cache`         | a `useCache` on a fragment call                                                                                                                                                                                                                                                                     | `useCache`                                                    | A v3 fragment call takes no `useCache`, since caching is set on the operators inside the body. v2 applied this one to the body's node, unless the body set its own. Removed. Set `useCache` in the definition if the body needs it. | "Calls"              |
+| `name-renamed`               | a fragment or parameter name v3 cannot register, renamed                                                                                                                                                                                                                                            | the fragment's key, or the parameter in `metadata.parameters` | `{name}` cannot be registered in v3 ({the reason}), so it is renamed `{new name}`, and calls follow. Update anything outside expressions that uses the old name.                                                                    | "Definitions"        |
+| `unknown-parameter-type`     | a declared fragment parameter whose type v3 does not have                                                                                                                                                                                                                                           | the parameter's `type`                                        | `{type}` is not a v3 type, so the parameter takes `'any'`.                                                                                                                                                                          | "Definitions"        |
 
 ### `non-convertible`
 
@@ -959,7 +966,7 @@ Phase 15.2's check on the whole converter. Every expression case in the v2 tests
 - **It follows v2's releases** until v3's release freezes v2. A bump is taken like a v3 change: run, review, accept ("The baseline").
 - **Nothing in the converter's tooling reads `/v2-src`.** The generated table, the `children` and name tests, the stage-1 oracle and the differential all read the package. So deleting `/v2-src` touches none of them.
 
-**Conversion happens in the run.** Each case is `figV3.evaluate(convertV2ToV3(expression, options).expression)`, so no converted expression is stored, the corpus stays v2, and every run tests the converter as it is.
+**Conversion happens in the run.** Each case is `figV3.evaluate(migrateV2Expression(expression, options).expression)`, so no converted expression is stored, the corpus stays v2, and every run tests the converter as it is.
 
 ### The corpus
 
@@ -971,6 +978,8 @@ Phase 15.2's check on the whole converter. Every expression case in the v2 tests
 It is one array with two kinds of entry:
 
 ```ts
+import type { FigTreeOptions as FigTreeOptionsV2 } from 'fig-tree-evaluator-v2'
+
 export const OPTION_UPDATE = Symbol('option update')
 
 type Entry =
@@ -979,7 +988,7 @@ type Entry =
 ```
 
 - **`id`** names the case in the output, the review map and the baseline. It is unique, which the runner checks at startup, and never reused. A new case takes the next number wherever it goes in the array.
-- **`from`** is the v2 test the case came from, such as `'5_plus.test.ts › adds strings'`.
+- **`from`** is the v2 test the case came from, such as `'4_plus.test.ts › adds strings'`.
 - **`options`** are the case's own, as the v2 test passed them to `evaluate(expression, options)`. They apply to that case only.
 - **An option update** changes the options for every case after it, as `updateOptions()` did. Its `Symbol` cannot occur in a v2 expression, so the two kinds of entry never mix.
 
@@ -994,14 +1003,16 @@ The runner keeps the running v2 options itself:
 `toV3Options` is the migration a host does by hand ("Moved options" in [v3-migration.md](v3-migration.md)), written once:
 
 - `data` as it is;
-- `fragments` through `convertV2Fragments`, whose issues print once per update;
+- `fragments` through `migrateV2Fragments`, whose issues print once per update;
 - each function as a v3 operator of its name, the recipe's way: an optional `input` and `...args` as its positional rest, called as v2 called it, `f(input, ...args)`;
 - `caseInsensitive` as `operatorDefaults` for `equal` and `notEqual`;
 - the I/O settings (endpoints and headers) as v3's, with the clients below.
 
+Three options are read by the converter and have no v3 counterpart: `evaluateFullObject`, `noShorthand` and `useCache`. The converter has already applied them, so `toV3Options` drops them.
+
 Two options are handled rather than mapped:
 
-- **`returnErrorAsString`**, which 16 of the files use, is dropped on both sides. v2 then throws where it returned the error's text, and the two failures compare as failures.
+- **`returnErrorAsString`**, which 15 of the files use, is dropped on both sides. v2 then throws where it returned the error's text, and the two failures compare as failures.
 - **`allowJSONStringInput`**: the runner parses a string case before converting it, as any caller must, since the converter ignores the option.
 
 Any other option it cannot map stops the run at startup, so no case silently runs under different options.
@@ -1040,15 +1051,15 @@ Each case gets one of three statuses:
 By default, each ✗ prints as a block, each ⚠ as one line, and each ✓ not at all. Every line is cut to about 100 characters. A summary follows:
 
 ```
-✗ #42  5_plus.test.ts › adds strings and numbers
+✗ #42  4_plus.test.ts › adds strings and numbers
     expression  {"operator":"+","values":["a",5]}
     v2          "a5"
     v3          error: plus expects numbers, strings, arrays or objects…
     issues      —
-⚠ #57  12_split.test.ts › trailing delimiter          split-trailing-empty
-⚠ #88  3_plus.test.ts › mixed types                   guide: no implicit coercion
+⚠ #57  11_split.test.ts › trailing delimiter          split-trailing-empty
+⚠ #88  4_plus.test.ts › mixed types                   guide: no implicit coercion
 
-1,024 cases: 961 ✓ · 48 ⚠ · 15 ✗
+382 cases: 331 ✓ · 38 ⚠ · 13 ✗
 Issues raised: output-type ×31, response-collapse ×9, split-trailing-empty ×6, …
 Unexplained: #42 #203 #611
 ```
@@ -1072,27 +1083,27 @@ The plan's M7 milestone, "converter + differential green", means `--check` passe
 
 The unit suites run in `pnpm test` beside the rest of the v3 suite, one file per part of the converter. Each holds the converter to promises this spec makes:
 
-| Suite                 | Holds                                                                                                                                                                                                                                                                                                                  |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `converter-table`     | The two generated tables equal fresh extractions, the v2 one from the package and the v3 one from the operator definitions. Each `children` mapping gives what the package's `parseChildren` gives. The name rule agrees with `standardiseOperatorName`.                                                               |
-| `converter-normalize` | Each stage-1 example comes out canonical, which a checker confirms (canonical names, no property aliases, no `children`, no shorthand), and v2 evaluates it as it evaluated the input.                                                                                                                                 |
-| `converter-rules`     | Every v2 parameter has a fate, and every target and renamed parameter exists in v3's `getOperators()`. Each operator's examples convert to the output this spec gives, validate in v3, and evaluate the same in v2 and v3, or differ as their row says.                                                                |
-| `converter-frame`     | What surrounds the rules: the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, fallbacks that caught missing data, computed `children`, and source paths.                                                                                                                                             |
-| `converter-fragments` | Definitions through `convertV2Fragments`, and calls through `convertV2ToV3`.                                                                                                                                                                                                                                           |
-| `converter-issues`    | The catalogue. Only its codes are emitted, each row is triggered with its tag at its path, and every placeholder carries its `//` note, while nothing else does.                                                                                                                                                       |
-| `converter-contract`  | What holds for every conversion. It never throws, over malformed input: a non-string `operator`, `values: 5`, `children: 'x'`, `null` where a node goes. It never mutates, since every example converts from a deep-frozen input. It is deterministic, since reordering an input's keys changes nothing in the output. |
-| `converter`           | The subpath exports exactly `convertV2ToV3` and `convertV2Fragments`. It exists, for the placeholder, and gains the second function.                                                                                                                                                                                   |
+| Suite               | Holds                                                                                                                                                                                                                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `migrate-table`     | The two generated tables equal fresh extractions, the v2 one from the package and the v3 one from the operator definitions. Each `children` mapping gives what the package's `parseChildren` gives. The name rule agrees with `standardiseOperatorName`.                                                               |
+| `migrate-normalize` | Each stage-1 example comes out canonical, which a checker confirms (canonical names, no property aliases, no `children`, no shorthand), and v2 evaluates it as it evaluated the input.                                                                                                                                 |
+| `migrate-rules`     | Every v2 parameter has a fate, and every target and renamed parameter exists in v3's `getOperators()`. Each operator's examples convert to the output this spec gives, validate in v3, and evaluate the same in v2 and v3, or differ as their row says.                                                                |
+| `migrate-frame`     | What surrounds the rules: the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, fallbacks that caught missing data, computed `children`, and source paths.                                                                                                                                             |
+| `migrate-fragments` | Definitions through `migrateV2Fragments`, and calls through `migrateV2Expression`.                                                                                                                                                                                                                                     |
+| `migrate-issues`    | The catalogue. Only its codes are emitted, each row is triggered with its tag at its path, and every placeholder carries its `//` note, while nothing else does.                                                                                                                                                       |
+| `migrate-contract`  | What holds for every conversion. It never throws, over malformed input: a non-string `operator`, `values: 5`, `children: 'x'`, `null` where a node goes. It never mutates, since every example converts from a deep-frozen input. It is deterministic, since reordering an input's keys changes nothing in the output. |
+| `migrate`           | The subpath exports exactly `migrateV2Expression` and `migrateV2Fragments`. It exists, for the placeholder, and gains the second function.                                                                                                                                                                             |
 
 The examples in this spec are the tests' first cases. Each was measured through both engines when it was written, and the tests keep it measured. The suites import the v2 package, whose CommonJS build ts-jest loads as it is. A type test also imports the four conversion types from the root, so `pnpm typecheck` fails if one goes missing: `test/exports.test.ts` lists values only.
 
 ### Packaging
 
-The `./convert` entry is in place, with the placeholder, and it changes when the converter is complete:
+The `./migrate` entry is in place, with the placeholder, and it changes when the converter is complete:
 
 - **The budget.** Its row in `codegen/entries.mjs` is sized for the placeholder, at 130 bytes brotli. It is set from measurement plus about 5% once the converter is complete, as the other entries' were. The embedded v2 table and the catalogue's messages will be most of it.
 - **The marker.** The placeholder's message is its marker now. It becomes a string only the converter holds, such as the `unknown-operator` message's `'is not a v2 operator'`.
-- **The types.** `code` joins `ConversionIssue` in `src/conversionTypes.ts`, and `V2Options` and `FragmentConversionResult` join the root's type exports.
-- **Isolation.** The lint rule for `src/converter/` allows value imports from inside the folder only, and type imports from anywhere. That is editor-hints' rule widened to a folder of several modules. The `instanceof FigTreeError` assertion planned for 15.1 goes, since the converter shares no runtime code with the root.
+- **The types.** `code` joins `MigrationIssue` in `src/migrationTypes.ts`, and `V2Options` and `FragmentMigrationResult` join the root's type exports.
+- **Isolation.** The lint rule for `src/migrate/` allows value imports from inside the folder only, and type imports from anywhere. That is editor-hints' rule widened to a folder of several modules. The `instanceof FigTreeError` assertion planned for 15.1 goes, since the converter shares no runtime code with the root.
 - **The v2 package** is a devDependency only, and nothing under `src/` imports it. The lint rule that bans `/v2-src` from `src/` gains its name, `fig-tree-evaluator-v2`.
 
 `pnpm check:package` already imports, requires and typechecks every entry of the packed package, and its tree-shake fixture scans for every subpath's marker, so neither needs changing.
@@ -1100,7 +1111,7 @@ The `./convert` entry is in place, with the placeholder, and it changes when the
 ### Repo tooling
 
 - **`differential/`** is linted, formatted and typechecked like `test/`, and is added to `tsconfig.test.json`'s `include`.
-- **Generated files.** `src/converter/v2/operators.generated.ts`, `src/converter/v3Names.generated.ts` and `differential/sqlRecordings.ts` join `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. Both generators write Prettier's format, so `pnpm format:check` covers them as they are.
+- **Generated files.** `src/migrate/v2/operators.generated.ts`, `src/migrate/v3Names.generated.ts` and `differential/sqlRecordings.ts` join `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. Both generators write Prettier's format, so `pnpm format:check` covers them as they are.
 - **The HTTP mocks' routing** moves into plain modules under `differential/mocks/`. `test/__mocks__/node-fetch.ts` and `axios.ts` become `jest.fn` wrappers over them, so `pnpm test:v2` runs as before.
 - **CLAUDE.md's commands** gain `pnpm differential`.
 - **CI** gains a `differential` job in `ci.yml`, beside `test`, running `pnpm differential --check`. It is offline and deterministic like the rest. As its own job, a drift shows as its own check rather than behind a unit-test failure, and it runs in parallel.
@@ -1112,12 +1123,12 @@ The `./convert` entry is in place, with the placeholder, and it changes when the
 **15.1 · The converter**
 
 1. **The write-backs.** The "Changes to other specs" list, so the other specs agree with this one before any code does. The plan's 15.1 and 15.2 are rewritten to this sequence.
-2. **The reference tables.** The v2 package as a devDependency, `extractV2Table` and the two generated tables, `children.ts`, `behaviour.ts` and the name rule. Tests: `converter-table`.
-3. **Stage 1.** The normalizer with its source paths, and the canonical-v2 checker. Tests: `converter-normalize`.
-4. **Stage 2's frame, with batch 1.** The walk and its scope, the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, placeholders with their notes, and the issue machinery, `code` included. Batch 1's renames need nothing else, so the frame is tested through them. Tests: `converter-frame`, and `converter-rules` begun.
-5. **Batches 2 to 5**, in order, then the rules that need them: fallbacks that caught missing data, and OBJECT_PROPERTIES' `fallback` beside `outputType`. Tests: `converter-rules` and `converter-frame` completed.
-6. **Fragments.** `convertV2Fragments`, and calls. Tests: `converter-fragments`.
-7. **The contract and the surface.** `converter-issues`, `converter-contract` and the surface test, then the types, the lint rule, the marker and the budget. The placeholder is gone.
+2. **The reference tables.** The v2 package as a devDependency, `extractV2Table` and the two generated tables, `children.ts`, `behaviour.ts` and the name rule. Tests: `migrate-table`.
+3. **Stage 1.** The normalizer with its source paths, and the canonical-v2 checker. Tests: `migrate-normalize`.
+4. **Stage 2's frame, with batch 1.** The walk and its scope, the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, placeholders with their notes, and the issue machinery, `code` included. Batch 1's renames need nothing else, so the frame is tested through them. Tests: `migrate-frame`, and `migrate-rules` begun.
+5. **Batches 2 to 5**, in order, then the rules that need them: fallbacks that caught missing data, and OBJECT_PROPERTIES' `fallback` beside `outputType`. Tests: `migrate-rules` and `migrate-frame` completed.
+6. **Fragments.** `migrateV2Fragments`, and calls. Tests: `migrate-fragments`.
+7. **The contract and the surface.** `migrate-issues`, `migrate-contract` and the surface test, then the types, the lint rule, the marker and the budget. The placeholder is gone.
 
 **15.2 · The differential**
 
@@ -1129,7 +1140,7 @@ The `./convert` entry is in place, with the placeholder, and it changes when the
 
 **Close-out**: the phase's bundle-size row and `src/dev/phase15_showcase.ts`, a range of v2 expressions with their conversions, issues and v3 results (working rules 6 and 7). M7 is `--check` passing against the accepted baseline.
 
-After Phase 15, only Phase 16's benchmarks and this doc's links still read `/v2-src`.
+After Phase 15, only Phase 16's benchmarks, `pnpm test:v2` and this doc's links still read `/v2-src`.
 
 ## What v3 does with unconverted v2 syntax
 
