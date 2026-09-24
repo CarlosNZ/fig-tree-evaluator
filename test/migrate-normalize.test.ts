@@ -17,6 +17,7 @@ import type { IssueCode, Path } from '../src/migrate/issues'
 import { normalizeV2 } from '../src/migrate/normalize'
 import { V2_PARAMETERS } from '../src/migrate/v2/operators.generated'
 import { canonicalViolations } from './helpers/canonicalV2'
+import { clone, deepFreeze } from './helpers/migration'
 
 const data = {
   user: { name: 'Ann', friends: [{ name: 'Bo' }, { name: 'Cy' }] },
@@ -75,16 +76,6 @@ const sqlConnection = {
 
 const optionsFor = (options: V2Options = {}): V2Options => ({ fragments, functions, ...options })
 
-/**
- * A deep copy made in this realm. `structuredClone` makes Node's objects,
- * which fail v2's `instanceof Object` test for a node inside Jest's context.
- */
-const clone = (value: unknown): unknown => {
-  if (Array.isArray(value)) return value.map(clone)
-  if (value === null || typeof value !== 'object') return value
-  return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, clone(v)]))
-}
-
 /** What v2 makes of an expression: its value, or that it failed */
 const v2 = async (expression: unknown, options: V2Options) => {
   const fig = new FigTreeEvaluator({
@@ -100,14 +91,6 @@ const v2 = async (expression: unknown, options: V2Options) => {
   } catch {
     return { error: true }
   }
-}
-
-const deepFreeze = <T>(value: T): T => {
-  if (value !== null && typeof value === 'object') {
-    Object.values(value).forEach(deepFreeze)
-    Object.freeze(value)
-  }
-  return value
 }
 
 const normalize = (input: unknown, options?: V2Options) =>

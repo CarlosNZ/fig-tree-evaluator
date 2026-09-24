@@ -1,6 +1,6 @@
 # FigTree v3 — the v2 converter
 
-_Status: **Agreed** (September 2026, signed off by Carl at Phase-15 planning). The other specs were changed as "Changes to other specs" lists, as 15.1's first chunk. Built so far: the placeholder `./migrate` entry, the reference tables ("The v2 reference table", 15.1's second chunk), and stage 1 ("Stage 1: normalize", 15.1's third chunk)._
+_Status: **Agreed** (September 2026, signed off by Carl at Phase-15 planning). The other specs were changed as "Changes to other specs" lists, as 15.1's first chunk. Built so far: the placeholder `./migrate` entry, the reference tables ("The v2 reference table", 15.1's second chunk), stage 1 ("Stage 1: normalize", 15.1's third chunk), and stage 2's frame with batch 1 (15.1's fourth chunk)._
 
 ## Purpose
 
@@ -650,7 +650,7 @@ What happens around every rule, whatever the operator. Measured like the batches
 Stage 2 attaches the canonical v2 node's modifiers to the rule's result:
 
 - **`fallback`** is converted like any value and carried.
-- **`useCache`** is carried, v2's I/O parameter of the same name included.
+- **`useCache`** is carried when it is a literal boolean, v2's I/O parameter of the same name included. v3 takes nothing else ("Reserved-key values" in [v3-api.md](v3-api.md)). On the five operators v2 cached (GET, POST, GRAPHQL, SQL and CUSTOM_FUNCTIONS), any other value is a deciding value ("The rule shape"): the converter writes v2's default, which is `V2Options.useCache`, or else `true`, or `false` for POST and custom functions, with a `deciding-value` issue. Every other operator ignored `useCache` in v2, and one that is not a boolean is dropped with no issue (ruled at 15.1's fourth chunk).
 - **`outputType`** (and `type`, where it is not a declared parameter) wraps the result: `{ operator: 'convert', value: <result>, to: <outputType> }`, with `'bool'` spelled `'boolean'`. A computed `outputType` becomes a computed `to`, which is legal, since `to` is an ordinary parameter ("v2 disposition" for `convert` in [v3-operator-parameters-2.md](v3-operator-parameters-2.md)).
 - **Alias definitions** become `vars` (below).
 
@@ -658,13 +658,15 @@ Stage 2 attaches the canonical v2 node's modifiers to the rule's result:
 
 **Every converted `outputType` gets an `intentional-semantic-change` issue**, as "What emits an issue" in [v3-migration.md](v3-migration.md) has it: v3's `convert` is strict, where v2 guessed. The issue names what differs for its type:
 
-| v2 `outputType`, value  | v2      | converted, in v3                                             |
-| ----------------------- | ------- | ------------------------------------------------------------ |
-| `'number'`, `'abc4.5x'` | `4.5`   | failure: `regex` `extract` then `convert` is the replacement |
-| `'number'`, `'abc'`     | `0`     | failure                                                      |
-| `'number'`, `null`      | `0`     | `null`                                                       |
-| `'string'`, `[1, 2]`    | `'1,2'` | failure: `join` or `buildString` render it                   |
-| `'boolean'`, `'false'`  | `true`  | `false`                                                      |
+| v2 `outputType`, value  | v2       | converted, in v3                                             |
+| ----------------------- | -------- | ------------------------------------------------------------ |
+| `'number'`, `'abc4.5x'` | `4.5`    | failure: `regex` `extract` then `convert` is the replacement |
+| `'number'`, `'abc'`     | `0`      | failure                                                      |
+| `'number'`, `null`      | `0`      | `null`                                                       |
+| `'string'`, `null`      | `'null'` | `null`                                                       |
+| `'array'`, `null`       | `[null]` | `null`                                                       |
+| `'string'`, `[1, 2]`    | `'1,2'`  | failure: `join` or `buildString` render it                   |
+| `'boolean'`, `'false'`  | `true`   | `false`                                                      |
 
 Numbers, numeric strings, `'boolean'` over `0`, `'array'` over a scalar, a fallback over a failed node, and a computed `outputType` give the same answer in both.
 
@@ -679,10 +681,11 @@ One interaction with batch 3: OBJECT_PROPERTIES turns its `fallback` into `missi
 
 ### Aliases → `vars`
 
-- **Definitions.** `$name` keys on an operator node become `vars: { name: … }` on the node's result. With `evaluateFullObject` on, `$` keys on a plain object are definitions too ([evaluate.ts:281](../../v2-src/evaluate.ts#L281)), and v3 takes `vars` on a plain object literal. On a fragment call, `$` keys are arguments ("Fragments").
-- **References.** A whole-string `"$name"` inside the defining node, its fallback included, becomes `"$vars.name"`. v2 resolved a reference from the definitions on enclosing nodes, and v3's `vars` are lexical in the same way. An alias whose value is another alias (`$b: '$a'`) becomes `b: '$vars.a'`. A `"$name"` with no enclosing definition stays as it is: v2 returned it as text, and v3 reads it as inert text, with a `validate()` warning.
-- **Names.** The `$` goes. `.`, `[` and `]`, which v3's name rule rejects ("Name legality, not name style" in [v3-api.md](v3-api.md)), become `_`, and a name that then clashes with another on the node gets a numeric suffix. v2 matched a reference to its definition by exact string, so the rename changes nothing.
-- **Leaks.** v2 resolved aliases into shared state, mutated in place, so a sibling evaluated later could see a definition that was not its ancestor's, depending on timing ([evaluate.ts:149-155](../../v2-src/evaluate.ts#L149-L155)). v3's `vars` are lexical, so such a reference becomes an unresolved var, which `validate()` reports as an error. That goes to the guide.
+- **Definitions.** `$name` keys on an operator node become `vars: { name: … }` on the node's result. With `evaluateFullObject` on, `$` keys on a plain object are definitions too ([evaluate.ts:281](../../v2-src/evaluate.ts#L281)), and v3 takes `vars` on a plain object literal. So are the `$` keys of an object an operator evaluated itself through `evaluateObject` (GET and POST `parameters` and `headers`, GRAPHQL `variables`, CUSTOM_FUNCTIONS `input`), whatever `evaluateFullObject` said (measured: `parameters: { $n: 5, a: '$n' }` sent `{ a: 5 }`), and they become `vars` on that object (ruled at 15.1's fourth chunk). MATCH's `branches` is not one of these: v2 never passed it to `evaluateObject`, and its `$` keys are branch keys. On a fragment call, `$` keys are arguments ("Fragments").
+- **References.** A whole-string `"$name"` inside the defining node, its fallback included, becomes `"$vars.name"`. v2 resolved a reference from the definitions on enclosing nodes, and v3's `vars` are lexical in the same way. A `"$name"` with no enclosing definition stays as it is: v2 returned it as text, and v3 reads it as inert text, with a `validate()` warning.
+- **Definitions read the enclosing scope.** v2 evaluated a node's definitions before any of them existed, each in the enclosing scope ([evaluate.ts:242-258](../../v2-src/evaluate.ts#L242-L258)), and v3's `vars` see their siblings. So a definition's value converts in the enclosing scope, and a sibling is read only by a whole `'$name'` the enclosing scope cannot resolve, which v2 looked up among the siblings afterwards: `$b: '$a'` becomes `b: '$vars.a'`. A sibling named deeper inside a definition was text to v2, or the enclosing definition of that name, and it converts to the same (measured: with `$a: 1`, `$b: { operator: '+', values: ['$a', 10] }` gave `'$a10'`, or `110` under an enclosing `$a: 100`). Ruled at 15.1's fourth chunk.
+- **Names.** The `$` goes. `.`, `[` and `]`, which v3's name rule rejects ("Name legality, not name style" in [v3-api.md](v3-api.md)), become `_`, and a name that then clashes with another on the node, or with a var an enclosing node declares, gets a numeric suffix (`a_2`). v2 matched a reference to its definition by exact string, so the rename changes nothing. No var shadows another, so a definition can reach an enclosing var its own node redefines (`$a: { operator: '+', values: ['$a', 1] }` under an enclosing `$a`), and v3's shadowing warning never fires (ruled at 15.1's fourth chunk).
+- **Leaks.** v2 resolved aliases into shared state, mutated in place, so a sibling evaluated later could see a definition that was not its ancestor's, depending on timing ([evaluate.ts:149-155](../../v2-src/evaluate.ts#L149-L155)). v3's `vars` are lexical, and such a reference has no enclosing definition, so it stays as text, which `validate()` warns about. That goes to the guide.
 
 Measured the same in both: a definition used in the node and in a child, a chain, a definition whose value is a node, a dotted name, and an unresolved reference.
 
@@ -698,7 +701,7 @@ Measured the same in both: a node inside a PASSTHRU's object and at the root, wi
 
 ### Keys v2 ignored
 
-An operator node's undeclared keys, meaning anything that is not a parameter, a property alias, a modifier or an alias definition of its v2 operator, go into a `//` comment object on the result: `{ operator: '+', values: [1, 2], comment: 'adds' }` becomes `{ '//': { comment: 'adds' }, operator: 'plus', values: [1, 2] }`. v2 ignored them, and v3 strips `//` everywhere, so nothing changes and no issue is raised. MATCH is the exception, since it read such keys as branches (`extraKeys`), and so is a call naming a function in `operator`, whose keys went into `input` (stage 1, step 3).
+An operator node's undeclared keys, meaning anything that is not a parameter, a property alias, a modifier or an alias definition of its v2 operator, go into a `//` comment object on the result: `{ operator: '+', values: [1, 2], comment: 'adds' }` becomes `{ '//': { comment: 'adds' }, operator: 'plus', values: [1, 2] }`. v2 ignored them, and v3 strips `//` everywhere, so nothing changes and no issue is raised. An author's own `//` key is the comment itself, not one of those keys: `{ operator: '+', values: [1, 2], '//': 'adds' }` becomes `{ '//': 'adds', operator: 'plus', values: [1, 2] }` (ruled at 15.1's fourth chunk). MATCH is the exception, since it read such keys as branches (`extraKeys`), and so is a call naming a function in `operator`, whose keys went into `input` (stage 1, step 3).
 
 ### Fallbacks that caught missing data
 
@@ -902,7 +905,7 @@ A person who forgot to list a custom function sees every call in the `operator: 
 - **Finding them.** Every note starts `v2 conversion: `, so a search of the stored expressions finds what is left to fix. Removing the note is part of fixing the node.
 - **Where it sits.** On the placeholder node. For a `literal`, that is the `literal` node, beside `value`, since inside `value` the key would be data. Every placeholder is a node, so every note has a place.
 - **`non-convertible` only.** The other tags mark nodes that work. Notes for them, such as the issue on every converted `outputType`, would bury the placeholders' notes.
-- **Several on one node.** A node can have more than one `non-convertible` issue, and also the keys v2 ignored ("Keys v2 ignored"). Then `//` holds an array: the messages first and the ignored keys' object last. A single note is written bare. v3 takes any JSON value in `//` ("Comments: the `//` key" in [v3-api.md](v3-api.md)), and a `literal` with a note, a shorthand call with one, and an array of notes all validate (measured).
+- **Several on one node.** A node can have more than one `non-convertible` issue, and also the keys v2 ignored ("Keys v2 ignored"). Then `//` holds an array: the messages first, then an author's own `//`, and the ignored keys' object last. A single note is written bare. v3 takes any JSON value in `//` ("Comments: the `//` key" in [v3-api.md](v3-api.md)), and a `literal` with a note, a shorthand call with one, and an array of notes all validate (measured).
 
 ## The issue catalogue
 
@@ -962,7 +965,7 @@ Each is a placeholder ("Placeholders").
 
 | Code                         | Emitted when                                                                                                                                   | Path                                | Message                                                                                                                                                                                                                                                                                      | Ruled in              |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `deciding-value`             | a computed or unrecognized `strict`, DIVIDE `output`, PLUS `type`, or SQL `single`, `flatten` or `type`                                        | that key                            | {`strict` is computed / `'nope'` is not a value v2 accepted}, so the converter cannot tell what v2 did. It wrote {the default target}, v2's default. Where {the key} can be otherwise, rewrite the node by hand.                                                                             | "The rule shape"      |
+| `deciding-value`             | a computed or unrecognized `strict`, DIVIDE `output`, PLUS `type`, SQL `single`, `flatten` or `type`, or `useCache` on an operator v2 cached   | that key                            | {`strict` is computed / `'nope'` is not a value v2 accepted}, so the converter cannot tell what v2 did. It wrote {the default target}, v2's default. Where {the key} can be otherwise, rewrite the node by hand.                                                                             | "The rule shape"      |
 | `drilled-substitution-token` | a named token that drills into a key of a literal `substitutions`                                                                              | `string`                            | `{{{token}}}` drills into the substitution `{name}`, and v3's substitution tokens do not drill. Pass the drilled value as a substitution of its own.                                                                                                                                         | "Batch 3"             |
 | `number-mapping`             | each token a `numberMapping` maps                                                                                                              | the token's key in `numberMapping`  | v3 has no `numberMapping`, so `{token}` renders the bare number. Choose the text in the substitution instead, with `match` or `if`.                                                                                                                                                          | "Batch 3"             |
 | `template-escape`            | a literal template holding `\%N`, `\$N` or `\{{`, or a `$`-mode template already holding `%N` text                                             | `string`                            | v3 has no escapes, and reads `%N` and `{{…}}` in a template as tokens. To show such text literally, pass it in as a substitution.                                                                                                                                                            | "Batch 3"             |
@@ -1148,7 +1151,7 @@ The `./migrate` entry is in place, with the placeholder, and it changes when the
 1. **The write-backs.** The "Changes to other specs" list, so the other specs agree with this one before any code does. The plan's 15.1 and 15.2 are rewritten to this sequence.
 2. **The reference tables.** The v2 package as a devDependency, `extractV2Table` and the two generated tables, `children.ts`, `behaviour.ts` and the name rule. Tests: `migrate-table`.
 3. **Stage 1.** The normalizer with its source paths, and the canonical-v2 checker. Tests: `migrate-normalize`.
-4. **Stage 2's frame, with batch 1.** The walk and its scope, the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, placeholders with their notes, and the issue machinery, `code` included. Batch 1's renames need nothing else, so the frame is tested through them. Tests: `migrate-frame`, and `migrate-rules` begun.
+4. **Stage 2's frame, with batch 1.** The walk and its scope, the modifiers, aliases → `vars`, the `literal` wrap, keys v2 ignored, placeholders with their notes, and the issue machinery, `code` included. Batch 1's renames need nothing else, so the frame is tested through them. Two parts of the frame wait for chunk 5, whose rules are the first to reach them: a result that is not a node, and the objects an operator evaluated itself (`evaluatesContents`). Tests: `migrate-frame`, and `migrate-rules` begun.
 5. **Batches 2 to 5**, in order, then the rules that need them: fallbacks that caught missing data, and OBJECT_PROPERTIES' `fallback` beside `outputType`. Tests: `migrate-rules` and `migrate-frame` completed.
 6. **Fragments.** `migrateV2Fragments`, and calls. Tests: `migrate-fragments`.
 7. **The contract and the surface.** `migrate-issues`, `migrate-contract` and the surface test, then the types, the lint rule, the marker and the budget. The placeholder is gone.
