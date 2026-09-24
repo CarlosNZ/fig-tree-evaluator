@@ -16,6 +16,13 @@
       "default": "./build/editor-hints/index.js"
     }
   },
+  "typesVersions": {
+    "*": {
+      "editor-hints": [
+        "./build/editor-hints/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "build"
   ],
