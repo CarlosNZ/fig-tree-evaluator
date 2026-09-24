@@ -3,7 +3,9 @@
  *
  *  1. Asks for the next version, suggesting the likely ones. A pre-release is
  *     `X.Y.Z-beta.N` and publishes under the `beta` dist-tag, never `latest`.
- *  2. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it.
+ *  2. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it. A beta
+ *     passes on its release's entry, or on one of its own,
+ *     `## [X.Y.Z-beta.N]`.
  *  3. Bumps package.json and regenerates src/version.ts.
  *  4. Runs what CI runs (.github/workflows/ci.yml): lint, format check,
  *     typecheck, tests, build, and the packaging checks.
@@ -108,6 +110,19 @@ const tagExists = (tag) =>
 
 const step = (text) => console.log(`\n▸ ${text}`)
 
+/**
+ * The version whose CHANGELOG.md entry covers `v`, or null. A beta may have
+ * an entry of its own, but usually shares its release's: the top entry runs
+ * one version ahead of package.json, so through the beta period it is the
+ * release's, collecting notes as they land.
+ */
+const changelogEntryFor = (v) => {
+  const changelog = readFileSync(CHANGELOG, 'utf8')
+  const heading = (version) => new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm')
+  const candidates = v.pre ? [format(v), core(v)] : [format(v)]
+  return candidates.find((version) => heading(version).test(changelog)) ?? null
+}
+
 // ── The release ────────────────────────────────────────────────────────────
 
 const chooseVersion = async (current) => {
@@ -135,6 +150,13 @@ const chooseVersion = async (current) => {
       throw new ReleaseError(`${format(picked)} does not follow the current ${format(current)}`)
     if (tagExists(`v${format(picked)}`))
       throw new ReleaseError(`the tag v${format(picked)} already exists`)
+    const entry = changelogEntryFor(picked)
+    if (!entry)
+      throw new ReleaseError(
+        `CHANGELOG.md has no entry for ${format(picked)} — add a "## [${core(picked)}] - <date>" ` +
+          `section first${picked.pre ? `, or one headed "## [${format(picked)}]"` : ''}`
+      )
+    console.log(`\nCHANGELOG entry: ## [${entry}]`)
     const tag = distTag(picked)
     const branch = run('git', ['branch', '--show-current'], { capture: true })
     const confirm = await ask(
@@ -145,11 +167,6 @@ const chooseVersion = async (current) => {
   } finally {
     rl.close()
   }
-}
-
-const hasChangelogEntry = (version) => {
-  const heading = new RegExp(`^## \\[${version.replace(/\./g, '\\.')}\\]`, 'm')
-  return heading.test(readFileSync(CHANGELOG, 'utf8'))
 }
 
 const main = async () => {
@@ -168,11 +185,6 @@ const main = async () => {
   const next = await chooseVersion(current)
   const version = format(next)
   const tag = `v${version}`
-
-  if (!hasChangelogEntry(version))
-    throw new ReleaseError(
-      `CHANGELOG.md has no entry for ${version} — add a "## [${version}] - <date>" section first`
-    )
 
   // A child receives Ctrl-C itself; ignoring it here lets the failed step
   // unwind through the restore below instead of exiting mid-release
