@@ -43,6 +43,7 @@ const fragments = {
   plusBody: { operator: '+', values: [1, 2] },
   reader: { operator: '+', values: ['$n', 100] },
   constant: 42,
+  $dollar: 4,
 }
 
 interface V2Request {
@@ -659,12 +660,21 @@ const EXAMPLES: Example[] = [
     expected: { fragment: 'pair', parameters: { $a: 1, $b: 2 }, operator: '+' },
   },
   {
-    name: 'a computed fragment name',
+    name: 'a computed fragment name leaves the call as written',
     input: { fragment: { $getData: 'which' }, parameters: { $values: [1, 2] } },
-    expected: {
-      fragment: { operator: 'OBJECT_PROPERTIES', property: 'which' },
-      parameters: { $values: [1, 2] },
-    },
+    expected: { fragment: { $getData: 'which' }, parameters: { $values: [1, 2] } },
+  },
+  {
+    name: "a `$` name that is a fragment's is the name, not an alias",
+    input: { fragment: '$dollar' },
+    expected: { fragment: '$dollar', parameters: {} },
+  },
+  {
+    name: "with `evaluateFullObject`, the body's own `$` key beats a `parameters` argument",
+    input: { fragment: 'withDefault', parameters: { $n: 3 } },
+    options: { evaluateFullObject: true },
+    expected: { fragment: 'withDefault', parameters: {} },
+    issues: [{ code: 'shadowed-argument', path: ['parameters', '$n'] }],
   },
   {
     name: 'call-node arguments stay beside a computed `parameters`',

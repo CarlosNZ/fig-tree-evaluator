@@ -135,7 +135,13 @@ export const canonicalViolations = (expression: unknown, options: V2Options = {}
   }
 
   const call = (input: PlainObject, path: Path) => {
-    value(input.fragment, [...path, 'fragment'])
+    // A computed name is left as written, call and all
+    const { fragment } = input
+    if (
+      isComputed(fragment) &&
+      !(typeof fragment === 'string' && Object.hasOwn(fragments, fragment))
+    )
+      return
     if (!Object.hasOwn(input, 'parameters')) report(path, 'a fragment call with no `parameters`')
     const { parameters } = input
     if (isPlainObject(parameters) && !isNode(parameters)) {

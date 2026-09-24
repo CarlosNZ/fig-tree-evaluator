@@ -41,7 +41,8 @@ export interface NodeSource {
 }
 
 /** The issues of a node left as written ("What it leaves as written") */
-export type QuotedCode = 'unknown-operator' | 'computed-children' | 'computed-function-name'
+export type QuotedCode =
+  'unknown-operator' | 'computed-children' | 'computed-function-name' | 'computed-fragment-name'
 
 export interface Normalized {
   /** The canonical v2 tree */
@@ -200,13 +201,14 @@ class Normalizer {
     if (!isPlainObject(input)) return input
 
     const mark = this.issues.length
-    if (Object.hasOwn(input, 'fragment')) return this.fragmentCall(this.draft(input, source))
+    if (Object.hasOwn(input, 'fragment'))
+      return this.fragmentCall(this.draft(input, source), input, mark)
     if (Object.hasOwn(input, 'operator'))
       return this.operatorNode(this.draft(input, source), input, mark)
     const expanded = this.expandShorthand(input, source, this.issues)
     if (expanded === undefined) return this.plain(input, source)
     return expanded.has('fragment')
-      ? this.fragmentCall(expanded)
+      ? this.fragmentCall(expanded, input, mark)
       : this.operatorNode(expanded, input, mark)
   }
 
@@ -369,8 +371,8 @@ class Normalizer {
 
   /**
    * A node kept exactly as the input has it: an unknown operator, a computed
-   * `children` that cannot be split, or a computed function name. v2
-   * evaluates it the same trivially. What stage 1 found on the way here is
+   * `children` that cannot be split, or a computed function or fragment name.
+   * v2 evaluates it the same trivially. What stage 1 found on the way here is
    * moot, since stage 2 quotes the node whole.
    */
   private asWritten(
@@ -619,32 +621,47 @@ class Normalizer {
   /**
    * Step 8: the call node's `$` arguments move into a literal `parameters`,
    * beneath its own keys, unless the body's own top level sets the same one,
-   * which beat them in v2. The call's other keys stay as written, apart from
-   * the modifiers.
+   * which beat them in v2. With `evaluateFullObject` on, it beat a
+   * `parameters` argument too, since v2 lifted those into the caller's
+   * scope. The call's other keys stay as written, apart from the modifiers.
+   * A computed name leaves the whole call as written, since v3's names are
+   * literal.
    */
-  private fragmentCall(draft: Draft): PlainObject {
+  private fragmentCall(draft: Draft, input: PlainObject, mark: number): unknown {
     const { source } = draft
     const fragment = draft.get('fragment')!
+    // v2 evaluated the name, and a `$` name no alias defines stayed the name
+    const named =
+      typeof fragment.value === 'string' && Object.hasOwn(this.fragments, fragment.value)
+    if (isComputed(fragment.value) && !named)
+      return this.asWritten(input, source, mark, {
+        code: 'computed-fragment-name',
+        at: fragment.source.path,
+      })
     const parameters = draft.get('parameters')
     const literal =
       parameters === undefined || (isPlainObject(parameters.value) && !hasNodeKey(parameters.value))
-    const output: PlainObject = { fragment: this.value(fragment.value, fragment.source) }
+    const output: PlainObject = { fragment: fragment.value }
     const keySources: Record<string, Path> = { fragment: fragment.source.path }
 
     if (literal) {
       const at = parameters?.source ?? source
       const args = new Draft(source, draft.issues)
-      for (const [key, value] of Object.entries((parameters?.value ?? {}) as PlainObject))
-        args.set(key, { value, source: below(at, key) })
       const shadowing = this.bodyAliases(fragment.value)
+      const shadowed = (key: string, path: Path) =>
+        draft.issues.push(
+          issue('shadowed-argument', path, { fragment: String(fragment.value), key })
+        )
+      for (const [key, value] of Object.entries((parameters?.value ?? {}) as PlainObject)) {
+        const entry = { value, source: below(at, key) }
+        if (this.fullObject && shadowing.has(key)) shadowed(key, entry.source.path)
+        else args.set(key, entry)
+      }
       for (const [key, entry] of draft.entries) {
         if (!isAlias(key)) continue
         const given = args.get(key)
         if (given !== undefined) args.overridden(entry.source.path, given.source.path)
-        else if (shadowing.has(key))
-          draft.issues.push(
-            issue('shadowed-argument', entry.source.path, { fragment: String(fragment.value), key })
-          )
+        else if (shadowing.has(key)) shadowed(key, entry.source.path)
         else args.set(key, entry)
       }
       const values: PlainObject = {}
@@ -689,10 +706,15 @@ class Normalizer {
 
 /**
  * v2 to canonical v2, with a source path for everything written and an issue
- * for everything dropped
+ * for everything dropped. The paths start from `at`, the expression's own
+ * place: a fragment's body is at its name in the fragments object.
  */
-export const normalizeV2 = (expression: unknown, options: V2Options = {}): Normalized => {
+export const normalizeV2 = (
+  expression: unknown,
+  options: V2Options = {},
+  at: Path = []
+): Normalized => {
   const normalizer = new Normalizer(options)
-  const canonical = normalizer.value(expression, { path: [] })
+  const canonical = normalizer.value(expression, { path: at })
   return { expression: canonical, sources: normalizer.sources, issues: normalizer.issues }
 }

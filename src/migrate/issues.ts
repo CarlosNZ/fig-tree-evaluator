@@ -2,8 +2,6 @@
  * The issues the converter emits, by code ("The issue catalogue" in
  * docs-dev/v3-specs/v3-converter.md): each code's tag, and its message,
  * filled from the node.
- *
- * TO-DO: the codes fragments emit (Phase 15.1, chunk 6).
  */
 import type { MigrationIssue } from '../migrationTypes'
 
@@ -125,6 +123,40 @@ const CATALOGUE = {
     message: ({ fragment, key }: { fragment: string; key: string }) =>
       `The body of \`${fragment}\` sets its own \`${key}\`, which beat this argument in v2, so the argument never applied. Removed.`,
   },
+  'unknown-argument': {
+    tag: 'lossy-default',
+    message: ({ fragment, name }: { fragment: string; name: string }) =>
+      `\`${fragment}\` has no parameter \`${name}\`. v2 ignored the argument, and v3 rejects it. Removed.`,
+  },
+  'fragment-use-cache': {
+    tag: 'lossy-default',
+    message: () =>
+      'A v3 fragment call takes no `useCache`, since caching is set on the operators inside ' +
+      "the body. v2 applied this one to the body's node, unless the body set its own. Removed. " +
+      'Set `useCache` in the definition if the body needs it.',
+  },
+  'unused-output-type': {
+    tag: 'lossy-default',
+    message: ({ key, reason }: { key: string; reason: string }) =>
+      `v2 never applied this \`${key}\`: ${reason}. Removed.`,
+  },
+  'name-renamed': {
+    tag: 'lossy-default',
+    message: ({ name, reason, renamed }: { name: string; reason: string; renamed: string }) =>
+      `\`${name}\` cannot be registered in v3 (${reason}), so it is renamed \`${renamed}\`, and ` +
+      'calls follow. Update anything outside expressions that uses the old name.',
+  },
+  'unknown-parameter-type': {
+    tag: 'lossy-default',
+    message: ({ type }: { type: string }) =>
+      `\`${type}\` is not a v3 type, so the parameter takes \`'any'\`.`,
+  },
+  'default-outside-type': {
+    tag: 'lossy-default',
+    message: ({ value, type }: { value: string; type: string }) =>
+      `The default \`${value}\` is not of the declared type \`${type}\`. v2 never checked it, and v3 ` +
+      "would refuse to register the fragment, so the parameter takes `'any'`.",
+  },
 
   // non-convertible
   'deciding-value': {
@@ -173,6 +205,32 @@ const CATALOGUE = {
       `\`children\` is computed, and \`${operator}\` sends its children to different ` +
       'parameters, which cannot be split before evaluation. The node is quoted unconverted. ' +
       'Rewrite it with named parameters.',
+  },
+  'computed-arguments': {
+    tag: 'non-convertible',
+    message: () =>
+      "The arguments are computed. v2's had `$` names and v3's do not, so as written they fill " +
+      'nothing. Make the computing expression produce names without the `$`.',
+  },
+  'body-override': {
+    tag: 'non-convertible',
+    message: ({ key }: { key: string }) =>
+      `In v2, \`${key}\` set the body's own \`${key}\`, through the call's spread over it. A v3 ` +
+      'call passes only arguments. Removed. Make it a parameter of the fragment, or change the body.',
+  },
+  'replaced-output-type': {
+    tag: 'non-convertible',
+    message: ({ fragment }: { fragment: string }) =>
+      `In v2 this \`outputType\` replaced the output type that the body of \`${fragment}\` sets ` +
+      'with `type`. In v3 the body converts its result first, and this `convert` converts that, ' +
+      "which gives v2's answer only where the first conversion loses nothing. Check the result, " +
+      'or take the output type off the body.',
+  },
+  'computed-fragment-name': {
+    tag: 'non-convertible',
+    message: () =>
+      'The fragment name is computed, and v3 fragment names are literal. The call is quoted ' +
+      'unconverted. Rewrite it by hand, for example as a `match` over the fragments it can name.',
   },
   'unknown-operator': {
     tag: 'non-convertible',

@@ -9,15 +9,28 @@
  * cannot carry them all, and takes what it can ("A result that is not a
  * node").
  *
- * Two things travel down the walk. The scope maps each alias in reach to its
- * var name, and v2 resolved a reference from the definitions on enclosing
- * nodes, as v3's lexical `vars` do. The path is each value's place in the
- * input, where every issue is reported, taken from stage 1's source records
- * wherever it moved a value.
+ * Two things travel down the walk. The scope maps each alias in reach to the
+ * reference it becomes, and v2 resolved a reference from the definitions on
+ * enclosing nodes, as v3's lexical `vars` do. The path is each value's place
+ * in the input, where every issue is reported, taken from stage 1's source
+ * records wherever it moved a value.
  *
- * TO-DO: fragment calls (Phase 15.1, chunk 6).
+ * A fragment's body walks the same way, with its parameters outermost in the
+ * scope, and a fragment call converts against the catalogue of the fragments
+ * ("Fragments"), which is itself found by walking the bodies.
  */
+import type { FragmentDefinition } from '../fragments'
 import type { V2Options } from '../migrationTypes'
+import {
+  definitionOf,
+  fragmentCatalogue,
+  legalName,
+  type BodyWalk,
+  type Catalogue,
+  type ConvertedDefault,
+  type FragmentInfo,
+  type OnRead,
+} from './fragments'
 import { issue, type Fill, type Issue, type IssueCode, type Path } from './issues'
 import { normalizeV2, type NodeSource } from './normalize'
 import { V3_RULES, applyRule, undecided, type Modifiers, type RuleContext } from './rules'
@@ -26,6 +39,7 @@ import { V2_PARAMETERS, type V2Operator } from './v2/operators.generated'
 import {
   DATA_REFERENCE,
   V3_REFERENCE,
+  constantOf,
   hasComputed,
   isComputed,
   isLiteral,
@@ -33,7 +47,9 @@ import {
   isPlainObject,
   literal,
   needsQuote,
+  quoted,
   render,
+  uncaughtRead,
   type PlainObject,
 } from './v3Values'
 
@@ -42,10 +58,13 @@ export interface Conversion {
   issues: Issue[]
 }
 
-/** Each alias in reach, by its v2 key (`$a`), and every var name taken */
 interface Scope {
-  vars: ReadonlyMap<string, string>
+  /** Each alias in reach, by its v2 key (`$a`), and the reference it reads */
+  refs: ReadonlyMap<string, string>
+  /** Every var name taken */
   names: ReadonlySet<string>
+  /** In a fragment's body, the reference each of its parameters reads */
+  params?: ReadonlyMap<string, string>
 }
 
 /** What a node's result carries besides its defining key and parameters */
@@ -57,10 +76,21 @@ interface Carried {
 }
 
 const MODIFIERS = ['fallback', 'useCache', 'outputType']
+// The keys of a fragment call that its conversion reads, besides arguments
+const CALL_KEYS = [
+  'fragment',
+  'parameters',
+  'fallback',
+  'useCache',
+  'outputType',
+  'type',
+  'operator',
+  '//',
+]
+// The `type` values SQL read as `flatten`
+const SQL_RIDER = ['array', 'string', 'number']
 // The start of every placeholder's note, so a search finds what is left
 const NOTE = 'v2 conversion: '
-// A `$data` reference to a path, which can be missing
-const DATA_READ = /^\$(?:data|d)[.[]/
 // The v2 operators that cached, and their default when nothing said
 const CACHE_DEFAULTS: Partial<Record<V2Operator, boolean>> = {
   GET: true,
@@ -148,33 +178,15 @@ const declared = (value: unknown, names: Set<string>) => {
   return names
 }
 
-/**
- * Whether a converted value reads data that v2 failed on when it was
- * missing, with no `fallback` beneath to answer: a `$data` path, a `get`
- * with no default, or an `http` or `graphQL` node's `returnPath`
- * ("Fallbacks that caught missing data"). A node's `fallback` answers for
- * everything beneath it except itself and its alias definitions, which v2
- * evaluated outside the node's own `try`.
- */
-const uncaughtRead = (value: unknown): boolean => {
-  if (typeof value === 'string') return DATA_READ.test(value)
-  if (Array.isArray(value)) return value.some(uncaughtRead)
-  if (!isPlainObject(value) || isLiteral(value)) return false
-  if (isNode(value) && Object.hasOwn(value, 'fallback'))
-    return uncaughtRead(value.fallback) || uncaughtRead(value.vars)
-  const { operator } = value
-  if (operator === 'get' && !Object.hasOwn(value, 'missingPathDefault')) return true
-  if ((operator === 'http' || operator === 'graphQL') && Object.hasOwn(value, 'returnPath'))
-    return true
-  return Object.entries(value).some(([key, element]) => key !== '//' && uncaughtRead(element))
-}
-
 class Converter {
   readonly issues: Issue[] = []
 
   constructor(
     private readonly sources: Map<object, NodeSource>,
-    private readonly options: V2Options
+    private readonly options: V2Options,
+    private readonly fragments: Catalogue,
+    /** Set while the catalogue is found: each placeholder a body reads */
+    private readonly onRead?: OnRead
   ) {}
 
   /** The input path of `key` in `container`, whose own path is `path` */
@@ -198,21 +210,32 @@ class Converter {
   value(input: unknown, path: Path, scope: Scope): unknown {
     if (Array.isArray(input))
       return input.map((element, i) => this.value(element, this.pathOf(input, i, path), scope))
-    if (typeof input === 'string') return this.string(input, scope)
+    if (typeof input === 'string') return this.string(input, path, scope)
     if (!isPlainObject(input)) return input
     const at = this.sources.get(input)?.path ?? path
-    if (Object.hasOwn(input, 'fragment')) throw new Error('TO-DO: fragment calls (chunk 6)')
+    if (Object.hasOwn(input, 'fragment')) return this.call(input, at, scope)
     if (Object.hasOwn(input, 'operator')) return this.node(input, at, scope)
     return this.plain(input, at, scope)
   }
 
   /**
-   * A reference to an alias in reach reads its var. Any other string was
-   * text to v2, so one v3 reads as a reference is quoted.
+   * A reference to an alias in reach reads its var, or in a body, its
+   * parameter. Any other string was text to v2, so one v3 reads as a
+   * reference is quoted, except in a body, where a `'$name'` nothing in reach
+   * defines is a placeholder, and so a parameter too.
    */
-  private string(input: string, scope: Scope) {
-    const name = isAlias(input) ? scope.vars.get(input) : undefined
-    if (name !== undefined) return `$vars.${name}`
+  private string(input: string, path: Path, scope: Scope) {
+    if (isAlias(input)) {
+      const ref = scope.refs.get(input)
+      if (ref !== undefined) {
+        if (ref === scope.params?.get(input)) this.onRead?.(input, path, false)
+        return ref
+      }
+      if (this.onRead !== undefined) {
+        this.onRead(input, path, false)
+        return `$params.${legalName(input)}`
+      }
+    }
     return V3_REFERENCE.test(input) ? literal(input) : input
   }
 
@@ -269,7 +292,7 @@ class Converter {
       keys.map((key) => {
         const value = container[key]
         const sibling =
-          typeof value === 'string' && value !== key && !scope.vars.has(value)
+          typeof value === 'string' && value !== key && !scope.refs.has(value)
             ? names.get(value)
             : undefined
         const converted =
@@ -279,12 +302,23 @@ class Converter {
         return [names.get(key)!, converted]
       })
     )
-    const inner: Scope = { vars: new Map([...scope.vars, ...names]), names: taken }
+    const refs = new Map(scope.refs)
+    for (const [key, name] of names) refs.set(key, `$vars.${name}`)
+    const inner: Scope = { refs, names: taken, params: scope.params }
     return { vars, inner }
   }
 
-  /** An operator node: its values, its rule, then its modifiers */
-  private node(input: PlainObject, path: Path, scope: Scope): unknown {
+  /**
+   * An operator node: its values, its rule, then its modifiers. A body's
+   * root has no alias definitions of its own, since its `$` keys are
+   * defaults, and brings the vars its computed defaults are bound in.
+   */
+  private node(
+    input: PlainObject,
+    path: Path,
+    scope: Scope,
+    own?: { vars?: PlainObject; inner: Scope }
+  ): unknown {
     // Stage 1 left these as written, name and all, so they are quoted whole
     const quoted = this.sources.get(input)?.quoted
     if (quoted !== undefined) {
@@ -302,7 +336,7 @@ class Converter {
       .map(({ name }) => name)
       .filter((name) => name !== 'useCache')
 
-    const { vars, inner } = this.declare(input, path, scope)
+    const { vars, inner } = own ?? this.declare(input, path, scope)
     const notes: string[] = []
     const v2: PlainObject = {}
     for (const name of parameters)
@@ -554,8 +588,7 @@ class Converter {
       if (hasFallback)
         if (own.fallback !== undefined) placed = this.chain(own.fallback, fallback, context)
         else {
-          if (uncaughtRead(body) || uncaughtRead(own.vars))
-            context.issue('missing-data-fallback', 'fallback')
+          if (this.beneath(body, own.vars)) context.issue('missing-data-fallback', 'fallback')
           placed = fallback
         }
       return layout(body, {
@@ -586,13 +619,13 @@ class Converter {
         operator: 'buildObject',
         entries: Object.entries(object).map(([key, value]) => ({ key, value })),
       }
-      if (uncaughtRead(built)) context.issue('missing-data-fallback', 'fallback')
+      if (this.uncaught(built)) context.issue('missing-data-fallback', 'fallback')
       return layout(built, { comment, fallback, vars: allVars })
     }
 
     if (Array.isArray(result) && hasComputed(result) && (hasFallback || vars !== undefined)) {
       const array = { operator: 'convert', value: result, to: 'array' }
-      if (hasFallback && uncaughtRead(array)) context.issue('missing-data-fallback', 'fallback')
+      if (hasFallback && this.uncaught(array)) context.issue('missing-data-fallback', 'fallback')
       return layout(array, { comment, fallback: hasFallback ? fallback : undefined, vars })
     }
 
@@ -611,8 +644,208 @@ class Converter {
     const { body, carried } = parts(inner as PlainObject)
     if (carried.fallback !== undefined)
       return layout(body, { ...carried, fallback: this.chain(carried.fallback, fallback, context) })
-    if (uncaughtRead(body)) context.issue('missing-data-fallback', 'fallback')
+    if (this.beneath(body)) context.issue('missing-data-fallback', 'fallback')
     return layout(body, { ...carried, fallback })
+  }
+
+  private uncaught(value: unknown) {
+    return uncaughtRead(value, this.fragments.bodyReads)
+  }
+
+  /**
+   * Whether a node's own `fallback` answered in v2 for missing data beneath
+   * it: for a fragment call, its body's, and not its arguments', which were
+   * alias definitions ("Calls")
+   */
+  private beneath(body: PlainObject, vars?: unknown) {
+    if (Object.hasOwn(body, 'fragment')) return this.fragments.bodyReads(String(body.fragment))
+    return this.uncaught(body) || this.uncaught(vars)
+  }
+
+  /**
+   * A fragment call ("Calls"): its arguments, read in the caller's scope,
+   * then its modifiers. v2 spread the call node beneath the body, so a key
+   * that is neither an argument nor a modifier set the body's own.
+   */
+  private call(input: PlainObject, path: Path, scope: Scope): unknown {
+    const quoted = this.sources.get(input)?.quoted
+    if (quoted !== undefined) return this.placeholder(input, quoted.code, quoted.at)
+    const fragment = this.fragments.fragments.get(String(input.fragment))
+    const notes: string[] = []
+    const context = this.context(input, path, notes, new Set(scope.names))
+
+    const call: PlainObject = { fragment: fragment?.name ?? input.fragment }
+    const parameters = this.callArguments(input, path, scope, fragment, context)
+    if (parameters !== undefined) call.parameters = parameters
+    const modifiers: Modifiers = {}
+    if (Object.hasOwn(input, 'fallback'))
+      modifiers.fallback = this.value(input.fallback, this.pathOf(input, 'fallback', path), scope)
+    this.callOutput(input, path, scope, fragment, modifiers, context)
+    if (Object.hasOwn(input, 'useCache')) context.issue('fragment-use-cache', 'useCache')
+    // The body's own `operator` always replaced the call's
+    if (Object.hasOwn(input, 'operator'))
+      context.issue('overridden-value', 'operator', { key: 'operator', winner: 'fragment' })
+    for (const key of Object.keys(input))
+      if (!CALL_KEYS.includes(key) && !isAlias(key)) context.issue('body-override', key, { key })
+
+    const all = [...notes, ...(Object.hasOwn(input, '//') ? [input['//']] : [])]
+    const comment = all.length === 0 ? undefined : all.length === 1 ? all[0] : all
+    return this.attach(call, { comment }, modifiers, context)
+  }
+
+  /**
+   * A call's arguments, named without their `$`. Computed ones are v3's
+   * dynamic arguments, whose `$` names fill nothing, and the call-node
+   * arguments stage 1 left beside them go. An unprefixed key replaced the
+   * body's own key of that name, which is the argument only where it held
+   * exactly that placeholder.
+   */
+  private callArguments(
+    input: PlainObject,
+    path: Path,
+    scope: Scope,
+    fragment: FragmentInfo | undefined,
+    context: RuleContext
+  ): unknown {
+    const given = input.parameters
+    const at = this.pathOf(input, 'parameters', path)
+    if (given !== undefined && given !== null && (!isPlainObject(given) || hasNodeKey(given))) {
+      context.issue('computed-arguments', 'parameters')
+      const computed = this.value(given, at, scope)
+      return isComputed(computed) ? computed : undefined
+    }
+
+    const args: PlainObject = {}
+    const supplied = new Set<string>()
+    const entries = isPlainObject(given) ? Object.entries(given) : []
+    const own = (isPlainObject(given) && this.sources.get(given)?.path) || at
+    const exact = (name: string) => fragment?.parameters.get(`$${name}`)?.exact === true
+    for (const [key, value] of entries) {
+      const where: Path = ['parameters', key]
+      if (!isAlias(key) && !exact(key)) {
+        context.issue('body-override', where, { key })
+        continue
+      }
+      // v2 laid `parameters` over the body, where the unprefixed key won
+      if (
+        isAlias(key) &&
+        Object.hasOwn(given as PlainObject, key.slice(1)) &&
+        exact(key.slice(1))
+      ) {
+        context.issue('overridden-value', where, { key, winner: key.slice(1) })
+        continue
+      }
+      const placeholder = isAlias(key) ? key : `$${key}`
+      const parameter = fragment?.parameters.get(placeholder)
+      if (fragment !== undefined && parameter === undefined) {
+        context.issue('unknown-argument', where, { fragment: fragment.key, name: key })
+        continue
+      }
+      const name = parameter?.name ?? legalName(placeholder)
+      args[name] = this.value(value, this.pathOf(given as PlainObject, key, own), scope)
+      supplied.add(placeholder)
+    }
+    if (fragment !== undefined) this.fill(fragment, supplied, args, path, scope)
+    return Object.keys(args).length > 0 ? args : undefined
+  }
+
+  /**
+   * The parameters a call leaves empty, with no default, which read the
+   * caller's aliases of their names in v2 ("Names the body read from its
+   * caller"). In a body, a name nothing in reach defines is a placeholder of
+   * the body's own, which its caller fills.
+   */
+  private fill(
+    fragment: FragmentInfo,
+    supplied: Set<string>,
+    args: PlainObject,
+    path: Path,
+    scope: Scope
+  ) {
+    for (const parameter of fragment.parameters.values()) {
+      if (supplied.has(parameter.key) || parameter.default !== undefined) continue
+      let ref = scope.refs.get(parameter.key)
+      if (ref === undefined) {
+        if (this.onRead === undefined) continue
+        this.onRead(parameter.key, path, true)
+        ref = `$params.${legalName(parameter.key)}`
+      } else if (ref === scope.params?.get(parameter.key)) this.onRead?.(parameter.key, path, true)
+      args[parameter.name] = ref
+    }
+  }
+
+  /**
+   * The call's output type, its `outputType` or else its `type`. The spread
+   * made it the body's, which v2 read as `outputType ?? type`, so what it did
+   * depends on the body ("Calls").
+   */
+  private callOutput(
+    input: PlainObject,
+    path: Path,
+    scope: Scope,
+    fragment: FragmentInfo | undefined,
+    modifiers: Modifiers,
+    context: RuleContext
+  ) {
+    const key = ['outputType', 'type'].find((k) => Object.hasOwn(input, k))
+    if (key === undefined) return
+    if (key === 'outputType' && Object.hasOwn(input, 'type'))
+      context.issue('overridden-value', 'type', { key: 'type', winner: 'outputType' })
+    if (fragment !== undefined) {
+      const unused = (reason: string) =>
+        context.issue('unused-output-type', key, {
+          key,
+          reason: `the body of \`${fragment.key}\` ${reason}`,
+        })
+      if (fragment.body === undefined)
+        return unused('is not an operator node, which v2 returned as it was')
+      if (fragment.ownOutput === 'outputType' || (fragment.ownOutput === 'type' && key === 'type'))
+        return unused('sets its own output type')
+      // PLUS's own parameter, or SQL's rider, which changed what it computed
+      const type = input.type
+      const rider =
+        fragment.operator === 'SQL' &&
+        ((typeof type === 'object' && type !== null) ||
+          (typeof type === 'string' && (isAlias(type) || SQL_RIDER.includes(type))))
+      if (key === 'type' && (fragment.operator === 'PLUS' || rider))
+        return context.issue('body-override', 'type', { key })
+      if (key === 'outputType' && fragment.convertsByType)
+        context.issue('replaced-output-type', 'outputType', { fragment: fragment.key })
+    }
+    const value = this.value(input[key], this.pathOf(input, key, path), scope)
+    Object.assign(modifiers, { outputType: value, outputTypeAt: key })
+  }
+
+  /**
+   * A fragment's body ("Definitions"): each placeholder reads its parameter.
+   * v3's defaults are constants, so a computed one is bound once at the root,
+   * where the body reads it: v3's own recipe, with `firstOf` over the
+   * argument.
+   */
+  body(fragment: FragmentInfo) {
+    const params = new Map(
+      [...fragment.parameters.values()].map(({ key, name }) => [key, `$params.${name}`])
+    )
+    const outer: Scope = { refs: params, names: new Set(), params }
+    const refs = new Map(params)
+    const defaults = new Map<string, ConvertedDefault>()
+    const bound: PlainObject = {}
+    for (const { key, name, default: given } of fragment.parameters.values()) {
+      if (given === undefined) continue
+      const value = this.value(given.value, given.path, outer)
+      if (!hasComputed(value)) {
+        defaults.set(key, { constant: constantOf(value) })
+        continue
+      }
+      defaults.set(key, 'computed')
+      bound[name] = { operator: 'firstOf', values: [`$params.${name}`, value] }
+      refs.set(key, `$vars.${name}`)
+    }
+    const inner: Scope = { refs, names: new Set(Object.keys(bound)), params: refs }
+    const vars = inner.names.size > 0 ? bound : undefined
+    const top = fragment.body!
+    const path = this.sources.get(top)?.path ?? [fragment.key]
+    return { expression: this.node(top, path, inner, { vars, inner }), defaults }
   }
 
   /** The input subtree, quoted whole, with its issue noted on the `literal` */
@@ -628,11 +861,44 @@ class Converter {
   }
 }
 
+/** Stage 2's walk of a body, as the catalogue is found */
+const walk =
+  (options: V2Options): BodyWalk =>
+  (fragment, catalogue, onRead) =>
+    new Converter(fragment.sources, options, catalogue, onRead).body(fragment).expression
+
 /** A v2 expression as v3, with an issue for each difference it could see */
 export const convertV2 = (expression: unknown, options: V2Options = {}): Conversion => {
+  const catalogue = fragmentCatalogue(options, walk(options))
   const normalized = normalizeV2(expression, options)
-  const converter = new Converter(normalized.sources, options)
-  const root: Scope = { vars: new Map(), names: new Set() }
+  const converter = new Converter(normalized.sources, options, catalogue)
+  const root: Scope = { refs: new Map(), names: new Set() }
   const converted = converter.value(normalized.expression, [], root)
   return { expression: converted, issues: [...normalized.issues, ...converter.issues] }
+}
+
+/**
+ * v2's fragment definitions (`V2Options.fragments`) as v3's, keyed by their
+ * v3 names, with an issue for each difference it could see, at paths rooted
+ * at the fragments object
+ */
+export const convertV2Fragments = (
+  options: V2Options
+): { fragments: Record<string, FragmentDefinition>; issues: Issue[] } => {
+  const catalogue = fragmentCatalogue(options, walk(options))
+  const fragments: Record<string, FragmentDefinition> = {}
+  const issues: Issue[] = []
+  for (const fragment of catalogue.fragments.values()) {
+    issues.push(...fragment.issues)
+    // v2 returned a body that is not an operator node as it was
+    if (fragment.body === undefined) {
+      fragments[fragment.name] = definitionOf(fragment, quoted(fragment.data), new Map(), issues)
+      continue
+    }
+    const converter = new Converter(fragment.sources, options, catalogue)
+    const { expression, defaults } = converter.body(fragment)
+    issues.push(...converter.issues)
+    fragments[fragment.name] = definitionOf(fragment, expression, defaults, issues)
+  }
+  return { fragments, issues }
 }

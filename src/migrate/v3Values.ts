@@ -100,3 +100,110 @@ export const dataReference = (path: string) =>
  */
 export const isV3Path = (path: string) =>
   /^(?:[^[]|\[(?:\d+|\*|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')\])*$/.test(path)
+
+/**
+ * A constant as v3 holds it where nothing evaluates it, such as a fragment
+ * parameter's `default`: what each `literal` inside quotes
+ */
+export const constantOf = (value: unknown): unknown => {
+  if (isLiteral(value)) return value.value
+  if (Array.isArray(value)) return value.map(constantOf)
+  if (!isPlainObject(value)) return value
+  return Object.fromEntries(Object.entries(value).map(([key, v]) => [key, constantOf(v)]))
+}
+
+// The keys no parameter may take ("The reserved-key set" in
+// docs-dev/v3-specs/v3-api.md; src/names.ts, which a test holds these to)
+export const RESERVED_NODE_KEYS: ReadonlySet<string> = new Set([
+  'operator',
+  'fragment',
+  'parameters',
+  'fallback',
+  'useCache',
+  'vars',
+  '//',
+])
+
+// The names no operator or fragment may register under
+export const RESERVED_NAMES: ReadonlySet<string> = new Set([
+  ...RESERVED_NODE_KEYS,
+  'data',
+  'params',
+  'element',
+  'index',
+  'd',
+  'v',
+  'p',
+  'e',
+  'i',
+  'literal',
+])
+
+// v3's basic types (src/typeCheck.ts, which a test holds these to)
+export const V3_TYPES: ReadonlySet<string> = new Set([
+  'any',
+  'string',
+  'number',
+  'boolean',
+  'array',
+  'object',
+  'null',
+  'integer',
+])
+
+const fitsBasic = (value: unknown, type: unknown) => {
+  switch (type) {
+    case 'any':
+      return true
+    case 'integer':
+      return Number.isInteger(value)
+    case 'array':
+      return Array.isArray(value)
+    case 'object':
+      return isPlainObject(value)
+    case 'null':
+      return value === null
+    default:
+      return typeof value === type
+  }
+}
+
+/** Whether v3 admits a value as a declared type: a basic type, union or set */
+export const fitsType = (value: unknown, type: unknown): boolean => {
+  if (Array.isArray(type)) return type.some((t) => fitsBasic(value, t))
+  if (isPlainObject(type) && Array.isArray(type.literal)) return type.literal.includes(value)
+  return fitsBasic(value, type)
+}
+
+// A `$data` reference to a path, which can be missing
+const DATA_READ = /^\$(?:data|d)[.[]/
+
+/**
+ * Whether a converted value reads data that v2 failed on when it was
+ * missing, with no `fallback` beneath to answer: a `$data` path, a `get`
+ * with no default, an `http` or `graphQL` node's `returnPath`, or a
+ * fragment whose body reads one, which `bodyReads` says by its name
+ * ("Fallbacks that caught missing data"). A node's `fallback` answers for
+ * everything beneath it except itself and its alias definitions, which v2
+ * evaluated outside the node's own `try`, and a fragment call's arguments
+ * were alias definitions of the node it became.
+ */
+export const uncaughtRead = (value: unknown, bodyReads: (name: string) => boolean): boolean => {
+  const reads = (v: unknown) => uncaughtRead(v, bodyReads)
+  if (typeof value === 'string') return DATA_READ.test(value)
+  if (Array.isArray(value)) return value.some(reads)
+  if (!isPlainObject(value) || isLiteral(value)) return false
+  if (Object.hasOwn(value, 'fragment')) {
+    const beneath = Object.hasOwn(value, 'fallback')
+      ? reads(value.fallback)
+      : bodyReads(String(value.fragment))
+    return beneath || reads(value.parameters)
+  }
+  if (isNode(value) && Object.hasOwn(value, 'fallback'))
+    return reads(value.fallback) || reads(value.vars)
+  const { operator } = value
+  if (operator === 'get' && !Object.hasOwn(value, 'missingPathDefault')) return true
+  if ((operator === 'http' || operator === 'graphQL') && Object.hasOwn(value, 'returnPath'))
+    return true
+  return Object.entries(value).some(([key, element]) => key !== '//' && reads(element))
+}
