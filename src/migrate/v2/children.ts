@@ -11,8 +11,16 @@
  * node and so overrode any parameter of the same name the node gave. Where
  * v2's function threw, on a shape v2 could never evaluate, a mapping pairs
  * what it can and never throws.
+ *
+ * A mapping puts each child into its result through `take`, which by default
+ * returns the child. The normalizer passes one that returns a marker instead,
+ * to learn where each child went: an issue about a parameter reports where
+ * its value came from ("Source paths" in the same doc).
  */
 import type { V2Operator } from './operators.generated'
+
+/** Reads the child at `index` into a mapping's result */
+export type TakeChild = (index: number) => unknown
 
 export type ChildrenMapping =
   /** Every child into one parameter, so a computed `children` converts too */
@@ -27,7 +35,7 @@ export type ChildrenMapping =
       /** One more position, set only when its child is given */
       ifGiven?: string
     }
-  | ((children: readonly unknown[]) => Record<string, unknown>)
+  | ((children: readonly unknown[], take: TakeChild) => Record<string, unknown>)
 
 const isPlainObject = (value: unknown): value is object =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -37,15 +45,14 @@ const isPlainObject = (value: unknown): value is object =>
  * threw on an odd count or a key that was not a string, number or boolean;
  * here such a pair is skipped.
  */
-const matchChildren = (children: readonly unknown[]) => {
-  const [matchExpression, ...elements] = children
+const matchChildren = (children: readonly unknown[], take: TakeChild) => {
   const branches: Record<string, unknown> = {}
-  for (let i = 0; i + 1 < elements.length; i += 2) {
-    const key = elements[i]
+  for (let i = 1; i + 1 < children.length; i += 2) {
+    const key = children[i]
     if (typeof key === 'string' || typeof key === 'number' || typeof key === 'boolean')
-      branches[String(key)] = elements[i + 1]
+      branches[String(key)] = take(i + 1)
   }
-  return { matchExpression, branches }
+  return { matchExpression: take(0), branches }
 }
 
 /**
@@ -53,12 +60,12 @@ const matchChildren = (children: readonly unknown[]) => {
  * children alternate keys and values. v2 threw on an odd count; here the
  * last key gets an entry with no `value`, which v2 would have skipped.
  */
-const buildObjectChildren = (children: readonly unknown[]) => {
-  if (children.every(isPlainObject)) return { properties: children }
+const buildObjectChildren = (children: readonly unknown[], take: TakeChild) => {
+  if (children.every(isPlainObject)) return { properties: children.map((_, i) => take(i)) }
   const properties: { key: unknown; value?: unknown }[] = []
   for (let i = 0; i < children.length; i += 2)
     properties.push(
-      i + 1 < children.length ? { key: children[i], value: children[i + 1] } : { key: children[i] }
+      i + 1 < children.length ? { key: take(i), value: take(i + 1) } : { key: take(i) }
     )
   return { properties }
 }
@@ -71,23 +78,22 @@ const buildObjectChildren = (children: readonly unknown[]) => {
  */
 const fieldsChildren =
   (positions: readonly string[], fields: string, returned: string) =>
-  (children: readonly unknown[]) => {
+  (children: readonly unknown[], take: TakeChild) => {
     const output: Record<string, unknown> = {}
     positions.forEach((name, index) => {
-      const child = children[index]
-      output[name] = child === undefined && name === 'url' ? '' : child
+      output[name] = children[index] === undefined && name === 'url' ? '' : take(index)
     })
     const fieldNames = children[positions.length]
-    const rest = children.slice(positions.length + 1)
+    const first = positions.length + 1
     const keys = Array.isArray(fieldNames) ? fieldNames : [fieldNames]
-    output[fields] = Object.fromEntries(keys.map((key, index) => [key, rest[index]]))
-    if (rest.length > keys.length) output[returned] = rest[rest.length - 1]
+    output[fields] = Object.fromEntries(keys.map((key, index) => [key, take(first + index)]))
+    if (children.length - first > keys.length) output[returned] = take(children.length - 1)
     return output
   }
 
 /** PASSTHRU: one child is the value; several, or none, are an array. */
-const passThruChildren = (children: readonly unknown[]) => ({
-  value: children.length === 1 ? children[0] : [...children],
+const passThruChildren = (children: readonly unknown[], take: TakeChild) => ({
+  value: children.length === 1 ? take(0) : children.map((_, i) => take(i)),
 })
 
 export const V2_CHILDREN: Record<V2Operator, ChildrenMapping> = {
@@ -125,20 +131,22 @@ export const V2_CHILDREN: Record<V2Operator, ChildrenMapping> = {
  */
 export const mapChildren = (
   operator: V2Operator,
-  children: readonly unknown[]
+  children: readonly unknown[],
+  take: TakeChild = (index) => children[index]
 ): Record<string, unknown> => {
   const mapping = V2_CHILDREN[operator]
-  if (typeof mapping === 'function') return mapping(children)
-  if ('into' in mapping) return { [mapping.into]: children }
+  if (typeof mapping === 'function') return mapping(children, take)
+  if ('into' in mapping) return { [mapping.into]: children.map((_, index) => take(index)) }
 
   const { positions, rest, defaults = {}, ifGiven } = mapping
   const output: Record<string, unknown> = {}
   positions.forEach((name, index) => {
-    const child = children[index]
-    output[name] = child === undefined && Object.hasOwn(defaults, name) ? defaults[name] : child
+    output[name] =
+      children[index] === undefined && Object.hasOwn(defaults, name) ? defaults[name] : take(index)
   })
-  if (rest !== undefined) output[rest] = children.slice(positions.length)
+  if (rest !== undefined)
+    output[rest] = children.slice(positions.length).map((_, i) => take(positions.length + i))
   if (ifGiven !== undefined && children[positions.length] !== undefined)
-    output[ifGiven] = children[positions.length]
+    output[ifGiven] = take(positions.length)
   return output
 }

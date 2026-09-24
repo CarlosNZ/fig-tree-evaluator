@@ -30,3 +30,28 @@ export interface MigrationResult {
   /** Empty only for a clean, fully mechanical conversion. */
   issues: MigrationIssue[]
 }
+
+/**
+ * The part of v2's options that changes how an expression is read ("The v2
+ * options" in docs-dev/v3-specs/v3-converter.md). Any other key is ignored,
+ * so a migration script can pass its v2 options object as it is.
+ *
+ * TO-DO: export from the root (Phase 15.1, chunk 7).
+ */
+export interface V2Options {
+  /** v2's fragment definitions, read for their names and parameters */
+  fragments?: Record<string, unknown>
+  /**
+   * The host's custom functions, as names or as v2's `functions` object, of
+   * which only the keys are read
+   */
+  functions?: readonly string[] | Record<string, unknown>
+  /** Whether v2 looked for nodes inside plain objects. v2's default is off. */
+  evaluateFullObject?: boolean
+  /** Whether `$name` keys were never shorthand. v2's default is off. */
+  noShorthand?: boolean
+  /** v2's instance-wide default for `equal` and `notEqual` */
+  caseInsensitive?: boolean
+  /** v2's instance-wide cache default, read for POST alone */
+  useCache?: boolean
+}
