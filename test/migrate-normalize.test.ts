@@ -797,6 +797,29 @@ const EXAMPLES: Example[] = [
     },
   },
   {
+    name: "STRING_SUBSTITUTION's named `substitutions` have their values evaluated",
+    input: {
+      operator: 'stringSubstitution',
+      string: '{{a}} {{b}}',
+      substitutions: { a: { $plus: [1, 2] }, b: 'x', $c: { $plus: [1] } },
+    },
+    expected: {
+      operator: 'STRING_SUBSTITUTION',
+      string: '{{a}} {{b}}',
+      substitutions: { a: { operator: 'PLUS', values: [1, 2] }, b: 'x', $c: { $plus: [1] } },
+    },
+  },
+  {
+    name: 'a computed `functionName` is left as written',
+    input: { operator: 'customFunctions', functionName: { $plus: ['ec', 'ho'] }, args: [1] },
+    expected: { operator: 'customFunctions', functionName: { $plus: ['ec', 'ho'] }, args: [1] },
+  },
+  {
+    name: 'a `functionName` read from an alias is computed',
+    input: { operator: 'functions', $f: 'echo', name: '$f', args: [{ $plus: [1] }] },
+    expected: { operator: 'functions', $f: 'echo', name: '$f', args: [{ $plus: [1] }] },
+  },
+  {
     name: 'arrays are evaluated element by element',
     input: [{ $plus: [1, 2] }, 3, [{ $length: [1] }]],
     expected: [{ operator: 'PLUS', values: [1, 2] }, 3, [{ operator: 'COUNT', values: [1] }]],

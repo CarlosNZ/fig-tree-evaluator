@@ -27,11 +27,25 @@ export const deepFreeze = <T>(value: T): T => {
   return value
 }
 
-/** v2's outcome, on a fresh instance with the given options */
+/** A v2 value as v3 would give it: v3 has no `undefined`, and reads `null` */
+const withoutUndefined = (value: unknown): unknown => {
+  if (value === undefined) return null
+  if (Array.isArray(value)) return value.map(withoutUndefined)
+  // A plain object from either realm, and not a Date or a Buffer
+  if (Object.prototype.toString.call(value) !== '[object Object]') return value
+  return Object.fromEntries(
+    Object.entries(value as object).map(([key, v]) => [key, withoutUndefined(v)])
+  )
+}
+
+/**
+ * v2's outcome, on a fresh instance with the given options, with v2's
+ * `undefined` compared as `null`, as the differential compares it
+ */
 export const v2Outcome = async (expression: unknown, options: object = {}) => {
   const fig = new FigTreeEvaluator(options as FigTreeOptions)
   try {
-    return { value: await fig.evaluate(clone(expression) as EvaluatorNode) }
+    return { value: withoutUndefined(await fig.evaluate(clone(expression) as EvaluatorNode)) }
   } catch {
     return { error: true } as const
   }
@@ -56,3 +70,78 @@ export const v3Errors = (fig: FigTree, expression: unknown, data?: Record<string
     .validate(expression, data === undefined ? {} : { data })
     .issues.filter(({ severity }) => severity === 'error')
     .map(({ code, path, message }) => ({ code, path, message }))
+
+/**
+ * A request as either engine sent it: the full URL with its query in a fixed
+ * order, the headers an expression set (not the JSON pair each engine adds),
+ * and a POST's body
+ */
+export interface SentRequest {
+  method: string
+  url: string
+  headers: Record<string, unknown>
+  body?: unknown
+}
+
+const sentUrl = (url: string, query: Record<string, unknown> = {}) => {
+  const parsed = new URL(url)
+  for (const [key, value] of Object.entries(query)) parsed.searchParams.append(key, String(value))
+  parsed.searchParams.sort()
+  return parsed.toString()
+}
+
+const expressionHeaders = (headers: Record<string, unknown> = {}) =>
+  Object.fromEntries(
+    Object.entries(headers).filter(
+      ([key]) => !['accept', 'content-type'].includes(key.toLowerCase())
+    )
+  )
+
+export const sentRequest = (
+  method: string,
+  url: string,
+  query: Record<string, unknown> | undefined,
+  headers: Record<string, unknown> | undefined,
+  body: unknown
+): SentRequest => ({
+  method,
+  url: sentUrl(url, query),
+  headers: expressionHeaders(headers),
+  ...(method === 'post' && { body }),
+})
+
+interface V2HttpRequest {
+  url: string
+  params?: Record<string, unknown>
+  data?: unknown
+  headers?: Record<string, unknown>
+}
+
+/** v2's HTTP client over one response, logging what v2 sent */
+export const v2HttpClient = (response: unknown, sent: SentRequest[]) => {
+  const answer = (method: string) => async (request: V2HttpRequest) => {
+    sent.push(sentRequest(method, request.url, request.params, request.headers, request.data))
+    return clone(response)
+  }
+  return {
+    get: answer('get'),
+    post: answer('post'),
+    throwError: (error: unknown) => {
+      throw error
+    },
+  }
+}
+
+/** A query as either engine sent it, a missing `values` counting as `[]` */
+export interface SentQuery {
+  text: string
+  values: unknown
+}
+
+/** v2's SQL connection over fixed rows, logging what v2 sent */
+export const v2SqlConnection = (rows: unknown[], sent: SentQuery[]) => ({
+  query: async ({ query, values }: { query: string; values?: unknown }) => {
+    sent.push({ text: query, values: values ?? [] })
+    return clone(rows)
+  },
+})

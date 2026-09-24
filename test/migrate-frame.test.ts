@@ -6,19 +6,19 @@
  * renames, so what each example shows is the frame.
  *
  * Each converts to the output given, validates in v3, and evaluates the same
- * in the published v2 package and in v3, or differs as its row says.
- *
- * TO-DO: with batches 2 to 5 (chunk 5), results that are not nodes, the
- * objects an operator evaluated itself, and fallbacks that caught missing
- * data.
+ * in the published v2 package and in v3, or differs as its row says. The
+ * objects an operator evaluated itself are tested with their operators, in
+ * migrate-rules.
  */
-import { FigTree } from '../src'
+import { FigTree, coreOperators, httpOperators } from '../src'
 import type { V2Options } from '../src/migrationTypes'
 import { convertV2 } from '../src/migrate/convert'
 import type { IssueCode, Path } from '../src/migrate/issues'
+import { MockHttpClient } from './helpers'
 import {
   clone,
   deepFreeze,
+  v2HttpClient,
   v2Outcome,
   v3Errors,
   v3Outcome,
@@ -30,13 +30,15 @@ const v3 = new FigTree()
 const convert = (input: unknown, options: V2Options = {}) =>
   convertV2(deepFreeze(clone(input)), options)
 
+type Raised = { code: IssueCode; path: Path }
+
 interface Example {
   name: string
   input: unknown
   options?: V2Options
   data?: Record<string, unknown>
   expected: unknown
-  issues?: { code: IssueCode; path: Path }[]
+  issues?: Raised[]
   /** Where the engines differ, each one's outcome */
   differs?: { v2: Outcome; v3: Outcome }
 }
@@ -48,13 +50,17 @@ const decidingNote = (reason: string, wrote: string) =>
 const unknownNote = (name: string) =>
   `${NOTE}\`${name}\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`
 
-const check = async ({ input, options = {}, data, expected, issues = [], differs }: Example) => {
+const check = async (
+  { input, options = {}, data, expected, issues = [], differs }: Example,
+  fig = v3,
+  v2Options: object = {}
+) => {
   const { expression, issues: raised } = convert(input, options)
   expect(expression).toEqual(expected)
   expect(raised.map(({ code, path }) => ({ code, path }))).toEqual(issues)
-  expect(v3Errors(v3, expression, data)).toEqual([])
-  const v2 = await v2Outcome(input, { ...options, data })
-  const converted = await v3Outcome(v3, expression, data)
+  expect(v3Errors(fig, expression, data)).toEqual([])
+  const v2 = await v2Outcome(input, { ...options, ...v2Options, data })
+  const converted = await v3Outcome(fig, expression, data)
   if (differs) expect({ v2, v3: converted }).toEqual(differs)
   else expect(converted).toEqual(v2)
 }
@@ -135,7 +141,7 @@ describe('the modifiers', () => {
       issues: [{ code: 'output-type', path: ['outputType'] }],
     },
   ]
-  test.each(EXAMPLES)('$name', check)
+  test.each(EXAMPLES)('$name', (example) => check(example))
 
   test.each([
     ['number', "`'abc4.5x'` was `4.5`"],
@@ -290,7 +296,7 @@ describe('aliases → `vars`', () => {
       },
     },
   ]
-  test.each(EXAMPLES)('$name', check)
+  test.each(EXAMPLES)('$name', (example) => check(example))
 })
 
 describe('the `literal` wrap', () => {
@@ -416,7 +422,346 @@ describe('the `literal` wrap', () => {
       },
     },
   ]
-  test.each(EXAMPLES)('$name', check)
+  test.each(EXAMPLES)('$name', (example) => check(example))
+})
+
+// Fails at evaluation in both engines, and passes v3's validate()
+const failing = { operator: '/', values: [1, 0] }
+const failingV3 = { operator: 'divide', value: 1, by: 0 }
+
+describe('a result that is not a node', () => {
+  const EXAMPLES: Example[] = [
+    {
+      name: 'a constant drops `fallback` and `useCache`, which could never apply',
+      input: { operator: 'pass', value: 5, fallback: 0, useCache: true },
+      expected: 5,
+    },
+    {
+      name: 'a node takes the modifiers',
+      input: { operator: 'pass', value: { $plus: [1, 2] }, fallback: 0, $a: 1 },
+      expected: { operator: 'plus', values: [1, 2], fallback: 0, vars: { a: 1 } },
+    },
+    {
+      name: "PASSTHRU's `useCache`, which v2 ignored, goes",
+      input: { operator: 'pass', value: { $plus: [1, 2] }, useCache: true },
+      expected: { operator: 'plus', values: [1, 2] },
+    },
+    {
+      name: 'a `$data` reference with a `fallback` is a `get` with a default',
+      input: { operator: 'pass', value: { $getData: 'nope' }, fallback: 'none' },
+      expected: { operator: 'get', path: 'nope', missingPathDefault: 'none' },
+    },
+    {
+      name: 'the whole of `data` is never missing',
+      input: { operator: 'pass', value: { operator: 'getData', property: '' }, fallback: 'x' },
+      data: { a: 1 },
+      expected: '$data',
+    },
+    {
+      name: 'a `$data` reference with vars to carry is a `get`',
+      input: { operator: 'pass', $a: 1, value: { $getData: 'n' } },
+      data: { n: 7 },
+      expected: { operator: 'get', path: 'n', vars: { a: 1 } },
+    },
+    {
+      name: "a reference to the node's own var is that var's value",
+      input: { operator: 'pass', $a: { $plus: [1, 2] }, value: '$a' },
+      expected: { operator: 'plus', values: [1, 2] },
+    },
+    {
+      name: '… through a chain of them',
+      input: { operator: 'pass', $a: { $plus: [1, 2] }, $b: '$a', value: '$b' },
+      expected: { operator: 'plus', values: [1, 2] },
+    },
+    {
+      name: '… keeping the vars its `fallback` reads',
+      input: { operator: 'pass', $a: { $plus: [1, 2] }, $f: 0, value: '$a', fallback: '$f' },
+      expected: { operator: 'plus', values: [1, 2], fallback: '$vars.f', vars: { f: 0 } },
+    },
+    {
+      name: "another reference drops the node's modifiers",
+      input: {
+        operator: 'and',
+        $a: true,
+        values: [{ operator: 'pass', value: '$a', fallback: false, $b: 1 }],
+      },
+      expected: { operator: 'and', values: ['$vars.a'], vars: { a: true } },
+    },
+    {
+      name: 'an array with vars goes inside a `convert`',
+      input: { operator: 'pass', $n: 1, value: ['$n', 2] },
+      expected: { operator: 'convert', value: ['$vars.n', 2], to: 'array', vars: { n: 1 } },
+    },
+    {
+      name: 'an array with a `fallback` goes inside a `convert`',
+      input: { operator: 'pass', value: [failing], fallback: [] },
+      expected: { operator: 'convert', value: [failingV3], to: 'array', fallback: [] },
+    },
+    {
+      name: 'an array of constants drops them all',
+      input: { operator: 'pass', $n: 1, value: [1, 2], fallback: [] },
+      expected: [1, 2],
+    },
+    {
+      name: "an array's `outputType` is the `convert` that carries them",
+      input: { operator: 'pass', $n: 1, value: ['$n'], outputType: 'array' },
+      expected: { operator: 'convert', value: ['$vars.n'], to: 'array', vars: { n: 1 } },
+      issues: [{ code: 'output-type', path: ['outputType'] }],
+    },
+    {
+      name: 'with `evaluateFullObject`, an object takes the vars',
+      input: { operator: 'pass', $n: 1, value: { a: '$n' } },
+      options: { evaluateFullObject: true },
+      expected: { a: '$vars.n', vars: { n: 1 } },
+    },
+    {
+      name: 'with `evaluateFullObject`, an object with a `fallback` is built',
+      input: { operator: 'pass', value: { a: failing, b: 2 }, fallback: {} },
+      options: { evaluateFullObject: true },
+      expected: {
+        operator: 'buildObject',
+        entries: [
+          { key: 'a', value: failingV3 },
+          { key: 'b', value: 2 },
+        ],
+        fallback: {},
+      },
+    },
+    {
+      name: "a node's own `fallback` that cannot fail leaves the outer one unreachable",
+      input: {
+        operator: 'pass',
+        value: { operator: '+', values: [1, 2], fallback: 0 },
+        fallback: 'outer',
+      },
+      expected: { operator: 'plus', values: [1, 2], fallback: 0 },
+    },
+    {
+      name: "the outer `fallback` catches the node's own `fallback`, as in v2",
+      input: {
+        operator: 'pass',
+        value: { ...failing, fallback: { ...failing, fallback: failing } },
+        fallback: 'outer',
+      },
+      expected: {
+        ...failingV3,
+        fallback: { ...failingV3, fallback: { ...failingV3, fallback: 'outer' } },
+      },
+    },
+    {
+      name: 'vars merge, the outer first',
+      input: { operator: 'pass', $a: 1, value: { operator: '+', $b: 2, values: ['$b', '$a'] } },
+      expected: { operator: 'plus', values: ['$vars.b', '$vars.a'], vars: { a: 1, b: 2 } },
+    },
+    {
+      name: 'comments merge, the inner first',
+      input: { operator: 'pass', value: { operator: '+', values: [1], note: 'in' }, note: 'out' },
+      expected: { '//': [{ note: 'in' }, { note: 'out' }], operator: 'plus', values: [1] },
+    },
+  ]
+  test.each(EXAMPLES)('$name', (example) => check(example))
+})
+
+describe('fallbacks that caught missing data', () => {
+  const MISSING: Raised = { code: 'missing-data-fallback', path: ['fallback'] }
+  const EXAMPLES: Example[] = [
+    {
+      name: 'a read beneath a `fallback`',
+      input: { operator: '+', values: [{ $getData: 'missing' }, 1], fallback: 0 },
+      expected: { operator: 'plus', values: ['$data.missing', 1], fallback: 0 },
+      issues: [MISSING],
+      differs: { v2: { value: 0 }, v3: { value: null } },
+    },
+    {
+      name: 'a read in a substitution',
+      input: {
+        operator: 'stringSubstitution',
+        string: 'Hi %1',
+        substitutions: [{ $getData: 'missing' }],
+        fallback: 'Hi there',
+      },
+      expected: {
+        operator: 'buildString',
+        template: 'Hi %1',
+        substitutions: ['$data.missing'],
+        trim: true,
+        fallback: 'Hi there',
+      },
+      issues: [MISSING],
+      differs: { v2: { value: 'Hi there' }, v3: { value: 'Hi ' } },
+    },
+    {
+      name: 'deeper down',
+      input: {
+        operator: '+',
+        values: [{ operator: '*', values: [{ $getData: 'missing' }, 2] }, 1],
+        fallback: 0,
+      },
+      expected: {
+        operator: 'plus',
+        values: [{ operator: 'multiply', values: ['$data.missing', 2] }, 1],
+        fallback: 0,
+      },
+      issues: [MISSING],
+      differs: { v2: { value: 0 }, v3: { value: null } },
+    },
+    {
+      name: 'only the innermost `fallback`',
+      input: {
+        operator: 'and',
+        values: [{ operator: '+', values: [{ $getData: 'missing' }, 1], fallback: 0 }],
+        fallback: true,
+      },
+      expected: {
+        operator: 'and',
+        values: [{ operator: 'plus', values: ['$data.missing', 1], fallback: 0 }],
+        fallback: true,
+      },
+      issues: [{ code: 'missing-data-fallback', path: ['values', 0, 'fallback'] }],
+    },
+    {
+      name: 'a computed path',
+      input: {
+        operator: '+',
+        values: [{ operator: 'getData', property: { $plus: ['miss', 'ing'] } }, 1],
+        fallback: 0,
+      },
+      expected: {
+        operator: 'plus',
+        values: [{ operator: 'get', path: { operator: 'plus', values: ['miss', 'ing'] } }, 1],
+        fallback: 0,
+      },
+      issues: [MISSING],
+      differs: { v2: { value: 0 }, v3: { value: null } },
+    },
+    {
+      name: 'a read with its own default is not one',
+      input: {
+        operator: '+',
+        values: [{ operator: 'getData', property: 'missing', fallback: 5 }, 1],
+        fallback: 0,
+      },
+      expected: {
+        operator: 'plus',
+        values: [{ operator: 'get', path: 'missing', missingPathDefault: 5 }, 1],
+        fallback: 0,
+      },
+    },
+    {
+      name: 'nor is text that looked like one',
+      input: { operator: '+', values: ['$data.x', 'y'], fallback: 0 },
+      expected: {
+        operator: 'plus',
+        values: [{ operator: 'literal', value: '$data.x' }, 'y'],
+        fallback: 0,
+      },
+    },
+    {
+      name: 'a read in the `fallback` is beneath the next one out',
+      input: {
+        operator: 'and',
+        values: [{ operator: '=', values: [1, 1], fallback: { $getData: 'missing' } }],
+        fallback: false,
+      },
+      expected: {
+        operator: 'and',
+        values: [{ operator: 'equal', values: [1, 1], fallback: '$data.missing' }],
+        fallback: false,
+      },
+      issues: [MISSING],
+    },
+  ]
+  test.each(EXAMPLES)('$name', (example) => check(example))
+
+  test("v3's `strictDataPaths` fails where v2 did", async () => {
+    const { expression } = convert(EXAMPLES[0].input)
+    const strict = new FigTree({ strictDataPaths: true })
+    expect(await v3Outcome(strict, expression)).toEqual({ value: 0 })
+  })
+
+  test("an `http` node's `returnPath`", async () => {
+    const response = { a: 1, b: 2 }
+    const http = new MockHttpClient({ defaultResponse: response })
+    const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
+    await check(
+      {
+        name: '',
+        input: { operator: 'GET', url: 'https://x.test', returnProperty: 'zz', fallback: 0 },
+        expected: { operator: 'http', url: 'https://x.test', returnPath: 'zz', fallback: 0 },
+        issues: [{ code: 'response-collapse', path: [] }, MISSING],
+        differs: { v2: { value: 0 }, v3: { value: null } },
+      },
+      fig,
+      { httpClient: v2HttpClient(response, []) }
+    )
+  })
+})
+
+describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
+  const EXAMPLES: Example[] = [
+    {
+      name: '`convert` converts the default, where v2 returned the fallback as it was',
+      input: { operator: 'getData', property: 'nope', fallback: 'N/A', outputType: 'number' },
+      expected: {
+        operator: 'convert',
+        value: { operator: 'get', path: 'nope', missingPathDefault: 'N/A' },
+        to: 'number',
+      },
+      issues: [
+        { code: 'fallback-converted', path: ['fallback'] },
+        { code: 'output-type', path: ['outputType'] },
+      ],
+      differs: { v2: { value: 'N/A' }, v3: { error: true } },
+    },
+    {
+      name: 'a default already of the type',
+      input: { operator: 'getData', property: 'nope', fallback: 0, type: 'number' },
+      expected: {
+        operator: 'convert',
+        value: { operator: 'get', path: 'nope', missingPathDefault: 0 },
+        to: 'number',
+      },
+      issues: [{ code: 'output-type', path: ['type'] }],
+    },
+    {
+      name: 'a computed default',
+      input: {
+        operator: 'getData',
+        property: 'nope',
+        fallback: { $plus: ['1', '2'] },
+        outputType: 'number',
+      },
+      expected: {
+        operator: 'convert',
+        value: {
+          operator: 'get',
+          path: 'nope',
+          missingPathDefault: { operator: 'plus', values: ['1', '2'] },
+        },
+        to: 'number',
+      },
+      issues: [
+        { code: 'fallback-converted', path: ['fallback'] },
+        { code: 'output-type', path: ['outputType'] },
+      ],
+      differs: { v2: { value: '12' }, v3: { value: 12 } },
+    },
+  ]
+  test.each(EXAMPLES)('$name', (example) => check(example))
+
+  test('the issue names the type', () => {
+    const { issues } = convert({
+      operator: 'getData',
+      property: 'nope',
+      fallback: 'N/A',
+      outputType: 'bool',
+    })
+    expect(issues[0].message).toBe(
+      "This `fallback` becomes `missingPathDefault`, which v3's `convert` then converts to " +
+        '`boolean`, where v2 returned it as it was. Unless the default is already of that ' +
+        'type, it fails or changes. Give a default of that type.'
+    )
+  })
 })
 
 describe('keys v2 ignored', () => {
@@ -456,7 +801,7 @@ describe('keys v2 ignored', () => {
       differs: { v2: { error: true }, v3: { value: true } },
     },
   ]
-  test.each(EXAMPLES)('$name', check)
+  test.each(EXAMPLES)('$name', (example) => check(example))
 })
 
 describe('placeholders', () => {
@@ -550,6 +895,38 @@ describe('source paths', () => {
     expect(issues.map(({ code, path }) => [code, path])).toEqual([
       ['computed-delimiter', ['separator']],
     ])
+  })
+
+  test.each([
+    [
+      'a pair beaten by `values`, given by alias',
+      { operator: '-', values: [3, 1], subtractFrom: 9 },
+      [['overridden-value', ['subtractFrom']]],
+    ],
+    [
+      'an entry paired from `children`',
+      { operator: 'buildObject', children: ['a', 1, 'b'] },
+      [['malformed-entry', ['children']]],
+    ],
+    [
+      'a mapped token, under an alias of `numberMapping`',
+      { operator: 'stringSubstitution', string: '{{n}}', numMap: { n: { other: 'x' } } },
+      [['number-mapping', ['numMap', 'n']]],
+    ],
+    [
+      'a remainder read from shorthand',
+      { $divide: { values: [7, 2], output: 'remainder' } },
+      [['remainder-sign', ['$divide', 'output']]],
+    ],
+  ])('an issue about %s reports where the value was', (_, input, raised) => {
+    expect(convert(input).issues.map(({ code, path }) => [code, path])).toEqual(raised)
+  })
+
+  test('the losing key is named as the author wrote it', () => {
+    const [raised] = convert({ operator: '-', values: [3, 1], subtractFrom: 9 }).issues
+    expect(raised.message).toBe(
+      'v2 never read `subtractFrom`: `values` gave the same parameter and won. Removed.'
+    )
   })
 
   test("stage 1's issues come first", () => {

@@ -65,6 +65,13 @@ export const canonicalViolations = (expression: unknown, options: V2Options = {}
     const mapping = V2_CHILDREN[resolved]
     const into = typeof mapping !== 'function' && 'into' in mapping
     if (Object.hasOwn(input, 'children') && !Array.isArray(input.children) && !into) return
+    // And so is a computed function name, under any spelling
+    if (resolved === 'CUSTOM_FUNCTIONS') {
+      const spellings = ['functionName', ...V2_PARAMETERS.CUSTOM_FUNCTIONS[0].aliases]
+      const named = spellings.filter((key) => Object.hasOwn(input, key)).map((key) => input[key])
+      const children = Array.isArray(input.children) ? [input.children[0]] : []
+      if ([...named, ...children].some(isComputed)) return
+    }
 
     if (operator !== resolved) report(path, `the operator named ${String(operator)}`)
     if (Object.hasOwn(input, 'children')) report([...path, 'children'], '`children`')
@@ -112,7 +119,9 @@ export const canonicalViolations = (expression: unknown, options: V2Options = {}
           if (Object.hasOwn(element, key)) value(element[key], [...path, i, key])
       })
     } else if (isPlainObject(input) && !isNode(input))
-      for (const [key, element] of Object.entries(input)) value(element, [...path, key])
+      for (const [key, element] of Object.entries(input))
+        // No token could read a substitution under a `$` key
+        if (operator !== 'STRING_SUBSTITUTION' || !isAlias(key)) value(element, [...path, key])
   }
 
   // MATCH evaluated its `branches` only when it was an operator node, and

@@ -33,7 +33,15 @@ export interface NodeSource {
    * `//` object ("Keys v2 ignored")
    */
   ignored?: Record<string, unknown>
+  /**
+   * Why a node was left as written, for stage 2 to quote: the issue, and the
+   * place of the key that decided it
+   */
+  quoted?: { code: QuotedCode; at: Path }
 }
+
+/** The issues of a node left as written ("What it leaves as written") */
+export type QuotedCode = 'unknown-operator' | 'computed-children' | 'computed-function-name'
 
 export interface Normalized {
   /** The canonical v2 tree */
@@ -216,10 +224,16 @@ class Normalizer {
     return source.entries ? this.record(input, source) : input
   }
 
-  /** A plain object with each of its values normalized */
-  private walk(input: PlainObject, source: Source) {
+  /**
+   * A plain object with each of its values normalized, apart from those of
+   * the keys `skip` names
+   */
+  private walk(input: PlainObject, source: Source, skip: (key: string) => boolean = () => false) {
     const output = Object.fromEntries(
-      Object.entries(input).map(([key, value]) => [key, this.value(value, below(source, key))])
+      Object.entries(input).map(([key, value]) => [
+        key,
+        skip(key) ? value : this.value(value, below(source, key)),
+      ])
     )
     return this.record(output, source)
   }
@@ -315,7 +329,11 @@ class Normalizer {
     } else if (typeof name === 'string') operator = v2OperatorFor(name)
 
     // Step 4: a name v2 could not resolve leaves the node unreadable
-    if (operator === undefined) return this.asWritten(input, source, mark)
+    if (operator === undefined)
+      return this.asWritten(input, source, mark, {
+        code: 'unknown-operator',
+        at: draft.get('operator')?.source.path ?? source.path,
+      })
 
     // Step 5
     const node = this.parameterNames(draft, operator)
@@ -327,8 +345,21 @@ class Normalizer {
       const mapping = V2_CHILDREN[operator]
       if (Array.isArray(children.value)) this.mapChildren(node, operator, children)
       else if (typeof mapping !== 'function' && 'into' in mapping) node.set(mapping.into, children)
-      else return this.asWritten(input, source, mark)
+      else
+        return this.asWritten(input, source, mark, {
+          code: 'computed-children',
+          at: children.source.path,
+        })
     }
+
+    // A computed function name has no v3 spelling, since operator names are
+    // literal
+    const functionName = operator === 'CUSTOM_FUNCTIONS' ? node.get('functionName') : undefined
+    if (functionName !== undefined && isComputed(functionName.value))
+      return this.asWritten(input, source, mark, {
+        code: 'computed-function-name',
+        at: functionName.source.path,
+      })
 
     // Step 7
     if (operator === 'MATCH') this.gatherBranches(node)
@@ -337,14 +368,21 @@ class Normalizer {
   }
 
   /**
-   * A node kept exactly as the input has it: an unknown operator, or a
-   * computed `children` that cannot be split. v2 evaluates it the same
-   * trivially. What stage 1 found on the way here is moot, since stage 2
-   * quotes the node whole.
+   * A node kept exactly as the input has it: an unknown operator, a computed
+   * `children` that cannot be split, or a computed function name. v2
+   * evaluates it the same trivially. What stage 1 found on the way here is
+   * moot, since stage 2 quotes the node whole.
    */
-  private asWritten(input: PlainObject, source: Source, mark: number) {
+  private asWritten(
+    input: PlainObject,
+    source: Source,
+    mark: number,
+    quoted: NodeSource['quoted']
+  ) {
     this.issues.length = mark
-    return this.record({ ...input }, source)
+    const output = this.record({ ...input }, source)
+    this.sources.get(output)!.quoted = quoted
+    return output
   }
 
   /**
@@ -542,6 +580,7 @@ class Normalizer {
   /**
    * The values of an object an operator evaluated itself (`evaluatesContents`):
    * each entry's `key` and `value` for BUILD_OBJECT, and each value otherwise.
+   * STRING_SUBSTITUTION's `$` keys are data, since no token could read them.
    * With `evaluateFullObject` on, the object was walked already.
    */
   private contents(operator: V2Operator, value: unknown, source: Source): unknown {
@@ -560,7 +599,10 @@ class Normalizer {
       })
       return this.record(entries, source)
     }
-    return isPlainObject(value) && !hasNodeKey(value) ? this.walk(value, source) : value
+    if (!isPlainObject(value) || hasNodeKey(value)) return value
+    return operator === 'STRING_SUBSTITUTION'
+      ? this.walk(value, source, isAlias)
+      : this.walk(value, source)
   }
 
   /**
