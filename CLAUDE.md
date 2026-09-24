@@ -25,6 +25,7 @@ pnpm check:package        # after build: size budgets, tree-shake fixture, packe
 pnpm size                 # re-print the bundle-size report for the existing build/
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm getVersion           # regenerate src/version.ts from package.json
+pnpm extractV2Table       # regenerate the converter's two tables (src/migrate/) from the v2 package and the core definitions
 pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
@@ -69,6 +70,7 @@ src/
 ### Generated files — do not hand-edit
 
 - **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`; `pnpm build` runs it first).
+- **`src/migrate/v2/operators.generated.ts`** and **`src/migrate/v3Names.generated.ts`** — the v2 converter's reference tables, built by `codegen/extractV2Table.ts` (run `pnpm extractV2Table`) from the published v2 package (the devDependency `fig-tree-evaluator-v2`) and from the core and I/O operators' definitions. `test/migrate-table.test.ts` fails when either differs from a fresh extraction, so re-run it after bumping the v2 package or renaming or re-aliasing an operator.
 
 There is no alias table: v3's aliases live on their operators' definitions, and the registry builds its lookup at construction. `v2-src/operators/operatorAliases.ts` is part of the frozen v2 engine; its generator is not in this branch, and the `v2.x` maintenance branch keeps its own copy.
 

@@ -2,7 +2,9 @@
 
 _Working document — first sketch (Claude, July 2026), awaiting review. This is the last v3 design area. It discharges every deferral tagged "→ migration doc" or "→ Migration area" across the other docs: the `./migrate` module contents ([v3-packaging.md](v3-packaging.md) § `./migrate`), the CUSTOM_FUNCTIONS wrapper recipe ([v3-api.md](v3-api.md) Extensibility § Migration; [v3-operator-contract.md](v3-operator-contract.md)), the recycled-names callouts and operator/option disposition tables ([v3-api.md](v3-api.md)), the `evaluateExpression` one-liner ([v3-evaluator-methods.md](v3-evaluator-methods.md)), and the round-trip-utility homes. It unblocks [implementation-plan](v3-implementation-plan.md) Phase 15. Open questions collected at the end._
 
-_It leans on [v3-testing-strategy.md](v3-testing-strategy.md), which owns the converter's *validation* method (the frozen V2 corpus as oracle, the differential runner) and the divergence-catalog tags — this doc owns the converter's *shape and behaviour*, and the scope of the human-facing guide the catalog feeds._
+_It leans on [v3-testing-strategy.md](v3-testing-strategy.md), which owns the converter's *validation* method (the differential runner) and the divergence-catalog tags — this doc owns the converter's *shape and behaviour*, and the scope of the human-facing guide the catalog feeds._
+
+_Amended at Phase 15 (September 2026) from the converter's design, [v3-converter.md](v3-converter.md), agreed with Carl: the module surface gains `migrateV2Fragments` and the v2 options, the custom-function recipe becomes a suggestion, the issue shape gains `code` and points at that doc's catalogue, and open questions 2 and 4 are answered. That doc is the design of how conversion works; this one stays the contract for what it promises._
 
 ## Two artifacts, one area
 
@@ -19,23 +21,28 @@ v3 ships as `fig-tree-evaluator@3.0.0` — same package identity, clean break in
 
 ## `./migrate` — the module surface
 
-Functions and types only; the root entry never imports it; it may import the root (built on the compiler's normalizer). Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here:
+Two functions, whose types export from the root. The root entry never imports it, and it imports types only from the root. Isolation is [v3-packaging.md](v3-packaging.md)'s; contents are fixed here, and designed in "Surface" in [v3-converter.md](v3-converter.md):
 
-| Export                | Kind                                 | Purpose                                                                     |
-| --------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
-| `migrateV2Expression` | `(expr: unknown) => MigrationResult` | the migration converter — v2 (or v1-relic `children`) expression trees → v3 |
-| `MigrationResult`     | type                                 | `{ expression, issues: MigrationIssue[] }` (shape below)                    |
-| `MigrationIssue`      | type                                 | one catalogued divergence, tagged (shape below)                             |
+| Export                    | Kind                                                            | Purpose                                                                                                                                                                                                        |
+| ------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `migrateV2Expression`     | `(expression: unknown, options?: V2Options) => MigrationResult` | converts one v2 expression tree to v3                                                                                                                                                                          |
+| `migrateV2Fragments`      | `(options: V2Options) => FragmentMigrationResult`               | converts the fragment definitions in `options.fragments`                                                                                                                                                       |
+| `V2Options`               | type, from the root                                             | the part of v2's options that changes how an expression is read ("What the converter reads" in [v3-converter.md](v3-converter.md)); other keys are ignored, so a script can pass its real v2 options unchanged |
+| `MigrationResult`         | type, from the root                                             | `{ expression, issues: MigrationIssue[] }` (shape below)                                                                                                                                                       |
+| `FragmentMigrationResult` | type, from the root                                             | `{ fragments, issues: MigrationIssue[] }`: every definition, keyed as in the input unless renamed (shape below)                                                                                                |
+| `MigrationIssue`          | type, from the root                                             | one catalogued divergence, with its code and tag (shape below)                                                                                                                                                 |
+
+**Amended at Phase 15** (the converter's design, agreed with Carl): the Phase-14 ruling below had `./migrate` hold `migrateV2Expression` and nothing else. Fragment definitions get their own function because a fragment body is read differently from an expression, since its `$name` strings are parameter placeholders and its `metadata` key belongs to the definition, and because converting them is a once-per-host job where expressions are converted by the hundred. Conversion is still all the subpath is for.
 
 ### Parked: no shorthand round-trip utilities in 3.0
 
-**Ruled (Carl, September 2026, Phase-14 review).** `./migrate` is for converting v2 expressions to v3, and nothing else: `migrateV2Expression` and its two types. The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
+**Ruled (Carl, September 2026, Phase-14 review).** `./migrate` is for converting v2 expressions to v3, and nothing else: at this ruling, `migrateV2Expression` and its two types, joined at Phase 15 by `migrateV2Fragments` and two more (above). The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
 
 One constraint for that design, found at the same review: any such utility needs registry input, in both directions. `{ $plus: [1, 2] }` is an operator node only if `plus` is registered, mapping `[1, 2]` to named parameters needs `plus`'s `positionalParams`, and fragments are called with `$name` too — the limit that ruled out the structural node guards ("v2 root-export disposition" in [v3-packaging.md](v3-packaging.md)).
 
 ### Ruling: `migrateV2Expression` is a pure function carrying its own v2 tables
 
-No `FigTree` instance argument (v2's converters took one, to read live operator metadata). v3 **deleted** the alias machinery and `parseChildren` functions the v2 converter leaned on, so the converter instead carries a **static, embedded v2-reference table** — the ~95 operator-name aliases, the property aliases, and the positional `parseChildren` mappings, mined from the v2 source as data (Phase 0's "mined, never ported" asset). That table _is_ the v2→v3 rule delta in machine form; it is the converter's, not the runtime's, and the runtime never sees it. A pure `(expr) => result` signature also means the converter runs anywhere — a CLI over a directory of config files, a CI check, the editor — with no evaluator construction.
+No `FigTree` instance argument (v2's converters took one, to read live operator metadata). v3 **deleted** the alias machinery and `parseChildren` functions the v2 converter leaned on, so the converter instead carries a **static, embedded v2-reference table** — the ~95 operator-name aliases, the property aliases, and the positional `parseChildren` mappings, mined from v2 as data (Phase 0's "mined, never ported" asset; generated from the published v2 package, per "The v2 reference table" in [v3-converter.md](v3-converter.md)). That table, with the per-operator rules beside it, _is_ the v2→v3 rule delta in machine form; it is the converter's, not the runtime's, and the runtime never sees it. A pure signature, over the expression and the v2 options that change how it is read, also means the converter runs anywhere — a CLI over a directory of config files, a CI check, the editor — with no evaluator construction.
 
 ### Ruling: best-effort, never throws
 
@@ -47,46 +54,51 @@ interface MigrationResult {
   issues: MigrationIssue[] // empty ⇒ clean, fully-mechanical conversion
 }
 
+interface FragmentMigrationResult {
+  fragments: Record<string, FragmentDefinition> // every definition, keyed as in the input unless renamed
+  issues: MigrationIssue[] // paths rooted at the fragments object: ['getFlag', …]
+}
+
 interface MigrationIssue {
+  code: 'split-trailing-empty' | 'remainder-sign' | … // kebab-case and stable
   tag: 'non-convertible' | 'intentional-semantic-change' | 'lossy-default'
   path: (string | number)[] // location in the *source* tree
-  message: string // what happened and what the human must check
-  // 'non-convertible' issues additionally point at the guide section for the fix
+  message: string // what differs, when it matters, and the fix
 }
 ```
 
-The three tags are [v3-testing-strategy.md](v3-testing-strategy.md)'s divergence-catalog vocabulary, reused verbatim so a converted tree's `issues` and the differential runner's catalog are the same shape.
+The three tags are [v3-testing-strategy.md](v3-testing-strategy.md)'s divergence-catalog vocabulary, reused verbatim so a converted tree's `issues` and the differential runner's catalog are the same shape. `code` names the issue within its tag, since three tags are too coarse to act on: it lets a page group issues, a script accept the ones it has checked, and the differential match a divergence to its issue. Every code is listed in "The issue catalogue" in [v3-converter.md](v3-converter.md). A `non-convertible` message is also written into the placeholder's `//` key, prefixed `v2 conversion: `, so it stays with the node when a script loses the `issues` array ("Placeholders" in [v3-converter.md](v3-converter.md)).
 
 ## What converts mechanically (issue-free)
 
-The bulk. Driven entirely by the embedded table:
+The bulk. Driven by the embedded table and the per-operator rules ("The v2→v3 rules" in [v3-converter.md](v3-converter.md)):
 
 - **Operator & alias normalization** — every v2 name and symbolic/word alias → its v3 canonical name, per [v3-api.md](v3-api.md) § v2→v3 operator disposition. Includes the recycled names (`!`, `get`, `lower`, `join`, `data`, `convert`): the converter maps these **correctly** — the hazard is entirely human (guide § Recycled names), never the converter's.
-- **`children` arrays → shorthand positional / named params**, via the embedded `parseChildren` mappings. This is also the sole v1 accommodation (see ruling below).
+- **`children` arrays → named parameters**, via the embedded positional mappings, since the converter writes canonical v3. This is also the sole v1 accommodation (see ruling below).
 - **`getData` / OBJECT_PROPERTIES → `get`**, everyday form to a `"$data.…"` string; a v2 `getData` + `fallback` maps near-losslessly to `get` + `missingPathDefault` ([v3-api.md:422](v3-api.md#L422)), preserving the null-vs-missing distinction.
 - **`greaterThan`/`lessThan` with `strict: false` → `greaterThanOrEqual`/`lessThanOrEqual`** ([v3-api.md:349-350](v3-api.md#L349-L350)).
-- **GET / POST → `http`** with `method` set ([v3-api.md:357-358](v3-api.md#L357-L358)). Mechanical on the _expression_; the guide notes the host must register `httpOperators(client)` — registration is not the converter's to do.
-- **Moved options** — `baseEndpoint`/`headers` → `http` block, cache options → `cache.*`, `returnErrorAsString` → `mode: 'report'`, etc. ([v3-api.md](v3-api.md) § option disposition). The converter rewrites an options object when given one; the guide's table is the human reference.
+- **GET / POST → `http`** with `method` set ([v3-api.md:357-358](v3-api.md#L357-L358)). Mechanical on the _expression_, though every converted `http` and `graphQL` node carries a `response-collapse` issue, since v2's collapse of single-key objects in a response depends on the response ("Batch 4: I/O" in [v3-converter.md](v3-converter.md)). The guide notes the host must register `httpOperators(client)` — registration is not the converter's to do.
+- **Plain objects v2 read as data.** v2 looked inside a plain object only with `evaluateFullObject` on, and v3 evaluates everything, so a plain object holding anything v3 would evaluate or consume is wrapped in `literal`. The converter reads `evaluateFullObject` from the v2 options, so the wrap is a rule rather than a guess, and carries no issue ("The `literal` wrap" in [v3-converter.md](v3-converter.md)).
+- **Options are read, not rewritten.** The converter reads the v2 options that change how an expression is read (`V2Options`: the fragments, the function names, `evaluateFullObject`, `noShorthand`, `caseInsensitive` and `useCache`), and converts the fragment definitions through `migrateV2Fragments`. The other moved options — `baseEndpoint`/`headers` → `http` block, cache options → `cache.*`, `returnErrorAsString` → `mode: 'report'`, etc. ([v3-api.md](v3-api.md) § option disposition) — are migrated by hand, from the guide's table.
 
 ## What emits an issue
 
-### `intentional-semantic-change` — converts, but v3's rules produce a different result by design
+"The issue catalogue" in [v3-converter.md](v3-converter.md) lists every issue the converter emits, with its code, tag, path and message, and nothing emits an issue that is not listed there. By tag:
 
-- **`outputType` (and its `type` alias) → `convert`.** The node converts, but v3's `convert` is strict: v2's implicit number-mining (`outputType: 'number'` on `"abc4.5xyz"` → `4.5`) is **gone** ([v3-api.md:678-685](v3-api.md#L678-L685)). Where a v2 expression relied on mining, the converted tree errors or returns differently; the issue names the site and points at `regex` extract + `convert` as the deliberate replacement.
-- **Null policy.** v2's ad-hoc null handling → v3's type-driven null-policy vocabulary ([v3-api.md](v3-api.md) Type § Null policy). Most trees are unaffected; the converter flags the corners the null-policy review catalogued.
+- **`intentional-semantic-change`** — the node converts, but v3's rules can give a different result by design, in a way that depends on the data and that no v3 check finds later. The everyday cases are every converted `outputType` (v3's `convert` is strict, so v2's number-mining — `outputType: 'number'` on `"abc4.5xyz"` → `4.5` — is gone, with `regex` extract + `convert` as the replacement), every `split` (v2 dropped a trailing empty piece), every `http` and `graphQL` (the response collapse), and a `fallback` that caught missing data in v2.
+- **`lossy-default`** — something v2 discarded, or applied from outside the expression, which the converter removes or cannot carry: a value v2 never read because another spelling won, `values` beyond the two a binary operator compares, v2's instance-wide `caseInsensitive`, a fragment name renamed so that v3 can register it.
+- **`non-convertible`** — no mechanical v3 equivalent. The node becomes a placeholder, with the message in its `//` note: a computed or unrecognized value the rule chooses by, a computed operator, function or fragment name, a template part v3 has no counterpart for, and every custom-function call (below).
 
-These are the null-policy / gradient rulings the testing-strategy anticipated landing under this tag.
+**Null policy** gets no issue. v2's ad-hoc null handling → v3's type-driven null-policy vocabulary ([v3-api.md](v3-api.md) Type § Null policy). Most trees are unaffected, and where one is, the difference depends on the data, so the converter does not flag it: the guide lists the differences ("Per operator" in [v3-converter.md](v3-converter.md)). The same holds for v3's other general rules, such as no implicit coercion.
 
-### `lossy-default` — the converter must pick a value it can't perfectly justify
+### CUSTOM_FUNCTIONS
 
-- **Deep-evaluation object wrapping.** v3 deep-evaluates the whole input object; v2 default-shallow expressions that relied on a plain object passing through verbatim are the rare loss ([v3-api.md:152](v3-api.md#L152)). The converter wraps a bare object in `literal` when it looks like pass-through data — but it cannot always tell data from a node it should walk, so the wrap is a flagged guess, not a certainty.
+The one case that always needs the host, because the function _bodies_ were never in the expression tree — they lived in the host's `functions` option as JS the converter never sees. A host's v3 operator can also declare whatever parameters suit it, so the converter cannot know a call's v3 shape. So:
 
-### `non-convertible` — no mechanical v3 equivalent
+1. **It rewrites each call to the nearest v3 call on the function's name**, since the arguments are v2 expressions that need converting regardless. Positional `args` become a shorthand call (`{ $X: […] }`), and a call with an `input` names it (`{ operator: 'X', input: …, args: […] }`) ("Batch 5: custom functions" in [v3-converter.md](v3-converter.md)).
+2. **It puts a `non-convertible` issue on every call site**, not one per function name, saying the call must be checked against the operator the host registers. Where the name holds a `.` or is a core operator's, the issue also says to register it under another name and rename the call.
 
-- **CUSTOM_FUNCTIONS.** The single genuinely non-mechanical case, because the function _bodies_ were never in the expression tree — they lived in the host's `functions` option as JS the converter never sees. So the converter does the half it can and flags the half it can't:
-  1. **Rewrites the call site** mechanically: `{ operator: 'customFunctions', functionName: 'X', args: […] }` → an operator call on `X` by name (`{ $X: […] }`), against the guide's prescribed wrapper shape.
-  2. **Emits one `non-convertible` issue per distinct function name**, listing the functions the host must re-register as custom operators (guide § Custom functions), because that re-registration involves host JS the converter has no access to.
-  - v2 call sites using a **named-`input` object** rather than positional `args` can't ride the positional wrapper shape mechanically — flagged individually for manual review.
+The wrapper recipe below is the suggested registration.
 
 ## Ruling: v1 (`children`) support is dropped from v3
 
@@ -117,7 +129,7 @@ A single hand-authored `MIGRATION.md`, rendered into the docs site. Its disposit
 - **Recycled names — read this** _(hand-written, loud)_ — `!`, `get`, `lower`, `join`, `data`, `convert` ([v3-api.md:366-377](v3-api.md#L366-L377)). The converter handles them; **human muscle memory won't**, so anyone hand-editing or reading converted output needs the callout.
 - **Option disposition** _(generated where possible)_ — the [v3-api.md](v3-api.md) § option table, each deleted option with its v3 replacement.
 - **Method-surface changes** _(hand-written)_ — `FigTreeEvaluator` → `FigTree`; `evaluateExpression(expr)` → `new FigTree().evaluate(expr)` (the one-liner [v3-evaluator-methods.md:484](v3-evaluator-methods.md#L484) defers here, with its compile-cache caveat); the deleted introspection/guard methods and their replacements ([v3-packaging.md](v3-packaging.md) § v2 root-export disposition).
-- **Custom functions** _(hand-written, prescriptive)_ — the wrapper recipe below. Prescriptive by necessity: the converter rewrites call sites against **this exact shape**, so an improvised per-host shape would make call-site conversion non-mechanical.
+- **Custom functions** _(hand-written)_ — the wrapper recipe below, as the suggested registration. It is a suggestion, not a shape the converter relies on: the converter writes each call in its nearest v3 form and flags every call site for checking against the host's operator (CUSTOM_FUNCTIONS, above).
 - **Intentional semantic changes** _(hand-written)_ — no implicit coercion (`outputType`/number-mining → `convert` + `regex`), the null-policy deltas, deep-evaluation-by-default, and **`updateOptions` now merges `data` and `fragments`** where v2 replaced them wholesale (one rule, uniform with per-call options — so a v2 host that relied on replacement to _drop_ a data key or a fragment has no v3 equivalent; see the removal position in the Options area and issue #157). The "your results may differ, on purpose" list.
 - **`getOptions()` no longer reports the registry** _(hand-written, short)_ — the v2 idiom `...exp.getOptions().fragments`, used to extend the fragment set without clobbering it, reads `undefined` in v3. It is also unnecessary: `updateOptions({ fragments })` merges. `getFragments()` is the introspection route, and it returns declarations rather than bodies, so a fragment body cannot be round-tripped out of an instance at all.
 - **Client & connection setup** _(hand-written)_ — I/O is now opt-in by construction: register `httpOperators(client)` / `sqlOperators(connection)`; the SQL wrappers are renamed ([v3-packaging.md](v3-packaging.md) open Q2).
@@ -135,24 +147,27 @@ functions: {
 { operator: 'customFunctions', functionName: 'getFullName', args: ['$data.first', '$data.last'] }
 ```
 
-becomes a v3 first-class operator with a **single variadic positional `args` parameter spread into the original function**:
+can become a v3 first-class operator with a **single rest-positional `args` parameter spread into the original function**:
 
 ```js
 // v3: re-register once, at construction
 const getFullName = defineOperator({
   name: 'getFullName',
-  parameters: [{ name: 'args', type: 'array', positional: true /* variadic */ }],
-  evaluate: async ({ args }) => rawGetFullName(...args), // your v2 body, unchanged, spread
+  category: 'other',
+  description: 'Joins a first and a last name',
+  parameters: { args: { type: 'array', description: 'The arguments, as v2 passed them' } },
+  positionalParams: ['...args'],
+  evaluate: ({ args }) => rawGetFullName(...args), // your v2 body, unchanged, spread
 })
 new FigTree({ operators: [coreOperators, getFullName] })
 ```
 
 ```jsonc
-// v3 call site — the converter produces this mechanically
+// v3 call site — what the converter writes for a call with positional `args`
 { "$getFullName": ["$data.first", "$data.last"] }
 ```
 
-The author keeps their function body verbatim; only the registration wrapper is new, and the converter has already rewritten every call site to match. _(Exact parameter-declaration spelling — `positional`/variadic keyword — is the operator contract's; this recipe fixes the shape the converter targets.)_
+The author keeps their function body verbatim; only the registration wrapper is new. v2 called a function as `f(input, ...args)`, so a call that passed `input` has no positional reading, and the converter names it: `{ "operator": "getFullName", "input": …, "args": […] }`. A host whose function takes `input` declares an `input` parameter beside `args`. The recipe is one way to register, not the only one: the shorthand array binds to whatever positional parameters the host's operator declares, which is why the converter flags every call site rather than assume this shape.
 
 ## Divergence catalog — the shared output
 
@@ -161,6 +176,6 @@ The catalog is [v3-testing-strategy.md](v3-testing-strategy.md)'s first-class de
 ## Open questions
 
 1. **Guide home & format.** `MIGRATION.md` at repo root vs `docs/MIGRATION.md` vs a docs-site page; and how much is generated vs hand-written (the tables clearly generated — is anything else?). Low stakes, decide at Phase 15.
-2. **Does the converter accept an options object too, or expressions only?** The option-disposition rewrite (moved cache keys, `returnErrorAsString` → `mode`, client factories) is useful but a different input shape than an expression tree. Ship `migrateV2Expression` for trees only and document option changes as a manual table, or add a sibling `convertV2Options`? Leaning trees-only (options are edited by hand once per host; expressions are the bulk data) — confirm.
+2. **Does the converter accept an options object too, or expressions only?** The option-disposition rewrite (moved cache keys, `returnErrorAsString` → `mode`, client factories) is useful but a different input shape than an expression tree. Ship `migrateV2Expression` for trees only and document option changes as a manual table, or add a sibling `convertV2Options`? Leaning trees-only (options are edited by hand once per host; expressions are the bulk data) — confirm. — **Answered at Phase 15 ([v3-converter.md](v3-converter.md), agreed with Carl): options are read as context, fragments are converted, and the other options are migrated by hand.** `migrateV2Expression` takes the v2 options that change how an expression is read, `migrateV2Fragments` converts `options.fragments`, and there is no `convertV2Options`.
 3. **CLI wrapper?** A tiny `npx fig-tree-convert <glob>` over a directory would make the batch story real, but it's a bin script with its own arg-parsing and file-IO surface, arguably out of a zero-dependency library's scope. In-package bin, separate tiny package, or documented "here's the 10-line script" recipe? Leaning recipe.
-4. **`literal`-wrap heuristic for deep-eval loss.** What exactly triggers the converter to wrap a bare object (§ lossy-default)? Any object with no recognized node keys anywhere in its subtree is the safe-but-aggressive rule; a narrower heuristic risks under-wrapping. Settle when Phase 15 has the corpus to measure against — this is the likeliest spec-gap the differential surfaces.
+4. **`literal`-wrap heuristic for deep-eval loss.** What exactly triggers the converter to wrap a bare object (§ lossy-default)? Any object with no recognized node keys anywhere in its subtree is the safe-but-aggressive rule; a narrower heuristic risks under-wrapping. Settle when Phase 15 has the corpus to measure against — this is the likeliest spec-gap the differential surfaces. — **Answered at Phase 15 ([v3-converter.md](v3-converter.md), agreed with Carl): by `evaluateFullObject`, which the converter reads from the v2 options.** With it off, v2 treated every plain object as data, so the wrap is a rule, not a heuristic: a plain object is wrapped when anything inside it is something v3 evaluates or consumes ("The `literal` wrap").

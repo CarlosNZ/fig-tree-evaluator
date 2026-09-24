@@ -9,6 +9,14 @@ const V2_BAN = {
     'v3 source must not import from the frozen v2 engine (/v2-src). Mine it as data (Phase 15), never wire it in.',
 }
 
+// The published v2 package is the converter's tooling's reference, a
+// devDependency only ("The v2 package" in docs-dev/v3-specs/v3-converter.md)
+const V2_PACKAGE_BAN = {
+  group: ['fig-tree-evaluator-v2', 'fig-tree-evaluator-v2/**'],
+  message:
+    'v3 source must not import the v2 package: it is a devDependency of the converter tooling and tests. src/migrate/ carries its own v2 tables.',
+}
+
 // The root source never imports a subpath ("Principles" in
 // docs-dev/v3-specs/v3-packaging.md)
 const SUBPATH_BANS = [
@@ -75,14 +83,16 @@ export default tseslint.config(
   },
   {
     files: ['src/**/*.ts'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN] }] },
+    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN, V2_PACKAGE_BAN] }] },
   },
   {
     // The root side of src/ — everything but the subpaths themselves and the
     // playground, which may import anything
     files: ['src/**/*.ts'],
     ignores: ['src/editor-hints/**', 'src/migrate/**', 'src/dev/**'],
-    rules: { 'no-restricted-imports': ['error', { patterns: [V2_BAN, ...SUBPATH_BANS] }] },
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [V2_BAN, V2_PACKAGE_BAN, ...SUBPATH_BANS] }],
+    },
   },
   {
     // editor-hints is data only: type imports erase at build, any value

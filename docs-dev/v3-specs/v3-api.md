@@ -988,7 +988,7 @@ Fragments are **config-level** shortcuts — authored in FigTree itself, by expr
 
 ### Migration
 
-The migration doc carries a **prescriptive** wrapper recipe for v2 `functions` users — a defined shape (e.g. a single variadic `args` parameter spread into the wrapped JS function), not a loose suggestion — so the expression converter can mechanically rewrite v2 CUSTOM_FUNCTIONS call sites against it. Per-host improvised naming would make call-site conversion non-mechanical.
+The migration doc carries a wrapper recipe for v2 `functions` users — a single rest-positional `args` parameter spread into the wrapped JS function — as the suggested registration, not a shape the converter relies on (amended at Phase 15 by the converter's design). A host's operator can declare whatever parameters suit it, so the converter rewrites each v2 CUSTOM_FUNCTIONS call to the nearest v3 call on the function's name, and flags every call site for checking against the host's definition ("Batch 5: custom functions" in [v3-converter.md](v3-converter.md)).
 
 ### Sequencing: the contract is settled last, by induction
 

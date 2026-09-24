@@ -1,6 +1,6 @@
 # FigTree v3 — the v2 converter
 
-_Status: **Agreed** (September 2026, signed off by Carl at Phase-15 planning). The other specs change as "Changes to other specs" lists, as 15.1's first chunk. Nothing here is built beyond the placeholder `./migrate` entry._
+_Status: **Agreed** (September 2026, signed off by Carl at Phase-15 planning). The other specs were changed as "Changes to other specs" lists, as 15.1's first chunk. Built so far: the placeholder `./migrate` entry, and the reference tables ("The v2 reference table", 15.1's second chunk)._
 
 ## Purpose
 
@@ -53,7 +53,7 @@ Fragment definitions get their own function for two reasons. A fragment body is 
 
 ### Changes to other specs
 
-Written back when this doc is agreed:
+Written back at 15.1's first chunk, once this doc was agreed:
 
 - **[v3-migration.md](v3-migration.md), "`./migrate` — the module surface":** `migrateV2Expression` takes the optional `V2Options`; add `migrateV2Fragments` and the `V2Options` and `FragmentMigrationResult` types. This amends the Phase-14 ruling that `./migrate` holds `migrateV2Expression` and nothing else. Conversion is still all it is for.
 - **v3-migration.md, "The custom-function wrapper recipe" and the CUSTOM_FUNCTIONS entry under "`non-convertible`":** the recipe becomes a suggestion rather than the shape the converter targets. A host's v3 operator can declare whatever parameters suit it, so the converter cannot know a call's v3 shape. It rewrites each call to the nearest v3 call on the function's name, since the arguments are v2 expressions that need converting regardless. It then puts a `non-convertible` issue on every call site, not one per function name, saying the call must be checked against the operator's definition.
@@ -136,6 +136,8 @@ Everything the converter knows about v2, mined from v2 itself (Phase 0's "mined,
 ### `operators.generated.ts`: names and parameters
 
 ```ts
+export const V2_VERSION = '2.23.2' // the release it was extracted from
+
 export type V2Operator = 'AND' | 'OR' | 'EQUAL' | … | 'PASSTHRU' // the 24
 
 // v2's alias table verbatim (operatorAliases.ts, 95 entries)
@@ -157,11 +159,11 @@ interface V2Parameter {
 }
 ```
 
-`V2_NAMES` is looked up as v2 looked it up: the name is standardized first ([helpers.ts:35](../../v2-src/helpers.ts#L35)), then matched exactly. So some of its keys can never match (`GET` standardizes to `get`, `graphQL` to `graphQl`), and they are kept anyway, since the table is v2's own.
+`V2_NAMES` is looked up as v2 looked it up: the name is standardized first ([helpers.ts:35](../../v2-src/helpers.ts#L35)), then matched exactly. So some of its keys can never match (`GET` standardizes to `get`, `graphQL` to `graphQl`), and they are kept anyway, since the table is v2's own. The lookup reads the table's own keys only, so `constructor` names no operator, where v2's plain lookup found `Object`'s.
 
 `V2_PARAMETERS` holds 68 parameters with 69 property aliases. It carries names and aliases only. Each `data.ts` also has a `description`, a `type`, `required` and a `default`, and none of them is needed. The `default` would mislead: it was the editor's placeholder value, not a runtime default (PLUS's `values` default is `[1, 2, 3]`). MATCH declares a pseudo-parameter literally named `[...branches]`, meaning "branches may sit on the node itself". The extractor drops it, and `V2_BEHAVIOUR` records the behaviour instead.
 
-**Generated, not transcribed.** `codegen/extractV2Table.ts` reads the published v2 package's `getOperators()`, which carries every operator's name, aliases and parameters with their aliases, and writes this module, which is checked in and listed with `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. A test extracts afresh and compares the result with the checked-in module, so `pnpm test` fails when they differ. Copying 95 names and 69 aliases by hand is exactly where a typo would hide, and the source is already data. The package's names are v2's alias table exactly, all 95 (measured against `operatorAliases.ts`). The check catches both an edit to the generated file and a v2 release that changes a name or alias. `src/` never imports the package, since only the codegen script, the tests and the differential read it.
+**Generated, not transcribed.** `codegen/extractV2Table.ts` reads the published v2 package's `getOperators()`, which carries every operator's name, aliases and parameters with their aliases, and writes this module, which is checked in and listed with `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. A test extracts afresh and compares the result with the checked-in module's data, key order included, so `pnpm test` fails when they differ. It compares data rather than text because Prettier cannot run inside Jest, and `pnpm format:check` covers the text. Copying 95 names and 69 aliases by hand is exactly where a typo would hide, and the source is already data. The package's names are v2's alias table exactly, all 95 (measured against `operatorAliases.ts`). The check catches both an edit to the generated file and a v2 release that changes a name or alias. `src/` never imports the package, since only the codegen script, the tests and the differential read it.
 
 ### `children.ts`: the positional mappings
 
@@ -173,7 +175,7 @@ export const V2_CHILDREN: Record<V2Operator, ChildrenMapping> = {
   CONDITIONAL: { positions: ['condition', 'valueIfTrue', 'valueIfFalse'] },
   REGEX: { positions: ['testString', 'pattern'] },
   SPLIT: { positions: ['value', 'delimiter'], defaults: { delimiter: ' ' } },
-  OBJECT_PROPERTIES: { positions: ['property', 'fallback'] }, // the second is the node's fallback
+  OBJECT_PROPERTIES: { positions: ['property'], ifGiven: 'fallback' }, // the second is the node's fallback
   STRING_SUBSTITUTION: { positions: ['string'], rest: 'substitutions' },
   SQL: { positions: ['query'], rest: 'values' },
   CUSTOM_FUNCTIONS: { positions: ['functionName'], rest: 'args' },
@@ -187,11 +189,13 @@ export const V2_CHILDREN: Record<V2Operator, ChildrenMapping> = {
 
 type ChildrenMapping =
   | { into: string } // every child into one parameter
-  | { positions: string[]; rest?: string; defaults?: Record<string, unknown> }
+  | { positions: string[]; rest?: string; defaults?: Record<string, unknown>; ifGiven?: string }
   | ((children: readonly unknown[]) => Record<string, unknown>)
 ```
 
 `fieldsChildren` is the shape GET, POST and GRAPHQL share: leading positions, then an array of field names, then that many values zipped into an object, then an optional last value for the return property.
+
+**Exactly what v2 set.** A mapping gives the parameters v2's function set, `undefined` ones included. v2 spread them over the node, so a position with no child still overrode the node's own parameter of that name, and the normalizer needs to know it: `{ operator: '?', children: [c, a], valueIfFalse: b }` never read `b`. OBJECT_PROPERTIES is the exception v2 made, setting the fallback only when the child is given, and `ifGiven` records it: with `positions`, a one-child call would override the node's own `fallback`. Where v2's function threw, which MATCH and BUILD_OBJECT did on an odd count and MATCH on a key that is not a string, number or boolean, the mapping pairs what it can and never throws.
 
 **Why data, where it can be.** v2 accepted a _computed_ `children`: a node that evaluates to the array, such as `{ operator: '+', children: { operator: 'getData', property: 'numbers' } }`. An array that exists only at evaluation cannot be split statically. It can only be converted when every child goes into one parameter, when the node becomes `values: <that node>`. `{ into }` says exactly that, so the normalizer converts a computed `children` for the eleven operators that have it, and makes it `non-convertible` for the rest. Written as functions, the same fact would need a separate flag.
 
@@ -225,7 +229,7 @@ interface V2OperatorBehaviour {
 
 ### The name rule
 
-v2's standardization is behaviour, not data, and names are open-ended strings, so the converter implements it itself. It camel-cases the name ([helpers.ts:194](../../v2-src/helpers.ts#L194)), and keeps a name that camel-cases to nothing, such as `+` or `?`, as it is ([helpers.ts:35-37](../../v2-src/helpers.ts#L35-L37)). A test holds it to v2's function, the package's `standardiseOperatorName`, over a list of awkward names: symbols, `SCREAMING_CASE`, spaces and hyphens, mixed case, digits, and the empty string.
+v2's standardization is behaviour, not data, and names are open-ended strings, so the converter implements it itself, in `src/migrate/v2/names.ts`. It camel-cases the name ([helpers.ts:194](../../v2-src/helpers.ts#L194)), and keeps a name that camel-cases to nothing, such as `+` or `?`, as it is ([helpers.ts:35-37](../../v2-src/helpers.ts#L35-L37)). A test holds it to v2's function, the package's `standardiseOperatorName`, over a list of awkward names (symbols, `SCREAMING_CASE`, spaces and hyphens, mixed case, digits, and the empty string), every name in the table, and a seeded sample of generated strings.
 
 ## The v2→v3 rules
 
@@ -318,7 +322,7 @@ The shape is chosen so that every rule, including the ones with a `build`, can b
 
 ### v3's operator names
 
-The converter needs v3's operator names in two places: a v2 function whose name a core operator already uses must be registered under another ("Batch 5"), and so must a fragment ("Fragments"). `src/migrate/v3Names.generated.ts` lists the core and I/O operators' names and aliases. It is generated from their definitions by the same script as the v2 table, and the same test holds it to a fresh extraction. Nothing at runtime imports the engine.
+The converter needs v3's operator names in two places: a v2 function whose name a core operator already uses must be registered under another ("Batch 5"), and so must a fragment ("Fragments"). `src/migrate/v3Names.generated.ts` maps each name and alias of the core and I/O operators to its operator's name. It is generated from their definitions by the same script as the v2 table, and the same test holds it to a fresh extraction. Nothing at runtime imports the engine.
 
 ### Paths
 
@@ -962,7 +966,7 @@ Phase 15.2's check on the whole converter. Every expression case in the v2 tests
 
 ### The v2 package
 
-- **v2 is the published package**, a devDependency under an alias (`"fig-tree-evaluator-v2": "npm:fig-tree-evaluator@2.23.2"`). It imports as ESM as it is (measured), which `/v2-src` does not. v3 is `src/`. Both run in one process.
+- **v2 is the published package**, a devDependency under an alias (`"fig-tree-evaluator-v2": "npm:fig-tree-evaluator@2.23.2"`). It imports as ESM as it is under plain Node (measured), which `/v2-src` does not. Under tsx it does not: the package's ESM build has no `"type": "module"` to declare it, so tsx loads it as CommonJS and the named exports arrive under `default`. A tsx script `require`s the CommonJS build instead, as `codegen/extractV2Table.ts` does, which is also the build Jest loads. v3 is `src/`. Both run in one process.
 - **It follows v2's releases** until v3's release freezes v2. A bump is taken like a v3 change: run, review, accept ("The baseline").
 - **Nothing in the converter's tooling reads `/v2-src`.** The generated table, the `children` and name tests, the stage-1 oracle and the differential all read the package. So deleting `/v2-src` touches none of them.
 
