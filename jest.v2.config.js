@@ -14,6 +14,7 @@
 // Run with:  pnpm test:v2            (whole corpus)
 //            pnpm test:v2 <substr>   (matching files)
 // HTTP tests use the axios / node-fetch mocks in test/__mocks__ (offline).
+// test/v2.setup.ts gives the one matcher Jest 30 changed its Jest 29 meaning.
 // SQL tests (12_database) and the massiveQuery case (17) need a local Northwind
 // Postgres — env-gated, skipped when unavailable.
 export default {
@@ -22,6 +23,7 @@ export default {
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', { isolatedModules: true, tsconfig: 'tsconfig.v2.json' }],
   },
+  setupFilesAfterEnv: ['<rootDir>/test/v2.setup.ts'],
   moduleNameMapper: {
     '^\\.\\./src$': '<rootDir>/v2-src',
     '^\\.\\./src/(.*)$': '<rootDir>/v2-src/$1',
