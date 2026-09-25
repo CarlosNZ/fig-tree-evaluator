@@ -86,17 +86,18 @@ import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 
 // ═══ 'fig-tree-evaluator/format' → build/format/index.js: PLANNED ════════
 // Phase 16 (docs-dev/v3-specs/v3-format.md). Takes a FigTree, or its
-// snapshots, as an argument and never imports the class. It needs a few
-// root internals: the reference grammar, parsePath / renderSegments, and
-// the positional mapping it shares with the compiler. The build puts
-// modules two entries share in build/chunks/ (CHUNKS_DIR in
-// codegen/entries.mjs) rather than copying them, so this will be the first
-// entry with a shared chunk. Expect a few kB.
+// snapshots, as an argument and never imports the class. It reads
+// expressions exactly as the compiler does, so it imports a few small root
+// modules: the reference grammar, the shared grammar in
+// src/compile/grammar.ts, the path parser, FigTreeError and ErrorCodes. The
+// build puts modules two entries share in build/chunks/ (CHUNKS_DIR in
+// codegen/entries.mjs), which the root imports too, so this will be the
+// first entry with a shared chunk. Expect a few kB, chunk included.
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
 import { toGet, toReference } from 'fig-tree-evaluator/format'
-import type {
-  CanonicalOptions, ShorthandOptions, NameOptions, Spelling, Registry,
-} from 'fig-tree-evaluator/format'
+// Its types come from the root, like the other subpaths' (listed above
+// once built): Registry, Spelling, NameOptions, CanonicalOptions,
+// ShorthandOptions.
 ```
 
 There are no shared chunks yet: `./migrate` and `./editor-hints` import only types from the root, so the three bundles are fully separate.

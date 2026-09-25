@@ -1,12 +1,12 @@
 # FigTree v3 — the format utilities
 
-_Status: **Draft** (September 2026, Claude, from two rounds of discussion with Carl), awaiting Carl's review before Phase 16 begins. It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md)._
+_Status: **Agreed** (September 2026, Claude, from two rounds of discussion with Carl, reviewed by Carl, with the rulings from Phase 16's planning written in). It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md)._
 
 ## Purpose
 
 A v3 expression can be written in several forms: canonical nodes (`{ operator: 'plus', values: [1, 2] }`), shorthand with named arguments (`{ $plus: { values: [1, 2] } }`), shorthand with positional arguments (`{ $plus: [1, 2] }`), and references in place of `get` nodes (`'$data.user.name'`). All of them compile to the same thing. This doc designs the functions that convert an expression from one form to another without changing what it means.
 
-They are much smaller than the v2 converter. The input is already v3, so the functions never guess what an expression means. They classify each object exactly as the compiler does, and rewrite only its form. They produce no issue list: anything they don't recognise passes through unchanged, and finding problems is `validate()`'s job.
+They are much smaller than the v2 converter. The input is already v3, so the functions never guess what an expression means. They classify each object exactly as the compiler does, and rewrite only its form. They produce no issue list: a shape they can't read stops the conversion with an error, and finding every other problem is `validate()`'s job.
 
 ## The setting
 
@@ -33,7 +33,15 @@ A new subpath, `fig-tree-evaluator/format`, with four functions. None of them is
 | `toReference` | `(node: unknown, options?: NameOptions) => string \| null`                       | one `get` node, in any form, to a reference, or `null` if it has none |
 
 ```ts
-type Registry = Pick<FigTree, 'getOperators' | 'getFragments'>
+interface Registry {
+  getOperators(): readonly {
+    name: string
+    alias?: string
+    positionalParams?: readonly string[]
+    restParam: string | null
+  }[]
+  getFragments(): readonly { name: string }[]
+}
 
 type Spelling = 'preserve' | 'canonical' | 'alias'
 
@@ -53,13 +61,19 @@ interface ShorthandOptions extends NameOptions {
 }
 ```
 
-**The registry.** `toCanonical` and `toShorthand` need it in both directions. Whether `{ $plus: [1, 2] }` is an operator node depends on `plus` being registered, mapping `[1, 2]` to parameters needs `plus`'s `positionalParams`, and a `$name` key may be a fragment call instead. A `FigTree` instance satisfies `Registry` structurally. An editor that holds only serialized snapshots can pass `{ getOperators: () => ops, getFragments: () => frags }`. Each call builds its lookup once, before the walk: canonical names and aliases to `OperatorInfo`, plus the set of fragment names.
+**The registry.** `toCanonical` and `toShorthand` need it in both directions. Whether `{ $plus: [1, 2] }` is an operator node depends on `plus` being registered, mapping `[1, 2]` to parameters needs `plus`'s `positionalParams`, and a `$name` key may be a fragment call instead. A `FigTree` instance satisfies `Registry` structurally. An editor that holds only serialized snapshots can pass `{ getOperators: () => ops, getFragments: () => frags }`. Each call builds its lookup once, before the walk: canonical names and aliases to each operator's positions, plus the set of fragment names.
+
+**Why `Registry` names only what the functions read.** Declared as `Pick<FigTree, …>`, it would copy `FigTree`'s whole declaration graph into the subpath's types. The four fields are all the conversions need: no parameter declaration is read, because an unknown parameter key is carried in the named form, where the compiler reads it exactly as on the canonical node.
+
+**The types export from the root**, beside the other subpaths' ("Types" in [v3-packaging.md](v3-packaging.md)), and the subpath exports only the four functions.
 
 **`toGet` and `toReference` take no registry.** A reference is grammar, not a registered name. `get` is a core operator with no alias, and every host has it: operators, aliases and fragments share one namespace, so nothing else can take the name `get` or `$get`. The position of `get`'s parameters comes from its core definition.
 
 **Why the single-node pair returns `null`.** The editor has to know whether to offer "To reference" on a node, and "To get node" on a string. A `null` result answers that without a separate predicate, and it can't be confused with a converted value, since a successful `toReference` always returns a string and a successful `toGet` always returns an object. `toCanonical` and `toShorthand` use the pair internally and keep the original value when the result is `null`.
 
-**They never throw, and never mutate their input.** Anything unrecognised or malformed passes through unchanged: an unknown `operator:`, a payload with the wrong arity, a canonical key next to a shorthand key, two `$name` keys in one object. Unchanged subtrees may be returned as the same objects rather than copies, but that isn't promised: the editor replaces the whole subtree either way.
+**A malformed node stops the conversion.** `toCanonical` and `toShorthand` throw a `FigTreeError` on a shape they can't read ("What the walk visits", below), carrying the compiler's own code and message and the node's path within the converted subtree. The editor shows it, and the node can't be converted until it's fixed. Anything that doesn't affect the form doesn't throw: a type error, a missing parameter, or a reference that is out of scope in the subtree on its own. That last is why the functions don't call `validate()` first (Carl, Phase-16 planning): a subtree taken from inside an iterator, a `vars` block or a fragment body reads `$element`, `$vars` or `$params` that only its surroundings supply, and a node still being built lacks its required parameters, so validating the subtree alone would refuse most of the conversions the editor offers. `toGet` and `toReference` never throw: their `null` is the editor's "don't offer this".
+
+**They never mutate their input.** Unchanged subtrees may be returned as the same objects rather than copies, but that isn't promised: the editor replaces the whole subtree either way.
 
 ## Spellings
 
@@ -89,7 +103,21 @@ Each object is classified exactly as the compiler's `walkObject` does it, in the
 
 Arrays are walked element by element. Strings are checked against the reference grammar (`recognizeReference` in `src/compile/references.ts`). Every other value is returned as it is.
 
-Anything the compiler would reject is left unchanged, and so is the subtree below it: `operator` beside `fragment`, a canonical key beside a `$name` key, two `$name` keys, a non-string `operator` value, an unregistered `operator`, and a shorthand node whose siblings aren't all reserved modifiers. An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values. A `//` value is never walked, whatever it contains, and `useCache` is copied as it is.
+**The decision order is shared, not copied.** `walkObject`'s checks move into a pure `classifyObject(raw, recognizes)` in `src/compile/grammar.ts`, which returns the object's kind, or its malformation with the compiler's code and message. The compiler emits that as an issue, and these functions throw it.
+
+These shapes throw, each with the code the compiler reports for it:
+
+- `operator` beside `fragment`, a canonical key beside a `$name` key, and two `$name` keys (`malformed-node`, from `classifyObject`);
+- a non-string `operator` or `fragment` value (`malformed-node`);
+- an unregistered operator (`unknown-operator`) or fragment (`unknown-fragment`);
+- a shorthand node whose siblings aren't all reserved modifiers, `useCache` beside a fragment, and a fragment payload that isn't an object (`malformed-node`);
+- a canonical `literal` with no `value`, or with a key that isn't a modifier or `//` (`malformed-node`, `unknown-node-key`);
+- a `parameters` key on an operator node (`malformed-node`), and a fragment call key that isn't `parameters`, a modifier or `//` (`unknown-node-key`);
+- a payload with the wrong arity (`positional-arity`);
+- a named payload holding a reserved node key other than `//`, such as `{ $plus: { values: [1], fallback: 0 } }` (`unknown-node-key`). Spread onto a canonical node, it would turn an error into a working modifier;
+- nesting beyond the compiler's depth ceiling (`depth-ceiling`).
+
+An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values. An unknown parameter key on an operator node is carried: it forces the named form, where the compiler reports it as on the canonical node. A `//` value is never walked, whatever it contains, and `useCache` is copied as it is.
 
 ## `toCanonical`
 
@@ -101,12 +129,12 @@ The target is the compiler's canonical form, apart from spellings: the result co
 - **References** are respelled per `referenceNames`, and stay references. With `referencesAsGet`, each one that `toGet` can convert becomes a `get` node instead, anywhere in the subtree. The editor sets it when the selected node is itself a reference, so that "To full node" on a `$d.x` leaf gives a `get` node, while running `toCanonical` over a whole tree leaves its `$d.` leaves alone.
 - **Already-canonical nodes** are left as they are, apart from their children and spellings. "Full" doesn't mean filling in defaults, so only the parameters the author wrote appear.
 
-**The positional mapping is shared, not copied.** The pure half of the compiler's `collectPositional` (`src/compile/compile.ts`) moves into a function over `{ positionalParams, restParam }` and a payload, which returns the named parameters or `null` for an arity error. The compiler and `toCanonical` both call it.
+**The positional mapping is shared, not copied.** The pure half of the compiler's `collectPositional` (`src/compile/compile.ts`) moves into `positionalToNamed` in `src/compile/grammar.ts`, a function over `{ positionalParams, restParam }` and a payload, which returns the named parameters as entries in positional order, or `null` for an arity error. Beside it, `singlePositionalTarget` names the parameter a single value binds. The compiler and `toCanonical` both call them.
 
 ## `toShorthand`
 
 - **Operator node** becomes `{ $name: payload }`, where `name` follows `operatorNames` and modifiers stay as sibling keys. The sibling-key rule means every canonical operator node has a shorthand form.
-- **Fragment call** becomes `{ $frag: parameters }`, with `{ $frag: {} }` for a call with no `parameters`. Fragments take only the named payload. **A call whose `parameters` is a reference string stays canonical**, because the shorthand payload has to be an object: this is the one node with no shorthand form. `useCache` is invalid on fragment calls, so such a call is left unchanged, like any other malformed node.
+- **Fragment call** becomes `{ $frag: parameters }`, with `{ $frag: {} }` for a call with no `parameters`. Fragments take only the named payload. **A call whose `parameters` is a reference string stays canonical**, because the shorthand payload has to be an object: this is the one node with no shorthand form. That includes a reference the conversion itself made: `{ fragment: 'greet', parameters: { operator: 'get', path: 'person' } }` becomes `{ fragment: 'greet', parameters: '$d.person' }` under `getAsReference`, not `{ $greet: '$d.person' }`, which is illegal. `useCache` is invalid on fragment calls, so such a call throws, like any other malformed node.
 - **`literal`** becomes `{ $literal: X }`.
 - **`get`**, with `getAsReference` on, becomes a reference whenever `toReference` accepts it. Otherwise it is an ordinary operator node.
 - **Already-shorthand nodes** are re-rendered from their parameters, so the result depends only on what the node means, not on how it was written. That makes `toShorthand` idempotent.
@@ -125,9 +153,9 @@ Let the operator's leading positional parameters be `L` and its rest parameter, 
 
 The payload is then the leading values followed by the rest's elements.
 
-**Single-value collapse.** A positional payload of exactly one value, where that value came from a leading parameter, is written without the array: `{ $not: x }`, not `{ $not: [x] }`. The value mustn't be an array or a plain object that isn't a node, since those would read back as a positional or named payload. The check is made on the converted child, and uses the same `classifiesAsNode` test as the compiler. A value that came out of a spread rest is never collapsed: `values: [5]` gives `{ $plus: [5] }`, since `{ $plus: 5 }` would bind `values: 5`.
+**Single-value collapse.** A positional payload of exactly one value, where that value came from a leading parameter, is written without the array: `{ $not: x }`, not `{ $not: [x] }`. The value mustn't be an array or a plain object that isn't a node, since those would read back as a positional or named payload. The check is made on the converted child, and uses the same `classifiesAsNode` test as the compiler. A value that came out of a spread rest is never collapsed: `values: [5]` gives `{ $plus: [5] }`, since `{ $plus: 5 }` would bind `values: 5`. **Nor is a payload where a rest is bound**, even an empty one: `{ operator: 'buildString', template: 'Hi %1', substitutions: [] }` gives `{ $buildString: ['Hi %1'] }`, because `{ $buildString: 'Hi %1' }` would leave `substitutions` unsupplied. For `buildString` that changes only a warning (`unbound-token` with the empty array, none without), but for a host's operator whose rest has a default, `[]` and "not supplied" give different results.
 
-**A computed rest.** When the operator has no leading parameters, the rest is the only one supplied, and its value isn't a literal array, the value itself is the payload: `{ $min: '$data.scores' }`, `{ $and: { $map: … } }`. A single value binds unchanged to the rest parameter, which is exactly the node that was converted. Where there are leading parameters, a computed rest makes the node named.
+**A computed rest.** When the operator has no leading parameters, the rest is the only one supplied, and its value isn't a literal array, the value itself is the payload: `{ $min: '$data.scores' }`, `{ $and: { $map: … } }`. A single value binds unchanged to the rest parameter, which is exactly the node that was converted. The value mustn't be a plain object that isn't a node, which would read back as a named payload. Where there are leading parameters, a computed rest makes the node named.
 
 ## `toGet` and `toReference`
 
@@ -136,6 +164,7 @@ The payload is then the leading values followed by the rest's elements.
 - **No `fallback`, `useCache` or `vars`.** A reference can't carry them. A `//` comment doesn't block the conversion, and is dropped ("Comments", below).
 - **No `missingPathDefault`.**
 - **`path` is a literal string that parses, or a literal array of string and number segments.** It's rendered with the compiler's `renderSegments`, which round-trips through `parsePath`, so the reference reads exactly the segments the node did. A computed path has no reference form.
+- **No part of `path` starts with `$`.** Inside an iterator with `as`, a `$`-string may be the element: in `{ operator: 'map', input: ['user.name', 'user.email'], as: 'field', each: { operator: 'get', path: '$field' } }` each element is a path, and `'$data.$field'` would read a data key named `$field` instead. `toReference` can't see the `as`, so a `$`-prefixed path string or segment has no reference form.
 - **`from` is absent, or is a reference that can be drilled into.** No `from` reads `$data`. `from: '$vars.row'` with path `a.b` gives `'$vars.row.a.b'`, and `from: '$e'` gives `'$e.a.b'`. `$index` can't be drilled, and a `from` holding a literal object or a node has no reference form.
 
 An empty path gives the bare reference itself: `'$data'`, or `'$vars.row'`.
@@ -167,7 +196,7 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 
 - **A `get` becoming a reference loses its `//`**, since a string can't carry one. This is the only case where a comment is dropped, and it is the default in `toShorthand` (`getAsReference` is on).
 - **The usual place for a comment is on the node**, beside `operator` or the `$name` key: `{ '//': 'why', $if: { condition: c, … } }`. There it survives every conversion except a `get` becoming a reference.
-- **A `//` inside a named payload** (`{ $if: { '//': 'why', condition: c, … } }`, which the compiler skips) moves onto the node, immediately before the invocation key. That happens in `toCanonical`, which has no payload to keep it in, and in `toShorthand` whenever the node takes a positional or single-value payload. Once moved, it stays on the node, so a named → positional → named round trip leaves the comment in the usual place. The move never crosses a node boundary: a payload is its own node's parameter list, and a child node's comments stay on the child. If the node already has its own `//`, the two become an array in the node's comment's place, `[nodeComment, payloadComment]`: nothing is blocked, so both are kept. The editor never writes a comment inside a payload, so this case comes only from hand-written or pasted JSON.
+- **A `//` inside a named payload** (`{ $if: { '//': 'why', condition: c, … } }`, which the compiler skips) moves onto the node, immediately before the invocation key. That happens in `toCanonical`, which has no payload to keep it in, and in `toShorthand` whenever the node takes a positional or single-value payload. Once moved, it stays on the node, so a named → positional → named round trip leaves the comment in the usual place. The move never crosses a node boundary: a payload is its own node's parameter list, and a child node's comments stay on the child. If the node already has its own `//`, the two become an array in the node's comment's place, `[nodeComment, payloadComment]`: nothing is blocked, so both are kept. Either one may already be an array, and the result is flattened, so a comment is never more than one level deep. The editor never writes a comment inside a payload, so this case comes only from hand-written or pasted JSON.
 - **A `//` inside a fragment call's `parameters` stays where it is**, since `parameters` exists in both forms. So does every node-level `//` and every `//` in a plain object.
 
 ## What these functions don't do
@@ -180,7 +209,7 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 
 The compiler is the oracle, so most tests need no data.
 
-- **Compile equivalence.** For both functions, with `getAsReference` off, the compiled output must equal the compiled input once source paths and order are ignored. This runs over every expression in the v3 test fixtures, and over the differential corpus's converted expressions (`differential/`). It needs a small comparator that strips `path` and `order` from an artifact.
+- **Compile equivalence**, which happens only in the tests: the functions never compile. For both functions, with `getAsReference` off, the compiled output must equal the compiled input once source paths and order are ignored. This runs over a modest curated corpus of v3 expressions, and over the differential corpus's converted expressions (`differential/`). It needs a small comparator that strips `path` and `order` from an artifact. The suite is collated with the rest at release prep.
 - **Round trip and idempotence**, with `getAsReference` off, so that no comment is dropped:
   - `toCanonical(toShorthand(x))` equals `toCanonical(x)`
   - `toCanonical(toCanonical(x))` equals `toCanonical(x)`
@@ -191,19 +220,21 @@ The compiler is the oracle, so most tests need no data.
 - **Payload choice.** A table of operators by shape — no positional parameters, leading only, rest only, leading plus rest — against supplied sets, covering gaps, empty rests, computed rests and each collapse case.
 - **`getAsReference`, `toGet` and `toReference`.** Evaluation tests with data, including missing paths, with `strictDataPaths` both on and off, and each `from` namespace. A commented `get` converts, and loses its comment.
 - **Comments.** Each placement in "Comments" above, including the two-comment array.
-- **Pass-through.** Every malformed shape above comes back deep-equal to its input, and no input is mutated.
-- **The converter's promise.** `deepEqual(toCanonical(x, fig, { operatorNames: 'canonical', referenceNames: 'canonical' }), x)` over the converter's output checks its "canonical v3 throughout" promise.
+- **Malformed shapes.** Every shape listed under "What the walk visits" throws a `FigTreeError` with its code and path, and no input is mutated.
+- **The converter's promise.** `deepEqual(toCanonical(x, fig, { operatorNames: 'canonical', referenceNames: 'canonical' }), x)` over the converter's output checks its "canonical v3 throughout" promise. The converter's one documented exception, a call on a converted v2 custom function written in the positional shorthand ("Batch 5" in [v3-converter.md](v3-converter.md)), is expected to come back canonical.
 
 ## Packaging
 
-- A row in `codegen/entries.mjs` for `./format`, with a size budget set from measurement and a tree-shake marker.
+- A row in `codegen/entries.mjs` for `./format`, with a size budget set from measurement and a tree-shake marker. The budget counts the chunk the subpath shares with the root: every entry's budget is its own file plus the chunks it imports ("`./format`" in [v3-packaging.md](v3-packaging.md)).
 - `exports` and `typesVersions` entries in package.json, which the build checks against the entries list.
-- An exports test for the subpath, and the lint rule that stops the root importing `src/format/`.
-- The options types exported from the subpath, beside the functions.
+- An exports test for the subpath, the lint rule that stops the root importing `src/format/`, and one that limits `src/format/`'s value imports to the small root modules it shares.
+- The options types exported from the root, like the other subpaths' types.
 
 ## Changes to other specs
 
 - **[v3-migration.md](v3-migration.md):** "Parked: no shorthand round-trip utilities in 3.0" becomes a pointer to this doc.
-- **[v3-packaging.md](v3-packaging.md):** the `convertToShorthand` / `convertFromShorthand` row points at `./format`, and the subpath joins the entry-point list.
-- **[v3-implementation-plan.md](v3-implementation-plan.md):** Phase 16 for this work, with the benchmarks and release prep renumbered to 17 and 18, and a bundle-size row at its close.
+- **[v3-packaging.md](v3-packaging.md):** the `convertToShorthand` / `convertFromShorthand` row points at `./format`, the subpath joins the entry-point list with a section of its own, its types join the root's, and budgets count shared chunks.
+- **[v3-converter.md](v3-converter.md) and [v3-evaluator-methods.md](v3-evaluator-methods.md):** their pointers to the parked section point here instead.
+- **[docs-dev/imports.md](../imports.md):** the `./format` block, with its types from the root and the shared chunk measured.
+- **[v3-implementation-plan.md](v3-implementation-plan.md):** Phase 16 for this work, with the benchmarks and release prep renumbered to 17 and 18, and a bundle-size row at its close. Phase 18 re-addresses where a subpath's types export from.
 - **README:** a section on the four functions. **CLAUDE.md:** the third subpath becomes a fourth.

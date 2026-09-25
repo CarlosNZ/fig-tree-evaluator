@@ -34,11 +34,11 @@ Two functions, whose types export from the root. The root entry never imports it
 
 **Amended at Phase 15** (the converter's design, agreed with Carl): the Phase-14 ruling below had `./migrate` hold `migrateV2Expression` and nothing else. Fragment definitions get their own function because a fragment body is read differently from an expression, since its `$name` strings are parameter placeholders and its `metadata` key belongs to the definition, and because converting them is a once-per-host job where expressions are converted by the hundred. Conversion is still all the subpath is for.
 
-### Parked: no shorthand round-trip utilities in 3.0
+### Converting between v3's forms: `./format`
 
-**Ruled (Carl, September 2026, Phase-14 review).** `./migrate` is for converting v2 expressions to v3, and nothing else: at this ruling, `migrateV2Expression` and its two types, joined at Phase 15 by `migrateV2Fragments` and two more (above). The `toShorthand` / `fromShorthand` pair this table carried as the editor's round-trip tools is not part of 3.0. A v3 expression can take several faces — canonical, shorthand with named arguments, shorthand with positional arguments — so converting between them in a way that means something needs its own design, not a table row. **Revisit after the 3.0 release.**
+Converting a v3 expression between its forms (canonical, shorthand with named or positional arguments, references in place of `get` nodes) is not this module's job. It has its own subpath, `fig-tree-evaluator/format`, designed in [v3-format.md](v3-format.md) and built in Phase 16. `./migrate` stays for converting v2 to v3.
 
-One constraint for that design, found at the same review: any such utility needs registry input, in both directions. `{ $plus: [1, 2] }` is an operator node only if `plus` is registered, mapping `[1, 2]` to named parameters needs `plus`'s `positionalParams`, and fragments are called with `$name` too — the limit that ruled out the structural node guards ("v2 root-export disposition" in [v3-packaging.md](v3-packaging.md)).
+**History.** The Phase-14 review (Carl, September 2026) took the `toShorthand` / `fromShorthand` pair out of this table and parked it until after 3.0, because converting between several forms in a way that means something needed its own design, not a table row. The same review found the constraint that design had to meet: it needs registry input in both directions, since `{ $plus: [1, 2] }` is an operator node only if `plus` is registered, mapping `[1, 2]` to named parameters needs `plus`'s `positionalParams`, and fragments are called with `$name` too. Issue #185 brought the design forward into 3.0, and v3-format.md takes the registry as an argument.
 
 ### Ruling: `migrateV2Expression` is a pure function carrying its own v2 tables
 
