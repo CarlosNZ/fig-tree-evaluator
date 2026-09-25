@@ -159,14 +159,15 @@ The path is the drill as written, without its leading `.`. The first segment of 
 The editor shows keys in the order they appear, so conversion keeps the author's order and changes only what it has to:
 
 - **The invocation key keeps its position.** `operator` / `fragment` and `$name` swap places with each other. In `toCanonical` a shorthand's parameters follow `operator` directly, in the payload's order: the authored order for a named payload, the positional order for an array. In `toShorthand` the parameters move into the payload in the order they were written.
-- **Everything else stays in place:** modifiers, `//`, and the keys of plain objects and fragment `parameters`.
+- **Everything else stays in place:** modifiers, `//`, and the keys of plain objects and fragment `parameters`. The one key that moves is a comment leaving a payload ("Comments", below).
 
 ## Comments
 
 **A comment never stops a conversion.** It is kept wherever the requested form has room for it, and dropped where keeping it would block that form. Comments are not part of the round-trip promise. Where the editor thinks a lost comment matters, it can check the input for one and ask before converting.
 
 - **A `get` becoming a reference loses its `//`**, since a string can't carry one. This is the only case where a comment is dropped, and it is the default in `toShorthand` (`getAsReference` is on).
-- **A `//` inside a named payload** (`{ $if: { condition: c, '//': 'why' } }`, which the compiler skips) moves onto the node as a sibling key. That happens in `toCanonical`, which has no payload to keep it in, and in `toShorthand` whenever the node takes a positional or single-value payload. If the node already has its own `//`, the two become an array, `[nodeComment, payloadComment]`: nothing is blocked, so both are kept.
+- **The usual place for a comment is on the node**, beside `operator` or the `$name` key: `{ '//': 'why', $if: { condition: c, … } }`. There it survives every conversion except a `get` becoming a reference.
+- **A `//` inside a named payload** (`{ $if: { '//': 'why', condition: c, … } }`, which the compiler skips) moves onto the node, immediately before the invocation key. That happens in `toCanonical`, which has no payload to keep it in, and in `toShorthand` whenever the node takes a positional or single-value payload. Once moved, it stays on the node, so a named → positional → named round trip leaves the comment in the usual place. The move never crosses a node boundary: a payload is its own node's parameter list, and a child node's comments stay on the child. If the node already has its own `//`, the two become an array in the node's comment's place, `[nodeComment, payloadComment]`: nothing is blocked, so both are kept. The editor never writes a comment inside a payload, so this case comes only from hand-written or pasted JSON.
 - **A `//` inside a fragment call's `parameters` stays where it is**, since `parameters` exists in both forms. So does every node-level `//` and every `//` in a plain object.
 
 ## What these functions don't do

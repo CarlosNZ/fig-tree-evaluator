@@ -44,6 +44,8 @@ Every PR that can move the bundle gets a size-diff comment automatically (`.gith
 
 The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with three entry points: the root (`build/index.js`), `fig-tree-evaluator/migrate` (`build/migrate/index.js`, from `src/migrate/` — the v2 converter) and `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 
+[docs-dev/imports.md](docs-dev/imports.md) is the import map: every import from every entry point, written as TS imports, with what each one costs a consumer. **Keep it current:** update it whenever an export or entry point changes, or a change moves one of its sizes noticeably.
+
 The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`, and `pnpm dev phase<N>_showcase` to see a phase's features run (one showcase file per phase, written at the phase's close).
 
 ## Architecture
