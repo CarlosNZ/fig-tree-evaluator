@@ -27,6 +27,9 @@ export const renderCorpus = (cases: WrittenCase[], version: string): string => {
 
   const entries = cases.map((entry, index) => {
     const fields = [
+      // TO-DO: stable ids, carried forward from the existing corpus by
+      // content, so re-extraction cannot renumber the review map and the
+      // baseline ("To sort out: stable case ids" in the implementation plan)
       `id: ${index + 1}`,
       `from: ${JSON.stringify(entry.from)}`,
       `expression: ${entry.expression}`,
