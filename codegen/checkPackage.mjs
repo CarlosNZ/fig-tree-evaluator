@@ -16,7 +16,8 @@
  *  3. The packed package: `pnpm pack`, installed into a temporary directory,
  *     where every entry imports by name as ESM, `require()`s from CommonJS
  *     (Node >= 22.12's require(esm)), and typechecks from TypeScript through
- *     the `exports` map's `types` conditions — the package as npm delivers
+ *     the `exports` map's `types` conditions and through the `typesVersions`
+ *     fallback of the legacy `node` resolution — the package as npm delivers
  *     it, which none of the other checks see.
  *
  * Every check runs and reports; the script fails at the end if any did.
@@ -171,30 +172,38 @@ try {
   pass(`require()s from CommonJS: ${specifiers.join(', ')}`)
 
   // A browser host's view: the DOM library and no @types/node, so a
-  // declaration that leans on a Node type fails here
+  // declaration that leans on a Node type fails here. Once through the
+  // `exports` map, and once as TypeScript's legacy `node` resolution sees the
+  // package: it ignores `exports`, so there the subpaths resolve only
+  // through `typesVersions`
   writeFileSync(
     join(dir, 'types.ts'),
     specifiers.map((spec, i) => `import * as entry${i} from '${spec}'`).join('\n') +
       `\nexport const entries = [${specifiers.map((_, i) => `entry${i}`).join(', ')}]\n`
   )
-  writeFileSync(
-    join(dir, 'tsconfig.json'),
-    JSON.stringify({
-      compilerOptions: {
-        module: 'nodenext',
-        moduleResolution: 'nodenext',
-        target: 'es2022',
-        lib: ['es2022', 'dom'],
-        types: [],
-        strict: true,
-        noEmit: true,
-        skipLibCheck: false,
-      },
-      files: ['types.ts'],
-    })
-  )
-  run(join(ROOT, 'node_modules', '.bin', 'tsc'), ['-p', 'tsconfig.json'], dir)
-  pass(`typechecks through the exports map, declarations included (DOM, no @types/node)`)
+  const resolutions = [
+    { module: 'nodenext', moduleResolution: 'nodenext', via: 'the exports map' },
+    { module: 'esnext', moduleResolution: 'node', via: 'typesVersions, under resolution "node"' },
+  ]
+  for (const { via, ...resolution } of resolutions) {
+    writeFileSync(
+      join(dir, 'tsconfig.json'),
+      JSON.stringify({
+        compilerOptions: {
+          ...resolution,
+          target: 'es2022',
+          lib: ['es2022', 'dom'],
+          types: [],
+          strict: true,
+          noEmit: true,
+          skipLibCheck: false,
+        },
+        files: ['types.ts'],
+      })
+    )
+    run(join(ROOT, 'node_modules', '.bin', 'tsc'), ['-p', 'tsconfig.json'], dir)
+    pass(`typechecks through ${via}, declarations included (DOM, no @types/node)`)
+  }
 } catch (error) {
   fail(error.message)
 } finally {

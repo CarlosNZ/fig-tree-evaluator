@@ -20,6 +20,16 @@
       "default": "./build/editor-hints/index.js"
     }
   },
+  "typesVersions": {
+    "*": {
+      "migrate": [
+        "./build/migrate/index.d.ts"
+      ],
+      "editor-hints": [
+        "./build/editor-hints/index.d.ts"
+      ]
+    }
+  },
   "files": [
     "build"
   ],
