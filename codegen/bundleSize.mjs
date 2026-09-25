@@ -75,8 +75,8 @@ const sizesOf = (file) => {
   return existsSync(path) ? compressedSizes(readFileSync(path)) : undefined
 }
 
-/** A static import's specifier in built ESM, minified or not. */
-const IMPORT_SPECIFIER = /(?:\bfrom|\bimport)\s*["']([^"']+)["']/g
+/** A relative static import's specifier in built ESM, minified or not. */
+const IMPORT_SPECIFIER = /(?:\bfrom|\bimport)\s*["'](\.\.?\/[^"']+\.js)["']/g
 
 /**
  * An entry's own file plus every shared chunk it imports, transitively, by
@@ -90,20 +90,23 @@ export const entryFiles = (name) => {
     files.push(file)
     const code = readFileSync(`${BUILD}/${file}`, 'utf8')
     for (const [, specifier] of code.matchAll(IMPORT_SPECIFIER))
-      if (specifier.startsWith('.')) visit(posix.join(posix.dirname(file), specifier))
+      visit(posix.join(posix.dirname(file), specifier))
   }
   visit(`${name}.js`)
   return files
 }
 
 /**
- * The brotli size an entry's budget is held to: its file plus the chunks it
- * imports, each compressed on its own as it is served. A chunk counts once
- * for every entry that imports it, so moving code into a chunk never makes
- * an entry look smaller than what it costs its consumers.
+ * The brotli size an entry's budget is held to: its file and the chunks it
+ * imports, compressed together, as a consumer's bundler merges them. A chunk
+ * counts once for every entry that imports it, so moving code into a chunk
+ * never makes an entry look smaller than what it costs its consumers.
+ * Compressing the files one by one would overstate it instead, since each
+ * would lose the context the others share.
  */
 export const entryBrotli = (name) =>
-  entryFiles(name).reduce((sum, file) => sum + sizesOf(file).brotli, 0)
+  compressedSizes(Buffer.concat(entryFiles(name).map((file) => readFileSync(`${BUILD}/${file}`))))
+    .brotli
 
 /**
  * Per-module contribution, as rendered into the chunk after tree-shaking but

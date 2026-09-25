@@ -4,22 +4,28 @@
  * expressions as the compiler does, through the small root modules it shares
  * with the engine ("`./format`" in docs-dev/v3-specs/v3-packaging.md).
  *
- * TO-DO: the conversions themselves (Phase 16, chunks 3–5). Each placeholder
- * throws rather than returning its input, which would read as a successful
- * conversion.
+ * TO-DO: `toShorthand` (Phase 16, chunk 5). Its placeholder throws rather
+ * than returning its input, which would read as a successful conversion.
  */
 import type { CanonicalOptions, NameOptions, Registry, ShorthandOptions } from '../formatTypes'
+import { canonicalWriter } from './canonical'
+import { buildLookup } from './read'
+import { paramsToReference, readGetNode, referenceToGet } from './references'
+import { Walk } from './walk'
 
 const placeholder = (name: string): never => {
   throw new Error(`${name}: fig-tree-evaluator/format is a placeholder until Phase 16 builds it`)
 }
 
-/** Every node in the subtree to canonical form. */
-export const toCanonical: (
+/**
+ * Every node in the subtree to canonical form. Throws a `FigTreeError` at a
+ * node the compiler can't read.
+ */
+export const toCanonical = (
   expression: unknown,
   fig: Registry,
   options?: CanonicalOptions
-) => unknown = () => placeholder('toCanonical')
+): unknown => new Walk(buildLookup(fig), canonicalWriter(options)).value(expression)
 
 /** Every node in the subtree to shorthand form. */
 export const toShorthand: (
@@ -29,11 +35,11 @@ export const toShorthand: (
 ) => unknown = () => placeholder('toShorthand')
 
 /** One reference string to a `get` node, or `null` if it has none. */
-export const toGet: (
-  reference: unknown,
-  options?: NameOptions
-) => Record<string, unknown> | null = () => placeholder('toGet')
+export const toGet = (reference: unknown, options?: NameOptions): Record<string, unknown> | null =>
+  referenceToGet(reference, options?.referenceNames ?? 'preserve')
 
 /** One `get` node, in any form, to a reference, or `null` if it has none. */
-export const toReference: (node: unknown, options?: NameOptions) => string | null = () =>
-  placeholder('toReference')
+export const toReference = (node: unknown, options?: NameOptions): string | null => {
+  const params = readGetNode(node)
+  return params === null ? null : paramsToReference(params, options?.referenceNames ?? 'preserve')
+}

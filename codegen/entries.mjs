@@ -34,7 +34,9 @@ export const ENTRIES = [
     subpath: './format',
     name: 'format/index',
     source: 'src/format/index.ts',
-    budget: 200,
+    // TO-DO: set from measurement at the Phase 16 close-out; provisional
+    // until the conversions are all built
+    budget: 6_100,
     marker: 'fig-tree-evaluator/format is a placeholder',
   },
 ]
