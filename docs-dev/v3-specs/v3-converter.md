@@ -1194,7 +1194,7 @@ The examples in this spec are the tests' first cases. Each was measured through 
 
 The `./migrate` entry holds the converter:
 
-- **The budget.** Its row in `codegen/entries.mjs` is 19,200 bytes brotli: the complete converter's 18,237 plus about 5% (September 2026), as the other entries' were set. The two largest modules are the walk and the normalizer, then the rules, the fragments and the catalogue's messages.
+- **The budget.** Its row in `codegen/entries.mjs` is 19,500 bytes brotli: the converter's 18,593 at the Phase-15 close plus about 5% (September 2026), as the other entries' were set. The two largest modules are the walk and the normalizer, then the rules, the fragments and the catalogue's messages.
 - **The marker** is `'is not a v2 operator'`, from the `unknown-operator` message, which only the converter holds.
 - **The types.** `code` is on `MigrationIssue` in `src/migrationTypes.ts`, and all four types export from the root.
 - **Isolation.** The lint rule for `src/migrate/` allows value imports from inside the folder only, and type imports from anywhere. That is editor-hints' rule widened to a folder of several modules, with one pattern for each depth of the folder, since a pattern matches an import's text. The `instanceof FigTreeError` assertion planned for 15.1 goes, since the converter shares no runtime code with the root.
