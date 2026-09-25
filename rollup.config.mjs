@@ -5,20 +5,33 @@ import dts from 'rollup-plugin-dts'
 import { collectBundleSize, printBundleSize } from './codegen/bundleSize.mjs'
 import { CHUNKS_DIR, ENTRIES } from './codegen/entries.mjs'
 
-// package.json's `exports` must name exactly the entries built here, with
-// the paths the build writes — checked before building anything
-const exportsMap = JSON.parse(readFileSync('package.json', 'utf8')).exports
-const expected = Object.fromEntries(
-  ENTRIES.map(({ subpath, name }) => [
-    subpath,
-    { types: `./build/${name}.d.ts`, default: `./build/${name}.js` },
-  ])
-)
-if (JSON.stringify(exportsMap) !== JSON.stringify(expected))
-  throw new Error(
-    `package.json "exports" does not match codegen/entries.mjs — expected:\n` +
-      JSON.stringify(expected, null, 2)
-  )
+// package.json must name exactly the entries built here, with the paths the
+// build writes — checked before building anything. Twice over: in `exports`,
+// and in the `types` + `typesVersions` fallback that TypeScript's legacy
+// `node` resolution reads instead, since it ignores `exports`
+const manifest = JSON.parse(readFileSync('package.json', 'utf8'))
+const declarations = (name) => `./build/${name}.d.ts`
+const subpaths = ENTRIES.filter(({ subpath }) => subpath !== '.')
+const expected = {
+  exports: Object.fromEntries(
+    ENTRIES.map(({ subpath, name }) => [
+      subpath,
+      { types: declarations(name), default: `./build/${name}.js` },
+    ])
+  ),
+  types: declarations(ENTRIES.find(({ subpath }) => subpath === '.').name),
+  typesVersions: {
+    '*': Object.fromEntries(
+      subpaths.map(({ subpath, name }) => [subpath.slice('./'.length), [declarations(name)]])
+    ),
+  },
+}
+for (const [field, value] of Object.entries(expected))
+  if (JSON.stringify(manifest[field]) !== JSON.stringify(value))
+    throw new Error(
+      `package.json "${field}" does not match codegen/entries.mjs — expected:\n` +
+        JSON.stringify(value, null, 2)
+    )
 
 export default [
   {

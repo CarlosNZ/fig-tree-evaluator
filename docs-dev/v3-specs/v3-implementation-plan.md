@@ -234,7 +234,7 @@ _Built (September 2026), from a stock-take that found the root entry mostly in p
 
 **14.2 · `./editor-hints`.** [src/editor-hints/index.ts](../../src/editor-hints/index.ts): a display name, `docUrl`, colours and starting-value seeds for all 43 operators, the eight categories' labels, order and colours, and a seed per type; the types (with `FragmentHints` for a fragment's `metadata`) export from the root. Drift tests check coverage both ways, contrast, that seeds fit their declarations, and that each operator's seeded starting node validates.
 
-**14.3 · One build, several entries.** `codegen/entries.mjs` lists the entry points once; the build, the size report and the PR comment follow it, and the build fails if `exports` disagrees. One rollup pass over every entry, so shared code lands once in `build/chunks/`; a `.d.ts` per entry.
+**14.3 · One build, several entries.** `codegen/entries.mjs` lists the entry points once; the build, the size report and the PR comment follow it, and the build fails if `exports` (or, since the PR #184 review, the `typesVersions` fallback) disagrees. One rollup pass over every entry, so shared code lands once in `build/chunks/`; a `.d.ts` per entry.
 
 **14.4 · The checks.** `pnpm check:package` after the build — size budgets, the tree-shake fixture, and the packed package imported, required and typechecked as a consumer would; the globals check inside `pnpm typecheck`; the import-direction lint rule. Each check was broken on purpose and failed.
 
