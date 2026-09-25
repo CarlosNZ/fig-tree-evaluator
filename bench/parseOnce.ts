@@ -1,6 +1,6 @@
 /**
  * Claim 2 — parse-once, O(1) thereafter (implementation plan, Phase
- * 16a.2). "Recognition, alias normalization and positional mapping happen
+ * 17a.2). "Recognition, alias normalization and positional mapping happen
  * at parse and never again" ("Ruling: no `v2Compat` runtime flag" in
  * docs-dev/v3-specs/v3-migration.md).
  *

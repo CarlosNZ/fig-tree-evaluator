@@ -70,7 +70,7 @@ Written back at 15.1's first chunk, once this doc was agreed:
 - **v3-migration.md, open question 2** (options or trees only): answered. Options are read as context, fragments are converted, and the other options are migrated by hand.
 - **v3-migration.md, open question 4** (the `literal`-wrap heuristic): answered by `evaluateFullObject`, which makes the wrap a rule ("What the converter reads").
 - **[v3-packaging.md](v3-packaging.md), "`./migrate`" and "Types":** the contents (two functions, four types), with the four types added to the "Types" list. The isolation line becomes "imports types only from the root", in place of "may import from the root (it is built on the compiler's normalizer)". The `instanceof FigTreeError` assertion goes: the entries share no runtime code, and the type-only rule replaces it.
-- **[v3-testing-strategy.md](v3-testing-strategy.md), step 5, and [v3-implementation-plan.md](v3-implementation-plan.md), 15.2:** the differential compares live v2 (the published package, following v2's releases) with v3, rather than v3 with the recorded expected values. Its corpus is a data module extracted from the v2 tests, and not the frozen files run in place. An accepted baseline and its CI check are added ("The differential runner"). The plan's `/v2-src` runnability risk no longer covers Phase 15, only Phase 16.
+- **[v3-testing-strategy.md](v3-testing-strategy.md), step 5, and [v3-implementation-plan.md](v3-implementation-plan.md), 15.2:** the differential compares live v2 (the published package, following v2's releases) with v3, rather than v3 with the recorded expected values. Its corpus is a data module extracted from the v2 tests, and not the frozen files run in place. An accepted baseline and its CI check are added ("The differential runner"). The plan's `/v2-src` runnability risk no longer covers Phase 15, only Phase 17.
 - **[v3-implementation-plan.md](v3-implementation-plan.md), 15.1:** the same, including "built on the compiler's normalizer", which no longer holds.
 
 ## What the converter reads
@@ -1121,7 +1121,7 @@ A request the mock or the recordings cannot answer is caught by the engine that 
 ### Comparing
 
 - **An outcome** is `{ value }` or `{ error }`. Two errors match, since the versions' messages differ by design.
-- **Values** compare with `isDeepStrictEqual` from `node:util`, which ignores key order, as it must since v3's evaluation reorders keys (the Phase-17 note in [v3-implementation-plan.md](v3-implementation-plan.md)). v3 has no `undefined`, so v2's is read as JSON writes it, which is v3's own reading of it ("The value domain" in [v3-api.md](v3-api.md)): a key holding it is absent, and an array element or the whole value is `null`. So v2's `{ a: 1, b: undefined }` matches v3's `{ a: 1 }` (ruled at 15.2's fourth chunk).
+- **Values** compare with `isDeepStrictEqual` from `node:util`, which ignores key order, as it must since v3's evaluation reorders keys (the Phase-18 note in [v3-implementation-plan.md](v3-implementation-plan.md)). v3 has no `undefined`, so v2's is read as JSON writes it, which is v3's own reading of it ("The value domain" in [v3-api.md](v3-api.md)): a key holding it is absent, and an array element or the whole value is `null`. So v2's `{ a: 1, b: undefined }` matches v3's `{ a: 1 }` (ruled at 15.2's fourth chunk).
 
 Each case gets one of three statuses:
 
@@ -1234,7 +1234,7 @@ The `./migrate` entry holds the converter:
 
 **Close-out**: the phase's bundle-size row and `src/dev/phase15_showcase.ts`, a range of v2 expressions with their conversions, issues and v3 results (working rules 6 and 7). M7 is `--check` passing against the accepted baseline.
 
-After Phase 15, only Phase 16's benchmarks, `pnpm test:v2` and this doc's links still read `/v2-src`.
+After Phase 15, only Phase 17's benchmarks, `pnpm test:v2` and this doc's links still read `/v2-src`.
 
 ## What v3 does with unconverted v2 syntax
 

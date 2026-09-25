@@ -1,17 +1,17 @@
 /**
- * Large trees — the scale case (implementation plan, Phase 16a.2).
+ * Large trees — the scale case (implementation plan, Phase 17a.2).
  *
  * The plan names the 20,000-node `massiveQuery` corpus here, on the
  * grounds that codegen/queryBuilder.ts is ours and could grow a v3 arm.
- * On inspection it cannot, not in 16a: its base expressions lean on
+ * On inspection it cannot, not in 17a: its base expressions lean on
  * `outputType`, `type`, `funcName`, `passThru` and positional `children`,
  * which is converter work rather than a change of spelling, and exactly
- * what 16b exists for. Hand-translating them would produce a v3 tree
+ * what 17b exists for. Hand-translating them would produce a v3 tree
  * nobody had checked against the recorded v2 result — the dishonesty the
  * split was drawn to avoid.
  *
  * So this builds its own large tree instead, in both spellings from one
- * shared shape, the way every other 16a bench does. What it is for is
+ * shared shape, the way every other 17a bench does. What it is for is
  * not the ratio — three benches have already priced a node on each
  * engine — but the question those cannot answer: whether anything
  * degrades non-linearly once a tree is thousands of nodes rather than

@@ -1,6 +1,6 @@
 /**
  * Claim 3 — instance churn costs one serialize+hash, then O(1)
- * (implementation plan, Phase 16a.2). "A content hit re-registers under
+ * (implementation plan, Phase 17a.2). "A content hit re-registers under
  * the new object's identity, so that object pays one serialization and is
  * O(1) from then on" (src/parse/parseCache.ts; "Cache keying for
  * non-identical inputs" in docs-dev/v3-specs/v3-implementation-notes.md).

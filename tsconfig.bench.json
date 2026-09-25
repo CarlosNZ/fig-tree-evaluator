@@ -1,5 +1,5 @@
 {
-  // Compile context for the v2-vs-v3 benchmarks (`pnpm bench`, Phase 16a).
+  // Compile context for the v2-vs-v3 benchmarks (`pnpm bench`, Phase 17a).
   // Unlike every other config here, a bench file imports BOTH engines, so
   // the program spans src/ and the frozen v2-src/ — and inherits v2's
   // laxer checks, since /v2-src predates the stricter v3 ones and is never

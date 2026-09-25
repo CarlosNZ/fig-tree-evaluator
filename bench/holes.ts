@@ -1,6 +1,6 @@
 /**
  * Claim 1 — O(holes) per evaluation, and claim 4 — the floor
- * (implementation plan, Phase 16a.2).
+ * (implementation plan, Phase 17a.2).
  *
  * "A large config object compiles to a constant skeleton plus a list of
  * evaluable holes, and each evaluation touches only the holes"
