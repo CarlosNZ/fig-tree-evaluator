@@ -5,6 +5,7 @@
  * unchanged. The recordings are `differential/sqlRecordings.ts`, written by
  * `pnpm differential --record-sql` (differential/recordSql.ts).
  */
+import { sent } from './sent'
 import { unanswered } from './unanswered'
 
 export type Row = Record<string, unknown>
@@ -75,6 +76,7 @@ export class PostgresStandIn {
           .map((arg) => (typeof arg === 'function' ? 'callback' : JSON.stringify(arg)))
           .join(', ')})`
       )
+    sent({ kind: 'sql', ...query })
     const recording = this.recordings.get(recordingKey(query))
     if (recording === undefined)
       return Promise.reject(unanswered(`No recording for the query ${recordingKey(query)}`))

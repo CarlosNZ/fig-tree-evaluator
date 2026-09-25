@@ -185,6 +185,36 @@ const reads = (value: unknown, name: string): boolean => {
   )
 }
 
+/**
+ * The var names for alias keys, and every name then taken. A name loses its
+ * `$`, and `.`, `[` and `]`, which v3 rejects, become `_`. A name already
+ * taken gets a numeric suffix, so no var shadows another. A name that needs
+ * no change keeps it where nothing outside has it, and the rest take theirs
+ * in sorted order, so the order of the keys changes no name.
+ */
+const varNames = (keys: string[], outside: ReadonlySet<string>) => {
+  const taken = new Set(outside)
+  const names = new Map<string, string>()
+  const base = (key: string) => key.replace(/^\$+/, '').replace(/[.[\]]/g, '_') || '_'
+  for (const key of keys)
+    if (base(key) === key.slice(1) && !taken.has(key.slice(1))) names.set(key, key.slice(1))
+  names.forEach((name) => taken.add(name))
+  for (const key of keys.filter((k) => !names.has(k)).sort()) {
+    let name = base(key)
+    for (let n = 2; taken.has(name); n++) name = `${base(key)}_${n}`
+    taken.add(name)
+    names.set(key, name)
+  }
+  return { names, taken }
+}
+
+/**
+ * Whether an unprefixed argument `name` fills the placeholder of that name:
+ * the body's own key of that name holds exactly it, and nothing else reads it
+ */
+const exact = (fragment: FragmentInfo | undefined, name: string) =>
+  fragment?.parameters.get(`$${name}`)?.exact === true
+
 /** Every var name declared in a converted value */
 const declared = (value: unknown, names: Set<string>) => {
   if (Array.isArray(value)) value.forEach((element) => declared(element, names))
@@ -370,14 +400,9 @@ class Converter {
   }
 
   /**
-   * The alias definitions on an object, as `vars`, and the scope they open.
-   * A name loses its `$`, and `.`, `[` and `]`, which v3 rejects, become
-   * `_`. A name already taken, on this object or by an enclosing one, gets a
-   * numeric suffix, so no var shadows another. A name that needs no change
-   * keeps it where nothing outside has it, and the rest take theirs in
-   * sorted order, so the order of the keys changes no name. v2 evaluated
-   * each definition in the enclosing scope, where only a whole `'$name'` it
-   * could not resolve read a sibling.
+   * The alias definitions on an object, as `vars`, and the scope they open,
+   * named by `varNames`. v2 evaluated each definition in the enclosing
+   * scope, where only a whole `'$name'` it could not resolve read a sibling.
    */
   private declare(
     container: PlainObject,
@@ -386,18 +411,7 @@ class Converter {
   ): { vars?: PlainObject; inner: Scope; sources?: VarSources } {
     const keys = Object.keys(container).filter(isAlias)
     if (keys.length === 0) return { inner: scope }
-    const taken = new Set(scope.names)
-    const names = new Map<string, string>()
-    const base = (key: string) => key.replace(/^\$+/, '').replace(/[.[\]]/g, '_') || '_'
-    for (const key of keys)
-      if (base(key) === key.slice(1) && !taken.has(key.slice(1))) names.set(key, key.slice(1))
-    names.forEach((name) => taken.add(name))
-    for (const key of keys.filter((k) => !names.has(k)).sort()) {
-      let name = base(key)
-      for (let n = 2; taken.has(name); n++) name = `${base(key)}_${n}`
-      taken.add(name)
-      names.set(key, name)
-    }
+    const { names, taken } = varNames(keys, scope.names)
     const vars: PlainObject = Object.fromEntries(
       keys.map((key) => {
         const value = container[key]
@@ -814,15 +828,26 @@ class Converter {
   private call(input: PlainObject, path: Path, scope: Scope): unknown {
     const fragment = this.fragments.fragments.get(String(input.fragment))
     const notes: string[] = []
-    const context = this.context(input, path, notes, new Set(scope.names))
+    const shared = this.sharedArguments(input, scope, fragment)
+    // Nothing on the call reads its vars but its arguments, which v2
+    // evaluated in the caller's scope, and no var inside may shadow them
+    const inner: Scope = { ...scope, names: shared.taken }
+    const context = this.context(input, path, notes, new Set(inner.names))
 
     const call: PlainObject = { fragment: fragment?.name ?? input.fragment }
-    const parameters = this.callArguments(input, path, scope, fragment, context)
+    const { parameters, vars } = this.callArguments(
+      input,
+      path,
+      inner,
+      fragment,
+      context,
+      shared.names
+    )
     if (parameters !== undefined) call.parameters = parameters
     const modifiers: Modifiers = {}
     if (Object.hasOwn(input, 'fallback'))
-      modifiers.fallback = this.value(input.fallback, this.pathOf(input, 'fallback', path), scope)
-    this.callOutput(input, path, scope, fragment, modifiers, context)
+      modifiers.fallback = this.value(input.fallback, this.pathOf(input, 'fallback', path), inner)
+    this.callOutput(input, path, inner, fragment, modifiers, context)
     if (Object.hasOwn(input, 'useCache')) {
       context.issue('fragment-use-cache', 'useCache')
       context.discard('useCache')
@@ -840,45 +865,96 @@ class Converter {
 
     const all = [...notes, ...(Object.hasOwn(input, '//') ? [input['//']] : [])]
     const comment = all.length === 0 ? undefined : all.length === 1 ? all[0] : all
-    const output = this.attach(call, { comment }, modifiers, context)
+    const output = this.attach(call, { comment, vars }, modifiers, context)
     this.settle(context, path)
     return output
   }
 
   /**
-   * A call's arguments, named without their `$`. Computed ones are v3's
-   * dynamic arguments, whose `$` names fill nothing, and the call-node
-   * arguments stage 1 left beside them go. An unprefixed key replaced the
-   * body's own key of that name, which is the argument only where it held
-   * exactly that placeholder.
+   * The call's arguments that another of its arguments reads, and their var
+   * names. v2 spread a call's arguments over the body as the alias
+   * definitions of one node, so a whole `'$name'` the caller's scope could
+   * not resolve read the argument of that name, as a sibling ("Calls"). The
+   * readers are the arguments the call keeps, and the arguments they read,
+   * in turn.
+   */
+  private sharedArguments(input: PlainObject, scope: Scope, fragment: FragmentInfo | undefined) {
+    const given = input.parameters
+    if (!isPlainObject(given) || hasNodeKey(given)) return varNames([], scope.names)
+    // A `$` key that loses to its unprefixed spelling is no argument
+    const keys = Object.keys(given).filter(
+      (key) =>
+        isAlias(key) && !(Object.hasOwn(given, key.slice(1)) && exact(fragment, key.slice(1)))
+    )
+    const reads = (key: string) => {
+      const value = given[key]
+      return typeof value === 'string' &&
+        value !== key &&
+        keys.includes(value) &&
+        !scope.refs.has(value)
+        ? value
+        : undefined
+    }
+    const shared = new Set<string>()
+    const readers = keys.filter((key) => fragment === undefined || fragment.parameters.has(key))
+    while (readers.length > 0) {
+      const read = reads(readers.pop()!)
+      if (read === undefined || shared.has(read)) continue
+      shared.add(read)
+      readers.push(read)
+    }
+    return varNames(
+      keys.filter((key) => shared.has(key)),
+      scope.names
+    )
+  }
+
+  /**
+   * A call's arguments, named without their `$`, and the vars of the ones
+   * another reads (`sharedArguments`), which each of its readers reads, and
+   * which are arguments too only where the definition has them. Computed ones
+   * are v3's dynamic arguments, whose `$` names fill nothing, and the
+   * call-node arguments stage 1 left beside them go. An unprefixed key
+   * replaced the body's own key of that name, which is the argument only
+   * where it held exactly that placeholder.
    */
   private callArguments(
     input: PlainObject,
     path: Path,
     scope: Scope,
     fragment: FragmentInfo | undefined,
-    context: NodeContext
-  ): unknown {
+    context: NodeContext,
+    shared: ReadonlyMap<string, string>
+  ): { parameters?: unknown; vars?: PlainObject } {
     const given = input.parameters
     const at = this.pathOf(input, 'parameters', path)
     if (given !== undefined && given !== null && (!isPlainObject(given) || hasNodeKey(given))) {
       context.issue('computed-arguments', 'parameters')
       const computed = this.value(given, at, scope)
-      if (isComputed(computed)) return computed
+      if (isComputed(computed)) return { parameters: computed }
       context.leftOut.push({ input: given, path: at, evaluated: false })
-      return undefined
+      return {}
     }
 
     const args: PlainObject = {}
+    const vars: PlainObject = {}
     const supplied = new Set<string>()
     const entries = isPlainObject(given) ? Object.entries(given) : []
     const own = (isPlainObject(given) && this.sources.get(given)?.path) || at
-    const exact = (name: string) => fragment?.parameters.get(`$${name}`)?.exact === true
+    const argument = (key: string, value: unknown, valueAt: Path) => {
+      const read =
+        typeof value === 'string' && value !== key && !scope.refs.has(value)
+          ? shared.get(value)
+          : undefined
+      return read !== undefined ? `$vars.${read}` : this.value(value, valueAt, scope)
+    }
     // v2 evaluated every argument, whether the body read it or not
     for (const [key, value] of entries) {
       const where: Path = ['parameters', key]
       const valueAt = this.pathOf(given as PlainObject, key, own)
-      if (!isAlias(key) && !exact(key)) {
+      const bound = shared.get(key)
+      if (bound !== undefined) vars[bound] = argument(key, value, valueAt)
+      if (!isAlias(key) && !exact(fragment, key)) {
         context.issue('body-override', where, { key })
         context.leftOut.push({ input: value, path: valueAt, evaluated: false })
         continue
@@ -887,7 +963,7 @@ class Converter {
       if (
         isAlias(key) &&
         Object.hasOwn(given as PlainObject, key.slice(1)) &&
-        exact(key.slice(1))
+        exact(fragment, key.slice(1))
       ) {
         context.issue('overridden-value', where, { key, winner: key.slice(1) })
         context.leftOut.push({ input: value, path: valueAt, evaluated: true })
@@ -896,16 +972,21 @@ class Converter {
       const placeholder = isAlias(key) ? key : `$${key}`
       const parameter = fragment?.parameters.get(placeholder)
       if (fragment !== undefined && parameter === undefined) {
+        // One another argument reads is its var, and nothing is lost
+        if (bound !== undefined) continue
         context.issue('unknown-argument', where, { fragment: fragment.key, name: key })
         context.leftOut.push({ input: value, path: valueAt, evaluated: true })
         continue
       }
       const name = parameter?.name ?? legalName(placeholder)
-      args[name] = this.value(value, valueAt, scope)
+      args[name] = bound !== undefined ? `$vars.${bound}` : argument(key, value, valueAt)
       supplied.add(placeholder)
     }
     if (fragment !== undefined) this.fill(fragment, supplied, args, path, scope)
-    return Object.keys(args).length > 0 ? args : undefined
+    return {
+      ...(Object.keys(args).length > 0 && { parameters: args }),
+      ...(Object.keys(vars).length > 0 && { vars }),
+    }
   }
 
   /**

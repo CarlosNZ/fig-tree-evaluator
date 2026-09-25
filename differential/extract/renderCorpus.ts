@@ -10,7 +10,6 @@ export interface WrittenCase {
   /** The expression's source, or `massiveQuery` for the case that reads it */
   expression: string
   options?: string
-  database?: 'sqlite'
 }
 
 export const renderCorpus = (cases: WrittenCase[], version: string): string => {
@@ -34,7 +33,6 @@ export const renderCorpus = (cases: WrittenCase[], version: string): string => {
     ]
     if (entry.options !== undefined)
       fields.push(`options: ${shared.get(entry.options) ?? entry.options}`)
-    if (entry.database !== undefined) fields.push(`database: ${JSON.stringify(entry.database)}`)
     return `{ ${fields.join(', ')} }`
   })
 

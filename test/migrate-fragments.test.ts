@@ -303,7 +303,9 @@ describe('definitions', () => {
                 values: [
                   '$params.b',
                   {
-                    '//': `${NOTE}\`nope\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`,
+                    '//':
+                      `${NOTE}\`nope\` is not a v2 operator. If it is one of your v2 custom functions, ` +
+                      "list it in the conversion's `functions` option and convert again, so the call converts to a call on a custom operator of that name. The node is quoted unconverted.",
                     operator: 'literal',
                     value: { operator: 'nope' },
                   },
@@ -460,7 +462,9 @@ describe('definitions', () => {
       expected: {
         broken: {
           expression: {
-            '//': `${NOTE}\`nope\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`,
+            '//':
+              `${NOTE}\`nope\` is not a v2 operator. If it is one of your v2 custom functions, ` +
+              "list it in the conversion's `functions` option and convert again, so the call converts to a call on a custom operator of that name. The node is quoted unconverted.",
             operator: 'literal',
             value: { operator: 'nope', values: ['$x'] },
           },
@@ -755,6 +759,57 @@ describe('calls', () => {
         { code: 'discarded-expression', path: ['parameters', '$n'] },
       ],
       differs: { v2: { error: true }, v3: { value: 11 } },
+    },
+    {
+      name: 'an argument reads another argument of the call',
+      input: { fragment: 'pair', $a: '$b', $b: 5 },
+      expected: { fragment: 'pair', parameters: { a: '$vars.b', b: '$vars.b' }, vars: { b: 5 } },
+    },
+    {
+      name: 'an argument another reads, which the definition does not have',
+      input: { fragment: 'reader', $n: '$picked', $picked: { $plus: [2, 3] } },
+      expected: {
+        fragment: 'reader',
+        parameters: { n: '$vars.picked' },
+        vars: { picked: { operator: 'plus', values: [2, 3] } },
+      },
+    },
+    {
+      name: "the caller's alias beats an argument of the same name",
+      input: {
+        operator: '+',
+        $picked: 1,
+        values: [{ fragment: 'reader', $n: '$picked', $picked: 5 }, 0],
+      },
+      expected: {
+        operator: 'plus',
+        values: [{ fragment: 'reader', parameters: { n: '$vars.picked' } }, 0],
+        vars: { picked: 1 },
+      },
+      issues: [{ code: 'unknown-argument', path: ['values', 0, '$picked'] }],
+    },
+    {
+      name: 'a missing read in an argument another reads was beneath the next `fallback` out',
+      input: {
+        operator: '+',
+        values: [{ fragment: 'reader', $n: '$picked', $picked: missing, fallback: 0 }, 1],
+        fallback: -1,
+      },
+      expected: {
+        operator: 'plus',
+        values: [
+          {
+            fragment: 'reader',
+            parameters: { n: '$vars.picked' },
+            fallback: 0,
+            vars: { picked: '$data.missing' },
+          },
+          1,
+        ],
+        fallback: -1,
+      },
+      issues: [{ code: 'missing-data-fallback', path: ['fallback'] }],
+      differs: { v2: { value: -1 }, v3: { value: null } },
     },
     {
       name: 'an argument to a body that is not an operator node',

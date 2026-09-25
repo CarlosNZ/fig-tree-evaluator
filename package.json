@@ -50,6 +50,7 @@
     "getVersion": "tsx codegen/getVersion.ts",
     "checkDefinitions": "tsx codegen/checkDefinitions.ts",
     "extractV2Table": "tsx codegen/extractV2Table.ts",
+    "differential": "tsx differential/index.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

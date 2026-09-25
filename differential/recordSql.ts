@@ -4,6 +4,7 @@
  * of `differential/sqlRecordings.ts`, the module the stand-in replays.
  */
 import { literal } from './literal'
+import { sent } from './mocks/sent'
 import {
   copy,
   recordingKey,
@@ -23,6 +24,7 @@ interface PgClient {
  */
 export const recordingClient = (client: PgClient, saved: Map<string, SqlRecording>): PgClient => ({
   query: async ({ text, values }) => {
+    sent({ kind: 'sql', text, values })
     const key = recordingKey({ text, values })
     const query = { text, values: copy(values ?? []) }
     try {

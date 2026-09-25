@@ -16,6 +16,7 @@ import { AxiosClient, FetchClient, PostgresConnection } from '../src'
 import { mockAxios } from '../differential/mocks/axios'
 import { mockFetch } from '../differential/mocks/fetch'
 import { PostgresStandIn, type SqlRecording } from '../differential/mocks/postgres'
+import { onSent, type SentRequest } from '../differential/mocks/sent'
 import { onUnanswered } from '../differential/mocks/unanswered'
 import { recordingClient, renderRecordings } from '../differential/recordSql'
 import { evaluateRecordings } from './helpers/evaluateRecordings'
@@ -207,6 +208,31 @@ describe('the Postgres stand-in', () => {
         'query({ text, values })'
       )
     expect(reported).toHaveLength(refused.length)
+  })
+})
+
+describe('what the doubles are sent', () => {
+  afterEach(() => onSent(undefined))
+
+  it('the fetch mock and the Postgres stand-in report each request, answered or not', async () => {
+    const heard: SentRequest[] = []
+    onSent((request) => heard.push(request))
+    await mockFetch('https://restcountries.com/v3.1/name/zealand', { headers: { a: 'b' } })
+    await mockFetch('https://nowhere.test/', { method: 'post', body: '{"x":1}' }).catch(() => null)
+    const stand = new PostgresStandIn([{ text: 'SELECT 1', values: [], rows: [] }])
+    await stand.query({ text: 'SELECT 1' })
+    await stand.query({ text: 'SELECT 2', values: [2] }).catch(() => null)
+    expect(heard).toEqual([
+      {
+        kind: 'http',
+        method: 'GET',
+        url: 'https://restcountries.com/v3.1/name/zealand',
+        headers: { a: 'b' },
+      },
+      { kind: 'http', method: 'POST', url: 'https://nowhere.test/', headers: {}, body: '{"x":1}' },
+      { kind: 'sql', text: 'SELECT 1' },
+      { kind: 'sql', text: 'SELECT 2', values: [2] },
+    ])
   })
 })
 

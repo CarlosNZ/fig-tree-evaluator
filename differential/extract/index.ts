@@ -11,7 +11,7 @@
  *    setup.ts runs each one again as the runner will, and writes it out.
  * 2. The cases are assembled in test order. One identical to an earlier
  *    case is a repeat, and one whose outcome depended on an option v3 has
- *    no counterpart for is left out.
+ *    no counterpart for is left out, as is one whose SQL ran on SQLite.
  * 3. The corpus is written, then each case is run through v2 again from
  *    the written file, which must give the outcome extraction recorded.
  */
@@ -35,15 +35,16 @@ import { format, resolveConfig } from 'prettier'
 import type { Case } from '../case'
 import { onUnanswered } from '../mocks/unanswered'
 import { openV2Io } from './io'
-import { runV2, sameOutcome, type Outcome } from './outcome'
+import { runV2, sameOutcome, type Outcome } from '../outcome'
 import { renderCorpus, type WrittenCase } from './renderCorpus'
 
-/** One evaluation, as setup.ts writes it */
-interface Extracted {
+/** One evaluation, as setup.ts writes it, or one on SQLite, as that alone */
+type Extracted = Kept | { test: string; onSqlite: true }
+
+interface Kept {
   test: string
   expression: string
   options?: string
-  database?: 'sqlite'
   /** Its outcome as the runner will run it */
   outcome: Outcome
   /** What its test saw, where that differs */
@@ -88,7 +89,7 @@ const main = async () => {
 
   const kept: (WrittenCase & { outcome: Outcome })[] = []
   const keys = new Set<string>()
-  const [repeats, leftOut, differs, removed]: string[][] = [[], [], [], []]
+  const [repeats, leftOut, differs, removed, sqlite]: string[][] = [[], [], [], [], []]
   let evaluations = 0
   const files = readdirSync(out).sort((a, b) => parseInt(a) - parseInt(b))
   for (const file of files) {
@@ -96,13 +97,17 @@ const main = async () => {
     const { default: extracted } = (await import(url)) as { default: Extracted[] }
     evaluations += extracted.length
     for (const entry of extracted) {
-      const { test, expression, options, database, outcome, seen, leftOut: why } = entry
-      const from = `${file.replace(/\.ts$/, '')} › ${test}`
+      const from = `${file.replace(/\.ts$/, '')} › ${entry.test}`
+      if ('onSqlite' in entry) {
+        sqlite.push(from)
+        continue
+      }
+      const { expression, options, outcome, seen, leftOut: why } = entry
       if (why !== undefined) {
         leftOut.push(`${from}: ${why}`)
         continue
       }
-      const key = JSON.stringify([expression, options, database])
+      const key = JSON.stringify([expression, options])
       if (keys.has(key)) {
         repeats.push(from)
         continue
@@ -110,7 +115,7 @@ const main = async () => {
       keys.add(key)
       if (seen !== undefined) differs.push(from)
       if (entry.removed !== undefined) removed.push(`${from}: ${entry.removed.join(', ')}`)
-      kept.push({ from, expression, options, database, outcome })
+      kept.push({ from, expression, options, outcome })
     }
   }
 
@@ -148,6 +153,7 @@ nothing, and 24_cache's values are random or come from the cache)
 
   ${corpus.length} cases written to ${CORPUS}
   ${repeats.length} repeats of an earlier case
+  ${sqlite.length} on SQLite, which the Postgres tests beside them repeat
   ${removed.length} kept without an option v3 has no counterpart for, their outcome the same:
 ${list(removed)}
   ${leftOut.length} left out, their outcome depending on it:

@@ -217,7 +217,8 @@ export const uncaughtRead = (value: unknown, bodyReads: (name: string) => boolea
     const beneath = Object.hasOwn(value, 'fallback')
       ? reads(value.fallback)
       : bodyReads(String(value.fragment))
-    return beneath || reads(value.parameters)
+    // Its vars hold arguments, which its own fallback never caught
+    return beneath || reads(value.parameters) || reads(value.vars)
   }
   if (isNode(value) && Object.hasOwn(value, 'fallback'))
     return reads(value.fallback) || reads(value.vars)

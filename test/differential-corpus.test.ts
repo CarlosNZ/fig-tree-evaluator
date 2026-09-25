@@ -9,7 +9,7 @@ import { renderCorpus } from '../differential/extract/renderCorpus'
 import { literal } from '../differential/literal'
 
 describe("a case's options", () => {
-  const io = { http: { http: true }, postgres: { pg: true }, sqlite: { sqlite: true } }
+  const io = { http: { http: true }, postgres: { pg: true } }
   const options = (entry: Omit<Case, 'id' | 'from' | 'expression'>) =>
     v2Options({ id: 1, from: 'x', expression: null, ...entry }, io as unknown as V2Io)
 
@@ -26,13 +26,12 @@ describe("a case's options", () => {
     expect(
       options({
         options: { data: { a: 1 }, graphQLConnection: { endpoint: 'https://a.b/', headers } },
-        database: 'sqlite',
       })
     ).toEqual({
       data: { a: 1 },
       httpClient: io.http,
       graphQLConnection: { endpoint: 'https://a.b/', headers, httpClient: io.http },
-      sqlConnection: io.sqlite,
+      sqlConnection: io.postgres,
     })
   })
 })
@@ -69,7 +68,7 @@ describe('writing the corpus', () => {
     [
       { from: '1_a.test.ts › one', expression: '{ "operator": "+" }', options: '{ "data": {} }' },
       { from: '1_a.test.ts › two', expression: 'massiveQuery', options: '{ "data": {} }' },
-      { from: '2_b.test.ts › three', expression: '5', database: 'sqlite' },
+      { from: '2_b.test.ts › three', expression: '5' },
     ],
     '2.23.2'
   )
@@ -77,9 +76,7 @@ describe('writing the corpus', () => {
   it('numbers the cases, and shares options more than one case has', () => {
     expect(source).toContain('const options1: CaseOptions = { "data": {} }')
     expect(source.match(/options: options1/g)).toHaveLength(2)
-    expect(source).toContain(
-      `{ id: 3, from: "2_b.test.ts › three", expression: 5, database: "sqlite" }`
-    )
+    expect(source).toContain(`{ id: 3, from: "2_b.test.ts › three", expression: 5 }`)
   })
 
   it('reads the massive query from its file rather than holding it', () => {

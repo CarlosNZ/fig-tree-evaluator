@@ -3,7 +3,8 @@
  * file's tests have run, each evaluation they made is run again as the
  * runner will run it, with the runner's defaults and only the options the
  * case keeps, and written out with that outcome for
- * differential/extract/index.ts to assemble.
+ * differential/extract/index.ts to assemble. One whose SQL ran on SQLite is
+ * written as that alone, since the corpus leaves it out.
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
@@ -13,7 +14,7 @@ import { GRAPHQL_ENDPOINT, type Case } from '../case'
 import { literal } from '../literal'
 import { onUnanswered } from '../mocks/unanswered'
 import { openV2Io } from './io'
-import { runV2, sameOutcome, type Outcome } from './outcome'
+import { runV2, sameOutcome, type Outcome } from '../outcome'
 import { evaluations } from './v2'
 
 // One test at a time, so each evaluation is credited to its own test
@@ -109,6 +110,10 @@ afterAll(async () => {
   const written: string[] = []
   try {
     for (const evaluation of evaluations) {
+      if (evaluation.onSqlite) {
+        written.push(`{ test: ${JSON.stringify(evaluation.test)}, onSqlite: true }`)
+        continue
+      }
       const expression = evaluation.options.allowJSONStringInput
         ? parsed(evaluation.expression)
         : evaluation.expression
@@ -117,7 +122,6 @@ afterAll(async () => {
         from: '',
         expression,
         options: caseOptions(evaluation.options),
-        ...(evaluation.database === 'sqlite' ? { database: 'sqlite' as const } : {}),
       }
       const outcome = await runV2(v2, entry, io)
       const inPlay = NO_COUNTERPART.filter(
@@ -134,7 +138,6 @@ afterAll(async () => {
           isMassiveQuery(expression) ? 'massiveQuery' : literal(expression)
         ),
         options: entry.options && JSON.stringify(literal(entry.options, { functions: true })),
-        database: entry.database && JSON.stringify(entry.database),
         outcome: literal(outcome),
         seen: seen(await evaluation.outcome, outcome),
         leftOut: leftOut && JSON.stringify(leftOut),

@@ -6,9 +6,11 @@
  * options it adds to them. The defaults are the I/O every case can reach:
  * one HTTP client, which also carries GraphQL, since which client v2 used
  * is not under test; the GraphQL endpoint five of the v2 test files set;
- * and Postgres, unless the case says SQLite.
+ * and Postgres, the one database, since which one answers is not under test
+ * either.
  */
 import type { FigTreeOptions as FigTreeOptionsV2, UnknownFunction } from 'fig-tree-evaluator-v2'
+import type { V2Options } from '../src'
 
 export interface Case {
   /** Unique and never reused: a new case takes the next number */
@@ -18,8 +20,6 @@ export interface Case {
   expression: unknown
   /** The options v2 evaluated it with, beyond the runner's defaults */
   options?: CaseOptions
-  /** The database its SQL runs against, where not Postgres */
-  database?: 'sqlite'
 }
 
 /**
@@ -67,11 +67,10 @@ export const GRAPHQL_ENDPOINT = 'https://countries.trevorblades.com/'
 export interface V2Io {
   http: NonNullable<FigTreeOptionsV2['httpClient']>
   postgres: NonNullable<FigTreeOptionsV2['sqlConnection']>
-  sqlite: NonNullable<FigTreeOptionsV2['sqlConnection']>
 }
 
 /** The options v2 evaluates a case with: the defaults, then the case's own */
-export const v2Options = ({ options = {}, database }: Case, io: V2Io): FigTreeOptionsV2 => ({
+export const v2Options = ({ options = {} }: Case, io: V2Io): FigTreeOptionsV2 => ({
   ...options,
   httpClient: io.http,
   graphQLConnection: {
@@ -79,5 +78,18 @@ export const v2Options = ({ options = {}, database }: Case, io: V2Io): FigTreeOp
     ...options.graphQLConnection,
     httpClient: io.http,
   },
-  sqlConnection: database === 'sqlite' ? io.sqlite : io.postgres,
+  sqlConnection: io.postgres,
+})
+
+/**
+ * What the converter reads of a case's options ("The v2 options"): the
+ * same options v2 evaluated with
+ */
+export const converterOptions = ({ options = {} }: Case): V2Options => ({
+  fragments: options.fragments as V2Options['fragments'],
+  functions: options.functions,
+  evaluateFullObject: options.evaluateFullObject,
+  noShorthand: options.noShorthand,
+  caseInsensitive: options.caseInsensitive,
+  useCache: options.useCache,
 })

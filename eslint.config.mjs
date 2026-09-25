@@ -73,9 +73,9 @@ export default tseslint.config(
     },
   },
   {
-    // The differential's corpus is data: its strings are as long as the v2
-    // tests wrote them
-    files: ['differential/corpus.ts'],
+    // The differential's corpus and recordings are data: their strings are
+    // as long as the v2 tests wrote them, or the database returned them
+    files: ['differential/corpus.ts', 'differential/sqlRecordings.ts'],
     rules: { 'max-len': 'off' },
   },
   {

@@ -14,6 +14,7 @@
  * value.
  */
 import { albums, comments, oceaniaCountries, type RequestBody } from './data'
+import { sent } from './sent'
 import { unanswered } from './unanswered'
 
 export interface FetchInit {
@@ -54,6 +55,13 @@ export const mockFetch = (
 ): Promise<MockResponse> => {
   const urlString = typeof url === 'string' ? url : url.url
   const method = options?.method?.toUpperCase() || 'GET'
+  sent({
+    kind: 'http',
+    method,
+    url: urlString,
+    headers: options?.headers ?? {},
+    ...(options?.body !== undefined && { body: options.body }),
+  })
 
   if (method === 'GET') {
     // restcountries.com - New Zealand (exact match, to avoid 'zealands')

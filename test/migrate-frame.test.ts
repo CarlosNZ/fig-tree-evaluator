@@ -48,7 +48,8 @@ const decidingNote = (reason: string, wrote: string) =>
   `${NOTE}${reason}, so the converter cannot tell what v2 did. It wrote ${wrote}, v2's ` +
   'default. Where `strict` can be otherwise, rewrite the node by hand.'
 const unknownNote = (name: string) =>
-  `${NOTE}\`${name}\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`
+  `${NOTE}\`${name}\` is not a v2 operator. If it is one of your v2 custom functions, ` +
+  "list it in the conversion's `functions` option and convert again, so the call converts to a call on a custom operator of that name. The node is quoted unconverted."
 
 const check = async (
   { input, options = {}, data, expected, issues = [], differs }: Example,

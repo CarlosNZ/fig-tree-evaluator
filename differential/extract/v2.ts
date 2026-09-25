@@ -4,12 +4,12 @@
  * config maps the tests' `./evaluator` and `../src/…` imports here.
  *
  * What is recorded is what v2 evaluated with: the instance's options with
- * the call's merged over them, as v2's `evaluate` merged them, and the
- * database behind its SQL connection.
+ * the call's merged over them, as v2's `evaluate` merged them, and whether
+ * its SQL connection was SQLite, which the corpus leaves out.
  */
 import * as v2 from 'fig-tree-evaluator-v2'
 import type { EvaluatorNode, FigTreeOptions } from 'fig-tree-evaluator-v2'
-import type { Outcome } from './outcome'
+import type { Outcome } from '../outcome'
 
 export * from 'fig-tree-evaluator-v2'
 
@@ -17,7 +17,7 @@ export interface Evaluation {
   test: string
   expression: unknown
   options: FigTreeOptions
-  database?: 'postgres' | 'sqlite'
+  onSqlite: boolean
   /** What the test saw */
   outcome: Promise<Outcome>
 }
@@ -25,17 +25,11 @@ export interface Evaluation {
 /** This test file's evaluations, in the order they were made */
 export const evaluations: Evaluation[] = []
 
-const databases = new WeakMap<object, 'postgres' | 'sqlite'>()
-
-export const SQLNodePostgres: typeof v2.SQLNodePostgres = (client) => {
-  const connection = v2.SQLNodePostgres(client)
-  databases.set(connection, 'postgres')
-  return connection
-}
+const sqlite = new WeakSet<object>()
 
 export const SQLite: typeof v2.SQLite = (db) => {
   const connection = v2.SQLite(db)
-  databases.set(connection, 'sqlite')
+  sqlite.add(connection)
   return connection
 }
 
@@ -57,7 +51,7 @@ const record = (expression: unknown, options: FigTreeOptions, result: Promise<un
     test: expect.getState().currentTestName ?? '',
     expression,
     options,
-    database: connection && databases.get(connection),
+    onSqlite: connection !== undefined && sqlite.has(connection),
     outcome: result.then(
       (value) => ({ value }),
       (error: unknown) => ({ error: String((error as Error)?.message ?? error) })

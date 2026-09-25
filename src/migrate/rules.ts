@@ -180,9 +180,10 @@ const trailingEmpty = (draft: V3Draft, context: RuleContext) => {
 // Batch 2
 
 /**
- * PLUS's `type` coerced the operands, and, since v2 read `outputType ??
- * type`, converted the result. For three of its values the operator chosen
- * already gives that type.
+ * PLUS's `type`, which v2 also read as the output type (`outputType ??
+ * type`). `'string'` and `'array'` coerced the operands, and the operator
+ * chosen already gives that type. The others coerced nothing, so the node
+ * adds as usual and the result is converted.
  */
 const plusType = (draft: V3Draft, context: RuleContext) => {
   if (!Object.hasOwn(draft.v2, 'type')) return toNode(draft)
@@ -200,12 +201,16 @@ const plusType = (draft: V3Draft, context: RuleContext) => {
           Array.isArray(unquote(value)) || isComputed(value) ? value : [value]
         )
       return { ...toNode(draft), expect: 'array' }
+    // v2 coerced no operand for these, and added as usual: `type` only
+    // converted the result, as v2's `outputType ?? type` read it
     case 'number':
-      return { ...toNode(draft), expect: 'number' }
     case 'boolean':
     case 'bool':
       if (!Object.hasOwn(draft.modifiers, 'outputType'))
-        Object.assign(draft.modifiers, { outputType: 'boolean', outputTypeAt: 'type' })
+        Object.assign(draft.modifiers, {
+          outputType: type === 'number' ? 'number' : 'boolean',
+          outputTypeAt: 'type',
+        })
       return toNode(draft)
   }
   context.issue('deciding-value', 'type', {

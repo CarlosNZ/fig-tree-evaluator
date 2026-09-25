@@ -2606,135 +2606,6 @@ export const corpus: Case[] = [
   },
   {
     id: 258,
-    from: '12_database.test.ts › SQLite - lookup single string',
-    expression: {
-      operator: 'postgres',
-      children: ["SELECT contact_name FROM customers where customer_id = 'FAMIA';"],
-      single: true,
-      flatten: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 259,
-    from: '12_database.test.ts › SQLite - get an array of Orders using var substitution',
-    expression: {
-      operator: 'pg',
-      children: [
-        'SELECT order_id, order_date, ship_city, ship_country FROM orders WHERE customer_id = ? AND order_id < 10500;',
-        'FAMIA',
-      ],
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 260,
-    from: '12_database.test.ts › SQLite - count employees',
-    expression: {
-      operator: 'postgres',
-      children: ['SELECT COUNT(*) FROM employees'],
-      single: true,
-      flatten: true,
-      type: 'number',
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 261,
-    from: '12_database.test.ts › SQLite - get list of (most) products',
-    expression: {
-      operator: 'pgSQL',
-      query: 'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
-      values: [1, 16],
-      flatten: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 262,
-    from: '12_database.test.ts › SQLite - get list of (most) products',
-    expression: {
-      operator: 'pgSQL',
-      children: [
-        'SELECT product_name FROM products WHERE category_id = $1 AND supplier_id != $2',
-        1,
-        16,
-      ],
-      flatten: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 263,
-    from: '12_database.test.ts › SQLite - test single and flattening with multiple records',
-    expression: { operator: 'sql', children: ['SELECT * FROM shippers;'] },
-    database: 'sqlite',
-  },
-  {
-    id: 264,
-    from: '12_database.test.ts › SQLite - test single and flattening with multiple records',
-    expression: { operator: 'sql', query: 'SELECT * FROM shippers;', single: true },
-    database: 'sqlite',
-  },
-  {
-    id: 265,
-    from: '12_database.test.ts › SQLite - test single and flattening with multiple records',
-    expression: { operator: 'sql', children: ['SELECT * FROM shippers;'], flatten: true },
-    database: 'sqlite',
-  },
-  {
-    id: 266,
-    from: '12_database.test.ts › SQLite - test single and flattening with multiple records',
-    expression: { operator: 'sql', query: 'SELECT * FROM shippers;', single: true, flatten: true },
-    database: 'sqlite',
-  },
-  {
-    id: 267,
-    from: '12_database.test.ts › SQLite - test single and flattening with single result record',
-    expression: { operator: 'sql', children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6] },
-    database: 'sqlite',
-  },
-  {
-    id: 268,
-    from: '12_database.test.ts › SQLite - test single and flattening with single result record',
-    expression: {
-      operator: 'sql',
-      query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
-      values: [6],
-      single: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 269,
-    from: '12_database.test.ts › SQLite - test single and flattening with single result record',
-    expression: {
-      operator: 'sql',
-      children: ['SELECT * FROM shippers WHERE shipper_id = $1;', 6],
-      flatten: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 270,
-    from: '12_database.test.ts › SQLite - test single and flattening with single result record',
-    expression: {
-      operator: 'sql',
-      query: 'SELECT * FROM shippers WHERE shipper_id = $1;',
-      values: [6],
-      single: true,
-      flatten: true,
-    },
-    database: 'sqlite',
-  },
-  {
-    id: 271,
-    from: '12_database.test.ts › SQLite - database error',
-    expression: { operator: 'sql', children: ['SELECT * FROM employee_table'], type: 'number' },
-    database: 'sqlite',
-  },
-  {
-    id: 272,
     from: '12_database.test.ts › GraphQL - get list of countries',
     expression: {
       operator: 'GraphQL',
@@ -2746,7 +2617,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 273,
+    id: 259,
     from: '12_database.test.ts › GraphQL - get list of countries, using properties, use default endpoint',
     expression: {
       operator: 'GraphQL',
@@ -2755,7 +2626,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 274,
+    id: 260,
     from: '12_database.test.ts › GraphQL - single country lookup, default endpoint, return node',
     expression: {
       operator: 'GraphQL',
@@ -2770,7 +2641,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 275,
+    id: 261,
     from: '12_database.test.ts › GraphQL - single country lookup, default endpoint, return node, using props',
     expression: {
       operator: 'graphQL',
@@ -2782,7 +2653,7 @@ export const corpus: Case[] = [
     options: { data: { code: 'NZ' } },
   },
   {
-    id: 276,
+    id: 262,
     from: '12_database.test.ts › GraphQL - single country lookup, default endpoint, return node, using parameters from buildObject',
     expression: {
       operator: 'graphQL',
@@ -2804,7 +2675,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 277,
+    id: 263,
     from: '12_database.test.ts › GraphQL - Get repo info using partial url and updated options, requires auth',
     expression: {
       operator: 'graphQL',
@@ -2822,13 +2693,13 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 278,
+    id: 264,
     from: '13_customFunctions.test.ts › Custom functions - double elements in an array',
     expression: { operator: 'customFunctions', children: ['fDouble', 1, 2, 3, 'four'] },
     options: options5,
   },
   {
-    id: 279,
+    id: 265,
     from: '13_customFunctions.test.ts › Custom functions - create a date from a string',
     expression: {
       operator: 'function',
@@ -2837,19 +2708,19 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 280,
+    id: 266,
     from: '13_customFunctions.test.ts › Custom functions - double elements in an array, using properties',
     expression: { operator: 'objectFunctions', functionPath: 'fDouble', args: [1, 2, 3, 'four'] },
     options: options5,
   },
   {
-    id: 281,
+    id: 267,
     from: '13_customFunctions.test.ts › Custom functions - fallback to a function on Objects not Functions option',
     expression: { operator: 'runFunction', functionPath: 'functions.square', args: [88] },
     options: options5,
   },
   {
-    id: 282,
+    id: 268,
     from: '13_customFunctions.test.ts › Custom functions - "functions." is in path string',
     expression: {
       operator: 'runFunction',
@@ -2858,13 +2729,13 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 283,
+    id: 269,
     from: '13_customFunctions.test.ts › Custom functions - "functions." is in path string and function is in "objects',
     expression: { operator: 'runFunction', functionPath: 'functions.fDouble', args: [8] },
     options: options5,
   },
   {
-    id: 284,
+    id: 270,
     from: '13_customFunctions.test.ts › Custom functions - create a date from a string',
     expression: {
       operator: 'function',
@@ -2874,55 +2745,55 @@ export const corpus: Case[] = [
     options: options6,
   },
   {
-    id: 285,
+    id: 271,
     from: '13_customFunctions.test.ts › Custom functions - no args',
     expression: { operator: 'function', functionPath: 'fNoArgs' },
     options: options5,
   },
   {
-    id: 286,
+    id: 272,
     from: '13_customFunctions.test.ts › Custom functions - no args as children',
     expression: { operator: 'function', children: ['fNoArgs'] },
     options: options5,
   },
   {
-    id: 287,
+    id: 273,
     from: '13_customFunctions.test.ts › Custom functions - primitive input value',
     expression: { operator: 'function', functionPath: 'increment', input: 5 },
     options: { functions: { increment: { function: (n) => n + 1, inputDefault: 5 } } },
   },
   {
-    id: 288,
+    id: 274,
     from: '13_customFunctions.test.ts › Custom functions - falsy primitive input value (0)',
     expression: { operator: 'function', functionPath: 'isZero', input: 0 },
     options: { functions: { isZero: { function: (n) => n === 0, inputDefault: 0 } } },
   },
   {
-    id: 289,
+    id: 275,
     from: '13_customFunctions.test.ts › Custom functions - invalid function path',
     expression: { operator: 'function', functionPath: 'invalid.path' },
     options: options5,
   },
   {
-    id: 290,
+    id: 276,
     from: '13_customFunctions.test.ts › Custom functions - path is not a function',
     expression: { operator: 'function', functionPath: 'functions.notAFunction' },
     options: options5,
   },
   {
-    id: 291,
+    id: 277,
     from: '13_customFunctions.test.ts › Custom functions - verbose function definition structure',
     expression: { operator: 'function', function: 'reverse', input: [1, 2, 3, 4] },
     options: options5,
   },
   {
-    id: 292,
+    id: 278,
     from: '13_customFunctions.test.ts › Custom operators - double elements in an array',
     expression: { operator: 'fDouble', args: [1, 2, 3, 'four'] },
     options: options5,
   },
   {
-    id: 293,
+    id: 279,
     from: '13_customFunctions.test.ts › Custom operators - create a date from a string',
     expression: {
       operator: 'fDate',
@@ -2931,7 +2802,7 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 294,
+    id: 280,
     from: '13_customFunctions.test.ts › Custom operators - create a date from a string',
     expression: {
       operator: 'fDate',
@@ -2940,25 +2811,25 @@ export const corpus: Case[] = [
     options: options6,
   },
   {
-    id: 295,
+    id: 281,
     from: '13_customFunctions.test.ts › Custom operators - no args',
     expression: { operator: 'fNoArgs' },
     options: options5,
   },
   {
-    id: 296,
+    id: 282,
     from: '13_customFunctions.test.ts › Custom operators - invalid function path',
     expression: { operator: 'invalid.path' },
     options: options5,
   },
   {
-    id: 297,
+    id: 283,
     from: '13_customFunctions.test.ts › Custom operators - verbose function definition structure',
     expression: { operator: 'reverse', input: [1, 2, 3, 4] },
     options: options5,
   },
   {
-    id: 298,
+    id: 284,
     from: '13_customFunctions.test.ts › Custom operators - properties to args',
     expression: {
       operator: 'getFullName',
@@ -2968,19 +2839,19 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 299,
+    id: 285,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - double elements in an array',
     expression: { $fDouble: [1, 2, 3, 'four'] },
     options: options5,
   },
   {
-    id: 300,
+    id: 286,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - create a date from a string',
     expression: { $fDate: { operator: '+', children: ['December 17, ', '1995 03:24:00'] } },
     options: options5,
   },
   {
-    id: 301,
+    id: 287,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - create a date from a string',
     expression: {
       $fDate: { input: { operator: '+', children: ['December 23, ', '1995 03:24:00'] } },
@@ -2988,25 +2859,25 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 302,
+    id: 288,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - no args',
     expression: { $fNoArgs: null },
     options: options5,
   },
   {
-    id: 303,
+    id: 289,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - invalid function path/operator',
     expression: { $invalidFunction: null },
     options: options5,
   },
   {
-    id: 304,
+    id: 290,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - verbose function definition structure',
     expression: { $reverse: { input: [1, 2, 3, 4] } },
     options: options5,
   },
   {
-    id: 305,
+    id: 291,
     from: '13_customFunctions.test.ts › Custom operators (shorthand) - properties to args',
     expression: {
       $getFullName: {
@@ -3017,22 +2888,22 @@ export const corpus: Case[] = [
     options: options5,
   },
   {
-    id: 306,
+    id: 292,
     from: '14_buildObject.test.ts › buildObject - basic',
     expression: { operator: 'buildObject', properties: [{ key: 'someKey', value: 'someValue' }] },
   },
   {
-    id: 307,
+    id: 293,
     from: '14_buildObject.test.ts › buildObject - basic, with children',
     expression: { operator: 'buildObject', children: ['someKey', 'someValue'] },
   },
   {
-    id: 308,
+    id: 294,
     from: '14_buildObject.test.ts › buildObject - basic, shorthand',
     expression: { $buildObject: ['someKey', 'someValue'] },
   },
   {
-    id: 309,
+    id: 295,
     from: '14_buildObject.test.ts › buildObject - handling erroneous input',
     expression: {
       operator: 'buildObject',
@@ -3046,7 +2917,7 @@ export const corpus: Case[] = [
     options: options7,
   },
   {
-    id: 310,
+    id: 296,
     from: '14_buildObject.test.ts › buildObject - with evaluated key and value',
     expression: {
       operator: 'buildObject',
@@ -3061,7 +2932,7 @@ export const corpus: Case[] = [
     options: options7,
   },
   {
-    id: 311,
+    id: 297,
     from: '14_buildObject.test.ts › buildObject - with evaluations and nesting',
     expression: {
       operator: 'buildObject',
@@ -3079,13 +2950,13 @@ export const corpus: Case[] = [
     options: options7,
   },
   {
-    id: 312,
+    id: 298,
     from: '14_buildObject.test.ts › buildObject - missing properties',
     expression: { operator: 'buildObject' },
     options: options7,
   },
   {
-    id: 313,
+    id: 299,
     from: '14_buildObject.test.ts › buildObject - invalid key type',
     expression: {
       operator: 'buildObject',
@@ -3094,75 +2965,75 @@ export const corpus: Case[] = [
     options: options7,
   },
   {
-    id: 314,
+    id: 300,
     from: '15_errorsAndFallbacks.test.ts › ERROR - Invalid operator',
     expression: { operator: 'run', children: [1, 2] },
   },
   {
-    id: 315,
+    id: 301,
     from: '15_errorsAndFallbacks.test.ts › FALLBACK - Invalid operator',
     expression: { operator: 'run', children: [1, 2], fallback: 'Safe' },
     options: options8,
   },
   {
-    id: 316,
+    id: 302,
     from: '15_errorsAndFallbacks.test.ts › ERROR - Invalid/Missing children error',
     expression: { operator: 'OR', children: 2 },
   },
   {
-    id: 317,
+    id: 303,
     from: '15_errorsAndFallbacks.test.ts › ERROR as string - Invalid/Missing children',
     expression: { operator: 'OR', children: 2 },
     options: options8,
   },
   {
-    id: 318,
+    id: 304,
     from: '15_errorsAndFallbacks.test.ts › ERROR - Invalid output type',
     expression: { operator: '+', children: [1, 2], type: 'Integer' },
   },
   {
-    id: 319,
+    id: 305,
     from: '15_errorsAndFallbacks.test.ts › OR - Error',
     expression: { operator: 'OR' },
     options: options8,
   },
   {
-    id: 320,
+    id: 306,
     from: '15_errorsAndFallbacks.test.ts › OR - Error as string',
     expression: { operator: 'OR' },
   },
   {
-    id: 321,
+    id: 307,
     from: '15_errorsAndFallbacks.test.ts › OR - Fallback',
     expression: { operator: 'OR', fallback: 'All good' },
     options: options8,
   },
   {
-    id: 322,
+    id: 308,
     from: '15_errorsAndFallbacks.test.ts › AND - Error',
     expression: { operator: 'AND' },
     options: options8,
   },
   {
-    id: 323,
+    id: 309,
     from: '15_errorsAndFallbacks.test.ts › AND - Error as string',
     expression: { operator: 'And' },
     options: options8,
   },
   {
-    id: 324,
+    id: 310,
     from: '15_errorsAndFallbacks.test.ts › OR - Fallback',
     expression: { operator: 'and', fallback: 'All good' },
     options: options8,
   },
   {
-    id: 325,
+    id: 311,
     from: '15_errorsAndFallbacks.test.ts › REGEX - Error',
     expression: { operator: 'regex', pattern: { one: 1 }, testString: 'anything' },
     options: options8,
   },
   {
-    id: 326,
+    id: 312,
     from: '15_errorsAndFallbacks.test.ts › REGEX - Fallback',
     expression: {
       operator: 'pattern-match',
@@ -3173,7 +3044,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 327,
+    id: 313,
     from: '15_errorsAndFallbacks.test.ts › API - Fallback',
     expression: {
       operator: 'get',
@@ -3184,7 +3055,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 328,
+    id: 314,
     from: '15_errorsAndFallbacks.test.ts › ERROR - bubble up from nested',
     expression: {
       operator: 'and',
@@ -3196,7 +3067,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 329,
+    id: 315,
     from: '15_errorsAndFallbacks.test.ts › FALLBACK - multiple bubble up and join',
     expression: {
       operator: 'join',
@@ -3218,13 +3089,13 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 330,
+    id: 316,
     from: '15_errorsAndFallbacks.test.ts › Loose equality - null !== undefined',
     expression: { operator: '=', values: [null, undefined], nullEqualsUndefined: false },
     options: options8,
   },
   {
-    id: 331,
+    id: 317,
     from: '15_errorsAndFallbacks.test.ts › Fallback is an operator node',
     expression: {
       operator: 'get',
@@ -3235,7 +3106,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 332,
+    id: 318,
     from: '15_errorsAndFallbacks.test.ts › ObjProps Fallback is an operator node',
     expression: {
       operator: 'objectProperties',
@@ -3245,25 +3116,25 @@ export const corpus: Case[] = [
     options: options9,
   },
   {
-    id: 333,
+    id: 319,
     from: '15_errorsAndFallbacks.test.ts › Skip runtime type checking, from current options',
     expression: { operator: 'objectProperties', property: ['not', 'a', 'string'] },
     options: options9,
   },
   {
-    id: 334,
+    id: 320,
     from: '15_errorsAndFallbacks.test.ts › Skip runtime type checking, from constructor options',
     expression: { operator: 'objectProperties', property: ['not', 'a', 'string'] },
     options: { data: { user: 'Unknown' } },
   },
   {
-    id: 335,
+    id: 321,
     from: '15_errorsAndFallbacks.test.ts › GET - 404 error',
     expression: { operator: 'get', url: 'https://httpbingo.org/hidden-basic-auth/user/password' },
     options: options8,
   },
   {
-    id: 336,
+    id: 322,
     from: '15_errorsAndFallbacks.test.ts › POST - Bad login',
     expression: {
       operator: 'POST',
@@ -3274,23 +3145,23 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 337,
+    id: 323,
     from: '16_outputConversion.test.ts › Try and convert NaN to number -- return 0',
     expression: { operator: 'objectProperties', property: 'justAString', type: 'number' },
     options: { data: { justAString: 'Not a number' } },
   },
   {
-    id: 338,
+    id: 324,
     from: '16_outputConversion.test.ts › Convert a string to a number',
     expression: { operator: '+', values: ['5', '6'], type: 'number' },
   },
   {
-    id: 339,
+    id: 325,
     from: '16_outputConversion.test.ts › Convert a number to a string',
     expression: { operator: '+', values: [150, 150], outputType: 'string' },
   },
   {
-    id: 340,
+    id: 326,
     from: '16_outputConversion.test.ts › Multiple children converted to string, then joined',
     expression: {
       operator: '+',
@@ -3302,7 +3173,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 341,
+    id: 327,
     from: '16_outputConversion.test.ts › String co-erced to array then merged with another array',
     expression: {
       operator: '+',
@@ -3310,7 +3181,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 342,
+    id: 328,
     from: '16_outputConversion.test.ts › Various values coerced to boolean then concatenated to array',
     expression: {
       operator: '+',
@@ -3325,7 +3196,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 343,
+    id: 329,
     from: '16_outputConversion.test.ts › Coerce string to boolean',
     expression: {
       operator: '=',
@@ -3333,22 +3204,22 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 344,
+    id: 330,
     from: '16_outputConversion.test.ts › Pass through unmodified (passThru operator)',
     expression: { operator: 'pass', value: 999.99 },
   },
   {
-    id: 345,
+    id: 331,
     from: '16_outputConversion.test.ts › Pass through unmodified using children',
     expression: { operator: 'pass', children: [999.99] },
   },
   {
-    id: 346,
+    id: 332,
     from: '16_outputConversion.test.ts › Pass through unmodified using children -- multiple values',
     expression: { operator: 'pass', children: [999.99, 'three'] },
   },
   {
-    id: 347,
+    id: 333,
     from: '16_outputConversion.test.ts › Pass through with evaluation, coerce to number',
     expression: {
       operator: 'pass',
@@ -3357,7 +3228,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 348,
+    id: 334,
     from: '16_outputConversion.test.ts › Pass through with evaluation, coerce to string',
     expression: {
       operator: 'pass',
@@ -3366,7 +3237,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 349,
+    id: 335,
     from: '16_outputConversion.test.ts › Coerce output to string from evaluated "type" node',
     expression: {
       operator: 'objectProperties',
@@ -3376,7 +3247,7 @@ export const corpus: Case[] = [
     options: { data: { find: { me: 500 } } },
   },
   {
-    id: 350,
+    id: 336,
     from: '16_outputConversion.test.ts › Extract numberic content from string',
     expression: {
       operator: 'pass',
@@ -3385,19 +3256,19 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 351,
+    id: 337,
     from: '16_outputConversion.test.ts › Extract decimal numeric content from string',
     expression: { operator: 'objectProperties', path: 'standard.path', outputType: 'number' },
     options: { data: { standard: { path: "99.021 is what we're looking for" } } },
   },
   {
-    id: 352,
+    id: 338,
     from: '16_outputConversion.test.ts › Extract with no leading 0 from start of string',
     expression: { operator: 'objectProperties', path: 'basic', outputType: 'number' },
     options: { data: { basic: '.001 is a very small number' } },
   },
   {
-    id: 353,
+    id: 339,
     from: '16_outputConversion.test.ts › Add two extracted numbers',
     expression: {
       operator: '+',
@@ -3412,17 +3283,17 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 354,
+    id: 340,
     from: '16_outputConversion.test.ts › Handle number conversion when already a number',
     expression: { operator: '+', values: [1, 2, 3, 4, 5, 6], outputType: 'number' },
   },
   {
-    id: 355,
+    id: 341,
     from: '16_outputConversion.test.ts › Return 0 if converting to number when string has no numeric content',
     expression: { operator: '+', values: ['this', 'plus', 'this'], outputType: 'number' },
   },
   {
-    id: 356,
+    id: 342,
     from: '17_complexExpressions.test.ts › Input is an array -- each item will be evaluated',
     expression: [
       { operator: '+', values: [6, 7, 8] },
@@ -3444,13 +3315,13 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 357,
+    id: 343,
     from: '17_complexExpressions.test.ts › "values" is an evaluator expression, should evaluate to standard values array',
     expression: { operator: 'and', values: { operator: '+', values: [['this'], ['that']] } },
     options: options10,
   },
   {
-    id: 358,
+    id: 344,
     from: '17_complexExpressions.test.ts › "children" is an evaluator expression, should evaluate to standard child array',
     expression: {
       operator: 'objectProperties',
@@ -3459,7 +3330,7 @@ export const corpus: Case[] = [
     options: options10,
   },
   {
-    id: 359,
+    id: 345,
     from: '17_complexExpressions.test.ts › "children" is an evaluator expression but doesn\'t return an array',
     expression: {
       operator: 'objectProperties',
@@ -3468,7 +3339,7 @@ export const corpus: Case[] = [
     options: options10,
   },
   {
-    id: 360,
+    id: 346,
     from: '17_complexExpressions.test.ts › Massive nested query!',
     expression: {
       $bypass: {
@@ -3595,7 +3466,7 @@ export const corpus: Case[] = [
     options: options11,
   },
   {
-    id: 361,
+    id: 347,
     from: '17_complexExpressions.test.ts › Massive nested query in shorthand',
     expression: {
       $bypass: {
@@ -3709,7 +3580,7 @@ export const corpus: Case[] = [
     options: options11,
   },
   {
-    id: 362,
+    id: 348,
     from: '17_complexExpressions.test.ts › Process an enormous auto-generated query',
     expression: massiveQuery,
     options: {
@@ -3742,7 +3613,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 363,
+    id: 349,
     from: '18_optionHandling.test.ts › Check options objects get merged correctly',
     expression: {
       operator: '+',
@@ -3757,7 +3628,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 364,
+    id: 350,
     from: '18_optionHandling.test.ts › Check functions objects get merged correctly',
     expression: {
       operator: '+',
@@ -3769,27 +3640,27 @@ export const corpus: Case[] = [
     options: { functions: { f1: (a) => 2 * a, f2: (a) => a + 7 }, data: { first: 1, second: 2 } },
   },
   {
-    id: 365,
+    id: 351,
     from: '18_optionHandling.test.ts › Operator exclusion: ignore invalid exclusion value',
     expression: { operator: '+', values: [1, 16] },
   },
   {
-    id: 366,
+    id: 352,
     from: '18_optionHandling.test.ts › Operator exclusion: update options later -- previous exclusions are restored',
     expression: { operator: '+', values: [8, 9, 10] },
   },
   {
-    id: 367,
+    id: 353,
     from: '18_optionHandling.test.ts › Operator exclusion: exclude in evaluation call -- check only excluded for one evaluation',
     expression: { operator: '+', values: [1, 2, 3] },
   },
   {
-    id: 368,
+    id: 354,
     from: '18_optionHandling.test.ts › Operator exclusion: exclude in evaluation call -- check only excluded for one evaluation',
     expression: { operator: 'multiply', values: [{ operator: 'subtract', values: [10, 3] }, 10] },
   },
   {
-    id: 369,
+    id: 355,
     from: '19_aliasNodes.test.ts › Alias Nodes: Do only one network lookup',
     expression: {
       operator: '?',
@@ -3805,7 +3676,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 370,
+    id: 356,
     from: '19_aliasNodes.test.ts › Alias Nodes: Multiple aliases',
     expression: {
       operator: '+',
@@ -3823,7 +3694,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 371,
+    id: 357,
     from: '19_aliasNodes.test.ts › Alias Nodes: Nested aliases, `evaluateFullObject: true`',
     expression: {
       $flag: {
@@ -3853,7 +3724,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 372,
+    id: 358,
     from: '19_aliasNodes.test.ts › Alias Nodes: Alias definition missing, return literal string',
     expression: {
       operator: 'stringSubstitution',
@@ -3862,7 +3733,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 373,
+    id: 359,
     from: '19_aliasNodes.test.ts › Alias Nodes: Use same alias reference in inner node, should be redefined',
     expression: {
       operator: '+',
@@ -3881,7 +3752,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 374,
+    id: 360,
     from: '20_match.test.ts › Basic match',
     expression: {
       operator: 'match',
@@ -3891,7 +3762,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 375,
+    id: 361,
     from: '20_match.test.ts › Switch with "branches" object',
     expression: {
       operator: 'switch',
@@ -3904,7 +3775,7 @@ export const corpus: Case[] = [
     options: options12,
   },
   {
-    id: 376,
+    id: 362,
     from: '20_match.test.ts › Match with "branches" object built using buildObject',
     expression: {
       operator: 'match',
@@ -3920,7 +3791,7 @@ export const corpus: Case[] = [
     options: options12,
   },
   {
-    id: 377,
+    id: 363,
     from: '20_match.test.ts › Match with children, nested',
     expression: {
       operator: 'match',
@@ -3946,7 +3817,7 @@ export const corpus: Case[] = [
     options: options12,
   },
   {
-    id: 378,
+    id: 364,
     from: '20_match.test.ts › Card Game Decision Tree - single player 7+',
     expression: {
       operator: 'match',
@@ -4028,7 +3899,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 1, ageOfYoungestPlayer: 12, preferredDifficulty: 'easy' } },
   },
   {
-    id: 379,
+    id: 365,
     from: '20_match.test.ts › Card Game Decision Tree - single player under 7',
     expression: {
       operator: 'match',
@@ -4110,7 +3981,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 1, ageOfYoungestPlayer: 5, preferredDifficulty: 'easy' } },
   },
   {
-    id: 380,
+    id: 366,
     from: '20_match.test.ts › Card Game Decision Tree - multiple players, some under 5',
     expression: {
       operator: 'match',
@@ -4192,7 +4063,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 3, ageOfYoungestPlayer: 4, preferredDifficulty: 'easy' } },
   },
   {
-    id: 381,
+    id: 367,
     from: '20_match.test.ts › Card Game Decision Tree - multiple players, 5-8',
     expression: {
       operator: 'match',
@@ -4274,7 +4145,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 2, ageOfYoungestPlayer: 5, preferredDifficulty: 'easy' } },
   },
   {
-    id: 382,
+    id: 368,
     from: '20_match.test.ts › Card Game Decision Tree - multiple players, 8-12, challenging game',
     expression: {
       operator: 'match',
@@ -4358,7 +4229,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 383,
+    id: 369,
     from: '20_match.test.ts › Card Game Decision Tree - multiple players, 12-16, easy game',
     expression: {
       operator: 'match',
@@ -4440,7 +4311,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 4, ageOfYoungestPlayer: 12, preferredDifficulty: 'easy' } },
   },
   {
-    id: 384,
+    id: 370,
     from: '20_match.test.ts › Card Game Decision Tree - 3 players, 16+, challenging game',
     expression: {
       operator: 'match',
@@ -4524,7 +4395,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 385,
+    id: 371,
     from: '20_match.test.ts › Card Game Decision Tree - 4 players, 16+, challenging game',
     expression: {
       operator: 'match',
@@ -4608,7 +4479,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 386,
+    id: 372,
     from: '20_match.test.ts › Card Game Decision Tree - 4 players, 16+, hard game',
     expression: {
       operator: 'match',
@@ -4690,7 +4561,7 @@ export const corpus: Case[] = [
     options: { data: { numberOfPlayers: 4, ageOfYoungestPlayer: 16, preferredDifficulty: 'hard' } },
   },
   {
-    id: 387,
+    id: 373,
     from: '20_match.test.ts › Card Game Decision Tree - No match error',
     expression: {
       operator: 'match',
@@ -4774,12 +4645,12 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 388,
+    id: 374,
     from: '20_match.test.ts › Match - invalid branches',
     expression: { $match: { matchValue: 'three', branches: 'not an object or array' } },
   },
   {
-    id: 389,
+    id: 375,
     from: '21_evaluateWholeObject.test.ts › Evaluate whole object',
     expression: {
       outerObject: {
@@ -4794,7 +4665,7 @@ export const corpus: Case[] = [
     options: options13,
   },
   {
-    id: 390,
+    id: 376,
     from: "21_evaluateWholeObject.test.ts › Don't evaluate whole object",
     expression: {
       outerObject: {
@@ -4809,7 +4680,7 @@ export const corpus: Case[] = [
     options: options8,
   },
   {
-    id: 391,
+    id: 377,
     from: '21_evaluateWholeObject.test.ts › Multiple levels of deep operator nodes, with alias node',
     expression: {
       outer: {
@@ -4825,7 +4696,7 @@ export const corpus: Case[] = [
     options: options13,
   },
   {
-    id: 392,
+    id: 378,
     from: '21_evaluateWholeObject.test.ts › Evaluate alias nodes even if not within operator node',
     expression: {
       $testAlias: { operator: 'getData', property: 'user.title' },
@@ -4835,13 +4706,13 @@ export const corpus: Case[] = [
     options: options13,
   },
   {
-    id: 393,
+    id: 379,
     from: '22_fragments.test.ts › Fragments, single parameter at root',
     expression: { fragment: 'getFlag', $country: 'New Zealand' },
     options: options14,
   },
   {
-    id: 394,
+    id: 380,
     from: '22_fragments.test.ts › Join two fragments together, one simple, one using a single "parameter")',
     expression: {
       operator: '+',
@@ -4856,7 +4727,7 @@ export const corpus: Case[] = [
     options: options14,
   },
   {
-    id: 395,
+    id: 381,
     from: '22_fragments.test.ts › Fragment used multiple times in an expression (with different parameters (nested))',
     expression: {
       operator: '+',
@@ -4880,7 +4751,7 @@ export const corpus: Case[] = [
     options: options14,
   },
   {
-    id: 396,
+    id: 382,
     from: '22_fragments.test.ts › Use old and new fragments',
     expression: {
       fragment: 'adder',
@@ -4964,7 +4835,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 397,
+    id: 383,
     from: '22_fragments.test.ts › Same thing but with different data object',
     expression: {
       fragment: 'adder',
@@ -5048,7 +4919,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 398,
+    id: 384,
     from: '22_fragments.test.ts › Add a new fragment to current evaluation options',
     expression: {
       fragment: 'adder',
@@ -5118,13 +4989,13 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 399,
+    id: 385,
     from: '22_fragments.test.ts › Missing fragment',
     expression: { fragment: 'newFragment', parameters: { $temp: "Doesn't matter" } },
     options: options15,
   },
   {
-    id: 400,
+    id: 386,
     from: '22_fragments.test.ts › Missing fragment with fallback',
     expression: {
       fragment: 'newFragment',
@@ -5133,7 +5004,7 @@ export const corpus: Case[] = [
     options: options15,
   },
   {
-    id: 401,
+    id: 387,
     from: '22_fragments.test.ts › Using a decision tree as a fragment',
     expression: { fragment: 'weatherMatcher' },
     options: {
@@ -5199,7 +5070,7 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 402,
+    id: 388,
     from: '22_fragments.test.ts › Using a fragment as an alias node',
     expression: {
       operator: '?',
@@ -5211,7 +5082,7 @@ export const corpus: Case[] = [
     options: options15,
   },
   {
-    id: 403,
+    id: 389,
     from: '22_fragments.test.ts › Use an alias reference as a Fragment parameter',
     expression: {
       fragment: 'getFlag',
@@ -5285,19 +5156,19 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 404,
+    id: 390,
     from: '22_fragments.test.ts › Fragment references another fragment 🙄',
     expression: { fragment: 'addAndDouble', $numbers: [3, 4, 5] },
     options: options15,
   },
   {
-    id: 405,
+    id: 391,
     from: '22_fragments.test.ts › Fragment uses default parameter value',
     expression: { fragment: 'getFlag' },
     options: options15,
   },
   {
-    id: 406,
+    id: 392,
     from: '22_fragments.test.ts › Fragment values are falsy',
     expression: [
       { fragment: 'falsy' },
@@ -5309,49 +5180,49 @@ export const corpus: Case[] = [
     options: options15,
   },
   {
-    id: 407,
+    id: 393,
     from: '23_shorthand.test.ts › Shorthand - evaluate simple single-value expression',
     expression: { $getData: 'deep.p' },
     options: options16,
   },
   {
-    id: 408,
+    id: 394,
     from: '23_shorthand.test.ts › Shorthand - evaluate nested expression',
     expression: { $plus: [{ $getData: 'myCountry' }, { $getData: 'otherCountry' }] },
     options: options16,
   },
   {
-    id: 409,
+    id: 395,
     from: '23_shorthand.test.ts › Shorthand - evaluate simple object expression',
     expression: { $plus: [1, 2, 3] },
     options: options16,
   },
   {
-    id: 410,
+    id: 396,
     from: '23_shorthand.test.ts › Shorthand - evaluate nested object expression',
     expression: { $plus: [{ $getData: 'user.firstName' }, ' ', { $getData: 'user.lastName' }] },
     options: options16,
   },
   {
-    id: 411,
+    id: 397,
     from: '23_shorthand.test.ts › Shorthand - evaluate fragment',
     expression: { $getFlag: { $country: { $getData: 'myCountry' } } },
     options: options16,
   },
   {
-    id: 412,
+    id: 398,
     from: '23_shorthand.test.ts › Shorthand - custom function',
     expression: { $function: ['getPrincess', 'Leia'] },
     options: options16,
   },
   {
-    id: 413,
+    id: 399,
     from: '23_shorthand.test.ts › Shorthand - custom function with named properties',
     expression: { $function: { functionPath: 'getPrincess', input: 'Diana' } },
     options: options16,
   },
   {
-    id: 414,
+    id: 400,
     from: '23_shorthand.test.ts › Shorthand - with alias fallback',
     expression: {
       $plus: [{ operator: 'objProps', property: 'cant.find.this', fallback: '$myFallback' }],
@@ -5360,19 +5231,19 @@ export const corpus: Case[] = [
     options: options16,
   },
   {
-    id: 415,
+    id: 401,
     from: '23_shorthand.test.ts › Shorthand - with node as direct parameter',
     expression: { $objProps: { $plus: ['user.', 'lastName'] } },
     options: options16,
   },
   {
-    id: 416,
+    id: 402,
     from: '23_shorthand.test.ts › Shorthand - with operator and named parameter',
     expression: { $getData: { property: 'user.firstName' } },
     options: options16,
   },
   {
-    id: 417,
+    id: 403,
     from: '23_shorthand.test.ts › Shorthand - nested fragments',
     expression: {
       $plus: [
@@ -5394,7 +5265,7 @@ export const corpus: Case[] = [
     options: options16,
   },
   {
-    id: 418,
+    id: 404,
     from: '23_shorthand.test.ts › Shorthand - mixed fragments & operators with multiple syntaxes',
     expression: {
       $adder: {
@@ -5453,19 +5324,19 @@ export const corpus: Case[] = [
     },
   },
   {
-    id: 419,
+    id: 405,
     from: '23_shorthand.test.ts › Shorthand - fragment is in shorthand syntax',
     expression: { fragment: 'shorthandFragment', $name: 'Slim Shady' },
     options: options17,
   },
   {
-    id: 420,
+    id: 406,
     from: '23_shorthand.test.ts › Shorthand - shorthand fragment with shorthand expression',
     expression: { $shorthandFragment: { $name: 'Slim Shady' } },
     options: options17,
   },
   {
-    id: 421,
+    id: 407,
     from: '26_convert.test.ts › Convert to V2 -- basic',
     expression: {
       operator: 'AND',
@@ -5495,7 +5366,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 422,
+    id: 408,
     from: '26_convert.test.ts › Convert to V2 -- basic',
     expression: {
       operator: 'and',
@@ -5523,7 +5394,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 423,
+    id: 409,
     from: '26_convert.test.ts › Convert to V2 -- more complex',
     expression: {
       children: [
@@ -5594,7 +5465,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 424,
+    id: 410,
     from: '26_convert.test.ts › Convert to V2 -- more complex',
     expression: {
       operator: '?',
@@ -5666,7 +5537,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 425,
+    id: 411,
     from: '26_convert.test.ts › Convert to V2 -- String Substitution',
     expression: {
       children: [
@@ -5688,7 +5559,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 426,
+    id: 412,
     from: '26_convert.test.ts › Convert to V2 -- String Substitution',
     expression: {
       operator: 'stringSubstitution',
@@ -5710,7 +5581,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 427,
+    id: 413,
     from: '26_convert.test.ts › Convert to V2 -- trickier operators',
     expression: {
       operator: 'buildObject',
@@ -5734,7 +5605,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 428,
+    id: 414,
     from: '26_convert.test.ts › Convert to V2 -- trickier operators',
     expression: {
       operator: 'buildObject',
@@ -5759,7 +5630,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 429,
+    id: 415,
     from: '26_convert.test.ts › Convert to V2 -- already partially converted',
     expression: {
       operator: '?',
@@ -5775,7 +5646,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 430,
+    id: 416,
     from: '26_convert.test.ts › Convert to V2 -- already partially converted',
     expression: {
       operator: '?',
@@ -5793,7 +5664,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 431,
+    id: 417,
     from: '26_convert.test.ts › Convert to Shorthand -- basic',
     expression: {
       $stringSubstitution: {
@@ -5817,7 +5688,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 432,
+    id: 418,
     from: '26_convert.test.ts › Convert to Shorthand -- bigger, with some nodes already shorthand',
     expression: {
       operator: '?',
@@ -5848,7 +5719,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 433,
+    id: 419,
     from: '26_convert.test.ts › Convert to Shorthand -- bigger, with some nodes already shorthand',
     expression: {
       $conditional: {
@@ -5877,7 +5748,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 434,
+    id: 420,
     from: '26_convert.test.ts › Convert to Shorthand -- fragments',
     expression: {
       operator: '+',
@@ -5903,7 +5774,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 435,
+    id: 421,
     from: '26_convert.test.ts › Convert to Shorthand -- fragments',
     expression: {
       $plus: {
@@ -5926,7 +5797,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 436,
+    id: 422,
     from: '26_convert.test.ts › Convert to Shorthand -- normal node with Fallback',
     expression: {
       operator: 'and',
@@ -5939,7 +5810,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 437,
+    id: 423,
     from: '26_convert.test.ts › Convert to Shorthand -- normal node with Fallback',
     expression: {
       $and: {
@@ -5953,7 +5824,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 438,
+    id: 424,
     from: '26_convert.test.ts › Convert to Shorthand -- lots of node types',
     expression: [
       { operator: 'buildObject', values: ['someKey', { operator: '+', values: [1, 2, 3] }] },
@@ -6015,7 +5886,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 439,
+    id: 425,
     from: '26_convert.test.ts › Convert to Shorthand -- lots of node types',
     expression: [
       { $buildObject: ['someKey', { $plus: [1, 2, 3] }] },
@@ -6065,43 +5936,43 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 440,
+    id: 426,
     from: '26_convert.test.ts › Convert to Shorthand -- array operator in positional "children" form',
     expression: { operator: '+', children: [10, 20, 30] },
     options: options18,
   },
   {
-    id: 441,
+    id: 427,
     from: '26_convert.test.ts › Convert to Shorthand -- array operator in positional "children" form',
     expression: { $plus: [10, 20, 30] },
     options: options18,
   },
   {
-    id: 442,
+    id: 428,
     from: '26_convert.test.ts › Convert to Shorthand -- operator with custom parseChildren in "children" form',
     expression: { operator: 'conditional', children: [true, 'YES', 'NO'] },
     options: options18,
   },
   {
-    id: 443,
+    id: 429,
     from: '26_convert.test.ts › Convert to Shorthand -- operator with custom parseChildren in "children" form',
     expression: { $conditional: { condition: true, valueIfTrue: 'YES', valueIfFalse: 'NO' } },
     options: options18,
   },
   {
-    id: 444,
+    id: 430,
     from: '26_convert.test.ts › Convert to Shorthand -- buildObject using "values" alias collapses to array form',
     expression: { operator: 'buildObject', values: [{ key: 'name', value: 'Tom' }] },
     options: options18,
   },
   {
-    id: 445,
+    id: 431,
     from: '26_convert.test.ts › Convert to Shorthand -- buildObject using "values" alias collapses to array form',
     expression: { $buildObject: [{ key: 'name', value: 'Tom' }] },
     options: options18,
   },
   {
-    id: 446,
+    id: 432,
     from: '26_convert.test.ts › Convert to Shorthand -- Custom operators/functions',
     expression: {
       operator: 'changeCase',
@@ -6118,7 +5989,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 447,
+    id: 433,
     from: '26_convert.test.ts › Convert to Shorthand -- Custom operators/functions',
     expression: {
       $changeCase: {
@@ -6135,7 +6006,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 448,
+    id: 434,
     from: '26_convert.test.ts › Convert to Shorthand -- getData with additionalProperties',
     expression: {
       operator: 'getData',
@@ -6146,7 +6017,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 449,
+    id: 435,
     from: '26_convert.test.ts › Convert to Shorthand -- getData with additionalProperties',
     expression: {
       $getData: { property: 'name', additionalData: '$character' },
@@ -6155,7 +6026,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 450,
+    id: 436,
     from: '26_convert.test.ts › Convert to Shorthand -- buildObject with nested getDatas',
     expression: {
       operator: 'buildObject',
@@ -6169,7 +6040,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 451,
+    id: 437,
     from: '26_convert.test.ts › Convert to Shorthand -- buildObject with nested getDatas',
     expression: {
       $buildObject: [{ key: 'text', value: { $getData: 'applicationData.firstName' } }],
@@ -6177,7 +6048,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 452,
+    id: 438,
     from: '26_convert.test.ts › Convert to Shorthand -- complex with alias nodes',
     expression: {
       operator: 'stringSubstitution',
@@ -6223,7 +6094,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 453,
+    id: 439,
     from: '26_convert.test.ts › Convert to Shorthand -- complex with alias nodes',
     expression: {
       $stringSubstitution: {
@@ -6273,7 +6144,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 454,
+    id: 440,
     from: '26_convert.test.ts › Convert to Shorthand -- GET with returnProperty uses object form',
     expression: {
       operator: 'get',
@@ -6283,7 +6154,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 455,
+    id: 441,
     from: '26_convert.test.ts › Convert to Shorthand -- GET with returnProperty uses object form',
     expression: {
       $GET: { url: 'https://restcountries.com/v3.1/name/zealand', returnProperty: 'name.common' },
@@ -6291,7 +6162,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 456,
+    id: 442,
     from: '26_convert.test.ts › Convert from Shorthand -- bigger, with lots of conditional logic',
     expression: {
       operator: '?',
@@ -6329,7 +6200,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 457,
+    id: 443,
     from: '26_convert.test.ts › Convert from Shorthand -- fragments',
     expression: {
       $plus: {
@@ -6352,7 +6223,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 458,
+    id: 444,
     from: '26_convert.test.ts › Convert from Shorthand -- fragments',
     expression: {
       operator: '+',
@@ -6373,7 +6244,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 459,
+    id: 445,
     from: '26_convert.test.ts › Convert from Shorthand -- normal node with Fallback',
     expression: {
       operator: 'and',
@@ -6386,7 +6257,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 460,
+    id: 446,
     from: '26_convert.test.ts › Convert from Shorthand -- lots of node types',
     expression: [
       { $buildObject: ['someKey', { $plus: [1, 2, 3] }] },
@@ -6436,7 +6307,7 @@ export const corpus: Case[] = [
     options: options18,
   },
   {
-    id: 461,
+    id: 447,
     from: '26_convert.test.ts › Convert from Shorthand -- lots of node types',
     expression: [
       {

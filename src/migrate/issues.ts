@@ -60,7 +60,9 @@ export const CATALOGUE = {
       'v2 reduced each single-key object in the response to its value, so a list of `{ name }` ' +
       "objects came back as a list of names. v3 returns the response as sent. To keep v2's " +
       "result, project the field in `returnPath`, as in `'countries[*].name'`. The same `[*]` is " +
-      'needed wherever `returnPath` crosses an array, since v2 projected a key across one silently.',
+      'needed wherever `returnPath` crosses an array, since v2 projected a key across one silently. ' +
+      'Where the array holds the one element wanted, as a lookup by name often does, `[0]` reads ' +
+      "that element instead: `'[0].flag'` rather than `'[*].flag'`, which gives a list of one.",
   },
   'computed-branches': {
     tag: 'intentional-semantic-change',
@@ -248,7 +250,8 @@ export const CATALOGUE = {
   'unknown-operator': {
     tag: 'non-convertible',
     message: ({ name }: { name: string }) =>
-      `\`${name}\` is not a v2 operator. If it is a custom function, add it to \`functions\` and convert again. The node is quoted unconverted.`,
+      `\`${name}\` is not a v2 operator. If it is one of your v2 custom functions, ` +
+      "list it in the conversion's `functions` option and convert again, so the call converts to a call on a custom operator of that name. The node is quoted unconverted.",
   },
 } as const satisfies Record<
   IssueCode,

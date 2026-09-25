@@ -452,16 +452,41 @@ const BATCH_2: Example[] = [
     },
   },
   {
-    name: "`type: 'number'`",
+    name: "`type: 'number'` converts the result",
     input: { operator: '+', values: [1, 2], type: 'number' },
-    expected: { operator: 'plus', values: [1, 2], expect: 'number' },
+    expected: { operator: 'convert', value: { operator: 'plus', values: [1, 2] }, to: 'number' },
+    issues: [{ code: 'output-type', path: ['type'] }],
   },
   {
-    name: "`type: 'number'` over numeric text, which v2 mined: the guide",
-    input: { operator: '+', values: ['1', '2'], type: 'number' },
-    expected: { operator: 'plus', values: ['1', '2'], expect: 'number' },
-    differs: { v2: { value: 12 }, v3: { error: true } },
-    invalid: true,
+    name: "`type: 'number'` over numeric text, which v2 concatenated and then converted",
+    input: { operator: '+', values: ['5', '6'], type: 'number' },
+    expected: {
+      operator: 'convert',
+      value: { operator: 'plus', values: ['5', '6'] },
+      to: 'number',
+    },
+    issues: [{ code: 'output-type', path: ['type'] }],
+  },
+  {
+    name: "`type: 'number'` over text with no number, which v2 mined: the issue's",
+    input: { operator: '+', values: ['a', 'b'], type: 'number' },
+    expected: {
+      operator: 'convert',
+      value: { operator: 'plus', values: ['a', 'b'] },
+      to: 'number',
+    },
+    issues: [{ code: 'output-type', path: ['type'] }],
+    differs: { v2: { value: 0 }, v3: { error: true } },
+  },
+  {
+    name: "`type: 'number'` beside the node's own `outputType`, which wins",
+    input: { operator: '+', values: ['5', '6'], type: 'number', outputType: 'string' },
+    expected: {
+      operator: 'convert',
+      value: { operator: 'plus', values: ['5', '6'] },
+      to: 'string',
+    },
+    issues: [{ code: 'output-type', path: ['outputType'] }],
   },
   {
     name: "`type: 'boolean'` converts the result",
