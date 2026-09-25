@@ -73,6 +73,12 @@ export default tseslint.config(
     },
   },
   {
+    // The differential's corpus is data: its strings are as long as the v2
+    // tests wrote them
+    files: ['differential/corpus.ts'],
+    rules: { 'max-len': 'off' },
+  },
+  {
     // An ambient global is declared with `var`, as TypeScript's own lib files
     // do: only a `var` becomes a property of `globalThis`
     files: ['**/*.d.ts'],

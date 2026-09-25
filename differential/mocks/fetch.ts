@@ -457,19 +457,41 @@ export const mockFetch = (
         )
       }
 
-      // Get capital query
+      // Get capital query, answered as the axios mock answers it: only
+      // 17_complexExpressions asks it, through axios in the v2 tests, and
+      // the differential sends every request through this mock
       if (query.includes('capital')) {
         const code = bodyData?.variables?.code || 'NZ'
-        const capitalData: Record<string, string> = {
-          NZ: 'Wellington',
-          NP: 'Kathmandu',
+        const capitalData: Record<string, string[]> = {
+          NZ: ['Wellington'],
+          NP: ['Kathmandu'],
         }
 
         return Promise.resolve(
           createResponse({
             data: {
-              country: {
-                capital: capitalData[code] || capitalData.NZ,
+              countries: capitalData[code] || capitalData.NZ,
+            },
+          })
+        )
+      }
+    }
+
+    // GraphQL - api.github.com, which only the axios mock answered in the v2
+    // tests; the differential sends every request through this mock
+    if (urlString.includes('api.github.com/graphql')) {
+      const query = bodyData?.query || ''
+
+      // Get repository info
+      if (query.includes('repository')) {
+        return Promise.resolve(
+          createResponse({
+            data: {
+              viewer: {
+                login: 'CarlosNZ',
+                repository: {
+                  description: 'A highly configurable custom expression tree evaluator',
+                },
               },
             },
           })

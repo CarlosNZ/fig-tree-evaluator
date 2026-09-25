@@ -1045,58 +1045,68 @@ Phase 15.2's check on the whole converter. Every expression case in the v2 tests
 
 ### The corpus
 
-`differential/corpus.ts` is extracted once from the tests of the v2 release the package follows, a superset of `test/V2`. It holds, in the order the tests ran, every case that evaluates an expression and checks what it returns or that it fails, whichever file it is in. That includes the HTTP, SQL, custom-function, fallback and `evaluateFullObject` files, which `test/V2`'s first-pass table marks as infrastructure. Its README asks for that table to be validated in Phase 15, and I/O now runs against mocks, functions are wrapped as operators and fallbacks compare as values, so their cases flow through. Left out:
+`differential/corpus.ts` is extracted once from the tests of the v2 release the package follows, a superset of `test/V2`. It holds, in the order the tests ran, every case that evaluates an expression, whichever file it is in. That includes the HTTP, SQL, custom-function, fallback and `evaluateFullObject` files, which `test/V2`'s first-pass table marks as infrastructure. Its README asks for that table to be validated in Phase 15, and I/O now runs against mocks, functions are wrapped as operators and fallbacks compare as values, so their cases flow through.
 
-- cases that check something other than an expression's result: a helper, metadata, cache statistics, options read back;
-- cases under an option v3 has no counterpart for: `skipRuntimeTypeCheck`, `excludeOperators`, `supportDeprecatedValueNodes`, the instance-wide `nullEqualsUndefined`.
+**Extraction** runs the release's tests, from its git tag, unchanged under Jest, against the published package, and records every evaluation they make: the expression, the options v2 evaluated it with, and the database behind its SQL connection (`differential/extract/`, run once with `pnpm exec tsx differential/extract/index.ts`). Parsing the test files could not follow expressions built in code, evaluators made inside tests, or v2's clients, which are instance state: a call that passes `httpClient` keeps it for the instance's later calls, and `updateOptions({ httpClient })` changes nothing the evaluation reads. Running the tests loses nothing. At the release 2.23.2 it recorded 508 evaluations in 24 files. Left out:
 
-It is one array with two kinds of entry:
+- **Files that check something other than an expression's result**, which extraction does not run: `00_utils`, `0_typeCheck`, `25_metaData` and `27_isFigTreeExpression` evaluate nothing, and `24_cache` checks the cache, so its values are random or come from it.
+- **Repeats**: a case identical to an earlier one in expression, options and database, as when a test runs one expression through both of v2's clients, or runs it again to inspect its error. 39 at extraction.
+- **Cases whose outcome depends on an option v3 has no counterpart for**: `skipRuntimeTypeCheck`, `excludeOperators`, `supportDeprecatedValueNodes` and the instance-wide `nullEqualsUndefined`. A case run under one of them is kept with the option removed where v2 gives it the same outcome without it, and left out where not (ruled at 15.2's second chunk). 24 cases were kept without one, 18 of them in the errors-and-fallbacks file, whose evaluator sets `nullEqualsUndefined`. The 8 left out are the tests about those options.
+
+That left 461 cases. Each is an entry of one array:
 
 ```ts
 import type { FigTreeOptions as FigTreeOptionsV2 } from 'fig-tree-evaluator-v2'
 
-export const OPTION_UPDATE = Symbol('option update')
-
-type Entry =
-  | { id: number; from: string; expression: unknown; options?: FigTreeOptionsV2 }
-  | { type: typeof OPTION_UPDATE; options: FigTreeOptionsV2 }
+interface Case {
+  id: number
+  from: string
+  expression: unknown
+  options?: CaseOptions // FigTreeOptionsV2, less what the runner supplies or drops
+  database?: 'sqlite'
+}
 ```
 
 - **`id`** names the case in the output, the review map and the baseline. It is unique, which the runner checks at startup, and never reused. A new case takes the next number wherever it goes in the array.
 - **`from`** is the v2 test the case came from, such as `'4_plus.test.ts › adds strings'`.
-- **`options`** are the case's own, as the v2 test passed them to `evaluate(expression, options)`. They apply to that case only.
-- **An option update** changes the options for every case after it, as `updateOptions()` did. Its `Symbol` cannot occur in a v2 expression, so the two kinds of entry never mix.
+- **`options`** are what the case adds to the runner's defaults: the options v2 evaluated it with, the evaluator's with the call's merged over them as v2 merged them, less the defaults. Options more than one case has are written once and shared. Most cases have none.
+- **`database`** is `'sqlite'` for a case whose SQL ran against SQLite, and absent for Postgres.
+
+**The runner's defaults** are the same for every case (`differential/case.ts`, ruled at 15.2's second chunk):
+
+- one HTTP client, over the fetch mock, which also carries GraphQL, since which client v2 used is not under test;
+- the GraphQL endpoint `https://countries.trevorblades.com/`, which five of the test files set, unless the case names another;
+- Postgres, unless the case says SQLite.
+
+A case never records a client, `returnErrorAsString` (which the runner drops), `allowJSONStringInput` (extraction parses the case's string, as v2 did, and records the node), `objects` (recorded as `data`, as v2 read it), or the cache's size and age, which cannot change a result. The 20,000-node expression of `17_complexExpressions` is read from `test/massiveQuery.json`, the file the test read, rather than held in the corpus.
+
+**The check.** While each test file runs, extraction runs each of its cases again as the runner will, with the defaults and only the options the case keeps, and records that outcome. Once the corpus is written, each case is run through v2 again from the written file, and must give the recorded outcome. Where the defaults change what a case's test saw, extraction lists it: 29 cases at extraction, all from dropping `returnErrorAsString`, so v2 fails where its test saw the error as text.
 
 ### Options
 
-The runner keeps the running v2 options itself:
+Each case's evaluators are built from its options, so nothing carries from one case to the next:
 
-- **At an option update** it calls `figV2.updateOptions()`, merges the update into its own copy as v2 merges, shallowly, and builds a new `figV3` from `toV3Options(running)`. Rebuilding from scratch means v3's merge rules never come into it.
-- **A case's own options** go to v2 with the call. The runner merges them over its copy as v2's `evaluate` merged them, deeply for `data`, `functions`, `fragments` and `headers`. v3 gets the result as call `data` when that is all the case's options hold, and through an instance built for the case otherwise.
-- **The converter gets the same merged options**, so it sees the fragments, the function names and the `evaluateFullObject` that v2 evaluated with.
+- **v2** gets the defaults, then the case's options (`v2Options` in `differential/case.ts`), on clients over the shared doubles.
+- **v3** gets `toV3Options` of the case's options, on v3's clients over the same doubles. The runner builds one per distinct options object, which the corpus shares, so most cases share one instance. Rebuilding from the case's options means v3's merge rules never come into it.
+- **The converter gets the same options**, so it sees the fragments, the function names and the `evaluateFullObject` that v2 evaluated with.
 
 `toV3Options` is the migration a host does by hand ("Moved options" in [v3-migration.md](v3-migration.md)), written once:
 
 - `data` as it is;
-- `fragments` through `migrateV2Fragments`, whose issues print once per update;
+- `fragments` through `migrateV2Fragments`, whose issues print once per options object;
 - each function as a v3 operator of its name, the recipe's way: an optional `input` and `...args` as its positional rest, called as v2 called it, `f(input, ...args)`;
 - `caseInsensitive` as `operatorDefaults` for `equal` and `notEqual`;
 - the I/O settings (endpoints and headers) as v3's, with the clients below.
 
 Three options are read by the converter and have no v3 counterpart: `evaluateFullObject`, `noShorthand` and `useCache`. The converter has already applied them, so `toV3Options` drops them.
 
-Two options are handled rather than mapped:
-
-- **`returnErrorAsString`**, which 15 of the files use, is dropped on both sides. v2 then throws where it returned the error's text, and the two failures compare as failures.
-- **`allowJSONStringInput`**: the runner parses a string case before converting it, as any caller must, since the converter ignores the option.
-
-Any other option it cannot map stops the run at startup, so no case silently runs under different options.
+`returnErrorAsString` and `allowJSONStringInput` never reach the runner, since extraction dropped the first and parsed the second's strings. Any other option it cannot map stops the run at startup, so no case silently runs under different options.
 
 ### I/O
 
 Every I/O case runs, offline, the same way on every machine. Both engines get clients over one shared source, so they see the same responses:
 
-- **HTTP and GraphQL**: the v2 tests' two mocks, `test/__mocks__/node-fetch.ts` and `axios.ts`, which answer every URL the tests request. Their routes are not the same (only the axios mock answers `api.github.com/graphql`), so each case keeps the client its test used, and both engines get that client over the same mock: v2's `FetchClient` or `AxiosClient`, and v3's. The routing moves into plain modules that the Jest mocks wrap and the runner imports, since the runner has no `jest.fn`. Both engines' clients get the same outcome from every route (measured at 15.2's first chunk), though they read the mocks differently: v2's `FetchClient` reads a response with `json()` and v3's with `text()`, which the fetch mock makes agree, and v2's `AxiosClient` passes query parameters in `config.params`, which no route reads, where v3's puts them in the URL, which every route matches without.
+- **HTTP and GraphQL**: the v2 tests' two mocks, `test/__mocks__/node-fetch.ts` and `axios.ts`, answer every URL the tests request. Their routing moves into plain modules that the Jest mocks wrap and the runner imports, since the runner has no `jest.fn`. Every case goes through the fetch mock, v2's `FetchClient` and v3's over it (the runner's defaults). It answers everything the corpus asks: it gained the `api.github.com` GraphQL route that only the axios mock had, and its capital query answers as the axios mock's did, which `17_complexExpressions` was written against. `pnpm test:v2` never reaches either through fetch, so it runs as before. Both engines' clients get the same outcome from every route (measured at 15.2's first chunk), though v2's reads a response with `json()` and v3's with `text()`, which the mock makes agree.
 - **SQLite**: the bundled `test/database/northwind.sqlite`, opened once and shared by v2's `SQLite` and v3's `SQLiteConnection`.
 - **Postgres** has no mock in the v2 tests, which need a live Northwind, so it runs from recordings:
   - **What is replaced.** Only the `pg` client, beneath each engine's own Postgres wrapper (v2's `SQLNodePostgres`, v3's `PostgresConnection`), which run unchanged. Both call `client.query({ text, values })` and read `rows`.
@@ -1139,7 +1149,7 @@ Issues raised: output-type ×31, response-collapse ×9, split-trailing-empty ×6
 Unexplained: #42 #203 #611
 ```
 
-- **`pnpm differential 42 57`** prints those cases in full, untruncated: the v2 expression, the converted expression, every issue with its path and message, and both outcomes. The option updates before each case are replayed first. That is how a case is looked at closely, without opening the corpus.
+- **`pnpm differential 42 57`** prints those cases in full, untruncated: the v2 expression, the converted expression, every issue with its path and message, and both outcomes. That is how a case is looked at closely, without opening the corpus.
 - **`--all`** adds a ✓ line for every case.
 
 ### The baseline
@@ -1156,7 +1166,7 @@ The plan's M7 milestone, "converter + differential green", means `--check` passe
 
 ### The tests
 
-The unit suites run in `pnpm test` beside the rest of the v3 suite, one file per part of the converter and one for the differential's I/O doubles. Each holds its part to promises this spec makes:
+The unit suites run in `pnpm test` beside the rest of the v3 suite, one file per part of the converter and two for the differential. Each holds its part to promises this spec makes:
 
 | Suite                  | Holds                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1169,6 +1179,7 @@ The unit suites run in `pnpm test` beside the rest of the v3 suite, one file per
 | `migrate-contract`     | What holds for every conversion. It never throws, over malformed input: a non-string `operator`, `values: 5`, `children: 'x'`, `null` where a node goes, malformed options. It never mutates, since every example converts from a deep-frozen input. It is deterministic: the same arguments give the same result whatever was converted before, and reordering an input's keys changes nothing but what follows the input's order, which is the spelling that won where v2 read whichever came later, the key order of data objects, the order of notes and issues, and the values quoted in messages (ruled at 15.1's seventh chunk). Beside the listed cases, random input drawn from the reference table, well-formed and malformed, from a fixed seed, checks all three. |
 | `migrate`              | The subpath exports exactly `migrateV2Expression` and `migrateV2Fragments`, and the four conversion types export from the root.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `differential-doubles` | The differential's I/O doubles. v2's and v3's HTTP clients get the same outcome from the mocks, the Postgres stand-in answers both engines' wrappers from recordings, and the recorder's module evaluates back to what it recorded, `Date`s and `Buffer`s included. Each double reports what it cannot answer. `test/live/sql-recording.test.ts` makes the same round trip against a live Northwind (ruled at 15.2's first chunk).                                                                                                                                                                                                                                                                                                                                            |
+| `differential-corpus`  | What each case runs with, the runner's defaults under its own options, how extraction writes values and the corpus, and what the corpus holds: ids from 1, each case naming its test, and no option the runner supplies, drops or cannot map.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 The examples in this spec are the tests' first cases. Each was measured through both engines when it was written, and the tests keep it measured. The suites import the v2 package, whose CommonJS build ts-jest loads as it is. A type test also imports the four conversion types from the root, so `pnpm typecheck` fails if one goes missing: `test/exports.test.ts` lists values only.
 
@@ -1186,7 +1197,7 @@ The `./migrate` entry holds the converter:
 
 ### Repo tooling
 
-- **`differential/`** is linted, formatted and typechecked like `test/`, and is added to `tsconfig.test.json`'s `include`.
+- **`differential/`** is linted, formatted and typechecked like `test/`, and is added to `tsconfig.test.json`'s `include`. `differential/corpus.ts` is exempt from `max-len`, since it is data and its strings are as long as the v2 tests wrote them.
 - **Generated files.** `src/migrate/v2/operators.generated.ts`, `src/migrate/v3Names.generated.ts` and `differential/sqlRecordings.ts` join `src/version.ts` under "Generated files — do not hand-edit" in CLAUDE.md. Both generators write Prettier's format, so `pnpm format:check` covers them as they are.
 - **The HTTP mocks' routing** moves into plain modules under `differential/mocks/`. `test/__mocks__/node-fetch.ts` and `axios.ts` become `jest.fn` wrappers over them, so `pnpm test:v2` runs as before, and they are linted and formatted with the rest of `test/`.
 - **CLAUDE.md's commands** gain `pnpm differential`.
@@ -1209,7 +1220,7 @@ The `./migrate` entry holds the converter:
 **15.2 · The differential**
 
 1. **The I/O doubles.** The mock routing moved into plain modules, with `pnpm test:v2` unchanged. The Postgres stand-in, and the recording client and writer that `--record-sql` uses. Tests: `differential-doubles`.
-2. **The corpus.** Extracted from the v2 release's tests, with ids and sources. It is checked once, at extraction, by running every case through v2 alone and comparing with the value its test expected.
+2. **The corpus.** Extracted from the v2 release's tests by running them unchanged against the package (`differential/extract/`), with ids and sources. It is checked once, at extraction: every case, run through v2 from the written corpus, gives the outcome recorded as the runner will run it. Tests: `differential-corpus`.
 3. **The runner.** The options and `toV3Options`, the comparison and statuses, the output and single-case mode, and `--accept` and `--check`. Then `--record-sql` and the first recording, which need the runner ("I/O").
 4. **The review.** Each ✗ becomes a converter fix, a spec ruling or a review-map entry, per working rule 2, since this is the phase expected to surface gaps in the spec. The review ends with the first `--accept`.
 5. **CI.** The `differential` job.
