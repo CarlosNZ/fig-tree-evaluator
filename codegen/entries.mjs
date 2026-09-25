@@ -8,11 +8,12 @@
  *
  * `name` is the output path under build/, without extension: the bundle is
  * `build/<name>.js`, its declarations `build/<name>.d.ts`. `budget` is the
- * bundle's brotli ceiling in bytes, set from measurement plus about 5%;
- * raising one is a deliberate edit, visible in review. `marker` is a string
- * literal only this entry's code contains, which `pnpm check:package` finds
- * in the entry's own bundle and requires to be absent from an engine-only
- * one — every entry but the root needs one.
+ * brotli ceiling in bytes for the bundle together with the shared chunks it
+ * imports (`entryBrotli` in codegen/bundleSize.mjs), set from measurement
+ * plus about 5%; raising one is a deliberate edit, visible in review.
+ * `marker` is a string literal only this entry's code contains, which
+ * `pnpm check:package` finds in the entry's own bundle and requires to be
+ * absent from an engine-only one — every entry but the root needs one.
  */
 export const ENTRIES = [
   { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
@@ -34,10 +35,8 @@ export const ENTRIES = [
     subpath: './format',
     name: 'format/index',
     source: 'src/format/index.ts',
-    // TO-DO: set from measurement at the Phase 16 close-out; provisional
-    // until the conversions are all built
-    budget: 6_100,
-    marker: 'fig-tree-evaluator/format is a placeholder',
+    budget: 6_550,
+    marker: 'referencesAsGet',
   },
 ]
 

@@ -9,7 +9,7 @@
 import { FigTree, isFigTreeError, type FigTreeError } from '../src'
 import type { CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling } from '../src'
 import * as format from '../src/format'
-import { toCanonical } from '../src/format'
+import { toCanonical, toShorthand } from '../src/format'
 import { deepFreeze } from './helpers/migration'
 
 test('the subpath exports the four conversions, and nothing else', () => {
@@ -51,14 +51,22 @@ test('the option types accept what the spec lists', () => {
 
 describe('a malformed node stops the conversion', () => {
   const fig = new FigTree({ fragments: { greet: { expression: 'hi' } } })
-  const thrown = (expression: unknown): FigTreeError => {
+  const thrownBy = (convert: () => unknown): FigTreeError => {
     try {
-      toCanonical(expression, fig)
+      convert()
     } catch (error) {
       if (isFigTreeError(error)) return error
       throw error
     }
-    throw new Error('expected toCanonical to throw')
+    throw new Error('expected the conversion to throw')
+  }
+  // Both conversions read through the same walk, so they stop at the same
+  // node with the same error
+  const thrown = (expression: unknown): FigTreeError => {
+    const canonical = thrownBy(() => toCanonical(expression, fig))
+    const shorthand = thrownBy(() => toShorthand(expression, fig))
+    expect([shorthand.code, shorthand.path]).toEqual([canonical.code, canonical.path])
+    return canonical
   }
 
   test.each([
@@ -142,5 +150,7 @@ test('the conversions never mutate their input', () => {
   })
   const before = JSON.stringify(input)
   toCanonical(input, fig, { referencesAsGet: true, operatorNames: 'alias' })
+  toShorthand(input, fig, { operatorNames: 'alias' })
+  toShorthand(input, fig, { arguments: 'named' })
   expect(JSON.stringify(input)).toBe(before)
 })

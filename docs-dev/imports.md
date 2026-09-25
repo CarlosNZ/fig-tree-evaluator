@@ -4,20 +4,21 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at `e4d04bb`.
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the Phase 16 close (after `d6a9ab8`).
 
 <!-- prettier-ignore -->
 ```ts
 // ═══ Root: 'fig-tree-evaluator' → build/index.js ═════════════════════════
-// Published as one file, so a consumer's bundler has to shake it.
-// Everything imported (35.2 kB) is the ceiling.
+// Published as one file plus the chunk it shares with ./format (below), so
+// a consumer's bundler has to shake it. Everything imported (35.4 kB) is
+// the ceiling.
 
-// ── The engine tree: 29.4 kB ─────────────────────────────────────────────
+// ── The engine tree: 29.6 kB ─────────────────────────────────────────────
 import { FigTree } from 'fig-tree-evaluator'
 // The whole runtime: registry, compiler, validate(), evaluator, caches,
 // fragments, report and trace. coreOperators is part of it, since FigTree
 // registers the core set itself, so FigTree + coreOperators is also
-// 29.4 kB.
+// 29.6 kB.
 import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────
@@ -31,7 +32,7 @@ import { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from '
 // +0.1 to 0.4 kB each: thin adapters; axios / pg / sqlite are the host's
 
 // ── Small values ─────────────────────────────────────────────────────────
-// Each should cost next to nothing, but each currently costs ~25 kB alone,
+// Each should cost next to nothing, but each currently costs ~25.5 kB alone,
 // because the root doesn't tree-shake below the engine (#193).
 import { version } from 'fig-tree-evaluator'
 import { FigTreeError, isFigTreeError, ErrorCodes } from 'fig-tree-evaluator'
@@ -70,6 +71,7 @@ import type {
   // The subpaths' shapes, kept at the root so the subpaths stay small
   CategoryHintMap, CategoryHints, FragmentHints, OperatorHintMap, OperatorHints, TypeSeeds,
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
+  CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
 } from 'fig-tree-evaluator'
 
 // ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.3 kB ══════
@@ -84,20 +86,20 @@ import { operatorHints } from 'fig-tree-evaluator/editor-hints' // 1.44 kB
 import { categoryHints } from 'fig-tree-evaluator/editor-hints' // 0.23 kB
 import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 
-// ═══ 'fig-tree-evaluator/format' → build/format/index.js: PLANNED ════════
-// Phase 16 (docs-dev/v3-specs/v3-format.md). Takes a FigTree, or its
-// snapshots, as an argument and never imports the class. It reads
-// expressions exactly as the compiler does, so it imports a few small root
-// modules: the reference grammar, the shared grammar in
-// src/compile/grammar.ts, the path parser, FigTreeError and ErrorCodes. The
-// build puts modules two entries share in build/chunks/ (CHUNKS_DIR in
-// codegen/entries.mjs), which the root imports too, so this will be the
-// first entry with a shared chunk. Expect a few kB, chunk included.
-import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
-import { toGet, toReference } from 'fig-tree-evaluator/format'
-// Its types come from the root, like the other subpaths' (listed above
-// once built): Registry, Spelling, NameOptions, CanonicalOptions,
-// ShorthandOptions.
+// ═══ 'fig-tree-evaluator/format' → build/format/index.js: 5.5 kB ════════
+// Takes a FigTree, or its snapshots, as an argument and never imports the
+// class. It reads expressions exactly as the compiler does, so it shares a
+// few small root modules with the engine: the reference grammar, the shared
+// grammar in src/compile/grammar.ts, the path parser, FigTreeError and
+// ErrorCodes. The build emits those once, in build/chunks/, which the root
+// imports too (the one shared chunk; figures below include it).
+import { toCanonical } from 'fig-tree-evaluator/format' // 4.4 kB
+import { toShorthand } from 'fig-tree-evaluator/format' // 4.8 kB
+import { toCanonical, toShorthand } from 'fig-tree-evaluator/format' // 5.3 kB
+import { toGet } from 'fig-tree-evaluator/format' // 1.7 kB
+import { toReference } from 'fig-tree-evaluator/format' // 2.2 kB
+// Its types come from the root, listed there under "The subpaths' shapes":
+// Registry, Spelling, NameOptions, CanonicalOptions, ShorthandOptions.
 ```
 
-There are no shared chunks yet: `./migrate` and `./editor-hints` import only types from the root, so the three bundles are fully separate.
+One shared chunk: `./format` and the root share the modules listed in its block, emitted once under `build/chunks/`, so there is one `FigTreeError` class for both. `./migrate` and `./editor-hints` import only types from the root, so their bundles are fully separate. An entry's size budget (`codegen/entries.mjs`) counts its own file compressed together with the chunks it imports.

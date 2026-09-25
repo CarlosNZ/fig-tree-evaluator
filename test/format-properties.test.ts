@@ -9,8 +9,9 @@
  */
 import { FetchClient, isFigTreeError, type SqlConnection } from '../src'
 import { compileExpression } from '../src/compile'
-import { toCanonical } from '../src/format'
+import { toCanonical, toShorthand } from '../src/format'
 import { buildRegistry, type OperatorRegistry } from '../src/registry'
+import { isPlainDataObject } from '../src/utils'
 import { migrateV2Expression } from '../src/migrate'
 import { converterOptions, type Case } from '../differential/case'
 import { corpus } from '../differential/corpus'
@@ -19,6 +20,23 @@ import { toV3Options, type V3Io } from '../differential/v3Options'
 import { corpusFig, corpusRegistry, formatCorpus } from './fixtures/formatCorpus'
 import { compiledShape } from './helpers/compiledShape'
 import { deepFreeze } from './helpers/migration'
+
+const off = { getAsReference: false }
+
+/**
+ * The round trip's one known exception ("Testing" in the spec): a call with
+ * no `parameters` comes back from shorthand with an empty map, which
+ * compiles the same. Supplying the map everywhere puts both sides alike.
+ */
+const withCallMaps = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(withCallMaps)
+  if (!isPlainDataObject(value)) return value
+  const normalized = Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [key, withCallMaps(child)])
+  )
+  if (typeof value.fragment === 'string' && !('parameters' in value)) normalized.parameters = {}
+  return normalized
+}
 
 describe('the curated corpus', () => {
   test.each(formatCorpus)('%s compiles without errors', (_label, expression) => {
@@ -51,6 +69,46 @@ describe('the curated corpus', () => {
       }
     })
   })
+
+  describe('toShorthand', () => {
+    test.each(formatCorpus)('%s compiles as its input does', (_label, expression) => {
+      const converted = toShorthand(deepFreeze(expression), corpusFig, off)
+      expect(compiledShape(converted, corpusRegistry)).toEqual(
+        compiledShape(expression, corpusRegistry)
+      )
+    })
+
+    test.each(formatCorpus)('%s is idempotent', (_label, expression) => {
+      for (const options of [off, {}, { arguments: 'named' as const }]) {
+        const once = toShorthand(expression, corpusFig, options)
+        expect(toShorthand(once, corpusFig, options)).toEqual(once)
+      }
+    })
+
+    test.each(formatCorpus)('%s round-trips through canonical form', (_label, expression) => {
+      const there = toShorthand(expression, corpusFig, off)
+      expect(withCallMaps(toCanonical(there, corpusFig))).toEqual(
+        withCallMaps(toCanonical(expression, corpusFig))
+      )
+    })
+
+    test.each(formatCorpus)(
+      '%s compiles as its input does, named and respelled',
+      (_label, expression) => {
+        for (const names of ['canonical', 'alias'] as const) {
+          const converted = toShorthand(expression, corpusFig, {
+            ...off,
+            arguments: 'named',
+            operatorNames: names,
+            referenceNames: names,
+          })
+          expect(compiledShape(converted, corpusRegistry, { ignoreSpelling: true })).toEqual(
+            compiledShape(expression, corpusRegistry, { ignoreSpelling: true })
+          )
+        }
+      }
+    )
+  })
 })
 
 describe("the differential's converted corpus", () => {
@@ -82,7 +140,7 @@ describe("the differential's converted corpus", () => {
   })
 
   test.each(corpus.map((entry) => [entry.id, entry] as const))(
-    '#%i: toCanonical compiles as the conversion does',
+    '#%i: both conversions compile as the conversion does, and round-trip',
     (_id, entry) => {
       const { registry } = setupFor(entry)
       const { expression } = migrateV2Expression(entry.expression, converterOptions(entry))
@@ -101,6 +159,11 @@ describe("the differential's converted corpus", () => {
       }
       expect(compiledShape(converted, registry)).toEqual(compiledShape(expression, registry))
       expect(toCanonical(converted, figFor(registry))).toEqual(converted)
+
+      const short = toShorthand(expression, figFor(registry), off)
+      expect(compiledShape(short, registry)).toEqual(compiledShape(expression, registry))
+      expect(toShorthand(short, figFor(registry), off)).toEqual(short)
+      expect(withCallMaps(toCanonical(short, figFor(registry)))).toEqual(withCallMaps(converted))
     }
   )
 
