@@ -262,9 +262,9 @@ _Built before 15.1: the `./migrate` entry, with a placeholder `migrateV2Expressi
 
 **15.2 · The differential.** `pnpm differential`, a script in `differential/` rather than a Jest suite: every expression case in the v2 tests, evaluated by live v2 (the published package, following v2's releases) and, converted, by v3, with the outcomes compared and each case given ✓, ⚠ or ✗. The corpus is a data module extracted from the v2 release's tests, not the frozen `V2/` files run in place, and every I/O case runs offline. Five chunks:
 
-1. **The I/O doubles.** The HTTP mocks' routing moved into plain modules under `differential/mocks/`, with `pnpm test:v2` unchanged. The Postgres stand-in and `--record-sql`, and the first recording.
+1. **The I/O doubles.** The HTTP mocks' routing moved into plain modules under `differential/mocks/`, with `pnpm test:v2` unchanged. The Postgres stand-in, and the recording client and writer that `--record-sql` uses.
 2. **The corpus.** Extracted from the v2 release's tests, with ids and sources, and checked once, at extraction, by running every case through v2 alone against the value its test expected.
-3. **The runner.** The options and `toV3Options`, the comparison and statuses, the output and single-case mode, and `--accept` and `--check`.
+3. **The runner.** The options and `toV3Options`, the comparison and statuses, the output and single-case mode, and `--accept` and `--check`. Then `--record-sql` and the first recording, which need the runner: v3's queries only exist once a case is converted and run under `toV3Options`.
 4. **The review.** Each ✗ becomes a converter fix, a spec ruling or a review-map entry, per working rule 2, since this is the phase expected to surface gaps in the spec (the testing-strategy note). The issues and the review map's notes together are the **divergence catalog** (non-convertible / intentional-semantic-change / lossy-default) that feeds the migration guide. The review ends with the first `--accept`, which writes the baseline.
 5. **CI.** A `differential` job in `ci.yml`, beside `test`, running `pnpm differential --check`, which fails on any case that moved from the baseline, in either direction.
 

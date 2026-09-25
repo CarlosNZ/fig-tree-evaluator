@@ -37,10 +37,8 @@ export default tseslint.config(
     // The frozen v2 engine and the v2 test copies are never linted (v2-src is
     // a record mined by the Phase-15 converter; test/V2 must stay
     // byte-identical; test/v2-working holds v2-syntax migration source, not
-    // v3 code). test/__mocks__ is v2-only HTTP mock infrastructure used by
-    // `pnpm test:v2`; v3 tests use the injected MockHttpClient double
-    // (test/helpers) instead. `.claude` holds agent worktrees — each one a
-    // full checkout of this repo, build output and all.
+    // v3 code). `.claude` holds agent worktrees — each one a full checkout of
+    // this repo, build output and all.
     ignores: [
       'node_modules',
       'build',
@@ -48,7 +46,6 @@ export default tseslint.config(
       'v2-src',
       'test/V2',
       'test/v2-working',
-      'test/__mocks__',
       'src/dev/playground.ts',
       'src/dev/playground_example.ts',
       'bench/browser/dist',

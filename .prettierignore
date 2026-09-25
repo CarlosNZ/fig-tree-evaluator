@@ -11,12 +11,10 @@ build
 
 # The frozen v2 engine and the v2 test material. v2-src is a record mined by
 # the Phase-15 converter; test/V2 must stay byte-identical; test/v2-working
-# holds v2-syntax migration source; test/__mocks__ is v2-only HTTP mock
-# infrastructure used by `pnpm test:v2`.
+# holds v2-syntax migration source.
 v2-src
 test/V2
 test/v2-working
-test/__mocks__
 
 # Gitignored scratch space and the template it is copied from
 src/dev/playground.ts
