@@ -164,3 +164,13 @@ export type {
   MigrationResult,
   V2Options,
 } from './migrationTypes'
+
+// ── Format ───────────────────────────────────────────────────────────────
+// The shapes the `./format` subpath's four functions take.
+export type {
+  CanonicalOptions,
+  NameOptions,
+  Registry,
+  ShorthandOptions,
+  Spelling,
+} from './formatTypes'

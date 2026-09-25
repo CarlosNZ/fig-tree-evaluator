@@ -41,7 +41,8 @@ export type {
   SkeletonNode,
 } from './artifact'
 export { bindsReference, renamedBinding, splice, toNodePath } from './artifact'
-export { probeConstant, DEPTH_CEILING } from './probe'
+export { probeConstant } from './probe'
+export { DEPTH_CEILING } from './grammar'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
 export type { CacheEntry } from './compileCache'
 // The result cache's `'auto'` keys use the same serializer (Phase 9.1) —

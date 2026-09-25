@@ -30,6 +30,13 @@ export const ENTRIES = [
     budget: 2_000,
     marker: 'String builder',
   },
+  {
+    subpath: './format',
+    name: 'format/index',
+    source: 'src/format/index.ts',
+    budget: 200,
+    marker: 'fig-tree-evaluator/format is a placeholder',
+  },
 ]
 
 /**

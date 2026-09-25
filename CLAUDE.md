@@ -42,7 +42,7 @@ There is no watch/dev-server — this is a library. Note pnpm does not run impli
 
 Every PR that can move the bundle gets a size-diff comment automatically (`.github/workflows/pr-bundle-size.yml`): it builds both sides and posts one sticky comment rendered by `codegen/formatSizeDiff.mjs`. Both sides are measured by the PR's own copy of `codegen/bundleSize.mjs --json`, so the PR comment and the local report are the same measurement by construction — change what a size means in that one file and everything follows.
 
-The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with three entry points: the root (`build/index.js`), `fig-tree-evaluator/migrate` (`build/migrate/index.js`, from `src/migrate/` — the v2 converter) and `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`). The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
+The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with four entry points: the root (`build/index.js`), `fig-tree-evaluator/migrate` (`build/migrate/index.js`, from `src/migrate/` — the v2 converter), `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`) and `fig-tree-evaluator/format` (`build/format/index.js`, from `src/format/` — converting v3 expressions between their forms). `./format` is the one subpath that shares runtime code with the root (the reference grammar and `src/compile/grammar.ts`), which the build emits once under `build/chunks/`; each entry's budget counts the chunks it imports. The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
 
 [docs-dev/imports.md](docs-dev/imports.md) is the import map: every import from every entry point, written as TS imports, with what each one costs a consumer. **Keep it current:** update it whenever an export or entry point changes, or a change moves one of its sizes noticeably.
 
@@ -65,6 +65,7 @@ src/
   types.ts              # shared types
   operators/            # one folder per operator (see below)
   migrate/              # the ./migrate subpath (v2→v3) — the root never imports it
+  format/               # the ./format subpath (v3 forms) — the root never imports it
   dev/                  # playground scratch space
 ```
 
@@ -84,7 +85,7 @@ There is no alias table: v3's aliases live on their operators' definitions, and 
 
 ### Things easy to get wrong
 
-- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints` and `./migrate`.
+- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints`, `./migrate` and `./format`. Their types export from the root. `src/format/` may import values only from the small root modules lint allows it, since whatever it imports lands in the shared chunk.
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
 - `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.
 

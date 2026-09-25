@@ -30,6 +30,11 @@ const SUBPATH_BANS = [
     message:
       'The root entry never imports a subpath: the v2 converter is migration tooling, so importing it here would ship it to every host.',
   },
+  {
+    group: ['**/format', '**/format/**'],
+    message:
+      'The root entry never imports a subpath: the format conversions are editor tooling, so importing them here would ship them to every host.',
+  },
 ]
 
 export default tseslint.config(
@@ -92,7 +97,7 @@ export default tseslint.config(
     // The root side of src/ — everything but the subpaths themselves and the
     // playground, which may import anything
     files: ['src/**/*.ts'],
-    ignores: ['src/editor-hints/**', 'src/migrate/**', 'src/dev/**'],
+    ignores: ['src/editor-hints/**', 'src/migrate/**', 'src/format/**', 'src/dev/**'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [V2_BAN, V2_PACKAGE_BAN, ...SUBPATH_BANS] }],
     },
@@ -132,6 +137,30 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 'src/migrate/ imports values from inside the folder only (`import type` from anywhere).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ./format shares a few small root modules with the engine ("`./format`"
+    // in docs-dev/v3-specs/v3-packaging.md): whatever it imports lands in the
+    // chunk the two share, so its value imports outside the folder are held
+    // to that set, and the compiler or the registry cannot be pulled in by
+    // accident. Type imports erase at build, so they may come from anywhere.
+    files: ['src/format/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex:
+                '^(?!\\./|\\.\\./(compile/references|compile/grammar|utils|primitives/path|names|operators/getShape|FigTreeError|errorCodes)$)',
+              allowTypeImports: true,
+              message:
+                'src/format/ imports values only from inside the folder and from the small root modules it shares with the engine (`import type` from anywhere).',
             },
           ],
         },

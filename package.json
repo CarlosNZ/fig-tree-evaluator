@@ -18,6 +18,10 @@
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
       "default": "./build/editor-hints/index.js"
+    },
+    "./format": {
+      "types": "./build/format/index.d.ts",
+      "default": "./build/format/index.js"
     }
   },
   "typesVersions": {
@@ -27,6 +31,9 @@
       ],
       "editor-hints": [
         "./build/editor-hints/index.d.ts"
+      ],
+      "format": [
+        "./build/format/index.d.ts"
       ]
     }
   },
