@@ -4,11 +4,16 @@
  * `pnpm build`, in CI and in `pnpm release`:
  *
  *  1. Size budgets: each entry's brotli size, with the shared chunks it
- *     imports, under its ceiling (codegen/entries.mjs), and the engine-only
- *     consumer's under its own.
+ *     imports, under its ceiling (codegen/entries.mjs), and each consumer's
+ *     under its own.
  *  2. Tree-shaking: a consumer importing only `{ FigTree, coreOperators }`,
  *     bundled from build/ with esbuild, carries none of the I/O toolkit, the
- *     inspector, `defineOperator()`'s checks or any subpath. Absence is found
+ *     inspector, `defineOperator()`'s checks or any subpath; one importing
+ *     only `{ isTruthy, parsePath }` carries none of those, the engine or
+ *     the core operators. esbuild rather than rollup, because rollup infers
+ *     purity of its own and would pass a build whose `/*#__PURE__*\/`
+ *     annotations had stopped matching, as esbuild and webpack would
+ *     not. Absence is found
  *     by marker strings — string literals, because minification renames
  *     identifiers, so a scan for `FetchClient` would pass with the class
  *     present. Each marker is first found in a bundle of everything its
@@ -61,6 +66,48 @@ const ROOT_MARKERS = [
   { part: "defineOperator()'s checks", markers: ['a definition must be a plain object'] },
 ]
 
+/**
+ * What a host that borrows only the engine-parity helpers imports — a
+ * custom-operator package, say. The root ships as one file, so only
+ * `/*#__PURE__*\/` annotations (rollup.config.mjs) and a class definition
+ * free of side effects let a bundler leave the engine out (#193). The
+ * helpers alone are ~0.65 kB. The budget is set to catch even the smallest
+ * leak measured, the five array operators (+1.2 kB, kept by an object
+ * spread in their definitions); the engine alone is ~25 kB.
+ */
+const SMALL_IMPORT = `
+import { isTruthy, parsePath } from './build/index.js'
+export default [isTruthy, parsePath]
+`
+const SMALL_IMPORT_BUDGET = 1_500
+
+/**
+ * What the small-import consumer must not carry beyond ROOT_MARKERS. The
+ * operators get a marker per factory, since each factory's calls are kept
+ * or dropped by their own entry in rollup.config.mjs's PURE_CALLEES: a
+ * renamed factory leaks its operators and nothing else.
+ */
+const ENGINE_MARKERS = [
+  {
+    part: 'the engine',
+    markers: [
+      "'cache.maxSize' must be a positive integer",
+      'a shielded artifact has a hole with no static fallback',
+    ],
+  },
+  {
+    part: 'the core operators',
+    markers: [
+      'Transform every element of an array', // declareOperator
+      'Is the first value strictly greater than the second?', // ordering
+      'Round down toward negative infinity', // unary
+      'The smallest of the values', // extremum
+      'Strip whitespace (the JS trim set) from both ends of a string', // normalizer
+      'array is a dead expression', // emptyArrayWarning
+    ],
+  },
+]
+
 const failures = []
 const pass = (line) => console.log(`    ✓ ${line}`)
 const fail = (line) => {
@@ -98,12 +145,13 @@ const run = (command, args, cwd) => {
 // ── 1 & 2 · Size budgets and tree-shaking ─────────────────────────────────
 
 const engineOnly = await bundle(ENGINE_ONLY)
+const smallImport = await bundle(SMALL_IMPORT)
 
 section('Size budgets (brotli)')
 const entryLabel = (name) => `${name}.js${entryFiles(name).length > 1 ? ' + chunks' : ''}`
 const width = Math.max(
   ...ENTRIES.map(({ name }) => entryLabel(name).length),
-  'engine-only consumer'.length
+  'small-import consumer'.length
 )
 const budgetLine = (label, size, budget) => {
   const line = `${label.padEnd(width)}  ${kB(size).padStart(9)} of ${kB(budget).padStart(9)}`
@@ -112,33 +160,46 @@ const budgetLine = (label, size, budget) => {
 }
 for (const { name, budget } of ENTRIES) budgetLine(entryLabel(name), entryBrotli(name), budget)
 budgetLine('engine-only consumer', compressedSizes(engineOnly).brotli, ENGINE_ONLY_BUDGET)
+budgetLine('small-import consumer', compressedSizes(smallImport).brotli, SMALL_IMPORT_BUDGET)
 
-section('Tree-shaking: `{ FigTree, coreOperators }` alone')
-const groups = [
-  ...ROOT_MARKERS.map(({ part, markers }) => ({ part, markers, entry: 'index' })),
-  ...ENTRIES.filter(({ subpath }) => subpath !== '.').map(({ subpath, name, marker }) => ({
+const rootGroups = (markerGroups) =>
+  markerGroups.map(({ part, markers }) => ({ part, markers, entry: 'index' }))
+const subpathGroups = ENTRIES.filter(({ subpath }) => subpath !== '.').map(
+  ({ subpath, name, marker }) => ({
     part: `the ${subpath} subpath`,
     markers: marker ? [marker] : [],
     entry: name,
-  })),
-]
+  })
+)
+
+/** Everything each entry exports, bundled once, where markers are proved. */
 const everything = new Map()
-for (const { part, markers, entry } of groups) {
-  if (markers.length === 0) {
-    fail(`${part} has no marker in codegen/entries.mjs, so its absence cannot be checked`)
-    continue
+
+/** Each group's markers, found in its own entry and absent from `consumer`. */
+const checkAbsent = async (consumer, label, groups) => {
+  for (const { part, markers, entry } of groups) {
+    if (markers.length === 0) {
+      fail(`${part} has no marker in codegen/entries.mjs, so its absence cannot be checked`)
+      continue
+    }
+    if (!everything.has(entry))
+      everything.set(entry, (await bundle(everythingFrom(entry))).toString())
+    const missing = markers.filter((marker) => !everything.get(entry).includes(marker))
+    const leaked = markers.filter((marker) => consumer.includes(marker))
+    if (missing.length > 0)
+      fail(
+        `${part}: marker not found in its own entry, so the check proves nothing — ${missing.join(' | ')}`
+      )
+    else if (leaked.length > 0) fail(`${part} is in the ${label} bundle — ${leaked.join(' | ')}`)
+    else pass(`none of ${part}`)
   }
-  if (!everything.has(entry))
-    everything.set(entry, (await bundle(everythingFrom(entry))).toString())
-  const missing = markers.filter((marker) => !everything.get(entry).includes(marker))
-  const leaked = markers.filter((marker) => engineOnly.includes(marker))
-  if (missing.length > 0)
-    fail(
-      `${part}: marker not found in its own entry, so the check proves nothing — ${missing.join(' | ')}`
-    )
-  else if (leaked.length > 0) fail(`${part} is in the engine-only bundle — ${leaked.join(' | ')}`)
-  else pass(`none of ${part}`)
 }
+
+section('Tree-shaking: `{ FigTree, coreOperators }` alone')
+await checkAbsent(engineOnly, 'engine-only', [...rootGroups(ROOT_MARKERS), ...subpathGroups])
+
+section('Tree-shaking: `{ isTruthy, parsePath }` alone')
+await checkAbsent(smallImport, 'small-import', rootGroups([...ROOT_MARKERS, ...ENGINE_MARKERS]))
 
 // ── 3 · The packed package ────────────────────────────────────────────────
 
