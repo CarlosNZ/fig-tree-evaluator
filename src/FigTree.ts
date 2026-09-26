@@ -501,36 +501,28 @@ const evaluateEntry = async (
   return enveloped ? outcome : outcome.result
 }
 
-/**
- * A handle's view, or `undefined` for anything that is not a handle —
- * `CompiledExpression`'s own accessor for the inspector, assigned by the
- * class's static block. It lives beside the class rather than on it
- * because anything on the class is public: an instance method would hand
- * the artifact to every holder, and a static one would be reachable
- * through `handle.constructor`. An importer cannot reassign an imported
- * binding, so the `let` is fixed from outside; it is declared ahead of the
- * class because the block runs as the class is defined, when a `let`
- * declared later would not exist yet. Internal, not barrel surface: it is
- * what lets the inspector live in its own module and stay out of any
- * bundle that never imports it.
- */
-export let viewHandle: (value: unknown, call?: CallOptions) => HandleView | undefined
+type ReadHandle = (value: unknown, call?: CallOptions) => HandleView | undefined
 
 /**
- * The one mint of handles, which `compile()` calls — assigned by the same
- * static block, which as part of the class body may call the private
- * constructor. The constructor is private because its parameters are
- * engine internals: a declaration keeps a public constructor's parameter
- * types, which would carry the compile artifact's whole type graph into
- * the published `index.d.ts`, where a private one is declared bare.
+ * The reader of a handle's state, installed by the first handle's
+ * constructor: only code in the class body can name `#` fields. Installing
+ * it on construction rather than as the class is defined keeps the class
+ * definition free of side effects, so a bundle that never compiles can
+ * drop the class and everything its methods reach (#193). Until a handle
+ * exists nothing is one, so an unset reader answers correctly.
  */
-let createHandle: <InstanceOpts extends FigTreeOptions>(
-  expression: unknown,
-  entry: CacheEntry,
-  evaluation: EvaluationOptions,
-  registry: OperatorRegistry,
-  results: ResultCache
-) => CompiledExpression<InstanceOpts>
+let readHandle: ReadHandle | undefined
+
+/**
+ * A handle's view, or `undefined` for anything that is not a handle —
+ * `CompiledExpression`'s own accessor for the inspector. It lives beside
+ * the class rather than on it because anything on the class is public: an
+ * instance method would hand the artifact to every holder, and a static
+ * one would be reachable through `handle.constructor`. Internal, not
+ * barrel surface: it is what lets the inspector live in its own module and
+ * stay out of any bundle that never imports it.
+ */
+export const viewHandle: ReadHandle = (value, call) => readHandle?.(value, call)
 
 /**
  * What `compile()` returns ("compile()" in
@@ -571,23 +563,7 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   #compiled?: CompileArtifact
   #issues?: readonly Issue[]
 
-  // The mint and the inspector's accessor (`createHandle` and `viewHandle`,
-  // above the class) — the one maker of handles and the one reader of this
-  // state from outside. A static block is inside the class body, so it may
-  // call the private constructor and name `#` fields. The brand check
-  // turns away anything the constructor did not make; it throws on a
-  // primitive, so an object is checked for first
-  static {
-    createHandle = (expression, entry, evaluation, registry, results) =>
-      new CompiledExpression(expression, entry, evaluation, registry, results)
-    viewHandle = (value, call) => {
-      if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
-      const options =
-        call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
-      return { expression: value.#expression, artifact: value.#artifact(), options }
-    }
-  }
-
+  /** Called only by `createHandle`, below the class. */
   private constructor(
     expression: unknown,
     entry: CacheEntry,
@@ -600,6 +576,14 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
     this.#evaluation = evaluation
     this.#registry = registry
     this.#results = results
+    // The brand check turns away anything the constructor did not make; it
+    // throws on a primitive, so an object is checked for first
+    readHandle ??= (value, call) => {
+      if (typeof value !== 'object' || value === null || !(#entry in value)) return undefined
+      const options =
+        call === undefined ? value.#evaluation : withCallOptions(value.#evaluation, call)
+      return { expression: value.#expression, artifact: value.#artifact(), options }
+    }
   }
 
   /** The source, by reference — the serializable thing. */
@@ -664,6 +648,38 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
       : (this.#compiled ??= compileWithRegistry(this.#expression, this.#registry))
   }
 }
+
+/** `CompiledExpression`'s constructor, as it is at runtime. */
+type HandleConstructor<InstanceOpts extends FigTreeOptions> = new (
+  expression: unknown,
+  entry: CacheEntry,
+  evaluation: EvaluationOptions,
+  registry: OperatorRegistry,
+  results: ResultCache
+) => CompiledExpression<InstanceOpts>
+
+/**
+ * The one mint of handles, which `compile()` calls. The constructor is
+ * private because its parameters are engine internals: a declaration keeps
+ * a public constructor's parameter types, which would carry the compile
+ * artifact's whole type graph into the published `index.d.ts`, where a
+ * private one is declared bare. Privacy is TypeScript's alone, so the mint
+ * reaches the constructor through a cast.
+ */
+const createHandle = <InstanceOpts extends FigTreeOptions>(
+  expression: unknown,
+  entry: CacheEntry,
+  evaluation: EvaluationOptions,
+  registry: OperatorRegistry,
+  results: ResultCache
+): CompiledExpression<InstanceOpts> =>
+  new (CompiledExpression as unknown as HandleConstructor<InstanceOpts>)(
+    expression,
+    entry,
+    evaluation,
+    registry,
+    results
+  )
 
 /**
  * What `inspect()` (src/inspect) reads of a handle: the source, the

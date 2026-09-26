@@ -49,6 +49,8 @@ A little background the descriptions lean on. An **expression** is the JSON stru
 
 **`conformaElements` and `conformaActions` — a real template.** The 62 form elements and 19 back-end actions of a production Conforma template, migrated to v3 and checked unit for unit against v2 before anything is timed. The elements run at three levels of granularity — every property and parameter on its own (which is how the app does it today), `parameters` as one expression, and each element as one expression — so the tables show how much the way a host cuts up its template matters. See "The real-world corpus" below for what is in the folder.
 
+**`handles` — what a compiled-expression handle costs.** v3 only, since v2 has no `compile()`, so it does not follow the four arms below. The compiled form is already in the parse cache, so a `compile()` of a known expression pays only for the handle object. The bench prices that three ways: evaluating directly against compiling a handle on every call and evaluating through it, `compile()` alone in batches of a hundred (a handle costs about ten nanoseconds, below a single call's resolution), and `inspect()` of a held handle. It exists to catch a change that makes handles expensive to make or read.
+
 ## Reading a table
 
 Every bench runs the same **four arms**, so a claim is never read in one cache state and quoted in another:
