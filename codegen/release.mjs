@@ -2,17 +2,20 @@
  * `pnpm release [--dry-run]` — cut and publish a release from this machine.
  *
  *  1. Asks for the next version, suggesting the likely ones. A pre-release is
- *     `X.Y.Z-beta.N` and publishes under the `beta` dist-tag, never `latest`.
+ *     `X.Y.Z-beta.N`, published under the `beta` dist-tag, or
+ *     `X.Y.Z-preview.N`, published under `preview`; never `latest`. A
+ *     preview is a build published only to try the package from the
+ *     registry, such as its tree-shaken sizes on bundlejs.com.
  *  2. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it. A beta
  *     passes on its release's entry, or on one of its own,
- *     `## [X.Y.Z-beta.N]`.
+ *     `## [X.Y.Z-beta.N]`. A preview needs none.
  *  3. Bumps package.json and regenerates src/version.ts.
  *  4. Runs what CI runs (.github/workflows/ci.yml): lint, format check,
  *     typecheck, tests, build, and the packaging checks.
  *  5. Commits the bump as `vX.Y.Z` and tags it (annotated, `vX.Y.Z`).
  *  6. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
  *     the upload: npm prompts for a 2FA code itself, and applies no branch
- *     check of its own, so a beta can go out from a non-main branch.
+ *     check of its own, so a pre-release can go out from a non-main branch.
  *
  * Nothing is pushed; the last line printed is the push command.
  *
@@ -39,7 +42,7 @@ const CHECKS = ['lint', 'format:check', 'typecheck', 'test', 'build', 'check:pac
 // ── Versions ───────────────────────────────────────────────────────────────
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/
-const BETA = /^beta\.(\d+)$/
+const PRE_RELEASE = /^(beta|preview)\.(\d+)$/
 
 const parse = (text) => {
   const match = SEMVER.exec(text)
@@ -50,37 +53,57 @@ const parse = (text) => {
 
 const core = ({ major, minor, patch }) => `${major}.${minor}.${patch}`
 const format = (v) => (v.pre ? `${core(v)}-${v.pre}` : core(v))
-const betaNumber = (v) => (v.pre ? Number(BETA.exec(v.pre)?.[1] ?? NaN) : NaN)
+const channel = (v) => PRE_RELEASE.exec(v.pre ?? '')?.[1] ?? null
+const preNumber = (v) => Number(PRE_RELEASE.exec(v.pre ?? '')?.[2] ?? NaN)
 
 const compareCore = (a, b) => a.major - b.major || a.minor - b.minor || a.patch - b.patch
 
 /**
- * Semver precedence for the two shapes this script releases: a release
- * outranks its own betas, and betas order by number.
+ * Semver precedence for the shapes this script releases: a release outranks
+ * its own pre-releases, which order by channel name (so every preview
+ * outranks every beta) and then by number.
  */
 const compare = (a, b) => {
   const byCore = compareCore(a, b)
   if (byCore !== 0) return byCore
   if (!a.pre || !b.pre) return (a.pre ? -1 : 0) - (b.pre ? -1 : 0)
-  return betaNumber(a) - betaNumber(b)
+  if (channel(a) !== channel(b)) return channel(a) < channel(b) ? -1 : 1
+  return preNumber(a) - preNumber(b)
 }
 
 /**
- * A current pre-release that is not a beta (`3.0.0-dev`) is a placeholder
- * that was never published, so any beta or release of the same version or
- * later follows it.
+ * A current pre-release outside both channels (`3.0.0-dev`) is a
+ * placeholder that was never published, so any pre-release or release of
+ * the same version or later follows it.
  */
-const isPlaceholder = (v) => v.pre !== null && !BETA.test(v.pre)
+const isPlaceholder = (v) => v.pre !== null && !channel(v)
 
+/**
+ * A preview stands outside the beta sequence, so a beta or release of the
+ * same version follows it, although semver ranks the preview higher.
+ */
 const follows = (next, current) =>
-  isPlaceholder(current) ? compareCore(next, current) >= 0 : compare(next, current) > 0
+  isPlaceholder(current) || (channel(current) === 'preview' && channel(next) !== 'preview')
+    ? compareCore(next, current) >= 0
+    : compare(next, current) > 0
 
 const suggestionsFor = (current) => {
   const { major, minor, patch } = current
   const v = (major, minor, patch, pre = null) => ({ major, minor, patch, pre })
-  if (isPlaceholder(current)) return [v(major, minor, patch, 'beta.0'), v(major, minor, patch)]
+  if (isPlaceholder(current))
+    return [
+      v(major, minor, patch, 'preview.1'),
+      v(major, minor, patch, 'beta.0'),
+      v(major, minor, patch),
+    ]
+  if (channel(current) === 'preview')
+    return [
+      v(major, minor, patch, `preview.${preNumber(current) + 1}`),
+      v(major, minor, patch, 'beta.0'),
+      v(major, minor, patch),
+    ]
   if (current.pre)
-    return [v(major, minor, patch, `beta.${betaNumber(current) + 1}`), v(major, minor, patch)]
+    return [v(major, minor, patch, `beta.${preNumber(current) + 1}`), v(major, minor, patch)]
   return [
     v(major, minor, patch + 1),
     v(major, minor + 1, 0),
@@ -90,7 +113,7 @@ const suggestionsFor = (current) => {
   ]
 }
 
-const distTag = (v) => (v.pre ? 'beta' : 'latest')
+const distTag = (v) => channel(v) ?? 'latest'
 
 // ── Shell ──────────────────────────────────────────────────────────────────
 
@@ -128,7 +151,9 @@ const changelogEntryFor = (v) => {
 const chooseVersion = async (current) => {
   const suggestions = suggestionsFor(current)
   console.log(`Current version: ${format(current)}\n`)
-  suggestions.forEach((v, i) => console.log(`  ${i + 1}) ${format(v)}${v.pre ? '  (beta)' : ''}`))
+  suggestions.forEach((v, i) =>
+    console.log(`  ${i + 1}) ${format(v)}${v.pre ? `  (${channel(v)})` : ''}`)
+  )
   const rl = createInterface({ input: process.stdin, output: process.stdout })
   // Lines are read through the iterator, which buffers them, rather than
   // rl.question(), which drops input typed or piped ahead of the prompt and
@@ -144,19 +169,24 @@ const chooseVersion = async (current) => {
     const answer = await ask('\nNext version (a number above, or type one): ')
     const picked = /^\d+$/.test(answer) ? suggestions[Number(answer) - 1] : parse(answer)
     if (!picked) throw new ReleaseError(`'${answer}' is neither a listed number nor a version`)
-    if (picked.pre && !BETA.test(picked.pre))
-      throw new ReleaseError(`a pre-release must be X.Y.Z-beta.N, not ${format(picked)}`)
+    if (picked.pre && !channel(picked))
+      throw new ReleaseError(
+        `a pre-release must be X.Y.Z-beta.N or X.Y.Z-preview.N, not ${format(picked)}`
+      )
     if (!follows(picked, current))
       throw new ReleaseError(`${format(picked)} does not follow the current ${format(current)}`)
     if (tagExists(`v${format(picked)}`))
       throw new ReleaseError(`the tag v${format(picked)} already exists`)
-    const entry = changelogEntryFor(picked)
-    if (!entry)
-      throw new ReleaseError(
-        `CHANGELOG.md has no entry for ${format(picked)} — add a "## [${core(picked)}] - <date>" ` +
-          `section first${picked.pre ? `, or one headed "## [${format(picked)}]"` : ''}`
-      )
-    console.log(`\nCHANGELOG entry: ## [${entry}]`)
+    if (channel(picked) === 'preview') console.log('\nA preview needs no CHANGELOG entry')
+    else {
+      const entry = changelogEntryFor(picked)
+      if (!entry)
+        throw new ReleaseError(
+          `CHANGELOG.md has no entry for ${format(picked)} — add a "## [${core(picked)}] - <date>" ` +
+            `section first${picked.pre ? `, or one headed "## [${format(picked)}]"` : ''}`
+        )
+      console.log(`\nCHANGELOG entry: ## [${entry}]`)
+    }
     const tag = distTag(picked)
     const branch = run('git', ['branch', '--show-current'], { capture: true })
     const confirm = await ask(
