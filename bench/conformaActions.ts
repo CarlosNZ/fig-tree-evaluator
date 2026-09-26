@@ -1,6 +1,6 @@
 /**
  * Real-world II — Conforma template actions (implementation plan, Phase
- * 16a.2; Carl's corpus, September 2026).
+ * 17a.2; Carl's corpus, September 2026).
  *
  * The 19 actions of the same template: each a `condition` and a
  * `parameter_queries` object. These run on the back end, once per event,

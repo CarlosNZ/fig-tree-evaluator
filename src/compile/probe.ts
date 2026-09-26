@@ -28,14 +28,7 @@
 import { isPlainDataObject } from '../utils'
 import { resolveOperator, type OperatorRegistry } from '../registry'
 import { recognizeReference } from './references'
-
-/**
- * The built-in, option-independent nesting ceiling for the compile walk and
- * this probe. Measured September 2026 on Node's default stack: the walk
- * survives 1,000 input levels and overflows before 1,500; browsers allow
- * less, so the ceiling sits well inside both.
- */
-export const DEPTH_CEILING = 500
+import { DEPTH_CEILING } from './grammar'
 
 export interface ProbeResult {
   constant: boolean

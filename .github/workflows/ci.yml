@@ -1,8 +1,8 @@
 name: CI
 
-# Runs the v3 suite only (implementation plan 0.2). The frozen v2 corpus in
-# test/V2 is deliberately not run here — it is exercised on demand against
-# /v2-src via `pnpm test:v2`, and never against v3 source.
+# The `test` job runs the v3 suite only (implementation plan 0.2). The frozen
+# v2 corpus in test/V2 is deliberately not run here — it is exercised on
+# demand against /v2-src via `pnpm test:v2`, and never against v3 source.
 on:
   push:
     branches: [main, v3.0-dev]
@@ -44,3 +44,21 @@ jobs:
       # and the packed package imported, required and typechecked as a
       # consumer would (codegen/checkPackage.mjs)
       - run: pnpm check:package
+
+  # Every v2 test case evaluated by the v2 package and, converted, by v3,
+  # checked against the accepted baseline (differential/baseline.json). It
+  # fails on any case that moved, in either direction, and names each one.
+  # Its own job, so a drift shows as its own check rather than behind a unit
+  # test failure. Offline: HTTP goes through the fetch mock and Postgres
+  # through the recordings in differential/sqlRecordings.ts
+  differential:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm differential --check

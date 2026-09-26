@@ -115,7 +115,15 @@ import {
   rendersAsWritten,
   splitSigilToken,
 } from './references'
-import { DEPTH_CEILING, isRecognizedShorthand, probeConstant } from './probe'
+import { isRecognizedShorthand, probeConstant } from './probe'
+import {
+  DEPTH_CEILING,
+  SHORTHAND_SIBLINGS,
+  classifiesAsNode,
+  classifyObject,
+  positionalLayout,
+  singlePositionalTarget,
+} from './grammar'
 import type {
   ArtifactHole,
   CompiledNode,
@@ -135,9 +143,6 @@ import type {
 } from './artifact'
 import { extendPath, hasError, sortIssues, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
-
-/** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
-const SHORTHAND_SIBLINGS = new Set(['fallback', 'useCache', 'vars', '//'])
 
 /** The reference-namespace words `as` names may not collide with. */
 const NAMESPACE_WORDS = new Set([
@@ -161,6 +166,8 @@ interface BindingFrame {
 
 interface WalkState {
   registry: OperatorRegistry
+  /** Does a `$name` key invoke something registered, or `literal`? */
+  recognizes: (name: string) => boolean
   issues: CompileArtifact['issues']
   order: number
   nodeCount: number
@@ -209,6 +216,7 @@ export const compileExpression = (
 ): CompileArtifact => {
   const state: WalkState = {
     registry,
+    recognizes: (name) => isRecognizedShorthand(registry, name),
     issues: [],
     order: 0,
     nodeCount: 0,
@@ -556,20 +564,6 @@ const walkArray = (
 
 // ── Objects: node-kind classification ───────────────────────────────
 
-/** The `$name` keys of an object that resolve against what's known. */
-const recognizedShorthandKeys = (state: WalkState, raw: Record<string, unknown>): string[] => {
-  const keys: string[] = []
-  for (const key in raw) {
-    if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) keys.push(key)
-  }
-  return keys
-}
-
-/** Would this value classify as a node (kinds 1–3, 5)? */
-const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
-  isPlainDataObject(value) &&
-  ('operator' in value || 'fragment' in value || recognizedShorthandKeys(state, value).length > 0)
-
 const walkObject = (
   state: WalkState,
   raw: Record<string, unknown>,
@@ -577,47 +571,20 @@ const walkObject = (
   depth: number,
   order: number
 ): CompiledNode => {
-  const hasOperator = 'operator' in raw
-  const hasFragment = 'fragment' in raw
-  const shorthand = recognizedShorthandKeys(state, raw)
-
-  if (hasOperator && hasFragment) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.malformedNode,
-      "'operator' and 'fragment' may not share a node",
-      path,
-      order
-    )
-    return invalid(raw, path, order)
+  const classified = classifyObject(raw, state.recognizes)
+  switch (classified.kind) {
+    case 'malformed':
+      emit(state, 'error', ErrorCodes.malformedNode, classified.message, path, order)
+      return invalid(raw, path, order)
+    case 'operator':
+      return walkOperatorCanonical(state, raw, path, depth, order)
+    case 'fragment':
+      return walkFragmentCanonical(state, raw, path, depth, order)
+    case 'shorthand':
+      return walkShorthand(state, raw, classified.key, path, depth, order)
+    case 'plain':
+      return walkPlainObject(state, raw, path, depth, order)
   }
-  if ((hasOperator || hasFragment) && shorthand.length > 0) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.malformedNode,
-      `a canonical '${hasOperator ? 'operator' : 'fragment'}' key may not sit beside the shorthand key '${shorthand[0]}'`,
-      path,
-      order
-    )
-    return invalid(raw, path, order)
-  }
-  if (hasOperator) return walkOperatorCanonical(state, raw, path, depth, order)
-  if (hasFragment) return walkFragmentCanonical(state, raw, path, depth, order)
-  if (shorthand.length >= 2) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.malformedNode,
-      `one node, one invocation: found ${shorthand.map((k) => `'${k}'`).join(' and ')}`,
-      path,
-      order
-    )
-    return invalid(raw, path, order)
-  }
-  if (shorthand.length === 1) return walkShorthand(state, raw, shorthand[0], path, depth, order)
-  return walkPlainObject(state, raw, path, depth, order)
 }
 
 // ── Operator nodes: param collection then finalization ──────────────
@@ -1211,7 +1178,7 @@ const walkEntriesParam = (
 ): CompiledNode | null => {
   if (entry.kind !== 'value') return null
   const raw = entry.value
-  if (!isPlainDataObject(raw) || classifiesAsNode(state, raw)) return null
+  if (!isPlainDataObject(raw) || classifiesAsNode(raw, state.recognizes)) return null
 
   const { order, containerDepth } = openSynthetic(state, depth)
   const { entries, vars, changed } = collectPlainObject(
@@ -1351,7 +1318,7 @@ const collectShorthandPayload = (
   // object that classifies as a node is the single positional argument —
   // sound for the same reason as the fragments disambiguation: parameter
   // names cannot start with '$', and 'operator'/'fragment' are reserved
-  if (isPlainDataObject(payload) && !classifiesAsNode(state, payload)) {
+  if (isPlainDataObject(payload) && !classifiesAsNode(payload, state.recognizes)) {
     for (const key in payload) {
       const value = payload[key]
       if (key === '//' || value === undefined) continue
@@ -1371,21 +1338,11 @@ const collectSinglePositional = (
   payloadPath: LinkedPath,
   order: number
 ) => {
-  const definition = node.entry.definition
-  const first = definition.positionalParams?.[0]
-  if (first === undefined) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.positionalArity,
-      `'${node.name}' takes no positional arguments — use the named form`,
-      payloadPath,
-      order,
-      node.name
-    )
+  const target = singlePositionalTarget(node.entry.definition)
+  if (target === null) {
+    emitNoPositional(state, node, payloadPath, order)
     return
   }
-  const target = first.startsWith('...') ? definition.restParam! : first
   pending.push({ name: target, kind: 'value', value: payload, path: payloadPath })
 }
 
@@ -1399,41 +1356,13 @@ const collectPositional = (
   order: number
 ) => {
   const definition = node.entry.definition
-  const positional = definition.positionalParams
-  if (positional === undefined) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.positionalArity,
-      `'${node.name}' takes no positional arguments — use the named form`,
-      payloadPath,
-      order,
-      node.name
-    )
+  const layout = positionalLayout(definition, payload.length)
+  if (layout === null) {
+    emitArity(state, node, payload, payloadPath, order)
     return
   }
-  const rest = definition.restParam
-  // A rest entry is always the last positional one (`defineOperator`
-  // enforces it), so the leading entries are the list up to it
-  const leading = rest === null ? positional.length : positional.length - 1
-
-  if (payload.length > leading && rest === null) {
-    emit(
-      state,
-      'error',
-      ErrorCodes.positionalArity,
-      `'${node.name}' takes at most ${leading} positional argument${
-        leading === 1 ? '' : 's'
-      } (${positional.join(', ')}), got ${payload.length}`,
-      payloadPath,
-      order,
-      node.name
-    )
-    return
-  }
-
-  const boundLeading = Math.min(payload.length, leading)
-  for (let i = 0; i < boundLeading; i++) {
+  const positional = definition.positionalParams!
+  for (let i = 0; i < layout.bound; i++) {
     pending.push({
       name: positional[i],
       kind: 'value',
@@ -1441,20 +1370,61 @@ const collectPositional = (
       path: extendPath(payloadPath, i),
     })
   }
-  // The rest slice binds whenever the payload is an array — an empty
-  // payload binds an empty array ({ $and: [] } → values: []), which is the
-  // vacuous-identity / empty-aggregate case the passes define, not an
-  // omission
-  if (rest !== null && payload.length >= leading) {
+  const { restAt } = layout
+  if (restAt !== null) {
     pending.push({
-      name: rest,
+      name: definition.restParam!,
       kind: 'slice',
       // Uncopied where nothing leads the rest — the payload is the slice
-      elements: leading === 0 ? payload : payload.slice(leading),
+      elements: restAt === 0 ? payload : payload.slice(restAt),
       basePath: payloadPath,
-      offset: leading,
+      offset: restAt,
     })
   }
+}
+
+const emitNoPositional = (
+  state: WalkState,
+  node: OperatorNode,
+  payloadPath: LinkedPath,
+  order: number
+) =>
+  emit(
+    state,
+    'error',
+    ErrorCodes.positionalArity,
+    `'${node.name}' takes no positional arguments — use the named form`,
+    payloadPath,
+    order,
+    node.name
+  )
+
+/** Why `positionalLayout` refused a payload: no positional form, or surplus. */
+const emitArity = (
+  state: WalkState,
+  node: OperatorNode,
+  payload: unknown[],
+  payloadPath: LinkedPath,
+  order: number
+) => {
+  const positional = node.entry.definition.positionalParams
+  if (positional === undefined) {
+    emitNoPositional(state, node, payloadPath, order)
+    return
+  }
+  // Only a shape without a rest refuses a payload, so every position leads
+  const leading = positional.length
+  emit(
+    state,
+    'error',
+    ErrorCodes.positionalArity,
+    `'${node.name}' takes at most ${leading} positional argument${
+      leading === 1 ? '' : 's'
+    } (${positional.join(', ')}), got ${payload.length}`,
+    payloadPath,
+    order,
+    node.name
+  )
 }
 
 // ── literal: the compile boundary ─────────────────────────────────────
@@ -1656,7 +1626,7 @@ const compileFragmentParameters = (
 ) => {
   if (value === undefined) return // zero-argument call
   if (
-    classifiesAsNode(state, value) ||
+    classifiesAsNode(value, state.recognizes) ||
     (typeof value === 'string' && recognizeReference(value).kind === 'reference')
   ) {
     node.argumentsMode = 'dynamic'

@@ -19,7 +19,7 @@ _Companion to [v3-assessment.md](v3-assessment.md), which holds the rationale. T
 | **Options** (shape, merge semantics, registration)                | **Agreed**                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Evaluator methods & return shapes                                 | **Agreed** — own doc: [v3-evaluator-methods.md](v3-evaluator-methods.md) (signed off July 2026; report-mode intent settled as production resilience, the `report` _name_ carries a possibly-improve marker; `related`/`OperatorFailure` finality and `context.trace.note` park with the contract's open list; trace field names settle at implementation)                                                                                                              |
 | Packaging & exports                                               | —                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Migration & conversion (`./convert`, v2→v3)                       | **Drafted** — own doc: [v3-migration.md](v3-migration.md) (first sketch July 2026, awaiting review; v1 dropped, `v2Compat` rejected, converter = pure best-effort function + issue stream; 4 open questions at doc end)                                                                                                                                                                                                                                                |
+| Migration & conversion (`./migrate`, v2→v3)                       | **Drafted** — own doc: [v3-migration.md](v3-migration.md) (first sketch July 2026, awaiting review; v1 dropped, `v2Compat` rejected, converter = pure best-effort function + issue stream; 4 open questions at doc end)                                                                                                                                                                                                                                                |
 
 ---
 
@@ -689,7 +689,7 @@ The `.` / `[` / `]` exclusion is disambiguation, not tidiness: drilling into var
 
 ### No v2 tombstone keys
 
-Considered and rejected: reserving `children` / `type` solely to emit pointed "removed in v3" errors. v3 is a clean break — v2→v3 conversion lives entirely in `./convert` (v1 support dropped — [v3-migration.md](v3-migration.md)), and `children` was itself a v1 hangover that freshly-authored v2 expressions should never have used. On a node these keys fail as ordinary unknown keys; history is the migration doc's job, not the runtime's. (Informed by v2's own experience carrying v1 relics — `supportDeprecatedValueNodes` — longer than they earned.)
+Considered and rejected: reserving `children` / `type` solely to emit pointed "removed in v3" errors. v3 is a clean break — v2→v3 conversion lives entirely in `./migrate` (v1 support dropped — [v3-migration.md](v3-migration.md)), and `children` was itself a v1 hangover that freshly-authored v2 expressions should never have used. On a node these keys fail as ordinary unknown keys; history is the migration doc's job, not the runtime's. (Informed by v2's own experience carrying v1 relics — `supportDeprecatedValueNodes` — longer than they earned.)
 
 ### Non-plain-object values: opaque constants
 
@@ -988,7 +988,7 @@ Fragments are **config-level** shortcuts — authored in FigTree itself, by expr
 
 ### Migration
 
-The migration doc carries a **prescriptive** wrapper recipe for v2 `functions` users — a defined shape (e.g. a single variadic `args` parameter spread into the wrapped JS function), not a loose suggestion — so the expression converter can mechanically rewrite v2 CUSTOM_FUNCTIONS call sites against it. Per-host improvised naming would make call-site conversion non-mechanical.
+The migration doc carries a wrapper recipe for v2 `functions` users — a single rest-positional `args` parameter spread into the wrapped JS function — as the suggested registration, not a shape the converter relies on (amended at Phase 15 by the converter's design). A host's operator can declare whatever parameters suit it, so the converter rewrites each v2 CUSTOM_FUNCTIONS call to the nearest v3 call on the function's name, and flags every call site for checking against the host's definition ("Batch 5: custom functions" in [v3-converter.md](v3-converter.md)).
 
 ### Sequencing: the contract is settled last, by induction
 

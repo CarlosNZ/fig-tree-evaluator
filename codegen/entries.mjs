@@ -8,14 +8,22 @@
  *
  * `name` is the output path under build/, without extension: the bundle is
  * `build/<name>.js`, its declarations `build/<name>.d.ts`. `budget` is the
- * bundle's brotli ceiling in bytes, set from measurement plus about 5%;
- * raising one is a deliberate edit, visible in review. `marker` is a string
- * literal only this entry's code contains, which `pnpm check:package` finds
- * in the entry's own bundle and requires to be absent from an engine-only
- * one — every entry but the root needs one.
+ * brotli ceiling in bytes for the bundle together with the shared chunks it
+ * imports (`entryBrotli` in codegen/bundleSize.mjs), set from measurement
+ * plus about 5%; raising one is a deliberate edit, visible in review.
+ * `marker` is a string literal only this entry's code contains, which
+ * `pnpm check:package` finds in the entry's own bundle and requires to be
+ * absent from an engine-only one — every entry but the root needs one.
  */
 export const ENTRIES = [
   { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
+  {
+    subpath: './migrate',
+    name: 'migrate/index',
+    source: 'src/migrate/index.ts',
+    budget: 19_500,
+    marker: 'is not a v2 operator',
+  },
   {
     subpath: './editor-hints',
     name: 'editor-hints/index',
@@ -23,14 +31,22 @@ export const ENTRIES = [
     budget: 2_000,
     marker: 'String builder',
   },
+  {
+    subpath: './format',
+    name: 'format/index',
+    source: 'src/format/index.ts',
+    budget: 6_550,
+    marker: 'referencesAsGet',
+  },
 ]
 
 /**
  * Where code shared between entries lands. The build is one rollup pass over
  * every entry, so a module two entries import is emitted once, here, rather
  * than copied into each — two copies of the brand symbol, `EvaluationData`
- * or `FigTreeError` would break identity across subpaths. Unhashed, so a
- * chunk keeps its name from one build to the next and the PR comment can
- * compare it.
+ * or `FigTreeError` would break identity across subpaths. The name is fixed
+ * rather than taken from a module inside it, so the chunk keeps its name as
+ * its contents change and the PR comment can compare it; should a second
+ * chunk appear, rollup numbers it (`shared2.js`).
  */
 export const CHUNKS_DIR = 'chunks'

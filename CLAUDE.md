@@ -25,6 +25,12 @@ pnpm check:package        # after build: size budgets, tree-shake fixture, packe
 pnpm size                 # re-print the bundle-size report for the existing build/
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm getVersion           # regenerate src/version.ts from package.json
+pnpm extractV2Table       # regenerate the converter's two tables (src/migrate/) from the v2 package and the core definitions
+pnpm differential         # every v2 test case through v2, and converted through v3: ✗ in full, ⚠ as a line, a summary;
+                          # writes every differing case in full to differential/out/differences.md (gitignored)
+pnpm differential 42 57   # those cases in full: expression, conversion, issues, both outcomes
+pnpm differential --check # fail on any case that moved from differential/baseline.json (--accept writes it)
+pnpm differential --record-sql  # re-record differential/sqlRecordings.ts from a live Northwind Postgres
 pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
@@ -36,7 +42,9 @@ There is no watch/dev-server — this is a library. Note pnpm does not run impli
 
 Every PR that can move the bundle gets a size-diff comment automatically (`.github/workflows/pr-bundle-size.yml`): it builds both sides and posts one sticky comment rendered by `codegen/formatSizeDiff.mjs`. Both sides are measured by the PR's own copy of `codegen/bundleSize.mjs --json`, so the PR comment and the local report are the same measurement by construction — change what a size means in that one file and everything follows.
 
-The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with two entry points: the root (`build/index.js`) and `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`); `./convert` joins at Phase 15. The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
+The package is **ESM-only** (`"type": "module"` — packaging ruling, docs-dev/v3-specs/v3-packaging.md), with four entry points: the root (`build/index.js`), `fig-tree-evaluator/migrate` (`build/migrate/index.js`, from `src/migrate/` — the v2 converter), `fig-tree-evaluator/editor-hints` (`build/editor-hints/index.js`) and `fig-tree-evaluator/format` (`build/format/index.js`, from `src/format/` — converting v3 expressions between their forms). `./format` is the one subpath that shares runtime code with the root (the reference grammar and `src/compile/grammar.ts`), which the build emits once under `build/chunks/`; each entry's budget counts the chunks it imports. The repo config files are ESM accordingly (jest configs and `.prettierrc.js` use `export default`).
+
+[docs-dev/imports.md](docs-dev/imports.md) is the import map: every import from every entry point, written as TS imports, with what each one costs a consumer. **Keep it current:** update it whenever an export or entry point changes, or a change moves one of its sizes noticeably.
 
 The demo/playground is no longer part of this repo. README references to a `demo/` folder and `yarn demo`/`yarn setup` are stale — the interactive editor moved to the separate [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) package (a custom editor built on top of [json-edit-react](https://github.com/CarlosNZ/json-edit-react)). For local experimentation here, use `pnpm dev` against `src/dev/playground.ts`, and `pnpm dev phase<N>_showcase` to see a phase's features run (one showcase file per phase, written at the phase's close).
 
@@ -56,7 +64,8 @@ src/
   FigTreeError.ts       # FigTreeError class
   types.ts              # shared types
   operators/            # one folder per operator (see below)
-  convert/              # V1→V2, to/from shorthand — NOT used by the package itself
+  migrate/              # the ./migrate subpath (v2→v3) — the root never imports it
+  format/               # the ./format subpath (v3 forms) — the root never imports it
   dev/                  # playground scratch space
 ```
 
@@ -69,12 +78,14 @@ src/
 ### Generated files — do not hand-edit
 
 - **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`; `pnpm build` runs it first).
+- **`differential/sqlRecordings.ts`** — what a live Northwind Postgres answered to each query the differential's cases send, which the runner replays offline. Written by `pnpm differential --record-sql`.
+- **`src/migrate/v2/operators.generated.ts`** and **`src/migrate/v3Names.generated.ts`** — the v2 converter's reference tables, built by `codegen/extractV2Table.ts` (run `pnpm extractV2Table`) from the published v2 package (the devDependency `fig-tree-evaluator-v2`) and from the core and I/O operators' definitions. `test/migrate-table.test.ts` fails when either differs from a fresh extraction, so re-run it after bumping the v2 package or renaming or re-aliasing an operator.
 
 There is no alias table: v3's aliases live on their operators' definitions, and the registry builds its lookup at construction. `v2-src/operators/operatorAliases.ts` is part of the frozen v2 engine; its generator is not in this branch, and the `v2.x` maintenance branch keeps its own copy.
 
 ### Things easy to get wrong
 
-- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints` now, `./convert` at Phase 15.
+- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints`, `./migrate` and `./format`. Their types export from the root. `src/format/` may import values only from the small root modules lint allows it, since whatever it imports lands in the shared chunk.
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
 - `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.
 

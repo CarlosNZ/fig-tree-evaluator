@@ -37,6 +37,9 @@ typings/
 #Misc
 .DS_Store
 
+# Rewritten by every full `pnpm differential` run
+differential/out/
+
 demo/src/fig-tree-evaluator
 demo/src/expression-builder
 expression-builder/src/fig-tree-evaluator

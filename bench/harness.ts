@@ -1,5 +1,5 @@
 /**
- * The v2-vs-v3 benchmark harness (implementation plan, Phase 16a.1).
+ * The v2-vs-v3 benchmark harness (implementation plan, Phase 17a.1).
  *
  * Timing methodology is lifted from src/dev/parseCacheBench.ts rather than
  * re-decided: every measurement is the min of five rounds after a warm-up,

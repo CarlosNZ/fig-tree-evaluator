@@ -11,15 +11,29 @@
       "types": "./build/index.d.ts",
       "default": "./build/index.js"
     },
+    "./migrate": {
+      "types": "./build/migrate/index.d.ts",
+      "default": "./build/migrate/index.js"
+    },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
       "default": "./build/editor-hints/index.js"
+    },
+    "./format": {
+      "types": "./build/format/index.d.ts",
+      "default": "./build/format/index.js"
     }
   },
   "typesVersions": {
     "*": {
+      "migrate": [
+        "./build/migrate/index.d.ts"
+      ],
       "editor-hints": [
         "./build/editor-hints/index.d.ts"
+      ],
+      "format": [
+        "./build/format/index.d.ts"
       ]
     }
   },
@@ -52,6 +66,8 @@
     "generateMassiveQuery": "tsx codegen/generateMassiveQuery.ts",
     "getVersion": "tsx codegen/getVersion.ts",
     "checkDefinitions": "tsx codegen/checkDefinitions.ts",
+    "extractV2Table": "tsx codegen/extractV2Table.ts",
+    "differential": "tsx differential/index.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -81,7 +97,7 @@
     "esbuild": "0.28.1",
     "eslint": "^9.0.0",
     "eslint-plugin-comment-length": "^2.3.1",
-    "fig-tree-evaluator": "^2.23.0",
+    "fig-tree-evaluator-v2": "npm:fig-tree-evaluator@2.23.2",
     "globals": "^17.12.0",
     "jest": "^30.4.2",
     "node-fetch": "2.7.0",

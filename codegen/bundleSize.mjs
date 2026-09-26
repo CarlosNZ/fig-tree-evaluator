@@ -14,16 +14,18 @@
  *    measures both sides of a pull request with.
  *
  * What is measured follows codegen/entries.mjs: each entry's bundle and its
- * declarations, then any chunk shared between entries. Every path that
- * reports a size goes through `compressedSizes()` here, so the figure in a
- * PR comment is the same figure `pnpm build` prints, by construction.
+ * declarations, then any chunk shared between entries, and for an entry that
+ * imports chunks, its total with them, which is what its budget is held to.
+ * Every path that reports a size goes through `compressedSizes()` here, so
+ * the figure in a PR comment is the same figure `pnpm build` prints, by
+ * construction.
  *
  * Plain JS with no dependencies: rollup loads the config as ESM, so it cannot
  * import a .ts helper.
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { gzipSync, brotliCompressSync, constants } from 'node:zlib'
-import { relative } from 'node:path'
+import { posix, relative } from 'node:path'
 import { CHUNKS_DIR, ENTRIES } from './entries.mjs'
 
 const BUILD = 'build'
@@ -73,6 +75,39 @@ const sizesOf = (file) => {
   return existsSync(path) ? compressedSizes(readFileSync(path)) : undefined
 }
 
+/** A relative static import's specifier in built ESM, minified or not. */
+const IMPORT_SPECIFIER = /(?:\bfrom|\bimport)\s*["'](\.\.?\/[^"']+\.js)["']/g
+
+/**
+ * An entry's own file plus every shared chunk it imports, transitively, by
+ * their paths under build/: what a consumer of that entry loads. Read from
+ * the import statements rollup writes, so it follows the build as it is.
+ */
+export const entryFiles = (name) => {
+  const files = []
+  const visit = (file) => {
+    if (files.includes(file) || !existsSync(`${BUILD}/${file}`)) return
+    files.push(file)
+    const code = readFileSync(`${BUILD}/${file}`, 'utf8')
+    for (const [, specifier] of code.matchAll(IMPORT_SPECIFIER))
+      visit(posix.join(posix.dirname(file), specifier))
+  }
+  visit(`${name}.js`)
+  return files
+}
+
+/**
+ * The brotli size an entry's budget is held to: its file and the chunks it
+ * imports, compressed together, as a consumer's bundler merges them. A chunk
+ * counts once for every entry that imports it, so moving code into a chunk
+ * never makes an entry look smaller than what it costs its consumers.
+ * Compressing the files one by one would overstate it instead, since each
+ * would lose the context the others share.
+ */
+export const entryBrotli = (name) =>
+  compressedSizes(Buffer.concat(entryFiles(name).map((file) => readFileSync(`${BUILD}/${file}`))))
+    .brotli
+
 /**
  * Per-module contribution, as rendered into the chunk after tree-shaking but
  * before minification — rollup tracks module boundaries at that point and
@@ -113,6 +148,10 @@ const formatReport = (rows) => {
       ({ file, sizes, types }) =>
         `    ${file.padEnd(width)}${cell(sizes, 'raw')}${cell(sizes, 'gzip')}` +
         `${cell(sizes, 'brotli')}${cell(types, 'raw')}`
+    ),
+    ...ENTRIES.filter(({ name }) => entryFiles(name).length > 1).map(
+      ({ name }) =>
+        `    ${`${name}.js with its chunks`.padEnd(width)}${pad('', 22)}${pad(kB(entryBrotli(name)), 11)}`
     ),
     ...rows
       .filter(({ modules }) => modules && Object.keys(modules).length > 1)

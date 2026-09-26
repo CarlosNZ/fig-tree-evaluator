@@ -1,7 +1,8 @@
 {
   // Compile context for the v3 jest suite (jest.config.js): v3 source + the v3
-  // tests and shared test doubles. The frozen v2 corpus (test/V2) is excluded —
-  // it runs only under tsconfig.v2.json via `yarn test:v2`.
+  // tests and shared test doubles, and the differential (differential/), which
+  // those tests import. The frozen v2 corpus (test/V2) is excluded — it runs
+  // only under tsconfig.v2.json via `pnpm test:v2`.
   // ts-jest transforms to CommonJS for jest's runtime, hence the overrides.
   "extends": "./tsconfig.json",
   "compilerOptions": {
@@ -11,6 +12,6 @@
     "rootDir": ".",
     "noEmit": true
   },
-  "include": ["src", "test"],
+  "include": ["src", "test", "differential"],
   "exclude": ["node_modules", "build", "v2-src", "test/V2", "test/v2-working"]
 }

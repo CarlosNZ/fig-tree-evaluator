@@ -1,6 +1,6 @@
 /**
  * Deep nesting — a scale case rather than a claim (implementation plan,
- * Phase 16a.2). It exists to check that nothing degrades non-linearly
+ * Phase 17a.2). It exists to check that nothing degrades non-linearly
  * with depth on either engine, and to sit beside bench/parseOnce.ts:
  * that one grows an expression sideways at a fixed depth of three, this
  * one grows it downwards with one operator per level. Comparing the two

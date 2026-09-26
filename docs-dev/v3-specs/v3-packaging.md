@@ -4,13 +4,14 @@ _Working document — first sketch (Claude, July 2026); reviewed at Phase 14.0 (
 
 ## The package at a glance
 
-One npm package, `fig-tree-evaluator`, three entry points:
+One npm package, `fig-tree-evaluator`, four entry points:
 
 | Entry point                       | Contents                                                                                                                                                                                                     | Consumers                     |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------- |
 | `fig-tree-evaluator`              | **The runtime, whole**: `FigTree`, `defineOperator`, `coreOperators`, the I/O factories and client wrappers, `FigTreeError`, guards, author-facing helpers, the `EvaluationData` sentinel, every public type | every host                    |
-| `fig-tree-evaluator/convert`      | v2→v3 conversion (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees)                                                                       | migration tooling, the editor |
+| `fig-tree-evaluator/migrate`      | v2→v3 conversion (contents specified by the Migration area — this doc fixes only the subpath's existence and its isolation guarantees)                                                                       | migration tooling, the editor |
 | `fig-tree-evaluator/editor-hints` | typed display-hint data: colours, per-parameter editor seeds, category presentation (content fixed in "The editor-hints module" in [v3-operator-parameters.md](v3-operator-parameters.md))                   | the editor and other tooling  |
+| `fig-tree-evaluator/format`       | converting a v3 expression between its forms: canonical, shorthand, and references in place of `get` nodes (contents specified in [v3-format.md](v3-format.md))                                              | the editor, migration tooling |
 
 Explicitly **not** entry points:
 
@@ -21,10 +22,10 @@ Explicitly **not** entry points:
 ## Principles
 
 1. **Capability is gated by registration, not by import path.** Importing `httpOperators` gives you nothing; handing it a client and putting the result in the `operators` array is the act with consequences (Options § opt-in by construction). Import-path layering would duplicate — weakly — a boundary the registry already enforces strongly, so import ergonomics are free to optimize for discoverability instead.
-2. **Subpaths are for code that must never ride the runtime.** `./convert` and `./editor-hints` are tooling-side by definition; the root entry never imports either (v2's editor entanglement — every consumer bundling the converter suite — is the recorded failure this rule prevents). Runtime-side imports of a subpath are a lint error in this repo, not just a convention.
+2. **Subpaths are for code that must never ride the runtime.** `./migrate`, `./editor-hints` and `./format` are tooling-side by definition; the root entry never imports any of them (v2's editor entanglement — every consumer bundling the converter suite — is the recorded failure this rule prevents). Runtime-side imports of a subpath are a lint error in this repo, not just a convention.
 3. **Everything exported is contract.** If it is reachable from an entry point, its behaviour is specified in these docs and its tests are contract tests (the Phase-1.1 rule). No incidental exports, no "for the editor" exceptions — that clause is how v2's root entry accreted `truncateString`.
 4. **No re-exports of third-party packages.** v2 re-exported `dequal` for the editor's convenience; a consumer who wants a published package can depend on it. (`equal`'s semantics are specified by `dequal`, **vendored** into `src/primitives/deepEqual.ts` with MIT attribution at Phase 4 — Carl, September 2026 — so the package has zero runtime dependencies; `deepEqual` is exported as a shared primitive, `dequal` itself is not.)
-5. **Tree-shakability is verified, not assumed.** `sideEffects: false` plus a CI fixture that bundles engine + `coreOperators` only and asserts the I/O toolkit, `defineOperator()`'s checks and both subpaths are absent. A principle without a check is a hope.
+5. **Tree-shakability is verified, not assumed.** `sideEffects: false` plus a CI fixture that bundles engine + `coreOperators` only and asserts the I/O toolkit, `defineOperator()`'s checks and every subpath are absent. A principle without a check is a hope.
 
 ## The root entry
 
@@ -105,7 +106,7 @@ Adding an export later breaks nothing; removing one does. That asymmetry is why 
 
 ### Types
 
-Grouped by owning doc; packaging adds no shapes of its own, it only fixes what is reachable. All types export from the root — including those whose _values_ live in subpaths, so `./convert` and `./editor-hints` stay data/function modules without private type surfaces.
+Grouped by owning doc; packaging adds no shapes of its own, it only fixes what is reachable. All types export from the root — including those whose _values_ live in subpaths, so `./migrate`, `./editor-hints` and `./format` stay data/function modules without private type surfaces. (Carl, at Phase-16 planning, September 2026: kept for 3.0, and to be re-addressed at release prep — Phase 18 in [v3-implementation-plan.md](v3-implementation-plan.md).)
 
 - **Expressions & nodes**: none. Every method takes `expression: unknown`, because any value evaluates (ruling on open Q4, below).
 - **Options**: `FigTreeOptions`, `CacheStore`.
@@ -114,16 +115,27 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 - **Fragments**: `FragmentDefinition` (+ its parameter-declaration types).
 - **Methods & results**: `EvaluationResult`, the report envelope and trace shapes (names reserved; shapes deferred per evaluator-methods), `Issue`, the `getDependencies()` report shape, `FigTreeError` (class doubles as type).
 - **Editor hints**: `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap`, `TypeSeeds` — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), and for a fragment's `metadata`.
+- **Migration**: `V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue` — what `./migrate`'s two functions take and return ("Surface" in [v3-converter.md](v3-converter.md)).
+- **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four functions take ("Surface" in [v3-format.md](v3-format.md)).
 
-## `./convert`
+## `./migrate`
 
 Exists so that no conversion code can ever ride the runtime bundle again — the direct fix for v2's entanglement finding. Packaging fixes only:
 
-- The subpath name: `fig-tree-evaluator/convert`.
-- **Isolation**: the root entry never imports from it (lint-enforced); it _may_ import from the root (it is built on the compiler's normalizer — Phase 15.1) — the dependency arrow points one way.
-- Its exports are functions and types only, same module formats and `.d.ts` treatment as the root.
-- Contents — `convertV2ToV3` (+ its `ConversionResult` / `ConversionIssue` types), and nothing else — are fixed by the **Migration area** ([v3-migration.md](v3-migration.md) § module surface). v1 support is **dropped** (no `convertV1ToV2` here — Migration § v1 ruling). Shorthand round-trip utilities are **parked until after 3.0** (Carl, September 2026): "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md).
-- **Not scaffolded at Phase 14** (Carl, September 2026, Phase-14 review). An empty subpath would be a published entry point with nothing in it, and removing it later would break anyone who imported it. Phase 14 makes the build, the size report and the tree-shake fixture driven by a list of entries instead, so Phase 15 adds `./convert` as one more. Phase 14 has no subpath that imports the root's runtime code (`./editor-hints` imports types only), so the one-pass build's shared chunk is checked with a throwaway entry at 14.3, and asserted for real when `./convert` lands: a `FigTreeError` thrown from `./convert` must be an `instanceof` the root's.
+- The subpath name: `fig-tree-evaluator/migrate`.
+- **Isolation**: the root entry never imports from it (lint-enforced), and it imports types only from the root, as `./editor-hints` does, with the same lint rule widened to a folder of several modules: value imports from inside `src/migrate/` only, type imports from anywhere. It carries its own v2 tables and imports nothing from the engine at runtime ("Surface" in [v3-converter.md](v3-converter.md)).
+- Its exports are functions only, same module formats and `.d.ts` treatment as the root; its types export from the root (Types, above).
+- Contents — `migrateV2Expression` and `migrateV2Fragments`, with the four types `V2Options`, `MigrationResult`, `FragmentMigrationResult` and `MigrationIssue`, and nothing else — are fixed by the **Migration area** ([v3-migration.md](v3-migration.md) § module surface) and designed in [v3-converter.md](v3-converter.md). v1 support is **dropped** (no `convertV1ToV2` here — Migration § v1 ruling). Converting between v3's own forms is not here: it is `./format` (below), designed in [v3-format.md](v3-format.md).
+- **Not scaffolded at Phase 14** (Carl, September 2026, Phase-14 review). An empty subpath would be a published entry point with nothing in it, and removing it later would break anyone who imported it. Phase 14 makes the build, the size report and the tree-shake fixture driven by a list of entries instead, so Phase 15 adds `./migrate` as one more. No entry imports the root's runtime code (`./editor-hints` and `./migrate` import types only), so the one-pass build's shared chunk was checked with a throwaway entry at 14.3, and needs no assertion of its own.
+
+## `./format`
+
+Converts a v3 expression between its forms, for the editor's "To shorthand" and "To full node" affordances and for a shorthand face on the converter's output. The functions, what they convert and the rulings behind them are in [v3-format.md](v3-format.md). Packaging fixes:
+
+- The subpath name: `fig-tree-evaluator/format`. None of its functions is a `FigTree` method, so the root never carries them.
+- **Isolation**: the root entry never imports from it (lint-enforced). Unlike the other two subpaths, it imports a few small root modules at runtime, because it reads expressions exactly as the compiler does: the reference grammar, the shared grammar in `src/compile/grammar.ts` (the object classification and the positional mapping), the path parser, `FigTreeError` and `ErrorCodes`. The build emits those once, in a chunk under `build/chunks/` that the root imports too, so there is one `FigTreeError` class for both. Inside `src/format/`, value imports are limited by lint to that set, so the subpath cannot pull in the compiler or the registry by accident.
+- Its exports are the four functions only; its types export from the root (Types, above).
+- **Its budget counts the shared chunk.** Every entry's budget is its own file plus each chunk it imports, so a chunk's code counts once per entry that imports it, and splitting code into a chunk never makes an entry look smaller than what it costs a consumer.
 
 ## `./editor-hints`
 
@@ -158,14 +170,14 @@ The assessment floated `./internal` for the editor's leftover needs. Examined it
 | operator metadata, defaults merged | `getOperators()`                                                                                                                   |
 | static diagnostics                 | `validate()`                                                                                                                       |
 | display seeds & colours            | `./editor-hints`                                                                                                                   |
-| conversion / display modes         | `./convert` for v2→v3 conversion; converting between v3's faces is parked until after 3.0                                          |
+| conversion / display modes         | `./migrate` for v2→v3 conversion; `./format` for converting between v3's forms                                                     |
 
 **The editor's sanctioned surface is the public surface.** A `./internal` subpath would be a standing invitation to grow exactly the entanglement v3 is deleting; if the editor genuinely needs something not listed above, that is a spec conversation, not an import path.
 
 ## Module format & platform floor
 
 - **ESM-only** (`"type": "module"`, no CJS artifacts — **ruled, Carl, July 2026**, resolving open Q1; supersedes this doc's earlier dual sketch). The deciding argument was not bundle weight but the **dual-load hazard being fatal to v3's identity machinery**: if one process loads both copies (one dependency `require`s, another `import`s), the `defineOperator()` brand symbol, the `EvaluationData` sentinel and `instanceof FigTreeError` all fail across the copy boundary — a class of "impossible" consumer bugs a CJS artifact invites and ESM-only makes structurally impossible. CJS consumers on Node ≥22.12 (the floor below) use native `require(esm)`; older consumers stay on v2.
-- **`sideEffects: false`** — kept, and now verified (principle 5). All three entries must be side-effect-free at import time; nothing registers, connects, or mutates globals on import (registration is explicit, per Options).
+- **`sideEffects: false`** — kept, and now verified (principle 5). Every entry must be side-effect-free at import time; nothing registers, connects, or mutates globals on import (registration is explicit, per Options).
 - **Node floor: `engines: { "node": ">=22.12" }`** (**ruled, Carl, July 2026**, resolving open Q5 — Node 20 went EOL April 2026, so 22 is the oldest supported LTS; **raised from `>=22` to `>=22.12` at the Phase-14 review, Carl, September 2026**, because `require(esm)` is unflagged only from 22.12, and the floor is what guarantees it for the CJS consumers above. On 22.0–22.11 a CJS `require()` of the package fails with `ERR_REQUIRE_ESM` unless the host passes `--experimental-require-module`). Advisory (npm warns, doesn't block); the real commitments are: language target **ES2022**, no down-leveled output, no polyfills, and **no assumed globals beyond the ES standard + `AbortSignal`/`AbortController`, `setTimeout`/`clearTimeout`, `performance` and `URL`/`URLSearchParams`** — every one present on Node, Deno, Bun, browsers and workers (the list widened at the Phase-14 review, Carl, September 2026: the original named only the abort pair, but deadlines use the timers, trace timings and the compile cache `performance.now()`, and HTTP query assembly `URL`/`URLSearchParams`). The one sanctioned global probe is the no-arg `httpOperators()` / `FetchClient()` default reading global `fetch` — at registration, failing loudly there if absent (ruling above). _Enforced since 14.4:_ `pnpm typecheck` also typechecks `src/` against ES2022 plus `codegen/runtime-globals.d.ts`, which declares exactly these globals, with no `@types/node`, so a Node-only global such as `Buffer`, `process` or `setImmediate` is a compile error; adding a global to that file is a change to this list first. The engine and core operators never touch it, which is what keeps the package runtime-agnostic (Node, Deno, Bun, browsers) without a compatibility matrix: a host without global fetch passes a client.
 - **Runtime dependencies: none** (`dequal` vendored as `deepEqual`, Phase 4 — full build, since `dequal/lite` lacks the Date/RegExp branches `equal` specifies). `object-property-extractor` is retired: the v3 path resolver is a new in-repo primitive with deliberately different semantics (null drill-through by default, `[*]` projection, own-enumerable-only — References §3) — depending on the old package would mean overriding most of it. HTTP/SQL client libraries remain dev-only, injected by consumers, never bundled.
 
@@ -186,39 +198,44 @@ Sketch of the resulting manifest (mechanics, not contract — final paths are im
       "types": "./build/index.d.ts",
       "default": "./build/index.js",
     },
-    "./convert": {
-      "types": "./build/convert/index.d.ts",
-      "default": "./build/convert/index.js",
+    "./migrate": {
+      "types": "./build/migrate/index.d.ts",
+      "default": "./build/migrate/index.js",
     },
     "./editor-hints": {
       "types": "./build/editor-hints/index.d.ts",
       "default": "./build/editor-hints/index.js",
     },
+    "./format": {
+      "types": "./build/format/index.d.ts",
+      "default": "./build/format/index.js",
+    },
   },
   "typesVersions": {
     // legacy-resolver fallback for the subpaths' types
     "*": {
-      "convert": ["./build/convert/index.d.ts"],
+      "migrate": ["./build/migrate/index.d.ts"],
       "editor-hints": ["./build/editor-hints/index.d.ts"],
+      "format": ["./build/format/index.d.ts"],
     },
   },
 }
 ```
 
-The manifest is live except for `./convert`, which lands with its contents at Phase 15: `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map for `.` and `./editor-hints` (built at 14.3), the `typesVersions` fallback, `files` and `sideEffects`.
+The manifest is live: `type: module`, `engines` (`>=22.12` since the Phase-14 review), the ESM-only exports map (`.` and `./editor-hints` built at 14.3, `./migrate` added at 15.1, first as a placeholder, and holding the converter from 15.1's seventh chunk, and `./format` at Phase 16), the `typesVersions` fallback, `files` and `sideEffects`.
 
-**The `typesVersions` fallback** (Carl, September 2026, PR #184 review). TypeScript's legacy `moduleResolution: "node"` ignores `exports`, so a consumer on that setting finds the root's types through `types` but a subpath's not at all: `import … from 'fig-tree-evaluator/editor-hints'` fails with TS2307. `typesVersions` maps each subpath to its declarations for that resolver, and the resolvers that read `exports` ignore it. The consumers it matters most to are `./convert`'s: v2 hosts partway through migrating, the likeliest to still be on a legacy config. fig-tree-editor-react's own tsconfig is on it too. The build checks the field against `codegen/entries.mjs` along with `exports`, so a subpath cannot ship without it.
+**The `typesVersions` fallback** (Carl, September 2026, PR #184 review). TypeScript's legacy `moduleResolution: "node"` ignores `exports`, so a consumer on that setting finds the root's types through `types` but a subpath's not at all: `import … from 'fig-tree-evaluator/editor-hints'` fails with TS2307. `typesVersions` maps each subpath to its declarations for that resolver, and the resolvers that read `exports` ignore it. The consumers it matters most to are `./migrate`'s: v2 hosts partway through migrating, the likeliest to still be on a legacy config. fig-tree-editor-react's own tsconfig is on it too. The build checks the field against `codegen/entries.mjs` along with `exports`, so a subpath cannot ship without it.
 
 ## Build & CI mechanics
 
 Implementation notes for Phase 14, not contract — free to reshape provided the published surface above holds:
 
-- **Rollup stays**; no reason to switch tooling for its own sake. _Built at 14.3:_ the entry points are one list, `codegen/entries.mjs`, which drives the build's inputs, the size report and the PR comment, and the build fails if package.json's `exports` map, or its `types` and `typesVersions` fallback, disagrees with it. The ESM build is **one pass over every entry**, so a module two entries share is emitted once, as an unhashed chunk under `build/chunks/`, rather than copied into each: a copy per entry would split the brand symbol, `EvaluationData` and `FigTreeError` across subpaths, the dual-load failure the ESM-only ruling prevents. Each entry gets its own self-contained `.d.ts`, from a separate declaration pass, since the types two entries share are structural. Checked at 14.3 with a throwaway entry importing `FigTreeError` and `EvaluationData`: rollup emitted one shared chunk, both values were the same object from either entry, and an error from one was `instanceof` the other's class. No Phase-14 entry shares runtime code (`./editor-hints` has no imports at all); Phase 15.1 asserts the same for `./convert`. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
+- **Rollup stays**; no reason to switch tooling for its own sake. _Built at 14.3:_ the entry points are one list, `codegen/entries.mjs`, which drives the build's inputs, the size report and the PR comment, and the build fails if package.json's `exports` map, or its `types` and `typesVersions` fallback, disagrees with it. The ESM build is **one pass over every entry**, so a module two entries share is emitted once, as an unhashed chunk under `build/chunks/`, rather than copied into each: a copy per entry would split the brand symbol, `EvaluationData` and `FigTreeError` across subpaths, the dual-load failure the ESM-only ruling prevents. Each entry gets its own self-contained `.d.ts`, from a separate declaration pass, since the types two entries share are structural. Checked at 14.3 with a throwaway entry importing `FigTreeError` and `EvaluationData`: rollup emitted one shared chunk, both values were the same object from either entry, and an error from one was `instanceof` the other's class. `./editor-hints` has no imports at all, and `./migrate` imports types only. `./format` is the first entry to share runtime code with the root ("`./format`", above), so its shared chunk is the first under `build/chunks/`. Repo tooling as of the July 2026 modernization pass: pnpm (Carl's call, `packageManager`-pinned), TypeScript 5.9 (TS 6.x deferred until ts-jest / typescript-eslint / @rollup/plugin-typescript declare support), ESLint 9 flat config, Jest 30, tsx for script running (ts-node retired).
 - **Two CI checks**, added at Phase 14 and kept forever:
-  1. _Tree-shake fixture_: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, `./convert`, `./editor-hints` or `defineOperator()`-check code (marker-identifier scan). This is principle 5 made executable.
+  1. _Tree-shake fixture_: a tiny app importing only `{ FigTree, coreOperators }`, bundled with default settings, asserted to contain no I/O-toolkit, subpath or `defineOperator()`-check code (marker-identifier scan). This is principle 5 made executable.
   2. _Size budget_: bundle-size assertion on the root ESM entry. The number is set from measurement at Phase 14; the check existing is the contract, the number is maintenance.
 - **Built at 14.4** as `pnpm check:package` (`codegen/checkPackage.mjs`), run after `pnpm build` in CI and in `pnpm release`. The fixture bundles `{ FigTree, coreOperators }` from `build/` with esbuild (minified, platform-neutral) and scans it for marker strings from the I/O toolkit, the inspector, `defineOperator()`'s checks and every subpath entry. Markers are string literals, since minification renames identifiers, and each is first found in a bundle of everything its own entry exports, so a reworded message fails the check rather than passing it. The budgets are brotli ceilings set from measurement plus about 5%: 36 kB for the root entry and 2 kB for `./editor-hints` (on their rows in `codegen/entries.mjs`, beside each subpath's marker), and 31 kB for the engine-only consumer. The same script packs the package, installs the tarball into a temporary directory, and imports every entry by name as ESM, `require()`s it from CommonJS, and typechecks it with the DOM library and no `@types/node`, once through the `exports` map and once under the legacy `node` resolution, through `typesVersions`, since only a consumer's-eye view catches a wrong `exports` path or a missing `files` entry. Checked at the build by breaking each on purpose: a reworded marker, an `exports` path to a missing file, and an inspector leaked into the engine through a module-level side effect all failed it. The leak stayed inside the size budget (30.38 of 31 kB), so it was the marker scan that caught it.
-- **Import-direction lint**: root source may not import from `convert/` or `editor-hints/` source (extends the Phase-0.2 `/v2-src` import ban). _Built at 14.4_ in `eslint.config.mjs`: the root side of `src/` may not import `editor-hints`, and inside `src/editor-hints/` only type imports are allowed (typescript-eslint's `no-restricted-imports` with `allowTypeImports`), since a value import would pull code into the subpath's bundle. The `./convert` ban lands with its source folder at Phase 15.1: the patterns match the import string, not the file it resolves to, so the folder's name must not be confusable with `src/operators/convert.ts`.
+- **Import-direction lint**: root source may not import from `migrate/` or `editor-hints/` source (extends the Phase-0.2 `/v2-src` import ban). _Built at 14.4_ in `eslint.config.mjs`: the root side of `src/` may not import `editor-hints`, and inside `src/editor-hints/` only type imports are allowed (typescript-eslint's `no-restricted-imports` with `allowTypeImports`), since a value import would pull code into the subpath's bundle. _Extended at 15.1_ to `./migrate`'s source, `src/migrate/`, where value imports stay inside the folder, and to the published v2 package (`fig-tree-evaluator-v2`, a devDependency of the converter's tooling), which nothing under `src/` may import. _Extended at Phase 16_ to `./format`'s source, `src/format/`, whose value imports outside the folder are limited to the small root modules it shares ("`./format`", above).
 - **Codegen disposition**: `getVersion` (package.json → `src/version.ts`) survives, feeding the `version` export/property. `checkDefinitions` joins it in `pnpm build`, running the package's own operator definitions through `defineOperator()`'s checks (ruling above). `buildOperatorAliasReference` **dies** (deleted at 14.5; the frozen `/v2-src` keeps the table it generated, and the `v2.x` branch keeps the generator) — v2 generated a global alias table because aliases were unbounded; v3's 13 symbolic aliases live in their operators' definitions and the registry builds its lookup at construction (Operators § naming rules).
 - **Generated README operator reference**: the metadata-as-single-source commitment (assessment §3.6) lands as repo tooling that renders `getOperators()` output into the README section — a build script, not a package export.
 
@@ -227,7 +244,7 @@ Implementation notes for Phase 14, not contract — free to reshape provided the
 - Package name unchanged; v3 ships as **`fig-tree-evaluator@3.0.0`**. It's a clean break in content but the same package identity — the Migration area owns the story for what upgrading means.
 - **dist-tags**: `latest` moves to 3.x at release; the final 2.x is tagged **`v2`** and maintained fix-only from a `v2.x` maintenance branch. Pre-release 3.x publishes (for editor integration work) are **`3.0.0-beta.N`**, under the **`beta`** dist-tag, never `latest` (Carl, September 2026, Phase-14 review; earlier drafts said `next`).
 - **Releasing is manual, through `pnpm release`** (codegen/release.mjs; Carl, September 2026, Phase-14 review). It prompts for the next version with suggestions, stops unless CHANGELOG.md has an entry for it, bumps package.json and `src/version.ts`, runs what CI runs, commits and tags `vX.Y.Z`, and publishes with `npm publish` under `beta` for a `-beta.N` version or `latest` otherwise. Nothing is pushed. `pnpm release --dry-run` runs every step but makes no commit or tag, publishes with `npm publish --dry-run`, and restores package.json and `src/version.ts` afterwards. A beta passes the CHANGELOG check on an entry of its own, `## [X.Y.Z-beta.N]`, or on its release's, `## [X.Y.Z]`. The top entry runs one version ahead of package.json, so through the beta period it is the release's, collecting notes as they land (Carl, September 2026, PR #184 review). v2 patch releases are cut by hand from the `v2.x` branch, which does not carry the script.
-- The frozen in-repo `/v2-src` (Phase 0) is a build/test asset only — excluded from the published package (`files: ["build"]` already guarantees this) and deleted after Phase 16.
+- The frozen in-repo `/v2-src` (Phase 0) is a build/test asset only — excluded from the published package (`files: ["build"]` already guarantees this) and deleted after Phase 17.
 - The date/duration plugin is a **separate package** (name TBD with its own area), depending on `fig-tree-evaluator` as a peer and consuming only the public `defineOperator` surface.
 
 ## v2 root-export disposition
@@ -247,7 +264,7 @@ Every export of v2's `src/index.ts`, accounted for:
 | `preProcessShorthand`                                                    | **Deleted** — normalization is compile-internal                                                                                                                                                                                                                                                     |
 | `standardiseOperatorName`                                                | **Deleted** — no case folding, no alias machinery                                                                                                                                                                                                                                                   |
 | `truncateString`                                                         | **Deleted** — editor-owned display concern                                                                                                                                                                                                                                                          |
-| `convertToShorthand`, `convertFromShorthand`                             | **Deleted** — round-tripping between v3's faces is parked until after 3.0 ("Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md))                                                                                                                                |
+| `convertToShorthand`, `convertFromShorthand`                             | **Replaced** by `toShorthand` and `toCanonical` in `./format`, with `toGet` and `toReference` beside them, which take the registry the old pair lacked ([v3-format.md](v3-format.md))                                                                                                               |
 | `convertV1ToV2`, `isV1Node`                                              | **Deleted** — v1 support dropped from v3; v1 holdouts convert via still-published v2 first (Migration area § v1 ruling)                                                                                                                                                                             |
 | `dequal` re-export                                                       | **Deleted** — principle 4                                                                                                                                                                                                                                                                           |
 | `Operator` (name union)                                                  | **Deleted** — operator names are open-ended (custom operators), so a name is a `string`, as `operatorDefaults` already types it                                                                                                                                                                     |

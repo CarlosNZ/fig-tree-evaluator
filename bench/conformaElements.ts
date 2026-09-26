@@ -1,6 +1,6 @@
 /**
  * Real-world I — Conforma template elements (implementation plan, Phase
- * 16a.2; Carl's corpus, September 2026).
+ * 17a.2; Carl's corpus, September 2026).
  *
  * The 62 form elements of a real Conforma template, as exported: each has
  * five properties, of which `parameters` is an object of its own. These

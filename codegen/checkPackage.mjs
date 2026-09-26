@@ -3,8 +3,9 @@
  * ("Build & CI mechanics" in docs-dev/v3-specs/v3-packaging.md). Run after
  * `pnpm build`, in CI and in `pnpm release`:
  *
- *  1. Size budgets: each entry's brotli size under its ceiling
- *     (codegen/entries.mjs), and the engine-only consumer's under its own.
+ *  1. Size budgets: each entry's brotli size, with the shared chunks it
+ *     imports, under its ceiling (codegen/entries.mjs), and the engine-only
+ *     consumer's under its own.
  *  2. Tree-shaking: a consumer importing only `{ FigTree, coreOperators }`,
  *     bundled from build/ with esbuild, carries none of the I/O toolkit, the
  *     inspector, `defineOperator()`'s checks or any subpath. Absence is found
@@ -27,7 +28,7 @@ import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { build } from 'esbuild'
-import { compressedSizes } from './bundleSize.mjs'
+import { compressedSizes, entryBrotli, entryFiles } from './bundleSize.mjs'
 import { ENTRIES } from './entries.mjs'
 
 const ROOT = resolve(import.meta.dirname, '..')
@@ -99,18 +100,17 @@ const run = (command, args, cwd) => {
 const engineOnly = await bundle(ENGINE_ONLY)
 
 section('Size budgets (brotli)')
-const width = Math.max(...ENTRIES.map(({ name }) => name.length + 3), 'engine-only consumer'.length)
+const entryLabel = (name) => `${name}.js${entryFiles(name).length > 1 ? ' + chunks' : ''}`
+const width = Math.max(
+  ...ENTRIES.map(({ name }) => entryLabel(name).length),
+  'engine-only consumer'.length
+)
 const budgetLine = (label, size, budget) => {
   const line = `${label.padEnd(width)}  ${kB(size).padStart(9)} of ${kB(budget).padStart(9)}`
   if (size <= budget) pass(line)
   else fail(`${line} — over budget`)
 }
-for (const { name, budget } of ENTRIES)
-  budgetLine(
-    `${name}.js`,
-    compressedSizes(readFileSync(join(ROOT, 'build', `${name}.js`))).brotli,
-    budget
-  )
+for (const { name, budget } of ENTRIES) budgetLine(entryLabel(name), entryBrotli(name), budget)
 budgetLine('engine-only consumer', compressedSizes(engineOnly).brotli, ENGINE_ONLY_BUDGET)
 
 section('Tree-shaking: `{ FigTree, coreOperators }` alone')

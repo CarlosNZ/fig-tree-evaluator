@@ -35,7 +35,7 @@
  * object are a deliberate miss, not something to canonicalize.
  */
 import { isPlainDataObject } from '../utils'
-import { DEPTH_CEILING } from './probe'
+import { DEPTH_CEILING } from './grammar'
 
 /**
  * The content-layer key, or `undefined` where the input holds something

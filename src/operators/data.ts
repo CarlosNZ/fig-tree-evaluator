@@ -14,6 +14,7 @@ import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
 import { renderText, resolvePath } from '../primitives'
 import { emptyEntriesWarning, pathFindings, toSegments } from './shared'
+import { GET_POSITIONAL } from './getShape'
 
 export const get = declareOperator({
   name: 'get',
@@ -41,7 +42,7 @@ export const get = declareOperator({
         'The answer when the path is missing — a stored null passes through unchanged; supplying it also opts out of strictDataPaths',
     },
   },
-  positionalParams: ['path', 'missingPathDefault'],
+  positionalParams: GET_POSITIONAL,
   returns: 'any',
   validate: ({ path }) => pathFindings(path, 'path'),
   evaluate: ({ path, from, missingPathDefault }, context) => {

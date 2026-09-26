@@ -7,7 +7,7 @@
  * inventory in "The root entry" there, which test/exports.test.ts holds this
  * file to; the types follow that doc's "Types" list.
  *
- * The root never imports the `./editor-hints` or `./convert` subpaths. The
+ * The root never imports the `./editor-hints` or `./migrate` subpaths. The
  * types of editor-hints' data are exported here instead, so that subpath
  * stays a data module.
  */
@@ -155,3 +155,22 @@ export type {
   OperatorHints,
   TypeSeeds,
 } from './editorHintTypes'
+
+// ── Migration ────────────────────────────────────────────────────────────
+// The shapes the `./migrate` subpath's two functions take and return.
+export type {
+  FragmentMigrationResult,
+  MigrationIssue,
+  MigrationResult,
+  V2Options,
+} from './migrationTypes'
+
+// ── Format ───────────────────────────────────────────────────────────────
+// The shapes the `./format` subpath's four functions take.
+export type {
+  CanonicalOptions,
+  NameOptions,
+  Registry,
+  ShorthandOptions,
+  Spelling,
+} from './formatTypes'
