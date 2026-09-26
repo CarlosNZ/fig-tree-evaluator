@@ -5,4 +5,4 @@
  * docs-dev/v3-specs/v3-format.md). Importing the definition itself would
  * pull the operator module into the chunk the subpath shares with the root.
  */
-export const GET_POSITIONAL = ['path', 'missingPathDefault'] as const
+export const GET_POSITIONAL = ['path', 'default'] as const

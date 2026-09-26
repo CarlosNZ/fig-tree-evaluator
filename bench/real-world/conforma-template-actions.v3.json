@@ -704,7 +704,7 @@
         {
           "operator": "get",
           "path": "applicationData.reviewData.latestDecision.decision",
-          "missingPathDefault": null
+          "default": null
         },
         "LIST_OF_QUESTIONS"
       ]

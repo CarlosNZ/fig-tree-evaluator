@@ -55,7 +55,7 @@ const main = async () => {
   await show('…which a bare reference spells more briefly', '$data.org.name')
   await show('the point of the operator: a path that arrives as data', { $get: '$data.chosen' })
   await show('a missing path is null — absence is not failure', { $get: 'user.middleName' })
-  await show('missingPathDefault answers instead', { $get: ['user.middleName', 'N/A'] })
+  await show('default answers instead', { $get: ['user.middleName', 'N/A'] })
   await show('…but a STORED null passes through untouched', { $get: ['user.last', 'N/A'] })
   await show('a quoted segment reaches a key a reference cannot spell', {
     $get: '["exotic.key"]',
@@ -68,7 +68,7 @@ const main = async () => {
     $get: { path: 'name', from: '$data.org' },
   })
   await show('…so a null source is one where every path is missing', {
-    $get: { path: 'name', from: '$data.absent', missingPathDefault: 'Anonymous' },
+    $get: { path: 'name', from: '$data.absent', default: 'Anonymous' },
   })
   await show('and drilling into a node result is what `from` is really for', {
     $get: {

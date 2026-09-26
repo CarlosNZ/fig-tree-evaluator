@@ -24,7 +24,7 @@ Fixed point 3 currently reads null at an _optional_ parameter as **unset** (the 
 
 Recorded from Carl's eyeball passes; the entries below are updated to match. Anything not listed passed review as drafted.
 
-- **Names sharpened**: `nullDefault` → **`nullValueDefault`** (it must read as per-value — a whole-null `values` array stays #8's type error); the `get`/`http`/`graphQL` absence default → **`missingPathDefault`**. Folded through the passes, the register and v3-api.md (July 2026).
+- **Names sharpened**: `nullDefault` → **`nullValueDefault`** (it must read as per-value — a whole-null `values` array stays #8's type error); the `get`/`http`/`graphQL` absence default → **`missingPathDefault`**. Folded through the passes, the register and v3-api.md (July 2026). _(Later: `get`'s was renamed `default` before 3.0, [#195](https://github.com/CarlosNZ/fig-tree-evaluator/issues/195), September 2026; the deferred `http` / `graphQL` candidate keeps `missingPathDefault`. This record keeps the names as they stood.)_
 - **The ordering comparisons gain `nullValueDefault`** — promoted from extension-candidate to suggested (expected everyday setting: `0`).
 - **Renderers**: `buildString` and `join` gain **`nullValueDefault`** — a null substitution/element renders this value instead of `""`; composites keep the `<array>` / `<object>` placeholders unchanged (localizing those is deferred — another day). A broader `invalidValue` covering composites too was considered (round 2) and withdrawn (round 3): null is _not_ invalid, and the two cells shouldn't share a knob.
 - **`not` stays `value`** (resolved): the flip to `propagate` was weighed against the cases in its entry and declined. The #9 family is answered by guidance instead — `validate()` and the docs explicitly point authors at `missingPathDefault` on the getter (or `nullValueDefault` on the comparison) wherever negation meets possibly-missing data.
@@ -256,7 +256,7 @@ Default behaviour: when `input` evaluates to `null`, this value is used as the c
 | `from`               | `any`                         | the merged evaluation data (ledger #13) | `value` — a null source is a source where every path is missing (drill-through)               |
 | `missingPathDefault` | `any`                         | — _(presence-sensitive, deliberately)_  | `value` — `missingPathDefault: null` is a supplied value: the `strictDataPaths` opt-out (#26) |
 
-Suggested default: **already present — `missingPathDefault`** _(round-2 rename from `missingDefault`, since folded through the batch-6 pass — positional face `['path', 'missingPathDefault']` — the register and v3-api.md)_.
+Suggested default: **already present — `missingPathDefault`** _(renamed `default` by #195; round-2 rename from `missingDefault`, since folded through the batch-6 pass — positional face `['path', 'missingPathDefault']` — the register and v3-api.md)_.
 Default behaviour: missing path → the value; stored `null` passes through untouched; unsupplied → missing yields `null` (or fails under `strictDataPaths`).
 
 ### `buildObject` (no alias)
@@ -327,20 +327,20 @@ Default behaviour: under `shape: 'row'` or `'value'`, an empty result set → th
 
 ## Suggested defaults — one-glance summary
 
-| Operator                             | Parameter            | Status                            | Fires on                              | Instead of                                            |
-| ------------------------------------ | -------------------- | --------------------------------- | ------------------------------------- | ----------------------------------------------------- |
-| `if`                                 | `else`               | exists                            | condition unmet                       | `null`                                                |
-| `match`                              | `default`            | exists                            | no branch matched                     | runtime failure                                       |
-| `find`                               | `noMatchDefault`     | exists (batch 5)                  | no element matched                    | `null`                                                |
-| `get`                                | `missingPathDefault` | exists (batch 6; renamed round 2) | missing path                          | `null` / `strictDataPaths` failure                    |
-| `regex`                              | `noMatchDefault`     | **suggested**                     | `extract` mode, no match              | `null`                                                |
-| `sql`                                | `noRowDefault`       | **suggested** (per #29's note)    | `'row'`/`'value'` shape, empty result | `null`                                                |
-| `plus`, `multiply`, `min`, `max`     | `nullValueDefault`   | **suggested**                     | a null operand/element                | element-wise propagate (#3/#13)                       |
-| `map`/`filter`/`find`/`some`/`every` | `nullInputDefault`   | **suggested**                     | `input` evaluates to null             | runtime type error (#24, flipped at the group review) |
-| `min`, `max`                         | `emptyDefault`       | candidate (weaker)                | empty `values`                        | runtime failure (`fallback`-catchable)                |
-| `http`, `graphQL`                    | `missingPathDefault` | candidate (deferred)              | supplied `returnPath` misses          | `null`                                                |
-| ordering comparisons                 | `nullValueDefault`   | **suggested** (round 2)           | a null operand                        | propagate (#10)                                       |
-| `buildString`, `join`                | `nullValueDefault`   | **suggested** (round 3)           | a null substitution/element at render | `""`                                                  |
+| Operator                             | Parameter            | Status                                                  | Fires on                              | Instead of                                            |
+| ------------------------------------ | -------------------- | ------------------------------------------------------- | ------------------------------------- | ----------------------------------------------------- |
+| `if`                                 | `else`               | exists                                                  | condition unmet                       | `null`                                                |
+| `match`                              | `default`            | exists                                                  | no branch matched                     | runtime failure                                       |
+| `find`                               | `noMatchDefault`     | exists (batch 5)                                        | no element matched                    | `null`                                                |
+| `get`                                | `missingPathDefault` | exists (batch 6; renamed round 2; `default` since #195) | missing path                          | `null` / `strictDataPaths` failure                    |
+| `regex`                              | `noMatchDefault`     | **suggested**                                           | `extract` mode, no match              | `null`                                                |
+| `sql`                                | `noRowDefault`       | **suggested** (per #29's note)                          | `'row'`/`'value'` shape, empty result | `null`                                                |
+| `plus`, `multiply`, `min`, `max`     | `nullValueDefault`   | **suggested**                                           | a null operand/element                | element-wise propagate (#3/#13)                       |
+| `map`/`filter`/`find`/`some`/`every` | `nullInputDefault`   | **suggested**                                           | `input` evaluates to null             | runtime type error (#24, flipped at the group review) |
+| `min`, `max`                         | `emptyDefault`       | candidate (weaker)                                      | empty `values`                        | runtime failure (`fallback`-catchable)                |
+| `http`, `graphQL`                    | `missingPathDefault` | candidate (deferred)                                    | supplied `returnPath` misses          | `null`                                                |
+| ordering comparisons                 | `nullValueDefault`   | **suggested** (round 2)                                 | a null operand                        | propagate (#10)                                       |
+| `buildString`, `join`                | `nullValueDefault`   | **suggested** (round 3)                                 | a null substitution/element at render | `""`                                                  |
 
 All suggestions are presence-sensitive or default-`null`, so the unadorned drafted behaviour is unchanged; each rides the layered defaults chain (`operatorDefaults`), which is the family's structural advantage over any fallback-flavoured mechanism. **The `fallback` question resolved to failure-only at the group review** (July 2026), so the family stands as this sheet's premise assumed.
 

@@ -4,7 +4,7 @@
  * (objectProperties / getProperty / get_obj_prop / objProps / getData /
  * data), `property` / `propertyName` / `path` collapse to `path`;
  * **a missing path no longer throws** — it yields null, so the tests that
- * paired a miss with `fallback` become `missingPathDefault` cases and the
+ * paired a miss with `fallback` become `default` cases and the
  * thrown-message assertion has no successor; `additionalData` (and its
  * aliases additional / objects / data / additionalObjects) becomes
  * `from`, and **replaces rather than merges** — the array-valued
@@ -12,7 +12,7 @@
  * `object-property-extractor`'s implicit array projection becomes an
  * explicit `[*]`, and its prototype-chain `in` lookup becomes
  * own-enumerable-only. v2's second positional child, smuggled into
- * `fallback`, is v3's declared `missingPathDefault` — the same spelling,
+ * `fallback`, is v3's declared `default` — the same spelling,
  * made honest.
  */
 import { FigTreeEvaluator } from './evaluator'

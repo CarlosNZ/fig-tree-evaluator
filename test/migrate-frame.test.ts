@@ -511,7 +511,7 @@ describe('a result that is not a node', () => {
     {
       name: 'a `$data` reference with a `fallback` is a `get` with a default',
       input: { operator: 'pass', value: { $getData: 'nope' }, fallback: 'none' },
-      expected: { operator: 'get', path: 'nope', missingPathDefault: 'none' },
+      expected: { operator: 'get', path: 'nope', default: 'none' },
     },
     {
       name: 'the whole of `data` is never missing',
@@ -819,7 +819,7 @@ describe('fallbacks that caught missing data', () => {
       },
       expected: {
         operator: 'plus',
-        values: [{ operator: 'get', path: 'missing', missingPathDefault: 5 }, 1],
+        values: [{ operator: 'get', path: 'missing', default: 5 }, 1],
         fallback: 0,
       },
     },
@@ -880,7 +880,7 @@ describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
       input: { operator: 'getData', property: 'nope', fallback: 'N/A', outputType: 'number' },
       expected: {
         operator: 'convert',
-        value: { operator: 'get', path: 'nope', missingPathDefault: 'N/A' },
+        value: { operator: 'get', path: 'nope', default: 'N/A' },
         to: 'number',
       },
       issues: [
@@ -894,7 +894,7 @@ describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
       input: { operator: 'getData', property: 'nope', fallback: 0, type: 'number' },
       expected: {
         operator: 'convert',
-        value: { operator: 'get', path: 'nope', missingPathDefault: 0 },
+        value: { operator: 'get', path: 'nope', default: 0 },
         to: 'number',
       },
       issues: [{ code: 'output-type', path: ['type'] }],
@@ -912,7 +912,7 @@ describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
         value: {
           operator: 'get',
           path: 'nope',
-          missingPathDefault: { operator: 'plus', values: ['1', '2'] },
+          default: { operator: 'plus', values: ['1', '2'] },
         },
         to: 'number',
       },
@@ -933,7 +933,7 @@ describe("OBJECT_PROPERTIES' `fallback` beside `outputType`", () => {
       outputType: 'bool',
     })
     expect(issues[0].message).toBe(
-      "This `fallback` becomes `missingPathDefault`, which v3's `convert` then converts to " +
+      "This `fallback` becomes `default`, which v3's `convert` then converts to " +
         '`boolean`, where v2 returned it as it was. Unless the default is already of that ' +
         'type, it fails or changes. Give a default of that type.'
     )

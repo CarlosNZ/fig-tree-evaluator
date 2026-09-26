@@ -34,26 +34,26 @@ export const get = declareOperator({
       description:
         'The object searched instead of the evaluation data — replace, never merge; a null source is one where every path is missing',
     },
-    missingPathDefault: {
+    default: {
       type: 'any',
       required: false,
       evaluation: 'lazy',
       description:
-        'The answer when the path is missing — a stored null passes through unchanged; supplying it also opts out of strictDataPaths',
+        'The answer when the path is missing — a stored null passes through unchanged (firstOf replaces one); supplying it also opts out of strictDataPaths',
     },
   },
   positionalParams: GET_POSITIONAL,
   returns: 'any',
   validate: ({ path }) => pathFindings(path, 'path'),
-  evaluate: ({ path, from, missingPathDefault }, context) => {
+  evaluate: ({ path, from, default: missingValue }, context) => {
     const result = resolvePath(from, toSegments(path))
     // A stored `undefined` is not a value — JSON semantics at the boundary
     if (result.found) return result.value === undefined ? null : result.value
 
     // Absence, in the layered order: the per-site answer first, because
-    // supplying one IS the strictness opt-out ("missingPathDefault: null"
-    // reads "give me null instead of throwing")
-    if (missingPathDefault !== undefined) return missingPathDefault.evaluate()
+    // supplying one IS the strictness opt-out ("default: null" reads "give
+    // me null instead of throwing")
+    if (missingValue !== undefined) return missingValue.evaluate()
     if (context.options.strictDataPaths)
       throw new OperatorFailure(`'${renderPath(path)}' is missing (strictDataPaths)`, {
         code: ErrorCodes.missingDataPath,

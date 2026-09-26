@@ -23,7 +23,7 @@ export type GetParams = Map<string, unknown>
 const GET_SHAPE = { positionalParams: GET_POSITIONAL, restParam: null }
 
 /** The keys a get node may carry and still have a reference form. */
-const GET_KEYS = new Set(['path', 'from', 'missingPathDefault'])
+const GET_KEYS = new Set(['path', 'from', 'default'])
 
 /**
  * Each namespace's single-character alias token: the inverse of
@@ -152,7 +152,7 @@ const literalSegments = (path: unknown): (string | number)[] | null => {
  * `preserve` writes the alias, as short is the point.
  */
 export const paramsToReference = (params: GetParams, spelling: Spelling): string | null => {
-  if (params.has('missingPathDefault')) return null
+  if (params.has('default')) return null
   const segments = literalSegments(params.get('path'))
   if (segments === null) return null
 

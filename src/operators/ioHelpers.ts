@@ -174,7 +174,7 @@ export const isNonEmpty = (container: unknown): boolean => {
  * Response drilling: `get.path`'s grammar, and `get`'s absence rule minus
  * the strictness layer. `strictDataPaths` deliberately does not reach
  * here — a response is operator output, not a reference namespace, and the
- * escapes are `firstOf` or a wrapping `get.missingPathDefault`.
+ * escapes are `firstOf` or a wrapping `get.default`.
  */
 export const drill = (value: unknown, returnPath: string | unknown[] | undefined): unknown => {
   if (returnPath === undefined) return value

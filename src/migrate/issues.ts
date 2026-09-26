@@ -83,9 +83,9 @@ export const CATALOGUE = {
     message: () =>
       'In v2 a missing path failed, and this `fallback` answered. In v3 the read gives `null` ' +
       'and the node carries on. For data, set the host option `strictDataPaths: true` to fail ' +
-      'as v2 did, or give the read its own default (`missingPathDefault`, `firstOf`). For a ' +
+      "as v2 did, or give the read its own default (`get`'s `default`, or `firstOf`). For a " +
       "response's `returnPath`, which `strictDataPaths` does not reach, use `firstOf`, or read " +
-      'the path with a `get` and its `missingPathDefault`.',
+      'the path with a `get` and its `default`.',
   },
   'unprefixed-parameter': {
     tag: 'intentional-semantic-change',
@@ -112,7 +112,7 @@ export const CATALOGUE = {
   'fallback-converted': {
     tag: 'lossy-default',
     message: ({ type }: { type: string }) =>
-      `This \`fallback\` becomes \`missingPathDefault\`, which v3's \`convert\` then converts to ${type}, ` +
+      `This \`fallback\` becomes \`default\`, which v3's \`convert\` then converts to ${type}, ` +
       'where v2 returned it as it was. Unless the default is already of that type, it fails or ' +
       'changes. Give a default of that type.',
   },

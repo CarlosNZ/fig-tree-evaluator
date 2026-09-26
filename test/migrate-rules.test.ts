@@ -717,12 +717,12 @@ const BATCH_3: Example[] = [
   {
     name: 'a `fallback` is the missing-path default',
     input: { operator: 'getData', property: 'nope', fallback: 'none' },
-    expected: { operator: 'get', path: 'nope', missingPathDefault: 'none' },
+    expected: { operator: 'get', path: 'nope', default: 'none' },
   },
   {
     name: 'the second child is the `fallback`',
     input: { operator: 'getData', children: ['nope', 'none'] },
-    expected: { operator: 'get', path: 'nope', missingPathDefault: 'none' },
+    expected: { operator: 'get', path: 'nope', default: 'none' },
   },
   {
     name: '`additionalData` is merged over `data`',

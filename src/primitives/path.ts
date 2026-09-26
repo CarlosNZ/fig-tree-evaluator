@@ -19,7 +19,7 @@
  * through null / a scalar / an opaque value yields a miss (so no string
  * `.length` leakage); `[*]` maps the path remainder over an array, a
  * per-element miss becoming a `null` slot. Absence is reported as
- * `{ found: false }` — the `strictDataPaths`, `missingPathDefault`, `firstOf`
+ * `{ found: false }` — the `strictDataPaths`, `get.default`, `firstOf`
  * and `fallback` layers build on that signal in later phases.
  */
 
