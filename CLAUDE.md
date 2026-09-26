@@ -86,6 +86,7 @@ There is no alias table: v3's aliases live on their operators' definitions, and 
 ### Things easy to get wrong
 
 - Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints`, `./migrate` and `./format`. Their types export from the root. `src/format/` may import values only from the small root modules lint allows it, since whatever it imports lands in the shared chunk.
+- The root ships as one file, so `sideEffects: false` cannot shake it: a consumer's bundler keeps any top-level statement it cannot prove side-effect-free, and everything that statement reaches. Three constructs in `src/` break this: a top-level call (mark its callee pure by adding it to `PURE_CALLEES` in `rollup.config.mjs`), an object or array spread in a top-level literal (name the parts instead, as `src/operators/array.ts` does), and a class `static {}` block (no annotation helps; restructure). `pnpm check:package`'s small-import consumer fails on a leak, naming what leaked (#193).
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
 - `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.
 
