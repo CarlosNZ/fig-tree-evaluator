@@ -668,6 +668,8 @@ const DATA = {
   x: null,
   count: 2,
   key: 'b',
+  field: 'n',
+  entry: { key: 'a', value: 1 },
 }
 
 const BATCH_3: Example[] = [
@@ -697,6 +699,20 @@ const BATCH_3: Example[] = [
     input: { operator: 'getData', property: 'nope' },
     expected: '$data.nope',
     differs: { v2: { error: true }, v3: { value: null } },
+  },
+  {
+    name: 'a computed path is a `get`',
+    input: { operator: 'getData', property: { operator: 'getData', property: 'field' } },
+    expected: { operator: 'get', path: '$data.field' },
+  },
+  {
+    name: 'a path from an enclosing alias is a `get`',
+    input: { operator: '+', $p: 'n', values: [{ operator: 'getData', property: '$p' }, 1] },
+    expected: {
+      operator: 'plus',
+      values: [{ operator: 'get', path: '$vars.p' }, 1],
+      vars: { p: 'n' },
+    },
   },
   {
     name: 'a `fallback` is the missing-path default',
@@ -1169,6 +1185,24 @@ const BATCH_3: Example[] = [
     },
   },
   {
+    name: 'an entry read from data is an entry',
+    input: { operator: 'buildObject', properties: [{ operator: 'getData', property: 'entry' }] },
+    expected: { operator: 'buildObject', entries: ['$data.entry'] },
+  },
+  {
+    name: 'entries from aliases are entries',
+    input: {
+      operator: 'buildObject',
+      $e: { operator: 'getData', property: 'entry' },
+      properties: ['$e', { key: 'b', value: 2 }],
+    },
+    expected: {
+      operator: 'buildObject',
+      entries: ['$vars.e', { key: 'b', value: 2 }],
+      vars: { e: '$data.entry' },
+    },
+  },
+  {
     name: 'alternating keys and values are paired',
     input: { operator: 'buildObject', properties: ['a', 1, 'b', { $plus: [1, 2] }] },
     expected: {
@@ -1578,6 +1612,19 @@ const BATCH_4: IoExample[] = [
     issues: [COLLAPSE],
   },
 
+  // GRAPHQL, a computed URL
+  {
+    name: 'GRAPHQL with a computed URL, which is no relative URL',
+    input: {
+      operator: 'graphQL',
+      url: { operator: 'getData', property: 'endpoint' },
+      query: 'query { a }',
+    },
+    data: { endpoint: 'https://g.test/graphql' },
+    response: { data: { a: 1 } },
+    expected: { operator: 'graphQL', query: 'query { a }', url: '$data.endpoint' },
+    issues: [COLLAPSE],
+  },
   // GRAPHQL
   {
     name: 'GRAPHQL with a full URL, whose response v2 collapsed',

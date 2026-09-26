@@ -330,20 +330,27 @@ const preferReference = (draft: V3Draft, context: RuleContext) => {
     return { ...toNode(draft), missingPathDefault: fallback }
   }
   const { path } = draft.params
-  if (Object.hasOwn(draft.params, 'from') || typeof path !== 'string' || !isV3Path(path))
+  if (
+    Object.hasOwn(draft.params, 'from') ||
+    typeof path !== 'string' ||
+    isComputed(path) ||
+    !isV3Path(path)
+  )
     return toNode(draft)
   return dataReference(path)
 }
 
 /**
  * BUILD_OBJECT's entries: an alternating array is paired as v2 paired it,
- * and an entry missing its `key` or `value` goes, as v2 skipped it
+ * and an entry missing its `key` or `value` goes, as v2 skipped it. A
+ * computed element is an entry, since v2 read what it computed as one.
  */
 const literalEntries = (value: unknown, context: RuleContext) => {
   if (!Array.isArray(value)) return value
   const entries: unknown[] = []
   const isEntry = (element: unknown) =>
-    isPlainObject(element) && (!isLiteral(element) || isPlainObject(element.value))
+    isComputed(element) ||
+    (isPlainObject(element) && (!isLiteral(element) || isPlainObject(element.value)))
   if (!value.every(isEntry)) {
     for (let i = 0; i < value.length; i += 2)
       if (i + 1 < value.length) entries.push({ key: value[i], value: value[i + 1] })
@@ -354,7 +361,11 @@ const literalEntries = (value: unknown, context: RuleContext) => {
     return entries
   }
   value.forEach((element, i) => {
-    if (isNode(element) || (Object.hasOwn(element, 'key') && Object.hasOwn(element, 'value')))
+    if (
+      isComputed(element) ||
+      isNode(element) ||
+      (Object.hasOwn(element, 'key') && Object.hasOwn(element, 'value'))
+    )
       entries.push(element)
     else {
       context.issue('malformed-entry', ['properties', i])
@@ -464,7 +475,7 @@ const graphQLRequest = (draft: V3Draft, context: RuleContext) => {
   const { url } = draft.params
   if (url === '' || (typeof url === 'string' && url.toLowerCase() === 'graphqlendpoint'))
     delete draft.params.url
-  else if (typeof url === 'string' && !/^https?:\/\/.+/.test(url))
+  else if (typeof url === 'string' && !isComputed(url) && !/^https?:\/\/.+/.test(url))
     context.issue('graphql-relative-url', 'url')
   context.issue('response-collapse', undefined)
   return toNode(draft)

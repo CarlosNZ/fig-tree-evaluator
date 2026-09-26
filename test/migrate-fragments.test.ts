@@ -82,7 +82,7 @@ describe('definitions', () => {
       expected: {
         adder: {
           expression: { operator: 'plus', values: '$params.values' },
-          parameters: { values: { type: 'any', required: false } },
+          parameters: { values: { type: 'any', default: '$values' } },
         },
       },
       calls: [
@@ -346,21 +346,21 @@ describe('definitions', () => {
       expected: {
         inner: {
           expression: { operator: 'plus', values: ['$params.m', 100] },
-          parameters: { m: { type: 'any', required: false } },
+          parameters: { m: { type: 'any', default: '$m' } },
         },
         outer: {
           expression: {
             operator: 'plus',
             values: [{ fragment: 'inner', parameters: { m: '$params.m' } }, 1],
           },
-          parameters: { m: { type: 'any', required: false } },
+          parameters: { m: { type: 'any', default: '$m' } },
         },
         both: {
           expression: {
             operator: 'plus',
             values: [{ fragment: 'inner', parameters: { m: '$params.m' } }, '$params.m'],
           },
-          parameters: { m: { type: 'any', required: false } },
+          parameters: { m: { type: 'any', default: '$m' } },
         },
       },
       calls: [
@@ -382,7 +382,7 @@ describe('definitions', () => {
             operator: 'plus',
             values: [{ operator: 'plus', values: ['$vars.n', 1], vars: { n: 50 } }, '$params.n'],
           },
-          parameters: { n: { type: 'any', required: false } },
+          parameters: { n: { type: 'any', default: '$n' } },
         },
       },
       calls: [{ input: { fragment: 'nested', parameters: { $n: 3 } } }],
@@ -393,7 +393,7 @@ describe('definitions', () => {
       expected: {
         divideBy: {
           expression: { operator: 'divide', value: 1, by: '$params.d', fallback: '$params.d' },
-          parameters: { d: { type: 'any', required: false } },
+          parameters: { d: { type: 'any', default: '$d' } },
         },
       },
       calls: [
@@ -436,7 +436,7 @@ describe('definitions', () => {
       expected: {
         short: {
           expression: { operator: 'plus', values: ['$params.n', 1] },
-          parameters: { n: { type: 'any', required: false } },
+          parameters: { n: { type: 'any', default: '$n' } },
           description: 'Adds one',
         },
       },
@@ -497,8 +497,8 @@ describe('definitions', () => {
         round_3: {
           expression: { operator: 'plus', values: ['$params.a_b', '$params.fallback_2'] },
           parameters: {
-            a_b: { type: 'any', required: false },
-            fallback_2: { type: 'any', required: false },
+            a_b: { type: 'any', default: '$a.b' },
+            fallback_2: { type: 'any', default: '$fallback' },
           },
         },
         round_2: { expression: 2 },
@@ -620,6 +620,7 @@ describe('calls', () => {
     countTyped: { operator: 'count', values: [1, 2], type: 'string' },
     constant: 42,
     counter: { operator: '+', values: ['$count', 1] },
+    picker: { operator: 'getData', property: '$field' },
     twice: {
       operator: '?',
       condition: '$condition',
@@ -654,6 +655,12 @@ describe('calls', () => {
       name: 'a canonical call',
       input: { fragment: 'adder', parameters: { $values: [1, 2] } },
       expected: { fragment: 'adder', parameters: { values: [1, 2] } },
+    },
+    {
+      name: 'a placeholder in a path',
+      input: { fragment: 'picker', parameters: { $field: 'n' } },
+      data: { n: 7 },
+      expected: { fragment: 'picker', parameters: { field: 'n' } },
     },
     {
       name: 'arguments on the call node',
@@ -856,7 +863,6 @@ describe('calls', () => {
       input: { fragment: 'twice', parameters: { condition: true } },
       expected: { '//': bodyOverride('condition'), fragment: 'twice' },
       issues: [{ code: 'body-override', path: ['parameters', 'condition'] }],
-      differs: { v2: { value: '$condition' }, v3: { value: 'no' } },
     },
 
     // Computed parts
@@ -885,7 +891,7 @@ describe('calls', () => {
         },
       },
       issues: [{ code: 'computed-arguments', path: ['parameters'] }],
-      differs: { v2: { value: 3 }, v3: { value: null } },
+      differs: { v2: { value: 3 }, v3: { value: '$a$b' } },
     },
     {
       name: 'a computed name is quoted as written',
@@ -1060,6 +1066,49 @@ describe('calls', () => {
     expect(expression).toEqual(example.expected)
     expect(raised(issues)).toEqual(example.issues ?? [])
     await checkCall(fig, example, options)
+  })
+
+  // v2 left a placeholder no call filled as its own text
+  describe('placeholders a call leaves unfilled', () => {
+    const UNFILLED = {
+      price: { operator: 'stringSubstitution', string: 'Cost: %1', substitutions: ['$5.00'] },
+      greet: { operator: 'stringSubstitution', string: 'Hi %1!', substitutions: ['$who'] },
+      declaredGreet: {
+        operator: 'stringSubstitution',
+        string: 'Hi %1!',
+        substitutions: ['$who'],
+        metadata: { parameters: [{ name: '$who', type: 'string' }] },
+      },
+    }
+    const unfilled = convertFragments({ fragments: UNFILLED })
+    const withUnfilled = new FigTree({ fragments: unfilled.fragments })
+
+    test('an inferred parameter defaults to its own text, and a declared one does not', () => {
+      expect(unfilled.fragments.price.parameters).toEqual({
+        '5_00': { type: 'any', default: '$5.00' },
+      })
+      expect(unfilled.fragments.greet.parameters).toEqual({ who: { type: 'any', default: '$who' } })
+      expect(unfilled.fragments.declaredGreet.parameters).toEqual({
+        who: { type: 'string', required: false },
+      })
+      expect(raised(unfilled.issues)).toEqual([
+        { code: 'name-renamed', path: ['price', 'substitutions', 0] },
+      ])
+    })
+
+    test.each<Call & { name: string }>([
+      { name: 'text that was never a placeholder', input: { fragment: 'price' } },
+      { name: 'an inferred placeholder the call leaves out', input: { fragment: 'greet' } },
+      {
+        name: 'an inferred placeholder the call fills',
+        input: { fragment: 'greet', parameters: { $who: 'Ann' } },
+      },
+      {
+        name: 'a declared placeholder the call leaves out, which v3 reads as null',
+        input: { fragment: 'declaredGreet' },
+        differs: { v2: { value: 'Hi $who!' }, v3: { value: 'Hi !' } },
+      },
+    ])('$name', (call) => checkCall(withUnfilled, call, { fragments: UNFILLED }))
   })
 
   test('messages name the fragment and the key', () => {

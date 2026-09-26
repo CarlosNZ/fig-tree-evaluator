@@ -27,7 +27,7 @@ test('migrateV2Fragments converts the definitions in its options', () => {
     fragments: {
       adder: {
         expression: { operator: 'plus', values: '$params.values' },
-        parameters: { values: { type: 'any', required: false } },
+        parameters: { values: { type: 'any', default: '$values' } },
       },
     },
     issues: [],

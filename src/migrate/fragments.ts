@@ -420,7 +420,10 @@ export const fragmentCatalogue = (options: V2Options, walk: BodyWalk): Catalogue
  * A parameter's declaration: a constant default is the `default`, and a
  * computed one, which the body binds, leaves it optional. Only `required:
  * true` without a default was required, and a default v3 would refuse for
- * its declared type widens it to `'any'`.
+ * its declared type widens it to `'any'`. An inferred parameter with no
+ * default of its own defaults to its placeholder's text, which is what v2
+ * left where no call filled it: text such as `'$5.00'` was never a
+ * placeholder at all.
  */
 const declaration = (
   parameter: ParameterInfo,
@@ -434,11 +437,14 @@ const declaration = (
     issues.push(issue('default-outside-type', parameter.default!.path, fill))
     type = 'any'
   }
-  const optional = constant === undefined && !(parameter.required && converted === undefined)
+  const text = !parameter.declared && converted === undefined
+  const optional =
+    constant === undefined && !text && !(parameter.required && converted === undefined)
   return {
     ...(type !== undefined && { type: type as FragmentParameterDeclaration['type'] }),
     ...(optional && { required: false }),
     ...(constant !== undefined && { default: constant.constant }),
+    ...(text && { default: parameter.key }),
     ...(parameter.description !== undefined && { description: parameter.description as string }),
     ...(parameter.metadata !== undefined && { metadata: parameter.metadata }),
   }
