@@ -179,7 +179,9 @@ An empty path gives the bare reference itself: `'$data'`, or `'$vars.row'`.
 | `'$params.p.a'` | `{ operator: 'get', path: 'a', from: '$params.p' }` |
 | `'$e.name'`     | `{ operator: 'get', path: 'name', from: '$e' }`     |
 
-The path is the drill as written, without its leading `.`. The first segment of a `$vars` or `$params` reference picks the var or parameter, so it stays in `from`. A reference with nothing to drill (`'$data'`, `'$e'`, `'$vars.row'`), `$index`, and any string that isn't a well-formed reference return `null`.
+The path is the drill as written, without its leading `.`. The first segment of a `$vars` or `$params` reference picks the var or parameter, so it stays in `from`: a `get`'s path reads out of `from`, which is the evaluation data unless given, and vars live in the expression's scope, not the data, so `path: 'vars.row.a'` would read the data's own `vars` key instead.
+
+**A reference with nothing left to drill reads its whole source**, as a `get` with an empty path does: `'$data'` gives `{ operator: 'get', path: '' }`, `'$e'` gives `{ operator: 'get', path: '', from: '$e' }`, and `'$vars.row'` gives `{ operator: 'get', path: '', from: '$vars.row' }`. That makes `toGet` the inverse of `toReference`, which reads an empty path back as the bare reference, and gives the editor's "To get node" on a bare leaf a node to add a path to. (Amended after the Phase 16 review, September 2026: the first draft returned `null` here.) `$index` has no `get` form, since it is a number rather than a source a path reads into, and neither does any string that isn't a well-formed reference: both return `null`.
 
 **Equivalence.** A `get` node and its reference read through the same path resolver: that is `get`'s sugar contract, which holds by construction (`src/operators/data.ts`). Missing paths give `null` in both. Under `strictDataPaths` both fail, and a `fallback` would catch either. What differs is the compiled node type, and so the trace output and the wording of the `strictDataPaths` error. The evaluation tests below confirm the rest.
 

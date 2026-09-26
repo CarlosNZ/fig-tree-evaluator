@@ -109,12 +109,34 @@ const main = async () => {
     { operator: 'get', path: 'a', fallback: 'none' },
     { operator: 'get', path: { $plus: ['a', 'b'] } },
     { $get: '$field' },
+  ]) {
+    const reference = toReference(node)
+    // `null` is "no reference form"; the node's own shorthand is toShorthand's
+    const shorthand = reference === null ? `   (toShorthand: ${block(toShorthand(node, fig))})` : ''
+    print('toReference', node, `→ ${block(reference)}${shorthand}`)
+  }
+  note(
+    [
+      "toReference gives a string or null. null where a string can't say it all: a",
+      "modifier or default it can't carry, a computed path, or a $-prefixed path (it",
+      'may be an `as` binding). Those nodes keep a shorthand form, shown beside.',
+    ].join('\n')
+  )
+  for (const reference of [
+    '$d.user.name',
+    '$vars.row.a',
+    '$e.name',
+    '$data',
+    '$vars.row',
+    '$index',
   ])
-    print('toReference', node, `→ ${block(toReference(node))}`)
-  for (const reference of ['$d.user.name', '$vars.row.a', '$e.name', '$data', '$index'])
     print('toGet', reference, `→ ${block(toGet(reference))}`)
   note(
-    'null is the answer "no such form": a modifier or default a string can\'t carry,\na computed path, a $-prefixed path (it may be an `as` binding), or nothing to drill.'
+    [
+      "A var is read through `from`: vars live in the expression's scope, not the data,",
+      "so `path: 'vars.row.a'` would read the data's own key. A bare reference reads",
+      'its whole source, an empty path; $index is a number, with no get form.',
+    ].join('\n')
   )
   await both(
     'inside a tree, toShorthand turns reads into references',

@@ -76,6 +76,9 @@ const pathText = (drill: string): string => (drill.startsWith('.') ? drill.slice
  * A reference string as a canonical `get` node. `$data` reads need no
  * `from`. The first segment of a `$vars` or `$params` reference picks the
  * var or parameter, so it stays in `from`, and the rest becomes the path.
+ * A reference with nothing left to drill reads its whole source, as a get
+ * with an empty path does. `$index` has no get form: it is a number, not a
+ * source a path can read into.
  */
 export const referenceToGet = (
   value: unknown,
@@ -83,28 +86,25 @@ export const referenceToGet = (
 ): Record<string, unknown> | null => {
   if (typeof value !== 'string') return null
   const recognition = recognizeReference(value)
-  if (recognition.kind !== 'reference' || recognition.segments.length === 0) return null
+  if (recognition.kind !== 'reference') return null
   const { namespace } = recognition
   const { token, rest } = splitSigilToken(value)!
+  const source = `$${spellToken(token, namespace, spelling)}`
 
   switch (namespace) {
     case 'data':
       return { operator: 'get', path: pathText(rest) }
     case 'element':
-      return {
-        operator: 'get',
-        path: pathText(rest),
-        from: `$${spellToken(token, namespace, spelling)}`,
-      }
+      return { operator: 'get', path: pathText(rest), from: source }
     case 'vars':
     case 'params': {
-      if (recognition.segments.length < 2) return null
+      if (recognition.segments.length === 0) return { operator: 'get', path: '', from: source }
       const end = firstKeyEnd(rest)
       if (end === null) return null
       return {
         operator: 'get',
         path: pathText(rest.slice(end)),
-        from: `$${spellToken(token, namespace, spelling)}${rest.slice(0, end)}`,
+        from: `${source}${rest.slice(0, end)}`,
       }
     }
     default:

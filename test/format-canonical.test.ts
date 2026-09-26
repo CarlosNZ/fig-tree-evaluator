@@ -167,11 +167,11 @@ describe('referencesAsGet', () => {
     })
   })
 
-  test('a reference with no get form stays a reference', () => {
+  test('a bare reference reads its whole source; $index has no get form', () => {
     expect(canonical(['$data', '$index', '$e'], { referencesAsGet: true })).toEqual([
-      '$data',
+      { operator: 'get', path: '' },
       '$index',
-      '$e',
+      { operator: 'get', path: '', from: '$e' },
     ])
   })
 

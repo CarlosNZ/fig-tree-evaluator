@@ -27,18 +27,21 @@ describe('toGet', () => {
     ['$params.p.a', { operator: 'get', path: 'a', from: '$params.p' }],
     ['$e.name', { operator: 'get', path: 'name', from: '$e' }],
     ['$element[2]', { operator: 'get', path: '[2]', from: '$element' }],
+    // Nothing left to drill: the whole source, as an empty path reads it
+    ['$data', { operator: 'get', path: '' }],
+    ['$d', { operator: 'get', path: '' }],
+    ['$data.', { operator: 'get', path: '' }],
+    ['$e', { operator: 'get', path: '', from: '$e' }],
+    ['$vars.row', { operator: 'get', path: '', from: '$vars.row' }],
+    ['$p.p', { operator: 'get', path: '', from: '$p.p' }],
+    ['$params', { operator: 'get', path: '', from: '$params' }],
   ])('%s', (reference, node) => {
     expect(toGet(reference)).toEqual(node)
   })
 
   test.each([
-    ['a bare $data', '$data'],
-    ['a bare alias', '$d'],
-    ['a trailing dot only', '$data.'],
-    ['a bare $element', '$e'],
-    ['a var with nothing below it', '$vars.row'],
-    ['a parameter with nothing below it', '$p.p'],
-    ['$index', '$index'],
+    ['$index, a number rather than a source', '$index'],
+    ['$index by its alias', '$i'],
     ['a drilled $index (invalid)', '$i.x'],
     ['a bare $vars (invalid)', '$vars'],
     ['a var named by an index', '$vars[0].a'],
@@ -165,7 +168,16 @@ describe('toReference', () => {
   // A `$data` read keeps no spelling as a get node, so its round trip starts
   // from the alias `preserve` writes back
   test('toGet and toReference invert each other', () => {
-    for (const reference of ['$d.a.b', '$vars.row.a', '$params.p[0]', '$element.x', '$v.r["q.r"]'])
+    for (const reference of [
+      '$d.a.b',
+      '$vars.row.a',
+      '$params.p[0]',
+      '$element.x',
+      '$v.r["q.r"]',
+      '$d',
+      '$vars.row',
+      '$e',
+    ])
       expect(toReference(toGet(reference))).toBe(reference)
   })
 })
@@ -191,6 +203,9 @@ describe('a get node and its reference evaluate alike', () => {
   const inMap = (read: unknown) => ({ $map: [[{ name: 'n1' }, { other: 1 }], read] })
   const reads: [string, unknown, (read: unknown) => unknown][] = [
     ['a data path', { operator: 'get', path: 'user.name' }, (read) => read],
+    ['the whole data object', { operator: 'get', path: '' }, (read) => read],
+    ['a whole var', { operator: 'get', path: '', from: '$vars.row' }, inVars],
+    ['a whole element', { operator: 'get', path: '', from: '$e' }, inMap],
     ['a missing data path', { operator: 'get', path: 'user.nope' }, (read) => read],
     ['a path through a missing key', { operator: 'get', path: 'nope.deeper' }, (read) => read],
     ['a stored null', { operator: 'get', path: 'stored' }, (read) => read],
