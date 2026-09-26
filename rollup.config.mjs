@@ -33,6 +33,55 @@ for (const [field, value] of Object.entries(expected))
         JSON.stringify(value, null, 2)
     )
 
+// The top-level calls a consumer's bundler may drop when it drops the
+// binding they initialize (#193). Each entry ships as one file, and
+// `sideEffects: false` works per file, so inside a file a bundler keeps any
+// top-level call it cannot prove pure, and everything that call reaches:
+// without these, importing `version` alone carries every core operator.
+// Rollup infers some of this purity itself; esbuild and webpack read only
+// the annotation. Each is a callee as rollup prints it (a `$1` suffix, from
+// rollup's renaming, is allowed for).
+const PURE_CALLEES = [
+  // The operator-definition factories: each returns a new object and
+  // touches nothing else. `declareOperator` is left off: it returns its
+  // argument, so terser inlines every call to it, and an annotated call is
+  // one terser keeps
+  'ordering',
+  'unary',
+  'extremum',
+  'normalizer',
+  'emptyArrayWarning',
+  // Building the core set: `coreOperators`
+  'coreDefinitions.map',
+  'new Set',
+  'Object.freeze',
+]
+
+/**
+ * Prefix each listed call with `/*#__PURE__*\/`, before terser, which keeps
+ * the annotations under `format.preserve_annotations`. Only a call that
+ * initializes a top-level declaration is marked, since that is the only
+ * place the annotation can mean "droppable with its binding": the same call
+ * in a statement position (a bare `Object.freeze(x)`) is there for its
+ * effect. `pnpm check:package` bundles a small import with esbuild and
+ * fails on operator or engine code in it, which catches a callee renamed
+ * out from under this list.
+ */
+const pureAnnotations = () => {
+  const escape = (callee) => callee.replace(/[.$]/g, '\\$&')
+  const pattern = new RegExp(
+    `^((?:export )?(?:const|let|var) [\\w$]+ = )((?:${PURE_CALLEES.map(escape).join('|')})(?:\\$\\d+)?\\()`,
+    'gm'
+  )
+  return {
+    name: 'pure-annotations',
+    renderChunk: (code) => {
+      const annotated = code.replace(pattern, '$1/*#__PURE__*/ $2')
+      return annotated === code ? null : { code: annotated, map: null }
+    },
+  }
+}
+
 export default [
   {
     // One pass over every entry, so shared code is emitted once as a chunk
@@ -51,7 +100,12 @@ export default [
     },
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides
-    plugins: [typescript(), terser(), collectBundleSize()],
+    plugins: [
+      typescript(),
+      pureAnnotations(),
+      terser({ format: { preserve_annotations: true } }),
+      collectBundleSize(),
+    ],
   },
   // Bundle each entry's per-file declarations (build/dts, emitted by the
   // pass above under the source's own path) into one self-contained .d.ts
