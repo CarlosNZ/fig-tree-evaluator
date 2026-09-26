@@ -363,12 +363,12 @@
                   {
                     "operator": "get",
                     "path": "applicationData.config.serverREST",
-                    "missingPathDefault": null
+                    "default": null
                   },
                   {
                     "operator": "get",
                     "path": "search.text",
-                    "missingPathDefault": null
+                    "default": null
                   }
                 ]
               },
@@ -415,7 +415,7 @@
                   {
                     "operator": "get",
                     "path": "applicationData.config.serverREST",
-                    "missingPathDefault": null
+                    "default": null
                   }
                 ]
               },
@@ -1558,7 +1558,7 @@
                       {
                         "operator": "get",
                         "path": "applicationData.config.serverREST",
-                        "missingPathDefault": null
+                        "default": null
                       }
                     ]
                   },
@@ -1575,7 +1575,7 @@
                       {
                         "operator": "get",
                         "path": "applicationData.config.serverREST",
-                        "missingPathDefault": null
+                        "default": null
                       }
                     ]
                   },
@@ -1854,7 +1854,7 @@
           {
             "operator": "get",
             "path": "responses.thisResponse",
-            "missingPathDefault": null
+            "default": null
           },
           "I agree"
         ]
@@ -2296,7 +2296,7 @@
             {
               "operator": "get",
               "path": "applicationData.config.serverREST",
-              "missingPathDefault": null
+              "default": null
             }
           ]
         },
@@ -2369,7 +2369,7 @@
             {
               "operator": "get",
               "path": "applicationData.config.serverREST",
-              "missingPathDefault": null
+              "default": null
             }
           ]
         },

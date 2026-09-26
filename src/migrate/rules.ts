@@ -298,7 +298,7 @@ const IS_TYPE: Record<string, (value: unknown) => boolean> = {
 }
 
 /**
- * OBJECT_PROPERTIES' `fallback` becomes `missingPathDefault`, which the
+ * OBJECT_PROPERTIES' `fallback` becomes `get`'s `default`, which the
  * `outputType` wrapper then converts, where v2 returned the fallback as it
  * was
  */
@@ -318,7 +318,7 @@ const convertedDefault = (fallback: unknown, outputType: unknown, context: RuleC
 /**
  * OBJECT_PROPERTIES: a literal path and nothing else is a reference, and the
  * rest a `get`. A `fallback` caught the missing path in v2, which is `get`'s
- * `missingPathDefault`, so the rule takes it over.
+ * `default`, so the rule takes it over.
  */
 const preferReference = (draft: V3Draft, context: RuleContext) => {
   const { modifiers } = draft
@@ -327,7 +327,7 @@ const preferReference = (draft: V3Draft, context: RuleContext) => {
     delete modifiers.fallback
     if (Object.hasOwn(modifiers, 'outputType'))
       convertedDefault(fallback, modifiers.outputType, context)
-    return { ...toNode(draft), missingPathDefault: fallback }
+    return { ...toNode(draft), default: fallback }
   }
   const { path } = draft.params
   if (

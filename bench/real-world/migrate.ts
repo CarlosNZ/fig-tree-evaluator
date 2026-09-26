@@ -113,7 +113,7 @@ const operatorToV3 = (op: string, rest: Obj): Obj => {
       return {
         operator: 'get',
         path: pathToV3(path),
-        ...((rest.children as unknown[]).length > 1 ? { missingPathDefault: toV3(missing) } : {}),
+        ...((rest.children as unknown[]).length > 1 ? { default: toV3(missing) } : {}),
       }
     }
     case '=':

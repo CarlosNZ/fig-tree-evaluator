@@ -259,9 +259,9 @@ export const getOp = () =>
     parameters: {
       path: { type: ['string', 'array', 'null'] },
       from: { type: 'any', nullPolicy: 'value', default: EvaluationData },
-      missingPathDefault: { type: 'any', required: false, evaluation: 'lazy' },
+      default: { type: 'any', required: false, evaluation: 'lazy' },
     },
-    positionalParams: ['path', 'missingPathDefault'],
+    positionalParams: ['path', 'default'],
     evaluate: noop,
   })
 

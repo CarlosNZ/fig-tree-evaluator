@@ -546,7 +546,7 @@
     <ol>
       <li><span class="r">01</span><a href="#r1">Read a value, render a sentence</a><span class="g">references &middot; buildString &middot; the three faces</span></li>
       <li><span class="r">02</span><a href="#r2">Decide something</a><span class="g">if &middot; comparisons &middot; symbol aliases &middot; lazy branches</span></li>
-      <li><span class="r">03</span><a href="#r3">When the data isn't there</a><span class="g">firstOf &middot; missingPathDefault &middot; fallback &middot; literal roots</span></li>
+      <li><span class="r">03</span><a href="#r3">When the data isn't there</a><span class="g">firstOf &middot; get + default &middot; fallback &middot; literal roots</span></li>
       <li><span class="r">04</span><a href="#r4">More than two ways to go</a><span class="g">match &middot; branch keys &middot; lookup tables</span></li>
       <li><span class="r">05</span><a href="#r5">Work on a list</a><span class="g">map / filter / some &middot; $element &middot; [*] projection &middot; join</span></li>
       <li><span class="r">06</span><a href="#r6">Name the repeated thing</a><span class="g">vars &middot; lazy memoisation &middot; // comments</span></li>
@@ -689,7 +689,7 @@
       <div class="chips">
         <span class="chip">plain-literal root</span>
         <span class="chip">firstOf</span>
-        <span class="chip">get + missingPathDefault</span>
+        <span class="chip">get + default</span>
         <span class="chip">fallback</span>
       </div>
     </div>
@@ -708,7 +708,7 @@
   card: 'profile',
   displayName: { $firstOf: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
   contact: { $buildString: 'Phone: {{$d.user.phone}}' },
-  timezone: { $get: { path: 'user.prefs.timezone', missingPathDefault: 'Pacific/Auckland' } },
+  timezone: { $get: ['user.prefs.timezone', 'Pacific/Auckland'] },
   locale: '$data.user.prefs.locale',
   avatar: {
     $http: 'https://api.example.com/avatar/mohini',
@@ -733,13 +733,14 @@
         <div class="plabel">Three tools, three different triggers</div>
         <pre><code>'$data.user.x'                              // &#8594; null. The everyday read.
 { $firstOf: [a, b, 'default'] }             // fires on null OR missing
-{ $get: { path: 'a.b', missingPathDefault: 'x' } }  // fires on a MISSING path only
+{ $get: ['a.b', 'x'] }                      // fires on a MISSING path only
 { &#8230;, fallback: 'x' }                        // fires when the node actually FAILED</code></pre>
       </div>
 
       <ul class="notes">
         <li><strong>Absence is not failure.</strong> A missing <code>$data</code> path resolves to <code>null</code> and composes onward; only an operation that genuinely broke &#8212; a 503, a type miss, a division by zero &#8212; is a failure, and only failures reach <code>fallback</code>. Everything above hangs off that one distinction.</li>
-        <li><strong><code>user.phone</code> is a genuine stored <code>null</code></strong>, which is why <code>missingPathDefault</code> would <em>not</em> fire on it &#8212; that parameter triggers on a missing path only, preserving the null/missing distinction that a bare reference deliberately erases. <code>firstOf</code> treats both the same.</li>
+        <li><strong><code>user.phone</code> is a genuine stored <code>null</code></strong>, which is why <code>get</code>'s <code>default</code> would <em>not</em> fire on it &#8212; it triggers on a missing path only, preserving the null/missing distinction that a bare reference deliberately erases. <code>firstOf</code> treats both the same.</li>
+        <li><strong><code>{ $get: [path, default] }</code> is the everyday way to read with a default</strong> &#8212; the positional form of <code>{ $get: { path, default } }</code>, and the same shape as lodash's <code>get(object, path, defaultValue)</code>, which also lets a stored <code>null</code> through. A <code>null</code> partway along the path is a miss, so the default fires there.</li>
         <li><strong><code>firstOf</code> evaluates candidates in order and stops.</strong> The sequencing is semantics, not optimisation: a backup HTTP call placed second must not fire when the first candidate answered. It skips <em>only</em> <code>null</code> &#8212; <code>""</code>, <code>0</code> and <code>false</code> are answers.</li>
         <li><strong><code>card</code> is a constant and <code>locale</code> is a bare reference.</strong> Constant subtrees are classified at parse and returned by identity &#8212; there is no traversal cost per evaluation. A reference is a value, not a node, so it carries no modifiers: for a default, use <code>get</code> or <code>firstOf</code>.</li>
         <li>Shorthand nodes may carry reserved sibling keys &#8212; <code>{ $http: '&#8230;', fallback: &#8230; }</code> is legal, and so are <code>useCache</code>, <code>vars</code> and <code>//</code>. Any <em>other</em> sibling key is a hard parse error.</li>
@@ -1290,7 +1291,7 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
         <tbody>
           <tr><td><code>null</code> and carry on</td><td>a bare reference</td><td>nothing &#8212; absence just resolves to <code>null</code></td></tr>
           <tr><td>a default across candidates</td><td><code>firstOf</code></td><td><code>null</code> or missing, in order, stopping at the first answer</td></tr>
-          <tr><td>to keep null and missing apart</td><td><code>get</code> + <code>missingPathDefault</code></td><td>a missing path only &#8212; a stored <code>null</code> passes through</td></tr>
+          <tr><td>to keep null and missing apart</td><td><code>get</code> + <code>default</code></td><td>a missing path only &#8212; a stored <code>null</code> passes through</td></tr>
           <tr><td>to catch something that broke</td><td><code>fallback</code></td><td>runtime failure in the node or anything inside it</td></tr>
           <tr><td>a host-wide stance</td><td><code>operatorDefaults</code></td><td>every node of that operator without its own value</td></tr>
           <tr><td>every static mistake, now</td><td><code>validate()</code></td><td>parse time &#8212; before data exists</td></tr>

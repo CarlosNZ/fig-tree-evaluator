@@ -223,7 +223,7 @@ export const uncaughtRead = (value: unknown, bodyReads: (name: string) => boolea
   if (isNode(value) && Object.hasOwn(value, 'fallback'))
     return reads(value.fallback) || reads(value.vars)
   const { operator } = value
-  if (operator === 'get' && !Object.hasOwn(value, 'missingPathDefault')) return true
+  if (operator === 'get' && !Object.hasOwn(value, 'default')) return true
   if ((operator === 'http' || operator === 'graphQL') && Object.hasOwn(value, 'returnPath'))
     return true
   return Object.entries(value).some(([key, element]) => key !== '//' && reads(element))

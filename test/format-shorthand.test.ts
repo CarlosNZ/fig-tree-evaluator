@@ -153,11 +153,7 @@ describe('with the core operators', () => {
         { operator: 'get', path: 'a', fallback: 0 },
         { $get: 'a', fallback: 0 },
       ],
-      [
-        'a read with a default',
-        { operator: 'get', path: 'a', missingPathDefault: 0 },
-        { $get: ['a', 0] },
-      ],
+      ['a read with a default', { operator: 'get', path: 'a', default: 0 }, { $get: ['a', 0] }],
       [
         'a read from a literal object',
         { operator: 'get', path: 'a', from: { a: 1 } },

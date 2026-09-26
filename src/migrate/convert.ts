@@ -757,7 +757,7 @@ class Converter {
       const get = {
         operator: 'get',
         path,
-        ...(hasFallback && missable && { missingPathDefault: fallback }),
+        ...(hasFallback && missable && { default: fallback }),
       }
       return layout(get, { comment, vars })
     }

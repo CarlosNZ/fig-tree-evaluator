@@ -81,7 +81,7 @@ describe('get — the path grammar', () => {
 
   test('a per-element miss under [*] is a null slot, not a whole-path miss', async () => {
     expect(
-      await ev({ $get: { path: 'xs[*].a', missingPathDefault: 'MISSING' } }, { xs: [{ a: 1 }, {}] })
+      await ev({ $get: { path: 'xs[*].a', default: 'MISSING' } }, { xs: [{ a: 1 }, {}] })
     ).toEqual([1, null])
   })
 
@@ -119,7 +119,7 @@ describe('get — absence (register row 26)', () => {
     expect(await ev({ $get: 'user.middleName' }, data)).toBeNull()
   })
 
-  test('missingPathDefault fires on a missing path', async () => {
+  test('`default` fires on a missing path', async () => {
     expect(await ev({ $get: ['user.middleName', 'N/A'] }, data)).toBe('N/A')
   })
 
@@ -127,7 +127,11 @@ describe('get — absence (register row 26)', () => {
     expect(await ev({ $get: ['user.phone', 'N/A'] }, data)).toBeNull()
   })
 
-  test('missingPathDefault is lazy — it evaluates only on a miss', async () => {
+  test('a null partway along the path is a miss — the default fires', async () => {
+    expect(await ev({ $get: ['user.phone.number', 'N/A'] }, data)).toBe('N/A')
+  })
+
+  test('`default` is lazy — it evaluates only on a miss', async () => {
     expect(await ev({ $get: ['user.firstName', { $divide: [1, 0] }] }, data)).toBe('Steve')
     await expect(failure({ $get: ['user.nope', { $divide: [1, 0] }] }, data)).resolves.toBeDefined()
   })
@@ -143,14 +147,11 @@ describe('get — absence (register row 26)', () => {
     )
   })
 
-  test('missingPathDefault is the per-site strictness opt-out, null included', async () => {
+  test('`default` is the per-site strictness opt-out, null included', async () => {
     const strict = new FigTree({ strictDataPaths: true })
     expect(await strict.evaluate({ $get: ['user.middleName', 'N/A'] }, { data })).toBe('N/A')
     expect(
-      await strict.evaluate(
-        { $get: { path: 'user.middleName', missingPathDefault: null } },
-        { data }
-      )
+      await strict.evaluate({ $get: { path: 'user.middleName', default: null } }, { data })
     ).toBeNull()
   })
 })
@@ -183,10 +184,7 @@ describe('get — from', () => {
 
   test('a null from is a source where every path is missing', async () => {
     expect(
-      await ev(
-        { $get: { path: 'name', from: '$data.absent', missingPathDefault: 'Anonymous' } },
-        data
-      )
+      await ev({ $get: { path: 'name', from: '$data.absent', default: 'Anonymous' } }, data)
     ).toBe('Anonymous')
   })
 
@@ -209,7 +207,7 @@ describe('get — from', () => {
     ).toBe('Seismic charge')
   })
 
-  test('from is named-face only — the second positional slot is missingPathDefault', async () => {
+  test('from is named-face only — the second positional slot is `default`', async () => {
     expect(await ev({ $get: ['nope', 'the default'] }, data)).toBe('the default')
   })
 })

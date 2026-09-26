@@ -362,7 +362,7 @@ export const operatorHints: OperatorHintMap = {
     seeds: {
       path: 'path.to.value',
       from: { path: { to: { value: 'Found it' } } },
-      missingPathDefault: 'Not found',
+      default: 'Not found',
     },
   },
   buildObject: {
