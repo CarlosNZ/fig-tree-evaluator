@@ -3,21 +3,22 @@
  * (src/compile/grammar.ts; "What the walk visits" and "The positional
  * mapping is shared, not copied" in docs-dev/v3-specs/v3-format.md). The
  * compiler's suites pin these through the compiler; this file pins them as
- * the functions `./format` calls directly.
+ * the functions `./format` calls directly, with `positionalToNamed`, the
+ * named reading `./format` builds on `positionalLayout` (src/format/read.ts).
  */
-import { ErrorCodes } from '../src'
 import {
+  classifiesAsNode,
   classifyObject,
   positionalLayout,
-  positionalToNamed,
   singlePositionalTarget,
   type PositionalShape,
 } from '../src/compile/grammar'
+import { positionalToNamed } from '../src/format/read'
+
+const known = new Set(['plus', '+', 'literal', 'frag'])
+const recognizes = (name: string) => known.has(name)
 
 describe('classifyObject', () => {
-  const known = new Set(['plus', '+', 'literal', 'frag'])
-  const recognizes = (name: string) => known.has(name)
-
   test.each([
     ['an operator key', { operator: 'plus', values: [] }, { kind: 'operator' }],
     ['a fragment key', { fragment: 'frag' }, { kind: 'fragment' }],
@@ -38,14 +39,30 @@ describe('classifyObject', () => {
     ],
     ['canonical beside shorthand', { operator: 'plus', $frag: {} }, "shorthand key '$frag'"],
     ['two shorthand keys', { $plus: [1], $frag: {} }, "found '$plus' and '$frag'"],
-  ])('%s is malformed, with the compiler’s code and message', (_label, raw, fragment) => {
+  ])('%s is malformed, with the compiler’s message', (_label, raw, fragment) => {
     const classified = classifyObject(raw, recognizes)
-    expect(classified).toMatchObject({ kind: 'malformed', code: ErrorCodes.malformedNode })
+    expect(classified).toMatchObject({ kind: 'malformed' })
     expect(classified.kind === 'malformed' && classified.message).toContain(fragment)
   })
 
   test('an unrecognized $key beside an operator key is not a conflict', () => {
     expect(classifyObject({ operator: 'plus', $typo: 1 }, recognizes)).toEqual({ kind: 'operator' })
+  })
+})
+
+describe('classifiesAsNode', () => {
+  test.each([
+    ['a canonical node', { operator: 'plus' }, true],
+    ['a fragment call', { fragment: 'frag' }, true],
+    ['a recognized $key', { $plus: [1] }, true],
+    ['an unrecognized $key', { $typo: 1 }, false],
+    ['a plain object', { a: 1 }, false],
+    ['a malformed node, which is still a node', { operator: 'plus', fragment: 'frag' }, true],
+    ['an array', [{ operator: 'plus' }], false],
+    ['a string', '$plus', false],
+    ['null', null, false],
+  ])('%s', (_label, value, expected) => {
+    expect(classifiesAsNode(value, recognizes)).toBe(expected)
   })
 })
 

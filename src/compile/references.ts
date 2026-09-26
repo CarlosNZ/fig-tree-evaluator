@@ -23,15 +23,6 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
   i: 'index',
 }
 
-/** Each namespace's single-character alias token: the inverse of the above. */
-export const NAMESPACE_ALIASES: Record<ReferenceNamespace, string> = {
-  data: 'd',
-  vars: 'v',
-  params: 'p',
-  element: 'e',
-  index: 'i',
-}
-
 export type ReferenceRecognition =
   /**
    * A recognized, well-formed reference. `drill` is its text after the

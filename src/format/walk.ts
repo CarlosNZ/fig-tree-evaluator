@@ -11,12 +11,11 @@
  *
  * The walk never mutates: every container it passes through is rebuilt.
  */
-import { DEPTH_CEILING } from '../compile/grammar'
+import { DEPTH_CEILING, classifiesAsNode } from '../compile/grammar'
 import { ErrorCodes } from '../errorCodes'
 import { FigTreeError } from '../FigTreeError'
 import { isPlainDataObject } from '../utils'
 import {
-  classifiesAsNode,
   readNode,
   type FragmentRead,
   type KeepSlot,
@@ -109,7 +108,7 @@ export class Walk {
    * and a node or reference computing one is walked whole.
    */
   parameters(value: unknown): unknown {
-    if (!isPlainDataObject(value) || classifiesAsNode(this.lookup, value))
+    if (!isPlainDataObject(value) || classifiesAsNode(value, this.lookup.recognizes))
       return this.child(value, 'parameters')
     return this.within('parameters', () => this.entries(value, false))
   }

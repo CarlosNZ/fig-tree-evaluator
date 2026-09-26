@@ -10,7 +10,7 @@
  * Kept free of heavy imports on purpose: `./format` imports this module, so
  * everything it reaches lands in the chunk the subpath shares with the root.
  */
-import { ErrorCodes } from '../errorCodes'
+import { isPlainDataObject } from '../utils'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
 export const SHORTHAND_SIBLINGS: ReadonlySet<string> = new Set([
@@ -29,15 +29,16 @@ export const SHORTHAND_SIBLINGS: ReadonlySet<string> = new Set([
 export const DEPTH_CEILING = 500
 
 /**
- * What an object is, by its keys. `malformed` carries the compiler's code
- * and message: the compiler reports it as an issue, `./format` throws it.
+ * What an object is, by its keys. `malformed` carries the compiler's
+ * message, always under the code `malformed-node`: the compiler reports it
+ * as an issue, `./format` throws it.
  */
 export type ObjectClass =
   | { kind: 'operator' }
   | { kind: 'fragment' }
   | { kind: 'shorthand'; key: string }
   | { kind: 'plain' }
-  | { kind: 'malformed'; code: string; message: string }
+  | { kind: 'malformed'; message: string }
 
 // The results without a payload are shared: the compiler classifies every
 // object it visits, so only a shorthand or malformed one allocates
@@ -45,11 +46,7 @@ const OPERATOR: ObjectClass = { kind: 'operator' }
 const FRAGMENT: ObjectClass = { kind: 'fragment' }
 const PLAIN: ObjectClass = { kind: 'plain' }
 
-const malformed = (message: string): ObjectClass => ({
-  kind: 'malformed',
-  code: ErrorCodes.malformedNode,
-  message,
-})
+const malformed = (message: string): ObjectClass => ({ kind: 'malformed', message })
 
 /**
  * Classify an object by its keys, in the grammar's order: two invocations
@@ -82,6 +79,17 @@ export const classifyObject = (
     )
   if (shorthand.length === 1) return { kind: 'shorthand', key: shorthand[0] }
   return PLAIN
+}
+
+/** Would this value classify as a node? `recognizes` as `classifyObject`'s. */
+export const classifiesAsNode = (
+  value: unknown,
+  recognizes: (name: string) => boolean
+): boolean => {
+  if (!isPlainDataObject(value)) return false
+  if ('operator' in value || 'fragment' in value) return true
+  for (const key in value) if (key.startsWith('$') && recognizes(key.slice(1))) return true
+  return false
 }
 
 /** The part of an operator's definition the positional grammar reads. */
@@ -122,27 +130,6 @@ export const positionalLayout = (
     bound: Math.min(length, leading),
     restAt: rest !== null && length >= leading ? leading : null,
   }
-}
-
-/**
- * An array payload as named parameters, in positional order: the leading
- * positions left to right, then the rest slice (the payload itself where
- * nothing leads it). Entries rather than an object, so a parameter whose
- * name is integer-like cannot move ahead of the others. `null` as for
- * `positionalLayout`.
- */
-export const positionalToNamed = (
-  shape: PositionalShape,
-  payload: readonly unknown[]
-): [string, unknown][] | null => {
-  const layout = positionalLayout(shape, payload.length)
-  if (layout === null) return null
-  const positional = shape.positionalParams!
-  const named: [string, unknown][] = []
-  for (let i = 0; i < layout.bound; i++) named.push([positional[i], payload[i]])
-  if (layout.restAt !== null)
-    named.push([shape.restParam!, layout.restAt === 0 ? payload : payload.slice(layout.restAt)])
-  return named
 }
 
 /**

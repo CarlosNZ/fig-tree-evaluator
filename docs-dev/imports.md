@@ -91,8 +91,8 @@ import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 // class. It reads expressions exactly as the compiler does, so it shares a
 // few small root modules with the engine: the reference grammar, the shared
 // grammar in src/compile/grammar.ts, the path parser, FigTreeError and
-// ErrorCodes. The build emits those once, in build/chunks/, which the root
-// imports too (the one shared chunk; figures below include it).
+// ErrorCodes. The build emits those once, in build/chunks/shared.js, which
+// the root imports too (the one shared chunk; figures below include it).
 import { toCanonical } from 'fig-tree-evaluator/format' // 4.4 kB
 import { toShorthand } from 'fig-tree-evaluator/format' // 4.8 kB
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format' // 5.3 kB

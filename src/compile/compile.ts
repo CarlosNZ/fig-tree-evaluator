@@ -119,6 +119,7 @@ import { isRecognizedShorthand, probeConstant } from './probe'
 import {
   DEPTH_CEILING,
   SHORTHAND_SIBLINGS,
+  classifiesAsNode,
   classifyObject,
   positionalLayout,
   singlePositionalTarget,
@@ -563,19 +564,6 @@ const walkArray = (
 
 // ── Objects: node-kind classification ───────────────────────────────
 
-/** Does any `$name` key of an object resolve against what's known? */
-const hasRecognizedShorthand = (state: WalkState, raw: Record<string, unknown>): boolean => {
-  for (const key in raw) {
-    if (key.startsWith('$') && state.recognizes(key.slice(1))) return true
-  }
-  return false
-}
-
-/** Would this value classify as a node (kinds 1–3, 5)? */
-const classifiesAsNode = (state: WalkState, value: unknown): boolean =>
-  isPlainDataObject(value) &&
-  ('operator' in value || 'fragment' in value || hasRecognizedShorthand(state, value))
-
 const walkObject = (
   state: WalkState,
   raw: Record<string, unknown>,
@@ -586,7 +574,7 @@ const walkObject = (
   const classified = classifyObject(raw, state.recognizes)
   switch (classified.kind) {
     case 'malformed':
-      emit(state, 'error', classified.code, classified.message, path, order)
+      emit(state, 'error', ErrorCodes.malformedNode, classified.message, path, order)
       return invalid(raw, path, order)
     case 'operator':
       return walkOperatorCanonical(state, raw, path, depth, order)
@@ -1190,7 +1178,7 @@ const walkEntriesParam = (
 ): CompiledNode | null => {
   if (entry.kind !== 'value') return null
   const raw = entry.value
-  if (!isPlainDataObject(raw) || classifiesAsNode(state, raw)) return null
+  if (!isPlainDataObject(raw) || classifiesAsNode(raw, state.recognizes)) return null
 
   const { order, containerDepth } = openSynthetic(state, depth)
   const { entries, vars, changed } = collectPlainObject(
@@ -1330,7 +1318,7 @@ const collectShorthandPayload = (
   // object that classifies as a node is the single positional argument —
   // sound for the same reason as the fragments disambiguation: parameter
   // names cannot start with '$', and 'operator'/'fragment' are reserved
-  if (isPlainDataObject(payload) && !classifiesAsNode(state, payload)) {
+  if (isPlainDataObject(payload) && !classifiesAsNode(payload, state.recognizes)) {
     for (const key in payload) {
       const value = payload[key]
       if (key === '//' || value === undefined) continue
@@ -1638,7 +1626,7 @@ const compileFragmentParameters = (
 ) => {
   if (value === undefined) return // zero-argument call
   if (
-    classifiesAsNode(state, value) ||
+    classifiesAsNode(value, state.recognizes) ||
     (typeof value === 'string' && recognizeReference(value).kind === 'reference')
   ) {
     node.argumentsMode = 'dynamic'

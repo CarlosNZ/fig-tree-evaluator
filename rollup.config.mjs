@@ -47,7 +47,7 @@ export default [
       dir: 'build',
       format: 'esm',
       entryFileNames: '[name].js',
-      chunkFileNames: `${CHUNKS_DIR}/[name].js`,
+      chunkFileNames: `${CHUNKS_DIR}/shared.js`,
     },
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides

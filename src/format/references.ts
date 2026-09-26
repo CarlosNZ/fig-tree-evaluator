@@ -8,16 +8,12 @@
  * Every function here answers `null` for "no such form" and never throws,
  * so the editor can ask before it offers a conversion.
  */
-import {
-  NAMESPACE_ALIASES,
-  recognizeReference,
-  renderSegments,
-  splitSigilToken,
-} from '../compile/references'
-import { positionalToNamed, singlePositionalTarget } from '../compile/grammar'
+import { recognizeReference, renderSegments, splitSigilToken } from '../compile/references'
+import { singlePositionalTarget } from '../compile/grammar'
 import { GET_POSITIONAL } from '../operators/getShape'
-import { parsePath } from '../primitives/path'
+import { parsePath, WILDCARD } from '../primitives/path'
 import { isPlainDataObject } from '../utils'
+import { positionalToNamed } from './read'
 import type { ReferenceNamespace } from '../compile/artifact'
 import type { Spelling } from '../formatTypes'
 
@@ -28,6 +24,18 @@ const GET_SHAPE = { positionalParams: GET_POSITIONAL, restParam: null }
 
 /** The keys a get node may carry and still have a reference form. */
 const GET_KEYS = new Set(['path', 'from', 'missingPathDefault'])
+
+/**
+ * Each namespace's single-character alias token: the inverse of
+ * `NAMESPACE_TOKENS` in src/compile/references.ts.
+ */
+const NAMESPACE_ALIASES: Record<ReferenceNamespace, string> = {
+  data: 'd',
+  vars: 'v',
+  params: 'p',
+  element: 'e',
+  index: 'i',
+}
 
 /** A namespace token in the requested spelling; `preserve` keeps `token`. */
 const spellToken = (token: string, namespace: ReferenceNamespace, spelling: Spelling): string => {
@@ -138,15 +146,17 @@ const literalSegments = (path: unknown): (string | number)[] | null => {
 }
 
 /**
- * A get node's parameters as a reference, or `null` when they have none.
- * With no `from`, the read is of `$data`, which has no spelling of its own
- * to keep: `preserve` writes the alias, as short is the point.
+ * A get node's parameters as a reference, or `null` when they have none,
+ * which includes a path read from a projection in `from`. With no `from`,
+ * the read is of `$data`, which has no spelling of its own to keep:
+ * `preserve` writes the alias, as short is the point.
  */
 export const paramsToReference = (params: GetParams, spelling: Spelling): string | null => {
   if (params.has('missingPathDefault')) return null
   const segments = literalSegments(params.get('path'))
   if (segments === null) return null
 
+  const rendered = renderSegments(segments)
   let base: string
   const from = params.get('from')
   if (from === undefined) base = spelling === 'canonical' ? '$data' : '$d'
@@ -154,12 +164,14 @@ export const paramsToReference = (params: GetParams, spelling: Spelling): string
     if (typeof from !== 'string') return null
     const recognition = recognizeReference(from)
     if (recognition.kind !== 'reference' || recognition.namespace === 'index') return null
+    // A get applies its path to the array a projection in `from` gives,
+    // where a reference applies what follows the `[*]` to each element
+    if (rendered !== '' && recognition.segments.includes(WILDCARD)) return null
     // A trailing `.` reads as nothing (`$data.` is `$data`), and would
     // double up against the path's own
     base = respell(from, spelling).replace(/\.$/, '')
   }
 
-  const rendered = renderSegments(segments)
   if (rendered === '') return base
   return rendered.startsWith('[') ? `${base}${rendered}` : `${base}.${rendered}`
 }

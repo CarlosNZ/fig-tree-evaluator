@@ -11,7 +11,7 @@
  * `strictDataPaths` included.
  */
 import { FigTree, isFigTreeError } from '../src'
-import { toGet, toReference } from '../src/format'
+import { toGet, toReference, toShorthand } from '../src/format'
 
 describe('toGet', () => {
   test.each([
@@ -107,6 +107,16 @@ describe('toReference', () => {
     ['an empty path', { operator: 'get', path: '' }, '$d'],
     ['an empty array path', { operator: 'get', path: [] }, '$d'],
     ['an empty path from a var', { operator: 'get', path: '', from: '$vars.row' }, '$vars.row'],
+    [
+      'a projection before the path',
+      { operator: 'get', path: '[*].x', from: '$d.items' },
+      '$d.items[*].x',
+    ],
+    [
+      'a projection source, read whole',
+      { operator: 'get', path: '', from: '$d.items[*]' },
+      '$d.items[*]',
+    ],
   ])('%s', (_label, node, reference) => {
     expect(toReference(node)).toBe(reference)
   })
@@ -132,6 +142,8 @@ describe('toReference', () => {
     ['a literal object source', { operator: 'get', path: 'a', from: { a: 1 } }],
     ['a node source', { operator: 'get', path: 'a', from: { $get: 'x' } }],
     ['an $index source', { operator: 'get', path: 'a', from: '$index' }],
+    ['a path read from a projection', { operator: 'get', path: 'x', from: '$d.items[*]' }],
+    ['an index read from a projection', { operator: 'get', path: [0], from: '$d.grid[*].row' }],
     ['a bare $vars source (invalid)', { operator: 'get', path: 'a', from: '$vars' }],
     ['an unrecognized source', { operator: 'get', path: 'a', from: '$order' }],
     ['a plain-string source', { operator: 'get', path: 'a', from: 'data' }],
@@ -212,6 +224,16 @@ describe('a get node and its reference evaluate alike', () => {
     ['an index', { $get: 'user.tags[1]' }, (read) => read],
     ['a quoted key', { operator: 'get', path: ['user', 'first.last'] }, (read) => read],
     ['a projection', { $get: 'orders[*].total' }, (read) => read],
+    [
+      'a projection before the path',
+      { $get: { path: '[*].total', from: '$d.orders' } },
+      (read) => read,
+    ],
+    [
+      'a projection source, read whole',
+      { $get: { path: '', from: '$d.orders[*]' } },
+      (read) => read,
+    ],
     ['a var', { operator: 'get', path: 'a.b', from: '$vars.row' }, inVars],
     ['a missing var path', { operator: 'get', path: 'a.zz', from: '$vars.row' }, inVars],
     ['an element', { operator: 'get', path: 'name', from: '$e' }, inMap],
@@ -257,6 +279,15 @@ describe('a get node and its reference evaluate alike', () => {
           await outcome(fig, place(reference))
         )
       }
+    })
+
+    // The get reads `total` from the array the projection gives, which has
+    // none; `$d.orders[*].total` would read each order's
+    test('a path read from a projection stays a get in shorthand', async () => {
+      const node = { operator: 'get', path: 'total', from: '$d.orders[*]' }
+      const shorthand = toShorthand(node, fig)
+      expect(shorthand).toEqual({ $get: { path: 'total', from: '$d.orders[*]' } })
+      expect(await outcome(fig, shorthand)).toEqual(await outcome(fig, node))
     })
   })
 })

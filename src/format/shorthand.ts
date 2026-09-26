@@ -7,7 +7,8 @@
  */
 import { isPlainDataObject } from '../utils'
 import type { ShorthandOptions } from '../formatTypes'
-import { classifiesAsNode, type Lookup, type OperatorRead, type OperatorShape } from './read'
+import { classifiesAsNode } from '../compile/grammar'
+import type { Lookup, OperatorRead, OperatorShape } from './read'
 import { paramsToReference, respell } from './references'
 import {
   hasNodeComment,
@@ -29,7 +30,8 @@ const NAMED: Payload = { kind: 'named' }
  * a node as named ones.
  */
 const standsAlone = (value: unknown, lookup: Lookup): boolean =>
-  !Array.isArray(value) && !(isPlainDataObject(value) && !classifiesAsNode(lookup, value))
+  !Array.isArray(value) &&
+  !(isPlainDataObject(value) && !classifiesAsNode(value, lookup.recognizes))
 
 /**
  * The positional form wherever it reads back as the same parameters, and

@@ -11,8 +11,9 @@
  */
 import {
   SHORTHAND_SIBLINGS,
+  classifiesAsNode,
   classifyObject,
-  positionalToNamed,
+  positionalLayout,
   singlePositionalTarget,
   type PositionalShape,
 } from '../compile/grammar'
@@ -50,14 +51,6 @@ export const buildLookup = (fig: Registry): Lookup => {
     fragments,
     recognizes: (name) => name === 'literal' || operators.has(name) || fragments.has(name),
   }
-}
-
-/** Would this value classify as a node? The compiler's test, over a Lookup. */
-export const classifiesAsNode = (lookup: Lookup, value: unknown): boolean => {
-  if (!isPlainDataObject(value)) return false
-  if ('operator' in value || 'fragment' in value) return true
-  for (const key in value) if (key.startsWith('$') && lookup.recognizes(key.slice(1))) return true
-  return false
 }
 
 /**
@@ -107,6 +100,27 @@ export interface LiteralRead {
 
 export type NodeRead = OperatorRead | FragmentRead | LiteralRead | { kind: 'plain' }
 
+/**
+ * An array payload as named parameters, in positional order: the leading
+ * positions left to right, then the rest slice (the payload itself where
+ * nothing leads it). Entries rather than an object, so a parameter whose
+ * name is integer-like cannot move ahead of the others. `null` as for
+ * `positionalLayout`.
+ */
+export const positionalToNamed = (
+  shape: PositionalShape,
+  payload: readonly unknown[]
+): [string, unknown][] | null => {
+  const layout = positionalLayout(shape, payload.length)
+  if (layout === null) return null
+  const positional = shape.positionalParams!
+  const named: [string, unknown][] = []
+  for (let i = 0; i < layout.bound; i++) named.push([positional[i], payload[i]])
+  if (layout.restAt !== null)
+    named.push([shape.restParam!, layout.restAt === 0 ? payload : payload.slice(layout.restAt)])
+  return named
+}
+
 /** Stops the conversion at a malformed node, with the compiler's code. */
 export type Fail = (code: string, message: string) => never
 
@@ -117,7 +131,7 @@ export const readNode = (raw: Record<string, unknown>, lookup: Lookup, fail: Fai
   const classified = classifyObject(raw, lookup.recognizes)
   switch (classified.kind) {
     case 'malformed':
-      return fail(classified.code, classified.message)
+      return fail(ErrorCodes.malformedNode, classified.message)
     case 'plain':
       return classified
     case 'operator':
@@ -221,7 +235,7 @@ const readCanonicalFragment = (
  * computing one.
  */
 const checkFragmentParameters = (value: unknown, lookup: Lookup, fail: Fail) => {
-  if (isPlainDataObject(value) || classifiesAsNode(lookup, value)) return
+  if (isPlainDataObject(value) || classifiesAsNode(value, lookup.recognizes)) return
   if (typeof value === 'string' && recognizeReference(value).kind === 'reference') return
   fail(
     ErrorCodes.malformedNode,
@@ -299,7 +313,7 @@ const readPayload = (
 
   // A plain object that isn't a node is named arguments; parameter names
   // can't start with `$`, and `operator` / `fragment` are reserved
-  if (isPlainDataObject(payload) && !classifiesAsNode(lookup, payload)) {
+  if (isPlainDataObject(payload) && !classifiesAsNode(payload, lookup.recognizes)) {
     const params: [string, unknown][] = []
     for (const key in payload) {
       const value = payload[key]
