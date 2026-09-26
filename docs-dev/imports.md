@@ -4,14 +4,16 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the Phase 16 close (after `d6a9ab8`).
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`).
 
 <!-- prettier-ignore -->
 ```ts
 // ═══ Root: 'fig-tree-evaluator' → build/index.js ═════════════════════════
 // Published as one file plus the chunk it shares with ./format (below), so
-// a consumer's bundler has to shake it. Everything imported (35.4 kB) is
-// the ceiling.
+// a consumer's bundler has to shake it, which works because nothing at the
+// file's top level has a side effect a bundler cannot rule out (#193;
+// `pnpm check:package` guards it). Everything imported (35.5 kB) is the
+// ceiling.
 
 // ── The engine tree: 29.6 kB ─────────────────────────────────────────────
 import { FigTree } from 'fig-tree-evaluator'
@@ -23,23 +25,29 @@ import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────
 import { defineOperator } from 'fig-tree-evaluator'
-// +1.9 kB: the definition checks, for hosts registering custom operators
+// +2.0 kB: the definition checks, for hosts registering custom operators
 import { inspect } from 'fig-tree-evaluator'
 // +1.0 kB: the compiled-expression inspector
 import { httpOperators, sqlOperators } from 'fig-tree-evaluator'
-// +1.6 kB for HTTP with FetchClient; SQL is smaller
+// +1.8 kB for HTTP with FetchClient; +0.9 kB for SQL with PostgresConnection
 import { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from 'fig-tree-evaluator'
-// +0.1 to 0.4 kB each: thin adapters; axios / pg / sqlite are the host's
+// +0.15 to 0.4 kB each: thin adapters; axios / pg / sqlite are the host's
+// Without the engine, as a tool that only reads definitions would import
+// them: coreOperators 9.9 kB, defineOperator 5.4 kB, httpOperators 5.3 kB,
+// sqlOperators 3.3 kB. inspect alone is 3.2 kB, but it reads a handle, and
+// only FigTree makes one.
 
 // ── Small values ─────────────────────────────────────────────────────────
-// Each should cost next to nothing, but each currently costs ~25.5 kB alone,
-// because the root doesn't tree-shake below the engine (#193).
-import { version } from 'fig-tree-evaluator'
-import { FigTreeError, isFigTreeError, ErrorCodes } from 'fig-tree-evaluator'
-import { OperatorFailure, isOperatorFailure } from 'fig-tree-evaluator'
-import { EvaluationData, OPERATOR_CATEGORIES } from 'fig-tree-evaluator'
+import { version } from 'fig-tree-evaluator' // 0.12 kB
+import { FigTreeError, isFigTreeError, ErrorCodes } from 'fig-tree-evaluator' // 1.1 kB
+// ErrorCodes alone is 0.7 kB
+import { OperatorFailure, isOperatorFailure } from 'fig-tree-evaluator' // 0.2 kB
+import { EvaluationData, OPERATOR_CATEGORIES } from 'fig-tree-evaluator' // 0.2 kB
 import {
-  // The engine-parity helpers, so custom operators match core behaviour
+  // The engine-parity helpers, so custom operators match core behaviour:
+  // 1.45 kB together. Alone, isTruthy is 0.14 kB, renderText 0.19 kB,
+  // compareValues 0.26 kB, deepEqual 0.49 kB, parsePath 0.62 kB and
+  // resolvePath (which parses) 0.88 kB
   isTruthy, compareValues, renderText, ARRAY, OBJECT,
   parsePath, resolvePath, WILDCARD, deepEqual,
 } from 'fig-tree-evaluator'
@@ -74,11 +82,11 @@ import type {
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
 } from 'fig-tree-evaluator'
 
-// ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.3 kB ══════
+// ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.7 kB ══════
 // Separate from the engine: it shares no runtime code with the root and
 // imports only types from it. Neither function pulls in FigTree.
-import { migrateV2Expression } from 'fig-tree-evaluator/migrate' // 18.8 kB
-import { migrateV2Fragments } from 'fig-tree-evaluator/migrate' // 19.0 kB, mostly shared with the above
+import { migrateV2Expression } from 'fig-tree-evaluator/migrate' // 19.3 kB
+import { migrateV2Fragments } from 'fig-tree-evaluator/migrate' // 19.5 kB, mostly shared with the above
 
 // ═══ 'fig-tree-evaluator/editor-hints' → build/editor-hints/index.js: 1.7 kB
 // Data only; no engine code at all.
@@ -97,7 +105,7 @@ import { toCanonical } from 'fig-tree-evaluator/format' // 4.4 kB
 import { toShorthand } from 'fig-tree-evaluator/format' // 4.8 kB
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format' // 5.3 kB
 import { toGet } from 'fig-tree-evaluator/format' // 1.7 kB
-import { toReference } from 'fig-tree-evaluator/format' // 2.2 kB
+import { toReference } from 'fig-tree-evaluator/format' // 2.3 kB
 // Its types come from the root, listed there under "The subpaths' shapes":
 // Registry, Spelling, NameOptions, CanonicalOptions, ShorthandOptions.
 ```

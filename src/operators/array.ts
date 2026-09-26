@@ -52,26 +52,29 @@ export const length = declareOperator({
  * Spelled as `const` objects rather than built by a factory, because the
  * body's `params` type is inferred from these literals — a factory's
  * return type widens `evaluation` to `string` and the handle types are
- * lost.
+ * lost. And named one by one in each definition rather than spread into
+ * it: a bundler treats a spread as a possible side effect, since it could
+ * run a getter, so a definition holding one is kept in every bundle of the
+ * root, however little that bundle imports (#193).
  */
-const commonParams = {
-  input: {
-    type: 'array',
-    description: 'The collection iterated over; a null input is a type error',
-  },
-  as: {
-    type: 'string',
-    required: false,
-    evaluation: 'structural',
-    description: "Rename the bindings: as: 'row' binds $row and $rowIndex",
-  },
-  nullInputDefault: {
-    type: 'array',
-    required: false,
-    evaluation: 'lazy',
-    replacesNullAt: ['input'],
-    description: 'Used as the collection when input evaluates to null — typically []',
-  },
+const inputParam = {
+  type: 'array',
+  description: 'The collection iterated over; a null input is a type error',
+} as const
+
+const asParam = {
+  type: 'string',
+  required: false,
+  evaluation: 'structural',
+  description: "Rename the bindings: as: 'row' binds $row and $rowIndex",
+} as const
+
+const nullInputDefaultParam = {
+  type: 'array',
+  required: false,
+  evaluation: 'lazy',
+  replacesNullAt: ['input'],
+  description: 'Used as the collection when input evaluates to null — typically []',
 } as const
 
 /** `map`'s `each` takes any value; the other four judge truthiness. */
@@ -83,16 +86,23 @@ const transformEach = {
 } as const
 
 const predicateEach = {
-  ...transformEach,
-  truthiness: true,
+  type: 'any',
+  evaluation: 'perElement',
+  over: 'input',
   description: 'The predicate, per element — a truthiness position, so null is falsy',
+  truthiness: true,
 } as const
 
 export const map = declareOperator({
   name: 'map',
   category: 'array',
   description: 'Transform every element of an array',
-  parameters: { ...commonParams, each: transformEach },
+  parameters: {
+    input: inputParam,
+    as: asParam,
+    nullInputDefault: nullInputDefaultParam,
+    each: transformEach,
+  },
   positionalParams: ['input', 'each'],
   returns: 'array',
   validate: emptyInputWarning,
@@ -103,7 +113,12 @@ export const filter = declareOperator({
   name: 'filter',
   category: 'array',
   description: 'Keep the elements of an array whose predicate is truthy',
-  parameters: { ...commonParams, each: predicateEach },
+  parameters: {
+    input: inputParam,
+    as: asParam,
+    nullInputDefault: nullInputDefaultParam,
+    each: predicateEach,
+  },
   positionalParams: ['input', 'each'],
   returns: 'array',
   validate: emptyInputWarning,
@@ -133,7 +148,9 @@ export const find = declareOperator({
   category: 'array',
   description: 'The first element of an array whose predicate is truthy',
   parameters: {
-    ...commonParams,
+    input: inputParam,
+    as: asParam,
+    nullInputDefault: nullInputDefaultParam,
     each: predicateEach,
     noMatchDefault: {
       type: 'any',
@@ -169,7 +186,12 @@ export const some = declareOperator({
   name: 'some',
   category: 'array',
   description: 'True when any element satisfies the predicate',
-  parameters: { ...commonParams, each: predicateEach },
+  parameters: {
+    input: inputParam,
+    as: asParam,
+    nullInputDefault: nullInputDefaultParam,
+    each: predicateEach,
+  },
   positionalParams: ['input', 'each'],
   returns: 'boolean',
   validate: emptyInputWarning,
@@ -180,7 +202,12 @@ export const every = declareOperator({
   name: 'every',
   category: 'array',
   description: 'True when every element satisfies the predicate',
-  parameters: { ...commonParams, each: predicateEach },
+  parameters: {
+    input: inputParam,
+    as: asParam,
+    nullInputDefault: nullInputDefaultParam,
+    each: predicateEach,
+  },
   positionalParams: ['input', 'each'],
   returns: 'boolean',
   validate: emptyInputWarning,
