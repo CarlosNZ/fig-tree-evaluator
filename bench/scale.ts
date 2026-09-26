@@ -5,8 +5,8 @@
  * grounds that codegen/queryBuilder.ts is ours and could grow a v3 arm.
  * On inspection it cannot, not in 17a: its base expressions lean on
  * `outputType`, `type`, `funcName`, `passThru` and positional `children`,
- * which is converter work rather than a change of spelling, and exactly
- * what 17b exists for. Hand-translating them would produce a v3 tree
+ * which is converter work rather than a change of spelling.
+ * Hand-translating them would produce a v3 tree
  * nobody had checked against the recorded v2 result — the dishonesty the
  * split was drawn to avoid.
  *
