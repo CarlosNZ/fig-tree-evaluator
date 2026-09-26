@@ -682,7 +682,8 @@ class Converter {
     let { vars } = carried
     const { fallback } = modifiers
     ;({ result, vars } = this.ownVar(result, vars, fallback))
-    if (!Object.hasOwn(modifiers, 'outputType'))
+    // v2 converted nothing for an output type written falsy, such as `''`
+    if (!Object.hasOwn(modifiers, 'outputType') || !modifiers.outputType)
       return this.carry(
         result,
         { ...carried, fallback, vars },
@@ -1027,7 +1028,10 @@ class Converter {
     modifiers: Modifiers,
     context: NodeContext
   ) {
-    const key = ['outputType', 'type'].find((k) => Object.hasOwn(input, k))
+    // As v2's `outputType ?? type`, an `outputType` of `null` gives way
+    const key = ['outputType', 'type'].find(
+      (k) => Object.hasOwn(input, k) && (k === 'type' || input[k] != null)
+    )
     if (key === undefined) return
     // v2 read neither spelling that it never applied
     if (key === 'outputType' && Object.hasOwn(input, 'type')) {

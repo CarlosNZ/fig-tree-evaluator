@@ -1046,6 +1046,12 @@ describe('calls', () => {
       ],
     },
     {
+      name: "a call's null `outputType` gives way to its `type`",
+      input: { fragment: 'countBody', outputType: null, type: 'string' },
+      expected: { operator: 'convert', value: { fragment: 'countBody' }, to: 'string' },
+      issues: [{ code: 'output-type', path: ['type'] }],
+    },
+    {
       name: 'v2 returned a body that is not an operator node before converting',
       input: { fragment: 'constant', outputType: 'string' },
       expected: { fragment: 'constant' },

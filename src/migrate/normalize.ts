@@ -456,6 +456,8 @@ class Normalizer {
     for (const [key, entry] of draft.entries)
       node.set(Object.hasOwn(aliases, key) ? aliases[key] : key, entry)
 
+    // v2 read `outputType ?? type`, so an `outputType` of `null` never counted
+    if (node.get('outputType')?.value == null) node.entries.delete('outputType')
     const type = node.get('type')
     const outputType = node.get('outputType')
     // PLUS's `type` is its own parameter

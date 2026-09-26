@@ -103,6 +103,43 @@ describe('the modifiers', () => {
       expected: { operator: 'convert', value: { operator: 'length', value: [1] }, to: 'boolean' },
       issues: [{ code: 'output-type', path: ['type'] }],
     },
+    // v2 read `outputType ?? type`, and converted nothing for a falsy one
+    {
+      name: 'a null `outputType` converts nothing',
+      input: { operator: '+', values: [1, 2], outputType: null },
+      expected: { operator: 'plus', values: [1, 2] },
+    },
+    {
+      name: 'a false `outputType` converts nothing',
+      input: { operator: '+', values: [1, 2], outputType: false },
+      expected: { operator: 'plus', values: [1, 2] },
+    },
+    {
+      name: 'a null `outputType` gives way to `type`',
+      input: { operator: 'count', values: [1, 2], outputType: null, type: 'string' },
+      expected: {
+        operator: 'convert',
+        value: { operator: 'length', value: [1, 2] },
+        to: 'string',
+      },
+      issues: [{ code: 'output-type', path: ['type'] }],
+    },
+    {
+      name: 'an empty `outputType` beats `type`, and converts nothing',
+      input: { operator: 'count', values: [1, 2], outputType: '', type: 'string' },
+      expected: { operator: 'length', value: [1, 2] },
+      issues: [{ code: 'overridden-value', path: ['type'] }],
+    },
+    {
+      name: "a null `outputType` gives way to PLUS's `type`",
+      input: { operator: '+', values: ['5', '6'], outputType: null, type: 'number' },
+      expected: {
+        operator: 'convert',
+        value: { operator: 'plus', values: ['5', '6'] },
+        to: 'number',
+      },
+      issues: [{ code: 'output-type', path: ['type'] }],
+    },
     {
       name: 'a computed `outputType` is a computed `to`',
       input: {
