@@ -165,6 +165,10 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
+    // A literal null that a `replacesNullAt` holder replaces never reaches
+    // the type check at runtime, so it is not a type error here
+    if (supplied.kind === 'constant' && supplied.value === null && nullIsReplaced(node, name))
+      continue
     checkSuppliedParam(state, owner, name, declared, supplied)
   }
 
@@ -200,6 +204,25 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   }
 
   popVars(state, frame)
+}
+
+/**
+ * Whether a `replacesNullAt` holder targets `target` on this node: supplied
+ * on the node, or by its operator's `operatorDefaults`, the chain the
+ * runtime builds its holders from (src/evaluate/params.ts). A null holder
+ * is unset, so it replaces nothing.
+ */
+const nullIsReplaced = (node: OperatorNode, target: string) => {
+  const { definition, instanceDefaults } = node.entry
+  for (const [name, declared] of definition.resolution.entries) {
+    if (!declared.replacesNullAt?.includes(target)) continue
+    const holder = node.params[name]
+    if (holder === undefined) {
+      const fromDefaults = instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)
+      if (fromDefaults && instanceDefaults[name] !== null) return true
+    } else if (!(holder.kind === 'constant' && holder.value === null)) return true
+  }
+  return false
 }
 
 /**

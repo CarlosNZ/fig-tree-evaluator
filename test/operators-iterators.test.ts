@@ -287,9 +287,26 @@ describe('the shared contract', () => {
     expect(error).toBeInstanceOf(FigTreeError)
   })
 
+  test.each(names)('%s: nullInputDefault replaces a literal null input too', async (name) => {
+    const result = await ev({
+      [`$${name}`]: { input: null, each: each[name], nullInputDefault: [] },
+    })
+    expect(result).toEqual({ map: [], filter: [], find: null, some: false, every: true }[name])
+  })
+
+  test('a literal null input with no nullInputDefault is a compile-time type error', () => {
+    for (const expression of [
+      { $map: [null, '$element'] },
+      // A null holder is unset, so nothing replaces the input
+      { $map: { input: null, each: '$element', nullInputDefault: null } },
+    ])
+      expect(fig.validate(expression).issues.map((issue) => issue.code)).toEqual(['type-check'])
+  })
+
   test('nullInputDefault is host-configurable through operatorDefaults', async () => {
     const instance = new FigTree({ operatorDefaults: { map: { nullInputDefault: [] } } })
     expect(await instance.evaluate({ $map: ['$data.missing', '$element'] })).toEqual([])
+    expect(await instance.evaluate({ $map: [null, '$element'] })).toEqual([])
   })
 
   test('elements start in parallel, not in sequence', async () => {
