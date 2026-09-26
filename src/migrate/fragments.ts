@@ -16,6 +16,7 @@ import type { FragmentDefinition, FragmentParameterDeclaration } from '../fragme
 import type { MigrationIssue, V2Options } from '../migrationTypes'
 import { isUnder, issue, type Path } from './issues'
 import { normalizeV2, type NodeSource } from './normalize'
+import { isAlias } from './v2/names'
 import { V2_PARAMETERS, type V2Operator } from './v2/operators.generated'
 import { V3_NAMES } from './v3Names.generated'
 import {
@@ -101,9 +102,6 @@ export type ConvertedDefault = { constant: unknown } | 'computed'
 
 // The keys of a v2 parameter declaration that v3's has a place for
 const V2_DECLARATION_KEYS = ['name', 'type', 'required', 'default', 'description']
-
-// v2's test for an alias: a `$` and at least one more character
-const isAlias = (key: string) => /^\$.+/.test(key)
 
 const byKey = <T extends { key: string }>(a: T, b: T) =>
   a.key < b.key ? -1 : a.key > b.key ? 1 : 0
@@ -203,11 +201,11 @@ const readDefinition = (key: string, definition: unknown, options: V2Options): F
   if (Object.hasOwn(body, 'outputType')) info.ownOutput = spelled === 'type' ? 'type' : 'outputType'
   else if (Object.hasOwn(body, 'type')) info.ownOutput = 'type'
   // PLUS's `type` is its own parameter, which converts the result only as a
-  // boolean
+  // number or a boolean
   info.convertsByType =
     info.ownOutput === 'type' &&
     (info.operator === 'PLUS'
-      ? body.type === 'boolean' || body.type === 'bool'
+      ? ['number', 'boolean', 'bool'].includes(body.type as string)
       : Object.hasOwn(body, 'outputType'))
   return info
 }

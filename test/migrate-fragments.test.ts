@@ -618,6 +618,7 @@ describe('calls', () => {
     countBody: { operator: 'count', values: [1, 2] },
     countOutput: { operator: 'count', values: [1, 2], outputType: 'number' },
     countTyped: { operator: 'count', values: [1, 2], type: 'string' },
+    plusNumber: { operator: '+', values: ['1', '2'], type: 'number' },
     constant: 42,
     counter: { operator: '+', values: ['$count', 1] },
     picker: { operator: 'getData', property: '$field' },
@@ -636,6 +637,7 @@ describe('calls', () => {
     expect(raised(converted.issues)).toEqual([
       { code: 'output-type', path: ['countOutput', 'outputType'] },
       { code: 'output-type', path: ['countTyped', 'type'] },
+      { code: 'output-type', path: ['plusNumber', 'type'] },
     ])
   })
 
@@ -1031,6 +1033,20 @@ describe('calls', () => {
         { code: 'output-type', path: ['outputType'] },
       ],
       differs: { v2: { value: [2] }, v3: { value: ['2'] } },
+    },
+    {
+      name: "the same over PLUS's `type: 'number'`, which converts the body's result",
+      input: { fragment: 'plusNumber', outputType: 'array' },
+      expected: {
+        operator: 'convert',
+        value: { '//': expect.stringContaining(NOTE), fragment: 'plusNumber' },
+        to: 'array',
+      },
+      issues: [
+        { code: 'replaced-output-type', path: ['outputType'] },
+        { code: 'output-type', path: ['outputType'] },
+      ],
+      differs: { v2: { value: ['12'] }, v3: { value: [12] } },
     },
     {
       name: 'the same, where the two conversions agree',

@@ -355,7 +355,7 @@ const literalEntries = (value: unknown, context: RuleContext) => {
     for (let i = 0; i < value.length; i += 2)
       if (i + 1 < value.length) entries.push({ key: value[i], value: value[i + 1] })
       else {
-        context.issue('malformed-entry', ['properties', i])
+        context.issue('malformed-entry', ['properties', i], { odd: true })
         context.discard(['properties', i])
       }
     return entries
@@ -368,7 +368,7 @@ const literalEntries = (value: unknown, context: RuleContext) => {
     )
       entries.push(element)
     else {
-      context.issue('malformed-entry', ['properties', i])
+      context.issue('malformed-entry', ['properties', i], { odd: false })
       context.discard(['properties', i])
     }
   })

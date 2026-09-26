@@ -343,6 +343,12 @@ describe('aliases → `vars`', () => {
       },
     },
     {
+      name: 'a plain object’s definitions never read a sibling, as `evaluateObject` read them',
+      input: { operator: 'passThru', value: { $a: 1, $b: '$a', v: '$b' } },
+      options: { evaluateFullObject: true },
+      expected: { v: '$vars.b', vars: { a: 1, b: '$a' } },
+    },
+    {
       name: 'with `evaluateFullObject`, a plain object’s `$` keys are its `vars`',
       input: { operator: '=', values: [{ $n: 5, a: '$n' }, { a: 5 }] },
       options: { evaluateFullObject: true },

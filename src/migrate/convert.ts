@@ -39,6 +39,7 @@ import { isUnder, issue, type Fill, type IssueCode, type Path } from './issues'
 import { normalizeV2, type NodeSource } from './normalize'
 import { V3_RULES, applyRule, undecided, type Modifiers, type RuleContext } from './rules'
 import { V2_BEHAVIOUR } from './v2/behaviour'
+import { hasNodeKey, isAlias } from './v2/names'
 import { V2_PARAMETERS, type V2Operator } from './v2/operators.generated'
 import {
   DATA_REFERENCE,
@@ -136,12 +137,6 @@ const differences = (to: unknown) => {
   const target = isComputed(to) ? 'is computed' : `\`${render(to)}\` is not one v2 had`
   return `the target type ${target}, and v2 guessed differently for each: ${Object.values(DIFFERENCES).join('; ')}`
 }
-
-// v2's test for an alias: a `$` and at least one more character
-const isAlias = (key: string) => /^\$.+/.test(key)
-
-const hasNodeKey = (value: PlainObject) =>
-  Object.hasOwn(value, 'operator') || Object.hasOwn(value, 'fragment')
 
 /**
  * A node in the fixed key order: `//`, the defining key and parameters as
@@ -385,7 +380,8 @@ class Converter {
    * built
    */
   private walked(input: PlainObject, path: Path, scope: Scope): unknown {
-    const { vars, inner } = this.declare(input, path, scope)
+    // `evaluateObject` never looked among the siblings, as a node did
+    const { vars, inner } = this.declare(input, path, scope, false)
     const entries = Object.entries(input)
       .filter(([key]) => !isAlias(key))
       .map(
@@ -402,12 +398,14 @@ class Converter {
   /**
    * The alias definitions on an object, as `vars`, and the scope they open,
    * named by `varNames`. v2 evaluated each definition in the enclosing
-   * scope, where only a whole `'$name'` it could not resolve read a sibling.
+   * scope, where on an operator node (`siblings`) only a whole `'$name'` it
+   * could not resolve read a sibling, and elsewhere none did.
    */
   private declare(
     container: PlainObject,
     path: Path,
-    scope: Scope
+    scope: Scope,
+    siblings = true
   ): { vars?: PlainObject; inner: Scope; sources?: VarSources } {
     const keys = Object.keys(container).filter(isAlias)
     if (keys.length === 0) return { inner: scope }
@@ -416,7 +414,7 @@ class Converter {
       keys.map((key) => {
         const value = container[key]
         const sibling =
-          typeof value === 'string' && value !== key && !scope.refs.has(value)
+          siblings && typeof value === 'string' && value !== key && !scope.refs.has(value)
             ? names.get(value)
             : undefined
         const converted =
@@ -1148,6 +1146,8 @@ const readOptions = (given: unknown): V2Options => {
 // A plain object from any realm, and not a Date, a Map or a class's instance
 const isJsonObject = (value: object) => {
   const prototype = Object.getPrototypeOf(value)
+  // A `toJSON` of its own writes something other than what the object holds
+  if (typeof (value as { toJSON?: unknown }).toJSON === 'function') return false
   return prototype === null || Object.getPrototypeOf(prototype) === null
 }
 
@@ -1188,8 +1188,28 @@ const catalogueFor = (options: V2Options) => {
   return catalogue
 }
 
+/**
+ * Input the walk cannot finish, nested past the stack or holding itself,
+ * quoted whole with its issue, so that a conversion never throws. Any other
+ * error is the converter's own, and is not caught.
+ */
+const unconvertible = (error: unknown, input: unknown, path: Path) => {
+  if (!(error instanceof RangeError)) throw error
+  const raised = issue('unconvertible-input', path)
+  return { expression: literal(input, `${NOTE}${raised.message}`), issue: raised }
+}
+
 /** A v2 expression as v3, with an issue for each difference it could see */
 export const convertV2 = (expression: unknown, given?: V2Options): MigrationResult => {
+  try {
+    return convertExpression(expression, given)
+  } catch (error) {
+    const quoted = unconvertible(error, expression, [])
+    return { expression: quoted.expression, issues: [quoted.issue] }
+  }
+}
+
+const convertExpression = (expression: unknown, given?: V2Options): MigrationResult => {
   const options = readOptions(given)
   const normalized = normalizeV2(expression, options)
   const converter = new Converter(normalized.sources, options, catalogueFor(options))
@@ -1204,6 +1224,22 @@ export const convertV2 = (expression: unknown, given?: V2Options): MigrationResu
  * at the fragments object
  */
 export const convertV2Fragments = (given: V2Options): FragmentMigrationResult => {
+  try {
+    return convertFragments(given)
+  } catch (error) {
+    const fragments: FragmentMigrationResult['fragments'] = {}
+    const issues: MigrationIssue[] = []
+    const definitions = isPlainObject(given?.fragments) ? given.fragments : {}
+    for (const [name, definition] of Object.entries(definitions)) {
+      const quoted = unconvertible(error, definition, [name])
+      fragments[name] = { expression: quoted.expression }
+      issues.push(quoted.issue)
+    }
+    return { fragments, issues }
+  }
+}
+
+const convertFragments = (given: V2Options): FragmentMigrationResult => {
   const options = readOptions(given)
   // Found afresh, since what it quotes as data goes into the result
   const catalogue = fragmentCatalogue(options, walk(options))

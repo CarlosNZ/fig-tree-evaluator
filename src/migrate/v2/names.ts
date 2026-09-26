@@ -5,8 +5,17 @@
  * behaviour, not data, and names are open-ended strings, so the converter
  * restates it: `standardiseOperatorName` and `camelCase` in v2's helpers.ts.
  * test/migrate-table.test.ts holds it to the v2 package's own function.
+ * Beside it, v2's tests for an alias and for a node, which the stages share.
  */
+import type { PlainObject } from '../v3Values'
 import { V2_NAMES, type V2Operator } from './operators.generated'
+
+/** v2's test for an alias: a `$` and at least one more character */
+export const isAlias = (key: string) => /^\$.+/.test(key)
+
+/** Whether an object is a v2 node: an operator node or a fragment call */
+export const hasNodeKey = (object: PlainObject) =>
+  Object.hasOwn(object, 'operator') || Object.hasOwn(object, 'fragment')
 
 /**
  * v2's camel-casing: characters other than letters, digits, spaces, `_` and

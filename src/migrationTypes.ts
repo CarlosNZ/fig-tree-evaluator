@@ -53,6 +53,7 @@ export interface MigrationIssue {
     | 'replaced-output-type'
     | 'computed-children'
     | 'unknown-operator'
+    | 'unconvertible-input'
   /**
    * The divergence-catalog vocabulary of
    * docs-dev/v3-specs/v3-testing-strategy.md, so a converted tree's issues and

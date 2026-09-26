@@ -16,6 +16,8 @@ import { JUNK, randomCases } from './helpers/randomV2'
 
 const frozen = <T>(value: T): T => deepFreeze(clone(value)) as T
 
+const NOTE = 'v2 conversion: '
+
 const FRAGMENTS = {
   adder: { operator: '+', values: '$values' },
   greet: {
@@ -114,6 +116,32 @@ describe('it never throws, over malformed input', () => {
     for (const { input, options } of randomCases(1, 600))
       expect(() => convertBoth(input, options)).not.toThrow()
   })
+
+  // No JSON config holds these, but a script may pass any object. Neither
+  // goes through `frozen`, whose copy would overflow too.
+  let deep: unknown = 1
+  for (let i = 0; i < 5000; i++) deep = { operator: '+', values: [deep, 1] }
+  const cyclic: { operator: string; values: unknown[] } = { operator: '+', values: [] }
+  cyclic.values.push(cyclic)
+
+  test.each([
+    ['nested past the stack', deep],
+    ['holding itself', cyclic],
+  ])('input %s is quoted unconverted, with an issue', (_name, input) => {
+    const { expression, issues } = migrateV2Expression(input)
+    expect(expression).toMatchObject({ '//': expect.stringContaining(NOTE), operator: 'literal' })
+    expect((expression as { value: unknown }).value).toBe(input)
+    expect(issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'unconvertible-input', path: [] },
+    ])
+
+    const converted = migrateV2Fragments({ fragments: { f: input } })
+    expect(converted.fragments.f.expression).toMatchObject({ operator: 'literal' })
+    expect((converted.fragments.f.expression as { value: unknown }).value).toBe(input)
+    expect(converted.issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'unconvertible-input', path: ['f'] },
+    ])
+  })
 })
 
 describe('it never mutates', () => {
@@ -147,6 +175,20 @@ describe('it is deterministic', () => {
       fragment: 'greet',
       parameters: { name: 'Ada', title: 'Dr' },
     })
+  })
+
+  test('fragments whose JSON hides what they hold are never served from the last call', () => {
+    // Both bodies write the same JSON, and read different placeholders
+    const body = (reads: string) => ({
+      operator: '+',
+      values: [reads, 1],
+      toJSON: () => 'the same',
+    })
+    const call = (name: string) => ({ fragment: 'f', parameters: { [name]: 1 } })
+    migrateV2Expression(call('$a'), { fragments: { f: body('$a') } })
+    const after = migrateV2Expression(call('$b'), { fragments: { f: body('$b') } })
+    expect(after.issues).toEqual([])
+    expect(after.expression).toEqual({ fragment: 'f', parameters: { b: 1 } })
   })
 
   // An input with its keys in reverse order, all the way down

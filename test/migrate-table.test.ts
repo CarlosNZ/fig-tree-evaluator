@@ -254,7 +254,7 @@ describe('the `children` mappings', () => {
 describe('the behaviour table', () => {
   test.each(Object.entries(V2_BEHAVIOUR))('%s names its own parameters', (operator, behaviour) => {
     const declared = V2_PARAMETERS[operator as V2Operator].map(({ name }) => name)
-    const named = [...(behaviour.evaluatesContents ?? []), behaviour.extraKeys ?? []].flat()
+    const named = behaviour.evaluatesContents ?? []
     expect(declared).toEqual(expect.arrayContaining(named))
   })
 })

@@ -1402,6 +1402,21 @@ const BATCH_3: Example[] = [
 
 describe('batch 3', () => {
   test.each(BATCH_3)('$name', (example) => check({ data: DATA, ...example }))
+
+  test('an alternating list of odd length is one v2 failed on, and the message says so', () => {
+    const { expression, issues } = convertV2({
+      operator: 'buildObject',
+      properties: ['a', 1, 'b'],
+    })
+    expect(expression).toEqual({ operator: 'buildObject', entries: [{ key: 'a', value: 1 }] })
+    expect(issues).toEqual([
+      expect.objectContaining({
+        code: 'malformed-entry',
+        path: ['properties', 2],
+        message: expect.stringContaining('v2 failed on'),
+      }),
+    ])
+  })
 })
 
 interface IoExample extends Example {

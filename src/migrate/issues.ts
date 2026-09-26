@@ -118,7 +118,11 @@ export const CATALOGUE = {
   },
   'malformed-entry': {
     tag: 'lossy-default',
-    message: () => 'v2 skipped an entry with no `key` or no `value`. Removed.',
+    message: ({ odd }: { odd: boolean }) =>
+      odd
+        ? 'An alternating list gives each key a value, and v2 failed on this key, which has ' +
+          'none. v3 builds the object without it. Removed.'
+        : 'v2 skipped an entry with no `key` or no `value`. Removed.',
   },
   'overridden-value': {
     tag: 'lossy-default',
@@ -260,6 +264,12 @@ export const CATALOGUE = {
     message: ({ name }: { name: string }) =>
       `\`${name}\` is not a v2 operator. If it is one of your v2 custom functions, ` +
       "list it in the conversion's `functions` option and convert again, so the call converts to a call on a custom operator of that name. The node is quoted unconverted.",
+  },
+  'unconvertible-input': {
+    tag: 'non-convertible',
+    message: () =>
+      'The input nests too deeply to convert, or holds itself, which no JSON config does. It ' +
+      'is quoted unconverted. Split it into fragments, or rewrite it by hand.',
   },
 } as const satisfies Record<
   IssueCode,

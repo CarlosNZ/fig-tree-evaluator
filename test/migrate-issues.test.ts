@@ -63,6 +63,7 @@ const SPEC_CODES: Record<Tag, Code[]> = {
     'replaced-output-type',
     'computed-children',
     'unknown-operator',
+    'unconvertible-input',
   ],
 }
 
@@ -80,7 +81,9 @@ const notesIn = (value: unknown, found: string[] = []): string[] => {
       if (key === '//')
         for (const note of [element].flat())
           if (typeof note === 'string' && note.startsWith(NOTE)) found.push(note)
-      notesIn(element, found)
+      // Inside a `literal`'s value, a `//` key is data
+      if (!(key === 'value' && (value as { operator?: unknown }).operator === 'literal'))
+        notesIn(element, found)
     }
   return found
 }
@@ -114,12 +117,21 @@ const FRAGMENTS = {
   convertsItself: { operator: 'objectProperties', property: '$path', type: 'string' },
 }
 
+/** A node nested `depth` deep, past what the walk's stack reaches */
+const nested = (depth: number) => {
+  let node: unknown = 1
+  for (let i = 0; i < depth; i++) node = { operator: '+', values: [node, 1] }
+  return node
+}
+
 interface Row {
   code: Code
   /** An expression, or with `fragments` alone, the definitions converted */
   input?: unknown
   options?: V2Options
   path: MigrationIssue['path']
+  /** Converted as it is, where a frozen copy would overflow too */
+  raw?: true
 }
 
 const ROWS: Row[] = [
@@ -361,16 +373,17 @@ const ROWS: Row[] = [
     path: ['children'],
   },
   { code: 'unknown-operator', input: { operator: 'nope', values: [1] }, path: ['operator'] },
+  { code: 'unconvertible-input', input: nested(1200), path: [], raw: true },
 ]
 
 /** A row's conversion, through the function it names */
-const convertRow = ({ input, options = {} }: Row) =>
+const convertRow = ({ input, options = {}, raw }: Row) =>
   input === undefined
     ? (({ fragments, issues }) => ({ output: fragments as unknown, issues }))(
         migrateV2Fragments(frozen(options))
       )
     : (({ expression, issues }) => ({ output: expression, issues }))(
-        migrateV2Expression(frozen(input), frozen(options))
+        migrateV2Expression(raw ? input : frozen(input), frozen(options))
       )
 
 describe('each row is triggered with its tag, at its path', () => {

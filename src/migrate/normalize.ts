@@ -19,8 +19,9 @@ import type { MigrationIssue, V2Options } from '../migrationTypes'
 import { isUnder, issue, type Path } from './issues'
 import { V2_BEHAVIOUR } from './v2/behaviour'
 import { V2_CHILDREN, mapChildren } from './v2/children'
-import { v2OperatorFor } from './v2/names'
+import { hasNodeKey, isAlias, v2OperatorFor } from './v2/names'
 import { V2_PARAMETERS, type V2Operator } from './v2/operators.generated'
+import { isPlainObject, type PlainObject } from './v3Values'
 
 /** Where an object stage 1 wrote came from in the input ("Source paths") */
 export interface NodeSource {
@@ -57,8 +58,6 @@ export interface Normalized {
   issues: MigrationIssue[]
 }
 
-type PlainObject = Record<string, unknown>
-
 /**
  * Where a value came from: its place in the input, and, for a container stage
  * 1 built, where each entry came from. An entry with no source of its own is
@@ -94,15 +93,6 @@ const ALIASES = Object.fromEntries(
     Object.fromEntries(parameters.flatMap(({ name, aliases }) => aliases.map((a) => [a, name]))),
   ])
 ) as Record<V2Operator, Record<string, string>>
-
-const isPlainObject = (value: unknown): value is PlainObject =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-// v2's test for an alias: a `$` and at least one more character
-const isAlias = (key: string) => /^\$.+/.test(key)
-
-const hasNodeKey = (object: PlainObject) =>
-  Object.hasOwn(object, 'operator') || Object.hasOwn(object, 'fragment')
 
 // A value v2 worked out at evaluation: a node, a container, or an alias
 const isComputed = (value: unknown) =>

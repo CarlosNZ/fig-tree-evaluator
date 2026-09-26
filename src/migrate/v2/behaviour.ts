@@ -13,8 +13,6 @@ export interface V2OperatorBehaviour {
    * wrapping it.
    */
   evaluatesContents?: readonly string[]
-  /** The parameter that the node's undeclared keys went into. */
-  extraKeys?: string
 }
 
 export const V2_BEHAVIOUR: Partial<Record<V2Operator, V2OperatorBehaviour>> = {
@@ -26,11 +24,11 @@ export const V2_BEHAVIOUR: Partial<Record<V2Operator, V2OperatorBehaviour>> = {
   // The `key` and `value` of each element of `properties`
   BUILD_OBJECT: { evaluatesContents: ['properties'] },
   // The branch that matches. Branches could also sit on the node itself.
-  MATCH: { evaluatesContents: ['branches'], extraKeys: 'branches' },
+  MATCH: { evaluatesContents: ['branches'] },
   // The substitution each named token reads, drilled, in `getReplacement`
   STRING_SUBSTITUTION: { evaluatesContents: ['substitutions'] },
   // `evaluateObject` on `input`. A call naming the function in `operator` had
   // its undeclared keys gathered into `input`, but that was how v2 rewrote
-  // the call, not how CUSTOM_FUNCTIONS behaved, so it is not `extraKeys`.
+  // the call, not how CUSTOM_FUNCTIONS behaved.
   CUSTOM_FUNCTIONS: { evaluatesContents: ['input'] },
 }

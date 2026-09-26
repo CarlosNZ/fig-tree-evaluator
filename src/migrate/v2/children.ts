@@ -17,6 +17,7 @@
  * to learn where each child went: an issue about a parameter reports where
  * its value came from ("Source paths" in the same doc).
  */
+import { isPlainObject } from '../v3Values'
 import type { V2Operator } from './operators.generated'
 
 /** Reads the child at `index` into a mapping's result */
@@ -36,9 +37,6 @@ export type ChildrenMapping =
       ifGiven?: string
     }
   | ((children: readonly unknown[], take: TakeChild) => Record<string, unknown>)
-
-const isPlainObject = (value: unknown): value is object =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
  * MATCH: the value to match, then alternating branch keys and values. v2
