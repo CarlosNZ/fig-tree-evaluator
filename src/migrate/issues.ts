@@ -87,6 +87,14 @@ export const CATALOGUE = {
       "response's `returnPath`, which `strictDataPaths` does not reach, use `firstOf`, or read " +
       'the path with a `get` and its `missingPathDefault`.',
   },
+  'unprefixed-parameter': {
+    tag: 'intentional-semantic-change',
+    message: ({ name }: { name: string }) =>
+      `v2 read the declared name \`${name}\` as written, without a \`$\`, so the declaration ` +
+      `never filled the body's \`$${name}\`: its default and type did nothing, and a call that ` +
+      `left \`$${name}\` out got that text. v3 applies the declaration. Check the calls that ` +
+      'leave it out.',
+  },
 
   // lossy-default
   'instance-case-insensitive': {

@@ -24,6 +24,7 @@ export interface MigrationIssue {
     | 'graphql-relative-url'
     | 'output-type'
     | 'missing-data-fallback'
+    | 'unprefixed-parameter'
     | 'instance-case-insensitive'
     | 'values-cut'
     | 'fallback-converted'

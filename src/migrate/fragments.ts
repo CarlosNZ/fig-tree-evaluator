@@ -16,7 +16,7 @@ import type { FragmentDefinition, FragmentParameterDeclaration } from '../fragme
 import type { MigrationIssue, V2Options } from '../migrationTypes'
 import { isUnder, issue, type Path } from './issues'
 import { normalizeV2, type NodeSource } from './normalize'
-import type { V2Operator } from './v2/operators.generated'
+import { V2_PARAMETERS, type V2Operator } from './v2/operators.generated'
 import { V3_NAMES } from './v3Names.generated'
 import {
   RESERVED_NAMES,
@@ -212,13 +212,40 @@ const readDefinition = (key: string, definition: unknown, options: V2Options): F
   return info
 }
 
-/** One entry of `metadata.parameters`: `{ name: '$country', type, … }` */
+/**
+ * The body key a declared name without its `$` set, where the body's
+ * operator reads it: one of its parameters, by name or property alias, or a
+ * modifier. v2 put the declaration's default into the call's `parameters`
+ * under the name as written, and spread those over the body.
+ */
+const bodyKey = (info: FragmentInfo, name: string): string | undefined => {
+  if (info.operator === undefined || info.body === undefined) return undefined
+  const parameter = V2_PARAMETERS[info.operator].find(
+    (p) => p.name === name || p.aliases.includes(name)
+  )
+  if (parameter !== undefined) return parameter.name
+  if (['fallback', 'useCache', 'outputType'].includes(name)) return name
+  return name === 'type' ? 'outputType' : undefined
+}
+
+/**
+ * One entry of `metadata.parameters`: `{ name: '$country', type, … }`. A
+ * name without its `$` that sets a body key is the canonical v2 of a
+ * placeholder at that key: the key reads `'$name'`, and the default is the
+ * declared one, or else the key's own value, which v2 kept where no call set
+ * it. Any other such name is the placeholder the author meant, which v2
+ * never filled from the declaration.
+ */
 const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2Options) => {
   if (!isPlainObject(entry) || typeof entry.name !== 'string') return
-  const key = entry.name.startsWith('$') ? entry.name : `$${entry.name}`
+  const prefixed = entry.name.startsWith('$')
+  const key = prefixed ? entry.name : `$${entry.name}`
   // v2 read the first declaration of a name
   if (!isAlias(key) || info.parameters.has(key)) return
   const at: Path = [info.key, 'metadata', 'parameters', index]
+  const target = prefixed ? undefined : bodyKey(info, entry.name)
+  if (!prefixed && target === undefined)
+    info.issues.push(issue('unprefixed-parameter', [...at, 'name'], { name: entry.name }))
   const { type, required, default: value, description } = entry
   const others = Object.fromEntries(
     Object.entries(entry).filter(([k]) => !V2_DECLARATION_KEYS.includes(k))
@@ -250,7 +277,25 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
     info.issues.push(...normalized.issues)
     parameter.default = { value: normalized.expression, path }
   }
+  if (target !== undefined) setsBodyKey(info, parameter, target)
   info.parameters.set(key, parameter)
+}
+
+/**
+ * The body key an unprefixed declaration set reads its placeholder. Where no
+ * default was declared, the key's own value is the default. Beside one, v2
+ * never evaluated the key's value, so what stage 1 found in it goes.
+ */
+const setsBodyKey = (info: FragmentInfo, parameter: ParameterInfo, target: string) => {
+  const body = info.body!
+  const record = info.sources.get(body)
+  const path = record?.keys[target] ?? [info.key, target]
+  if (Object.hasOwn(body, target)) {
+    if (parameter.default === undefined) parameter.default = { value: body[target], path }
+    else info.issues = info.issues.filter((found) => !isUnder(found.path, path))
+  }
+  body[target] = parameter.key
+  if (record !== undefined) record.keys[target] = path
 }
 
 /**

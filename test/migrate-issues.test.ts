@@ -30,6 +30,7 @@ const SPEC_CODES: Record<Tag, Code[]> = {
     'graphql-relative-url',
     'output-type',
     'missing-data-fallback',
+    'unprefixed-parameter',
   ],
   'lossy-default': [
     'instance-case-insensitive',
@@ -230,6 +231,20 @@ const ROWS: Row[] = [
     input: { fragment: 'adder', parameters: { $values: [1] }, useCache: true },
     options: { fragments: FRAGMENTS },
     path: ['useCache'],
+  },
+  {
+    code: 'unprefixed-parameter',
+    options: {
+      fragments: {
+        g: {
+          operator: 'stringSubstitution',
+          string: 'Hi %1',
+          substitutions: ['$name'],
+          metadata: { parameters: [{ name: 'name', type: 'string' }] },
+        },
+      },
+    },
+    path: ['g', 'metadata', 'parameters', 0, 'name'],
   },
   {
     code: 'name-renamed',

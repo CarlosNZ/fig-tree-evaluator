@@ -1068,6 +1068,79 @@ describe('calls', () => {
     await checkCall(fig, example, options)
   })
 
+  // v2 put a declared default into the call's `parameters` under its name as
+  // written, and spread those over the body
+  describe('declared names without a `$`', () => {
+    const tags = (delimiter: object) => ({
+      operator: 'split',
+      value: '$tags',
+      delimiter: ',',
+      metadata: { parameters: [{ name: '$tags', type: 'string' }, delimiter] },
+    })
+    const UNPREFIXED = {
+      splitTags: tags({ name: 'delimiter', type: 'string', default: ';' }),
+      splitOwn: tags({ name: 'delimiter', type: 'string' }),
+      greeting: {
+        operator: 'stringSubstitution',
+        string: 'Hello, %1!',
+        substitutions: ['$name'],
+        metadata: { parameters: [{ name: 'name', type: 'string', default: 'friend' }] },
+      },
+    }
+    const options = { fragments: UNPREFIXED }
+    const declared = convertFragments(options)
+    const withDeclared = new FigTree({ fragments: declared.fragments })
+
+    test("a key the body's operator reads is a parameter the key reads", () => {
+      expect(declared.fragments.splitTags).toEqual({
+        expression: { operator: 'split', value: '$params.tags', delimiter: '$params.delimiter' },
+        parameters: {
+          tags: { type: 'string', required: false },
+          delimiter: { type: 'string', default: ';' },
+        },
+      })
+      // With no default declared, the key's own value is the default
+      expect(declared.fragments.splitOwn.parameters).toEqual({
+        tags: { type: 'string', required: false },
+        delimiter: { type: 'string', default: ',' },
+      })
+    })
+
+    test('any other name is the placeholder the author meant, with an issue', () => {
+      expect(declared.fragments.greeting.parameters).toEqual({
+        name: { type: 'string', default: 'friend' },
+      })
+      expect(raised(declared.issues).filter(({ code }) => code === 'unprefixed-parameter')).toEqual(
+        [{ code: 'unprefixed-parameter', path: ['greeting', 'metadata', 'parameters', 0, 'name'] }]
+      )
+    })
+
+    test.each<Call & { name: string }>([
+      {
+        name: 'the declared default replaces the body key',
+        input: { fragment: 'splitTags', parameters: { $tags: 'red;green;blue' } },
+      },
+      {
+        name: "a call's unprefixed key is the argument",
+        input: { fragment: 'splitTags', parameters: { $tags: 'red|green', delimiter: '|' } },
+        expected: { fragment: 'splitTags', parameters: { tags: 'red|green', delimiter: '|' } },
+      },
+      {
+        name: "with no default declared, the body key's own value stands",
+        input: { fragment: 'splitOwn', parameters: { $tags: 'a,b' } },
+      },
+      {
+        name: 'with no default declared, a call gives the key',
+        input: { fragment: 'splitOwn', parameters: { $tags: 'a;b', delimiter: ';' } },
+      },
+      {
+        name: 'v2 never filled the placeholder from the declaration',
+        input: { fragment: 'greeting' },
+        differs: { v2: { value: 'Hello, $name!' }, v3: { value: 'Hello, friend!' } },
+      },
+    ])('$name', (call) => checkCall(withDeclared, call, options))
+  })
+
   // v2 left a placeholder no call filled as its own text
   describe('placeholders a call leaves unfilled', () => {
     const UNFILLED = {
