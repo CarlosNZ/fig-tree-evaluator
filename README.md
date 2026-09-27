@@ -2,6 +2,13 @@
 
 ![Logo](images/FigTreeEvaluator_logo_1000.png)
 
+*This is an early preview release for **FigTree v3**. Full documentation will be added as we get closer to release, but for those interested, look in the repo on the `v3.0-dev` branch, under `/docs-artifacts`, for an explanation and reference.*
+
+*The documentation below is still for `v2.x`*
+
+---- 
+
+
 **FigTree Evaluator** is a module to evaluate JSON-structured expression trees.
 
 A typical use case would be for evaluating **configuration** files, where you need to store dynamic values or arbitrary logic without allowing users to inject executable code (perhaps in a .json file, say). Examples could include:
