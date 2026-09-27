@@ -9,11 +9,13 @@ _V3 not yet released..._
 A ground-up rewrite of the engine. v2 expressions convert to v3 automatically with the `fig-tree-evaluator/migrate` converter; the JavaScript API has changed. See the [migration guide](…) for the full list of changes.
 
 ### Highlights
+
 - …faster evaluation (figures)…
 - …smaller, tree-shakeable bundle (figures)…
 - …validate() / compile() / report mode…
 
 ### Breaking changes
+
 - **Packaging:** ESM-only; Node ≥ 22.12; four entry points.
 - **The evaluator:** …class and options, one line…
 - **Operators:** …names, parameters, null handling, one line…
@@ -21,8 +23,8 @@ A ground-up rewrite of the engine. v2 expressions convert to v3 automatically wi
 - **Removed:** v1 expression syntax; `excludeOperators`; …
 
 ### Migrating
-- _Coming soon..._
 
+- _Coming soon..._
 
 ## [2.23.0] - 2026-06-30
 

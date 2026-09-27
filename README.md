@@ -2,12 +2,11 @@
 
 ![Logo](images/FigTreeEvaluator_logo_1000.png)
 
-*This is an early preview release for **FigTree v3**. Full documentation will be added as we get closer to release, but for those interested, look in the repo on the `v3.0-dev` branch, under `/docs-artifacts`, for an explanation and reference.*
+_This is an early preview release for **FigTree v3**. Full documentation will be added as we get closer to release, but for those interested, look in the repo on the `v3.0-dev` branch, under `/docs-artifacts`, for an explanation and reference._
 
-*The documentation below is still for `v2.x`*
+_The documentation below is still for `v2.x`_
 
----- 
-
+---
 
 **FigTree Evaluator** is a module to evaluate JSON-structured expression trees.
 
