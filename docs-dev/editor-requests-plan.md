@@ -19,7 +19,7 @@ The editor's side of each request is in fig-tree-editor-react's `docs-dev/v3-des
 | 1. Reading primitives in `./format` | #199 (all), #198.2             | Same subpath, export pin, spec section and import map | Done (`c7ac479`)            |
 | 2. Metadata and hint polish         | #198.1, #198.3, #200.4, #200.6 | Data-only changes to definitions and hints            | Done (`d227952`)            |
 | 3. Actionable `validate()` issues   | #200.1, #200.3                 | Both change the shape of what `validate()` reports    | Done (`82e9201`, `8d7ee44`) |
-| 4. Fragment result types            | #200.2                         | Adds to the static analysis; changes `getFragments()` | Not started                 |
+| 4. Fragment result types            | #200.2                         | Adds to the static analysis; changes `getFragments()` | Done (`9eb8887`)            |
 | 5. `renameBinding`                  | #200.5                         | Largest; needs a design pass first                    | Not started                 |
 
 Order is by the editor's need, then by reach. Step 1 goes first because #199 is the one change the editor can't be built without. Step 5 goes last because the issue itself marks it least urgent: the quick fix it backs comes after the editor's first build.
@@ -138,7 +138,7 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 ## Step 4: Fragment result types
 
-**Status:** Not started
+**Status:** Done (`9eb8887`, 2026-09-30).
 
 **Items**
 
@@ -162,13 +162,15 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 **Open questions**
 
-- **Order within the step.** The container check is independent and smaller, so it could land first.
-- **Fragment calls with arguments.** A body whose root is `$params.x` is a reference, so `any`. Confirm nothing more is wanted there, such as reading a declared parameter's type.
-- **Differential impact.** New static errors could move cases in the baseline.
+(none)
 
 **Decisions**
 
-(none yet)
+- **The inference rules** (Carl): `FragmentInfo.returns: ExpectedType`, always present, read from the body's compiled root by one function, `staticType` ([src/compile/staticType.ts](../src/compile/staticType.ts)), which the feeding check shares. An operator node gives its declared `returns`, as declared, never narrowed by its arguments; a fragment call gives the called fragment's; a constant (literal content included) its own type, `number` never `integer`; a container holding something computed `array` or `object`; a reference (`$params.x` included) `any`. A root `fallback` and null propagation are ignored, as the operator check ignores them.
+- **A `Date` constant is `object`**, correcting the first proposal (`any`): the type table's `object` admits any non-array object (`isPlainObject`), so `object` is what agrees with `checkType`. A value with no basic type (a function) is `any`.
+- **The check covers fragment calls and containers; no host-declared `returns`** (Claude's defaults, taken with Carl's go-ahead). A call feeding a parameter is a `returns-mismatch` against its fragment's type; a call to an unknown fragment has only its own error. A container holding something computed is checked as a literal container is, with the same `type-check` code and message. Constants were already checked, and references stay untyped. A declared `returns` on a fragment definition would be an additive later change.
+- **Registration infers before it checks.** Pass 2 compiled and checked each body in turn, and the fold came later, so a body feeding a call into a parameter would have been checked against an unset type. It now compiles every body, infers every fragment's `returns` (called fragments first; a cycle stops at `any`, and pass 3 reports it), then checks each body. Issue order is unchanged, since each fragment's issues are still gathered in turn.
+- **No differential movement**, and no existing test changed. The root with its chunk grows 35.30 → 35.52 kB brotli, against its 36 kB budget.
 
 ---
 
