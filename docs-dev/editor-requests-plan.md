@@ -14,13 +14,13 @@ The editor's side of each request is in fig-tree-editor-react's `docs-dev/v3-des
 
 ## Summary
 
-| Step                                | Items                          | Why grouped                                           | Status           |
-| ----------------------------------- | ------------------------------ | ----------------------------------------------------- | ---------------- |
-| 1. Reading primitives in `./format` | #199 (all), #198.2             | Same subpath, export pin, spec section and import map | Done (`c7ac479`) |
-| 2. Metadata and hint polish         | #198.1, #198.3, #200.4, #200.6 | Data-only changes to definitions and hints            | Done (`d227952`) |
-| 3. Actionable `validate()` issues   | #200.1, #200.3                 | Both change the shape of what `validate()` reports    | Not started      |
-| 4. Fragment result types            | #200.2                         | Adds to the static analysis; changes `getFragments()` | Not started      |
-| 5. `renameBinding`                  | #200.5                         | Largest; needs a design pass first                    | Not started      |
+| Step                                | Items                          | Why grouped                                           | Status                      |
+| ----------------------------------- | ------------------------------ | ----------------------------------------------------- | --------------------------- |
+| 1. Reading primitives in `./format` | #199 (all), #198.2             | Same subpath, export pin, spec section and import map | Done (`c7ac479`)            |
+| 2. Metadata and hint polish         | #198.1, #198.3, #200.4, #200.6 | Data-only changes to definitions and hints            | Done (`d227952`)            |
+| 3. Actionable `validate()` issues   | #200.1, #200.3                 | Both change the shape of what `validate()` reports    | Done (`82e9201`, `8d7ee44`) |
+| 4. Fragment result types            | #200.2                         | Adds to the static analysis; changes `getFragments()` | Not started                 |
+| 5. `renameBinding`                  | #200.5                         | Largest; needs a design pass first                    | Not started                 |
 
 Order is by the editor's need, then by reach. Step 1 goes first because #199 is the one change the editor can't be built without. Step 5 goes last because the issue itself marks it least urgent: the quick fix it backs comes after the editor's first build.
 
@@ -100,7 +100,7 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 ## Step 3: Actionable `validate()` issues
 
-**Status:** Not started
+**Status:** Done (`82e9201` the suggestion field, `8d7ee44` the sample-data paths, 2026-09-30). #179, an earlier issue asking for the sample-data half, is resolved by `8d7ee44`.
 
 **Items**
 
@@ -118,17 +118,21 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 - The `Issue` type, which is exported from the root: a spec change first.
 - The five sites above; `validation.ts`; the compiler's dependency record.
-- Possibly [src/inspect/index.ts](../src/inspect/index.ts) and `getDependencies()`, which read the same dependency record.
 
 **Open questions**
 
-- **The `suggestion` field's shape.** A plain string, as the issue proposes? The shorthand site suggests `$name`, so decide whether the field carries the sigil.
-- **Whether the reading paths go public.** Does `inspect()` or `getDependencies()` expose the reading nodes' paths too, or do they stay internal to validation?
-- **Two commits or two PRs.** They're independent; the plan assumes one PR, two commits.
+(none)
 
 **Decisions**
 
-(none yet)
+- **`suggestion?: string` on `Issue` is a drop-in replacement for what was written** (Carl): the bare name at four sites, and the key with its sigil (`'$plus'`) at the shorthand warning, since the key is what gets replaced. The rename fix is then the same everywhere; the picker strips the `$` where the code says it's there. An alias may be suggested, as `nearestName` computes it. The field is absent when there is no suggestion, like `operator` / `fragment` / `parameter`.
+- **The operator's `unknown-node-key` gains `parameter`**, and **the shorthand warning's path moves to the key** (Carl): `['condition', '$graeterThan']` rather than `['condition']`, so an issue about a key sits at that key, as `unknown-node-key` does, and no `key` field is needed. Its `order` stays the containing object's, so `inspect()` still links it to the object that passes through as data.
+- **Only the five sites that compute a suggestion get the field** (Carl). Possible follow-ups, if the editor wants them: an unrecognized reference namespace (`'$dta.x'` → `$data`), `unresolved-var` (a var in scope) and `unresolved-param` (a declared parameter). The var case needs scope resolution, the ground step 5 covers.
+- **The sample-data check reads a separate list of reads** (Carl): `dependencies.dataPaths` stays the deduplicated set, and the artifact gains a list of each read's segments and reading node's path, in tree order, the path kept as the compiler's linked path until a warning needs it. One warning per reading node; two identical tokens in one template string are one reading node. Each distinct path is resolved against the sample once.
+- **A fragment body's reads are reported at the call** (Carl), one per call and missing path, with the fragment named in the message, since the body's paths aren't in the caller's expression. The call record carries the call's path for this, so a call inside a body composes the same way at registration.
+- **Neither `getDependencies()` nor `inspect()` reports the reads** (Carl). `getDependencies()` answers what an expression needs, not where; `inspect()` runs the same check as `validate()` (`validationIssues`), so its warnings carry the paths already.
+- **Two commits on `v3.0-dev`**: the suggestion field, then the sample-data paths, each with its spec changes.
+- **Built as agreed, with two findings.** The sample-data warnings carry no `order` in `inspect()`, since the `inspect()` spec gives `order` only to compile-stream entries; a call's reads come from its registry entry, which registration completes, so a body artifact holds no half-composed copy. The root with its chunk grows 35.08 → 35.30 kB brotli.
 
 ---
 
