@@ -1,19 +1,22 @@
 /**
  * `pnpm release [--dry-run]` — cut and publish a release from this machine.
  *
- *  1. Asks for the next version, suggesting the likely ones. A pre-release is
+ *  1. Checks the npm login, and logs in through the browser when there is
+ *     none. `npm login` sessions last two hours, and a publish on a lapsed
+ *     one fails rather than prompting, so this runs before anything changes.
+ *  2. Asks for the next version, suggesting the likely ones. A pre-release is
  *     `X.Y.Z-beta.N`, published under the `beta` dist-tag, or
  *     `X.Y.Z-preview.N`, published under `preview`; never `latest`. A
  *     preview is a build published only to try the package from the
  *     registry, such as its tree-shaken sizes on bundlejs.com.
- *  2. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it. A beta
+ *  3. Stops unless CHANGELOG.md has a `## [X.Y.Z]` entry for it. A beta
  *     passes on its release's entry, or on one of its own,
  *     `## [X.Y.Z-beta.N]`. A preview needs none.
- *  3. Bumps package.json and regenerates src/version.ts.
- *  4. Runs what CI runs (.github/workflows/ci.yml): lint, format check,
+ *  4. Bumps package.json and regenerates src/version.ts.
+ *  5. Runs what CI runs (.github/workflows/ci.yml): lint, format check,
  *     typecheck, tests, build, and the packaging checks.
- *  5. Commits the bump as `vX.Y.Z` and tags it (annotated, `vX.Y.Z`).
- *  6. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
+ *  6. Commits the bump as `vX.Y.Z` and tags it (annotated, `vX.Y.Z`).
+ *  7. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
  *     the upload: npm prompts for a 2FA code itself, and applies no branch
  *     check of its own, so a pre-release can go out from a non-main branch.
  *
@@ -22,7 +25,8 @@
  * `--dry-run` runs every step against the real version bump, but makes no
  * commit or tag, publishes with `npm publish --dry-run`, and puts
  * package.json and src/version.ts back as they were, even on failure. It
- * also only warns about uncommitted changes, where a real release refuses.
+ * only warns about uncommitted changes, where a real release refuses, and
+ * about a missing npm login, which `npm publish --dry-run` doesn't need.
  *
  * The v2 line is released from its own maintenance branch, which does not
  * carry this script.
@@ -128,6 +132,8 @@ const run = (command, args, { capture = false } = {}) => {
   return capture ? result.stdout.trim() : ''
 }
 
+const loggedIn = () => spawnSync('npm', ['whoami'], { stdio: 'ignore' }).status === 0
+
 const tagExists = (tag) =>
   spawnSync('git', ['rev-parse', '--quiet', '--verify', `refs/tags/${tag}`]).status === 0
 
@@ -206,6 +212,15 @@ const main = async () => {
   if (dirty && !DRY_RUN)
     throw new ReleaseError('the working tree has uncommitted changes — commit or stash them first')
   if (dirty) console.log('Note: the working tree has uncommitted changes (allowed in a dry run)\n')
+
+  if (!loggedIn()) {
+    if (DRY_RUN) console.log('Note: not logged in to npm (a real release logs in first)\n')
+    else {
+      step('Not logged in to npm: logging in through the browser')
+      run('npm', ['login', '--auth-type=web'])
+      console.log()
+    }
+  }
 
   const originalPackage = readFileSync(PACKAGE, 'utf8')
   const originalVersionFile = readFileSync(VERSION_FILE, 'utf8')
