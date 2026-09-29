@@ -100,7 +100,7 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 ## Step 3: Actionable `validate()` issues
 
-**Status:** Done (`82e9201` the suggestion field, `8d7ee44` the sample-data paths, 2026-09-30). #179, an earlier issue asking for the sample-data half, is resolved by `8d7ee44`.
+**Status:** Done (`82e9201` the suggestion field, `8d7ee44` the sample-data paths, 2026-09-30). #179, an earlier issue asking for the sample-data half, closed by `8d7ee44`; #200 commented that items 1 and 3 are done, with the three possible suggestion follow-ups.
 
 **Items**
 
