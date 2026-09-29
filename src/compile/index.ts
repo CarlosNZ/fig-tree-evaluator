@@ -43,6 +43,7 @@ export type {
 } from './artifact'
 export { bindsReference, renamedBinding, splice, toNodePath } from './artifact'
 export { probeConstant } from './probe'
+export { staticType } from './staticType'
 export { DEPTH_CEILING } from './grammar'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
 export type { CacheEntry } from './compileCache'

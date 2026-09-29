@@ -22,6 +22,7 @@ import {
 import type { OperatorRegistry } from './registry'
 import type { FragmentParameter } from './fragments'
 import type { Issue } from './issues'
+import type { ExpectedType } from './typeCheck'
 
 /** What an expression reads and invokes ("getDependencies()" in the spec). */
 export interface Dependencies {
@@ -159,6 +160,13 @@ export interface FragmentInfo {
   metadata?: Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /**
+   * What the body is known to return, inferred at registration from its
+   * root, as an operator's `returns` is declared: an operator's declared
+   * `returns`, a called fragment's `returns`, a constant's own type, a
+   * container's `array` or `object`, and `any` for a reference.
+   */
+  returns: ExpectedType
+  /**
    * The body's warning-severity issues, raised when it was registered.
    * Registration throws on errors, which leaves warnings with no other
    * channel, and a calling expression's `validate()` deliberately never
@@ -260,6 +268,7 @@ export const fragmentSnapshot = (registry: OperatorRegistry): FragmentInfo[] =>
       parameters: Object.fromEntries(
         Object.entries(entry.parameters).map(([name, parameter]) => [name, { ...parameter }])
       ),
+      returns: entry.returns,
       warnings: [...entry.warnings],
       dependencies: toDependencies(entry.dependencies),
     }

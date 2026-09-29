@@ -927,7 +927,7 @@ Fragments are statically checkable at registration (the registry is stable by co
 
 - `description` is the one universal top-level field — consumed by generated docs, editor labels and `validate()` messaging.
 - **`metadata?: Record<string, unknown>` is an opaque bag**: the engine never reads it; `getFragments()` returns it verbatim. v2's editor display hints (`textColor` / `backgroundColor` — [types.ts:100-101](../../v2-src/types.ts#L100-L101)) move here, becoming keys that [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) defines for itself; hosts can carry anything else the same way (organisational ownership, versioning, category tags). Constraint recorded for Extensibility: custom-operator definitions adopt the same `description` + opaque-`metadata` convention.
-- `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their _effective_ optionality and defaults, the `metadata` bag, and any warnings the body raised when it was registered (above).
+- `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their _effective_ optionality and defaults, the `metadata` bag, any warnings the body raised when it was registered (above), and the body's inferred result type, `returns` ("`getFragments()`" in [v3-evaluator-methods.md](v3-evaluator-methods.md)).
 
 ### v2 → v3 disposition
 

@@ -15,8 +15,11 @@
  *     filled, before any body compiles. That is what gives batch semantics:
  *     a body may call any fragment in the same batch regardless of key
  *     order, because the lookup it compiles against is already complete.
- *  2. Bodies — `compileExpression` + `runStaticChecks` over each `expression`,
- *     with the declared parameter names as the `$params` scope. Bodies
+ *  2. Bodies — `compileExpression` over each `expression`, then each
+ *     fragment's `returns` from its body's root, then `runStaticChecks` over
+ *     each body, with the declared parameter names as the `$params` scope.
+ *     The types come first so that a body feeding a call into a parameter
+ *     is checked against the called fragment's type. Bodies
  *     compile in isolation, which is also where the sealing rules enforce
  *     themselves: a body referencing a caller's var or iterator binding has
  *     nothing to resolve against and fails HERE rather than surprising a
@@ -41,6 +44,7 @@ import {
   compileExpression,
   runStaticChecks,
   splice,
+  staticType,
   type ArtifactDependencies,
   type ArtifactHole,
   type CompiledNode,
@@ -115,6 +119,13 @@ export interface FragmentEntry {
   parameters: Record<string, FragmentParameter>
   /** The compiled body. Assigned in pass 2; never reassigned after. */
   body: CompiledNode
+  /**
+   * What the body is known to return, read from its root (`staticType`):
+   * what `getFragments()` reports, and what the feeding-position check
+   * tests a call against. Inferred in pass 2, before any body's static
+   * checks run, so a body calling another fragment is checked against it.
+   */
+  returns: ExpectedType
   /**
    * The body's warning-severity issues, kept here because a throw has no
    * channel for them. Reported by `getFragments()`, never replayed by a
@@ -192,6 +203,12 @@ export const registerFragments = (
     const artifact = compileExpression(definition.expression, registry, {
       basePath: ['expression'],
     })
+    entry.body = artifact.root
+    compiled.set(name, artifact)
+  }
+  inferReturns(registry)
+  for (const [name, entry] of registry.fragments) {
+    const artifact = compiled.get(name)!
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
     for (const { issue } of artifact.issues) {
       if (issue.severity === 'error')
@@ -209,8 +226,6 @@ export const registerFragments = (
         entry.warnings.push(Object.freeze(frozen))
       }
     }
-    entry.body = artifact.root
-    compiled.set(name, artifact)
   }
 
   // ── Pass 3: cycles ────────────────────────────────────────────────
@@ -277,6 +292,7 @@ const validateDefinition = (
     parameters: {},
     // Replaced in pass 2 — an entry never escapes this module uncompiled
     body: { kind: 'constant', value: null, path: null, order: 0 },
+    returns: 'any',
     warnings: [],
     nodeCount: 0,
     maxDepth: 0,
@@ -421,6 +437,27 @@ const validateDeclaration = (
   if (isPlainObject(declared.metadata)) normalized.metadata = declared.metadata
   if (constraints !== undefined) normalized.constraints = constraints
   return normalized
+}
+
+/**
+ * Each fragment's `returns`, from its body's root. A root that calls
+ * another fragment takes that fragment's type, so the called one is
+ * inferred first. A cycle is pass 3's error to report; here it is only
+ * where the recursion stops, leaving `any`.
+ */
+const inferReturns = (registry: OperatorRegistry) => {
+  const visiting = new Set<string>()
+  const done = new Set<string>()
+  const infer = (entry: FragmentEntry) => {
+    if (done.has(entry.name) || visiting.has(entry.name)) return
+    visiting.add(entry.name)
+    const root = entry.body
+    if (root.kind === 'fragmentCall' && root.entry !== undefined) infer(root.entry)
+    entry.returns = staticType(root)
+    visiting.delete(entry.name)
+    done.add(entry.name)
+  }
+  for (const entry of registry.fragments.values()) infer(entry)
 }
 
 /**

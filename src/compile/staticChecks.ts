@@ -14,6 +14,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
+import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
 import { nearestName } from '../utils'
@@ -319,16 +320,39 @@ const checkSuppliedParam = (
     )
     return
   }
-  // The returns feeding-position check: a node in a parameter position
-  // whose declared returns cannot intersect the receiving type
-  if (supplied.kind === 'operator') {
-    const returns = supplied.entry.definition.returns
-    if (!typesIntersect(returns, declared.type))
+  // The returns feeding-position check: an operator node or fragment call
+  // in a parameter position whose returns cannot intersect the receiving
+  // type. A call to an unknown fragment has its own error, and no type
+  if (
+    supplied.kind === 'operator' ||
+    (supplied.kind === 'fragmentCall' && supplied.entry !== undefined)
+  ) {
+    const returns = staticType(supplied)
+    if (!typesIntersect(returns, declared.type)) {
+      const what =
+        supplied.kind === 'operator' ? `'${supplied.name}'` : `fragment '${supplied.name}'`
       emit(
         state,
         'error',
         ErrorCodes.returnsMismatch,
-        `'${supplied.name}' returns ${JSON.stringify(returns)} — it can never satisfy '${owner.label}.${name}'`,
+        `${what} returns ${JSON.stringify(returns)} — it can never satisfy '${owner.label}.${name}'`,
+        supplied.path,
+        supplied.order,
+        { ...owner.extra, parameter: name }
+      )
+    }
+    return
+  }
+  // A container holding something computed is still an array or an object,
+  // so it is checked as a literal one would be, with the same message
+  if (supplied.kind === 'skeleton') {
+    const typed = checkType(Array.isArray(supplied.skeleton) ? [] : {}, declared.type)
+    if (!typed.ok)
+      emit(
+        state,
+        'error',
+        ErrorCodes.typeCheck,
+        `'${owner.label}.${name}': expected ${typed.expected}, received ${typed.actual}`,
         supplied.path,
         supplied.order,
         { ...owner.extra, parameter: name }
