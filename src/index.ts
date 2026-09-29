@@ -167,7 +167,7 @@ export type {
 
 // ── Format ───────────────────────────────────────────────────────────────
 // The shapes the `./format` subpath's conversions take, and those its
-// reading primitives return.
+// reading primitives take and return.
 export type {
   CanonicalOptions,
   NameOptions,
@@ -176,5 +176,5 @@ export type {
   Spelling,
 } from './formatTypes'
 export type { ObjectClass, PositionalLayout, PositionalShape } from './compile/grammar'
-export type { ReferenceRecognition } from './compile/references'
+export type { ReferenceRecognition, ReferenceScope } from './compile/references'
 export type { ReferenceNamespace } from './compile/artifact'

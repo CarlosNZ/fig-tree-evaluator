@@ -116,7 +116,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 - **Methods & results**: `EvaluationResult`, the report envelope and trace shapes (names reserved; shapes deferred per evaluator-methods), `Issue`, the `getDependencies()` report shape, `FigTreeError` (class doubles as type).
 - **Editor hints**: `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap`, `TypeSeeds` — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), and for a fragment's `metadata`.
 - **Migration**: `V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue` — what `./migrate`'s two functions take and return ("Surface" in [v3-converter.md](v3-converter.md)).
-- **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four conversions take ("Surface" in [v3-format.md](v3-format.md)); `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `PositionalShape`, `PositionalLayout` — what its reading primitives return ("Reading primitives" there).
+- **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four conversions take ("Surface" in [v3-format.md](v3-format.md)); `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `ReferenceScope`, `PositionalShape`, `PositionalLayout` — what its reading primitives take and return ("Reading primitives" there).
 
 ## `./migrate`
 

@@ -2,7 +2,7 @@
  * Phase 16 — the `./format` surface ("Surface", "Reading primitives" and
  * "Packaging" in docs-dev/v3-specs/v3-format.md).
  *
- * The subpath exports its four conversions and four reading primitives and
+ * The subpath exports its four conversions and five reading primitives and
  * nothing else, and its types export from the root. test/exports.test.ts
  * lists values only, so the types are checked here, where `pnpm typecheck`
  * fails if one goes missing.
@@ -16,6 +16,7 @@ import type {
   PositionalShape,
   ReferenceNamespace,
   ReferenceRecognition,
+  ReferenceScope,
   Registry,
   ShorthandOptions,
   Spelling,
@@ -27,11 +28,12 @@ import { toCanonical, toShorthand } from '../src/format'
 import * as typeIntersection from '../src/typeIntersection'
 import { deepFreeze } from './helpers/migration'
 
-test('the subpath exports the four conversions and four primitives, and nothing else', () => {
+test('the subpath exports the four conversions and five primitives, and nothing else', () => {
   expect(Object.keys(format).sort()).toEqual([
     'classifyObject',
     'positionalLayout',
     'recognizeReference',
+    'singlePositionalTarget',
     'toCanonical',
     'toGet',
     'toReference',
@@ -47,6 +49,7 @@ describe('the reading primitives', () => {
     expect(format.classifyObject).toBe(grammar.classifyObject)
     expect(format.positionalLayout).toBe(grammar.positionalLayout)
     expect(format.recognizeReference).toBe(references.recognizeReference)
+    expect(format.singlePositionalTarget).toBe(grammar.singlePositionalTarget)
     expect(format.typesIntersect).toBe(typeIntersection.typesIntersect)
   })
 
@@ -65,8 +68,86 @@ describe('the reading primitives', () => {
     const shape: PositionalShape = plus
     const layout: PositionalLayout | null = format.positionalLayout(shape, 3)
     expect(layout).toEqual({ bound: 0, restAt: 0 })
+    expect(format.singlePositionalTarget(shape)).toBe('values')
+
+    const scope: ReferenceScope = { bindings: ['item'] }
+    expect(format.recognizeReference('$item', scope).kind).toBe('reference')
 
     expect(format.typesIntersect('integer', ['number', 'null'])).toBe(true)
+  })
+})
+
+describe('recognizeReference with as bindings in scope', () => {
+  const scope = { bindings: ['order', 'item'] }
+
+  test('an as name is the element, drilled or bare', () => {
+    expect(format.recognizeReference('$item.name', scope)).toEqual({
+      kind: 'reference',
+      namespace: 'element',
+      segments: ['name'],
+      drill: '.name',
+      binding: 'item',
+    })
+    expect(format.recognizeReference('$order[0].id', scope)).toEqual({
+      kind: 'reference',
+      namespace: 'element',
+      segments: [0, 'id'],
+      drill: '[0].id',
+      binding: 'order',
+    })
+    expect(format.recognizeReference('$item', scope)).toMatchObject({ segments: [], drill: '' })
+  })
+
+  test('its …Index form is the index, and bare-only', () => {
+    expect(format.recognizeReference('$itemIndex', scope)).toEqual({
+      kind: 'reference',
+      namespace: 'index',
+      segments: [],
+      drill: '',
+      binding: 'itemIndex',
+    })
+    expect(format.recognizeReference('$itemIndex.x', scope)).toMatchObject({
+      kind: 'invalid',
+      namespace: 'index',
+    })
+  })
+
+  test('a malformed drill is invalid in the element namespace', () => {
+    expect(format.recognizeReference('$item[', scope)).toMatchObject({
+      kind: 'invalid',
+      namespace: 'element',
+    })
+  })
+
+  test('a binding matches the whole token, not a prefix of it', () => {
+    for (const value of ['$items', '$itemIndexes', '$orderItem'])
+      expect(format.recognizeReference(value, scope)).toEqual({ kind: 'unrecognized' })
+  })
+
+  test('the fixed namespaces read as they do without a scope', () => {
+    for (const value of ['$data.x', '$e', '$index', '$vars', 'plain', '$typo'])
+      expect(format.recognizeReference(value, scope)).toEqual(format.recognizeReference(value))
+  })
+
+  test('without bindings, an as name is unrecognized', () => {
+    for (const options of [undefined, {}, { bindings: [] }])
+      expect(format.recognizeReference('$item.name', options)).toEqual({ kind: 'unrecognized' })
+  })
+
+  // The compiler reads its own `as` bindings through the same function, so
+  // the two agree on every string: a binding reference compiles to a
+  // binding reference, an invalid one to the same error
+  test('agrees with validate() inside the iterator', () => {
+    const fig = new FigTree()
+    const inEach = (each: string) => ({ operator: 'map', input: [1], as: 'item', each })
+    for (const value of ['$item.name', '$itemIndex', '$itemIndex.x', '$item[', '$items']) {
+      const recognition = format.recognizeReference(value, { bindings: ['item'] })
+      const codes = fig.validate(inEach(value)).issues.map((issue) => issue.code)
+      if (recognition.kind === 'invalid') expect(codes).toContain('invalid-reference')
+      else expect(codes).not.toContain('invalid-reference')
+      if (recognition.kind === 'unrecognized') expect(codes).toContain('unrecognized-identifier')
+      else expect(codes).not.toContain('unrecognized-identifier')
+    }
   })
 })
 

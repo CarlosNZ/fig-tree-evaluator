@@ -143,6 +143,16 @@ describe('as renaming', () => {
     expect(errorCodes(expression)).toHaveLength(0)
   })
 
+  test('a drilled index binding, or a malformed element drill, is an invalid reference', () => {
+    const inEach = (each: string) => ({ operator: 'map', input: [1], as: 'row', each })
+    for (const each of ['$rowIndex.x', '$rowIndex[0]', '$row[']) {
+      const errors = issuesOf(inEach(each)).filter((issue) => issue.severity === 'error')
+      expect(errors.map(({ code, path }) => ({ code, path }))).toEqual([
+        { code: 'invalid-reference', path: ['each'] },
+      ])
+    }
+  })
+
   test('a dynamic as is a grammar error — structural means literal', () => {
     expect(errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })).toContain(
       'invalid-as'

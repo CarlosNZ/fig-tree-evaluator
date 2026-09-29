@@ -65,7 +65,7 @@ interface ShorthandOptions extends NameOptions {
 
 **Why `Registry` names only what the functions read.** Declared as `Pick<FigTree, …>`, it would copy `FigTree`'s whole declaration graph into the subpath's types. The four fields are all the conversions need: no parameter declaration is read, because an unknown parameter key is carried in the named form, where the compiler reads it exactly as on the canonical node.
 
-**The types export from the root**, beside the other subpaths' ("Types" in [v3-packaging.md](v3-packaging.md)), and the subpath exports only the four functions and the four reading primitives.
+**The types export from the root**, beside the other subpaths' ("Types" in [v3-packaging.md](v3-packaging.md)), and the subpath exports only the four functions and the five reading primitives.
 
 **`toGet` and `toReference` take no registry.** A reference is grammar, not a registered name. `get` is a core operator with no alias, and every host has it: operators, aliases and fragments share one namespace, so nothing else can take the name `get` or `$get`. The position of `get`'s parameters comes from its core definition.
 
@@ -209,24 +209,27 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 
 ## Reading primitives
 
-The subpath also exports four of the compiler's own functions, for tools that read an expression themselves and must read it exactly as the compiler does. The main caller is the v3 editor, which classifies the whole tree once per update and records what each row is and what each position expects (topics 1 and 4 in fig-tree-editor-react's `docs-dev/v3-design.md`). The walk around them stays the tool's own, since its position rules are the tool's: which keys are names, which payloads aren't walked, where a binding is in scope. The reading of each object and string is the compiler's.
+The subpath also exports five of the compiler's own functions, for tools that read an expression themselves and must read it exactly as the compiler does. The main caller is the v3 editor, which classifies the whole tree once per update and records what each row is and what each position expects (topics 1 and 4 in fig-tree-editor-react's `docs-dev/v3-design.md`). The walk around them stays the tool's own, since its position rules are the tool's: which keys are names, which payloads aren't walked, where a binding is in scope. The reading of each object and string is the compiler's.
 
-| Export               | Signature                                                                              | Does                                                                                                      |
-| -------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `classifyObject`     | `(raw: Record<string, unknown>, recognizes: (name: string) => boolean) => ObjectClass` | whether an object is an operator node, a fragment call, shorthand (with its key), plain or malformed      |
-| `recognizeReference` | `(value: string) => ReferenceRecognition`                                              | whether a string is a reference, in which namespace, with its segments; or invalid, unrecognized or plain |
-| `positionalLayout`   | `(shape: PositionalShape, length: number) => PositionalLayout \| null`                 | how a positional payload of `length` elements binds to parameters, or `null` if it can't                  |
-| `typesIntersect`     | `(a: ExpectedType, b: ExpectedType) => boolean`                                        | whether two type declarations admit a common value: the test behind `validate()`'s `returns-mismatch`     |
+| Export                   | Signature                                                                              | Does                                                                                                                                                          |
+| ------------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `classifyObject`         | `(raw: Record<string, unknown>, recognizes: (name: string) => boolean) => ObjectClass` | whether an object is an operator node, a fragment call, shorthand (with its key), plain or malformed                                                          |
+| `recognizeReference`     | `(value: string, scope?: ReferenceScope) => ReferenceRecognition`                      | whether a string is a reference, in which namespace, with its segments; or invalid, unrecognized or plain                                                     |
+| `positionalLayout`       | `(shape: PositionalShape, length: number) => PositionalLayout \| null`                 | how a positional payload of `length` elements binds to parameters, or `null` if it can't                                                                      |
+| `singlePositionalTarget` | `(shape: PositionalShape) => string \| null`                                           | the parameter a single non-array payload binds whole (the first position, or the rest parameter when it comes first), or `null` if there's no positional form |
+| `typesIntersect`         | `(a: ExpectedType, b: ExpectedType) => boolean`                                        | whether two type declarations admit a common value: the test behind `validate()`'s `returns-mismatch`                                                         |
 
 **Why exported, not copied.** v1's editor classified expressions with its own copy of the rules, and the copy drifted from the evaluator. These are the functions the compiler and `validate()` call, re-exported as they are, so a tool using them can't disagree with the engine, and follows it if the grammar or the type vocabulary grows. A test holds each export to be the compiler's function itself.
 
 **`recognizes` is the caller's.** Whether `$name` invokes something depends on what is registered, so `classifyObject` asks. To agree with the compiler, it answers `true` for `literal`, for every registered operator name and alias, and for every fragment name, which is what `toCanonical` and `toShorthand` build from their `Registry`.
 
+**`as` bindings are the caller's too.** Inside an iterator's per-element parameters, `as: 'item'` makes `$item` the element and `$itemIndex` the index; anywhere else neither is a reference. Which bindings are in scope depends on where the string sits, so `recognizeReference` takes them as `scope.bindings`, the `as` values in scope, in any order: the compiler rejects an `as` that collides with one in scope, so the names are distinct. Each name also binds its `…Index` form, which is bare-only, as the compiler derives it. A match is a `reference` with its `binding` (`{ kind: 'reference', namespace: 'element', segments: ['name'], drill: '.name', binding: 'item' }`); a drilled index binding or a malformed drill is `invalid`. The fixed namespaces are unaffected, and no `as` name can be one of them. Without `scope`, a binding reads as `unrecognized`. The compiler reads its own bindings through this same function.
+
 **`PositionalShape` is what `getOperators()` reports.** Each entry has `positionalParams` and `restParam`, so an operator's info can be passed as the shape directly.
 
 **What is stable.** The signatures and the result shapes are semver-stable, like the rest of `./format`. The text in a result, the `message` of a malformed object and the `reason` of an invalid reference, is for people and may change, as an issue's message may.
 
-**The types export from the root**, beside the conversions' ones: `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `PositionalShape` and `PositionalLayout`. `ExpectedType` already does.
+**The types export from the root**, beside the conversions' ones: `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `ReferenceScope`, `PositionalShape` and `PositionalLayout`. `ExpectedType` already does.
 
 ## Testing
 

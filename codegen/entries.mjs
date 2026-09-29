@@ -35,7 +35,7 @@ export const ENTRIES = [
     subpath: './format',
     name: 'format/index',
     source: 'src/format/index.ts',
-    budget: 6_550,
+    budget: 6_950,
     marker: 'referencesAsGet',
   },
 ]

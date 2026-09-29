@@ -1,9 +1,10 @@
 /**
  * Reference-token recognition ("Reference grammar" and "Bare namespace
  * forms" in docs-dev/v3-specs/v3-api.md): the token rule, namespace-alias
- * normalization, and the bare-namespace legality rules. Pure classification
- * — scope resolution (does the var exist, are we inside an iterator) is the
- * chunk-3.3 layer's job.
+ * normalization, the bare-namespace legality rules, and the `as` binding
+ * names the caller says are in scope. Pure classification — scope resolution
+ * (does the var exist, are we inside an iterator) is the chunk-3.3 layer's
+ * job.
  */
 import { ErrorCodes } from '../errorCodes'
 import { parsePath, WILDCARD, type PathSegment } from '../primitives'
@@ -26,9 +27,17 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
 export type ReferenceRecognition =
   /**
    * A recognized, well-formed reference. `drill` is its text after the
-   * namespace token (`.a[0]`, `[2].b`, or empty), as authored.
+   * namespace token (`.a[0]`, `[2].b`, or empty), as authored. `binding` is
+   * the token when it names an `as` binding in scope (`item`, `itemIndex`)
+   * rather than a namespace.
    */
-  | { kind: 'reference'; namespace: ReferenceNamespace; segments: PathSegment[]; drill: string }
+  | {
+      kind: 'reference'
+      namespace: ReferenceNamespace
+      segments: PathSegment[]
+      drill: string
+      binding?: string
+    }
   /**
    * A recognized namespace used illegally (drilled $index, an unterminated
    * `$data.items[`…).
@@ -54,17 +63,47 @@ export const parseDrill = (rest: string): PathSegment[] => {
   return parsePath(rest.startsWith('.') ? rest.slice(1) : rest)
 }
 
+/** What a string is read against beyond the fixed namespaces. */
+export interface ReferenceScope {
+  /**
+   * The `as` names in scope. Each binds the element, and its `…Index` form
+   * the index. The compiler rejects an `as` that collides with one in scope,
+   * so the names are distinct and their order doesn't matter.
+   */
+  bindings?: readonly string[]
+}
+
+/** The index binding an `as` name derives: `item` → `itemIndex`. */
+export const indexBinding = (name: string): string => `${name}Index`
+
+/** Which half of an `as` binding in scope `token` names, if either. */
+export const bindingNamespace = (
+  token: string,
+  bindings: readonly string[]
+): 'element' | 'index' | null => {
+  for (const name of bindings) {
+    if (token === name) return 'element'
+    if (token === indexBinding(name)) return 'index'
+  }
+  return null
+}
+
 /**
  * Classify a string per the token rule: a reference iff it starts with
- * `$<namespace>` (canonical or alias) followed by end-of-string, `.` or `[`.
- * Case-sensitive; whole-string only (interpolation is buildString's job).
+ * `$<namespace>` (canonical or alias), or `$<binding>` for an `as` binding
+ * in `scope`, followed by end-of-string, `.` or `[`. A namespace token takes
+ * precedence, though no `as` name can be one. Case-sensitive; whole-string
+ * only (interpolation is buildString's job).
  */
-export const recognizeReference = (value: string): ReferenceRecognition => {
+export const recognizeReference = (value: string, scope?: ReferenceScope): ReferenceRecognition => {
   const split = splitSigilToken(value)
   if (split === null) return { kind: 'plain' }
   const { token, rest } = split
   const namespace = NAMESPACE_TOKENS[token]
-  if (namespace === undefined) return { kind: 'unrecognized' }
+  if (namespace === undefined) {
+    const bound = scope?.bindings === undefined ? null : bindingNamespace(token, scope.bindings)
+    return bound === null ? { kind: 'unrecognized' } : recognizeBinding(token, rest, bound)
+  }
 
   if (rest === '') {
     // The namespaces divide on whether they name a VALUE or a SET. $data
@@ -89,6 +128,28 @@ export const recognizeReference = (value: string): ReferenceRecognition => {
 
   try {
     return { kind: 'reference', namespace, segments: parseDrill(rest), drill: rest }
+  } catch (error) {
+    return { kind: 'invalid', namespace, reason: (error as Error).message }
+  }
+}
+
+/** A reference to an `as` binding: the element drills, the index is bare. */
+const recognizeBinding = (
+  binding: string,
+  rest: string,
+  namespace: 'element' | 'index'
+): ReferenceRecognition => {
+  if (namespace === 'index') {
+    if (rest !== '')
+      return {
+        kind: 'invalid',
+        namespace,
+        reason: 'the index binding is bare-only — it cannot be drilled',
+      }
+    return { kind: 'reference', namespace, segments: [], drill: rest, binding }
+  }
+  try {
+    return { kind: 'reference', namespace, segments: parseDrill(rest), drill: rest, binding }
   } catch (error) {
     return { kind: 'invalid', namespace, reason: (error as Error).message }
   }

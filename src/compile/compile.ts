@@ -109,7 +109,8 @@ import { checkNameLegality } from '../names'
 import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
 import { scanTemplate, type TemplateSegment } from '../templateTokens'
 import {
-  parseDrill,
+  bindingNamespace,
+  indexBinding,
   recognizeReference,
   renderSegments,
   rendersAsWritten,
@@ -159,12 +160,6 @@ const NAMESPACE_WORDS = new Set([
   'i',
 ])
 
-/** An active `as` renaming — pushed around perElement subtree walks. */
-interface BindingFrame {
-  element: string
-  index: string
-}
-
 interface WalkState {
   registry: OperatorRegistry
   /** Does a `$name` key invoke something registered, or `literal`? */
@@ -183,7 +178,11 @@ interface WalkState {
   /** Every `$data` reader and fragment call, for the sample-data check. */
   dataReads: DataRead[]
   identityOnly: boolean
-  renamedBindings: BindingFrame[]
+  /**
+   * The active `as` names, pushed around perElement subtree walks and read
+   * by recognizeReference as they stand.
+   */
+  scope: { bindings: string[] }
   /**
    * Every binding name any `as` in the expression declares, element and
    * derived index form alike — the material for the out-of-scope upgrade
@@ -231,7 +230,7 @@ export const compileExpression = (
     fragmentCalls: [],
     dataReads: [],
     identityOnly: false,
-    renamedBindings: [],
+    scope: { bindings: [] },
     asNames: new Set(),
     unrecognized: [],
   }
@@ -442,13 +441,11 @@ const walkString = (
   path: LinkedPath,
   order: number
 ): CompiledNode => {
-  const recognition = recognizeReference(raw)
+  const recognition = recognizeReference(raw, state.scope)
   switch (recognition.kind) {
     case 'plain':
       return constant(raw, path, order)
     case 'unrecognized': {
-      const renamed = recognizeRenamedBinding(state, raw, path, order)
-      if (renamed !== null) return renamed
       const issue = emit(
         state,
         'warning',
@@ -472,7 +469,9 @@ const walkString = (
       )
       return invalid(raw, path, order)
     case 'reference': {
-      const { namespace, segments, drill } = recognition
+      const { namespace, segments, drill, binding } = recognition
+      if (binding !== undefined)
+        return { kind: 'reference', namespace, segments, raw, binding, path, order }
       if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
         else
@@ -481,68 +480,6 @@ const walkString = (
       return { kind: 'reference', namespace, segments, raw, path, order }
     }
   }
-}
-
-/** `$order` / `$orderIndex` against the active `as` frames. */
-const recognizeRenamedBinding = (
-  state: WalkState,
-  raw: string,
-  path: LinkedPath,
-  order: number
-): CompiledNode | null => {
-  const split = splitSigilToken(raw)
-  if (split === null) return null
-  const { token, rest } = split
-  for (let i = state.renamedBindings.length - 1; i >= 0; i--) {
-    const frame = state.renamedBindings[i]
-    if (token === frame.element) {
-      try {
-        const segments = parseDrill(rest)
-        return {
-          kind: 'reference',
-          namespace: 'element',
-          segments,
-          raw,
-          binding: token,
-          path,
-          order,
-        }
-      } catch (error) {
-        emit(
-          state,
-          'error',
-          ErrorCodes.invalidReference,
-          `'${raw}': ${(error as Error).message}`,
-          path,
-          order
-        )
-        return invalid(raw, path, order)
-      }
-    }
-    if (token === frame.index) {
-      if (rest !== '') {
-        emit(
-          state,
-          'error',
-          ErrorCodes.invalidReference,
-          `'${raw}': the index binding is bare-only — it cannot be drilled`,
-          path,
-          order
-        )
-        return invalid(raw, path, order)
-      }
-      return {
-        kind: 'reference',
-        namespace: 'index',
-        segments: [],
-        raw,
-        binding: token,
-        path,
-        order,
-      }
-    }
-  }
-  return null
 }
 
 // ── Arrays ──────────────────────────────────────────────────────────
@@ -758,7 +695,7 @@ const finalizeParams = (
   const definition = node.entry.definition
   const iterates = definition.resolution.perElement.length > 0
 
-  let frame: BindingFrame | undefined
+  let binding: string | undefined
   if (iterates) {
     const asPending = pending.find(
       (entry) =>
@@ -767,7 +704,7 @@ const finalizeParams = (
         entry.kind === 'value'
     )
     if (asPending !== undefined && asPending.kind === 'value')
-      frame = buildBindingFrame(state, node, asPending.value, asPending.path, order)
+      binding = readAsBinding(state, node, asPending.value, asPending.path, order)
   }
 
   for (const entry of pending) {
@@ -779,13 +716,13 @@ const finalizeParams = (
   // operator-dense tree a second pass over every node's parameters costs
   // a measurable few percent of the compile
   if (iterates) {
-    if (frame !== undefined) state.renamedBindings.push(frame)
+    if (binding !== undefined) state.scope.bindings.push(binding)
     for (const entry of pending) {
       const evaluation = definition.parameters[entry.name]?.evaluation
       if (evaluation === 'perElement')
         node.params[entry.name] = walkPending(state, entry, evaluation, depth)
     }
-    if (frame !== undefined) state.renamedBindings.pop()
+    if (binding !== undefined) state.scope.bindings.pop()
   }
 
   recordGetDependency(state, node)
@@ -1218,20 +1155,20 @@ const walkEntriesParam = (
 }
 
 /**
- * Validate an `as` value and build its binding frame. `as` is structural —
- * a compile-time literal identifier; a dynamic value is a grammar error. Names
- * are checked against the shared legality rule, the reserved namespace
- * words (long and short forms) and every enclosing `as` name, derived
- * `…Index` forms included ("$element / $index and as" in
+ * Validate an `as` value and return it as the binding name. `as` is
+ * structural — a compile-time literal identifier; a dynamic value is a
+ * grammar error. Names are checked against the shared legality rule, the
+ * reserved namespace words (long and short forms) and every enclosing `as`
+ * name, derived `…Index` forms included ("$element / $index and as" in
  * docs-dev/v3-specs/v3-api.md).
  */
-const buildBindingFrame = (
+const readAsBinding = (
   state: WalkState,
   node: OperatorNode,
   value: unknown,
   path: LinkedPath,
   order: number
-): BindingFrame | undefined => {
+): string | undefined => {
   const asError = (message: string) => {
     emit(state, 'error', ErrorCodes.invalidAs, message, path, order, { operator: node.name })
     return undefined
@@ -1241,17 +1178,15 @@ const buildBindingFrame = (
   const legality = checkNameLegality(value)
   if (!legality.ok) return asError(`'${value}' is not a legal binding name — ${legality.reason}`)
 
-  const names = [value, `${value}Index`]
+  const names = [value, indexBinding(value)]
   for (const name of names) {
     if (NAMESPACE_WORDS.has(name))
       return asError(`'${value}' collides with the reserved namespace word '${name}'`)
-    for (const enclosing of state.renamedBindings) {
-      if (name === enclosing.element || name === enclosing.index)
-        return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
-    }
+    if (bindingNamespace(name, state.scope.bindings) !== null)
+      return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
   }
   for (const name of names) state.asNames.add(name)
-  return { element: value, index: `${value}Index` }
+  return value
 }
 
 // ── Shorthand nodes ─────────────────────────────────────────────────

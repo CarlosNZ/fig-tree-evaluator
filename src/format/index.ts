@@ -44,6 +44,6 @@ export const toReference = (node: unknown, options?: NameOptions): string | null
 }
 
 // The reading primitives: the compiler's own functions, re-exported as-is
-export { classifyObject, positionalLayout } from '../compile/grammar'
+export { classifyObject, positionalLayout, singlePositionalTarget } from '../compile/grammar'
 export { recognizeReference } from '../compile/references'
 export { typesIntersect } from '../typeIntersection'
