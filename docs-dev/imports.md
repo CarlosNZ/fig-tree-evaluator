@@ -4,7 +4,7 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`).
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`); the `./format` block re-measured with its reading primitives (#199).
 
 <!-- prettier-ignore -->
 ```ts
@@ -80,6 +80,7 @@ import type {
   CategoryHintMap, CategoryHints, FragmentHints, OperatorHintMap, OperatorHints, TypeSeeds,
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
+  ObjectClass, PositionalLayout, PositionalShape, ReferenceRecognition, ReferenceNamespace,
 } from 'fig-tree-evaluator'
 
 // ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.7 kB ══════
@@ -94,20 +95,32 @@ import { operatorHints } from 'fig-tree-evaluator/editor-hints' // 1.44 kB
 import { categoryHints } from 'fig-tree-evaluator/editor-hints' // 0.23 kB
 import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 
-// ═══ 'fig-tree-evaluator/format' → build/format/index.js: 5.5 kB ════════
+// ═══ 'fig-tree-evaluator/format' → build/format/index.js: 5.7 kB ════════
 // Takes a FigTree, or its snapshots, as an argument and never imports the
 // class. It reads expressions exactly as the compiler does, so it shares a
 // few small root modules with the engine: the reference grammar, the shared
-// grammar in src/compile/grammar.ts, the path parser, FigTreeError and
-// ErrorCodes. The build emits those once, in build/chunks/shared.js, which
-// the root imports too (the one shared chunk; figures below include it).
+// grammar in src/compile/grammar.ts, the type intersection, the path
+// parser, FigTreeError and ErrorCodes. The build emits those once, in
+// build/chunks/shared.js, which the root imports too (the one shared chunk;
+// figures below include it).
+
+// ── The conversions ──────────────────────────────────────────────────────
 import { toCanonical } from 'fig-tree-evaluator/format' // 4.4 kB
 import { toShorthand } from 'fig-tree-evaluator/format' // 4.8 kB
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format' // 5.3 kB
 import { toGet } from 'fig-tree-evaluator/format' // 1.7 kB
 import { toReference } from 'fig-tree-evaluator/format' // 2.3 kB
+
+// ── The reading primitives: the compiler's own functions ────────────────
+import { classifyObject } from 'fig-tree-evaluator/format' // 0.38 kB
+import { positionalLayout } from 'fig-tree-evaluator/format' // 0.23 kB
+import { recognizeReference } from 'fig-tree-evaluator/format' // 1.4 kB
+import { typesIntersect } from 'fig-tree-evaluator/format' // 0.38 kB
+// All four together: 1.9 kB
 // Its types come from the root, listed there under "The subpaths' shapes":
-// Registry, Spelling, NameOptions, CanonicalOptions, ShorthandOptions.
+// Registry, Spelling, NameOptions, CanonicalOptions, ShorthandOptions, for
+// the conversions; ObjectClass, PositionalShape, PositionalLayout,
+// ReferenceRecognition, ReferenceNamespace, for the primitives.
 ```
 
 One shared chunk: `./format` and the root share the modules listed in its block, emitted once under `build/chunks/`, so there is one `FigTreeError` class for both. `./migrate` and `./editor-hints` import only types from the root, so their bundles are fully separate. An entry's size budget (`codegen/entries.mjs`) counts its own file compressed together with the chunks it imports.

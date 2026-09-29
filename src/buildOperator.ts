@@ -17,7 +17,8 @@
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import { fnv1a, isPlainObject } from './utils'
-import { isLiteralType, typeNamesNull, type ExpectedType } from './typeCheck'
+import { typeNamesNull, type ExpectedType } from './typeCheck'
+import { isLiteralType } from './typeIntersection'
 import {
   VALIDATED_OPERATOR,
   type CompiledNullPolicy,

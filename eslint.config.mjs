@@ -157,7 +157,7 @@ export default tseslint.config(
           patterns: [
             {
               regex:
-                '^(?!\\./|\\.\\./(compile/references|compile/grammar|utils|primitives/path|names|operators/getShape|FigTreeError|errorCodes)$)',
+                '^(?!\\./|\\.\\./(compile/references|compile/grammar|utils|primitives/path|names|operators/getShape|typeIntersection|FigTreeError|errorCodes)$)',
               allowTypeImports: true,
               message:
                 'src/format/ imports values only from inside the folder and from the small root modules it shares with the engine (`import type` from anywhere).',

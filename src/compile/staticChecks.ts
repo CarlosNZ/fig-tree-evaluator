@@ -12,7 +12,8 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
-import { checkType, checkConstraintsUnderPolicy, typesIntersect, typeNamesNull } from '../typeCheck'
+import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
+import { typesIntersect } from '../typeIntersection'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
 import { nearestName } from '../utils'

@@ -1,19 +1,73 @@
 /**
- * Phase 16 — the `./format` surface ("Surface" and "Packaging" in
- * docs-dev/v3-specs/v3-format.md).
+ * Phase 16 — the `./format` surface ("Surface", "Reading primitives" and
+ * "Packaging" in docs-dev/v3-specs/v3-format.md).
  *
- * The subpath exports its four functions and nothing else, and its types
- * export from the root. test/exports.test.ts lists values only, so the types
- * are checked here, where `pnpm typecheck` fails if one goes missing.
+ * The subpath exports its four conversions and four reading primitives and
+ * nothing else, and its types export from the root. test/exports.test.ts
+ * lists values only, so the types are checked here, where `pnpm typecheck`
+ * fails if one goes missing.
  */
 import { FigTree, isFigTreeError, type FigTreeError } from '../src'
-import type { CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling } from '../src'
+import type {
+  CanonicalOptions,
+  NameOptions,
+  ObjectClass,
+  PositionalLayout,
+  PositionalShape,
+  ReferenceNamespace,
+  ReferenceRecognition,
+  Registry,
+  ShorthandOptions,
+  Spelling,
+} from '../src'
+import * as grammar from '../src/compile/grammar'
+import * as references from '../src/compile/references'
 import * as format from '../src/format'
 import { toCanonical, toShorthand } from '../src/format'
+import * as typeIntersection from '../src/typeIntersection'
 import { deepFreeze } from './helpers/migration'
 
-test('the subpath exports the four conversions, and nothing else', () => {
-  expect(Object.keys(format).sort()).toEqual(['toCanonical', 'toGet', 'toReference', 'toShorthand'])
+test('the subpath exports the four conversions and four primitives, and nothing else', () => {
+  expect(Object.keys(format).sort()).toEqual([
+    'classifyObject',
+    'positionalLayout',
+    'recognizeReference',
+    'toCanonical',
+    'toGet',
+    'toReference',
+    'toShorthand',
+    'typesIntersect',
+  ])
+})
+
+describe('the reading primitives', () => {
+  // A tool that reads an expression through these must agree with the
+  // compiler, so they are the compiler's functions, not copies of them
+  test('are the functions the compiler and validate() use', () => {
+    expect(format.classifyObject).toBe(grammar.classifyObject)
+    expect(format.positionalLayout).toBe(grammar.positionalLayout)
+    expect(format.recognizeReference).toBe(references.recognizeReference)
+    expect(format.typesIntersect).toBe(typeIntersection.typesIntersect)
+  })
+
+  test('return the types the root exports', () => {
+    const recognizes = (name: string) => name === 'plus'
+    const objectClass: ObjectClass = format.classifyObject({ $plus: [1, 2] }, recognizes)
+    expect(objectClass).toEqual({ kind: 'shorthand', key: '$plus' })
+
+    const recognition: ReferenceRecognition = format.recognizeReference('$d.user.name')
+    const namespace: ReferenceNamespace | null =
+      recognition.kind === 'reference' ? recognition.namespace : null
+    expect(namespace).toBe('data')
+
+    // A shape as getOperators() reports it
+    const [plus] = new FigTree().getOperators().filter((op) => op.name === 'plus')
+    const shape: PositionalShape = plus
+    const layout: PositionalLayout | null = format.positionalLayout(shape, 3)
+    expect(layout).toEqual({ bound: 0, restAt: 0 })
+
+    expect(format.typesIntersect('integer', ['number', 'null'])).toBe(true)
+  })
 })
 
 describe('Registry', () => {

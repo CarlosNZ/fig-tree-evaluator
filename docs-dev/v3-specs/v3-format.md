@@ -1,6 +1,6 @@
 # FigTree v3 — the format utilities
 
-_Status: **Agreed** (September 2026, Claude, from two rounds of discussion with Carl, reviewed by Carl, with the rulings from Phase 16's planning written in). It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md)._
+_Status: **Agreed** (September 2026, Claude, from two rounds of discussion with Carl, reviewed by Carl, with the rulings from Phase 16's planning written in). It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md). The reading primitives ("Reading primitives", below) were added for the v3 editor, from [issue #199](https://github.com/CarlosNZ/fig-tree-evaluator/issues/199) and item 2 of [#198](https://github.com/CarlosNZ/fig-tree-evaluator/issues/198)._
 
 ## Purpose
 
@@ -21,7 +21,7 @@ A second caller is the converter's output: `toShorthand(migrateV2Expression(x).e
 
 ## Surface
 
-A new subpath, `fig-tree-evaluator/format`, with four functions. None of them is a `FigTree` method, so tooling code stays out of the root bundle.
+A new subpath, `fig-tree-evaluator/format`, with four conversion functions, and beside them the compiler's reading primitives ("Reading primitives", below). None of them is a `FigTree` method, so tooling code stays out of the root bundle.
 
 **Why `toCanonical`.** "Canonical" is the specs' word for the full form, and the name is for developers. The editor's button says "To full node", which is the user-facing word for the same thing. Spelling is a separate axis ("Spellings", below): `toCanonical` produces canonical _form_, and changes names only when asked.
 
@@ -65,7 +65,7 @@ interface ShorthandOptions extends NameOptions {
 
 **Why `Registry` names only what the functions read.** Declared as `Pick<FigTree, …>`, it would copy `FigTree`'s whole declaration graph into the subpath's types. The four fields are all the conversions need: no parameter declaration is read, because an unknown parameter key is carried in the named form, where the compiler reads it exactly as on the canonical node.
 
-**The types export from the root**, beside the other subpaths' ("Types" in [v3-packaging.md](v3-packaging.md)), and the subpath exports only the four functions.
+**The types export from the root**, beside the other subpaths' ("Types" in [v3-packaging.md](v3-packaging.md)), and the subpath exports only the four functions and the four reading primitives.
 
 **`toGet` and `toReference` take no registry.** A reference is grammar, not a registered name. `get` is a core operator with no alias, and every host has it: operators, aliases and fragments share one namespace, so nothing else can take the name `get` or `$get`. The position of `get`'s parameters comes from its core definition.
 
@@ -207,6 +207,27 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 - **Report problems.** A malformed node is left as written, and the editor surfaces it through `validate()`.
 - **Know their context** (see "The setting").
 
+## Reading primitives
+
+The subpath also exports four of the compiler's own functions, for tools that read an expression themselves and must read it exactly as the compiler does. The main caller is the v3 editor, which classifies the whole tree once per update and records what each row is and what each position expects (topics 1 and 4 in fig-tree-editor-react's `docs-dev/v3-design.md`). The walk around them stays the tool's own, since its position rules are the tool's: which keys are names, which payloads aren't walked, where a binding is in scope. The reading of each object and string is the compiler's.
+
+| Export               | Signature                                                                              | Does                                                                                                      |
+| -------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `classifyObject`     | `(raw: Record<string, unknown>, recognizes: (name: string) => boolean) => ObjectClass` | whether an object is an operator node, a fragment call, shorthand (with its key), plain or malformed      |
+| `recognizeReference` | `(value: string) => ReferenceRecognition`                                              | whether a string is a reference, in which namespace, with its segments; or invalid, unrecognized or plain |
+| `positionalLayout`   | `(shape: PositionalShape, length: number) => PositionalLayout \| null`                 | how a positional payload of `length` elements binds to parameters, or `null` if it can't                  |
+| `typesIntersect`     | `(a: ExpectedType, b: ExpectedType) => boolean`                                        | whether two type declarations admit a common value: the test behind `validate()`'s `returns-mismatch`     |
+
+**Why exported, not copied.** v1's editor classified expressions with its own copy of the rules, and the copy drifted from the evaluator. These are the functions the compiler and `validate()` call, re-exported as they are, so a tool using them can't disagree with the engine, and follows it if the grammar or the type vocabulary grows. A test holds each export to be the compiler's function itself.
+
+**`recognizes` is the caller's.** Whether `$name` invokes something depends on what is registered, so `classifyObject` asks. To agree with the compiler, it answers `true` for `literal`, for every registered operator name and alias, and for every fragment name, which is what `toCanonical` and `toShorthand` build from their `Registry`.
+
+**`PositionalShape` is what `getOperators()` reports.** Each entry has `positionalParams` and `restParam`, so an operator's info can be passed as the shape directly.
+
+**What is stable.** The signatures and the result shapes are semver-stable, like the rest of `./format`. The text in a result, the `message` of a malformed object and the `reason` of an invalid reference, is for people and may change, as an issue's message may.
+
+**The types export from the root**, beside the conversions' ones: `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `PositionalShape` and `PositionalLayout`. `ExpectedType` already does.
+
 ## Testing
 
 The compiler is the oracle, so most tests need no data.
@@ -230,7 +251,8 @@ The compiler is the oracle, so most tests need no data.
 - A row in `codegen/entries.mjs` for `./format`, with a size budget set from measurement and a tree-shake marker. The budget counts the chunk the subpath shares with the root: every entry's budget is its own file plus the chunks it imports ("`./format`" in [v3-packaging.md](v3-packaging.md)).
 - `exports` and `typesVersions` entries in package.json, which the build checks against the entries list.
 - An exports test for the subpath, the lint rule that stops the root importing `src/format/`, and one that limits `src/format/`'s value imports to the small root modules it shares.
-- The options types exported from the root, like the other subpaths' types.
+- The options types, and the types the reading primitives return, exported from the root, like the other subpaths' types.
+- `typesIntersect` lives in a module of its own, `src/typeIntersection.ts`, rather than in `src/typeCheck.ts`: whatever the subpath imports lands in the shared chunk whole, and the type checks are no use to it.
 
 ## Changes to other specs
 

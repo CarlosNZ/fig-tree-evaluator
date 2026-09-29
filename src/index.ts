@@ -166,7 +166,8 @@ export type {
 } from './migrationTypes'
 
 // ── Format ───────────────────────────────────────────────────────────────
-// The shapes the `./format` subpath's four functions take.
+// The shapes the `./format` subpath's conversions take, and those its
+// reading primitives return.
 export type {
   CanonicalOptions,
   NameOptions,
@@ -174,3 +175,6 @@ export type {
   ShorthandOptions,
   Spelling,
 } from './formatTypes'
+export type { ObjectClass, PositionalLayout, PositionalShape } from './compile/grammar'
+export type { ReferenceRecognition } from './compile/references'
+export type { ReferenceNamespace } from './compile/artifact'

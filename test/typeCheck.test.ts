@@ -3,10 +3,10 @@ import {
   checkType,
   checkConstraints,
   describeType,
-  isLiteralType,
   isExpectedType,
   validateConstraintsShape,
 } from '../src/typeCheck'
+import { isLiteralType } from '../src/typeIntersection'
 
 describe('checkType — basic tokens', () => {
   it('matches string / number / boolean / array / object / null', () => {

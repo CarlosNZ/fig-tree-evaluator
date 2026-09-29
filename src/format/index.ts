@@ -1,6 +1,8 @@
 /**
  * `fig-tree-evaluator/format` — converts a v3 expression between its forms
- * (docs-dev/v3-specs/v3-format.md). The engine never imports this. It reads
+ * (docs-dev/v3-specs/v3-format.md), and exports the compiler's own reading
+ * primitives for tools that must read an expression exactly as it does
+ * ("Reading primitives" there). The engine never imports this. It reads
  * expressions as the compiler does, through the small root modules it shares
  * with the engine ("`./format`" in docs-dev/v3-specs/v3-packaging.md).
  */
@@ -40,3 +42,8 @@ export const toReference = (node: unknown, options?: NameOptions): string | null
   const params = readGetNode(node)
   return params === null ? null : paramsToReference(params, options?.referenceNames ?? 'preserve')
 }
+
+// The reading primitives: the compiler's own functions, re-exported as-is
+export { classifyObject, positionalLayout } from '../compile/grammar'
+export { recognizeReference } from '../compile/references'
+export { typesIntersect } from '../typeIntersection'

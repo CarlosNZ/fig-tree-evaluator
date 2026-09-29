@@ -116,7 +116,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 - **Methods & results**: `EvaluationResult`, the report envelope and trace shapes (names reserved; shapes deferred per evaluator-methods), `Issue`, the `getDependencies()` report shape, `FigTreeError` (class doubles as type).
 - **Editor hints**: `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap`, `TypeSeeds` — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), and for a fragment's `metadata`.
 - **Migration**: `V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue` — what `./migrate`'s two functions take and return ("Surface" in [v3-converter.md](v3-converter.md)).
-- **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four functions take ("Surface" in [v3-format.md](v3-format.md)).
+- **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four conversions take ("Surface" in [v3-format.md](v3-format.md)); `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `PositionalShape`, `PositionalLayout` — what its reading primitives return ("Reading primitives" there).
 
 ## `./migrate`
 
@@ -130,10 +130,10 @@ Exists so that no conversion code can ever ride the runtime bundle again — the
 
 ## `./format`
 
-Converts a v3 expression between its forms, for the editor's "To shorthand" and "To full node" affordances and for a shorthand face on the converter's output. The functions, what they convert and the rulings behind them are in [v3-format.md](v3-format.md). Packaging fixes:
+Converts a v3 expression between its forms, for the editor's "To shorthand" and "To full node" affordances and for a shorthand face on the converter's output, and exports the compiler's reading primitives for tools that must read an expression as the compiler does. The functions, what they convert and the rulings behind them are in [v3-format.md](v3-format.md). Packaging fixes:
 
 - The subpath name: `fig-tree-evaluator/format`. None of its functions is a `FigTree` method, so the root never carries them.
-- **Isolation**: the root entry never imports from it (lint-enforced). Unlike the other two subpaths, it imports a few small root modules at runtime, because it reads expressions exactly as the compiler does: the reference grammar, the shared grammar in `src/compile/grammar.ts` (the object classification and the positional mapping), the path parser, `FigTreeError` and `ErrorCodes`. The build emits those once, in a chunk under `build/chunks/` that the root imports too, so there is one `FigTreeError` class for both. Inside `src/format/`, value imports are limited by lint to that set, so the subpath cannot pull in the compiler or the registry by accident.
+- **Isolation**: the root entry never imports from it (lint-enforced). Unlike the other two subpaths, it imports a few small root modules at runtime, because it reads expressions exactly as the compiler does: the reference grammar, the shared grammar in `src/compile/grammar.ts` (the object classification and the positional mapping), the type intersection in `src/typeIntersection.ts`, the path parser, `FigTreeError` and `ErrorCodes`. The build emits those once, in a chunk under `build/chunks/` that the root imports too, so there is one `FigTreeError` class for both. Inside `src/format/`, value imports are limited by lint to that set, so the subpath cannot pull in the compiler or the registry by accident.
 - Its exports are the four functions only; its types export from the root (Types, above).
 - **Its budget counts the shared chunk.** Every entry's budget is its own file plus each chunk it imports, so a chunk's code counts once per entry that imports it, and splitting code into a chunk never makes an entry look smaller than what it costs a consumer.
 
