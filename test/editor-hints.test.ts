@@ -69,8 +69,10 @@ const contrast = (a: string, b: string) => {
 const HEX = /^#[0-9a-f]{6}$/
 
 describe('operatorHints', () => {
-  test('one entry per core and I/O operator, and no others', () => {
-    expect(Object.keys(operatorHints).sort()).toEqual(packageOperators.map((op) => op.name).sort())
+  test('one entry per core and I/O operator, one for literal, and no others', () => {
+    expect(Object.keys(operatorHints).sort()).toEqual(
+      [...packageOperators.map((op) => op.name), 'literal'].sort()
+    )
   })
 
   test('display names are unique', () => {
@@ -78,9 +80,7 @@ describe('operatorHints', () => {
     expect(new Set(names).size).toBe(names.length)
   })
 
-  describe.each(packageOperators.map((op) => [op.name, op] as const))('%s', (name, op) => {
-    const hints = operatorHints[name]
-
+  describe.each(Object.entries(operatorHints))('%s displays', (_, hints) => {
     test('the documentation link is an https URL', () => {
       expect(new URL(hints.docUrl).protocol).toBe('https:')
     })
@@ -89,6 +89,28 @@ describe('operatorHints', () => {
       expect(hints.backgroundColor).toMatch(HEX)
       expect(hints.textColor).toMatch(HEX)
       expect(contrast(hints.backgroundColor, hints.textColor)).toBeGreaterThanOrEqual(4.5)
+    })
+  })
+
+  // `literal` is grammar, with no definition to check its seeds against:
+  // its one parameter, `value`, takes anything and is returned as it is
+  test('literal seeds only its value, and its starting node returns the seed', async () => {
+    const seeds = operatorHints.literal.seeds ?? {}
+    expect(Object.keys(seeds)).toEqual(['value'])
+    const node = { operator: 'literal', value: seeds.value }
+    expect(errorsOf(node)).toEqual([])
+    expect(await fig.evaluate(node)).toEqual(seeds.value)
+  })
+
+  describe.each(packageOperators.map((op) => [op.name, op] as const))('%s', (name, op) => {
+    const hints = operatorHints[name]
+
+    // An editor shows a parameter's description as its row's tooltip
+    test('every parameter has a description', () => {
+      const undescribed = Object.entries(op.parameters)
+        .filter(([, declared]) => (declared.description ?? '').trim() === '')
+        .map(([parameter]) => parameter)
+      expect(undescribed).toEqual([])
     })
 
     test('every seed names a declared parameter and fits its declaration', () => {

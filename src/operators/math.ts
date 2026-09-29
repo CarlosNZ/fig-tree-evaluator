@@ -46,6 +46,7 @@ export const plus = declareOperator({
     values: {
       type: 'array',
       elementNullPolicy: 'propagate',
+      constraints: { homogeneous: ['number', 'string', 'array', 'object'] },
       description: 'The operands; homogeneous: all numbers, strings, arrays or objects',
     },
     expect: {
@@ -170,8 +171,8 @@ export const power = declareOperator({
   category: 'math',
   description: 'Raise a base to an exponent — overflow and complex results fail',
   parameters: {
-    base: { type: ['number', 'null'] },
-    exponent: { type: ['number', 'null'] },
+    base: { type: ['number', 'null'], description: 'The number to raise' },
+    exponent: { type: ['number', 'null'], description: 'The power to raise it to' },
   },
   positionalParams: ['base', 'exponent'],
   returns: 'number',
@@ -184,7 +185,7 @@ export const round = declareOperator({
   description:
     'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
   parameters: {
-    value: { type: ['number', 'null'] },
+    value: { type: ['number', 'null'], description: 'The number to round' },
     decimals: {
       type: 'integer',
       default: 0,
@@ -196,20 +197,35 @@ export const round = declareOperator({
   evaluate: ({ value, decimals }) => roundDecimal(value, decimals),
 })
 
-const unary = (name: string, description: string, compute: (value: number) => number) =>
+const unary = (
+  name: string,
+  description: string,
+  valueDescription: string,
+  compute: (value: number) => number
+) =>
   declareOperator({
     name,
     category: 'math',
     description,
-    parameters: { value: { type: ['number', 'null'] } },
+    parameters: { value: { type: ['number', 'null'], description: valueDescription } },
     positionalParams: ['value'],
     returns: 'number',
     evaluate: ({ value }) => compute(value),
   })
 
-export const floor = unary('floor', 'Round down toward negative infinity', Math.floor)
-export const ceil = unary('ceil', 'Round up toward positive infinity', Math.ceil)
-export const abs = unary('abs', 'The absolute value', Math.abs)
+export const floor = unary(
+  'floor',
+  'Round down toward negative infinity',
+  'The number to round down',
+  Math.floor
+)
+export const ceil = unary(
+  'ceil',
+  'Round up toward positive infinity',
+  'The number to round up',
+  Math.ceil
+)
+export const abs = unary('abs', 'The absolute value', 'The number', Math.abs)
 
 const extremum = (
   name: string,

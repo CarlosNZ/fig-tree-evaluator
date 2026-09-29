@@ -107,6 +107,20 @@ describe('checkConstraints — homogeneous', () => {
     expect(checkConstraints([1, 'a'], constraints).ok).toBe(false)
     expect(checkConstraints([true, false], constraints).ok).toBe(false)
   })
+
+  it('names the first two types that differ, or the one disallowed type', () => {
+    const expected = 'homogeneous array of number | string'
+    expect(checkConstraints([1, 2, 'a', true], constraints)).toEqual({
+      ok: false,
+      expected,
+      actual: 'string beside number',
+    })
+    expect(checkConstraints([true, false], constraints)).toEqual({
+      ok: false,
+      expected,
+      actual: 'array of boolean',
+    })
+  })
 })
 
 describe('checkConstraints — elementShape', () => {

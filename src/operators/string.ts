@@ -21,12 +21,17 @@ import {
 import { scanTemplate } from '../templateTokens'
 import { emptyAggregateWarning } from './shared'
 
-const normalizer = (name: string, description: string, transform: (value: string) => string) =>
+const normalizer = (
+  name: string,
+  description: string,
+  valueDescription: string,
+  transform: (value: string) => string
+) =>
   declareOperator({
     name,
     category: 'string',
     description,
-    parameters: { value: { type: ['string', 'null'] } },
+    parameters: { value: { type: ['string', 'null'], description: valueDescription } },
     positionalParams: ['value'],
     returns: 'string',
     evaluate: ({ value }) => transform(value),
@@ -35,16 +40,19 @@ const normalizer = (name: string, description: string, transform: (value: string
 export const lower = normalizer(
   'lower',
   'Lowercase a string — Unicode default case mapping, locale-independent',
+  'The string to lowercase',
   (value) => value.toLowerCase()
 )
 export const upper = normalizer(
   'upper',
   'Uppercase a string — Unicode default case mapping, locale-independent',
+  'The string to uppercase',
   (value) => value.toUpperCase()
 )
 export const trim = normalizer(
   'trim',
   'Strip whitespace (the JS trim set) from both ends of a string',
+  'The string to trim',
   trimText
 )
 

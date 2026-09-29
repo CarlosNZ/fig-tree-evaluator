@@ -91,7 +91,7 @@ import { migrateV2Fragments } from 'fig-tree-evaluator/migrate' // 19.5 kB, most
 
 // ═══ 'fig-tree-evaluator/editor-hints' → build/editor-hints/index.js: 1.7 kB
 // Data only; no engine code at all.
-import { operatorHints } from 'fig-tree-evaluator/editor-hints' // 1.44 kB
+import { operatorHints } from 'fig-tree-evaluator/editor-hints' // 1.46 kB
 import { categoryHints } from 'fig-tree-evaluator/editor-hints' // 0.23 kB
 import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 

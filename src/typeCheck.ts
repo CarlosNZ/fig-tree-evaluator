@@ -174,7 +174,7 @@ export const checkConstraints = (value: unknown, constraints: Constraints): Type
         return {
           ok: false,
           expected: `homogeneous array of ${allowed.join(' | ')}`,
-          actual: 'mixed types',
+          actual: describeElements(value),
         }
     }
   }
@@ -188,6 +188,17 @@ export const checkConstraints = (value: unknown, constraints: Constraints): Type
   }
 
   return OK
+}
+
+/**
+ * The `actual` of a failed `homogeneous` check: the elements' one type when
+ * they share it (a type the constraint doesn't allow), otherwise the first
+ * two that differ.
+ */
+const describeElements = (elements: unknown[]): string => {
+  const first = describeType(elements[0])
+  const other = elements.find((element) => describeType(element) !== first)
+  return other === undefined ? `array of ${first}` : `${describeType(other)} beside ${first}`
 }
 
 const CONSTRAINT_KEYS = ['length', 'homogeneous', 'elementShape']

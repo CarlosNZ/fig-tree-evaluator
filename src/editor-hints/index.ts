@@ -1,7 +1,8 @@
 /**
  * `fig-tree-evaluator/editor-hints` — display data for the core and I/O
- * operators ("`./editor-hints`" in docs-dev/v3-specs/v3-packaging.md): a
- * label and colours for every operator and category, starting values for
+ * operators and `literal` ("`./editor-hints`" in
+ * docs-dev/v3-specs/v3-packaging.md): a label and colours for every operator
+ * and category, starting values for
  * parameters, and a starting value for each type. An editor reads it as its
  * fallback layer, under whatever a host or plugin supplies.
  *
@@ -259,8 +260,9 @@ export const operatorHints: OperatorHintMap = {
     docUrl: DOCS,
     backgroundColor: '#f8d9c9',
     textColor: '#3f2f18',
-    // The two agree: the template's one token is the substitution's key
-    seeds: { template: 'Hello {{name}}', substitutions: { name: 'World' } },
+    // A data reference rather than a substitution key, since `substitutions`
+    // is optional and a new node is seeded with its required parameters only
+    seeds: { template: 'Hello {{$data.name}}' },
   },
   split: {
     displayName: 'Split text',
@@ -420,5 +422,16 @@ export const operatorHints: OperatorHintMap = {
     backgroundColor: '#d2e2b1',
     textColor: '#3a3f18',
     seeds: { query: 'SELECT contact_name FROM customers LIMIT 5', timeout: 5000 },
+  },
+
+  // ── Grammar ────────────────────────────────────────────────────────────
+  // `literal` is no operator definition, so it has no category, but an
+  // editor draws it as an operator node. Its colour is a shade of Other's.
+  literal: {
+    displayName: 'Literal',
+    docUrl: DOCS,
+    backgroundColor: '#d5dae4',
+    textColor: '#272a30',
+    seeds: { value: 'No content inside a literal node is evaluated' },
   },
 }

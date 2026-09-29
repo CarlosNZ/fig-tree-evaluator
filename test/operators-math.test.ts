@@ -63,6 +63,24 @@ describe('plus', () => {
     expect((await failure({ $plus: [true, true] })).code).toBe('type-check')
   })
 
+  test('validate() reports mixed literal operands, from the declared constraint', () => {
+    const [issue] = fig.validate({ $plus: [1, 'a'] }).issues
+    expect(issue).toMatchObject({ severity: 'error', code: 'type-check', path: ['$plus'] })
+    expect(issue.message).toContain('received string beside number')
+    expect(fig.validate({ $plus: [true, false] }).issues[0].message).toContain(
+      'received array of boolean'
+    )
+  })
+
+  test('the body still checks the operands when runtimeTypeCheck is off', async () => {
+    const unchecked = new FigTree({ runtimeTypeCheck: false })
+    const error = await rejection<FigTreeError>(
+      unchecked.evaluate({ $plus: '$data.mixed' }, { data: { mixed: [1, '2'] } })
+    )
+    expect(error.code).toBe('type-check')
+    expect(error.message).toContain('all operands must be numbers — received string beside numbers')
+  })
+
   test('expect asserts, never converts', async () => {
     expect(
       await ev({ $plus: { values: '$data.scores', expect: 'number' } }, { scores: [1, 2] })
