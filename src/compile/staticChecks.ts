@@ -91,12 +91,13 @@ const emit = (
   message: string,
   path: LinkedPath,
   order: number,
-  extra: { operator?: string; fragment?: string; parameter?: string } = {}
+  extra: { operator?: string; fragment?: string; parameter?: string; suggestion?: string } = {}
 ) => {
   const issue: Issue = { severity, code, message, path: toNodePath(path) }
   if (extra.operator !== undefined) issue.operator = extra.operator
   if (extra.fragment !== undefined) issue.fragment = extra.fragment
   if (extra.parameter !== undefined) issue.parameter = extra.parameter
+  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
   state.artifact.issues.push({ issue, order })
 }
 
@@ -395,7 +396,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
             argument.path,
             argument.order,
-            { parameter: name }
+            { parameter: name, suggestion }
           )
         }
       }

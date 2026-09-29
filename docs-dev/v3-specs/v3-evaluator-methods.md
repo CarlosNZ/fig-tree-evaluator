@@ -358,10 +358,13 @@ interface Issue {
   operator?: string
   fragment?: string                         // the called fragment, where the issue is against a call's signature
   parameter?: string
+  suggestion?: string                       // the did-you-mean, as a drop-in replacement for what was written
 }
 ```
 
 `fragment` on an issue is the owner of `parameter` for a call node, exactly as `operator` is for an operator node — added at the Phase-11 PR review (Carl, September 2026), where a signature issue was found reporting `parameter: 'title'` with nothing machine-readable saying whose. It is **caller-side**: bodies compile at registration, so a static issue can only ever be about the call, and `path` resolves in the input. That is the opposite reading from `FigTreeError.fragment`, which marks a failure _inside_ a body — the same name carries the two meanings because on each surface only one of them can occur.
+
+`suggestion` carries the message's did-you-mean as data, for a tool to offer as a fix (added for the v3 editor, [#200](https://github.com/CarlosNZ/fig-tree-evaluator/issues/200), Carl, September 2026). It is a drop-in replacement for the name as written: a key, an operator name or a fragment name, and for a shorthand key it keeps the sigil (`'$greaterThan'`), since the key is what a rename replaces. It is set wherever the compiler computes a did-you-mean: `unknown-operator`, `unknown-fragment`, `unknown-node-key` (on an operator or a call, with the unknown key as `parameter` on both) and the shorthand `unrecognized-identifier` warning. It is absent when no name is close enough, and may be an alias, since aliases are candidates too. An issue about a key sits at that key: the shorthand warning's `path` ends in the unrecognized key, as `unknown-node-key`'s does.
 
 - **`validate()` never throws on expression content** — reporting is its entire job; even hard "grammar errors" come back as `severity: 'error'` issues. (It throws only on misuse of the method itself, e.g. per-call `operators`.)
 - **Synchronous by construction**: the compile pass touches no I/O, and the contract's operator `validate` hooks are sync functions returning `Issue[]`. Editors get keystroke-rate validation with no async ceremony.
@@ -426,10 +429,12 @@ fig.validate({
 //   timeoutShielded: false,
 //   issues: [
 //     { severity: 'error', code: 'unknown-node-key', path: ['thn'], operator: 'if',
+//       parameter: 'thn', suggestion: 'then',
 //       message: "'thn' is not a parameter of 'if' — did you mean 'then'?" },
 //     { severity: 'error', code: 'unresolved-var', path: ['else'],
 //       message: "'$vars.username': no var 'username' is declared in scope" },
-//     { severity: 'warning', code: 'unrecognized-identifier', path: ['condition'],
+//     { severity: 'warning', code: 'unrecognized-identifier', path: ['condition', '$graeterThan'],
+//       suggestion: '$greaterThan',
 //       message: "'$graeterThan' is not a registered operator or fragment and will pass through as data — did you mean '$greaterThan'?" },
 //   ],
 // }

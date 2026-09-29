@@ -101,7 +101,7 @@
  *     lists ride out with the tree.
  */
 import { ErrorCodes } from '../errorCodes'
-import type { Severity } from '../issues'
+import type { Issue, Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
@@ -348,18 +348,13 @@ const emit = (
   message: string,
   path: LinkedPath,
   order: number,
-  operator?: string
+  extra: { operator?: string; parameter?: string; suggestion?: string } = {}
 ): SequencedIssue => {
-  const sequenced: SequencedIssue = {
-    issue: {
-      severity,
-      code,
-      message,
-      path: toNodePath(path),
-      ...(operator !== undefined ? { operator } : {}),
-    },
-    order,
-  }
+  const issue: Issue = { severity, code, message, path: toNodePath(path) }
+  if (extra.operator !== undefined) issue.operator = extra.operator
+  if (extra.parameter !== undefined) issue.parameter = extra.parameter
+  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
+  const sequenced: SequencedIssue = { issue, order }
   state.issues.push(sequenced)
   return sequenced
 }
@@ -628,7 +623,8 @@ const walkOperatorCanonical = (
       ErrorCodes.unknownOperator,
       `'${opValue}' names no registered operator${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
       path,
-      order
+      order,
+      { suggestion }
     )
     return invalid(raw, path, order)
   }
@@ -647,7 +643,7 @@ const walkOperatorCanonical = (
         "'parameters' is reserved and unused on operator nodes",
         extendPath(path, key),
         order,
-        node.name
+        { operator: node.name }
       )
       continue
     }
@@ -703,7 +699,7 @@ const applyOperatorModifier = (
         "'useCache' must be a literal boolean — the cache lookup happens before evaluation",
         extendPath(path, 'useCache'),
         order,
-        node.name
+        { operator: node.name }
       )
     return true
   }
@@ -733,7 +729,7 @@ const collectNamedParam = (
       `'${key}' is not a parameter of '${node.name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
       path,
       order,
-      node.name
+      { operator: node.name, parameter: key, suggestion }
     )
     return
   }
@@ -917,7 +913,7 @@ const reportTemplateFace = (
   face: SubstitutionFace
 ) => {
   const warn = (code: string, message: string, severity: Severity = 'warning') =>
-    emit(state, severity, code, message, template.path, template.order, node.name)
+    emit(state, severity, code, message, template.path, template.order, { operator: node.name })
 
   if (face.mode === 'array' || face.mode === 'dynamic') {
     if (tokens.some((token) => token.kind === 'named' && token.body.startsWith('$')))
@@ -1215,7 +1211,7 @@ const buildBindingFrame = (
   order: number
 ): BindingFrame | undefined => {
   const asError = (message: string) => {
-    emit(state, 'error', ErrorCodes.invalidAs, message, path, order, node.name)
+    emit(state, 'error', ErrorCodes.invalidAs, message, path, order, { operator: node.name })
     return undefined
   }
   if (typeof value !== 'string' || recognizeReference(value).kind !== 'plain')
@@ -1396,7 +1392,7 @@ const emitNoPositional = (
     `'${node.name}' takes no positional arguments — use the named form`,
     payloadPath,
     order,
-    node.name
+    { operator: node.name }
   )
 
 /** Why `positionalLayout` refused a payload: no positional form, or surplus. */
@@ -1423,7 +1419,7 @@ const emitArity = (
     } (${positional.join(', ')}), got ${payload.length}`,
     payloadPath,
     order,
-    node.name
+    { operator: node.name }
   )
 }
 
@@ -1459,7 +1455,7 @@ const walkLiteral = (
         `'${key}' is not a key of 'literal' — content goes in 'value'`,
         extendPath(path, key),
         order,
-        'literal'
+        { operator: 'literal' }
       )
     }
     if (!hasContent) {
@@ -1470,7 +1466,7 @@ const walkLiteral = (
         "'literal' requires its content in 'value'",
         path,
         order,
-        'literal'
+        { operator: 'literal' }
       )
       return invalid(raw, path, order)
     }
@@ -1602,7 +1598,8 @@ const resolveFragment = (state: WalkState, node: FragmentCallNode, depth: number
       ErrorCodes.unknownFragment,
       `'${name}' names no registered fragment${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
       path,
-      order
+      order,
+      { suggestion }
     )
     return
   }
@@ -1749,7 +1746,9 @@ const collectPlainObject = (
     }
     if (key.startsWith('$')) {
       // No recognized keys here (walkObject dispatched those) — inert +
-      // warn, at the containing object's path (the worked-example shape)
+      // warn, at the key, so a rename fix knows which key to replace. The
+      // order stays the containing object's: that is what passes through
+      // as data. The suggestion replaces the key as written, sigil and all
       const suggestion = nearestName(key.slice(1), allInvocationNames(state))
       emit(
         state,
@@ -1758,8 +1757,9 @@ const collectPlainObject = (
         `'${key}' is not a registered operator or fragment and will pass through as data${
           suggestion ? ` — did you mean '$${suggestion}'?` : ''
         }`,
-        path,
-        order
+        extendPath(path, key),
+        order,
+        { suggestion: suggestion === undefined ? undefined : `$${suggestion}` }
       )
     }
     entries.push({

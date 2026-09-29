@@ -407,7 +407,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "severity": "warning",
       "code": "unrecognized-identifier",
       "message": "'$colour' is not a registered operator or fragment and will pass through as data",
-      "path": ["extras"]
+      "path": ["extras", "$colour"]
     },
     {
       "severity": "warning",

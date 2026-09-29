@@ -78,6 +78,8 @@ test('the evaluator-methods worked example: typo key, unresolved var, inert oper
   expect(unknownKey?.severity).toBe('error')
   expect(unknownKey?.path).toEqual(['thn'])
   expect(unknownKey?.operator).toBe('if')
+  expect(unknownKey?.parameter).toBe('thn')
+  expect(unknownKey?.suggestion).toBe('then')
 
   const unresolved = result.issues.find((issue) => issue.code === 'unresolved-var')
   expect(unresolved?.severity).toBe('error')
@@ -85,13 +87,68 @@ test('the evaluator-methods worked example: typo key, unresolved var, inert oper
 
   const inert = result.issues.find((issue) => issue.code === 'unrecognized-identifier')
   expect(inert?.severity).toBe('warning')
-  expect(inert?.path).toEqual(['condition'])
+  expect(inert?.path).toEqual(['condition', '$graeterThan'])
+  expect(inert?.suggestion).toBe('$greaterThan')
 })
 
 test('did-you-mean suggestions ride the messages where cheap', () => {
   const result = fig.validate({ operator: 'if', condition: true, then: 1, thn: 2 })
   const unknownKey = result.issues.find((issue) => issue.code === 'unknown-node-key')
   expect(unknownKey?.message).toContain("'then'")
+})
+
+describe('the suggestion field: a drop-in replacement for what was written', () => {
+  const withFragments = new FigTree({
+    fragments: { greet: { expression: '$params.name', parameters: { name: { type: 'string' } } } },
+  })
+  const issue = (expression: unknown, code: string, figTree: FigTree = fig) =>
+    figTree.validate(expression).issues.find((found) => found.code === code)
+
+  test('an unknown operator', () => {
+    expect(issue({ operator: 'plsu', values: [1] }, 'unknown-operator')).toMatchObject({
+      path: [],
+      suggestion: 'plus',
+    })
+  })
+
+  test("an operator's unknown key, named as the parameter", () => {
+    expect(issue({ operator: 'if', condition: true, thn: 1 }, 'unknown-node-key')).toMatchObject({
+      path: ['thn'],
+      operator: 'if',
+      parameter: 'thn',
+      suggestion: 'then',
+    })
+  })
+
+  test('an unknown fragment', () => {
+    expect(issue({ fragment: 'gret' }, 'unknown-fragment', withFragments)).toMatchObject({
+      path: [],
+      suggestion: 'greet',
+    })
+  })
+
+  test("a fragment call's undeclared parameter", () => {
+    expect(issue({ $greet: { nmae: 'Ada' } }, 'unknown-node-key', withFragments)).toMatchObject({
+      path: ['$greet', 'nmae'],
+      parameter: 'nmae',
+      suggestion: 'name',
+    })
+  })
+
+  test('an unrecognized shorthand key: at the key, the suggestion keeping its sigil', () => {
+    expect(issue({ a: { $plsu: [1, 2] } }, 'unrecognized-identifier')).toMatchObject({
+      severity: 'warning',
+      path: ['a', '$plsu'],
+      suggestion: '$plus',
+    })
+  })
+
+  test('nothing close enough: no suggestion, and no field', () => {
+    const unknown = issue({ operator: 'if', condition: true, somethingElse: 1 }, 'unknown-node-key')
+    expect(unknown?.parameter).toBe('somethingElse')
+    expect(unknown).not.toHaveProperty('suggestion')
+    expect(issue({ a: { $zzzzzz: 1 } }, 'unrecognized-identifier')).not.toHaveProperty('suggestion')
+  })
 })
 
 test('a fully-constant expression validates clean and vacuously shielded', () => {

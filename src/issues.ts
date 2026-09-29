@@ -32,6 +32,14 @@ export interface Issue {
    */
   fragment?: string
   parameter?: string
+  /**
+   * A drop-in replacement for the name the issue is about, where one is
+   * close enough to suggest: the key, operator or fragment name as it
+   * would be written, so a shorthand key's suggestion keeps its `$`. The
+   * same suggestion as the message's "did you mean", for a tool to offer
+   * as a fix.
+   */
+  suggestion?: string
 }
 
 /** The result of `fig.validate()` (Phase 3). */
