@@ -17,7 +17,7 @@ The editor's side of each request is in fig-tree-editor-react's `docs-dev/v3-des
 | Step                                | Items                          | Why grouped                                           | Status           |
 | ----------------------------------- | ------------------------------ | ----------------------------------------------------- | ---------------- |
 | 1. Reading primitives in `./format` | #199 (all), #198.2             | Same subpath, export pin, spec section and import map | Done (`c7ac479`) |
-| 2. Metadata and hint polish         | #198.1, #198.3, #200.4, #200.6 | Data-only changes to definitions and hints            | Not started      |
+| 2. Metadata and hint polish         | #198.1, #198.3, #200.4, #200.6 | Data-only changes to definitions and hints            | Done (`d227952`) |
 | 3. Actionable `validate()` issues   | #200.1, #200.3                 | Both change the shape of what `validate()` reports    | Not started      |
 | 4. Fragment result types            | #200.2                         | Adds to the static analysis; changes `getFragments()` | Not started      |
 | 5. `renameBinding`                  | #200.5                         | Largest; needs a design pass first                    | Not started      |
@@ -68,7 +68,7 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 ## Step 2: Metadata and hint polish
 
-**Status:** Not started
+**Status:** Done (`d227952`, 2026-09-30). #198 closed (all three items); #200 commented that items 4 and 6 are done.
 
 **Items**
 
@@ -85,19 +85,16 @@ Order is by the editor's need, then by reach. Step 1 goes first because #199 is 
 
 **Open questions**
 
-- **`plus` homogeneous: do it?** The issue lists three reasons it might not be worth it. Each needs checking:
-  - the body's message ("all operands must be numbers — received string beside numbers") may read better than the generic constraint message;
-  - `expect` pins one type, which the constraint can't express (the two don't conflict);
-  - the constraint sits in the pre-execution layer, so `runtimeTypeCheck: false` skips it while the body's check still runs.
-
-  Also: mixed-type `plus` cases would fail with a different code or message, which may move the differential baseline.
-
-- **Where the `literal` hint goes.** [test/editor-hints.test.ts:73](../test/editor-hints.test.ts#L73) requires `operatorHints`' keys to equal the package's operator names, and `literal` is grammar, not an operator. Either the test allows grammar entries, or `literal` gets its own export beside `operatorHints`.
-- **The new `buildString` seed.** `'Hello World'`, `'Hello {{$data.name}}'`, or something else, and whether to keep the `substitutions` seed.
+(none)
 
 **Decisions**
 
-(none yet)
+- **`plus` declares `homogeneous`** (Carl). Tested first: `validate()` catches mixed literal operands, the error code stays `type-check` everywhere, the differential didn't move, and no test changed. The body keeps its own check, which names the mode and still runs when `runtimeTypeCheck` is off; `expect` doesn't conflict.
+- **The generic `homogeneous` message is better for every operator** (Carl): its `actual` was always "mixed types", even for `[true, false]`. It is now the first two types that differ (`received string beside number`), or the one disallowed type (`received array of boolean`), so `min`, `max` and `multiply` gain it too.
+- **The descriptions** are as drafted: `power.base` "The number to raise", `power.exponent` "The power to raise it to", `round.value` "The number to round", `floor` / `ceil` "The number to round down / up", `abs` "The number", `lower` / `upper` / `trim` "The string to lowercase / uppercase / trim". `unary` and `normalizer` take the value's description as an argument. The test is in the editor-hints drift tests.
+- **`literal` goes in `operatorHints`** (Carl), since the editor draws it as an operator node. The drift test's key set is the package's operators plus `literal`; the display checks run over every entry, and `literal` has its own seed test. Colour: a shade of Other's slate (`#d5dae4` on `#272a30`). Seed: the editor's `'No content inside a literal node is evaluated'` (Claude's pick, since the alternative, a demonstration like `'$data.name'`, wasn't chosen between).
+- **`buildString` seeds `'Hello {{$data.name}}'`** (Carl), and the `substitutions` seed is dropped, since it would match no token. Without data it renders `"Hello "`, and under `strictDataPaths` it throws.
+- **Size:** `operatorHints` 1.44 → 1.46 kB; the root with its chunk 34.98 → 35.08 kB.
 
 ---
 
