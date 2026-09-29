@@ -259,6 +259,19 @@ export interface FragmentCall {
   depth: number
 }
 
+/**
+ * What the sample-data check reads, in tree order: each statically-known
+ * `$data` read with its reading node (a reference, a `get` node with a
+ * literal path, or a template string), and each resolved fragment call,
+ * whose body's reads are reported at the call, since the body's paths are
+ * not in the caller's expression. A call holds its registry entry, which
+ * registration completes with the body's composed dependencies. Paths stay
+ * linked until a warning needs one.
+ */
+export type DataRead =
+  | { kind: 'path'; key: string; segments: PathSegment[]; path: LinkedPath }
+  | { kind: 'call'; fragment: FragmentEntry; path: LinkedPath }
+
 /** The dependency record (B6) — the `getDependencies()` data, minus sorting. */
 export interface ArtifactDependencies {
   /**
@@ -378,6 +391,11 @@ export interface CompileArtifact extends Rollups {
   own: Rollups
   /** Every resolved fragment call site, with the depth it sits at. */
   fragmentCalls: FragmentCall[]
+  /**
+   * Where each `$data` read happens, for the sample-data check. The
+   * dependency record is the deduplicated set; this keeps every reader.
+   */
+  dataReads: DataRead[]
 }
 
 /**

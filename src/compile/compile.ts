@@ -128,6 +128,7 @@ import type {
   ArtifactHole,
   CompiledNode,
   ConstantNode,
+  DataRead,
   ElementsNode,
   EntriesNode,
   FragmentCall,
@@ -179,6 +180,8 @@ interface WalkState {
   fragmentNames: Set<string>
   /** Resolved call sites, for the rollup composition at assembly. */
   fragmentCalls: FragmentCall[]
+  /** Every `$data` reader and fragment call, for the sample-data check. */
+  dataReads: DataRead[]
   identityOnly: boolean
   renamedBindings: BindingFrame[]
   /**
@@ -226,6 +229,7 @@ export const compileExpression = (
     operators: new Set(),
     fragmentNames: new Set(),
     fragmentCalls: [],
+    dataReads: [],
     identityOnly: false,
     renamedBindings: [],
     asNames: new Set(),
@@ -257,6 +261,7 @@ export const compileExpression = (
     own,
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
     fragmentCalls: state.fragmentCalls,
+    dataReads: state.dataReads,
   }
 }
 
@@ -470,7 +475,8 @@ const walkString = (
       const { namespace, segments, drill } = recognition
       if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
-        else recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined)
+        else
+          recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined, path)
       }
       return { kind: 'reference', namespace, segments, raw, path, order }
     }
@@ -975,7 +981,8 @@ const reportTemplateFace = (
 }
 
 /**
- * Record one statically-known `$data` read, deduplicated on its render.
+ * Record one statically-known `$data` read, deduplicated on its render,
+ * and its reading node, which the record keeps however many there are.
  * The segments are canonicalized first so that the render is injective on
  * READS rather than on spellings: `x.0` parses to a key and `x[0]` to an
  * index, and `resolvePath` reads both the same way.
@@ -984,13 +991,23 @@ const reportTemplateFace = (
  * that is already its own canonical render keys the record as written,
  * and only the other spellings pay to canonicalize and render.
  */
-const recordDataPath = (state: WalkState, segments: PathSegment[], spelling?: string) => {
+const recordDataPath = (
+  state: WalkState,
+  segments: PathSegment[],
+  spelling: string | undefined,
+  path: LinkedPath
+) => {
+  let key: string
+  let canonical: PathSegment[]
   if (spelling !== undefined && rendersAsWritten(spelling)) {
-    state.dataPaths.set(spelling, segments)
-    return
+    key = spelling
+    canonical = segments
+  } else {
+    canonical = canonicalSegments(segments)
+    key = renderSegments(canonical)
   }
-  const canonical = canonicalSegments(segments)
-  state.dataPaths.set(renderSegments(canonical), canonical)
+  state.dataPaths.set(key, canonical)
+  state.dataReads.push({ kind: 'path', key, segments: canonical, path })
 }
 
 /**
@@ -1025,7 +1042,12 @@ const recordGetDependency = (state: WalkState, node: OperatorNode) => {
       state.dynamic = true
       return
     }
-    recordDataPath(state, segments, typeof path.value === 'string' ? path.value : undefined)
+    recordDataPath(
+      state,
+      segments,
+      typeof path.value === 'string' ? path.value : undefined,
+      node.path
+    )
   } catch {
     // A path string the grammar rejects is the validate hook's finding to
     // report; the read-set is still not enumerable
@@ -1605,6 +1627,7 @@ const resolveFragment = (state: WalkState, node: FragmentCallNode, depth: number
   }
   node.entry = entry
   state.fragmentCalls.push({ name, depth })
+  state.dataReads.push({ kind: 'call', fragment: entry, path })
 }
 
 /**

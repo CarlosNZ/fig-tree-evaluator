@@ -11,11 +11,18 @@
  * reads the limit checks alone, the sample-data check being a warning,
  * which never gates.
  */
-import { renderDataReference, type CompileArtifact, type SequencedIssue } from './compile'
+import {
+  renderDataReference,
+  toNodePath,
+  type CompileArtifact,
+  type DataRead,
+  type LinkedPath,
+  type SequencedIssue,
+} from './compile'
 import type { EvaluationOptions } from './options'
 import type { Issue } from './issues'
 import { ErrorCodes } from './errorCodes'
-import { resolvePath } from './primitives'
+import { resolvePath, type PathSegment } from './primitives'
 
 /** The limit checks, against the artifact's composed counts. */
 export const limitIssues = (artifact: CompileArtifact, options: EvaluationOptions): Issue[] => {
@@ -41,10 +48,11 @@ export const depthIssue = (measured: number, limit: number): Issue => ({
 
 /**
  * `validate()`'s whole list, in its order: the limit checks, the compile
- * stream, then one warning per statically-known `$data` path the options'
- * `data` lacks. `entry` shapes each compile-stream entry — the bare `Issue`
- * for `validate()`, the issue with its node's `order` for `inspect()` —
- * which is the one way the two lists may differ.
+ * stream, then the sample-data warnings (`sampleDataIssues`), which are
+ * not the compile stream's and so never carry an `order`. `entry` shapes
+ * each compile-stream entry — the bare `Issue` for `validate()`, the issue
+ * with its node's `order` for `inspect()` — which is the one way the two
+ * lists may differ.
  */
 export const validationIssues = <Entry>(
   artifact: CompileArtifact,
@@ -55,16 +63,53 @@ export const validationIssues = <Entry>(
     ...limitIssues(artifact, options),
     ...artifact.issues.map(entry),
   ]
-  // The sample-data check walks the stored dependency list, which holds
-  // segments — the form `resolvePath` accepts, so nothing is re-parsed
-  if (options.data !== undefined)
-    for (const dataPath of artifact.dependencies.dataPaths.values())
-      if (!resolvePath(options.data, dataPath).found)
-        issues.push({
-          severity: 'warning',
-          code: ErrorCodes.missingDataPath,
-          message: `'${renderDataReference(dataPath)}' is absent from the supplied sample data`,
-          path: [],
-        })
+  if (options.data !== undefined) issues.push(...sampleDataIssues(artifact.dataReads, options.data))
+  return issues
+}
+
+/**
+ * One warning per reading node for each statically-known `$data` path the
+ * sample lacks, in tree order: at the reference, `get` node or template
+ * string that reads it, or at the fragment call whose body does, naming the
+ * fragment. Each distinct path is resolved once however many nodes read
+ * it, and a node reading one path twice (a template naming it twice) warns
+ * once. The reads hold segments, the form `resolvePath` accepts, so nothing
+ * is re-parsed.
+ */
+const sampleDataIssues = (reads: DataRead[], data: unknown): Issue[] => {
+  const present = new Map<string, boolean>()
+  const warned = new Map<LinkedPath, Set<string>>()
+  const issues: Issue[] = []
+
+  const check = (
+    key: string,
+    segments: PathSegment[],
+    read: DataRead,
+    fragment: string | undefined
+  ) => {
+    let found = present.get(key)
+    if (found === undefined) {
+      found = resolvePath(data, segments).found
+      present.set(key, found)
+    }
+    if (found) return
+    let keys = warned.get(read.path)
+    if (keys === undefined) warned.set(read.path, (keys = new Set()))
+    if (keys.has(key)) return
+    keys.add(key)
+    const readBy = fragment === undefined ? '' : ` (read by fragment '${fragment}')`
+    issues.push({
+      severity: 'warning',
+      code: ErrorCodes.missingDataPath,
+      message: `'${renderDataReference(segments)}' is absent from the supplied sample data${readBy}`,
+      path: toNodePath(read.path),
+    })
+  }
+
+  for (const read of reads)
+    if (read.kind === 'path') check(read.key, read.segments, read, undefined)
+    else
+      for (const [key, segments] of read.fragment.dependencies.dataPaths)
+        check(key, segments, read, read.fragment.name)
   return issues
 }

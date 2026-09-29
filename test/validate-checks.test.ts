@@ -360,6 +360,51 @@ describe('sample-data check (only when data is supplied)', () => {
     expect(misses[0].message).toContain('missing.path')
   })
 
+  const missesOf = (figTree: FigTree, expression: unknown, data: Record<string, unknown>) =>
+    figTree
+      .validate(expression, { data })
+      .issues.filter((issue) => issue.code === 'missing-data-path')
+
+  test('one warning per reading node, each at its own path', () => {
+    const expression = {
+      a: '$data.user.nmae',
+      nested: { b: '$d.user.nmae', c: { $get: 'user.nmae' } },
+      found: '$data.user.name',
+    }
+    const misses = missesOf(fig, expression, { user: { name: 'Ada' } })
+    expect(misses.map((issue) => issue.path)).toEqual([['a'], ['nested', 'b'], ['nested', 'c']])
+  })
+
+  test('a template string is one reading node, however often it names a path', () => {
+    const expression = { t: { $buildString: 'Hi {{$data.name}}, {{$data.name}} {{$data.last}}' } }
+    const misses = missesOf(new FigTree(), expression, {})
+    expect(misses.map((issue) => issue.path)).toEqual([
+      ['t', '$buildString'],
+      ['t', '$buildString'],
+    ])
+    expect(misses.map((issue) => issue.message)).toEqual([
+      expect.stringContaining("'$data.name'"),
+      expect.stringContaining("'$data.last'"),
+    ])
+  })
+
+  test("a fragment body's reads are reported at the call, naming the fragment", () => {
+    const withFragments = new FigTree({
+      fragments: {
+        title: { expression: '$data.config.title' },
+        banner: { expression: { $plus: [{ $title: {} }, '$data.config.suffix'] } },
+      },
+    })
+    const misses = missesOf(
+      withFragments,
+      { header: { $banner: {} }, footer: { fragment: 'title' } },
+      { config: { suffix: '!' } }
+    )
+    expect(misses.map((issue) => issue.path)).toEqual([['header'], ['footer']])
+    expect(misses[0].message).toContain("'banner'")
+    expect(misses[1].message).toContain("'title'")
+  })
+
   test('a get reading a supplied `from` is not a $data path, so it is not checked', () => {
     const result = fig.validate(
       { a: { $get: { path: 'missing.path', from: { $plus: [1, 2] } } } },

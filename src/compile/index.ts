@@ -24,6 +24,7 @@ export type {
   ArtifactHole,
   CompiledNode,
   ConstantNode,
+  DataRead,
   ElementsNode,
   EntriesNode,
   FragmentCall,
