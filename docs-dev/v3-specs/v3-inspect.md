@@ -74,7 +74,7 @@ type InspectNode = { order: number; path: Path } & (
       params: Record<string, InspectNode>
       fallback?: InspectNode
       timeoutFallback?: Json // the constant a timeout splices in; present iff shielded
-      useCache?: boolean
+      noCache?: true
       instanceDefaults?: string[]
     }
   | {
@@ -86,6 +86,7 @@ type InspectNode = { order: number; path: Path } & (
       parameters?: Record<string, InspectNode> | InspectNode
       fallback?: InspectNode
       timeoutFallback?: Json
+      noCache?: true
     }
   | {
       kind: 'skeleton'
@@ -237,7 +238,7 @@ const expression = {
     $match: ['$data.status', { paid: 'Thanks!', pending: { $join: ['Due: ', '$vars.sum'] } }],
   },
   contact: { $firstOf: ['$data.customer.email', '$data.customer.phone', 'no contact'] },
-  total: { operator: '+', values: ['$vars.sum', 0], fallback: 0, useCache: false },
+  total: { operator: '+', values: ['$vars.sum', 0], fallback: 0 },
   broken: { operator: 'flibble' },
   note: undefined,
   defaults: { $literal: { currency: 'NZD', discount: undefined } },
@@ -270,7 +271,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       ]
     },
     "contact": { "$firstOf": ["$data.customer.email", "$data.customer.phone", "no contact"] },
-    "total": { "operator": "+", "values": ["$vars.sum", 0], "fallback": 0, "useCache": false },
+    "total": { "operator": "+", "values": ["$vars.sum", 0], "fallback": 0 },
     "broken": { "operator": "flibble" },
     "note": "[undefined]",
     "defaults": { "$literal": { "currency": "NZD", "discount": "[undefined]" } },
@@ -373,8 +374,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
             }
           },
           "fallback": { "order": 30, "kind": "constant", "path": ["total", "fallback"], "value": 0 },
-          "timeoutFallback": 0,
-          "useCache": false
+          "timeoutFallback": 0
         }
       },
       {
