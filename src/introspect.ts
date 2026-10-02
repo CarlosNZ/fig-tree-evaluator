@@ -180,11 +180,13 @@ export interface FragmentInfo {
    */
   dependencies: Dependencies
   /**
-   * Whether a call can reach a node that caches, rolled up at
+   * Whether the body can reach a node that caches, rolled up at
    * registration: an operator node whose definition declares `cache: true`
    * and whose operator the host has not turned off, or a call to a fragment
-   * that `caches`, with the body's own `noCache` nodes respected. An editor
-   * offers `noCache` on a call only where this is true.
+   * that `caches`, with the body's own `noCache` nodes respected. It answers
+   * for the body only: `noCache` on a call is also live where one of its
+   * arguments can cache, and `validate()`'s dead-`noCache` warning counts
+   * both.
    */
   caches: boolean
 }
