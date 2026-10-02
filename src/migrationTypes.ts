@@ -25,6 +25,7 @@ export interface MigrationIssue {
     | 'output-type'
     | 'missing-data-fallback'
     | 'unprefixed-parameter'
+    | 'cache-opt-in'
     | 'instance-case-insensitive'
     | 'values-cut'
     | 'fallback-converted'
@@ -35,7 +36,6 @@ export interface MigrationIssue {
     | 'fragment-shorthand-payload'
     | 'shadowed-argument'
     | 'unknown-argument'
-    | 'fragment-use-cache'
     | 'name-renamed'
     | 'unknown-parameter-type'
     | 'default-outside-type'
@@ -104,6 +104,10 @@ export interface V2Options {
   noShorthand?: boolean
   /** v2's instance-wide default for `equal` and `notEqual` */
   caseInsensitive?: boolean
-  /** v2's instance-wide cache default, read for POST alone */
+  /**
+   * v2's instance-wide cache default, for the five operators that read it
+   * (GET, POST, GRAPHQL, SQL and CUSTOM_FUNCTIONS): with each node's own
+   * `useCache`, it decides the node's `noCache`
+   */
   useCache?: boolean
 }

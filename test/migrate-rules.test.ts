@@ -1600,6 +1600,23 @@ const BATCH_4: IoExample[] = [
     issues: [COLLAPSE],
   },
   {
+    name: 'a request inside an uncached one takes no `noCache` of its own',
+    input: {
+      operator: 'POST',
+      url: 'https://x.test',
+      parameters: { a: { operator: 'POST', url: 'https://y.test' } },
+    },
+    response: MULTI,
+    expected: {
+      operator: 'http',
+      url: 'https://x.test',
+      method: 'post',
+      body: { a: { operator: 'http', url: 'https://y.test', method: 'post', body: {} } },
+      noCache: true,
+    },
+    issues: [{ code: 'response-collapse', path: ['parameters', 'a'] }, COLLAPSE],
+  },
+  {
     name: "GET's own `useCache: false` becomes `noCache`",
     input: { operator: 'GET', url: 'https://x.test', useCache: false },
     response: MULTI,
@@ -1985,6 +2002,19 @@ const BATCH_5: Example[] = [
       $record: [1],
     },
     issues: [CALL, { code: 'deciding-value', path: ['useCache'] }],
+  },
+  {
+    name: 'a `useCache: true` v2 honoured is one v3 cannot write',
+    input: { $record: [1], useCache: true },
+    expected: { '//': callNote('record'), $record: [1] },
+    issues: [CALL, { code: 'cache-opt-in', path: ['useCache'] }],
+  },
+  {
+    name: "v2's `useCache` option cached every call",
+    input: { $record: [1] },
+    options: { useCache: true },
+    expected: { '//': callNote('record'), $record: [1] },
+    issues: [CALL, { code: 'cache-opt-in', path: [] }],
   },
 ]
 

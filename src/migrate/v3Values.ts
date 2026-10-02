@@ -61,6 +61,40 @@ export const isNode = (value: unknown): boolean => {
 }
 
 /**
+ * The output with every `noCache` beneath another taken out. A node's
+ * `noCache` covers its whole subtree ("`noCache` semantics" in
+ * docs-dev/v3-specs/v3-api.md), so one beneath it says nothing, and v3
+ * warns on it. Rules write `noCache` node by node, before they can see
+ * what the output nests a node in (an `outputType` wrapper moves `fallback`
+ * and `vars` out from under it), so this runs once over the finished
+ * output. A `literal`'s content is data, and a value with nothing to drop
+ * comes back as it was.
+ */
+export const dropCoveredNoCache = (value: unknown, covered = false): unknown => {
+  if (Array.isArray(value)) {
+    const out = value.map((element) => dropCoveredNoCache(element, covered))
+    return out.some((element, i) => element !== value[i]) ? out : value
+  }
+  if (!isPlainObject(value) || isLiteral(value)) return value
+  const prototype: unknown = Object.getPrototypeOf(value)
+  if (prototype !== Object.prototype && prototype !== null) return value
+  const node = isNode(value)
+  const below = covered || (node && value.noCache === true)
+  let changed = false
+  const out: PlainObject = {}
+  for (const [key, entry] of Object.entries(value)) {
+    if (node && covered && key === 'noCache') {
+      changed = true
+      continue
+    }
+    const next = key === '//' ? entry : dropCoveredNoCache(entry, below)
+    changed ||= next !== entry
+    out[key] = next
+  }
+  return changed ? out : value
+}
+
+/**
  * Whether a value is worked out at evaluation: a node or a reference. A
  * `literal` quotes a constant, unless it is a placeholder, which stands
  * where v2 evaluated a node.

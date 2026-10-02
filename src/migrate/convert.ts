@@ -46,6 +46,7 @@ import {
   NOTE,
   V3_REFERENCE,
   constantOf,
+  dropCoveredNoCache,
   hasComputed,
   isComputed,
   isLiteral,
@@ -120,6 +121,10 @@ const CACHE_DEFAULTS: Partial<Record<V2Operator, boolean>> = {
 }
 // The v2 operators whose v3 counterpart caches by default
 const CACHED_IN_V3: ReadonlySet<V2Operator> = new Set(['GET', 'POST', 'GRAPHQL', 'SQL'])
+
+/** A custom-function node's name, for an issue that names the operator */
+const functionNamed = (node: PlainObject) =>
+  typeof node.functionName === 'string' ? { operator: node.functionName } : {}
 
 // What v2's `outputType` did that v3's `convert` does not, by target type
 const DIFFERENCES: Record<string, string> = {
@@ -640,7 +645,8 @@ class Converter {
    * `useCache`, then the instance option, then the operator's default, for
    * the five operators that read it; every other one, PASSTHRU included,
    * ignored it. On those five a value that is not a boolean is a deciding
-   * value, and the option or the default decides.
+   * value, and the option or the default decides. A custom function v2
+   * cached is one v3 cannot cache from the expression.
    */
   private noCache(input: PlainObject, operator: V2Operator, context: RuleContext) {
     const fallback = CACHE_DEFAULTS[operator]
@@ -648,12 +654,60 @@ class Converter {
     const value = input.useCache
     const cached = typeof value === 'boolean' ? value : (this.options.useCache ?? fallback)
     const written = !cached && CACHED_IN_V3.has(operator)
-    if (Object.hasOwn(input, 'useCache') && typeof value !== 'boolean')
+    const at = Object.hasOwn(input, 'useCache') ? 'useCache' : undefined
+    if (at !== undefined && typeof value !== 'boolean')
       context.issue('deciding-value', 'useCache', {
         reason: undecided('useCache', value),
         wrote: written ? '`noCache: true`' : 'no `noCache`',
         key: 'useCache',
       })
+    if (cached && operator === 'CUSTOM_FUNCTIONS')
+      context.issue('cache-opt-in', at, functionNamed(input))
+    return written ? (true as const) : undefined
+  }
+
+  /**
+   * Whether a call takes `noCache: true` ("Calls"). v2 spread the call
+   * beneath the body, so a call's `useCache` reached the body's root alone,
+   * and only where the root set none of its own. The body converts on its
+   * own, where the root already took `noCache` if v2 left it uncached by
+   * default, so the call writes one only where it turned off what the body
+   * caches. Without the definition the root is unknown, and `noCache` is
+   * the side that can only cost cache hits.
+   */
+  private callNoCache(
+    input: PlainObject,
+    fragment: FragmentInfo | undefined,
+    context: NodeContext
+  ) {
+    if (!Object.hasOwn(input, 'useCache')) return undefined
+    context.discard('useCache')
+    const root = fragment?.body
+    if (fragment !== undefined && root !== undefined && Object.hasOwn(root, 'useCache')) {
+      context.issue('shadowed-argument', 'useCache', { fragment: fragment.key, key: 'useCache' })
+      return undefined
+    }
+    const operator = fragment?.operator
+    const rootDefault = operator === undefined ? undefined : CACHE_DEFAULTS[operator]
+    // A known body whose root ignored `useCache`, or that v2 returned as data
+    if (fragment !== undefined && rootDefault === undefined) return undefined
+    const rootCached = this.options.useCache ?? rootDefault ?? true
+    const value = input.useCache
+    const cached = typeof value === 'boolean' ? value : rootCached
+    const custom = operator === 'CUSTOM_FUNCTIONS'
+    const written = !cached && !custom && (fragment === undefined || rootCached)
+    if (typeof value !== 'boolean')
+      context.issue('deciding-value', 'useCache', {
+        reason: undecided('useCache', value),
+        wrote: written ? '`noCache: true`' : 'no `noCache`',
+        key: 'useCache',
+      })
+    if (fragment !== undefined && cached && (custom || !rootCached))
+      context.issue(
+        'cache-opt-in',
+        'useCache',
+        custom ? functionNamed(root!) : { fragment: fragment.key }
+      )
     return written ? (true as const) : undefined
   }
 
@@ -857,10 +911,7 @@ class Converter {
     if (Object.hasOwn(input, 'fallback'))
       modifiers.fallback = this.value(input.fallback, this.pathOf(input, 'fallback', path), inner)
     this.callOutput(input, path, inner, fragment, modifiers, context)
-    if (Object.hasOwn(input, 'useCache')) {
-      context.issue('fragment-use-cache', 'useCache')
-      context.discard('useCache')
-    }
+    const noCache = this.callNoCache(input, fragment, context)
     // The body's own `operator` always replaced the call's
     if (Object.hasOwn(input, 'operator')) {
       context.issue('overridden-value', 'operator', { key: 'operator', winner: 'fragment' })
@@ -874,7 +925,7 @@ class Converter {
 
     const all = [...notes, ...(Object.hasOwn(input, '//') ? [input['//']] : [])]
     const comment = all.length === 0 ? undefined : all.length === 1 ? all[0] : all
-    const output = this.attach(call, { comment, vars }, modifiers, context)
+    const output = this.attach(call, { comment, noCache, vars }, modifiers, context)
     this.settle(context, path)
     return output
   }
@@ -1224,7 +1275,7 @@ const convertExpression = (expression: unknown, given?: V2Options): MigrationRes
   const normalized = normalizeV2(expression, options)
   const converter = new Converter(normalized.sources, options, catalogueFor(options))
   const root: Scope = { refs: new Map(), names: new Set() }
-  const converted = converter.value(normalized.expression, [], root)
+  const converted = dropCoveredNoCache(converter.value(normalized.expression, [], root))
   return { expression: converted, issues: converter.kept(normalized.issues) }
 }
 
@@ -1265,7 +1316,12 @@ const convertFragments = (given: V2Options): FragmentMigrationResult => {
     const converter = new Converter(fragment.sources, options, catalogue)
     const { expression, defaults } = converter.body(fragment)
     issues.push(...converter.kept(fragment.issues))
-    fragments[fragment.name] = definitionOf(fragment, expression, defaults, issues)
+    fragments[fragment.name] = definitionOf(
+      fragment,
+      dropCoveredNoCache(expression),
+      defaults,
+      issues
+    )
   }
   return { fragments, issues }
 }
