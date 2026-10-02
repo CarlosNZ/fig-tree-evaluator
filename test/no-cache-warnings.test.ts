@@ -52,17 +52,12 @@ describe('dead: nothing beneath can cache', () => {
     expect(dead(fig, { $fetch: 'a', noCache: true })).toEqual([])
   })
 
-  test("on an operator the host's noCache turned off", () => {
-    const off = build({ operatorDefaults: { fetch: { noCache: true } } })
-    expect(dead(off, { $fetch: 'a', noCache: true })).toEqual([at(['noCache'], 'dead')])
-  })
-
   test('after an operatorDefaults change, on the same expression', () => {
     const changing = build()
     const expression = { $fetch: 'a', noCache: true }
     expect(dead(changing, expression)).toEqual([])
     changing.updateOptions({ operatorDefaults: { fetch: { noCache: true } } })
-    expect(dead(changing, expression)).toEqual([at(['noCache'], 'dead')])
+    expect(dead(changing, expression)).toEqual([at(['noCache'], 'redundant')])
   })
 
   test('on a call, read through the body — nested calls included', () => {
@@ -108,6 +103,41 @@ describe('redundant: an enclosing node already sets it', () => {
       .getFragments()
       .find((info) => info.name === 'shielded')
     expect(shielded?.warnings).toEqual([])
+  })
+})
+
+describe("redundant: the host's noCache already covers it", () => {
+  const off = build({ operatorDefaults: { fetch: { noCache: true } } })
+
+  test('on an operator the host turned off, naming it', () => {
+    expect(dead(off, { $fetch: 'a', noCache: true })).toEqual([
+      {
+        path: ['noCache'],
+        message: "'noCache' is redundant — caching is already disabled for 'fetch'",
+      },
+    ])
+  })
+
+  test('where all that could cache beneath is turned off, each named once', () => {
+    const expression = {
+      operator: 'upper',
+      value: { $plus: [{ $fetch: 'a' }, { $fetch: 'b' }] },
+      noCache: true,
+    }
+    expect(dead(off, expression)).toEqual([
+      {
+        path: ['noCache'],
+        message: "'noCache' is redundant — caching is already disabled for 'fetch'",
+      },
+    ])
+  })
+
+  test("dead on a call whose body the host turned off, since a body isn't read for names", () => {
+    expect(dead(off, { $cached: {}, noCache: true })).toEqual([at(['noCache'], 'dead')])
+  })
+
+  test('dead where nothing beneath could cache at all', () => {
+    expect(dead(off, { $upper: 'x', noCache: true })).toEqual([at(['noCache'], 'dead')])
   })
 })
 

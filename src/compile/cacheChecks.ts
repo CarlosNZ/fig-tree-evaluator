@@ -15,7 +15,9 @@
  * declares `cache: true` and the host has not set `noCache` for it
  * (`operatorCaches`), and a call when its body can or one of its arguments
  * can. A malformed node and an unknown fragment count as able to, so an
- * error never comes with a dead-`noCache` warning on top of it.
+ * error never comes with a dead-`noCache` warning on top of it. Where all
+ * that could cache is operators the host turned off, the `noCache` repeats
+ * the host's, and the warning calls it redundant and names them.
  */
 import { ErrorCodes } from '../errorCodes'
 import type { Issue } from '../issues'
@@ -34,15 +36,19 @@ import {
  * What a subtree can reach. `capable`: some node in it could cache, its
  * own `noCache` nodes aside — what decides whether a `noCache` above it is
  * dead. `effective`: some node in it does cache, those `noCache` nodes
- * respected — what a fragment's `caches` rollup is.
+ * respected — what a fragment's `caches` rollup is. `disabled`: the
+ * operators in it that declare `cache: true` but the host's `noCache`
+ * turned off, by name — what a `noCache` above it repeats, where nothing
+ * else could cache.
  */
 interface Reach {
   capable: boolean
   effective: boolean
+  disabled: string[]
 }
 
-const NOTHING: Reach = { capable: false, effective: false }
-const UNKNOWN: Reach = { capable: true, effective: true }
+const NOTHING: Reach = { capable: false, effective: false, disabled: [] }
+const UNKNOWN: Reach = { capable: true, effective: true, disabled: [] }
 
 /**
  * Append the two warnings to the artifact's stream, in tree order, and
@@ -92,11 +98,36 @@ const visitInvocation = (
   const own = node.noCache === true
   const children = all(artifact, childrenOf(node), shadowed || own)
   const capable = self || children.capable
+  const turnedOff = disabledName(node)
+  const disabled = turnedOff === undefined ? children.disabled : [turnedOff, ...children.disabled]
   if (own && shadowed)
     warn(artifact, node, "'noCache' is redundant — an enclosing node already sets it")
   else if (own && !capable)
-    warn(artifact, node, "'noCache' is dead — nothing beneath this node caches")
-  return { capable, effective: !own && (self || children.effective) }
+    warn(
+      artifact,
+      node,
+      disabled.length > 0
+        ? `'noCache' is redundant — caching is already disabled for ${nameList(disabled)}`
+        : "'noCache' is dead — nothing beneath this node caches"
+    )
+  return { capable, effective: !own && (self || children.effective), disabled }
+}
+
+/**
+ * The operator's name, on an operator node whose definition caches but
+ * the host turned off.
+ */
+const disabledName = (node: OperatorNode | FragmentCallNode) =>
+  node.kind === 'operator' && node.entry.definition.cache && !operatorCaches(node.entry)
+    ? node.entry.definition.name
+    : undefined
+
+/** `'http'`, `'http' and 'sql'`: each name once, in tree order. */
+const nameList = (names: string[]) => {
+  const quoted = [...new Set(names)].map((name) => `'${name}'`)
+  return quoted.length < 2
+    ? quoted.join('')
+    : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
 }
 
 const childrenOf = (node: OperatorNode | FragmentCallNode): CompiledNode[] => {
@@ -111,13 +142,14 @@ const childrenOf = (node: OperatorNode | FragmentCallNode): CompiledNode[] => {
 }
 
 const all = (artifact: CompileArtifact, nodes: CompiledNode[], shadowed: boolean): Reach => {
-  const reach = { capable: false, effective: false }
+  const reach: Reach = { capable: false, effective: false, disabled: [] }
   // Every child is visited, never short-circuited: each may carry a
   // `noCache` of its own to warn about
   for (const child of nodes) {
-    const { capable, effective } = visit(artifact, child, shadowed)
+    const { capable, effective, disabled } = visit(artifact, child, shadowed)
     reach.capable ||= capable
     reach.effective ||= effective
+    reach.disabled.push(...disabled)
   }
   return reach
 }

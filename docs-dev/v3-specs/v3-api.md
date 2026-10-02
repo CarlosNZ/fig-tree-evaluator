@@ -651,6 +651,7 @@ Settled in [#204](https://github.com/CarlosNZ/fig-tree-evaluator/issues/204) (Ca
 - **Two `validate()` warnings** (`useless-modifier`, at the key):
   - _redundant_: an ancestor in the same expression, or the same fragment body, already has `noCache`. A call site's `noCache` never makes one inside the registered body redundant, since other call sites may lack it;
   - _dead_: nothing in the subtree can cache. An operator node can cache when its definition declares `cache: true` and the host hasn't set `noCache` for it; a call can when its body can (a per-fragment rollup folded at registration, reported as `getFragments()`' `caches`) or one of its arguments can. A malformed node or an unknown fragment counts as able to, so an error never comes with this warning on top. A nested `noCache` gets the redundant warning instead of counting here.
+  - Where nothing in the subtree can cache but operator nodes whose definition declares `cache: true` and the host's `noCache` turned off, the `noCache` repeats the host's, so the warning is _redundant_ and names them: "'noCache' is redundant — caching is already disabled for 'http'". A call's body isn't read for names, so a call whose body only the host's `noCache` keeps from caching gets the dead warning.
 
 ### `fallback` semantics
 
