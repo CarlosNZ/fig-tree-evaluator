@@ -28,6 +28,7 @@ import {
   compileExpression,
   renderReference,
   runStaticChecks,
+  checkNoCache,
   toNodePath,
   type ArtifactHole,
   type CompiledNode,
@@ -277,8 +278,10 @@ export const inspect = (expression: unknown, options: InspectOptions = {}): void
   // the two layers can be told apart; they share one stream in the artifact.
   const artifact = compileExpression(expression, registry)
   const grammarIssues = artifact.issues.map((sequenced) => sequenced.issue)
-  // Pass 2 — the metadata layer appends to that same stream, in place
+  // Pass 2 — the metadata layer appends to that same stream, in place, and
+  // the `noCache` checks after it, as `validate()` runs them
   runStaticChecks(artifact)
+  if (artifact.hasNoCache) checkNoCache(artifact)
   const staticIssues = artifact.issues
     .map((sequenced) => sequenced.issue)
     .filter((issue) => !grammarIssues.includes(issue))

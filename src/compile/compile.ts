@@ -196,6 +196,8 @@ interface WalkState {
    * walk meets an iterator's `input` before its `as`.
    */
   unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
+  /** Set by the first `noCache` compiled (`CompileArtifact.hasNoCache`). */
+  hasNoCache: boolean
 }
 
 export interface CompileOptions {
@@ -233,6 +235,7 @@ export const compileExpression = (
     scope: { bindings: [] },
     asNames: new Set(),
     unrecognized: [],
+    hasNoCache: false,
   }
   const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
   const root = walk(state, input, basePath, 0)
@@ -261,6 +264,7 @@ export const compileExpression = (
     ...composeRollups(own, state.fragmentCalls, registry.fragments),
     fragmentCalls: state.fragmentCalls,
     dataReads: state.dataReads,
+    hasNoCache: state.hasNoCache,
   }
 }
 
@@ -656,8 +660,10 @@ const compileNoCache = (
   path: LinkedPath,
   order: number
 ) => {
-  if (value === true) node.noCache = true
-  else
+  if (value === true) {
+    node.noCache = true
+    state.hasNoCache = true
+  } else
     emit(
       state,
       'error',

@@ -9,6 +9,7 @@
 export { composeRollups, compileExpression } from './compile'
 export type { CompileOptions } from './compile'
 export { runStaticChecks } from './staticChecks'
+export { checkNoCache } from './cacheChecks'
 export type { StaticCheckContext } from './staticChecks'
 export { validateHelpers } from './helpers'
 export type { ValidateHelpers } from './helpers'
