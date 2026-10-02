@@ -42,7 +42,7 @@ export const ErrorCodes = {
   positionalArity: 'positional-arity', // { $not: [1, 2] } — surplus positional arguments
   invalidVars: 'invalid-vars', // { vars: [1, 2] } — the vars shape rule (loud)
   invalidReference: 'invalid-reference', // drilled '$index' — a recognized namespace used illegally
-  uselessModifier: 'useless-modifier', // fallback / vars / noCache on `literal` — legal but dead (warning)
+  uselessModifier: 'useless-modifier', // fallback / vars / noCache on `literal`, a redundant or dead noCache — legal but dead (warning)
   unreferencedVar: 'unreferenced-var', // a vars block declaring names nothing references (warning)
   missingRequired: 'missing-required', // { $if: [true] } — a required parameter not supplied
   unresolvedParam: 'unresolved-param', // '$params.x' outside a fragment body, or naming an undeclared parameter

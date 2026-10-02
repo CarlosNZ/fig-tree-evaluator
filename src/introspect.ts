@@ -179,6 +179,14 @@ export interface FragmentInfo {
    * expression, and the body is the one thing a host never gets back.
    */
   dependencies: Dependencies
+  /**
+   * Whether a call can reach a node that caches, rolled up at
+   * registration: an operator node whose definition declares `cache: true`
+   * and whose operator the host has not turned off, or a call to a fragment
+   * that `caches`, with the body's own `noCache` nodes respected. An editor
+   * offers `noCache` on a call only where this is true.
+   */
+  caches: boolean
 }
 
 /**
@@ -268,6 +276,7 @@ export const fragmentSnapshot = (registry: OperatorRegistry): FragmentInfo[] =>
       returns: entry.returns,
       warnings: [...entry.warnings],
       dependencies: toDependencies(entry.dependencies),
+      caches: entry.caches,
     }
     if (entry.description !== undefined) info.description = entry.description
     if (entry.metadata !== undefined) info.metadata = entry.metadata

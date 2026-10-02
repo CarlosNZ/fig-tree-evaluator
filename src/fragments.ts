@@ -28,7 +28,9 @@
  *     itself is a registration error.
  *  4. Rollups, in reverse topological order (well-founded because pass 3
  *     proved a DAG): the transitive measurements a call site needs from its
- *     target.
+ *     target, and the `noCache` checks, which read their targets' `caches`.
+ *     A body's warnings are collected after this pass, so the cache
+ *     checks' sit in tree order with the rest.
  *
  * Every fragment in the registry is always rebuilt together: a registry
  * change rebuilds from the merged options, so replacement re-validation and
@@ -40,6 +42,7 @@ import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
 import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
 import {
+  checkNoCache,
   composeRollups,
   compileExpression,
   runStaticChecks,
@@ -108,9 +111,10 @@ export interface FragmentParameter {
 
 /**
  * The compiled fragment: what the artifact holds by reference at a call
- * site and what the evaluator runs. The four rollups are transitive — they
+ * site and what the evaluator runs. The rollups are transitive — they
  * count *through* nested calls, by composition rules that differ because
- * the quantities do (see `composeRollups`).
+ * the quantities do (see `composeRollups`, and `checkNoCache` for
+ * `caches`).
  */
 export interface FragmentEntry {
   name: string
@@ -140,6 +144,14 @@ export interface FragmentEntry {
   maxDepth: number
   dependencies: ArtifactDependencies
   identityOnly: boolean
+  /**
+   * Whether a call can reach a node that caches: an operator node whose
+   * definition declares `cache: true` and whose operator the host has not
+   * turned off, or a call to a fragment that `caches`, with the body's own
+   * `noCache` nodes respected. Folded in pass 4; what the dead-`noCache`
+   * warning reads at a call, and what `getFragments()` reports.
+   */
+  caches: boolean
   /**
    * The body root's constant fallback, where it has one. A call node with
    * no `fallback` of its own lifts this for timeout shielding — without the
@@ -210,22 +222,13 @@ export const registerFragments = (
   for (const [name, entry] of registry.fragments) {
     const artifact = compiled.get(name)!
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
-    for (const { issue } of artifact.issues) {
+    for (const { issue } of artifact.issues)
       if (issue.severity === 'error')
         addIssue(issue.code, `fragment '${name}': ${issue.message}`, [
           'fragments',
           name,
           ...issue.path,
         ])
-      else {
-        // Frozen, because `getFragments()` hands these out: the array is
-        // copied per call, and a frozen issue is what makes the objects
-        // inside it equally out of a caller's reach
-        const frozen: Issue = { ...issue, path: [...issue.path] }
-        Object.freeze(frozen.path)
-        entry.warnings.push(Object.freeze(frozen))
-      }
-    }
   }
 
   // ── Pass 3: cycles ────────────────────────────────────────────────
@@ -233,6 +236,17 @@ export const registerFragments = (
 
   // ── Pass 4: rollups ───────────────────────────────────────────────
   if (acyclic) foldRollups(registry, compiled)
+
+  for (const [name, entry] of registry.fragments)
+    for (const { issue } of compiled.get(name)!.issues)
+      if (issue.severity !== 'error') {
+        // Frozen, because `getFragments()` hands these out: the array is
+        // copied per call, and a frozen issue is what makes the objects
+        // inside it equally out of a caller's reach
+        const frozen: Issue = { ...issue, path: [...issue.path] }
+        Object.freeze(frozen.path)
+        entry.warnings.push(Object.freeze(frozen))
+      }
 }
 
 /**
@@ -298,6 +312,7 @@ const validateDefinition = (
     maxDepth: 0,
     dependencies: { dataPaths: new Map(), dynamic: false, operators: [], fragments: [] },
     identityOnly: false,
+    caches: false,
   }
   if (definition.description !== undefined) {
     if (typeof definition.description !== 'string')
@@ -498,9 +513,10 @@ const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue)
 }
 
 /**
- * Fold each body's own measurements together with its targets', and lift
- * the constant its call sites shield with — both in reverse topological
- * order, so a target is always complete before a caller reads it.
+ * Fold each body's own measurements together with its targets', run its
+ * `noCache` checks, which read the targets' `caches`, and lift the
+ * constant its call sites shield with — all in reverse topological order,
+ * so a target is always complete before a caller reads it.
  * `composeRollups` holds the composition rules themselves, shared with the
  * walk, so a call site in an expression and a call site in a body compose
  * identically.
@@ -520,6 +536,7 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
     entry.maxDepth = rolled.maxDepth
     entry.dependencies = rolled.dependencies
     entry.identityOnly = rolled.identityOnly
+    entry.caches = checkNoCache(artifact)
     entry.timeoutFallback = liftedFallback(artifact, registry.fragments)
   }
 

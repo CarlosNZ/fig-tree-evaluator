@@ -405,6 +405,12 @@ export interface CompileArtifact extends Rollups {
    * dependency record is the deduplicated set; this keeps every reader.
    */
   dataReads: DataRead[]
+  /**
+   * Whether any node in the walk carries `noCache` — the only case in which
+   * an expression's `noCache` checks have anything to say
+   * (src/compile/cacheChecks.ts).
+   */
+  hasNoCache: boolean
 }
 
 /**

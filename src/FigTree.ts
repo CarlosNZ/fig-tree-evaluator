@@ -51,6 +51,7 @@ import {
   compileExpression,
   probeConstant,
   runStaticChecks,
+  checkNoCache,
   type CacheEntry,
   type CompileArtifact,
 } from './compile'
@@ -162,14 +163,15 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
 }
 
 /**
- * The one compile: the walk plus the metadata-driven static checks, against a
- * registry. `validate()` calls it directly; `evaluate()` and `compile()`
- * reach it through the compile cache, which is what makes the three report
- * identically.
+ * The one compile: the walk plus the metadata-driven static checks and the
+ * `noCache` checks, against a registry. `validate()` calls it directly;
+ * `evaluate()` and `compile()` reach it through the compile cache, which is
+ * what makes the three report identically.
  */
 const compileWithRegistry = (expression: unknown, registry: OperatorRegistry): CompileArtifact => {
   const artifact = compileExpression(expression, registry)
   runStaticChecks(artifact)
+  if (artifact.hasNoCache) checkNoCache(artifact)
   return artifact
 }
 
