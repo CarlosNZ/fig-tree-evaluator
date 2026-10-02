@@ -110,14 +110,14 @@ These shapes throw, each with the code the compiler reports for it:
 - `operator` beside `fragment`, a canonical key beside a `$name` key, and two `$name` keys (`malformed-node`, from `classifyObject`);
 - a non-string `operator` or `fragment` value (`malformed-node`);
 - an unregistered operator (`unknown-operator`) or fragment (`unknown-fragment`);
-- a shorthand node whose siblings aren't all reserved modifiers, `useCache` beside a fragment, and a fragment payload that isn't an object (`malformed-node`);
+- a shorthand node whose siblings aren't all reserved modifiers, a `noCache` that isn't the literal `true`, and a fragment payload that isn't an object (`malformed-node`);
 - a canonical `literal` with no `value`, or with a key that isn't a modifier or `//` (`malformed-node`, `unknown-node-key`);
 - a `parameters` key on an operator node (`malformed-node`), and a fragment call key that isn't `parameters`, a modifier or `//` (`unknown-node-key`);
 - a payload with the wrong arity (`positional-arity`);
 - a named payload holding a reserved node key other than `//`, such as `{ $plus: { values: [1], fallback: 0 } }` (`unknown-node-key`). Spread onto a canonical node, it would turn an error into a working modifier;
 - nesting beyond the compiler's depth ceiling (`depth-ceiling`).
 
-An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values. An unknown parameter key on an operator node is carried: it forces the named form, where the compiler reports it as on the canonical node. A `//` value is never walked, whatever it contains, and `useCache` is copied as it is.
+An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values. An unknown parameter key on an operator node is carried: it forces the named form, where the compiler reports it as on the canonical node. A `//` value is never walked, whatever it contains, and `noCache` is copied as it is.
 
 ## `toCanonical`
 
@@ -134,7 +134,7 @@ The target is the compiler's canonical form, apart from spellings: the result co
 ## `toShorthand`
 
 - **Operator node** becomes `{ $name: payload }`, where `name` follows `operatorNames` and modifiers stay as sibling keys. The sibling-key rule means every canonical operator node has a shorthand form.
-- **Fragment call** becomes `{ $frag: parameters }`, with `{ $frag: {} }` for a call with no `parameters`. Fragments take only the named payload. **A call whose `parameters` is a reference string stays canonical**, because the shorthand payload has to be an object: this is the one node with no shorthand form. That includes a reference the conversion itself made: `{ fragment: 'greet', parameters: { operator: 'get', path: 'person' } }` becomes `{ fragment: 'greet', parameters: '$d.person' }` under `getAsReference`, not `{ $greet: '$d.person' }`, which is illegal. `useCache` is invalid on fragment calls, so such a call throws, like any other malformed node.
+- **Fragment call** becomes `{ $frag: parameters }`, with `{ $frag: {} }` for a call with no `parameters`. Fragments take only the named payload. **A call whose `parameters` is a reference string stays canonical**, because the shorthand payload has to be an object: this is the one node with no shorthand form. That includes a reference the conversion itself made: `{ fragment: 'greet', parameters: { operator: 'get', path: 'person' } }` becomes `{ fragment: 'greet', parameters: '$d.person' }` under `getAsReference`, not `{ $greet: '$d.person' }`, which is illegal. A `noCache` on the call stays beside it, as on any call.
 - **`literal`** becomes `{ $literal: X }`.
 - **`get`**, with `getAsReference` on, becomes a reference whenever `toReference` accepts it. Otherwise it is an ordinary operator node.
 - **Already-shorthand nodes** are re-rendered from their parameters, so the result depends only on what the node means, not on how it was written. That makes `toShorthand` idempotent.
@@ -161,7 +161,7 @@ The payload is then the leading values followed by the rest's elements.
 
 **`toReference`** accepts a `get` node in any form: `{ operator: 'get', … }`, `{ $get: 'a.b' }`, `{ $get: ['a.b'] }` or `{ $get: { path: 'a.b', from: … } }`. It returns a reference only when all of these hold:
 
-- **No `fallback`, `useCache` or `vars`.** A reference can't carry them. A `//` comment doesn't block the conversion, and is dropped ("Comments", below).
+- **No `fallback`, `noCache` or `vars`.** A reference can't carry them. A `//` comment doesn't block the conversion, and is dropped ("Comments", below).
 - **No `default`.**
 - **`path` is a literal string that parses, or a literal array of string and number segments.** It's rendered with the compiler's `renderSegments`, which round-trips through `parsePath`, so the reference reads exactly the segments the node did. A computed path has no reference form.
 - **No part of `path` starts with `$`.** Inside an iterator with `as`, a `$`-string may be the element: in `{ operator: 'map', input: ['user.name', 'user.email'], as: 'field', each: { operator: 'get', path: '$field' } }` each element is a path, and `'$data.$field'` would read a data key named `$field` instead. `toReference` can't see the `as`, so a `$`-prefixed path string or segment has no reference form.

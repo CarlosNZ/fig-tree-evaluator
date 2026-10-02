@@ -156,9 +156,9 @@ await fig.evaluate(exprA, { data: dataA }) // → { greeting: 'Welcome to Acme',
 
 **Evaluate** — three holes, concurrently:
 
-- `greeting`: `org` resolves from the call's `data` — the one block an evaluation reads, by reference → `'Welcome to Acme'`. Pure operator, effective `useCache` false (metadata default) → computed, **not** memoized.
+- `greeting`: `org` resolves from the call's `data` — the one block an evaluation reads, by reference → `'Welcome to Acme'`. Pure operator, declaring no `cache` → computed, **not** memoized.
 - `team`: the `[*]` projection yields `['Ada', 'Grace']`; `join`'s effective `delimiter` comes from `operatorDefaults` → `'Ada, Grace'`.
-- `rate`: I/O, effective `useCache` **true** (metadata default). Result-cache lookup on the **effective request**:
+- `rate`: I/O, so its definition declares `cache: true`, and nothing turns it off. Result-cache lookup on the **effective request**:
 
 ```js
 // key(illustrative): 'http|get|https://api.example.com/rates?currency=NZD|headers:{}'
