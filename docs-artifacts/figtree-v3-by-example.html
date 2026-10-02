@@ -743,7 +743,7 @@
         <li><strong><code>{ $get: [path, default] }</code> is the everyday way to read with a default</strong> &#8212; the positional form of <code>{ $get: { path, default } }</code>, and the same shape as lodash's <code>get(object, path, defaultValue)</code>, which also lets a stored <code>null</code> through. A <code>null</code> partway along the path is a miss, so the default fires there.</li>
         <li><strong><code>firstOf</code> evaluates candidates in order and stops.</strong> The sequencing is semantics, not optimisation: a backup HTTP call placed second must not fire when the first candidate answered. It skips <em>only</em> <code>null</code> &#8212; <code>""</code>, <code>0</code> and <code>false</code> are answers.</li>
         <li><strong><code>card</code> is a constant and <code>locale</code> is a bare reference.</strong> Constant subtrees are classified at parse and returned by identity &#8212; there is no traversal cost per evaluation. A reference is a value, not a node, so it carries no modifiers: for a default, use <code>get</code> or <code>firstOf</code>.</li>
-        <li>Shorthand nodes may carry reserved sibling keys &#8212; <code>{ $http: '&#8230;', fallback: &#8230; }</code> is legal, and so are <code>useCache</code>, <code>vars</code> and <code>//</code>. Any <em>other</em> sibling key is a hard parse error.</li>
+        <li>Shorthand nodes may carry reserved sibling keys &#8212; <code>{ $http: '&#8230;', fallback: &#8230; }</code> is legal, and so are <code>noCache</code>, <code>vars</code> and <code>//</code>. Any <em>other</em> sibling key is a hard parse error.</li>
       </ul>
     </div>
   </section>
@@ -1015,7 +1015,7 @@ const fig = new FigTree({
       <ul class="notes">
         <li><strong>I/O operators exist only when they are registered.</strong> On an instance without <code>httpOperators()</code>, <code>{ $http: &#8230; }</code> is an unknown-operator error at parse &#8212; the author's toolchain catches it, not the end user's runtime. There is no ambient network capability: v2's silent browser <code>fetch</code> fallback is gone, and the convenience survives one level down, in <code>FetchClient()</code> itself.</li>
         <li><strong><code>returnPath</code> uses the shared path grammar</strong>, <code>[*]</code> included. <code>returnPath: 'data[*].name'</code> would project one field out of a list of objects with no <code>map</code> &#8212; which is what v2's single-key-object collapse was reaching for, without dispatching on how many columns happened to come back.</li>
-        <li><strong>Caching keys on the resolved request.</strong> <code>useCache</code> defaults to <code>true</code> for I/O operators; the key is built from the effective request, not the authored spelling, so switching country forks the entry naturally and re-evaluating with the same country makes no call. The stored value is the <em>whole</em> response &#8212; <code>returnPath</code> applies after the cache.</li>
+        <li><strong>Caching keys on the resolved request.</strong> The I/O operators declare <code>cache: true</code>, so they cache by default, and an expression can only turn that off, with <code>noCache</code>; the key is built from the effective request, not the authored spelling, so switching country forks the entry naturally and re-evaluating with the same country makes no call. The stored value is the <em>whole</em> response &#8212; <code>returnPath</code> applies after the cache.</li>
         <li><strong>Two timeouts, deliberately different.</strong> <code>timeout</code> on the node is a per-request limit whose expiry is an ordinary runtime failure, so the node's own <code>fallback</code> catches it &#8212; the network-flakiness guard, applied per node. The <code>timeout</code> <em>option</em> is a hard bound on the whole evaluation; that's rung 09.</li>
         <li><strong>The fallback is an array because the consumer is a dropdown.</strong> Only the author knows both the right placeholder and its <em>type</em> &#8212; options degrade to a list, a label to a string. That is exactly why degradation lives in the expression rather than in options.</li>
         <li>Nulls at the wire follow the target: a JSON body, <code>graphQL.variables</code> and <code>sql</code> bind values carry <code>null</code> through; a URL query parameter or header with a null value has its pair omitted, which gives the optional-filter idiom for free.</li>
@@ -1263,7 +1263,7 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
         <ul>
           <li><code>operator</code> &#183; <code>fragment</code> &#183; <code>parameters</code> &#8212; what to invoke, and with what.</li>
           <li><code>fallback</code> &#8212; a full expression, lazy, evaluated once, on failure only.</li>
-          <li><code>useCache</code> &#8212; a literal boolean; the lookup happens before evaluation.</li>
+          <li><code>noCache</code> &#8212; the literal <code>true</code> only; nothing in the node&#8217;s subtree reads or writes the cache.</li>
           <li><code>vars</code> &#8212; a structural map of static names to expressions.</li>
           <li><code>//</code> &#8212; a comment; any value, stripped at parse.</li>
         </ul>
@@ -1314,7 +1314,7 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
 
 <script>
 (function () {
-  var RESERVED = ['operator', 'fragment', 'parameters', 'fallback', 'useCache', 'vars']
+  var RESERVED = ['operator', 'fragment', 'parameters', 'fallback', 'noCache', 'vars']
   var KEYWORDS = ['const', 'new', 'await', 'import', 'from', 'export', 'return', 'function', 'let']
   var LITERALS = ['true', 'false', 'null', 'undefined']
   var NS = /^\$(data|d|vars|v|params|p|element|e|index|i)(?:[.[]|$)/

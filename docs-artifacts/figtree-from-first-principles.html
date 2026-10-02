@@ -753,13 +753,13 @@
 
     <p class="cue">The idea</p>
 
-    <p>A second cache, and it has to be second because it keys on something completely different. The notes cache keys on <strong>what the author wrote</strong>, before any data exists. This one keys on <strong>what actually got computed</strong> — an operation plus its resolved arguments, or for a network call, the request as finally assembled.</p>
+    <p>A second cache, and it has to be second because it keys on something completely different. The notes cache keys on <strong>what the author wrote</strong>, before any data exists. This one keys on <strong>what actually got computed</strong> — for a network call, the request as finally assembled.</p>
 
     <p>The cross-cases show why one cache could never serve both. One expression evaluated against two different data sets shares its notes but must not share results. Two differently-written expressions that assemble the same HTTP request should share the result but have different notes. Their lifetimes differ accordingly: notes are dropped only when the vocabulary changes, whereas results need expiry, a size bound and a pluggable store, because they are about the outside world.</p>
 
     <p>There is one honest synergy, and it is only about assembling keys, not sharing them: since recognition already knows which arguments are fixed, it can pre-build most of a result key at parse time, leaving evaluation to slot in the parts that vary.</p>
 
-    <p class="in-code"><b>in the code</b>Per-node result caching is the <code>useCache</code> option and the <code>cache</code> store; the pre-built key is the artifact's <code>precomputed</code> slot. Phase 9.</p>
+    <p class="in-code"><b>in the code</b>An operator that calls out declares <code>cache: true</code> and keys its own work, in the <code>cache</code> option's store; an expression can only turn it off, with <code>noCache</code>. The pre-built key was weighed and not built: it would save sub-milliseconds behind a network round trip. Phase 9, reworked in #204.</p>
   </section>
 
   <section class="stage" id="editor">

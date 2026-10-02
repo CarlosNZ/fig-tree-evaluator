@@ -21,7 +21,7 @@ export const ENTRIES = [
     subpath: './migrate',
     name: 'migrate/index',
     source: 'src/migrate/index.ts',
-    budget: 19_500,
+    budget: 20_500,
     marker: 'is not a v2 operator',
   },
   {
