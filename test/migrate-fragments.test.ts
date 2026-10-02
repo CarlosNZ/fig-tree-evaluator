@@ -8,7 +8,7 @@
  * published v2 package, with the v2 fragments, and in v3, with the converted
  * ones, or differs as its row says.
  */
-import { FigTree } from '../src'
+import { FigTree, coreOperators, httpOperators } from '../src'
 import type { FragmentDefinition } from '../src/fragments'
 import type { V2Options } from '../src/migrationTypes'
 import { convertV2, convertV2Fragments } from '../src/migrate/convert'
@@ -19,6 +19,7 @@ import {
 } from '../src/names'
 import { checkType, isExpectedType, type ExpectedType } from '../src/typeCheck'
 import { RESERVED_NAMES, RESERVED_NODE_KEYS, V3_TYPES, fitsType } from '../src/migrate/v3Values'
+import { MockHttpClient } from './helpers'
 import {
   clone,
   deepFreeze,
@@ -29,6 +30,8 @@ import {
 } from './helpers/migration'
 
 type Raised = { code: IssueCode; path: Path }
+
+type PlainCall = Record<string, unknown>
 
 const raised = (issues: { code: IssueCode; path: Path }[]) =>
   issues.map(({ code, path }) => ({ code, path }))
@@ -950,10 +953,9 @@ describe('calls', () => {
       differs: { v2: { value: -1 }, v3: { value: null } },
     },
     {
-      name: '`useCache` cannot sit on a call',
+      name: "a call's `useCache` over a body v2 never cached goes",
       input: { fragment: 'plusBody', useCache: false },
       expected: { fragment: 'plusBody' },
-      issues: [{ code: 'fragment-use-cache', path: ['useCache'] }],
     },
     {
       name: "the author's `//` is the call's comment",
@@ -1217,10 +1219,6 @@ describe('calls', () => {
     expect(message({ fragment: 'constant', type: 'string' })).toBe(
       'v2 never applied this `type`: the body of `constant` is not an operator node, which v2 returned as it was. Removed.'
     )
-    expect(message({ fragment: 'plusBody', useCache: true })).toBe(
-      'A v3 fragment call takes no `useCache`, since caching is set on the operators inside the body. ' +
-        "v2 applied this one to the body's node, unless the body set its own. Removed. Set `useCache` in the definition if the body needs it."
-    )
   })
 
   test('over SQL, `type` is a rider value or the output type', () => {
@@ -1267,6 +1265,100 @@ describe('calls', () => {
       { code: 'body-override', path: ['parameters', 'y'] },
       { code: 'output-type', path: ['type'] },
     ])
+  })
+})
+
+describe("a call's `useCache`", () => {
+  // v2 applied a call's `useCache` to its body's root alone
+  const FRAGMENTS = {
+    fetchRate: { operator: 'GET', url: 'https://x.test' },
+    postRate: { operator: 'POST', url: 'https://x.test' },
+    cachedPost: { operator: 'POST', url: 'https://x.test', useCache: true },
+    sum: { operator: '+', values: [1, 2] },
+    recorded: { operator: 'customFunctions', functionName: 'record', args: [1] },
+  }
+  const options: V2Options = { fragments: FRAGMENTS, functions: ['record'] }
+  const converted = convertFragments(options)
+  const fig = new FigTree({
+    operators: [coreOperators, httpOperators(new MockHttpClient())],
+    fragments: converted.fragments,
+  })
+
+  test('the body converts on its own, uncached where v2 left it so by default', () => {
+    expect(converted.fragments.postRate.expression).toMatchObject({ noCache: true })
+    expect(converted.fragments.fetchRate.expression).not.toHaveProperty('noCache')
+    expect(converted.fragments.cachedPost.expression).not.toHaveProperty('noCache')
+  })
+
+  test.each<{ name: string; input: PlainCall; expected: unknown; issues?: Raised[] }>([
+    {
+      name: '`false` over a body that caches turns it off',
+      input: { fragment: 'fetchRate', useCache: false },
+      expected: { fragment: 'fetchRate', noCache: true },
+    },
+    {
+      name: '`true` over a body that caches says nothing',
+      input: { fragment: 'fetchRate', useCache: true },
+      expected: { fragment: 'fetchRate' },
+    },
+    {
+      name: '`false` over a body already uncached says nothing',
+      input: { fragment: 'postRate', useCache: false },
+      expected: { fragment: 'postRate' },
+    },
+    {
+      name: '`true` over a body v2 left uncached is one v3 cannot honour',
+      input: { fragment: 'postRate', useCache: true },
+      expected: { fragment: 'postRate' },
+      issues: [{ code: 'cache-opt-in', path: ['useCache'] }],
+    },
+    {
+      name: 'a body that sets its own beat the call',
+      input: { fragment: 'cachedPost', useCache: false },
+      expected: { fragment: 'cachedPost' },
+      issues: [{ code: 'shadowed-argument', path: ['useCache'] }],
+    },
+    {
+      name: 'a body v2 never cached ignored it',
+      input: { fragment: 'sum', useCache: false },
+      expected: { fragment: 'sum' },
+    },
+    {
+      name: 'a custom function v2 cached is one v3 cannot',
+      input: { fragment: 'recorded', useCache: true },
+      expected: { fragment: 'recorded' },
+      issues: [{ code: 'cache-opt-in', path: ['useCache'] }],
+    },
+  ])('$name', ({ input, expected, issues = [] }) => {
+    const result = convert(input, options)
+    expect(result.expression).toEqual(expected)
+    expect(raised(result.issues)).toEqual(issues)
+    // Valid against the converted definitions, with no `noCache` v3 calls
+    // redundant or dead
+    const reported = fig.validate(result.expression).issues
+    expect(reported.filter((issue) => issue.severity === 'error')).toEqual([])
+    expect(reported.filter((issue) => issue.code === 'useless-modifier')).toEqual([])
+  })
+
+  test('without the definition, `false` is the side that can only cost cache hits', () => {
+    expect(convert({ fragment: 'elsewhere', useCache: false }, {}).expression).toEqual({
+      fragment: 'elsewhere',
+      noCache: true,
+    })
+    expect(convert({ fragment: 'elsewhere', useCache: true }, {}).expression).toEqual({
+      fragment: 'elsewhere',
+    })
+  })
+
+  test('the issue names what to change', () => {
+    const message = (input: unknown) =>
+      convert(input, options).issues.find((issue) => issue.code === 'cache-opt-in')?.message
+    expect(message({ fragment: 'postRate', useCache: true })).toContain(
+      'The body of `postRate` has `noCache` at its root'
+    )
+    expect(message({ fragment: 'recorded', useCache: true })).toContain(
+      'Declare `cache: true` on `record`'
+    )
   })
 })
 

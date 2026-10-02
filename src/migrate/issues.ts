@@ -87,6 +87,16 @@ export const CATALOGUE = {
       "response's `returnPath`, which `strictDataPaths` does not reach, use `firstOf`, or read " +
       'the path with a `get` and its `default`.',
   },
+  'cache-opt-in': {
+    tag: 'intentional-semantic-change',
+    message: ({ operator, fragment }: { operator?: string; fragment?: string }) =>
+      'v2 cached this. In v3 an expression can only turn caching off, and an operator caches ' +
+      'only if its definition declares `cache: true`. ' +
+      (fragment !== undefined
+        ? `The body of \`${fragment}\` has \`noCache\` at its root, since v2 left it uncached by ` +
+          'default; take that out of the definition if every call may cache.'
+        : `Declare \`cache: true\` on ${operator === undefined ? "the call's operator" : `\`${operator}\``} if this call needs caching.`),
+  },
   'unprefixed-parameter': {
     tag: 'intentional-semantic-change',
     message: ({ name }: { name: string }) =>
@@ -154,13 +164,6 @@ export const CATALOGUE = {
     tag: 'lossy-default',
     message: ({ fragment, name }: { fragment: string; name: string }) =>
       `\`${fragment}\` has no parameter \`${name}\`. v2 ignored the argument, and v3 rejects it. Removed.`,
-  },
-  'fragment-use-cache': {
-    tag: 'lossy-default',
-    message: () =>
-      'A v3 fragment call takes no `useCache`, since caching is set on the operators inside ' +
-      "the body. v2 applied this one to the body's node, unless the body set its own. Removed. " +
-      'Set `useCache` in the definition if the body needs it.',
   },
   'unused-output-type': {
     tag: 'lossy-default',

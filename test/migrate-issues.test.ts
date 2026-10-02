@@ -31,6 +31,7 @@ const SPEC_CODES: Record<Tag, Code[]> = {
     'output-type',
     'missing-data-fallback',
     'unprefixed-parameter',
+    'cache-opt-in',
   ],
   'lossy-default': [
     'instance-case-insensitive',
@@ -43,7 +44,6 @@ const SPEC_CODES: Record<Tag, Code[]> = {
     'fragment-shorthand-payload',
     'shadowed-argument',
     'unknown-argument',
-    'fragment-use-cache',
     'name-renamed',
     'unknown-parameter-type',
     'default-outside-type',
@@ -238,12 +238,7 @@ const ROWS: Row[] = [
     options: { fragments: FRAGMENTS },
     path: ['parameters', '$other'],
   },
-  {
-    code: 'fragment-use-cache',
-    input: { fragment: 'adder', parameters: { $values: [1] }, useCache: true },
-    options: { fragments: FRAGMENTS },
-    path: ['useCache'],
-  },
+
   {
     code: 'unprefixed-parameter',
     options: {
@@ -338,6 +333,13 @@ const ROWS: Row[] = [
     options: { functions: ['fn'] },
     path: [],
   },
+  {
+    code: 'cache-opt-in',
+    input: { operator: 'fn', input: 1, useCache: true },
+    options: { functions: ['fn'] },
+    path: ['useCache'],
+  },
+
   {
     code: 'computed-function-name',
     input: { operator: 'customFunctions', functionName: { $getData: 'f' } },
