@@ -36,10 +36,11 @@
  * `fragmentPath`, and why an argument written inside an outer body is
  * attributed to that outer body.
  *
- * No caching: `useCache` is a grammar error on a call node, and a
- * fragment-result cache would need its own key-derivation story
- * (parameters plus everything the body reads). Operator nodes inside the
- * body cache normally, on their own resolved parameters.
+ * No result cache of its own: a fragment-result cache would need its own
+ * key-derivation story (parameters plus everything the body reads).
+ * Operator nodes inside the body cache as they would anywhere, and a
+ * `noCache` on the call turns that off for its arguments and its whole
+ * body, nested calls included.
  */
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
@@ -48,7 +49,12 @@ import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath }
 import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
-import type { EvaluationContext, FragmentFrame, ParamsFrame } from './context'
+import {
+  pushNoCache,
+  type EvaluationContext,
+  type FragmentFrame,
+  type ParamsFrame,
+} from './context'
 import { evaluateNode } from './evaluate'
 import {
   brand,
@@ -73,8 +79,9 @@ export const evaluateFragment = async (
   // One scope over the arguments and the fallback alike, exactly as the
   // operator wrapper spans its attempt and its fallback (rule 5). These
   // vars belong to the CALLER's world: they scope the argument
-  // expressions, and the body never sees them
-  const scoped = pushVars(ctx, node.vars)
+  // expressions, and the body never sees them. A `noCache` goes on first,
+  // so the arguments, the vars, the fallback and the body all inherit it
+  const scoped = pushVars(pushNoCache(ctx, node.noCache), node.vars)
   // The abort scope covers the body only. A fallback runs after the body
   // has settled, so a fallback under this signal would be refused at its
   // first node boundary — and settling it here is what refuses an argument

@@ -425,8 +425,8 @@ describe('sample-data check (only when data is supplied)', () => {
 })
 
 describe('useless modifiers on literal', () => {
-  test('fallback / vars / useCache on literal warn as dead', () => {
-    const result = fig.validate({ $literal: { x: 1 }, fallback: 2, useCache: true })
+  test('fallback / vars / noCache on literal warn as dead', () => {
+    const result = fig.validate({ $literal: { x: 1 }, fallback: 2, noCache: true })
     const dead = result.issues.filter((issue) => issue.code === 'useless-modifier')
     expect(dead).toHaveLength(2)
     expect(result.valid).toBe(true)

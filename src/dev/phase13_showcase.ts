@@ -41,8 +41,8 @@ const fig = new FigTree({
   // BESIDE the authored values
   operatorDefaults: {
     round: { decimals: 2 },
-    http: { fallback: null },
-    clamp: { max: 100, useCache: true },
+    http: { fallback: null, noCache: true },
+    clamp: { max: 100 },
   },
   // A credential, so the inspector's options block has something to
   // withhold
@@ -85,11 +85,12 @@ const shout = defineOperator({
   parameters: { text: { type: 'string' } },
   positionalParams: ['text'],
   returns: 'string',
-  useCache: true,
-  evaluate: ({ text }) => {
-    runs++
-    return text.toUpperCase()
-  },
+  cache: true,
+  evaluate: ({ text }, context) =>
+    context.cache.memo(text, async () => {
+      runs++
+      return text.toUpperCase()
+    }),
 })
 
 const shoutEmphatic = defineOperator({
@@ -99,11 +100,12 @@ const shoutEmphatic = defineOperator({
   parameters: { text: { type: 'string' } },
   positionalParams: ['text'],
   returns: 'string',
-  useCache: true,
-  evaluate: ({ text }) => {
-    runs++
-    return `${text.toUpperCase()}!`
-  },
+  cache: true,
+  evaluate: ({ text }, context) =>
+    context.cache.memo(text, async () => {
+      runs++
+      return `${text.toUpperCase()}!`
+    }),
 })
 
 /** A second instance, so the redefinition below leaves `fig` untouched. */
@@ -140,15 +142,15 @@ const main = async () => {
 
   section('…and a parameter form, from the same read')
 
-  for (const name of ['clamp', 'round', 'regex']) {
+  for (const name of ['clamp', 'round', 'regex', 'http']) {
     const info = operators.find((entry) => entry.name === name)
     if (info === undefined) continue
     const flags = [
       info.hasValidate ? 'has a validate hook' : null,
-      info.cache === 'manual' ? 'caches manually' : null,
+      info.cache ? 'caches' : null,
       info.restParam !== null ? `rest: ${info.restParam}` : null,
       info.timeoutParam !== null ? `deadline: ${info.timeoutParam}` : null,
-      Object.hasOwn(info, 'instanceUseCache') ? `instance useCache ${info.instanceUseCache}` : null,
+      info.instanceNoCache === true ? 'caching turned off by operatorDefaults' : null,
     ].filter((flag) => flag !== null)
     console.log(`  ${name} — ${info.description}`)
     for (const parameter of Object.keys(info.parameters))

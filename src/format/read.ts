@@ -125,7 +125,10 @@ export const positionalToNamed = (
 export type Fail = (code: string, message: string) => never
 
 /** The modifiers every node form carries beside its invocation. */
-const MODIFIERS = new Set(['fallback', 'useCache', 'vars'])
+const MODIFIERS = new Set(['fallback', 'noCache', 'vars'])
+
+const NO_CACHE_VALUE =
+  "'noCache' takes only the literal true — it is settled before the subtree runs"
 
 export const readNode = (raw: Record<string, unknown>, lookup: Lookup, fail: Fail): NodeRead => {
   const classified = classifyObject(raw, lookup.recognizes)
@@ -162,6 +165,8 @@ const readCanonicalOperator = (
     const value = raw[key]
     if (value === undefined) continue
     if (key === 'operator') slots.push({ kind: 'invocation' })
+    else if (key === 'noCache' && value !== true)
+      return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)
     else if (key === '//' || MODIFIERS.has(key)) slots.push({ kind: 'keep', key, value })
     else if (key === 'parameters')
       return fail(ErrorCodes.malformedNode, "'parameters' is reserved and unused on operator nodes")
@@ -213,13 +218,9 @@ const readCanonicalFragment = (
     else if (key === 'parameters') {
       checkFragmentParameters(value, lookup, fail)
       slots.push({ kind: 'param', name: key, value })
-    } else if (key === '//' || key === 'fallback' || key === 'vars')
-      slots.push({ kind: 'keep', key, value })
-    else if (key === 'useCache')
-      return fail(
-        ErrorCodes.malformedNode,
-        "'useCache' is not available on fragment calls — caching stays operator-level"
-      )
+    } else if (key === 'noCache' && value !== true)
+      return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)
+    else if (key === '//' || MODIFIERS.has(key)) slots.push({ kind: 'keep', key, value })
     else
       return fail(
         ErrorCodes.unknownNodeKey,
@@ -261,11 +262,14 @@ const readShorthand = (
       continue
     }
     // The sibling rule: reserved modifiers only
-    if (!SHORTHAND_SIBLINGS.has(key) || (isFragment && key === 'useCache'))
+    if (!SHORTHAND_SIBLINGS.has(key))
       return fail(
         ErrorCodes.malformedNode,
         `'${key}' may not sit beside the shorthand key '${shorthandKey}' — reserved modifiers only`
       )
+    // Dead on `literal`, so its value goes unchecked there, as in the compiler
+    if (key === 'noCache' && value !== true && !isLiteral)
+      return fail(ErrorCodes.malformedNode, NO_CACHE_VALUE)
     if (value !== undefined) slots.push({ kind: 'keep', key, value })
   }
 

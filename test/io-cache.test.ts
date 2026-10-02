@@ -122,14 +122,14 @@ describe('what forks the key', () => {
 describe('gating and clearing', () => {
   it('a node opting out never touches the store', async () => {
     const { fig, http, store } = rig()
-    await fig.evaluate({ operator: 'http', url: 'https://api.test/x', useCache: false })
-    await fig.evaluate({ operator: 'http', url: 'https://api.test/x', useCache: false })
+    await fig.evaluate({ operator: 'http', url: 'https://api.test/x', noCache: true })
+    await fig.evaluate({ operator: 'http', url: 'https://api.test/x', noCache: true })
     expect(http.callCount).toBe(2)
     expect(store.log).toHaveLength(0)
   })
 
-  it('a blanket useCache: false turns the whole instance off', async () => {
-    const { fig, http } = rig({ useCache: false })
+  it("the host's noCache turns one operator off for the instance", async () => {
+    const { fig, http } = rig({ operatorDefaults: { http: { noCache: true } } })
     await fig.evaluate({ $http: 'https://api.test/x' })
     await fig.evaluate({ $http: 'https://api.test/x' })
     expect(http.callCount).toBe(2)

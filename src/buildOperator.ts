@@ -193,8 +193,7 @@ export const assembleOperator = (
       (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
     ),
     timeoutParam: def.timeoutParam ?? null,
-    useCache: def.useCache ?? false,
-    cache: def.cache ?? 'auto',
+    cache: def.cache === true,
     // Stamped below, once every field it reads is in place
     fingerprint: '',
     evaluate: def.evaluate as OperatorEvaluate,
@@ -231,7 +230,6 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
         d.positionalParams,
         d.restParam,
         d.returns,
-        d.useCache,
         d.cache,
         d.timeoutParam,
         d.evaluate,

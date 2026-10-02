@@ -47,7 +47,7 @@ export { staticType } from './staticType'
 export { DEPTH_CEILING } from './grammar'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'
 export type { CacheEntry } from './compileCache'
-// The result cache's `'auto'` keys use the same serializer (Phase 9.1) —
-// its second consumer, as `lru.ts` is shared with the content layer
+// The result cache's keys use the same serializer — its second consumer,
+// as `lru.ts` is shared with the content layer
 export { serializeInput } from './contentKey'
 export type { ProbeResult } from './probe'

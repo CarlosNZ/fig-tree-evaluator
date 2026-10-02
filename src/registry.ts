@@ -35,11 +35,21 @@ export interface RegistryEntry {
   definition: ValidatedOperatorDefinition
   /**
    * Validated instance-level defaults for this operator — parameter targets
-   * plus the `fallback` / `useCache` modifier pseudo-keys, as authored.
+   * plus the `fallback` / `noCache` modifier pseudo-keys, as authored.
    * Absent when `operatorDefaults` has no entry for it.
    */
   instanceDefaults?: Readonly<Record<string, unknown>>
 }
+
+/**
+ * Whether a node of this operator may cache on this instance: its
+ * definition declares `cache: true` and the host has not set `noCache` for
+ * it. A node's own or an ancestor's `noCache` is the evaluation's to add.
+ * The one predicate the compiler's `noCache` checks, the evaluator and
+ * introspection share.
+ */
+export const operatorCaches = (entry: RegistryEntry): boolean =>
+  entry.definition.cache && entry.instanceDefaults?.noCache !== true
 
 export interface OperatorRegistry {
   /** Canonical name → entry; insertion order is registration order. */
@@ -61,7 +71,7 @@ export interface RegistryInput {
 }
 
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
-const MODIFIER_KEYS = ['fallback', 'useCache']
+const MODIFIER_KEYS = ['fallback', 'noCache']
 
 const throwOptionsError = (issues: Issue[]): never => {
   const [first] = issues
@@ -219,15 +229,26 @@ const validateOperatorDefaults = (
       const keyPath: Path = [...path, key]
       if (MODIFIER_KEYS.includes(key)) {
         // fallback: any constant (constancy classification is a Phase-3
-        // compiler concern); useCache: boolean
-        if (key === 'useCache' && typeof value !== 'boolean') {
-          addIssue(
-            ErrorCodes.invalidOptions,
-            `the 'useCache' modifier default must be a boolean`,
-            keyPath,
-            operatorName
-          )
-          valid = false
+        // compiler concern); noCache: the literal true, on an operator that
+        // caches at all — it only ever turns caching off
+        if (key === 'noCache') {
+          if (value !== true) {
+            addIssue(
+              ErrorCodes.invalidOptions,
+              `the 'noCache' modifier takes only the literal true`,
+              keyPath,
+              operatorName
+            )
+            valid = false
+          } else if (!entry.definition.cache) {
+            addIssue(
+              ErrorCodes.invalidOptions,
+              `'noCache' on '${operatorName}', which never caches — its definition does not declare 'cache: true'`,
+              keyPath,
+              operatorName
+            )
+            valid = false
+          }
         }
         continue
       }
@@ -235,7 +256,7 @@ const validateOperatorDefaults = (
       if (declaration === undefined) {
         addIssue(
           ErrorCodes.invalidOptions,
-          `'${key}' names no declared parameter of '${operatorName}' (nor 'fallback'/'useCache')`,
+          `'${key}' names no declared parameter of '${operatorName}' (nor 'fallback'/'noCache')`,
           keyPath,
           operatorName
         )

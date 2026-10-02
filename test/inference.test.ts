@@ -6,7 +6,13 @@
  * happy.
  */
 import { defineOperator, EvaluationData } from '../src'
-import type { LazyValue, PerElement, ResolvedParams, SettlementStream } from '../src'
+import type {
+  FigTreeOptions,
+  LazyValue,
+  PerElement,
+  ResolvedParams,
+  SettlementStream,
+} from '../src'
 
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
@@ -96,21 +102,18 @@ type Declared = { a: { type: 'number' }; b: { type: 'string'; required: false } 
 assertType<Equal<ResolvedParams<Declared>, { a: number; b?: string }>>()
 
 /**
- * Regression (Phase 9.2): `defineOperator` used to take one parameter
- * typed `OperatorDefinition<P> | ValidatedOperatorDefinition`, and a
- * literal carrying enough of the validated shape's fields stopped being
- * contextually typed — silently, with every body parameter becoming
- * `any`. `useCache` and `cache` together were enough, which is the pair
- * every I/O operator declares. Overloads replaced the union; this is the
- * combination that caught it.
+ * The overloads' regression guard (Phase 9.2). With one parameter typed
+ * `OperatorDefinition<P> | ValidatedOperatorDefinition`, a literal carrying
+ * enough of the validated shape's fields stops being contextually typed —
+ * silently, with every body parameter `any`. This literal carries `cache`,
+ * a field both shapes have, as every I/O operator does.
  */
 const cachingOp = defineOperator({
   name: 'caching',
   category: 'other',
-  description: 'declares both caching fields',
+  description: 'declares a caching operator',
   parameters: { key: { type: 'string' }, count: { type: 'integer', default: 1 } },
-  useCache: true,
-  cache: 'manual',
+  cache: true,
   evaluate: (params) => {
     assertType<Equal<typeof params.key, string>>()
     assertType<Equal<typeof params.count, number>>()
@@ -119,8 +122,33 @@ const cachingOp = defineOperator({
 })
 
 test('the inferred definition is a valid, registrable definition', () => {
-  expect(cachingOp.cache).toBe('manual')
+  expect(cachingOp.cache).toBe(true)
 
   expect(op.name).toBe('inferred')
   expect(op.parameters.value.nullPolicy).toBe('propagate')
 })
+
+/**
+ * The caching declarations take only `true`, at the type level as at
+ * registration: a definition's `cache` and an `operatorDefaults` `noCache`
+ * both exist only to say one thing.
+ */
+test('a cache that is not true is refused at registration as well', () => {
+  expect(() =>
+    // @ts-expect-error — `cache` is the literal true or absent
+    defineOperator({
+      name: 'x',
+      category: 'other',
+      description: 'x',
+      parameters: {},
+      cache: false,
+      evaluate: () => 1,
+    })
+  ).toThrow(/literal true/)
+})
+
+export const hostOff: FigTreeOptions = {
+  operatorDefaults: { http: { noCache: true, fallback: null } },
+}
+// @ts-expect-error — `noCache` only ever turns caching off
+export const hostOn: FigTreeOptions = { operatorDefaults: { http: { noCache: false } } }

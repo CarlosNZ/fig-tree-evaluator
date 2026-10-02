@@ -90,14 +90,14 @@ describe('each kind of object', () => {
         $abs: -1,
         fallback: { $abs: -2 },
         vars: { x: { $abs: -3 }, '//': 'note' },
-        useCache: false,
+        noCache: true,
       }),
       {
         operator: 'abs',
         value: -1,
         fallback: { operator: 'abs', value: -2 },
         vars: { x: { operator: 'abs', value: -3 }, '//': 'note' },
-        useCache: false,
+        noCache: true,
       }
     )
   })
@@ -189,12 +189,12 @@ describe('referencesAsGet', () => {
 
 describe('key order', () => {
   test('the invocation keeps its place; parameters follow it', () => {
-    expectForm(canonical({ fallback: 0, $subtract: [5, 2], useCache: true }), {
+    expectForm(canonical({ fallback: 0, $subtract: [5, 2], noCache: true }), {
       fallback: 0,
       operator: 'subtract',
       value: 5,
       minus: 2,
-      useCache: true,
+      noCache: true,
     })
   })
 

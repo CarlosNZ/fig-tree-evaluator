@@ -34,6 +34,7 @@
  * Key order is preserved rather than sorted: two spellings of the same
  * object are a deliberate miss, not something to canonicalize.
  */
+import { LAZY_HANDLE } from '../runtimeInterface'
 import { isPlainDataObject } from '../utils'
 import { DEPTH_CEILING } from './grammar'
 
@@ -162,7 +163,10 @@ const write = (value: unknown, depth: number, out: string[]): boolean => {
     for (const element of value) if (!write(element, depth + 1, out)) return false
     return push(out, ']')
   }
-  if (!isPlainDataObject(value)) return false
+  // An engine handle is not content. A settlement stream is a plain object
+  // whose only string key is `length`, so without this two different
+  // streams in a body's `memo` key would serialize alike
+  if (!isPlainDataObject(value) || LAZY_HANDLE in value) return false
   out.push('{')
   for (const key in value) {
     out.push(`s${key.length}:${key}`)

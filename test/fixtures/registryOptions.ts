@@ -42,6 +42,17 @@ export const equalLike = (): ValidatedOperatorDefinition =>
     evaluate: ({ values }) => values,
   })
 
+/** A caching operator, the only kind a `noCache` modifier may target. */
+export const fetchLike = (): ValidatedOperatorDefinition =>
+  defineOperator({
+    name: 'fetch',
+    category: 'other',
+    description: 'A caching operator',
+    parameters: { url: { type: 'string' } },
+    cache: true,
+    evaluate: ({ url }) => url,
+  })
+
 // ── Collision matrix ────────────────────────────────────────────────────
 
 export interface CollisionFixture {
@@ -140,11 +151,27 @@ export const operatorDefaultsFixtures: OperatorDefaultsFixture[] = [
     },
   },
   {
-    id: 'useCache-modifier-not-boolean',
-    operatorDefaults: { equal: { useCache: 'yes' } },
+    id: 'noCache-modifier-not-true',
+    operatorDefaults: { fetch: { noCache: false } },
     expected: {
       code: ErrorCodes.invalidOptions,
-      pathTail: ['operatorDefaults', 'equal', 'useCache'],
+      pathTail: ['operatorDefaults', 'fetch', 'noCache'],
+    },
+  },
+  {
+    id: 'noCache-on-an-operator-that-never-caches',
+    operatorDefaults: { equal: { noCache: true } },
+    expected: {
+      code: ErrorCodes.invalidOptions,
+      pathTail: ['operatorDefaults', 'equal', 'noCache'],
+    },
+  },
+  {
+    id: 'useCache-is-not-a-modifier',
+    operatorDefaults: { fetch: { useCache: true } },
+    expected: {
+      code: ErrorCodes.invalidOptions,
+      pathTail: ['operatorDefaults', 'fetch', 'useCache'],
     },
   },
   {
@@ -165,8 +192,8 @@ export const operatorDefaultsFixtures: OperatorDefaultsFixture[] = [
     expected: null,
   },
   {
-    id: 'useCache-modifier-boolean',
-    operatorDefaults: { equal: { useCache: true } },
+    id: 'noCache-modifier-on-a-caching-operator',
+    operatorDefaults: { fetch: { noCache: true } },
     expected: null,
   },
 ]

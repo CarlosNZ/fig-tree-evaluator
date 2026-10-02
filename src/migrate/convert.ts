@@ -3,11 +3,11 @@
  * convert", "Where rules sit" and "Rules that cut across operators" in
  * docs-dev/v3-specs/v3-converter.md). For each node it converts the
  * parameter values first, applies the operator's rule, then attaches the
- * modifiers around the result: `fallback` and `useCache` carry over, alias
- * definitions become `vars`, `outputType` wraps the result in `convert`, and
- * the keys v2 ignored go into a `//` comment. A result that is not a node
- * cannot carry them all, and takes what it can ("A result that is not a
- * node").
+ * modifiers around the result: `fallback` carries over, v2's `useCache`
+ * decides `noCache`, alias definitions become `vars`, `outputType` wraps
+ * the result in `convert`, and the keys v2 ignored go into a `//` comment.
+ * A result that is not a node cannot carry them all, and takes what it can
+ * ("A result that is not a node").
  *
  * Two things travel down the walk. The scope maps each alias in reach to the
  * reference it becomes, and v2 resolved a reference from the definitions on
@@ -92,7 +92,7 @@ interface NodeContext extends RuleContext {
 interface Carried {
   comment?: unknown
   fallback?: unknown
-  useCache?: unknown
+  noCache?: true
   vars?: PlainObject
 }
 
@@ -118,6 +118,8 @@ const CACHE_DEFAULTS: Partial<Record<V2Operator, boolean>> = {
   SQL: true,
   CUSTOM_FUNCTIONS: false,
 }
+// The v2 operators whose v3 counterpart caches by default
+const CACHED_IN_V3: ReadonlySet<V2Operator> = new Set(['GET', 'POST', 'GRAPHQL', 'SQL'])
 
 // What v2's `outputType` did that v3's `convert` does not, by target type
 const DIFFERENCES: Record<string, string> = {
@@ -140,20 +142,28 @@ const differences = (to: unknown) => {
 
 /**
  * A node in the fixed key order: `//`, the defining key and parameters as
- * they are, then `fallback`, `useCache` and `vars`
+ * they are, then `fallback`, `noCache` and `vars`
  */
-const layout = (body: PlainObject, { comment, fallback, useCache, vars }: Carried) => ({
+const layout = (body: PlainObject, { comment, fallback, noCache, vars }: Carried) => ({
   ...(comment !== undefined && { '//': comment }),
   ...body,
   ...(fallback !== undefined && { fallback }),
-  ...(useCache !== undefined && { useCache }),
+  ...(noCache !== undefined && { noCache }),
   ...(vars !== undefined && { vars }),
 })
 
 /** A node split into what `layout` puts back together */
 const parts = (node: PlainObject) => {
-  const { '//': comment, fallback, useCache, vars, ...body } = node
-  return { body, carried: { comment, fallback, useCache, vars: vars as PlainObject | undefined } }
+  const { '//': comment, fallback, noCache, vars, ...body } = node
+  return {
+    body,
+    carried: {
+      comment,
+      fallback,
+      noCache: noCache as true | undefined,
+      vars: vars as PlainObject | undefined,
+    },
+  }
 }
 
 /** Two nodes' `//` values as one, the inner first */
@@ -470,9 +480,9 @@ class Converter {
     const context = this.context(input, path, notes, taken, parameters, sources)
     const result = applyRule(V3_RULES[operator], { v2, extra, modifiers }, context)
 
-    const useCache = this.useCache(input, operator, context)
+    const noCache = this.noCache(input, operator, context)
     const comment = this.comment(input, [...parameters, ...Object.keys(extra)], notes)
-    const output = this.attach(result, { comment, useCache, vars }, modifiers, context)
+    const output = this.attach(result, { comment, noCache, vars }, modifiers, context)
     this.settle(context, path)
     return output
   }
@@ -625,26 +635,26 @@ class Converter {
   }
 
   /**
-   * v3 takes a literal boolean only. Where v2 cached, anything else is a
-   * deciding value, and v2's default is written; elsewhere v2 ignored it,
-   * PASSTHRU included, whose result may be a node that does cache. v2 left
-   * POST uncached unless told otherwise, where v3's `http` caches.
+   * Whether the node takes `noCache: true` ("The modifiers"): where v2 left
+   * it uncached and its v3 counterpart caches. v2 resolved the node's own
+   * `useCache`, then the instance option, then the operator's default, for
+   * the five operators that read it; every other one, PASSTHRU included,
+   * ignored it. On those five a value that is not a boolean is a deciding
+   * value, and the option or the default decides.
    */
-  private useCache(input: PlainObject, operator: V2Operator, context: RuleContext) {
-    if (operator === 'PASSTHRU') return undefined
-    if (!Object.hasOwn(input, 'useCache'))
-      return operator === 'POST' && this.options.useCache !== true ? false : undefined
-    const value = input.useCache
-    if (typeof value === 'boolean') return value
+  private noCache(input: PlainObject, operator: V2Operator, context: RuleContext) {
     const fallback = CACHE_DEFAULTS[operator]
     if (fallback === undefined) return undefined
-    const wrote = this.options.useCache ?? fallback
-    context.issue('deciding-value', 'useCache', {
-      reason: undecided('useCache', value),
-      wrote: `\`useCache: ${wrote}\``,
-      key: 'useCache',
-    })
-    return wrote
+    const value = input.useCache
+    const cached = typeof value === 'boolean' ? value : (this.options.useCache ?? fallback)
+    const written = !cached && CACHED_IN_V3.has(operator)
+    if (Object.hasOwn(input, 'useCache') && typeof value !== 'boolean')
+      context.issue('deciding-value', 'useCache', {
+        reason: undecided('useCache', value),
+        wrote: written ? '`noCache: true`' : 'no `noCache`',
+        key: 'useCache',
+      })
+    return written ? (true as const) : undefined
   }
 
   /**
@@ -668,7 +678,7 @@ class Converter {
   /**
    * The modifiers around a rule's result. `outputType` wraps it in
    * `convert`, which then carries `fallback` and `vars`, since v2 never
-   * converted a fallback's result, while `useCache` stays on the node that
+   * converted a fallback's result, while `noCache` stays on the node that
    * does the work.
    */
   private attach(
@@ -695,7 +705,7 @@ class Converter {
     })
     const worker = isNode(result) && !isLiteral(result)
     const value = worker
-      ? this.carry(result, { comment: carried.comment, useCache: carried.useCache }, false, context)
+      ? this.carry(result, { comment: carried.comment, noCache: carried.noCache }, false, context)
       : result
     return this.carry(
       { operator: 'convert', value, to: to === 'bool' ? 'boolean' : to },
@@ -726,12 +736,12 @@ class Converter {
    * node takes everything; where it has its own `fallback`, the node's goes
    * at the end of that chain, the only place v2's could still answer. A
    * constant or a reference cannot fail and has nothing to cache, so it drops
-   * `fallback` and `useCache`, except that a `$data` read that must carry one
+   * `fallback` and `noCache`, except that a `$data` read that must carry one
    * becomes the equivalent `get`. An object or array holding nodes takes
    * what v3 lets it.
    */
   private carry(result: unknown, carried: Carried, hasFallback: boolean, context: NodeContext) {
-    const { comment, fallback, useCache, vars } = carried
+    const { comment, fallback, noCache, vars } = carried
     if (isNode(result) && !isLiteral(result)) {
       const { body, carried: own } = parts(result as PlainObject)
       let placed = own.fallback
@@ -744,7 +754,7 @@ class Converter {
       return layout(body, {
         comment: joinComments(own.comment, comment),
         fallback: placed,
-        useCache: own.useCache ?? useCache,
+        noCache: own.noCache ?? noCache,
         vars: joinVars(vars, own.vars),
       })
     }

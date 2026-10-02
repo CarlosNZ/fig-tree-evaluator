@@ -137,14 +137,13 @@ export interface OperatorInfo extends Omit<
   /** The `validate` hook, as a flag — the function itself never travels. */
   hasValidate: boolean
   /**
-   * What `operatorDefaults` set for this operator's `useCache` — that
-   * modifier alone. The blanket `useCache` option is deliberately not
-   * folded in: it is not a per-operator fact, and folding would make one
-   * `instance*` key mean two sources where every other means one. The
-   * full chain a consumer composes is
-   * `node key ?? instanceUseCache ?? getOptions().useCache ?? useCache`.
+   * `true` where `operatorDefaults` turned this operator's caching off;
+   * absent otherwise. Caching can only be turned off after the definition
+   * declares it, so the operator caches on this instance when
+   * `cache && !instanceNoCache` — the one field whose composition is not
+   * `instanceX ?? X`.
    */
-  instanceUseCache?: boolean
+  instanceNoCache?: true
   /**
    * What `operatorDefaults` set as this operator's fallback. No
    * definition-level counterpart exists — `fallback` is a node grammar
@@ -209,7 +208,6 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
       parameters: parameterSnapshot(definition.parameters, instanceDefaults),
       restParam: definition.restParam,
       timeoutParam: definition.timeoutParam,
-      useCache: definition.useCache,
       cache: definition.cache,
       returns: definition.returns,
       hasValidate: definition.validate !== undefined,
@@ -221,8 +219,7 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
     // Presence by `hasOwn`, never by value: an override OF null is a real
     // override, and "degrade to null" is the common fallback
     if (instanceDefaults !== undefined) {
-      if (Object.hasOwn(instanceDefaults, 'useCache'))
-        info.instanceUseCache = instanceDefaults.useCache as boolean
+      if (instanceDefaults.noCache === true) info.instanceNoCache = true
       if (Object.hasOwn(instanceDefaults, 'fallback'))
         info.instanceFallback = instanceDefaults.fallback
     }
@@ -232,7 +229,7 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
 /**
  * Parameter targets and the two modifier pseudo-keys share one
  * `operatorDefaults` entry, and reading them apart needs no disambiguation:
- * `fallback` and `useCache` are reserved parameter names (src/names.ts), so
+ * `fallback` and `noCache` are reserved parameter names (src/names.ts), so
  * no declaration can collide with either.
  */
 const parameterSnapshot = (

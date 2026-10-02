@@ -99,8 +99,9 @@ export const readCacheConfig = (block: unknown): ResolvedCacheConfig => {
     throw configError("'cache.store' must provide get, set, delete and clear methods")
   if (maxSize !== undefined && (!Number.isInteger(maxSize) || (maxSize as number) < 1))
     throw configError("'cache.maxSize' must be a positive integer")
-  // Zero would mean "cache nothing", which `useCache: false` already says;
-  // admitting it here would give one behaviour two spellings
+  // Zero would mean "cache nothing", which `noCache` already says, per
+  // operator or per subtree; admitting it here would give one behaviour
+  // two spellings
   if (
     maxTime !== undefined &&
     (typeof maxTime !== 'number' || maxTime <= 0 || Number.isNaN(maxTime))

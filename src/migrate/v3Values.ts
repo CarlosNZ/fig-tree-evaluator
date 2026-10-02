@@ -46,7 +46,7 @@ export const isPlaceholder = (value: unknown) =>
 export const unquote = (value: unknown): unknown => (isLiteral(value) ? value.value : value)
 
 // The keys that may sit beside a shorthand node's `$` key
-const MODIFIER_KEYS = ['//', 'fallback', 'useCache', 'vars']
+const MODIFIER_KEYS = ['//', 'fallback', 'noCache', 'vars']
 
 /**
  * A v3 node: an operator node, a fragment call, or a call on a custom
@@ -139,7 +139,7 @@ export const RESERVED_NODE_KEYS: ReadonlySet<string> = new Set([
   'fragment',
   'parameters',
   'fallback',
-  'useCache',
+  'noCache',
   'vars',
   '//',
 ])

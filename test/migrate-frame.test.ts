@@ -78,9 +78,9 @@ describe('the modifiers', () => {
       },
     },
     {
-      name: '`useCache` carries over',
+      name: 'a `useCache` where v2 never cached was ignored, and goes',
       input: { operator: 'and', values: [true], useCache: false },
-      expected: { operator: 'and', values: [true], useCache: false },
+      expected: { operator: 'and', values: [true] },
     },
     {
       name: 'a computed `useCache` where v2 never cached was ignored, and goes',
@@ -160,18 +160,17 @@ describe('the modifiers', () => {
       issues: [{ code: 'output-type', path: ['outputType'] }],
     },
     {
-      name: '`fallback` and `vars` go on the wrapper, `useCache` stays on the node',
+      name: '`fallback` and `vars` go on the wrapper',
       input: {
         operator: 'count',
         values: ['$a', 2],
         $a: 1,
-        useCache: true,
         fallback: '$a',
         outputType: 'number',
       },
       expected: {
         operator: 'convert',
-        value: { operator: 'length', value: ['$vars.a', 2], useCache: true },
+        value: { operator: 'length', value: ['$vars.a', 2] },
         to: 'number',
         fallback: '$vars.a',
         vars: { a: 1 },

@@ -35,7 +35,6 @@ export const clampLike = (): OperatorDefinition => ({
     max: { type: 'number', default: 1 },
   },
   positionalParams: ['value', 'min', 'max'],
-  useCache: false,
   // Annotated `OperatorDefinition`, so the declarations are the OPEN record
   // and every parameter arrives `unknown` — these fixtures exercise
   // registration, not inference (test/inference.test.ts covers that)
@@ -107,7 +106,7 @@ export const nullReplacerLike = (): OperatorDefinition => ({
   evaluate: ({ values }) => values,
 })
 
-/** An I/O-shaped definition: `timeoutParam` and a manual cache. */
+/** An I/O-shaped definition: `timeoutParam` and a cache. */
 export const httpLike = (): OperatorDefinition => ({
   name: 'http',
   category: 'other',
@@ -118,8 +117,7 @@ export const httpLike = (): OperatorDefinition => ({
   },
   positionalParams: ['url'],
   timeoutParam: 'requestTimeout',
-  useCache: true,
-  cache: 'manual',
+  cache: true,
   returns: 'any',
   evaluate: ({ url }) => url,
 })
@@ -259,13 +257,13 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['alias'] },
   },
   {
-    id: 'useCache-not-a-boolean',
-    definition: withField('useCache', 'yes'),
-    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['useCache'] },
+    id: 'cache-false',
+    definition: withField('cache', false),
+    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['cache'] },
   },
   {
     id: 'cache-outside-vocabulary',
-    definition: withField('cache', 'sometimes'),
+    definition: withField('cache', 'manual'),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['cache'] },
   },
   {

@@ -102,8 +102,11 @@ export interface OperatorNode extends CompiledBase {
   params: Record<string, CompiledNode>
   /** Compiled lazily-evaluated failure catch; absent when not authored. */
   fallback?: CompiledNode
-  /** Authored literal boolean only (grammar rule); absent when unauthored. */
-  useCache?: boolean
+  /**
+   * Authored literal `true` only (grammar rule): nothing evaluated in this
+   * node's subtree reads or writes the result cache. Absent when unauthored.
+   */
+  noCache?: true
   /** The node's vars block: static names → compiled expressions. */
   vars?: Record<string, CompiledNode>
   /**
@@ -139,6 +142,12 @@ export interface FragmentCallNode extends CompiledBase {
   argumentsMode: 'static' | 'dynamic'
   parameters?: Record<string, CompiledNode> | CompiledNode
   fallback?: CompiledNode
+  /**
+   * Authored literal `true` only: nothing the call evaluates — its
+   * arguments, its body and every call inside — reads or writes the
+   * result cache. Absent when unauthored.
+   */
+  noCache?: true
   vars?: Record<string, CompiledNode>
 }
 

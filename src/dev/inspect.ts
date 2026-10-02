@@ -119,14 +119,14 @@ const describeNode = (node: CompiledNode): string => {
     }
     case 'operator': {
       const marks: string[] = []
-      if (node.useCache !== undefined) marks.push(`useCache ${node.useCache}`)
+      if (node.noCache === true) marks.push('noCache')
       if (node.precomputed !== undefined) marks.push('precomputed')
       if (node.entry.instanceDefaults !== undefined)
         marks.push(`instanceDefaults ${Object.keys(node.entry.instanceDefaults).join('+')}`)
       return `operator  ${node.name}${marks.length === 0 ? '' : `  {${marks.join('; ')}}`}`
     }
     case 'fragmentCall':
-      return `fragment  ${node.name}  (${node.argumentsMode} arguments)`
+      return `fragment  ${node.name}  (${node.argumentsMode} arguments${node.noCache === true ? '; noCache' : ''})`
     case 'skeleton': {
       const holes = `${node.holes.length} hole${node.holes.length === 1 ? '' : 's'}`
       return `skeleton  ${holes}  shape: ${renderSkeleton(node.skeleton, node.holes)}`

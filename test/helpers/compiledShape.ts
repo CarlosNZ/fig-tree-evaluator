@@ -44,7 +44,7 @@ const nodeShape = (node: CompiledNode, options: ShapeOptions): unknown => {
         name: node.name,
         params: mapValues(node.params, project),
         fallback: node.fallback && project(node.fallback),
-        useCache: node.useCache,
+        noCache: node.noCache,
         vars: mapValues(node.vars, project),
         precomputed: node.precomputed,
       }
@@ -66,6 +66,7 @@ const nodeShape = (node: CompiledNode, options: ShapeOptions): unknown => {
             ? mapValues(parameters as Record<string, CompiledNode>, project)
             : project(parameters as CompiledNode),
         fallback: node.fallback && project(node.fallback),
+        noCache: node.noCache,
         vars: mapValues(node.vars, project),
       }
     }

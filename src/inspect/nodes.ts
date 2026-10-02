@@ -48,7 +48,7 @@ export type InspectNode = { order: number; path: Path } & (
       fallback?: InspectNode
       /** The constant a top-level hole's timeout assembly splices in. */
       timeoutFallback?: Json
-      useCache?: boolean
+      noCache?: true
       instanceDefaults?: string[]
     }
   | {
@@ -60,6 +60,7 @@ export type InspectNode = { order: number; path: Path } & (
       parameters?: NodeMap | InspectNode
       fallback?: InspectNode
       timeoutFallback?: Json
+      noCache?: true
     }
   | {
       kind: 'skeleton'
@@ -117,7 +118,7 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
           params: renderAll(node.params),
           ...(node.fallback === undefined ? {} : { fallback: render(node.fallback) }),
           ...shielding(node),
-          ...(node.useCache === undefined ? {} : { useCache: node.useCache }),
+          ...(node.noCache === undefined ? {} : { noCache: node.noCache }),
           ...(node.entry.instanceDefaults === undefined
             ? {}
             : { instanceDefaults: Object.keys(node.entry.instanceDefaults) }),
@@ -140,6 +141,7 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
               }),
           ...(node.fallback === undefined ? {} : { fallback: render(node.fallback) }),
           ...shielding(node),
+          ...(node.noCache === undefined ? {} : { noCache: node.noCache }),
         }
       case 'skeleton': {
         // Filled by the engine's own `splice`, a placeholder standing in for

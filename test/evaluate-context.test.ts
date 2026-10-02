@@ -4,8 +4,8 @@
  * working rule 3): signal passthrough, options delivery, identity
  * `cache.memo`, no-op `trace.note`.
  *
- * The spy operator's metadata `useCache` default is false, so its `memo`
- * is the passthrough branch — the cache proper has its own suite in
+ * The spy operator declares no `cache`, so its `memo` is the passthrough
+ * branch — the cache proper has its own suite in
  * test/result-cache.test.ts.
  */
 import { FigTree, defineOperator } from '../src'

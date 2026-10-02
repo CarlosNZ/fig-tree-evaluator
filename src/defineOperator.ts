@@ -104,10 +104,9 @@ const throwDefinitionError = (issues: Issue[], operator?: string): never => {
  * Overloads rather than one signature over a union, because a union
  * defeats the inference this function exists to provide. With
  * `OperatorDefinition<P> | ValidatedOperatorDefinition` as one parameter
- * type, a literal carrying enough of the validated shape's fields — it
- * takes only `useCache` and `cache` together — stops being contextually
- * typed at all, and every body parameter silently becomes `any`. The I/O
- * operators declare exactly that pair, which is how this surfaced.
+ * type, a literal carrying enough of the validated shape's fields stops
+ * being contextually typed at all, and every body parameter silently
+ * becomes `any`.
  *
  * Ordered so the idempotent case is tried first: a plain literal cannot
  * match it, since the brand symbol is unforgeable outside this module, so
@@ -180,10 +179,8 @@ export function defineOperator(
     )
   if (def.alias !== undefined && typeof def.alias !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'alias' must be a string", ['alias'])
-  if (def.useCache !== undefined && typeof def.useCache !== 'boolean')
-    addIssue(ErrorCodes.invalidDefinition, "'useCache' must be a boolean", ['useCache'])
-  if (def.cache !== undefined && def.cache !== 'auto' && def.cache !== 'manual')
-    addIssue(ErrorCodes.invalidDefinition, "'cache' must be 'auto' or 'manual'", ['cache'])
+  if (def.cache !== undefined && def.cache !== true)
+    addIssue(ErrorCodes.invalidDefinition, "'cache' must be the literal true", ['cache'])
   if (def.metadata !== undefined && !isPlainObject(def.metadata))
     addIssue(ErrorCodes.invalidDefinition, "'metadata' must be a plain object", ['metadata'])
   if (

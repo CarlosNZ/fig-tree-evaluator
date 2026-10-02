@@ -250,12 +250,12 @@ describe('canonicalForm', () => {
     expect(canonicalForm).toMatchObject({ shape: { list: [1, '<hole>'] } })
   })
 
-  test('operatorDefaults show as the keys they apply; useCache as authored', () => {
+  test('operatorDefaults show as the keys they apply; noCache as authored', () => {
     const { canonicalForm } = report(
-      { $join: ['a', '$data.b'], useCache: false },
+      { $join: ['a', '$data.b'], noCache: true },
       { operatorDefaults: { join: { delimiter: '-' } } }
     )
-    expect(canonicalForm).toMatchObject({ useCache: false, instanceDefaults: ['delimiter'] })
+    expect(canonicalForm).toMatchObject({ noCache: true, instanceDefaults: ['delimiter'] })
   })
 })
 

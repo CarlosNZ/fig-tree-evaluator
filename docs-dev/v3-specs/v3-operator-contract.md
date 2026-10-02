@@ -258,7 +258,7 @@ The engine hands a body the live `memo` only where the node is caching — the d
 
 - the `cache` option's store and TTL;
 - keys namespaced by operator name and definition fingerprint (a content hash `defineOperator()` stamps once — [#174](https://github.com/CarlosNZ/fig-tree-evaluator/issues/174)), so a body cannot collide with another operator's entries, nor with another definition's under the same name;
-- a key the serializer refuses (a function, a class instance, a `Map`) runs the unit uncached rather than sharing a weaker key;
+- a key the serializer refuses (a function, a class instance, a `Map`, an engine handle) runs the unit uncached rather than sharing a weaker key. So a body with a lazily delivered parameter keys on what it resolved, never on the handle: a settlement stream's only string key is `length`, and without the refusal two different streams would key alike;
 - **failures are never cached**: a unit that throws stores nothing;
 - `trace` records hits and misses.
 

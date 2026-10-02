@@ -16,16 +16,15 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
-import type { FigTreeOptions } from '../options'
 import { toNodePath, type OperatorNode } from '../compile'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
-import { createOperatorContext, noteChannel, type EvaluationContext } from './context'
+import { createOperatorContext, noteChannel, pushNoCache, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
-import { autoKey, through } from './memo'
 import { resolveParams } from './params'
 import { pushVars } from './scope'
+import { operatorCaches } from '../registry'
 import { noop } from '../utils'
 
 export const evaluateOperator = async (
@@ -34,8 +33,9 @@ export const evaluateOperator = async (
 ): Promise<unknown> => {
   // One scope over both the attempt and the fallback: rule 5 — a fallback
   // evaluates in its node's own scope, so the node's vars are visible to
-  // it, memoized rejections included
-  const scoped = pushVars(ctx, node.vars)
+  // it, memoized rejections included. `noCache` goes on first, so the vars
+  // and the fallback are inside it too
+  const scoped = pushVars(pushNoCache(ctx, node.noCache), node.vars)
   // The ABORT scope is deliberately narrower than the vars scope: it covers
   // the attempt only. A fallback runs *after* the body settled, so a
   // fallback evaluated under this node's own scope would be refused at its
@@ -90,24 +90,18 @@ export const evaluateOperator = async (
 }
 
 /**
- * Resolve, run, normalize — and, where the node is cacheable, memoize
- * exactly that unit.
- *
- * What sits outside the memo is as deliberate as what sits inside.
- * `resolveParams` must be outside, since the key is built from its output;
- * that also means a failure in a parameter subtree rejects before an entry
- * could exist. The `fallback` is outside because it lives a frame up, so a
- * placeholder is never written under the failing node's key. And
- * `normalizeResult` is INSIDE: the finite-number and escaped-handle guards
- * then throw within the unit, so their failures are not cached either, and
- * `undefined` has become `null` before the write — a cached value can
- * never be `undefined`.
+ * Resolve, run, normalize. Caching is the body's own: where the node is
+ * caching, its context carries the live `memo`, and the body memoizes the
+ * unit it chooses under the key it chooses ("Caching" in
+ * docs-dev/v3-specs/v3-operator-contract.md). The result boundary runs
+ * here, after any unit, on every read, so it is never part of what a unit
+ * stores.
  */
 const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unknown> => {
   const { params, propagate } = await resolveParams(node, ctx)
   if (propagate) return null
   const { definition } = node.entry
-  const useCache = effectiveUseCache(node, ctx.options)
+  const caching = ctx.noCache !== true && operatorCaches(node.entry)
 
   // The node's own `timeout` parameter, if it declared one and this node
   // supplied it. Composed here rather than in the body, because only the
@@ -120,17 +114,10 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
       ? ctx
       : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope) }
   const note = noteChannel(ctx)
-  const context = createOperatorContext(bodyCtx, definition, useCache, note)
+  const context = createOperatorContext(bodyCtx, definition, caching, note)
 
   try {
-    // The common node is not caching: straight to the body, with no
-    // closure built and no frame between
-    if (!useCache || definition.cache !== 'auto')
-      return await runBody(node, ctx, params, context, deadline)
-    const key = autoKey(node, params)
-    const run = () => runBody(node, ctx, params, context, deadline)
-    // An unkeyable node runs uncached rather than sharing a weaker key
-    return await (key === undefined ? run() : through(ctx.cache, key, run, note))
+    return await runBody(node, ctx, params, context, deadline)
   } catch (error) {
     throw classifyBodyFailure(error, node, ctx, deadline, ms)
   } finally {
@@ -206,29 +193,6 @@ const classifyBodyFailure = (
     })
   return error
 }
-
-/**
- * Effective `useCache`, the settled four-step chain ("Caching" in
- * docs-dev/v3-specs/v3-operator-contract.md): the node's own key, then
- * the operator's `operatorDefaults` modifier, then the blanket option,
- * then the definition's metadata default.
- *
- * Total by construction, so it never falls off the end: the authored key
- * reaches the node only as a literal boolean (the compiler rejects anything
- * else), the modifier default is boolean-checked at registration, and
- * `defineOperator` normalizes the metadata default to a boolean. A
- * fragment call cannot carry the key at all, so the domain is operator
- * nodes alone.
- *
- * Consumed twice per cacheable node: once to pick the `'auto'` layer, and
- * once more inside the body's context, where it makes `context.cache.memo`
- * an identity passthrough for a node that is not caching.
- */
-export const effectiveUseCache = (node: OperatorNode, options: FigTreeOptions): boolean =>
-  node.useCache ??
-  (node.entry.instanceDefaults?.useCache as boolean | undefined) ??
-  options.useCache ??
-  node.entry.definition.useCache
 
 /** The node's own fallback, else the operator's instance-wide default. */
 const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {

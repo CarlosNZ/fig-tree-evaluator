@@ -91,8 +91,8 @@ const main = async () => {
   print('an empty rest binds', { $buildString: ['plain'] }, full({ $buildString: ['plain'] }))
   print(
     'the invocation keeps its place among the modifiers',
-    { fallback: 0, $subtract: [5, 2], useCache: false },
-    full({ fallback: 0, $subtract: [5, 2], useCache: false })
+    { fallback: 0, $subtract: [5, 2], noCache: true },
+    full({ fallback: 0, $subtract: [5, 2], noCache: true })
   )
   print('a fragment call', { $greet: { name: 'Ada' } }, full({ $greet: { name: 'Ada' } }))
   print(
