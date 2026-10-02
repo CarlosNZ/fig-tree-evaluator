@@ -124,7 +124,7 @@ describe('toReference', () => {
   test.each([
     ['a fallback', { operator: 'get', path: 'a', fallback: 0 }],
     ['a fallback beside shorthand', { $get: 'a', fallback: 0 }],
-    ['useCache', { operator: 'get', path: 'a', useCache: false }],
+    ['noCache', { operator: 'get', path: 'a', noCache: true }],
     ['vars', { operator: 'get', path: 'a', vars: { x: 1 } }],
     ['default', { operator: 'get', path: 'a', default: 0 }],
     ['default, positional', { $get: ['a', 0] }],

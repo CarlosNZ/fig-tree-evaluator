@@ -26,8 +26,7 @@ const custom = defineOperator({
     ms: { type: 'integer', required: false },
   },
   positionalParams: ['value'],
-  useCache: true,
-  cache: 'manual',
+  cache: true,
   timeoutParam: 'ms',
   returns: 'string',
   evaluate: ({ value }) => String(value),
@@ -62,8 +61,7 @@ describe('what the snapshot contains', () => {
       positionalParams: ['value'],
       restParam: null,
       timeoutParam: 'ms',
-      useCache: true,
-      cache: 'manual',
+      cache: true,
       returns: 'string',
     })
   })
@@ -101,7 +99,11 @@ describe('what the snapshot contains', () => {
   test('function-valued fields are flags', () => {
     expect(find(snapshot, 'regex').hasValidate).toBe(true)
     expect(find(snapshot, 'round').hasValidate).toBe(false)
-    expect(find(snapshot, 'custom').cache).toBe('manual')
+  })
+
+  test('cache says whether the definition declares a caching operator', () => {
+    expect(find(snapshot, 'custom').cache).toBe(true)
+    expect(find(snapshot, 'round').cache).toBe(false)
   })
 })
 
@@ -132,8 +134,9 @@ describe('what the snapshot withholds', () => {
 describe('operatorDefaults — reported beside, never merged over', () => {
   const fig = build({
     operatorDefaults: {
-      round: { decimals: 2, useCache: true },
+      round: { decimals: 2 },
       regex: { noMatchDefault: null, fallback: null },
+      custom: { noCache: true },
     },
   })
   const snapshot = fig.getOperators()
@@ -145,7 +148,8 @@ describe('operatorDefaults — reported beside, never merged over', () => {
   })
 
   test('the modifier overrides get their own keys', () => {
-    expect(find(snapshot, 'round').instanceUseCache).toBe(true)
+    expect(find(snapshot, 'custom').instanceNoCache).toBe(true)
+    expect(find(snapshot, 'custom').cache).toBe(true) // still the definition's
     expect(find(snapshot, 'regex').instanceFallback).toBe(null)
   })
 
@@ -156,15 +160,13 @@ describe('operatorDefaults — reported beside, never merged over', () => {
     expect(Object.hasOwn(regex, 'instanceFallback')).toBe(true)
     // ...and an operator with no entry carries no override keys at all
     const plus = find(snapshot, 'plus')
-    expect(Object.hasOwn(plus, 'instanceUseCache')).toBe(false)
+    expect(Object.hasOwn(plus, 'instanceNoCache')).toBe(false)
     expect(Object.hasOwn(plus, 'instanceFallback')).toBe(false)
     expect(Object.hasOwn(plus.parameters.values, 'instanceDefault')).toBe(false)
   })
 
-  test('the blanket useCache option is not folded into instanceUseCache', () => {
-    const blanket = build({ useCache: true }).getOperators()
-    expect(Object.hasOwn(find(blanket, 'round'), 'instanceUseCache')).toBe(false)
-    expect(find(blanket, 'round').useCache).toBe(false) // still the definition's
+  test('noCache on an operator that never caches is refused at construction', () => {
+    expect(() => build({ operatorDefaults: { round: { noCache: true } } })).toThrow(/never caches/)
   })
 })
 

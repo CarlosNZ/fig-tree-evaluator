@@ -23,7 +23,7 @@ describe('constant inputs', () => {
     ['plain string', 'hello'],
     ['unrecognized $string', '$flibble.x'],
     ['inert $ key', { $flibble: 1 }],
-    ['reserved modifier keys on plain data', { fallback: 1, useCache: true }],
+    ['reserved modifier keys on plain data', { fallback: 1, noCache: true }],
     ['nested plain data', { a: [1, { b: 'c', d: [null, true] }] }],
     ['opaque value', new Date(0)],
     ['opaque inside plain data', { when: new Date(0), re: /x/ }],

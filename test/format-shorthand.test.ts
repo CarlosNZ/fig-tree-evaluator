@@ -237,11 +237,11 @@ describe('with the core operators', () => {
   describe('key order', () => {
     test('the invocation keeps its place; parameters move into the payload', () => {
       expectForm(
-        shorthand({ fallback: 0, operator: 'subtract', value: 5, minus: 2, useCache: true }),
+        shorthand({ fallback: 0, operator: 'subtract', value: 5, minus: 2, noCache: true }),
         {
           fallback: 0,
           $subtract: [5, 2],
-          useCache: true,
+          noCache: true,
         }
       )
     })

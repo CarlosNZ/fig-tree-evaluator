@@ -69,8 +69,8 @@
  *     with a nearest-name suggestion. `literal` is where parsing stops
  *     descending: its content is taken verbatim, never walked, classified
  *     or counted, however node-like it looks.
- *  9. Reserved modifiers compile first: `fallback`, `useCache` (a literal
- *     boolean only), `vars` (names legality-checked, values walked).
+ *  9. Reserved modifiers compile first: `fallback`, `noCache` (the literal
+ *     `true` only), `vars` (names legality-checked, values walked).
  * 10. Parameters are gathered — named keys checked against the definition,
  *     a shorthand payload disambiguated by JSON type into positional slots
  *     (leading, then the rest slice), named arguments, or one
@@ -632,18 +632,8 @@ const applyOperatorModifier = (
     node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
     return true
   }
-  if (key === 'useCache') {
-    if (typeof value === 'boolean') node.useCache = value
-    else
-      emit(
-        state,
-        'error',
-        ErrorCodes.malformedNode,
-        "'useCache' must be a literal boolean — the cache lookup happens before evaluation",
-        extendPath(path, 'useCache'),
-        order,
-        { operator: node.name }
-      )
+  if (key === 'noCache') {
+    compileNoCache(state, node, value, path, order)
     return true
   }
   if (key === 'vars') {
@@ -651,6 +641,32 @@ const applyOperatorModifier = (
     return true
   }
   return false
+}
+
+/**
+ * The `noCache` modifier, on an operator node or a fragment call: the
+ * literal `true` only. It is settled before the subtree runs, and exists
+ * only to turn caching off, so `false` says nothing and a node is
+ * incoherent.
+ */
+const compileNoCache = (
+  state: WalkState,
+  node: OperatorNode | FragmentCallNode,
+  value: unknown,
+  path: LinkedPath,
+  order: number
+) => {
+  if (value === true) node.noCache = true
+  else
+    emit(
+      state,
+      'error',
+      ErrorCodes.malformedNode,
+      "'noCache' takes only the literal true — it is settled before the subtree runs",
+      extendPath(path, 'noCache'),
+      order,
+      node.kind === 'operator' ? { operator: node.name } : {}
+    )
 }
 
 /** Queue a named parameter (canonical node key or named-payload key). */
@@ -1206,8 +1222,7 @@ const walkShorthand = (
   // The sibling-key rule: reserved modifiers only
   for (const key in raw) {
     if (key === shorthandKey) continue
-    const allowed = SHORTHAND_SIBLINGS.has(key) && !(isFragment && key === 'useCache')
-    if (!allowed) {
+    if (!SHORTHAND_SIBLINGS.has(key)) {
       emit(
         state,
         'error',
@@ -1225,7 +1240,7 @@ const walkShorthand = (
 
   if (isLiteral) {
     // Dead modifiers: legal, warned, never compiled (nothing can run)
-    for (const key of ['fallback', 'vars', 'useCache']) {
+    for (const key of ['fallback', 'vars', 'noCache']) {
       if (key in raw)
         emit(
           state,
@@ -1394,7 +1409,7 @@ const walkLiteral = (
   if ('operator' in raw) {
     for (const key in raw) {
       if (key === 'operator' || key === 'value' || key === '//') continue
-      if (key === 'fallback' || key === 'vars' || key === 'useCache') {
+      if (key === 'fallback' || key === 'vars' || key === 'noCache') {
         emit(
           state,
           'warning',
@@ -1476,15 +1491,8 @@ const walkFragmentCanonical = (
       node.vars = compileVars(state, value, path, depth, order)
       continue
     }
-    if (key === 'useCache') {
-      emit(
-        state,
-        'error',
-        ErrorCodes.malformedNode,
-        "'useCache' is not available on fragment calls — caching stays operator-level",
-        extendPath(path, 'useCache'),
-        order
-      )
+    if (key === 'noCache') {
+      compileNoCache(state, node, value, path, order)
       continue
     }
     emit(
@@ -1521,6 +1529,7 @@ const walkFragmentShorthand = (
     if (key === `$${name}` || key === '//' || value === undefined) continue
     if (key === 'fallback')
       node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
+    if (key === 'noCache') compileNoCache(state, node, value, path, order)
     if (key === 'vars') node.vars = compileVars(state, value, path, depth, order)
   }
   if (isPlainDataObject(payload)) {

@@ -111,16 +111,16 @@ test('plain-literal contents under an unrecognized key still traverse', () => {
 })
 
 test('reserved siblings are legal on a shorthand node', () => {
-  const artifact = compile({ $http: 'https://x.test/api', fallback: null, useCache: false })
+  const artifact = compile({ $http: 'https://x.test/api', fallback: null, noCache: true })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   const root = artifact.root as OperatorNode
   expect(root.kind).toBe('operator')
   expect(root.fallback?.kind).toBe('constant')
-  expect(root.useCache).toBe(false)
+  expect(root.noCache).toBe(true)
 })
 
 test('reserved modifier keys alone do not make an object a node', () => {
-  const artifact = compile({ fallback: 1, useCache: true })
+  const artifact = compile({ fallback: 1, noCache: true })
   expect(issueCodes(artifact, 'error')).toHaveLength(0)
   expect(artifact.root.kind).toBe('constant')
   expect(artifact.holes).toHaveLength(0)
@@ -180,11 +180,6 @@ test('fragment parameters that are neither object nor node are a hard error', ()
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
 })
 
-test('useCache is banned on fragment calls', () => {
-  const artifact = compile({ fragment: 'f', useCache: true })
-  expect(issueCodes(artifact, 'error')).toContain('malformed-node')
-})
-
 test('parameters is reserved-unused on operator nodes', () => {
   const artifact = compile({ operator: 'plus', values: [1], parameters: { x: 1 } })
   expect(issueCodes(artifact, 'error')).toContain('malformed-node')
@@ -212,11 +207,16 @@ test('a resolved call carries its registry entry', () => {
   expect((withFragment({ fragment: 'nope' }).root as FragmentCallNode).entry).toBeUndefined()
 })
 
-test('a fragment shorthand takes the reserved siblings, but never useCache', () => {
-  expect(issueCodes(withFragment({ $plain: {}, fallback: 1, vars: { a: 1 } }), 'error')).toEqual([])
-  expect(issueCodes(withFragment({ $plain: {}, useCache: true }), 'error')).toContain(
-    'malformed-node'
-  )
+test('a fragment shorthand takes the reserved siblings, noCache included', () => {
+  const artifact = withFragment({ $plain: {}, fallback: 1, vars: { a: 1 }, noCache: true })
+  expect(issueCodes(artifact, 'error')).toEqual([])
+  expect((artifact.root as FragmentCallNode).noCache).toBe(true)
+})
+
+test('a canonical call takes noCache too', () => {
+  const artifact = withFragment({ fragment: 'plain', noCache: true })
+  expect(issueCodes(artifact, 'error')).toEqual([])
+  expect((artifact.root as FragmentCallNode).noCache).toBe(true)
 })
 
 test('a non-object shorthand payload is a hard error — no positional form', () => {

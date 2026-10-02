@@ -49,7 +49,7 @@ describe('checkNameLegality — the one rule', () => {
 describe('the reservation sets', () => {
   it('RESERVED_NODE_KEYS is exactly the seven reserved node keys', () => {
     expect([...RESERVED_NODE_KEYS].sort()).toEqual(
-      ['operator', 'fragment', 'parameters', 'fallback', 'useCache', 'vars', '//'].sort()
+      ['operator', 'fragment', 'parameters', 'fallback', 'noCache', 'vars', '//'].sort()
     )
   })
 

@@ -179,10 +179,12 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
    * abort composition on `context.signal` (ledger #15; Q5 resolution).
    */
   timeoutParam?: string
-  /** The metadata default at the bottom of the `useCache` chain. */
-  useCache?: boolean
-  /** How caching is keyed when effective `useCache` is true. */
-  cache?: 'auto' | 'manual'
+  /**
+   * Declares a caching operator: its body may memoize units through
+   * `context.cache.memo`, live by default. The host and the expression can
+   * only turn it off ("Caching" in docs-dev/v3-specs/v3-operator-contract.md).
+   */
+  cache?: true
   validate?: OperatorValidate
   /** The body, its `params` typed from the declarations above. */
   evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
@@ -250,10 +252,8 @@ export interface ValidatedOperatorDefinition {
   deliversLazily: boolean
   /** Normalized `timeoutParam`: the declared name, or null. */
   timeoutParam: string | null
-  /** The definition's own default — the bottom of the `useCache` chain. */
-  useCache: boolean
-  /** How caching is keyed; doubles as the `'manual'` capability flag. */
-  cache: 'auto' | 'manual'
+  /** Normalized `cache`: whether this is a caching operator. */
+  cache: boolean
   /**
    * Derived: a content hash of everything that can change what the body
    * computes — the name, the declarations and the source of `evaluate`

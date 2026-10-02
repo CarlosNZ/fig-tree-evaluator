@@ -168,8 +168,8 @@ describe('a compiled expression is a snapshot', () => {
           category: 'other',
           description: 'count runs',
           parameters: {},
-          useCache: true,
-          evaluate: () => (runs += 1),
+          cache: true,
+          evaluate: (_params, context) => context.cache.memo('tick', async () => (runs += 1)),
         }),
       ],
     })
@@ -190,12 +190,17 @@ describe('a compiled expression is a snapshot', () => {
       description: 'answer with a tag',
       parameters: { value: { type: 'any', required: false, default: null } },
       positionalParams: ['value'],
-      useCache: true,
+      cache: true,
     } as const
-    const old = defineOperator({ ...declaration, evaluate: ({ value }) => `old:${String(value)}` })
+    const old = defineOperator({
+      ...declaration,
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => `old:${String(value)}`),
+    })
     const renewed = defineOperator({
       ...declaration,
-      evaluate: ({ value }) => `new:${String(value)}`,
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => `new:${String(value)}`),
     })
     const fig = new FigTree({ operators: [coreOperators, old] })
     const handle = fig.compile({ $tagged: 'x' })

@@ -79,7 +79,11 @@ export interface OperatorContext {
    */
   options: Readonly<EvaluationOptions>
   cache: {
-    /** Memoize a unit of work under a body key; identity when caching is off */
+    /**
+     * Memoize a unit of work under a body key. Live only where the node is
+     * caching — its definition declares `cache: true` and no `noCache`
+     * applies — and the identity everywhere else.
+     */
     memo<T>(key: unknown, fn: () => Promise<T>): Promise<T>
   }
   trace: {

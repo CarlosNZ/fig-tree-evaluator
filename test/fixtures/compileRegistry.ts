@@ -100,7 +100,7 @@ export const httpOp = () =>
     },
     positionalParams: ['url'],
     timeoutParam: 'requestTimeout',
-    useCache: true,
+    cache: true,
     evaluate: noop,
   })
 

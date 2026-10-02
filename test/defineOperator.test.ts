@@ -92,8 +92,7 @@ describe('defineOperator — the validated artifact', () => {
       parameters: { value: {} },
       evaluate: ({ value }) => value,
     })
-    expect(validated.useCache).toBe(false)
-    expect(validated.cache).toBe('auto')
+    expect(validated.cache).toBe(false)
     expect(validated.returns).toBe('any')
     expect(validated.timeoutParam).toBeNull()
     expect(validated.restParam).toBeNull()
@@ -133,8 +132,7 @@ describe('defineOperator — the validated artifact', () => {
   it('carries the I/O-shaped fields through (timeoutParam, cache)', () => {
     const validated = defineOperator(httpLike())
     expect(validated.timeoutParam).toBe('requestTimeout')
-    expect(validated.useCache).toBe(true)
-    expect(validated.cache).toBe('manual')
+    expect(validated.cache).toBe(true)
   })
 
   it('accepts reference-namespace words as parameter names (the deliberate boundary)', () => {

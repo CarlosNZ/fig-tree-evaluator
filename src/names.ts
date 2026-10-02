@@ -30,7 +30,7 @@ export const RESERVED_NODE_KEYS: ReadonlySet<string> = new Set([
   'fragment',
   'parameters',
   'fallback',
-  'useCache',
+  'noCache',
   'vars',
   '//',
 ])

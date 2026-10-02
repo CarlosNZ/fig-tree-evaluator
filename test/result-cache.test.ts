@@ -22,7 +22,7 @@ import type { CacheStore, SettlementStream } from '../src'
 import { RecordingCacheStore } from './helpers'
 import { rejection } from './helpers/rejection'
 
-/** A cacheable pure operator: metadata default on, `'auto'` by default. */
+/** A caching operator, keying its one unit on its one parameter. */
 const countedOp = (name = 'cached') => {
   let runs = 0
   const definition = defineOperator({
@@ -31,16 +31,17 @@ const countedOp = (name = 'cached') => {
     description: 'Count the runs the cache did not save',
     parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
     positionalParams: ['value'],
-    useCache: true,
-    evaluate: ({ value }) => {
-      runs += 1
-      return `${name}:${String(value)}:${runs}`
-    },
+    cache: true,
+    evaluate: ({ value }, context) =>
+      context.cache.memo(value, async () => {
+        runs += 1
+        return `${name}:${String(value)}:${runs}`
+      }),
   })
   return { definition, runs: () => runs }
 }
 
-/** The same, but keying its own units — the I/O operators' shape. */
+/** A unit keyed apart from the result's shaping — the I/O operators' shape. */
 const manualOp = (name = 'manual') => {
   let runs = 0
   const definition = defineOperator({
@@ -52,8 +53,7 @@ const manualOp = (name = 'manual') => {
       shape: { type: 'string', default: '' },
     },
     positionalParams: ['key', 'shape'],
-    useCache: true,
-    cache: 'manual',
+    cache: true,
     evaluate: async ({ key, shape }, context) => {
       // `shape` sits OUTSIDE the key deliberately — the `returnPath`
       // arrangement the I/O operators use
@@ -76,13 +76,13 @@ const deferred = <T>() => {
   return { promise, resolve }
 }
 
-describe('the useCache chain gates the cache, not just a helper', () => {
-  it('a metadata default of false never touches the store', async () => {
+describe('only a caching operator touches the store', () => {
+  it('an operator that does not declare cache never touches it', async () => {
     const store = new RecordingCacheStore()
     const pure = defineOperator({
       name: 'pure',
       category: 'other',
-      description: 'metadata default off',
+      description: 'declares no cache',
       parameters: {},
       evaluate: () => 'ok',
     })
@@ -92,154 +92,46 @@ describe('the useCache chain gates the cache, not just a helper', () => {
     expect(store.log).toHaveLength(0)
   })
 
-  it('the blanket option turns a pure operator on', async () => {
+  it('nor does one whose body calls memo without declaring it', async () => {
     const store = new RecordingCacheStore()
     let runs = 0
-    const pure = defineOperator({
-      name: 'pure',
+    const undeclared = defineOperator({
+      name: 'undeclared',
       category: 'other',
-      description: 'metadata default off',
+      description: 'calls memo, declares no cache',
       parameters: {},
-      evaluate: () => {
-        runs += 1
-        return runs
-      },
+      evaluate: (_params, context) =>
+        context.cache.memo('k', async () => {
+          runs += 1
+          return runs
+        }),
     })
-    const f = fig({ operators: [pure], cache: { store }, useCache: true })
-    expect(await f.evaluate({ $pure: {} })).toBe(1)
-    expect(await f.evaluate({ $pure: {} })).toBe(1)
-    expect(runs).toBe(1)
+    const f = fig({ operators: [undeclared], cache: { store } })
+    expect(await f.evaluate({ $undeclared: {} })).toBe(1)
+    expect(await f.evaluate({ $undeclared: {} })).toBe(2)
+    expect(store.log).toHaveLength(0)
   })
 
-  it('a node key of false beats a metadata default of true', async () => {
+  it("a node's noCache keeps a caching operator away from it", async () => {
     const store = new RecordingCacheStore()
     const counted = countedOp()
     const f = fig({ operators: [counted.definition], cache: { store } })
-    await f.evaluate({ operator: 'cached', value: 1, useCache: false })
-    await f.evaluate({ operator: 'cached', value: 1, useCache: false })
+    await f.evaluate({ operator: 'cached', value: 1, noCache: true })
+    await f.evaluate({ operator: 'cached', value: 1, noCache: true })
     expect(counted.runs()).toBe(2)
     expect(store.log).toHaveLength(0)
   })
 
-  it('operatorDefaults beats the blanket option', async () => {
+  it("the host's noCache turns the operator off", async () => {
+    const store = new RecordingCacheStore()
     const counted = countedOp()
     const f = fig({
       operators: [counted.definition],
-      useCache: false,
-      operatorDefaults: { cached: { useCache: true } },
+      cache: { store },
+      operatorDefaults: { cached: { noCache: true } },
     })
     await f.evaluate({ $cached: 1 })
     await f.evaluate({ $cached: 1 })
-    expect(counted.runs()).toBe(1)
-  })
-})
-
-describe("the 'auto' layer's key", () => {
-  it('serves one entry to two spellings of the same call', async () => {
-    const store = new RecordingCacheStore()
-    const counted = countedOp()
-    const f = fig({ operators: [counted.definition], cache: { store } })
-    await f.evaluate({ $cached: 7 })
-    await f.evaluate({ operator: 'cached', value: 7 })
-    expect(counted.runs()).toBe(1)
-    expect(new Set(store.keysSet()).size).toBe(1)
-  })
-
-  it('keys on resolved values, so different data forks entries naturally', async () => {
-    const counted = countedOp()
-    const f = fig({ operators: [counted.definition] })
-    const expression = { $cached: '$data.n' }
-    expect(await f.evaluate(expression, { data: { n: 1 } })).toBe('cached:1:1')
-    expect(await f.evaluate(expression, { data: { n: 2 } })).toBe('cached:2:2')
-    expect(await f.evaluate(expression, { data: { n: 1 } })).toBe('cached:1:1')
-    expect(counted.runs()).toBe(2)
-  })
-
-  it('namespaces by operator, so two operators cannot collide', async () => {
-    const a = countedOp('alpha')
-    const b = countedOp('beta')
-    const f = fig({ operators: [a.definition, b.definition] })
-    expect(await f.evaluate({ $alpha: 1 })).toBe('alpha:1:1')
-    expect(await f.evaluate({ $beta: 1 })).toBe('beta:1:1')
-  })
-
-  it('leaves options out of the key — the accepted trade, stated', async () => {
-    const reader = defineOperator({
-      name: 'reader',
-      category: 'other',
-      description: 'read an option',
-      parameters: {},
-      useCache: true,
-      evaluate: (_params, context) => context.options.http?.baseEndpoint ?? 'none',
-    })
-    const f = fig({ operators: [reader], http: { baseEndpoint: 'https://one.test' } })
-    expect(await f.evaluate({ $reader: {} })).toBe('https://one.test')
-    f.updateOptions({ http: { baseEndpoint: 'https://two.test' } })
-    // Stale, deliberately: an operator whose result depends on an option it
-    // reads takes `cache: 'manual'` and folds that into its own key
-    expect(await f.evaluate({ $reader: {} })).toBe('https://one.test')
-  })
-})
-
-describe("what the 'auto' layer refuses to key", () => {
-  it('skips an operator that delivers any parameter lazily', async () => {
-    const store = new RecordingCacheStore()
-    let runs = 0
-    const lazyish = defineOperator({
-      name: 'lazyish',
-      category: 'other',
-      description: 'eager condition, lazy branch',
-      parameters: {
-        condition: { type: 'any', truthiness: true },
-        then: { type: 'any', evaluation: 'lazy' },
-      },
-      positionalParams: ['condition', 'then'],
-      useCache: true,
-      evaluate: async ({ condition, then }) => {
-        runs += 1
-        return condition ? await then.evaluate() : null
-      },
-    })
-    const f = fig({ operators: [lazyish], cache: { store } })
-    // Same eager parameter, different lazy one: keying on the eager
-    // parameters alone would serve the first answer to the second node
-    expect(await f.evaluate({ $lazyish: [true, 'first'] })).toBe('first')
-    expect(await f.evaluate({ $lazyish: [true, 'second'] })).toBe('second')
-    expect(runs).toBe(2)
-    expect(store.log).toHaveLength(0)
-  })
-
-  it('never lets a settlement stream reach the serializer', async () => {
-    const store = new RecordingCacheStore()
-    const raced = defineOperator({
-      name: 'raced',
-      category: 'other',
-      description: 'consume a settlement stream',
-      parameters: { values: { type: 'array', evaluation: 'race' } },
-      positionalParams: ['...values'],
-      useCache: true,
-      evaluate: async ({ values }) => {
-        const out: unknown[] = []
-        for await (const settled of values as SettlementStream) out[settled.index] = settled.value
-        return out.join('')
-      },
-    })
-    const f = fig({ operators: [raced], cache: { store } })
-    // A stream is a plain-prototype object whose only own string key is
-    // `length`, so the serializer would ACCEPT it and these two would
-    // share a key — `deliversLazily` is the guard that keeps it out
-    expect(await f.evaluate({ $raced: ['a', 'b', 'c'] })).toBe('abc')
-    expect(await f.evaluate({ $raced: ['x', 'y', 'z'] })).toBe('xyz')
-    expect(store.log).toHaveLength(0)
-  })
-
-  it('runs uncached rather than mis-keying an unserializable parameter', async () => {
-    const store = new RecordingCacheStore()
-    const counted = countedOp()
-    const f = fig({ operators: [counted.definition], cache: { store } })
-    const opaque = new Map([['a', 1]])
-    await f.evaluate({ $cached: '$data.thing' }, { data: { thing: opaque } })
-    await f.evaluate({ $cached: '$data.thing' }, { data: { thing: opaque } })
     expect(counted.runs()).toBe(2)
     expect(store.log).toHaveLength(0)
   })
@@ -253,12 +145,13 @@ describe('failures are never cached', () => {
       category: 'other',
       description: 'fail once, then succeed',
       parameters: {},
-      useCache: true,
-      evaluate: () => {
-        runs += 1
-        if (runs === 1) throw new Error('first attempt fails')
-        return `ok after ${runs}`
-      },
+      cache: true,
+      evaluate: (_params, context) =>
+        context.cache.memo('flaky', async () => {
+          runs += 1
+          if (runs === 1) throw new Error('first attempt fails')
+          return `ok after ${runs}`
+        }),
     })
   }
 
@@ -280,25 +173,29 @@ describe('failures are never cached', () => {
     expect(await f.evaluate({ operator: 'flaky', fallback: 'caught' })).toBe('ok after 2')
   })
 
-  it('the boundary guards throw inside the unit, so they are not cached either', async () => {
+  it('the result boundary runs after the unit, on every read', async () => {
+    // The unit stores what it returned; the non-finite guard belongs to the
+    // operator's return, so it refuses the stored value on each read too
     const store = new RecordingCacheStore()
     let runs = 0
     const nonFinite = defineOperator({
       name: 'nonFinite',
       category: 'other',
-      description: 'produce a non-finite number, then a finite one',
+      description: 'produce a non-finite number',
       parameters: {},
-      useCache: true,
-      evaluate: () => {
-        runs += 1
-        return runs === 1 ? Infinity : runs
-      },
+      cache: true,
+      evaluate: (_params, context) =>
+        context.cache.memo('n', async () => {
+          runs += 1
+          return Infinity
+        }),
     })
     const f = fig({ operators: [nonFinite], cache: { store } })
-    const error = await rejection<FigTreeError>(f.evaluate({ $nonFinite: {} }))
-    expect(error.code).toBe('non-finite-result')
-    expect(store.keysSet()).toHaveLength(0)
-    expect(await f.evaluate({ $nonFinite: {} })).toBe(2)
+    const first = await rejection<FigTreeError>(f.evaluate({ $nonFinite: {} }))
+    expect(first.code).toBe('non-finite-result')
+    const second = await rejection<FigTreeError>(f.evaluate({ $nonFinite: {} }))
+    expect(second.code).toBe('non-finite-result')
+    expect(runs).toBe(1)
   })
 
   it('a propagated null never reaches the cache, because no body ran', async () => {
@@ -309,8 +206,9 @@ describe('failures are never cached', () => {
       description: 'propagate a null operand',
       parameters: { value: { type: ['string', 'null'] } },
       positionalParams: ['value'],
-      useCache: true,
-      evaluate: ({ value }) => `saw ${String(value)}`,
+      cache: true,
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => `saw ${String(value)}`),
     })
     const f = fig({ operators: [propagating], cache: { store } })
     expect(await f.evaluate({ $propagating: '$data.missing' })).toBeNull()
@@ -318,7 +216,7 @@ describe('failures are never cached', () => {
   })
 })
 
-describe("the 'manual' layer", () => {
+describe("the body's own key", () => {
   it('keys what the body says, and shaping sits outside that key', async () => {
     const store = new RecordingCacheStore()
     const manual = manualOp()
@@ -344,8 +242,8 @@ describe("the 'manual' layer", () => {
     const store = new RecordingCacheStore()
     const manual = manualOp()
     const f = fig({ operators: [manual.definition], cache: { store } })
-    await f.evaluate({ operator: 'manual', key: 'k', useCache: false })
-    await f.evaluate({ operator: 'manual', key: 'k', useCache: false })
+    await f.evaluate({ operator: 'manual', key: 'k', noCache: true })
+    await f.evaluate({ operator: 'manual', key: 'k', noCache: true })
     expect(manual.runs()).toBe(2)
     expect(store.log).toHaveLength(0)
   })
@@ -358,6 +256,31 @@ describe("the 'manual' layer", () => {
     await f.evaluate({ $manual: '$data.k' }, { data: { k: opaque } })
     await f.evaluate({ $manual: '$data.k' }, { data: { k: opaque } })
     expect(manual.runs()).toBe(2)
+    expect(store.log).toHaveLength(0)
+  })
+
+  it('runs the unit uncached when the key holds an engine handle', async () => {
+    const store = new RecordingCacheStore()
+    const raced = defineOperator({
+      name: 'raced',
+      category: 'other',
+      description: 'key on a settlement stream',
+      parameters: { values: { type: 'array', evaluation: 'race' } },
+      positionalParams: ['...values'],
+      cache: true,
+      evaluate: ({ values }, context) =>
+        context.cache.memo(values, async () => {
+          const out: unknown[] = []
+          for await (const settled of values as SettlementStream) out[settled.index] = settled.value
+          return out.join('')
+        }),
+    })
+    const f = fig({ operators: [raced], cache: { store } })
+    // A stream is a plain-prototype object whose only own string key is
+    // `length`, so without the serializer's refusal these two would share
+    // a key and the second would be served the first's answer
+    expect(await f.evaluate({ $raced: ['a', 'b', 'c'] })).toBe('abc')
+    expect(await f.evaluate({ $raced: ['x', 'y', 'z'] })).toBe('xyz')
     expect(store.log).toHaveLength(0)
   })
 })
@@ -511,11 +434,12 @@ describe('clearCache()', () => {
       category: 'other',
       description: 'settle when the test says so',
       parameters: {},
-      useCache: true,
-      evaluate: () => {
-        started.resolve()
-        return body.promise
-      },
+      cache: true,
+      evaluate: (_params, context) =>
+        context.cache.memo('slow', () => {
+          started.resolve()
+          return body.promise
+        }),
     })
     const f = fig({ operators: [slow] })
 
@@ -546,15 +470,16 @@ describe('the two invalidation stories are opposites', () => {
       description: 'count compiles and runs separately',
       parameters: { value: { type: 'any', required: false, default: 'a' } },
       positionalParams: ['value'],
-      useCache: true,
+      cache: true,
       validate: () => {
         counts.compiles += 1
         return []
       },
-      evaluate: ({ value }) => {
-        counts.runs += 1
-        return `${tag}:${String(value)}`
-      },
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => {
+          counts.runs += 1
+          return `${tag}:${String(value)}`
+        }),
     })
     return { definition, counts }
   }
@@ -567,8 +492,8 @@ describe('the two invalidation stories are opposites', () => {
     expect(counts).toEqual({ compiles: 1, runs: 1 })
 
     // The compile cache drops; the result store is untouched. A default
-    // reaches the key through the resolved parameters, so the SAME default
-    // is the same key and a changed one is simply a different entry
+    // reaches the body's key through the resolved parameter, so the SAME
+    // default is the same key and a changed one is simply a different entry
     f.updateOptions({ operatorDefaults: { counted: { value: 'a' } } })
     await f.evaluate(expression)
     expect(counts).toEqual({ compiles: 2, runs: 1 })
@@ -607,11 +532,12 @@ describe('the two invalidation stories are opposites', () => {
       description: 'the first definition',
       parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
       positionalParams: ['value'],
-      useCache: true,
-      evaluate: ({ value }) => {
-        runs.before += 1
-        return `v1:${String(value)}`
-      },
+      cache: true,
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => {
+          runs.before += 1
+          return `v1:${String(value)}`
+        }),
     })
     const after = defineOperator({
       name: 'counted',
@@ -619,11 +545,12 @@ describe('the two invalidation stories are opposites', () => {
       description: 'the second definition',
       parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
       positionalParams: ['value'],
-      useCache: true,
-      evaluate: ({ value }) => {
-        runs.after += 1
-        return `v2:${String(value)}`
-      },
+      cache: true,
+      evaluate: ({ value }, context) =>
+        context.cache.memo(value, async () => {
+          runs.after += 1
+          return `v2:${String(value)}`
+        }),
     })
     const f = fig({ operators: [before] })
     expect(await f.evaluate({ $counted: 'x' })).toBe('v1:x')

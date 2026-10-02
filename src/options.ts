@@ -72,11 +72,15 @@ export interface FigTreeOptions {
    */
   operators?: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
   /**
-   * Instance-level parameter defaults plus the `fallback` / `useCache`
+   * Instance-level parameter defaults plus the `fallback` / `noCache`
    * modifier pseudo-keys. Constants only; required parameters may not be
-   * targeted (Q12). Validated at construction.
+   * targeted (Q12). `noCache` turns off the caching of an operator whose
+   * definition declares `cache: true`, and nothing turns it back on.
+   * Validated at construction, since options can come from untyped config.
    */
-  operatorDefaults?: { [operator: string]: { [param: string]: unknown } }
+  operatorDefaults?: {
+    [operator: string]: { noCache?: true; fallback?: unknown; [param: string]: unknown }
+  }
 
   // ── I/O configuration ───────────────────────────────────
   http?: { baseEndpoint?: string; headers?: Record<string, string> }
@@ -97,8 +101,6 @@ export interface FigTreeOptions {
   signal?: AbortSignal
 
   // ── Caching ─────────────────────────────────────────────
-  /** Blanket default: node key > operatorDefaults > this > metadata. */
-  useCache?: boolean
   /**
    * `maxSize` bounds the built-in store only; a supplied `store` keeps its
    * own eviction policy. `maxTime` is seconds from the write, every store.

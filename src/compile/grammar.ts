@@ -15,7 +15,7 @@ import { isPlainDataObject } from '../utils'
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
 export const SHORTHAND_SIBLINGS: ReadonlySet<string> = new Set([
   'fallback',
-  'useCache',
+  'noCache',
   'vars',
   '//',
 ])

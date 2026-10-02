@@ -109,8 +109,7 @@ export const httpDefinition = (client: HttpClient) =>
     },
     positionalParams: ['url'],
     timeoutParam: 'timeout',
-    useCache: true,
-    cache: 'manual',
+    cache: true,
     returns: 'any',
     validate: ({ returnPath, method, body }) => [
       ...pathFindings(returnPath, 'returnPath'),
@@ -174,8 +173,7 @@ export const graphQLDefinition = (client: HttpClient) =>
     },
     positionalParams: ['query', 'variables'],
     timeoutParam: 'timeout',
-    useCache: true,
-    cache: 'manual',
+    cache: true,
     returns: 'any',
     validate: ({ returnPath }) => pathFindings(returnPath, 'returnPath'),
     evaluate: async ({ query, variables, url, headers, returnPath }, context) => {
@@ -243,8 +241,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
     },
     positionalParams: ['query', '...values'],
     timeoutParam: 'timeout',
-    useCache: true,
-    cache: 'manual',
+    cache: true,
     returns: 'any',
     evaluate: async ({ query, values, shape, noRowDefault }, context) => {
       const request = { text: query, ...(isNonEmpty(values) ? { values } : {}) }

@@ -65,6 +65,14 @@ export interface EvaluationContext {
    * varies.
    */
   cache: ResultStore
+  /**
+   * Set where this node or an ancestor carries `noCache`: nothing
+   * evaluated here reads or writes `cache`. Lexical, like `scope`: a
+   * deferred evaluation — a var, a fragment argument — runs under the
+   * context that declared it, so a var declared above a `noCache` node
+   * caches even when it is first read beneath one.
+   */
+  noCache?: true
   strictDataPaths: boolean
   runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
@@ -214,6 +222,18 @@ export const createEvaluationContext = (
 })
 
 /**
+ * The context a node's subtree evaluates in, given the node's `noCache`.
+ * Unchanged when the node carries none or an ancestor already set it, so
+ * the common case allocates nothing. Applied before the node's `vars` are
+ * pushed, so its parameters, its vars, its fallback and — on a call — its
+ * arguments and body all inherit it.
+ */
+export const pushNoCache = (
+  ctx: EvaluationContext,
+  noCache: true | undefined
+): EvaluationContext => (noCache !== true || ctx.noCache === true ? ctx : { ...ctx, noCache })
+
+/**
  * The context a body receives: the signal, the evaluation's options, the
  * live `memo`, and `note`. One allocation per node — the two wrappers a
  * body reads through are shared constants unless the node is caching or
@@ -228,20 +248,19 @@ export const createEvaluationContext = (
  * and a per-definition declaration of which blocks a body reads could only
  * record an intention, never police one — an operator that wanted a block
  * would simply name it. A body whose result depends on an option it reads
- * owns that dependency in its cache key, which means `cache: 'manual'`
- * ("Caching" in docs-dev/v3-specs/v3-operator-contract.md); the `'auto'`
- * key covers resolved parameters only.
+ * owns that dependency in the key it hands `memo` ("Caching" in
+ * docs-dev/v3-specs/v3-operator-contract.md).
  */
 export const createOperatorContext = (
   ctx: EvaluationContext,
   definition: ValidatedOperatorDefinition,
-  useCache: boolean,
+  caching: boolean,
   note: NoteChannel | undefined
 ): OperatorContext =>
   new BodyContext(
     ctx.abortScope,
     ctx.options,
-    useCache
+    caching
       ? {
           memo: bodyMemo(
             { operator: definition.name, fingerprint: definition.fingerprint, note },

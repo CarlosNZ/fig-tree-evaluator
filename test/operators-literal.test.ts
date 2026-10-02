@@ -104,7 +104,7 @@ describe('literal — ordinary outward', () => {
 })
 
 describe('literal — every modifier on it is dead, and validate says so', () => {
-  test.each(['fallback', 'vars', 'useCache'])('%s draws the dead-modifier warning', (modifier) => {
+  test.each(['fallback', 'vars', 'noCache'])('%s draws the dead-modifier warning', (modifier) => {
     const expression = { $literal: 1, [modifier]: modifier === 'vars' ? { a: 1 } : true }
     expect(codes(expression)).toContain('useless-modifier')
   })

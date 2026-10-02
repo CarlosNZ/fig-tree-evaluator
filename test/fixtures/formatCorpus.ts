@@ -52,7 +52,7 @@ export const formatCorpus: [string, unknown][] = [
 
   // ── Around the node ──────────────────────────────────────────────────
   ['a fallback', { $divide: [1, 0], fallback: { $plus: [0, 0] } }],
-  ['useCache', { operator: 'upper', value: 'x', useCache: false }],
+  ['noCache', { operator: 'upper', value: 'x', noCache: true }],
   ['vars on a node', { vars: { n: { $plus: [1, 2] } }, $multiply: ['$vars.n', 2] }],
   ['vars on a plain object', { vars: { n: 3 }, total: '$v.n', nested: { deeper: '$vars.n' } }],
   ['modifiers between parameters', { operator: 'subtract', fallback: 0, value: 5, minus: 2 }],

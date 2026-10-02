@@ -364,9 +364,12 @@ describe('composition', () => {
     expect((error.cause as FigTreeError).message).toContain('body')
   })
 
-  test('useCache is refused on a call node — caching stays operator-level', () => {
+  test('noCache is legal on a call node, as the literal true only', () => {
     const fig = build({ frag: { expression: 1 } })
-    expect(fig.validate({ fragment: 'frag', useCache: true }).issues[0].code).toBe(
+    expect(
+      fig.validate({ fragment: 'frag', noCache: true }).issues.map((i) => i.severity)
+    ).not.toContain('error')
+    expect(fig.validate({ fragment: 'frag', noCache: false }).issues[0].code).toBe(
       ErrorCodes.malformedNode
     )
   })

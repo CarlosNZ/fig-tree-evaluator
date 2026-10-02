@@ -213,7 +213,16 @@ describe('a malformed node stops the conversion', () => {
     ['an unknown operator', { operator: 'flibble' }, 'unknown-operator'],
     ['an unknown fragment', { fragment: 'nope' }, 'unknown-fragment'],
     ['a shorthand sibling that is not a modifier', { $abs: 1, colour: 'red' }, 'malformed-node'],
-    ['useCache beside a fragment shorthand', { $greet: {}, useCache: true }, 'malformed-node'],
+    [
+      'a noCache that is not true, beside a fragment shorthand',
+      { $greet: {}, noCache: false },
+      'malformed-node',
+    ],
+    [
+      'a noCache that is not true, beside an operator shorthand',
+      { $abs: 1, noCache: 'yes' },
+      'malformed-node',
+    ],
     ['a fragment payload that is not an object', { $greet: ['x'] }, 'malformed-node'],
     ['a canonical literal without a value', { operator: 'literal' }, 'malformed-node'],
     [
@@ -226,7 +235,16 @@ describe('a malformed node stops the conversion', () => {
       { operator: 'abs', parameters: { value: 1 } },
       'malformed-node',
     ],
-    ['useCache on a fragment call', { fragment: 'greet', useCache: true }, 'malformed-node'],
+    [
+      'a noCache that is not true, on a fragment call',
+      { fragment: 'greet', noCache: false },
+      'malformed-node',
+    ],
+    [
+      'a noCache that is not true, on an operator node',
+      { operator: 'abs', value: 1, noCache: { $not: true } },
+      'malformed-node',
+    ],
     ['a stray key on a fragment call', { fragment: 'greet', name: 'x' }, 'unknown-node-key'],
     [
       'fragment parameters that are not arguments',

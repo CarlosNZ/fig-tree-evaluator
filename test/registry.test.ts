@@ -10,6 +10,7 @@ import { validDefinition } from './fixtures/operatorDefinitions'
 import {
   makeOp,
   equalLike,
+  fetchLike,
   collisionFixtures,
   operatorDefaultsFixtures,
 } from './fixtures/registryOptions'
@@ -119,7 +120,7 @@ describe('buildRegistry — one namespace, no silent precedence', () => {
 describe('buildRegistry — operatorDefaults validation', () => {
   it.each(operatorDefaultsFixtures)('$id', ({ operatorDefaults, expected }) => {
     const input = {
-      operators: [equalLike()],
+      operators: [equalLike(), fetchLike()],
       operatorDefaults: operatorDefaults as Record<string, Record<string, unknown>>,
     }
     if (expected === null) {

@@ -7,7 +7,7 @@
  */
 import { compileExpression } from '../src/compile'
 import type { CompileArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/compile'
-import { makeCompileRegistry } from './fixtures/compileRegistry'
+import { makeCompileRegistry, withFragments } from './fixtures/compileRegistry'
 
 const registry = makeCompileRegistry()
 const compile = (input: unknown): CompileArtifact => compileExpression(input, registry)
@@ -161,9 +161,25 @@ test('bare $params is recognized, and refused only for being outside a body', ()
 
 // ── Reserved-key values ─────────────────────────────────────────────
 
-test('useCache must be a literal boolean', () => {
-  const artifact = compile({ $http: 'https://x.test', useCache: 'yes' })
-  expect(errorCodes(artifact)).toContain('malformed-node')
+describe('noCache takes only the literal true, on all four faces', () => {
+  const faces = (value: unknown) => [
+    compile({ $http: 'https://x.test', noCache: value }),
+    compile({ operator: 'http', url: 'https://x.test', noCache: value }),
+    compileExpression({ $plain: {}, noCache: value }, withFragments()),
+    compileExpression({ fragment: 'plain', noCache: value }, withFragments()),
+  ]
+
+  test.each([
+    ['false', false],
+    ['a string', 'yes'],
+    ['a node', { $not: true }],
+  ])('%s is malformed', (_label, value) => {
+    for (const artifact of faces(value)) expect(errorCodes(artifact)).toContain('malformed-node')
+  })
+
+  test('true compiles', () => {
+    for (const artifact of faces(true)) expect(errorCodes(artifact)).toEqual([])
+  })
 })
 
 test('fallback is a full expression, compiled', () => {
