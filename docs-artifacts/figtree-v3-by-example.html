@@ -610,7 +610,7 @@
         <li><strong>One operator, three faces.</strong> The <code>$name</code> key is shorthand; its payload type picks the calling convention &#8212; array is positional, plain object is named, anything else is a single argument. Parse normalises all of it into the canonical form, so tooling and the evaluator only ever see <code>{ operator: 'buildString', &#8230; }</code>.</li>
         <li><strong>Two token styles, one per payload shape.</strong> <code>%1</code>-style tokens pair with an array; <code>{{name}}</code>-style tokens pair with an object. A token whose body is itself a reference &#8212; <code>{{$d.user.title}}</code> &#8212; <em>is</em> that reference, so the one-liner needs no substitutions at all. <code>$d</code> is the alias for <code>$data</code>; both normalise to <code>$data</code>.</li>
         <li><strong>A missing path is <code>null</code>, and <code>buildString</code> renders <code>null</code> as the empty string.</strong> <code>{{$d.user.middleName}}</code> produces nothing &#8212; never the text <code>"null"</code>. Absence is not failure.</li>
-        <li><strong>An unbound token renders itself.</strong> <code>'%3'</code> with two substitutions comes out as the literal text <code>%3</code>: the end user sees slightly odd output and keeps working, the admin they report it to sees exactly what is wrong &#8212; and <code>validate()</code> flagged it at authoring time, with a renumber hint.</li>
+        <li><strong>An unbound token renders itself.</strong> <code>'%3'</code> with two substitutions comes out as the literal text <code>%3</code>: the end user sees slightly odd output and keeps working, the admin they report it to sees exactly what is wrong &#8212; and <code>validate()</code> warned about it at authoring time, noting there are only two substitutions.</li>
         <li>Reference tokens are recognised in <strong>literal templates only</strong>. A template arriving from <code>$data</code> or an API is runtime data and is never scanned for references &#8212; it can never mint itself a data read.</li>
       </ul>
     </div>
@@ -1141,15 +1141,14 @@ const fig = new FigTree({
       <div class="panel" data-role="result">
         <div class="plabel">fig.validate(dashboard) <span class="note">synchronous, no I/O &#8212; an editor can run this at keystroke rate</span></div>
         <pre><code>{
-  valid: false,
+  valid: true,                        // a warning never blocks: '%2' would render as its own text
   issues: [
     {
-      severity: 'error',
+      severity: 'warning',
       code: 'unbound-token',
-      path: ['header'],
+      path: ['header', '$buildString', 0],
       operator: 'buildString',
-      parameter: 'template',
-      message: "Template token '%2' has no substitution &#8212; 1 supplied. Did you mean '%1'?",
+      message: "'%2' binds to nothing and renders as its own text &#8212; there is only 1 substitution",
     },
   ],
   timeoutShielded: false,

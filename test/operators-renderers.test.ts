@@ -485,11 +485,62 @@ describe('buildString — reference tokens', () => {
 // ── buildString: the literal-face findings ──────────────────────────
 
 describe('buildString — literal-face findings are warnings, never errors', () => {
+  const findings = (expression: unknown) =>
+    fig.validate(expression).issues.map((issue) => [issue.severity, issue.code, issue.message])
+  const unbound = (message: string) => ['warning', 'unbound-token', message]
+  const unused = (message: string) => ['warning', 'unused-substitution', message]
+
   test('an unbound positional token warns and still evaluates', () => {
     const result = fig.validate({ $buildString: ['My %1 is %3', 'name', 'Smith'] })
     expect(result.valid).toBe(true)
-    expect(result.issues.map((issue) => issue.code)).toContain('unbound-token')
-    expect(result.issues.map((issue) => issue.code)).toContain('token-renumber')
+    expect(result.issues.map((issue) => issue.code)).toEqual(['unbound-token'])
+  })
+
+  test('a token above the count names the count', () => {
+    expect(findings({ $buildString: ['%1 %2 %3', 'a', 'b'] })).toEqual([
+      unbound("'%3' binds to nothing and renders as its own text — there are only 2 substitutions"),
+    ])
+  })
+
+  test('one substitution is counted in the singular', () => {
+    expect(findings({ $buildString: ['%1 %2', 'a'] })).toEqual([
+      unbound("'%2' binds to nothing and renders as its own text — there is only 1 substitution"),
+    ])
+  })
+
+  test('a skipped number is one warning, naming the spare substitution', () => {
+    expect(findings({ $buildString: ['%1 %3', 'a', 'b'] })).toEqual([
+      unbound(
+        "'%3' binds to nothing and renders as its own text — there are only 2 substitutions, and substitution 2 is unused"
+      ),
+    ])
+  })
+
+  test('several spare substitutions are listed together', () => {
+    expect(findings({ $buildString: ['%1 %5', 'a', 'b', 'c', 'd'] })).toEqual([
+      unbound(
+        "'%5' binds to nothing and renders as its own text — there are only 4 substitutions, and substitutions 2, 3 and 4 are unused"
+      ),
+    ])
+    expect(findings({ $buildString: ['%1 %4', 'a', 'b', 'c'] })).toEqual([
+      unbound(
+        "'%4' binds to nothing and renders as its own text — there are only 3 substitutions, and substitutions 2 and 3 are unused"
+      ),
+    ])
+  })
+
+  test('counting from zero says where numbering starts', () => {
+    expect(findings({ $buildString: ['%0 %1', 'a', 'b'] })).toEqual([
+      unbound(
+        "'%0' binds to nothing and renders as its own text — numbering starts at %1, and substitution 2 is unused"
+      ),
+    ])
+  })
+
+  test('a skipped number within range leaves only the unused substitution', () => {
+    expect(findings({ $buildString: ['%1 %3', 'a', 'b', 'c'] })).toEqual([
+      unused('substitution 2 is never named by the template'),
+    ])
   })
 
   test('a repeated token with a spare substitution is not a renumbering slip', () => {
@@ -498,12 +549,36 @@ describe('buildString — literal-face findings are warnings, never errors', () 
     expect(result.issues.map((issue) => issue.code)).toEqual(['unused-substitution'])
   })
 
-  test('an unbound named token warns', () => {
+  test('an unbound named token names the spare keys', () => {
     expect(
-      codes({
-        $buildString: { template: 'Hi {{first}} {{last}}', substitutions: { first: 'Carl' } },
+      findings({
+        $buildString: {
+          template: 'Hi {{first}} {{last}}',
+          substitutions: { first: 'C', surname: 'S' },
+        },
       })
-    ).toContain('unbound-token')
+    ).toEqual([
+      unbound(
+        "'{{last}}' binds to nothing and renders as its own text, and substitution 'surname' is unused"
+      ),
+    ])
+    expect(
+      findings({
+        $buildString: { template: 'Hi {{nmae}}', substitutions: { name: 'C', age: 3 } },
+      })
+    ).toEqual([
+      unbound(
+        "'{{nmae}}' binds to nothing and renders as its own text, and substitutions 'name' and 'age' are unused"
+      ),
+    ])
+  })
+
+  test('an unbound named token with no spare keys adds nothing', () => {
+    expect(
+      findings({
+        $buildString: { template: 'Hi {{first}} {{last}}', substitutions: { first: 'C' } },
+      })
+    ).toEqual([unbound("'{{last}}' binds to nothing and renders as its own text")])
   })
 
   test('%0 can never bind, so it warns', () => {

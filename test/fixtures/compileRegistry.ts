@@ -175,7 +175,7 @@ export const hookOp = () =>
       const issues = []
       if (pattern === 'probe-helpers')
         issues.push({
-          severity: 'hint' as const,
+          severity: 'warning' as const,
           message: `helpers:${Object.keys(helpers as object)
             .sort()
             .join(',')}`,

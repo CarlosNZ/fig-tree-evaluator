@@ -867,6 +867,14 @@ const growSubstitutions = (
  * also refuse a percent-encoded URL in a positional template, the case
  * the no-escape design leans on.
  *
+ * A mismatch is reported once, at the token. An unbound token and a spare
+ * substitution are usually one slip (`'%1 %3'` with two values), so the
+ * token's warning names the spare substitutions too, and they draw no
+ * warning of their own; they do when every token binds (`'%1 %3'` with
+ * three values). The message states the facts side by side rather than
+ * proposing a fix, since a guessed renumbering is wrong as often as not:
+ * `'%0 %1'` is counting from zero, not a skipped number.
+ *
  * Cross-style tokens draw nothing: they are deliberately inert, which is
  * what makes generating a Mustache template positional mode's job.
  */
@@ -877,8 +885,14 @@ const reportTemplateFace = (
   tokens: Exclude<TemplateSegment, { kind: 'text' }>[],
   face: SubstitutionFace
 ) => {
-  const warn = (code: string, message: string, severity: Severity = 'warning') =>
-    emit(state, severity, code, message, template.path, template.order, { operator: node.name })
+  const warn = (code: string, message: string) =>
+    emit(state, 'warning', code, message, template.path, template.order, { operator: node.name })
+  const unbound = (raw: string, detail: string) =>
+    warn(ErrorCodes.unboundToken, `'${raw}' binds to nothing and renders as its own text${detail}`)
+  const unused = (spare: string[]) => {
+    for (const label of spare)
+      warn(ErrorCodes.unusedSubstitution, `substitution ${label} is never named by the template`)
+  }
 
   if (face.mode === 'array' || face.mode === 'dynamic') {
     if (tokens.some((token) => token.kind === 'named' && token.body.startsWith('$')))
@@ -892,51 +906,56 @@ const reportTemplateFace = (
 
   if (face.mode === 'array') {
     const used = new Set<number>()
-    let unbound = false
+    const unboundTokens: Extract<TemplateSegment, { kind: 'positional' }>[] = []
     for (const token of tokens) {
       if (token.kind !== 'positional') continue
-      if (token.index >= 1 && token.index <= face.length) {
-        used.add(token.index)
-        continue
-      }
-      unbound = true
-      warn(ErrorCodes.unboundToken, `'${token.raw}' binds to nothing and renders as its own text`)
+      if (token.index >= 1 && token.index <= face.length) used.add(token.index)
+      else unboundTokens.push(token)
     }
-    const spare = []
-    for (let i = 1; i <= face.length; i++) if (!used.has(i)) spare.push(i)
-    for (const index of spare)
-      warn(ErrorCodes.unusedSubstitution, `substitution ${index} is never named by the template`)
-    // An unbound token plus a spare slot is the quick-edit slip strict
-    // indexing is designed to make visible rather than silently mis-bind.
-    // A repeated token leaves no slot spare on its own account, so it never
-    // trips this
-    if (spare.length > 0 && unbound)
-      warn(
-        ErrorCodes.tokenRenumber,
-        `the tokens skip a number — renumber them to ${[...Array(face.length).keys()]
-          .map((i) => `%${i + 1}`)
-          .join(', ')}`,
-        'hint'
+    const spare: string[] = []
+    for (let i = 1; i <= face.length; i++) if (!used.has(i)) spare.push(String(i))
+    if (unboundTokens.length === 0) {
+      unused(spare)
+      return
+    }
+    const count =
+      face.length === 0
+        ? 'there are no substitutions'
+        : face.length === 1
+          ? 'there is only 1 substitution'
+          : `there are only ${face.length} substitutions`
+    for (const token of unboundTokens)
+      unbound(
+        token.raw,
+        ` — ${token.index < 1 ? 'numbering starts at %1' : count}${spareClause(spare)}`
       )
     return
   }
 
   if (face.mode === 'object') {
     const used = new Set<string>()
+    const unboundTokens: string[] = []
     for (const token of tokens) {
       if (token.kind !== 'named') continue
-      if (face.keys.has(token.body)) {
-        used.add(token.body)
-        continue
-      }
+      if (face.keys.has(token.body)) used.add(token.body)
       // A reference token binds through the desugar, not the map
-      if (token.body.startsWith('$')) continue
-      warn(ErrorCodes.unboundToken, `'${token.raw}' binds to nothing and renders as its own text`)
+      else if (!token.body.startsWith('$')) unboundTokens.push(token.raw)
     }
-    for (const key of face.keys)
-      if (!used.has(key))
-        warn(ErrorCodes.unusedSubstitution, `substitution '${key}' is never named by the template`)
+    const spare = [...face.keys].filter((key) => !used.has(key)).map((key) => `'${key}'`)
+    if (unboundTokens.length === 0) unused(spare)
+    for (const raw of unboundTokens) unbound(raw, spareClause(spare))
   }
+}
+
+/**
+ * The unbound-token warning's tail naming the spare substitutions —
+ * `, and substitutions 2 and 3 are unused` — or nothing when none are.
+ */
+const spareClause = (spare: string[]) => {
+  if (spare.length === 0) return ''
+  if (spare.length === 1) return `, and substitution ${spare[0]} is unused`
+  const last = spare[spare.length - 1]
+  return `, and substitutions ${spare.slice(0, -1).join(', ')} and ${last} are unused`
 }
 
 /**

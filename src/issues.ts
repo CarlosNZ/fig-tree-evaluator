@@ -7,10 +7,10 @@
 import type { FigTreeErrorCode } from './errorCodes'
 
 /**
- * `error` blocks evaluation (it would throw / report); `warning` and `hint`
- * never block and surface only through `validate()` or the trace echo.
+ * `error` blocks evaluation (it would throw / report); `warning` never
+ * blocks and surfaces only through `validate()` or the trace echo.
  */
-export type Severity = 'error' | 'warning' | 'hint'
+export type Severity = 'error' | 'warning'
 
 /**
  * A single finding. `code` draws on the same vocabulary as `FigTreeError.code`

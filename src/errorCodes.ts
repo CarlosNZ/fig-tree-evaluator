@@ -64,7 +64,6 @@ export const ErrorCodes = {
   // Phase 7 — buildString's literal-face token checks
   unboundToken: 'unbound-token', // { $buildString: ['Hi %2', 'there'] } — a token with nothing to bind to (warning)
   unusedSubstitution: 'unused-substitution', // a literal substitution the literal template never names (warning)
-  tokenRenumber: 'token-renumber', // 'My %1 is %3' with two substitutions — the gap wants renumbering (hint)
   inertReferenceToken: 'inert-reference-token', // {{$data.x}} beside array or dynamic substitutions — not recognized (warning)
 
   // Phase 2 — registration (defineOperator / registry / construction)

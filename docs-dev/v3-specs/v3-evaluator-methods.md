@@ -351,7 +351,7 @@ interface ValidationResult {
 }
 
 interface Issue {
-  severity: 'error' | 'warning' | 'hint'   // the contract's vocabulary
+  severity: 'error' | 'warning'            // the contract's vocabulary
   code: string                              // stable, machine-readable — shared vocabulary with FigTreeError.code
   message: string                           // human-facing; includes did-you-mean suggestions where cheap
   path: (string | number)[]
@@ -409,7 +409,7 @@ One clarification the missing-required row forces, **agreed** (exposed at review
 | ~~Use of an operator excluded by _instance-level_ `excludeOperators`~~ — row retired: `excludeOperators` removed from v3 (Options ruling — Carl, July 2026, Phase-2 implementation); an unregistered operator is already the unknown-operator error row | **retired**                                                                                                                                                                                                                                             |
 | **Sample-data check** (only when `data` is supplied to `validate`): `$data` paths absent from the supplied object                                                                                                                                       | **agreed at close-off** — see below                                                                                                                                                                                                                     |
 
-**Hints**: the `buildString` positional renumber hint (case #17); vocabulary open for more.
+**No hint severity** (Carl, October 2026). The drafted vocabulary had a third severity, `hint`, held by one finding: `buildString`'s positional renumber suggestion (case #17). It was a guessed fix for the two warnings beside it rather than a problem of its own, so it folded into the unbound-token warning's wording ("Unbound tokens render themselves" in [v3-operator-parameters.md](v3-operator-parameters.md)), and with no holder left the severity went with it.
 
 **The sample-data check — ships in v3.0** (agreed at close-off, July 2026). `fig.validate(expr, { data: sampleData })` additionally walks every statically-known `$data` path (the `getDependencies` machinery, below) against the supplied object and warns on misses. This is the assessment's typo-protection mitigation made first-class: the pieces exist regardless, the editor wants it, and CI configs usually have a representative data sample. If implementation finds real scope creep it can still be cut cleanly — tooling can compose it from `getDependencies()` — but it is cheap and the single most useful check for the null-on-missing world.
 

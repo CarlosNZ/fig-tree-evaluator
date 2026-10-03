@@ -322,20 +322,16 @@ describe('operator validate hooks', () => {
     expect(hookIssue.parameter).toBe('pattern')
   })
 
-  test('hook warnings and hints pass through', () => {
+  test('hook warnings pass through', () => {
     expect(warningCodes({ $pattern: ['warn-me'] })).toContain('operator-validate')
-    const hints = issuesOf({ $pattern: ['probe-helpers'] }).filter(
-      (issue) => issue.severity === 'hint'
-    )
-    expect(hints).toHaveLength(1)
   })
 
   test('the helpers toolbox carries the shared primitives (contract Q7)', () => {
-    const hint = issuesOf({ $pattern: ['probe-helpers'] }).find(
-      (issue) => issue.severity === 'hint'
+    const probe = issuesOf({ $pattern: ['probe-helpers'] }).find((issue) =>
+      issue.message.startsWith('helpers:')
     )
     for (const helper of ['parsePath', 'checkType', 'checkConstraints', 'renderText']) {
-      expect(hint?.message).toContain(helper)
+      expect(probe?.message).toContain(helper)
     }
   })
 
