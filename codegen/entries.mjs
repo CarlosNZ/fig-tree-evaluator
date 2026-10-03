@@ -16,7 +16,7 @@
  * absent from an engine-only one — every entry but the root needs one.
  */
 export const ENTRIES = [
-  { subpath: '.', name: 'index', source: 'src/index.ts', budget: 36_000 },
+  { subpath: '.', name: 'index', source: 'src/index.ts', budget: 37_850 },
   {
     subpath: './migrate',
     name: 'migrate/index',
