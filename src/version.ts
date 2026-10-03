@@ -7,4 +7,4 @@
  * it stays inside tsconfig's `rootDir: "src"` and the whole package.json
  * isn't pulled into the bundle.
  */
-export const version = '3.0.0-preview.4'
+export const version = '3.0.0-preview.5'
