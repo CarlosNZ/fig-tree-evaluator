@@ -121,6 +121,25 @@ export interface FigTreeOptions {
 }
 
 /**
+ * What `updateOptions()` accepts: `FigTreeOptions` with `null` admitted at
+ * the two levels the merge reaches, where it removes the stored value
+ * ("Merge semantics" in the Options area of docs-dev/v3-specs/v3-api.md).
+ * `undefined` still means "not supplied", so an unset variable never
+ * removes anything. `data` and `operators` replace whole, so only their
+ * own key takes `null`.
+ */
+export type OptionsUpdate = {
+  [Key in keyof FigTreeOptions]?:
+    | (Key extends MergedBlock ? Removable<NonNullable<FigTreeOptions[Key]>> : FigTreeOptions[Key])
+    | null
+}
+
+/** The options the merge goes inside: every plain-data block but `data`. */
+type MergedBlock = 'fragments' | 'operatorDefaults' | 'http' | 'graphQL' | 'cache'
+
+type Removable<Block> = { [Key in keyof Block]?: Block[Key] | null }
+
+/**
  * What `evaluate()` returns under `trace` ("The envelope rule" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  */

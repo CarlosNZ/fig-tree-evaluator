@@ -68,6 +68,12 @@ export interface RegistryInput {
   operators: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
   operatorDefaults?: Record<string, Record<string, unknown>>
   fragments?: Record<string, FragmentDefinition>
+  /**
+   * The `$name` keys of the fragments the update being built removes, so
+   * a surviving body still calling one fails registration
+   * (src/fragments.ts).
+   */
+  removedFragments?: ReadonlySet<string>
 }
 
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
@@ -179,7 +185,13 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
 
   // Fragments last: a body compiles against the finished operator set, and
   // its shielding precompute reads the resolved `operatorDefaults`
-  registerFragments(input.fragments, registry, (name, path) => claim(name, path, name), addIssue)
+  registerFragments(
+    input.fragments,
+    registry,
+    (name, path) => claim(name, path, name),
+    addIssue,
+    input.removedFragments
+  )
 
   if (issues.length > 0) throwOptionsError(issues)
   return registry

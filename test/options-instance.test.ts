@@ -85,6 +85,86 @@ describe('updateOptions merges by the two-level rule', () => {
   })
 })
 
+describe('null removes, at either level of the merge', () => {
+  it('removes a top-level option, which then reads as never supplied', async () => {
+    const fig = new FigTree({ timeout: 5000, maxNodes: 9, strictDataPaths: true })
+    fig.updateOptions({ timeout: null, maxNodes: null })
+    expect(fig.getOptions()).toEqual({ strictDataPaths: true })
+  })
+
+  it('removes a key inside a block, leaving its siblings', () => {
+    const fig = new FigTree({ http: { baseEndpoint: 'https://x.test', headers: { a: '1' } } })
+    fig.updateOptions({ http: { baseEndpoint: null } })
+    expect(fig.getOptions().http).toEqual({ headers: { a: '1' } })
+  })
+
+  it('removes a whole block, and the instance data', async () => {
+    const fig = new FigTree({ graphQL: { endpoint: 'https://g.test' }, data: { a: 1 } })
+    fig.updateOptions({ graphQL: null, data: null })
+    expect(fig.getOptions()).toEqual({})
+    expect(await fig.evaluate('$data.a')).toBe(null)
+  })
+
+  it('drops one operator’s defaults, leaving the other operators’', async () => {
+    const fig = new FigTree({
+      operatorDefaults: { join: { delimiter: ' | ' }, buildString: { trim: true } },
+    })
+    fig.updateOptions({ operatorDefaults: { join: null } })
+    expect(await fig.evaluate({ $join: ['a', 'b'] })).toBe(
+      await new FigTree().evaluate({ $join: ['a', 'b'] })
+    )
+    expect(fig.getOptions().operatorDefaults).toEqual({ buildString: { trim: true } })
+  })
+
+  it('removes operators back to the core set', async () => {
+    const fig = new FigTree({ operators: [namedOp('alpha')] })
+    fig.updateOptions({ operators: null })
+    expect(await fig.evaluate({ $alpha: {} })).toEqual({ $alpha: {} })
+    expect(await fig.evaluate({ $plus: [1, 2] })).toBe(3)
+  })
+
+  it('returns the cache to the built-in store', async () => {
+    const store = new Map<string, unknown>()
+    const fig = new FigTree({ cache: { store, maxTime: 60 } })
+    fig.updateOptions({ cache: { store: null } })
+    expect(fig.getOptions().cache).toEqual({ maxTime: 60 })
+  })
+
+  // `null` is a value wherever the merge does not reach: inside `data`,
+  // which replaces whole, and below the second level, which replaces as a
+  // unit
+  it('leaves null alone where it is a value', async () => {
+    const fig = new FigTree({ operatorDefaults: { join: { delimiter: '-' } } })
+    fig.updateOptions({
+      data: { user: null },
+      operatorDefaults: { join: { fallback: null } },
+    })
+    expect(await fig.evaluate('$data')).toEqual({ user: null })
+    expect(fig.getOptions().operatorDefaults).toEqual({ join: { fallback: null } })
+  })
+
+  it('removes nothing where nothing is stored', () => {
+    const fig = new FigTree({ maxNodes: 9 })
+    fig.updateOptions({ timeout: null, http: { baseEndpoint: null } })
+    expect(fig.getOptions()).toEqual({ maxNodes: 9, http: {} })
+  })
+
+  it('reads as absent at construction, where there is nothing to remove', () => {
+    const fig = new FigTree({ timeout: null, cache: null, http: { baseEndpoint: null } } as never)
+    expect(fig.getOptions()).toEqual({ http: {} })
+  })
+
+  it('is not a removal per call', async () => {
+    // Per call, "remove" could only mean "run without the instance's
+    // value" — a different facility from falling back to it, and one the
+    // kill switches refuse
+    const fig = new FigTree({ timeout: 5000 })
+    await expect(
+      fig.evaluate('x', { timeout: null } as unknown as CallOptions)
+    ).rejects.toMatchObject({ code: ErrorCodes.invalidOptions })
+  })
+})
+
 describe('the registry is rebuilt and re-validated', () => {
   it('replaces the operator set wholesale — arrays never merge', async () => {
     const fig = new FigTree({ operators: [namedOp('alpha')] })

@@ -34,12 +34,20 @@ describe('the definition shape', () => {
   test.each([
     ['a bare expression', { $plus: [1, 2] }],
     ['a string', 'hello'],
-    ['null', null],
     ['an array', [1, 2]],
   ])('%s is not a wrapper object', (_label, definition) => {
     const error = rejects({ frag: definition })
     expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
     expect(error.issues?.[0].path).toEqual(['fragments', 'frag'])
+  })
+
+  // Through the instance, `null` is the option merge's removal marker, and
+  // at construction there is nothing to remove. The registry itself, which
+  // never sees a removal, still refuses it
+  test('null is a removal, not a definition', () => {
+    const fig = new FigTree({ fragments: { frag: null } as never })
+    expect(fig.getFragments()).toEqual([])
+    expect(() => registry({ frag: null } as never)).toThrow(/must be a wrapper object/)
   })
 
   test('a wrapper without an expression is refused', () => {
@@ -268,6 +276,76 @@ describe('batch semantics', () => {
         fragments: { inner: { expression: '$params.x', parameters: { x: { type: 'string' } } } },
       })
     ).toThrow(/requires 'x'/)
+  })
+
+  test('null deregisters a fragment, leaving the others', async () => {
+    const fig = new FigTree({ fragments: { ...pair, other: { expression: 'kept' } } })
+    fig.updateOptions({ fragments: { outer: null } })
+    expect(fig.getFragments().map((fragment) => fragment.name)).toEqual(['inner', 'other'])
+    // Unregistered, its key is inert data again
+    expect(await fig.evaluate({ $outer: {} })).toEqual({ $outer: {} })
+    expect(await fig.evaluate({ $other: {} })).toBe('kept')
+  })
+
+  // The shorthand face would otherwise degrade the surviving call to data,
+  // with only a warning, and `{ $inner: {} }` would quietly return itself
+  test('removing a fragment a surviving body calls is refused', () => {
+    const fig = new FigTree({ fragments: pair })
+    let error: unknown
+    try {
+      fig.updateOptions({ fragments: { inner: null } })
+    } catch (caught) {
+      error = caught
+    }
+    expect(isFigTreeError(error)).toBe(true)
+    const { issues } = error as FigTreeError
+    expect(issues?.map((issue) => issue.code)).toEqual([ErrorCodes.unknownFragment])
+    expect(issues?.[0].message).toBe("fragment 'outer' calls 'inner', which this update removes")
+    expect(issues?.[0].path).toEqual(['fragments', 'outer', 'expression', '$inner'])
+    // And the instance is as it was
+    expect(fig.getFragments().map((fragment) => fragment.name)).toEqual(['outer', 'inner'])
+  })
+
+  test('every call to a removed fragment is reported, at its own key', () => {
+    const fig = new FigTree({
+      fragments: { ...pair, twice: { expression: [{ $inner: {} }, { wrapped: { $inner: {} } }] } },
+    })
+    let error: FigTreeError | undefined
+    try {
+      fig.updateOptions({ fragments: { inner: null, outer: null } })
+    } catch (caught) {
+      error = caught as FigTreeError
+    }
+    expect(error?.issues?.map((issue) => issue.path)).toEqual([
+      ['fragments', 'twice', 'expression', 0, '$inner'],
+      ['fragments', 'twice', 'expression', 1, 'wrapped', '$inner'],
+    ])
+  })
+
+  test('a call by the canonical face is refused as an unknown fragment', () => {
+    const fig = new FigTree({
+      fragments: { inner: pair.inner, outer: { expression: { fragment: 'inner' } } },
+    })
+    expect(() => fig.updateOptions({ fragments: { inner: null } })).toThrow(
+      /names no registered fragment/
+    )
+  })
+
+  test('a removal is fine once nothing that survives calls it', () => {
+    // The caller goes in the same update...
+    const both = new FigTree({ fragments: pair })
+    expect(() => both.updateOptions({ fragments: { inner: null, outer: null } })).not.toThrow()
+    expect(both.getFragments()).toEqual([])
+    // ...or is redefined in it without the call
+    const redefined = new FigTree({ fragments: pair })
+    redefined.updateOptions({ fragments: { inner: null, outer: { expression: 'standalone' } } })
+    expect(redefined.getFragments().map((fragment) => fragment.name)).toEqual(['outer'])
+  })
+
+  test('removing a fragment that was never registered changes nothing', () => {
+    const fig = new FigTree({ fragments: pair })
+    expect(() => fig.updateOptions({ fragments: { ghost: null } })).not.toThrow()
+    expect(fig.getFragments().map((fragment) => fragment.name)).toEqual(['outer', 'inner'])
   })
 
   test('changing the operators array re-validates every body', () => {

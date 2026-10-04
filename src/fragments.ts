@@ -188,7 +188,8 @@ export const registerFragments = (
   definitions: unknown,
   registry: OperatorRegistry,
   claim: (invocationName: string, path: NodePath) => boolean,
-  addIssue: AddIssue
+  addIssue: AddIssue,
+  removed?: ReadonlySet<string>
 ): void => {
   if (definitions === undefined) return
   if (!isPlainObject(definitions)) {
@@ -222,13 +223,20 @@ export const registerFragments = (
   for (const [name, entry] of registry.fragments) {
     const artifact = compiled.get(name)!
     runStaticChecks(artifact, { fragmentParams: new Set(Object.keys(entry.parameters)) })
-    for (const { issue } of artifact.issues)
-      if (issue.severity === 'error')
-        addIssue(issue.code, `fragment '${name}': ${issue.message}`, [
-          'fragments',
-          name,
-          ...issue.path,
-        ])
+    for (const { issue } of artifact.issues) {
+      // A shorthand call to a removed fragment would degrade to data with
+      // only a warning, so it is refused as the canonical call would be
+      const key = issue.path[issue.path.length - 1] as string
+      const stranded = issue.code === ErrorCodes.unrecognizedIdentifier && removed?.has(key)
+      if (issue.severity === 'error' || stranded)
+        addIssue(
+          stranded ? ErrorCodes.unknownFragment : issue.code,
+          stranded
+            ? `fragment '${name}' calls '${key.slice(1)}', which this update removes`
+            : `fragment '${name}': ${issue.message}`,
+          ['fragments', name, ...issue.path]
+        )
+    }
   }
 
   // ── Pass 3: cycles ────────────────────────────────────────────────

@@ -19,7 +19,7 @@
  * costs nothing per call, rather than by a per-call walk that could only
  * ever reach one level.
  */
-import type { EvaluationOptions, FigTreeOptions } from '../options'
+import type { EvaluationOptions, FigTreeOptions, OptionsUpdate } from '../options'
 import type { CompiledNode, LinkedPath } from '../compile'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ResultStore } from '../resultCache'
@@ -152,11 +152,20 @@ export interface FragmentFrame {
  * so a host that goes on editing its own `http` object does not edit the
  * instance. `data` is the exception: it is the host's state, not the
  * instance's configuration, so it replaces and is held by reference.
+ *
+ * `null` removes, at either level. No option and no key of a merged block
+ * has a meaningful `null`, so the marker cannot collide with a value; the
+ * one place `null` is data is inside `data`, which this never looks into.
+ * At construction there is nothing to remove, so `null` reads as absent.
  */
-export const mergeOptions = (instance: FigTreeOptions, update: FigTreeOptions): FigTreeOptions => {
+export const mergeOptions = (instance: FigTreeOptions, update: OptionsUpdate): FigTreeOptions => {
   const merged: Record<string, unknown> = { ...instance }
   for (const [key, value] of Object.entries(update)) {
     if (value === undefined) continue
+    if (value === null) {
+      delete merged[key]
+      continue
+    }
     if (key === 'data' || !isPlainDataObject(value)) {
       merged[key] = value
       continue
@@ -164,7 +173,9 @@ export const mergeOptions = (instance: FigTreeOptions, update: FigTreeOptions): 
     const existing = merged[key]
     const block: Record<string, unknown> = isPlainDataObject(existing) ? { ...existing } : {}
     for (const [innerKey, innerValue] of Object.entries(value)) {
-      if (innerValue !== undefined) block[innerKey] = innerValue
+      if (innerValue === undefined) continue
+      if (innerValue === null) delete block[innerKey]
+      else block[innerKey] = innerValue
     }
     merged[key] = block
   }

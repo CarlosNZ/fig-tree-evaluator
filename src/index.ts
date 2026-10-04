@@ -26,6 +26,7 @@ export type {
   Merge,
   NoOptions,
   OnlyCallOptions,
+  OptionsUpdate,
   ResultShape,
 } from './options'
 export type { CacheStore } from './types'

@@ -56,7 +56,7 @@ import {
 import type {
   // The instance
   CompiledExpression, CallOptions, EvaluationOptions, EvaluationResult, FigTreeOptions,
-  Merge, NoOptions, OnlyCallOptions, ResultShape, CacheStore,
+  Merge, NoOptions, OnlyCallOptions, OptionsUpdate, ResultShape, CacheStore,
   Dependencies, FragmentInfo, OperatorInfo, ParameterInfo,
   FragmentDefinition, FragmentParameter, FragmentParameterDeclaration,
   // Errors, diagnostics and trace

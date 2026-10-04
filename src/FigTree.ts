@@ -40,6 +40,7 @@ import type {
   Merge,
   NoOptions,
   OnlyCallOptions,
+  OptionsUpdate,
   ResultShape,
 } from './options'
 import type { Issue, ValidationResult } from './issues'
@@ -105,7 +106,7 @@ interface InstanceState {
  * correctness gain, and a redundant rebuild costs a recompile, never a
  * wrong answer.
  */
-const touchesRegistry = (update: FigTreeOptions): boolean =>
+const touchesRegistry = (update: OptionsUpdate): boolean =>
   update.operators !== undefined ||
   update.fragments !== undefined ||
   update.operatorDefaults !== undefined
@@ -123,7 +124,7 @@ const touchesRegistry = (update: FigTreeOptions): boolean =>
  * registry and the compile cache across untouched. Nothing about either
  * could have changed, so rebuilding would only throw away artifacts.
  */
-const buildState = (previous: InstanceState | null, update: FigTreeOptions): InstanceState => {
+const buildState = (previous: InstanceState | null, update: OptionsUpdate): InstanceState => {
   // `mergeOptions` rebuilds every incoming block, so the result is already
   // instance-owned: `fragments` gets the two-level treatment and
   // `operators`, an array, replaces
@@ -140,6 +141,12 @@ const buildState = (previous: InstanceState | null, update: FigTreeOptions): Ins
       ? { operatorDefaults: options.operatorDefaults }
       : {}),
     ...(options.fragments !== undefined ? { fragments: options.fragments } : {}),
+    // The `$name` keys this update strands: registered fragments it removes
+    removedFragments: new Set(
+      Object.entries(update.fragments ?? {}).flatMap(([name, definition]) =>
+        definition === null && previous?.registry.fragments.has(name) ? [`$${name}`] : []
+      )
+    ),
   })
   return {
     options,
@@ -186,13 +193,18 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
 
   constructor(options: InstanceOpts = {} as InstanceOpts) {
     this.state = buildState(null, options)
-    this.results = new ResultCache(readCacheConfig(options.cache))
+    this.results = new ResultCache(readCacheConfig(this.state.options.cache))
   }
 
   /**
    * The one sanctioned mutation path ("The method surface at a glance" in
-   * docs-dev/v3-specs/v3-evaluator-methods.md). Merges by the same rule as
-   * per-call options, rebuilds what the update can have changed, and swaps.
+   * docs-dev/v3-specs/v3-evaluator-methods.md). Merges by the two-level
+   * rule, rebuilds what the update can have changed, and swaps.
+   *
+   * `null` removes, at either level of the merge: `{ timeout: null }`, or
+   * `{ fragments: { banner: null } }`. Removing a fragment that a surviving
+   * fragment still calls is a registration error, like any other call to
+   * a fragment that is not registered.
    *
    * The registry and the compile cache are rebuilt only when the update names
    * one of the three registry-affecting options (`touchesRegistry` is the
@@ -215,7 +227,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * that flips `trace` should pass it per call, which types correctly, or
    * construct a second instance.
    */
-  updateOptions(options: FigTreeOptions = {}): void {
+  updateOptions(options: OptionsUpdate = {}): void {
     // Both validators run before either mutation, so a rejected update
     // leaves the instance exactly as it was — the same all-or-nothing
     // discipline `buildState` already has, extended to cover the second
