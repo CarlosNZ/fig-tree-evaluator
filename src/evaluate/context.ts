@@ -93,12 +93,11 @@ export interface EvaluationContext {
    */
   params?: ParamsFrame
   /**
-   * Wrapped around each of the artifact ROOT's holes, where report mode
-   * or a shielded timeout asked for one (./run.ts builds it). Consumed
-   * exactly once, by the root skeleton, which clears it for everything
-   * below: degradation and shielded assembly are defined on the hole —
-   * the maximal evaluable node — and a nested skeleton's holes are
-   * already inside one.
+   * Wrapped around each of the artifact ROOT's holes, where a shielded
+   * timeout asked for one (./run.ts builds it). Consumed exactly once, by
+   * the root skeleton, which clears it for everything below: shielded
+   * assembly is defined on the hole — the maximal evaluable node — and a
+   * nested skeleton's holes are already inside one.
    */
   rootBoundary?: HoleBoundary
   /**
@@ -147,7 +146,7 @@ export interface FragmentFrame {
 /**
  * The two-level merge rule for instance options — construction and
  * `updateOptions()`. Per-call options do not come through here: they are
- * a flat override of five request-scoped keys (src/FigTree.ts).
+ * a flat override of four request-scoped keys (src/FigTree.ts).
  *
  * An incoming configuration block is rebuilt rather than stored by
  * reference, even where the instance has no counterpart to merge it with,

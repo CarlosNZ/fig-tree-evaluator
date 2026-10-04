@@ -1,17 +1,16 @@
 /**
  * The single error class for FigTree ("FigTreeError — the shape the area owns"
- * in docs-dev/v3-specs/v3-evaluator-methods.md). Both thrown errors and the
- * `errors` entries of a `mode: 'report'` run are instances of this one class.
+ * in docs-dev/v3-specs/v3-evaluator-methods.md): every error the engine
+ * throws is an instance of this one class.
  *
  * v3 rebuilds v2's [FigTreeError.ts] rather than porting it: a structured
  * options constructor replaces v2's loose `Object.assign(this, error)`, and
  * `prettyPrint` is a method (computed on demand) rather than a string eagerly
  * built in the constructor.
  *
- * NOTE (Phase 1.2): most fields are populated only by later phases — the
- * engine's report-mode machinery sets `holePath` (Phase 12); `race` sets
- * `related` (Phase 5); `fallback` sets `cause` (Phase 4); static-error throws
- * carry `issues` (Phase 3); fragment-body failures carry
+ * NOTE (Phase 1.2): most fields are populated only by later phases — `race`
+ * sets `related` (Phase 5); `fallback` sets `cause` (Phase 4); static-error
+ * throws carry `issues` (Phase 3); fragment-body failures carry
  * `fragment`/`fragmentPath` (Phase 11); `trace` is attached when trace is on
  * and evaluation threw (Phase 12). The class only declares them here so those
  * phases fill them without reshaping the type. The body-side `OperatorFailure`
@@ -27,15 +26,8 @@ export type { TraceNode } from './trace'
 export interface FigTreeErrorInit {
   code: FigTreeErrorCode
   message: string
-  /**
-   * The failing node, in the input as authored (the origin, not the containing
-   * hole).
-   */
+  /** The failing node, in the input as authored. */
   path: (string | number)[]
-  /**
-   * Report mode: the containing hole that degraded to null — the splice point.
-   */
-  holePath?: (string | number)[]
   operator?: string
   /**
    * Set when the failure is inside a fragment body; `path` then points at the
@@ -61,7 +53,6 @@ export interface FigTreeErrorInit {
 export class FigTreeError extends Error {
   code: FigTreeErrorCode
   path: (string | number)[]
-  holePath?: (string | number)[]
   operator?: string
   fragment?: string
   fragmentPath?: (string | number)[]
@@ -76,7 +67,6 @@ export class FigTreeError extends Error {
     this.name = 'FigTreeError'
     this.code = init.code
     this.path = init.path
-    if (init.holePath !== undefined) this.holePath = init.holePath
     if (init.operator !== undefined) this.operator = init.operator
     if (init.fragment !== undefined) this.fragment = init.fragment
     if (init.fragmentPath !== undefined) this.fragmentPath = init.fragmentPath

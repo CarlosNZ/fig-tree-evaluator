@@ -7,7 +7,7 @@
 import type { FigTreeErrorCode } from './errorCodes'
 
 /**
- * `error` blocks evaluation (it would throw / report); `warning` never
+ * `error` blocks evaluation (it would throw); `warning` never
  * blocks and surfaces only through `validate()` or the trace echo.
  */
 export type Severity = 'error' | 'warning'

@@ -116,6 +116,32 @@ describe('the raised failure is the lowest index, not the first to arrive', () =
   })
 })
 
+describe('the parked failures not raised ride the raised error as `related`', () => {
+  test('one error, with the others attached', async () => {
+    const { fig } = build()
+    const error = await rejection<FigTreeError>(
+      fig.evaluate({ $or: [{ $slow: ['first', 1, true] }, { $slow: ['second', 1, true] }] })
+    )
+    expect(error.message).toContain('first')
+    expect(error.related?.map((related) => related.message)).toEqual([
+      expect.stringContaining('second'),
+    ])
+  })
+
+  test('the quantifiers are the same machinery', async () => {
+    const { fig } = build()
+    const error = await rejection<FigTreeError>(
+      fig.evaluate({ $some: { input: ['a', 'b'], each: { $slow: ['$element', 1, true] } } })
+    )
+    expect(error.related).toHaveLength(1)
+  })
+
+  test('absent where a decider resolved: a discarded failure never surfaces', async () => {
+    const { fig } = build()
+    expect(await fig.evaluate({ $or: [true, { $slow: ['ignored', 1, true] }] })).toBe(true)
+  })
+})
+
 // ── worked example 5 ────────────────────────────────────────────────
 
 describe('worked example 5: the same failure, mattering and not mattering', () => {

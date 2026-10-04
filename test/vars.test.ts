@@ -205,6 +205,14 @@ describe('rule 5 — a fallback evaluates in its node’s own scope', () => {
     expect(error.cause).toBeInstanceOf(FigTreeError)
   })
 
+  test('the error names the var’s own path, the node that failed', async () => {
+    const { fig } = build()
+    const error = await rejection(
+      fig.evaluate({ vars: { x: { $boom: 'once' } }, a: '$vars.x', b: '$vars.x' })
+    )
+    expect(error.path).toEqual(['vars', 'x'])
+  })
+
   test('the failing var is evaluated once, not once per demand', async () => {
     // Rejections memoize like values: two demands, one attempt
     let calls = 0

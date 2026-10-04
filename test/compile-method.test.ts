@@ -12,7 +12,7 @@
  * compile counter — never from internals.
  */
 import { ErrorCodes, FigTree } from '../src'
-import type { CallOptions, CompiledExpression, EvaluationResult } from '../src'
+import type { CallOptions, CompiledExpression } from '../src'
 import { compileSpyOp, type CompileSpy } from './fixtures/evalOperators'
 import { coreOperators } from '../src/operators'
 
@@ -73,11 +73,10 @@ describe('compile() shares the compile cache with evaluate()', () => {
 describe('the inert flavour', () => {
   const config = { title: 'Report', rows: [1, 2, 3] }
 
-  it('evaluates to the input by identity, with the envelope when asked', async () => {
+  it('evaluates to the input by identity, without compiling', async () => {
     const { fig, spy } = rig()
     const handle = fig.compile(config)
     expect(await handle.evaluate()).toBe(config)
-    expect(await handle.evaluate({ mode: 'report' })).toEqual({ result: config, errors: [] })
     expect(spy.compiles()).toBe(0)
   })
 
@@ -87,7 +86,6 @@ describe('the inert flavour', () => {
     const traced = await handle.evaluate({ trace: true })
     const direct = await fig.evaluate(config, { trace: true })
     expect(traced.result).toBe(config)
-    expect(traced.errors).toEqual([])
     // The same tree, timings aside
     const shape = { kind: 'literal', path: [], status: 'value', value: config }
     expect(traced.trace).toMatchObject(shape)
@@ -118,10 +116,6 @@ describe('the inert flavour', () => {
     const { fig } = rig({ maxDepth: 2 })
     const handle = fig.compile({ a: { b: { c: { d: 1 } } } })
     await expect(handle.evaluate()).rejects.toMatchObject({ code: ErrorCodes.maxDepthExceeded })
-    expect(await handle.evaluate({ mode: 'report' })).toMatchObject({
-      result: null,
-      errors: [{ code: ErrorCodes.maxDepthExceeded }],
-    })
   })
 })
 
@@ -141,16 +135,16 @@ describe('a compiled expression is a snapshot', () => {
   it('keeps the evaluation options too — data, and the return shape', async () => {
     const { fig } = rig({ data: { v: 1 } })
     const handle = fig.compile(expr('$data.v'))
-    fig.updateOptions({ data: { v: 2 }, mode: 'report' })
+    fig.updateOptions({ data: { v: 2 }, trace: true })
     expect(await handle.evaluate()).toBe(1)
-    expect(await fig.evaluate(expr('$data.v'))).toEqual({ result: 2, errors: [] })
+    expect(await fig.evaluate(expr('$data.v'))).toMatchObject({ result: 2 })
   })
 
   it('layers the call over the pinned options, and refuses the same keys', async () => {
     const { fig } = rig({ data: { v: 1 } })
     const handle = fig.compile(expr('$data.v'))
     expect(await handle.evaluate({ data: { v: 3 } })).toBe(3)
-    expect(await handle.evaluate({ mode: 'report' })).toEqual({ result: 1, errors: [] })
+    expect(await handle.evaluate({ trace: true })).toMatchObject({ result: 1 })
     await expect(handle.evaluate({ maxDepth: 1 } as CallOptions)).rejects.toMatchObject({
       code: ErrorCodes.invalidOptions,
     })
@@ -216,7 +210,7 @@ describe('a compiled expression is a snapshot', () => {
 })
 
 describe('the static gate on the handle', () => {
-  it('exposes the stream, rejects in throw mode and reports under report', async () => {
+  it('exposes the stream, and rejects with it', async () => {
     const { fig } = rig()
     const handle = fig.compile({ operator: 'nosuch', values: [1] })
     expect(handle.hasErrors).toBe(true)
@@ -226,9 +220,6 @@ describe('the static gate on the handle', () => {
       code: first.code,
       issues: handle.issues,
     })
-    const reported = (await handle.evaluate({ mode: 'report' })) as EvaluationResult
-    expect(reported.result).toBeNull()
-    expect(reported.errors.map((error) => error.code)).toEqual([first.code])
   })
 })
 

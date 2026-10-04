@@ -22,7 +22,6 @@ describe('FigTreeError', () => {
       code: ErrorCodes.operatorFailure,
       message: 'outer',
       path: ['call'],
-      holePath: ['hole'],
       operator: 'http',
       fragment: 'greet',
       fragmentPath: ['body', 'x'],
@@ -34,7 +33,6 @@ describe('FigTreeError', () => {
       trace: { path: [], kind: 'operator', operator: 'http', status: 'failed' },
     })
 
-    expect(err.holePath).toEqual(['hole'])
     expect(err.operator).toBe('http')
     expect(err.fragment).toBe('greet')
     expect(err.fragmentPath).toEqual(['body', 'x'])
@@ -47,7 +45,6 @@ describe('FigTreeError', () => {
 
   it('leaves unset optional fields undefined', () => {
     const err = new FigTreeError({ code: ErrorCodes.timeout, message: 'timed out', path: [] })
-    expect(err.holePath).toBeUndefined()
     expect(err.operator).toBeUndefined()
     expect(err.errorData).toBeUndefined()
     expect(err.related).toBeUndefined()

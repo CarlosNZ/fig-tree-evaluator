@@ -36,7 +36,6 @@ const traceOf = async (
     ...options,
     trace: true,
   })) as EvaluationResult
-  if (trace === undefined) throw new Error('expected a trace')
   return trace
 }
 
@@ -48,20 +47,14 @@ const at = (node: TraceNode, path: (string | number)[]): TraceNode | undefined =
 
 // ── The envelope ────────────────────────────────────────────────────
 
-describe('trace turns the return into the envelope, in either mode', () => {
-  it('is present under throw mode, with an always-empty errors array', async () => {
+describe('trace turns the return into the envelope', () => {
+  it('holds the result beside the tree', async () => {
     const result = (await setup().evaluate({ $plus: [1, 2] }, { trace: true })) as EvaluationResult
-    expect(result.result).toBe(3)
-    expect(result.errors).toEqual([])
-    expect(result.trace).toBeDefined()
+    expect(result).toEqual({ result: 3, trace: expect.any(Object) })
   })
 
-  it('is absent when trace is off', async () => {
-    const result = (await setup().evaluate(
-      { $plus: [1, 2] },
-      { mode: 'report' }
-    )) as EvaluationResult
-    expect(result.trace).toBeUndefined()
+  it('is absent when trace is off: the bare value comes back', async () => {
+    expect(await setup().evaluate({ $plus: [1, 2] }, { trace: false })).toBe(3)
   })
 })
 
@@ -187,10 +180,9 @@ describe('`fallback` — the only record that designed degradation happened', ()
 
 describe('`failed` and `cancelled`', () => {
   it('marks a failing node, with the error attached', async () => {
-    const { trace } = (await setup().evaluate(
-      { a: { $boom: 'x' } },
-      { trace: true, mode: 'report' }
-    )) as EvaluationResult
+    const { trace } = await rejection<FigTreeError>(
+      setup().evaluate({ a: { $boom: 'x' } }, { trace: true })
+    )
     const node = at(trace as TraceNode, ['a'])
     expect(node?.status).toBe('failed')
     expect(node?.error).toBeDefined()
@@ -383,20 +375,7 @@ describe('a failing run keeps its diagnostics', () => {
   })
 })
 
-// ── Composition, and the cost when off ──────────────────────────────
-
-describe('report + trace is the editor’s combination', () => {
-  it('never throws, and every failure is path-tagged in both channels', async () => {
-    const { result, errors, trace } = (await setup().evaluate(
-      { good: { $plus: [1, 2] }, bad: { $boom: 'x' } },
-      { mode: 'report', trace: true }
-    )) as EvaluationResult
-    expect(result).toEqual({ good: 3, bad: null })
-    expect(errors).toHaveLength(1)
-    expect(errors[0].holePath).toEqual(['bad'])
-    expect(at(trace as TraceNode, ['bad'])?.status).toBe('failed')
-  })
-})
+// ── The inert fast path, and when there is no tree ──────────────────
 
 describe('the inert fast path', () => {
   it('is off under trace, so an inert input still has a tree', async () => {
@@ -407,23 +386,13 @@ describe('the inert fast path', () => {
 })
 
 describe('when nothing is instantiated, there is no instance tree', () => {
-  it('omits `trace` where the static gate refused the expression', async () => {
-    const result = (await setup().evaluate(
-      { a: { operator: 'flibble' } },
-      { mode: 'report', trace: true }
-    )) as EvaluationResult
-    expect(result.result).toBeNull()
-    expect(result.errors[0].code).toBe(ErrorCodes.unknownOperator)
-    // Evaluation never began, so there are no node instances to mirror.
-    // The diagnosis is entirely in `errors`, which is where a static
-    // failure belongs
-    expect(result.trace).toBeUndefined()
-  })
-
-  it('and likewise on the thrown error under throw mode', async () => {
+  it('attaches no `trace` where the static gate refused the expression', async () => {
     const error = await rejection<FigTreeError>(
       setup().evaluate({ a: { operator: 'flibble' } }, { trace: true })
     )
+    // Evaluation never began, so there are no node instances to mirror.
+    // The diagnosis is entirely in `issues`, which is where a static
+    // failure belongs
     expect(error.trace).toBeUndefined()
     expect(error.issues?.length).toBeGreaterThan(0)
   })

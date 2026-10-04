@@ -734,13 +734,13 @@
 
     <p>That single fact is worth surfacing to the author, too: an editor can show it as a badge — <em>this expression is guaranteed to produce something</em> — which turns a runtime property into something you can see while writing.</p>
 
-    <p>One more thing failure needs: <strong>a location</strong>. "Cannot divide by zero" is useless on its own. So every piece of the notes remembers where it came from in the document <em>as the author wrote it</em> — not where it ended up after aliases and shorthand were normalised away — and errors carry both the failing spot and the dynamic position it belonged to.</p>
+    <p>One more thing failure needs: <strong>a location</strong>. "Cannot divide by zero" is useless on its own. So every piece of the notes remembers where it came from in the document <em>as the author wrote it</em> — not where it ended up after aliases and shorthand were normalised away — and an error names the exact spot that failed, or, for a failure inside a fragment, both the call and the spot in the fragment's body.</p>
 
     <p class="cue">What it costs</p>
 
     <p>Two more things precomputed into the notes (which is why per-instance argument defaults invalidate them — a default safety net changes the answer), and an extra concept for the author to learn.</p>
 
-    <p class="in-code"><b>in the code</b>The safety net is <code>fallback</code>. The precomputed facts are each hole's <code>staticFallback</code> and the artifact-level <code>shielded</code> flag, surfaced as <code>timeoutShielded</code>. Failures are <code>FigTreeError</code>, carrying <code>path</code> and <code>holePath</code>.</p>
+    <p class="in-code"><b>in the code</b>The safety net is <code>fallback</code>. The precomputed facts are each hole's <code>staticFallback</code> and the artifact-level <code>shielded</code> flag, surfaced as <code>timeoutShielded</code>. Failures are <code>FigTreeError</code>, carrying <code>path</code>, plus <code>fragment</code> and <code>fragmentPath</code> for a failure inside a fragment body.</p>
   </section>
 
   <section class="stage" id="repeat">

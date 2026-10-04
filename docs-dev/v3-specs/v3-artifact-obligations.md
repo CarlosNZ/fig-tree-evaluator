@@ -7,7 +7,7 @@ _Chunk-3.1 deliverable (implementation plan, Phase 3). This checklist consolidat
 One walk over the raw input, once per distinct input, produces ("One spine, three views" in [v3-evaluator-methods.md](v3-evaluator-methods.md)):
 
 1. **The canonical AST.** Shorthand faces, operator symbol aliases and namespace aliases (`$d` → `$data`, …) are normalized away; positional payloads are mapped onto named parameters via `positionalParams`; the compiled tree holds canonical names only — evaluation and tooling never see a spelling. ("Shorthand grammar" and "Naming rules" in [v3-api.md](v3-api.md); "The runtime interface" in [v3-operator-contract.md](v3-operator-contract.md).)
-2. **The hole list.** Every maximal evaluable node, tagged with its **path in the input as authored** — the same paths `FigTreeError` is tagged with in report mode and editor diagnostics. A node root is the degenerate case: one hole at path `[]`. ("Subtleties to resolve at implementation" in [v3-implementation-notes.md](v3-implementation-notes.md); worked examples 1–2 in [v3-worked-examples.md](v3-worked-examples.md).)
+2. **The hole list.** Every maximal evaluable node, tagged with its **path in the input as authored** — the same paths `FigTreeError` is tagged with and editor diagnostics read. A node root is the degenerate case: one hole at path `[]`. ("Subtleties to resolve at implementation" in [v3-implementation-notes.md](v3-implementation-notes.md); worked examples 1–2 in [v3-worked-examples.md](v3-worked-examples.md).)
 3. **The issue stream.** Every _option-independent_ static error and warning, in deterministic tree order. Option-dependent checks (`maxDepth`/`maxNodes`, the sample-data warning) are **never stored** — they run per `validate()`/`evaluate()` call against obligations B4 and B6. ("The check inventory" in [v3-evaluator-methods.md](v3-evaluator-methods.md); option-independence below.)
 4. **Constancy classification.** Bottom-up: a subtree is constant iff it contains no operator/fragment node and no reference string; everything inside `literal` is constant by fiat, unwalked; non-plain values (class instances, `Date`s, functions) are opaque constants, never traversed. Constancy powers the identity short-circuit, hole extraction, "literal parameter" detection for static checks, and shielding. ("Compile → evaluate" step 2 in [v3-implementation-notes.md](v3-implementation-notes.md); "Non-plain-object values: opaque constants" in [v3-api.md](v3-api.md).)
 
@@ -34,15 +34,15 @@ One walk over the raw input, once per distinct input, produces ("One spine, thre
 
 ## D · Who consumes what (the artifact's forward contract)
 
-| Obligation                           | First consumer                               | Later consumers                                                             |
-| ------------------------------------ | -------------------------------------------- | --------------------------------------------------------------------------- |
-| Canonical AST (A1)                   | 3.3 static checks                            | Phase 4 evaluation; Phase 15 converter (normalizer reuse)                   |
-| Hole list + paths (A2)               | 3.3 (`timeoutShielded`)                      | Phase 4 evaluation; Phase 12 report `holePath`; Phase 10 shielded assembly  |
-| Issue stream (A3)                    | 3.3 `validate()`                             | Phase 4 `evaluate()` static-error gate; Phase 12 static-errors-under-report |
-| Constancy (A4)                       | 3.2 holes/skeleton; 3.3 literal-param checks | Phase 4 identity short-circuit; Phase 10 shielding                          |
-| Shielding precompute (B2)            | 3.3 badge                                    | Phase 10 timeout assembly                                                   |
-| Delivery-mode binding (B3)           | — (structure only)                           | Phase 4/5 handle construction                                               |
-| Counts (B4)                          | 3.3 `maxDepth`/`maxNodes`                    | every `evaluate()` call                                                     |
-| Dependencies (B6)                    | 3.3 sample-data check                        | Phase 13 `getDependencies()`/`isEvaluable()`                                |
-| Identity-only flag (C5)              | —                                            | Phase 8.2 content-layer guard                                               |
-| Fragment-body reuse (whole pipeline) | —                                            | Phase 11 registration-time body compilation                                 |
+| Obligation                           | First consumer                               | Later consumers                                           |
+| ------------------------------------ | -------------------------------------------- | --------------------------------------------------------- |
+| Canonical AST (A1)                   | 3.3 static checks                            | Phase 4 evaluation; Phase 15 converter (normalizer reuse) |
+| Hole list + paths (A2)               | 3.3 (`timeoutShielded`)                      | Phase 4 evaluation; Phase 10 shielded assembly            |
+| Issue stream (A3)                    | 3.3 `validate()`                             | Phase 4 `evaluate()` static-error gate                    |
+| Constancy (A4)                       | 3.2 holes/skeleton; 3.3 literal-param checks | Phase 4 identity short-circuit; Phase 10 shielding        |
+| Shielding precompute (B2)            | 3.3 badge                                    | Phase 10 timeout assembly                                 |
+| Delivery-mode binding (B3)           | — (structure only)                           | Phase 4/5 handle construction                             |
+| Counts (B4)                          | 3.3 `maxDepth`/`maxNodes`                    | every `evaluate()` call                                   |
+| Dependencies (B6)                    | 3.3 sample-data check                        | Phase 13 `getDependencies()`/`isEvaluable()`              |
+| Identity-only flag (C5)              | —                                            | Phase 8.2 content-layer guard                             |
+| Fragment-body reuse (whole pipeline) | —                                            | Phase 11 registration-time body compilation               |

@@ -110,7 +110,7 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
   // The hole boundary belongs to the ARTIFACT root's holes alone, and this
   // is the first skeleton an evaluation reaches — so take it, and clear it
   // for everything below: a nested skeleton's holes sit inside a hole
-  // already, where neither degradation nor shielded assembly is defined
+  // already, where shielded assembly is not defined
   const boundary = ctx.rootBoundary
   const inner = boundary === undefined ? ctx : { ...ctx, rootBoundary: undefined }
   // `vars` is functional and consumed on a plain object literal, scoping

@@ -12,11 +12,10 @@
  * the compiled artifact onward. `evaluate()` and `compile()` go through the
  * compile cache; `validate()` compiles fresh every time, so its report always
  * costs a compile and the cache holds only what evaluation asked for.
- * The two diagnostic options shape what comes back rather than how the
- * spine works: with `mode: 'report'` or `trace` in effect the method
- * returns an `EvaluationResult` envelope instead of the bare value, and
- * the class is generic over its construction options so the static type
- * follows the effective ones.
+ * `trace` shapes what comes back rather than how the spine works: with it
+ * in effect the method returns an `EvaluationResult` envelope instead of
+ * the bare value, and the class is generic over its construction options
+ * so the static type follows the effective ones.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the compile cache are
@@ -37,7 +36,6 @@
 import type {
   CallOptions,
   EvaluationOptions,
-  EvaluationResult,
   FigTreeOptions,
   Merge,
   NoOptions,
@@ -212,10 +210,10 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * update keeps answering from its own definition's entries.
    *
    * The static return type of `evaluate()` follows the constructor's
-   * options and cannot follow an update: after `updateOptions({ mode })`
-   * or `updateOptions({ trace })` the runtime shape changes and the type
-   * does not. A TypeScript host that flips modes should pass the option
-   * per call, which types correctly, or construct a second instance.
+   * options and cannot follow an update: after `updateOptions({ trace })`
+   * the runtime shape changes and the type does not. A TypeScript host
+   * that flips `trace` should pass it per call, which types correctly, or
+   * construct a second instance.
    */
   updateOptions(options: FigTreeOptions = {}): void {
     // Both validators run before either mutation, so a rejected update
@@ -357,14 +355,13 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * The one evaluation method ("evaluate() return shapes" in
    * docs-dev/v3-specs/v3-evaluator-methods.md).
    *
-   * Throw mode returns the bare value; the first static error, or the
-   * first uncaught runtime failure, rejects the call with a
-   * `FigTreeError`. With `mode: 'report'` or `trace` in effect it returns
-   * the `EvaluationResult` envelope instead, and the return TYPE follows
-   * the effective options — the instance's, overridden by the call's, in
-   * either direction.
+   * Returns the bare value; the first static error, or the first uncaught
+   * runtime failure, rejects the call with a `FigTreeError`. With `trace`
+   * in effect it returns the `EvaluationResult` envelope instead, and the
+   * return TYPE follows the effective options — the instance's, overridden
+   * by the call's, in either direction.
    *
-   * The call may supply the five request-scoped options only
+   * The call may supply the four request-scoped options only
    * (`CallOptions`); anything else is instance configuration and is
    * refused. A call with no options runs under the instance's prepared
    * options object as-is, so the everyday call pays no merge at all.
@@ -373,8 +370,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * value with nothing to evaluate or normalize and returns it by identity
    * (the user's `maxDepth` still applies to its measured depth). The skip is
    * off when `trace` is requested — a skipped compile has no nodes for the
-   * trace to echo — but stays on under `report`, which wants an envelope
-   * rather than nodes.
+   * trace to echo.
    */
   evaluate<CallOpts extends CallOptions = NoOptions>(
     expression: unknown,
@@ -462,10 +458,10 @@ const evaluateEntry = async (
   compile: () => CompileArtifact
 ): Promise<unknown> => {
   const options = call === undefined ? instance : withCallOptions(instance, call)
-  const reporting = options.mode === 'report'
-  const enveloped = reporting || options.trace === true
-
   const resolved = resolve()
+  // Off under trace: a skipped compile has no nodes for the trace to echo,
+  // so an inert input is compiled like any other and the envelope always
+  // carries a tree
   const entry =
     resolved.kind === 'inert' && options.trace === true
       ? ({ kind: 'artifact', artifact: compile() } as const)
@@ -473,10 +469,9 @@ const evaluateEntry = async (
   if (entry.kind === 'inert') {
     if (options.maxDepth !== undefined && entry.depth > options.maxDepth) {
       const issue = depthIssue(entry.depth, options.maxDepth)
-      if (!reporting) throw staticError(issue, [issue])
-      return envelope(null, [staticError(issue)])
+      throw staticError(issue, [issue])
     }
-    return enveloped ? envelope(expression, []) : expression
+    return expression
   }
 
   const { artifact } = entry
@@ -485,22 +480,14 @@ const evaluateEntry = async (
   // something to say, or a limit to compare against
   if (artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined) {
     const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
-    const errors = issues.filter((issue) => issue.severity === 'error')
-    // Under report a static failure is reported like any other, and ALL
-    // of it: the pass collects the whole stream anyway, and a host that
-    // chose resilience did not choose "resilient except for typos". Throw
-    // mode throws the first in tree order, carrying the stream as `issues`
-    if (errors.length > 0) {
-      if (!reporting) throw staticError(errors[0], issues)
-      return envelope(
-        null,
-        errors.map((issue) => staticError(issue))
-      )
-    }
+    // The first error in tree order is thrown, carrying the whole stream
+    // as `issues`
+    const first = issues.find((issue) => issue.severity === 'error')
+    if (first !== undefined) throw staticError(first, issues)
   }
 
   const outcome = await runEvaluation(artifact, options, results)
-  return enveloped ? outcome : outcome.result
+  return options.trace === true ? outcome : outcome.result
 }
 
 type ReadHandle = (value: unknown, call?: CallOptions) => HandleView | undefined
@@ -613,11 +600,10 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
    * compile time with the call's laid over — the same two levels, the same
    * per-call set. The return type follows the options the ORIGINATING
    * instance was constructed with, exactly as the instance's own method
-   * does — so a handle compiled after `updateOptions({ mode })` or
-   * `updateOptions({ trace })` carries the same documented mismatch. What
-   * a handle adds is that the mismatch cannot appear later: the runtime
-   * mode is frozen here with everything else, so type and runtime agree
-   * for good once they agree at all.
+   * does — so a handle compiled after `updateOptions({ trace })` carries
+   * the same documented mismatch. What a handle adds is that the mismatch
+   * cannot appear later: the runtime `trace` is frozen here with everything
+   * else, so type and runtime agree for good once they agree at all.
    */
   evaluate<CallOpts extends CallOptions = NoOptions>(
     options?: OnlyCallOptions<CallOpts>
@@ -696,16 +682,6 @@ export interface HandleView {
 }
 
 /**
- * The envelope for a return that never ran: a static refusal, or an inert
- * input handed back by identity. Neither has a trace, nothing having been
- * instantiated.
- */
-const envelope = (result: unknown, errors: FigTreeError[]): EvaluationResult => ({
-  result,
-  errors,
-})
-
-/**
  * The request-scoped options — the whole of what a call may supply
  * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
  * A `Set` of the keys of `CallOptions`, spelled out because a type has no
@@ -715,7 +691,7 @@ const envelope = (result: unknown, errors: FigTreeError[]): EvaluationResult => 
  * the reverse) fails the build. Evaluated once, at module load.
  */
 const CALL_OPTION_KEYS: ReadonlySet<string> = new Set(
-  Object.keys({ data: 0, signal: 0, timeout: 0, mode: 0, trace: 0 } satisfies Record<
+  Object.keys({ data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
     keyof CallOptions,
     unknown
   >)
@@ -763,7 +739,7 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
 const notPerCallError = (key: string): FigTreeError =>
   new FigTreeError({
     code: ErrorCodes.invalidOptions,
-    message: `'${key}' is not a per-call option — a call may supply data, signal, timeout, mode and trace; configure the rest at construction or via updateOptions()`,
+    message: `'${key}' is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()`,
     path: [],
   })
 
@@ -808,18 +784,15 @@ const isAbortSignal = (value: unknown): value is AbortSignal =>
   typeof (value as AbortSignal).removeEventListener === 'function'
 
 /**
- * One error-severity issue as a `FigTreeError`.
- *
- * Throw mode passes the whole stream as `issues`, because it throws only
- * the first and nothing may be hidden behind it. Report mode passes none:
- * there, `errors` IS the stream — one entry per error-severity issue — so
- * attaching a copy of it to every entry would say the same thing N times.
+ * One error-severity issue as a `FigTreeError`, carrying the whole stream
+ * as `issues`: only the first is thrown, and nothing may be hidden behind
+ * it.
  */
-const staticError = (issue: Issue, issues?: Issue[]): FigTreeError =>
+const staticError = (issue: Issue, issues: Issue[]): FigTreeError =>
   new FigTreeError({
     code: issue.code,
     message: issue.message,
     path: issue.path,
     ...(issue.operator !== undefined ? { operator: issue.operator } : {}),
-    ...(issues !== undefined ? { issues } : {}),
+    issues,
   })

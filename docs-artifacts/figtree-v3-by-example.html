@@ -510,7 +510,7 @@
   <header class="masthead">
     <p class="eyebrow">FigTree v3 &middot; specification companion</p>
     <h1>FigTree v3 by Example</h1>
-    <p class="lede">Nine expressions, each one step harder than the last &#8212; from reading a name out of a form to evaluating a whole dashboard config with per-hole degradation and a shielded timeout.</p>
+    <p class="lede">Nine expressions, each one step harder than the last &#8212; from reading a name out of a form to evaluating a whole dashboard config that survives a broken field and a deadline.</p>
     <p class="standfirst">Every expression here follows the <strong>Agreed</strong> areas of the v3 spec: operator and parameter names, the shorthand grammar, reference namespaces, the reserved-key set and the null policy. Following the working docs' own convention: <em>behaviours are binding, encodings are illustrative</em> &#8212; result values and which errors occur are the spec; issue codes, error message wording and HTTP response bodies are dressed for the page.</p>
   </header>
 
@@ -552,7 +552,7 @@
       <li><span class="r">06</span><a href="#r6">Name the repeated thing</a><span class="g">vars &middot; lazy memoisation &middot; // comments</span></li>
       <li><span class="r">07</span><a href="#r7">Reach outside the config</a><span class="g">http &middot; returnPath &middot; registration &middot; caching</span></li>
       <li><span class="r">08</span><a href="#r8">Package a pattern</a><span class="g">fragments &middot; $params &middot; registration-time validation</span></li>
-      <li><span class="r">09</span><a href="#r9">Run a whole config, safely</a><span class="g">report mode &middot; validate() &middot; timeout shielding</span></li>
+      <li><span class="r">09</span><a href="#r9">Run a whole config, safely</a><span class="g">validate() &middot; a fallback per field &middot; timeout shielding</span></li>
     </ol>
   </section>
 
@@ -1109,12 +1109,11 @@ const fig = new FigTree({
       <div class="num">09</div>
       <div>
         <h2>Run a whole config, safely</h2>
-        <p class="sub">The capstone: an ops dashboard evaluated as one config object, checked before it ever sees data, then run in report mode with something genuinely broken &#8212; and finally given a deadline it can survive.</p>
+        <p class="sub">The capstone: an ops dashboard evaluated as one config object, checked before it ever sees data, then run against something genuinely broken &#8212; and finally given the fallbacks that let it survive both a failing field and a deadline.</p>
       </div>
       <div class="chips">
         <span class="chip">validate()</span>
-        <span class="chip">mode: 'report'</span>
-        <span class="chip">per-hole degradation</span>
+        <span class="chip">a fallback per field</span>
         <span class="chip">timeout shielding</span>
       </div>
     </div>
@@ -1165,34 +1164,24 @@ const data = { partOfDay: 'evening', user: { first: 'Ada' }, usage: { used: 812,
       </div>
 
       <div class="panel" data-role="result">
-        <div class="plabel">await fig.evaluate(dashboard, { data, mode: 'report' })</div>
-        <pre><code>{
-  result: {
-    meta: { schemaVersion: 3, renderer: 'dash@3.0' },   // constant subtree &#8212; returned by identity
-    header: 'Good evening, Ada',
-    quota: null,                                        // degraded: nothing caught the failure
-    incidents: [],                                      // the node's own fallback caught the 503
-  },
-  errors: [
-    FigTreeError {
-      code: 'operator-failure',
-      operator: 'divide',
-      path: ['quota', '$round', 0, '$multiply', 0],     // the failing node, as authored
-      holePath: ['quota'],                              // the unit that degraded to null
-      message: 'divide &#8211; division by zero',
-    },
-  ],
+        <div class="plabel">await fig.evaluate(dashboard, { data })</div>
+        <pre><code>// &#10007; rejects &#8212; and the healthy header and incidents go with it:
+FigTreeError {
+  code: 'non-finite-result',
+  operator: 'divide',
+  path: ['quota', '$round', 0, '$multiply', 0],         // the failing node, as authored
+  message: 'divide &#8211; produced a non-finite number (Infinity)',
 }</code></pre>
       </div>
 
       <ul class="notes">
-        <li><strong>Report mode never throws, and degradation is per hole.</strong> Each maximal evaluable node in the config degrades independently &#8212; <code>header</code> and <code>incidents</code> are untouched by <code>quota</code>'s failure, and the constant <code>meta</code> subtree never entered the evaluation at all.</li>
-        <li><strong><code>incidents</code> produced no error.</strong> Its <code>fallback</code> caught the 503, which is the path the author designed; only <em>uncaught</em> failures are reported. Caught fallbacks are visible through <code>trace: true</code>, which is the channel for "what actually happened".</li>
-        <li><strong>Two paths per error.</strong> <code>path</code> points at the node that failed, deep inside the expression as authored; <code>holePath</code> points at the unit that degraded to <code>null</code>. A failure inside a fragment body carries both ends of that pointer instead &#8212; <code>path</code> for the call site, <code>fragment</code> + <code>fragmentPath</code> for the location in the body.</li>
-        <li><strong><code>errors</code> is in deterministic tree order</strong>, not completion order. The same call in throw mode would reject with whichever uncaught failure occurred first &#8212; and discard the three healthy values along with it.</li>
+        <li><strong>One uncaught failure rejects the whole call.</strong> <code>header</code> and <code>incidents</code> both evaluated fine, and nothing comes back: the call rejects with the one failure nothing caught, and in-flight work is cancelled.</li>
+        <li><strong><code>incidents</code> did not fail the call.</strong> Its <code>fallback</code> caught the 503, which is the path the author designed, and a caught failure is success. Caught fallbacks are visible through <code>trace: true</code>, which is the channel for "what actually happened".</li>
+        <li><strong><code>path</code> names the node that failed</strong>, deep inside the expression as authored, not the field it sits in. A failure inside a fragment body carries both ends of that pointer instead &#8212; <code>path</code> for the call site, <code>fragment</code> + <code>fragmentPath</code> for the location in the body.</li>
+        <li><strong>There is no mode that turns failures into <code>null</code>s.</strong> Only the author knows the right placeholder for a field <em>and its type</em>, so a config that must survive one broken field gets a <code>fallback</code> on each field that can fail &#8212; next. A host that doesn't write the expressions can set the same thing per operator with <code>operatorDefaults</code>.</li>
       </ul>
 
-      <h3 style="margin:8px 0 0">Beat three &#8212; give every hole a static fallback</h3>
+      <h3 style="margin:8px 0 0">Beat three &#8212; give every field a static fallback</h3>
 
       <div class="panel" data-role="expr">
         <div class="plabel">The shielded config</div>
@@ -1206,21 +1195,25 @@ const data = { partOfDay: 'evening', user: { first: 'Ada' }, usage: { used: 812,
       </div>
 
       <div class="panel" data-role="result">
-        <div class="plabel">Badge, then a deadline it survives</div>
-        <pre><code>fig.validate(dashboard)
+        <div class="plabel">The broken field, then the badge, then a deadline it survives</div>
+        <pre><code>await fig.evaluate(dashboard, { data })
+// &#8594; { meta: {&#8230;}, header: 'Good evening, Ada', quota: null, incidents: [] }
+
+fig.validate(dashboard)
 // &#8594; { valid: true, issues: [], timeoutShielded: true }
 
 await fig.evaluate(dashboard, { data, timeout: 50 })
-// returns &#8212; in THROW mode, without throwing:
+// returns, without throwing:
 // { meta: {&#8230;}, header: 'Good evening, Ada', quota: null, incidents: [] }</code></pre>
       </div>
 
       <ul class="notes">
+        <li><strong>Each field now survives its own failure.</strong> <code>quota</code>'s fallback catches the divide, and <code>header</code> and <code>incidents</code> keep their values. The <code>null</code> is the placeholder the author chose for that field, not one the engine imposed.</li>
         <li><strong>An expression is timeout-shielded iff every hole carries a statically constant <code>fallback</code>.</strong> On the deadline, holes that finished contribute their real values, unfinished holes contribute their static fallbacks, and the constant skeleton is spliced around them. No expression work of any kind runs past the deadline, so the bound holds exactly.</li>
         <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that <code>validate()</code> can badge it. Unshielded, a timeout throws regardless of how many holes happened to finish.</li>
         <li><strong>The badge is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. Watch for <code>timeoutShielded</code> flipping to <code>false</code>.</li>
         <li><strong><code>signal</code> is never shaped by a fallback.</strong> A timeout is the expression's problem to degrade around; an abort means the caller cancelled and nobody is waiting.</li>
-        <li><code>validate()</code> warms the parse cache as a side effect, so a host that validates at config-save time gets its first <code>evaluate()</code> pre-parsed for free. There is no public parse or compile method &#8212; this is the only pre-warm anyone needs.</li>
+        <li><code>validate()</code> never touches the compile cache: it is an authoring tool, and its answer should not depend on what was evaluated before. A host that wants its first <code>evaluate()</code> pre-compiled calls <code>fig.compile(dashboard)</code>, which shares the cache with <code>evaluate()</code>.</li>
       </ul>
     </div>
   </section>
@@ -1294,7 +1287,7 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
           <tr><td>to catch something that broke</td><td><code>fallback</code></td><td>runtime failure in the node or anything inside it</td></tr>
           <tr><td>a host-wide stance</td><td><code>operatorDefaults</code></td><td>every node of that operator without its own value</td></tr>
           <tr><td>every static mistake, now</td><td><code>validate()</code></td><td>parse time &#8212; before data exists</td></tr>
-          <tr><td>partial results instead of a throw</td><td><code>mode: 'report'</code></td><td>every uncaught failure, collected in tree order</td></tr>
+          <tr><td>one broken field not to sink the rest</td><td>a <code>fallback</code> on each field</td><td>runtime failure in that field &#8212; every other field keeps its value</td></tr>
         </tbody>
       </table>
     </div>

@@ -7,7 +7,7 @@
  * stored untouched and picked up by its owning phase.
  */
 import type { CacheStore } from './types'
-import type { FigTreeError, TraceNode } from './FigTreeError'
+import type { TraceNode } from './FigTreeError'
 import type { ValidatedOperatorDefinition } from './operatorDefinition'
 import type { FragmentDefinition } from './fragments'
 
@@ -33,7 +33,7 @@ export type EvaluationOptions = Omit<FigTreeOptions, 'operators' | 'fragments'>
  * passed is the object every body and `$data` reference reads, uncopied
  * and unfrozen. Keys set to `undefined` are ignored.
  */
-export type CallOptions = Pick<FigTreeOptions, 'data' | 'signal' | 'timeout' | 'mode' | 'trace'>
+export type CallOptions = Pick<FigTreeOptions, 'data' | 'signal' | 'timeout' | 'trace'>
 
 /**
  * `CallOpts` with every key outside `CallOptions` typed `never`, so a
@@ -111,19 +111,11 @@ export interface FigTreeOptions {
   /** Default true. Structural validation is never skippable. */
   runtimeTypeCheck?: boolean
 
-  // ── Output & error handling ─────────────────────────────
+  // ── Diagnostics ─────────────────────────────────────────
   /**
-   * `'throw'` (default): the first uncaught failure rejects the call.
-   * `'report'`: never throws on an expression error — the failing HOLE
-   * degrades to `null`, everything else evaluates, and the failures come
-   * back in the envelope. A caller's `signal` still rejects.
-   */
-  mode?: 'throw' | 'report'
-  /**
-   * Record what happened at every node instance. Orthogonal to `mode`,
-   * not a third value of it: `trace` changes no semantics, and all four
-   * combinations are legal — `throw` + `trace` is a run you want to keep
-   * failing loudly, whose error carries the partial tree as `error.trace`.
+   * Record what happened at every node instance. `trace` changes no
+   * semantics: a failing run still throws, and its error carries the
+   * partial tree as `error.trace`.
    *
    * Opt-in, and priced accordingly: the tree holds one entry per node
    * INSTANCE (one per iterator element) and holds values by reference, so
@@ -133,24 +125,14 @@ export interface FigTreeOptions {
 }
 
 /**
- * What `evaluate()` returns when a diagnostic option is active ("The
- * envelope rule" in docs-dev/v3-specs/v3-evaluator-methods.md): one
- * envelope for both, rather than a shape per option.
+ * What `evaluate()` returns under `trace` ("The envelope rule" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md).
  */
 export interface EvaluationResult {
-  /** The evaluated value — `null` at any hole report mode degraded. */
+  /** The evaluated value. */
   result: unknown
-  /**
-   * Every uncaught failure, in tree order. Always present in the
-   * envelope, so a consumer never branches on key existence: under throw
-   * mode with `trace` it is simply always empty, an error having thrown.
-   */
-  errors: FigTreeError[]
-  /**
-   * The instance tree, when `trace` was on and the expression passed the
-   * static gate; a refused run instantiates nothing.
-   */
-  trace?: TraceNode
+  /** The instance tree. */
+  trace: TraceNode
 }
 
 /**
@@ -164,7 +146,7 @@ export type NoOptions = Record<never, never>
 export type Merge<Instance, Call> = Omit<Instance, keyof Call> & Call
 
 /**
- * The bare value, unless a diagnostic option is active.
+ * The bare value, unless `trace` is on.
  *
  * No `const` type parameter is needed to keep `{ trace: true }` from
  * widening to `boolean` (settled by a spike at Phase-12 planning):
@@ -174,10 +156,8 @@ export type Merge<Instance, Call> = Omit<Instance, keyof Call> & Call
  * the `operators` array literal into a readonly tuple the declared type
  * does not accept. The one case that does widen is a caller hoisting the
  * options into a variable first, which `const` could not have reached
- * either. The other is an instance whose `mode` or `trace` was changed by
+ * either. The other is an instance whose `trace` was changed by
  * `updateOptions()`, which the type parameter cannot follow (see that
  * method's docstring).
  */
-export type ResultShape<O> = O extends { mode: 'report' } | { trace: true }
-  ? EvaluationResult
-  : unknown
+export type ResultShape<O> = O extends { trace: true } ? EvaluationResult : unknown
