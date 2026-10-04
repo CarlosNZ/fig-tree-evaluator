@@ -252,7 +252,6 @@ export type CompiledNode =
  * `null` one.
  */
 export interface ArtifactHole {
-  path: NodePath
   node: CompiledNode
   timeoutFallback?: { value: unknown }
 }

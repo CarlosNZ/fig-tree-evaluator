@@ -5,7 +5,7 @@
  * docs-dev/v3-specs/v3-api.md; "Positional mapping: positionalParams" in
  * docs-dev/v3-specs/v3-operator-parameters.md).
  */
-import { compileExpression } from '../src/compile'
+import { compileExpression, toNodePath } from '../src/compile'
 import type { CompileArtifact, OperatorNode, ReferenceNode, SkeletonNode } from '../src/compile'
 import { makeCompileRegistry, withFragments } from './fixtures/compileRegistry'
 
@@ -137,7 +137,7 @@ test('references are whole-string only — no interpolation', () => {
 test('references are recognized inside nested plain literals', () => {
   const artifact = compile({ outer: { list: ['$data.a'] } })
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual(['outer', 'list', 0])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['outer', 'list', 0])
 })
 
 test('drilled $index is an error', () => {

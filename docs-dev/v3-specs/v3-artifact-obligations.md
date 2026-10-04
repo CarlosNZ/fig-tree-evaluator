@@ -4,7 +4,7 @@ _Chunk-3.1 deliverable (implementation plan, Phase 3). This checklist consolidat
 
 ## A · What the artifact is — the four products of the compile pass
 
-One walk over the raw input, once per distinct input, produces ("One spine, three views" in [v3-evaluator-methods.md](v3-evaluator-methods.md)):
+One walk over the raw input, once per distinct input, produces ("One spine, two views" in [v3-evaluator-methods.md](v3-evaluator-methods.md)):
 
 1. **The canonical AST.** Shorthand faces, operator symbol aliases and namespace aliases (`$d` → `$data`, …) are normalized away; positional payloads are mapped onto named parameters via `positionalParams`; the compiled tree holds canonical names only — evaluation and tooling never see a spelling. ("Shorthand grammar" and "Naming rules" in [v3-api.md](v3-api.md); "The runtime interface" in [v3-operator-contract.md](v3-operator-contract.md).)
 2. **The hole list.** Every maximal evaluable node, tagged with its **path in the input as authored** — the same paths `FigTreeError` is tagged with and editor diagnostics read. A node root is the degenerate case: one hole at path `[]`. ("Subtleties to resolve at implementation" in [v3-implementation-notes.md](v3-implementation-notes.md); worked examples 1–2 in [v3-worked-examples.md](v3-worked-examples.md).)

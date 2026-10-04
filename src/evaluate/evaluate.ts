@@ -1,6 +1,6 @@
 /**
  * The recursive evaluator core — the four-kind dispatch over the compile
- * artifact ("One spine, three views" in
+ * artifact ("One spine, two views" in
  * docs-dev/v3-specs/v3-evaluator-methods.md; "Compile → evaluate"
  * in docs-dev/v3-specs/v3-implementation-notes.md). A constant is returned
  * by identity, a reference is resolved, a skeleton evaluates its holes

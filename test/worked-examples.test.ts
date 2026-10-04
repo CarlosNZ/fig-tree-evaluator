@@ -358,7 +358,7 @@ describe('lifecycle — the full example, fetch counts and all', () => {
  * The doc's request takes ~900ms against a 50ms budget; the mock's latency
  * is shorter so the suite stays quick, and the relationship is what matters.
  */
-describe('worked example 3 — timeout shielding: throw mode and the validate badge', () => {
+describe('worked example 3 — timeout shielding and the validate badge', () => {
   const http = new MockHttpClient({ latencyMs: 300, responses: { offers: [{ id: 7 }] } })
   const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
 

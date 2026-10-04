@@ -216,7 +216,7 @@ const printArtifactFacts = (artifact: CompileArtifact) => {
   console.log(`  holes        ${artifact.holes.length}`)
   for (const hole of artifact.holes)
     console.log(
-      `    ${renderPath(hole.path).padEnd(20)} ${describeNode(hole.node)}${holeFallback(hole)}`
+      `    ${renderPath(toNodePath(hole.node.path)).padEnd(20)} ${describeNode(hole.node)}${holeFallback(hole)}`
     )
 }
 
