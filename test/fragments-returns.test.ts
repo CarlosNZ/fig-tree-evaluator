@@ -86,6 +86,40 @@ describe('the feeding check at a call', () => {
     expect(issuesOf({ $round: { value: { $anything: {} } } })).toEqual([])
   })
 
+  test("a call's fallback is checked against the parameter it feeds (#210)", () => {
+    expect(issuesOf({ $round: { value: { $size: {}, fallback: 'n/a' } } })).toEqual([
+      expect.objectContaining({
+        severity: 'warning',
+        code: ErrorCodes.fallbackMismatch,
+        path: ['$round', 'value', 'fallback'],
+        operator: 'round',
+        parameter: 'value',
+      }),
+    ])
+    expect(issuesOf({ $round: { value: { $size: {}, fallback: 0 } } })).toEqual([])
+  })
+
+  test("a node's fallback at a call's argument is checked against its declaration (#210)", () => {
+    const fig = new FigTree({
+      fragments: {
+        half: { expression: { $divide: ['$params.n', 2] }, parameters: { n: { type: 'number' } } },
+      },
+    })
+    const call = (fallback: unknown) => ({
+      $half: { n: { $divide: ['$data.a', '$data.b'], fallback } },
+    })
+    expect(fig.validate(call('n/a')).issues).toEqual([
+      expect.objectContaining({
+        severity: 'warning',
+        code: ErrorCodes.fallbackMismatch,
+        path: ['$half', 'n', 'fallback'],
+        fragment: 'half',
+        parameter: 'n',
+      }),
+    ])
+    expect(fig.validate(call(0)).issues).toEqual([])
+  })
+
   test('a call to an unknown fragment reports only that', () => {
     const codes = issuesOf({ $round: { value: { fragment: 'nope' } } }).map((i) => i.code)
     expect(codes).toEqual([ErrorCodes.unknownFragment])

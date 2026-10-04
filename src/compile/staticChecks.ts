@@ -168,11 +168,7 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
         )
       continue
     }
-    // A literal null that a `replacesNullAt` holder replaces never reaches
-    // the type check at runtime, so it is not a type error here
-    if (supplied.kind === 'constant' && supplied.value === null && nullIsReplaced(node, name))
-      continue
-    checkSuppliedParam(state, owner, name, declared, supplied)
+    checkSuppliedParam(state, owner, name, declared, supplied, nullIsReplaced(node, name))
   }
 
   runValidateHook(state, node)
@@ -210,13 +206,16 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
 }
 
 /**
- * Whether a `replacesNullAt` holder targets `target` on this node: supplied
- * on the node, or by its operator's `operatorDefaults`, the chain the
- * runtime builds its holders from (src/evaluate/params.ts). A null holder
- * is unset, so it replaces nothing.
+ * Whether a whole null at `target` is replaced before the type check sees
+ * it: a `replacesNullAt` holder targets it, supplied on the node or by its
+ * operator's `operatorDefaults`, the chain the runtime builds its holders
+ * from (src/evaluate/params.ts). A null holder is unset, so it replaces
+ * nothing. At a target declaring an element null policy the holder
+ * replaces null elements only, and a whole null reaches the type check.
  */
 const nullIsReplaced = (node: OperatorNode, target: string) => {
   const { definition, instanceDefaults } = node.entry
+  if (definition.parameters[target]?.elementNullPolicy !== undefined) return false
   for (const [name, declared] of definition.resolution.entries) {
     if (!declared.replacesNullAt?.includes(target)) continue
     const holder = node.params[name]
@@ -242,53 +241,20 @@ interface ReceivingDeclaration {
   evaluation?: EvaluationMode
 }
 
+/**
+ * Check a node supplied at a receiving position, then the chain of
+ * fallbacks standing in for it there. `nullReplaced` says whether a
+ * `replacesNullAt` holder replaces a whole null at the position (operator
+ * parameters only — a fragment argument has no holders).
+ */
 const checkSuppliedParam = (
   state: CheckState,
   owner: { label: string; extra: { operator?: string; fragment?: string } },
   name: string,
   declared: ReceivingDeclaration,
-  supplied: CompiledNode
+  supplied: CompiledNode,
+  nullReplaced = false
 ) => {
-  // Literal values: the compile moment of the one type table. 'as' is owned
-  // by the walk (invalid-as); other structural params must be literal too.
-  // Null policy runs BEFORE the type check, mirroring the runtime layers:
-  // a null at an optional parameter whose type excludes null is unset (the
-  // default applies), and null elements under a declared elementNullPolicy
-  // are the policy's business, not the constraints'.
-  if (supplied.kind === 'constant') {
-    if (supplied.value === null && !declared.required && !typeNamesNull(declared.type)) return
-    const typed = checkType(supplied.value, declared.type)
-    if (!typed.ok) {
-      emit(
-        state,
-        'error',
-        ErrorCodes.typeCheck,
-        `'${owner.label}.${name}': expected ${typed.expected}, received ${typed.actual}`,
-        supplied.path,
-        supplied.order,
-        { ...owner.extra, parameter: name }
-      )
-      return
-    }
-    if (declared.constraints !== undefined) {
-      const constrained = checkConstraintsUnderPolicy(
-        supplied.value,
-        declared.constraints,
-        declared.elementNullPolicy !== undefined
-      )
-      if (!constrained.ok)
-        emit(
-          state,
-          'error',
-          ErrorCodes.typeCheck,
-          `'${owner.label}.${name}': expected ${constrained.expected}, received ${constrained.actual}`,
-          supplied.path,
-          supplied.order,
-          { ...owner.extra, parameter: name }
-        )
-    }
-    return
-  }
   // An element-addressable parameter has no whole value — not here and not
   // at runtime, since the engine never assembles one. Its arity is known
   // statically all the same, so the `length` constraint is checked against
@@ -308,7 +274,9 @@ const checkSuppliedParam = (
       )
     return
   }
-  if (declared.evaluation === 'structural' && name !== 'as') {
+  // 'as' is owned by the walk (invalid-as); other structural params must be
+  // literal too
+  if (supplied.kind !== 'constant' && declared.evaluation === 'structural' && name !== 'as') {
     emit(
       state,
       'error',
@@ -320,44 +288,156 @@ const checkSuppliedParam = (
     )
     return
   }
-  // The returns feeding-position check: an operator node or fragment call
-  // in a parameter position whose returns cannot intersect the receiving
-  // type. A call to an unknown fragment has its own error, and no type
-  if (
-    supplied.kind === 'operator' ||
-    (supplied.kind === 'fragmentCall' && supplied.entry !== undefined)
-  ) {
-    const returns = staticType(supplied)
-    if (!typesIntersect(returns, declared.type)) {
-      const what =
-        supplied.kind === 'operator' ? `'${supplied.name}'` : `fragment '${supplied.name}'`
-      emit(
-        state,
-        'error',
-        ErrorCodes.returnsMismatch,
-        `${what} returns ${JSON.stringify(returns)} — it can never satisfy '${owner.label}.${name}'`,
-        supplied.path,
-        supplied.order,
-        { ...owner.extra, parameter: name }
-      )
+  const at = `'${owner.label}.${name}'`
+  const mismatch = findMismatch(declared, supplied, nullReplaced)
+  if (mismatch !== undefined)
+    emit(
+      state,
+      'error',
+      mismatch.code,
+      mismatch.code === ErrorCodes.returnsMismatch
+        ? `${mismatch.reason} — it can never satisfy ${at}`
+        : `${at}: ${mismatch.reason}`,
+      supplied.path,
+      supplied.order,
+      { ...owner.extra, parameter: name }
+    )
+
+  // A fallback stands in for its node's value at the same position, so it
+  // is checked against the same declaration, and so is its own fallback,
+  // to the end of the chain. A mismatch is a warning: it breaks only the
+  // failure path, and the expression still runs
+  let node: CompiledNode = supplied
+  while (node.kind === 'operator' || node.kind === 'fragmentCall') {
+    const fallback: CompiledNode | undefined = node.fallback
+    if (fallback === undefined) {
+      if (node.kind === 'operator')
+        checkInstanceFallback(state, owner, name, declared, node, nullReplaced)
+      return
     }
-    return
-  }
-  // A container holding something computed is still an array or an object,
-  // so it is checked as a literal one would be, with the same message
-  if (supplied.kind === 'skeleton') {
-    const typed = checkType(Array.isArray(supplied.skeleton) ? [] : {}, declared.type)
-    if (!typed.ok)
+    const unfit = findMismatch(declared, fallback, nullReplaced)
+    if (unfit !== undefined)
       emit(
         state,
-        'error',
-        ErrorCodes.typeCheck,
-        `'${owner.label}.${name}': expected ${typed.expected}, received ${typed.actual}`,
-        supplied.path,
-        supplied.order,
+        'warning',
+        ErrorCodes.fallbackMismatch,
+        `this fallback can never satisfy ${at}: ${unfit.reason}`,
+        fallback.path,
+        fallback.order,
         { ...owner.extra, parameter: name }
       )
+    node = fallback
   }
+}
+
+/**
+ * An operator node with no fallback of its own falls back to its operator's
+ * instance-wide one from `operatorDefaults`, which the runtime returns as
+ * it is, never evaluated (src/evaluate/operator.ts). It has no place in the
+ * expression, so a mismatch is reported on the node.
+ */
+const checkInstanceFallback = (
+  state: CheckState,
+  owner: { label: string; extra: { operator?: string; fragment?: string } },
+  name: string,
+  declared: ReceivingDeclaration,
+  node: OperatorNode,
+  nullReplaced: boolean
+) => {
+  const defaults = node.entry.instanceDefaults
+  if (defaults === undefined || !Object.hasOwn(defaults, 'fallback')) return
+  const unfit = valueMismatch(declared, defaults.fallback, nullReplaced)
+  if (unfit !== undefined)
+    emit(
+      state,
+      'warning',
+      ErrorCodes.fallbackMismatch,
+      `'${node.name}' falls back to its operatorDefaults fallback, which can never satisfy '${owner.label}.${name}': ${unfit.reason}`,
+      node.path,
+      node.order,
+      { ...owner.extra, parameter: name }
+    )
+}
+
+/**
+ * Why a value-producing node can never satisfy a receiving declaration, or
+ * undefined when it can, or when nothing is known before it runs (a
+ * reference, a call to an unknown fragment). It serves the node supplied at
+ * a position and each fallback standing in for it there alike.
+ */
+const findMismatch = (
+  declared: ReceivingDeclaration,
+  node: CompiledNode,
+  nullReplaced: boolean
+): { code: string; reason: string } | undefined => {
+  switch (node.kind) {
+    case 'constant':
+      return valueMismatch(declared, node.value, nullReplaced)
+    // The returns feeding-position check: an operator node or fragment call
+    // whose returns cannot intersect the receiving type. A call to an
+    // unknown fragment has its own error, and no type
+    case 'operator':
+    case 'fragmentCall': {
+      if (node.kind === 'fragmentCall' && node.entry === undefined) return
+      const returns = staticType(node)
+      if (typesIntersect(returns, declared.type)) return
+      const what = node.kind === 'operator' ? `'${node.name}'` : `fragment '${node.name}'`
+      return {
+        code: ErrorCodes.returnsMismatch,
+        reason: `${what} returns ${JSON.stringify(returns)}`,
+      }
+    }
+    // A container holding something computed is still an array or an
+    // object, so it is checked as a literal one would be, with the same
+    // message
+    case 'skeleton': {
+      const typed = checkType(Array.isArray(node.skeleton) ? [] : {}, declared.type)
+      if (!typed.ok)
+        return {
+          code: ErrorCodes.typeCheck,
+          reason: `expected ${typed.expected}, received ${typed.actual}`,
+        }
+      return
+    }
+    default:
+      return
+  }
+}
+
+/**
+ * Why a value can never satisfy a receiving declaration — the compile
+ * moment of the one type table. Null policy runs BEFORE the type check,
+ * mirroring the runtime layers: a null that a holder replaces, or a null at
+ * an optional parameter whose type excludes null (unset, so the default
+ * applies), never reaches the type check; and null elements under a
+ * declared elementNullPolicy are the policy's business, not the
+ * constraints'.
+ */
+const valueMismatch = (
+  declared: ReceivingDeclaration,
+  value: unknown,
+  nullReplaced: boolean
+): { code: string; reason: string } | undefined => {
+  if (value === null && (nullReplaced || (!declared.required && !typeNamesNull(declared.type))))
+    return
+  const typed = checkType(value, declared.type)
+  if (!typed.ok)
+    return {
+      code: ErrorCodes.typeCheck,
+      reason: `expected ${typed.expected}, received ${typed.actual}`,
+    }
+  if (declared.constraints === undefined) return
+  const constrained = checkConstraintsUnderPolicy(
+    value,
+    declared.constraints,
+    declared.elementNullPolicy !== undefined
+  )
+  if (!constrained.ok)
+    return {
+      code: ErrorCodes.typeCheck,
+      reason: `expected ${constrained.expected}, received ${constrained.actual}`,
+    }
+  return
 }
 
 const operatorOwner = (node: OperatorNode) => ({

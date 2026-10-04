@@ -52,6 +52,7 @@ export const ErrorCodes = {
   maxDepthExceeded: 'max-depth', // the expression nests deeper than options.maxDepth
   maxNodesExceeded: 'max-nodes', // the expression holds more nodes than options.maxNodes
   returnsMismatch: 'returns-mismatch', // a boolean-returning node feeding a number-typed parameter
+  fallbackMismatch: 'fallback-mismatch', // { $round: { value: { $divide: […], fallback: 'n/a' } } } — a fallback its position can never take (warning)
   operatorValidate: 'operator-validate', // an operator validate-hook finding (regex pattern compile, …)
   missingDataPath: 'missing-data-path', // sample-data check: a $data path absent from the supplied sample (warning)
   shadowedVar: 'shadowed-var', // an inner vars block redeclaring an outer name (warning)
