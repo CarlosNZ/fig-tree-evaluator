@@ -4,7 +4,7 @@
  * ("`vars` on plain object literals" in docs-dev/v3-specs/v3-api.md).
  * Scope resolution (unresolved vars, cycles, shadowing) is chunk 3.3.
  */
-import { compileExpression } from '../src/compile'
+import { compileExpression, toNodePath } from '../src/compile'
 import type { CompileArtifact, OperatorNode, SkeletonNode } from '../src/compile'
 import { makeCompileRegistry } from './fixtures/compileRegistry'
 
@@ -95,6 +95,6 @@ test('a vars-carrying plain literal with holes stays its own evaluable unit', ()
   })
   // The vars-carrying literal is the maximal evaluable node, not its hole
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual(['outer'])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['outer'])
   expect(artifact.holes[0].node.kind).toBe('skeleton')
 })

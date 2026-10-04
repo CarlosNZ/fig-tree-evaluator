@@ -6,9 +6,9 @@ _How to read the outputs: the **behaviours are binding** — result values, erro
 
 ---
 
-## 1 · Report mode with depth — failures at different depths, different fates
+## 1 · Fallbacks with depth — failures at different depths, different fates
 
-One config, five holes, five different fates: plain success, success _via the null gradient_, designed degradation (`fallback` catches), a deep uncaught failure, and a failing fallback.
+One config, five holes, five different fates: plain success, success _via the null gradient_, designed degradation (`fallback` catches), a deep uncaught failure, and a failing fallback. Then the same config with a fallback on each field that can fail, which is the whole of production resilience in v3 (["Why there is no report mode"](v3-evaluator-methods.md#why-there-is-no-report-mode-208)).
 
 ```js
 const dashboard = {
@@ -39,50 +39,53 @@ const data = { user: { first: 'Ada', id: 42 }, stats: { wins: 10, losses: 0 } }
 ```
 
 ```js
-await fig.evaluate(dashboard, { mode: 'report', data })
-// {
-//   result: {
-//     meta: { generated: 'v3-example', version: 3 },
-//     user: {
-//       displayName: 'Ada ',                                  // null rendered '' — success, no error
-//       avatar: 'https://api.example.com/avatar/default.png', // fallback caught — success, no error
-//     },
-//     stats: {
-//       total: 10,
-//       summary: null,                                        // degraded hole
-//     },
-//     activity: null,                                         // degraded hole
-//   },
-//   errors: [   // tree order (document order of the holes), NOT completion order
-//     FigTreeError {
-//       code: 'operator-failure', operator: 'divide',
-//       path: ['stats', 'summary', '$buildString', 1],        // the failing node — deep
-//       holePath: ['stats', 'summary'],                       // the unit that degraded to null
-//       message: 'divide – division by zero',
-//     },
-//     FigTreeError {
-//       code: 'operator-failure', operator: 'http',
-//       path: ['activity'], holePath: ['activity'],           // failing node IS the hole root here
-//       message: 'http – request failed (503): https://backup.example.com/activity',
-//       errorData: { status: 503, url: 'https://backup.example.com/activity', /* header names only */ },
-//       cause: FigTreeError { code: 'operator-failure', path: ['activity'],
-//                             message: 'http – request failed (503): https://api.example.com/activity' },
-//     },
-//   ],
+await fig.evaluate(dashboard, { data })
+// ✗ rejects with one of the two uncaught failures — the divide, in practice:
+// FigTreeError {
+//   code: 'non-finite-result', operator: 'divide',
+//   path: ['stats', 'summary', '$buildString', 1],          // the failing node — deep
+//   message: 'divide – produced a non-finite number (Infinity)',
 // }
 ```
 
 Walking the five fates:
 
 1. **`displayName` — success via the null gradient.** `user.last` is a missing path → `null` → `buildString` renders `''` (References, agreed) → `'Ada '` with a trailing space. No error, no fallback involvement — absence is not failure. `trace` records the null render; the opt-out, if `'Ada '` offends, is `nullValueDefault` on the node (register #18) or `closeGaps: true` to swallow the space the empty render left — not `fallback`.
-2. **`avatar` — designed degradation.** The API is down; the node's own `fallback` catches (rule 1). Success in both modes, **nothing in `errors`** — the author designed this path. The catch is visible only in `trace`.
+2. **`avatar` — designed degradation.** The API is down; the node's own `fallback` catches (rule 1). A caught failure is success: nothing is thrown, and the catch is visible only in `trace`.
 3. **`total` — plain success.** `10 + 0 = 10`.
-4. **`summary` — deep uncaught failure.** `10 / 0` fails (finite-number guard); no `fallback` anywhere between the `divide` and the hole root, so the failure escapes: the _hole_ `['stats','summary']` resolves to `null`, and the error is tagged with the deep failing node's `path` plus the `holePath`. Note the sibling `total` inside the same `stats` literal is untouched — `stats` is plain structure; the holes are independent.
-5. **`activity` — failing fallback (rule 4).** The primary request fails, the dynamic fallback evaluates and _also_ fails → the node fails with the **fallback's** error, the original attached as `cause`. Nothing above catches → degraded hole.
+4. **`summary` — deep uncaught failure.** `10 / 0` is stopped by the engine's finite-number guard (ledger #10), which is the whole reason no operator polices its own division. No `fallback` anywhere above the `divide`, so the failure escapes and rejects the call, tagged with the deep failing node's `path`.
+5. **`activity` — failing fallback (rule 4).** The primary request fails, the dynamic fallback evaluates and _also_ fails → the node fails with the **fallback's** error, the original attached as `cause`. Its `path` is `['activity', 'fallback']`: `path` names the node that failed, and under rule 4 that is the fallback — re-tagging a path a child already set is exactly what the first-tagger-wins rule forbids, and it is that rule which makes the deep `summary` path work at all. `cause` names the primary request and `path` the backup that also failed.
 
-_Corrected at Phase-12 implementation (September 2026), on two points the printed output above gets wrong._ **The rule-4 error's `path` is `['activity', 'fallback']`**, not `['activity']`: `path` names the node that failed, and under rule 4 that is the fallback — re-tagging a path a child already set is exactly what the first-tagger-wins rule forbids, and it is that rule which makes the deep `['stats','summary','$buildString',1]` path two entries above work at all. The pair is more useful for keeping the two apart, `cause` naming the primary request and `path` the backup that also failed, with `holePath` answering "which hole degraded" either way. **And `summary`'s code is `non-finite-result`, not `operator-failure`**: `10 / 0` is stopped by the engine's finite-number guard (ledger #10), which is the whole reason no operator polices its own division — the fate, the path and the hole are as written, and the message is the guard's.
+Two failures escape, and the call rejects with whichever _occurred first_ — the divide, in practice, there being no network round trip — cancelling all in-flight work. Which one is raised is the one timing-dependent thing in the example; each is deterministic on its own. And note what the rejection _destroys_: the three healthy values, computed and discarded.
 
-**Throw-mode contrast**: the same call with `mode: 'throw'` rejects — with whichever of the two uncaught failures _occurred first_ (the divide, in practice — no network round-trip), cancelling all in-flight work. Report's `errors` array is the complete set in deterministic tree order; the temporal race only affects throw mode's pick. And note what throw mode _destroys_: the three healthy values, computed and discarded.
+**The same config, with a fallback on each field that can fail:**
+
+```js
+const covered = {
+  ...dashboard,
+  stats: {
+    ...dashboard.stats,
+    summary: { ...dashboard.stats.summary, fallback: 'Win ratio: n/a' },
+  },
+  activity: {
+    ...dashboard.activity,
+    fallback: { operator: 'http', url: 'https://backup.example.com/activity', fallback: [] },
+  },
+}
+
+await fig.evaluate(covered, { data })
+// {
+//   meta: { generated: 'v3-example', version: 3 },
+//   user: {
+//     displayName: 'Ada ',                                    // null rendered '' — success
+//     avatar: 'https://api.example.com/avatar/default.png',   // fallback caught — success
+//   },
+//   stats: { total: 10, summary: 'Win ratio: n/a' },          // fallback caught the divide
+//   activity: [],                                             // the backup's own fallback caught
+// }
+```
+
+Each fallback sits on the field it protects, and holds a placeholder of the field's own type — which only the author can know. A fallback on a fallback is ordinary: the backup request is a node like any other, and its `fallback` catches it.
 
 ---
 
@@ -281,7 +284,7 @@ The mirror image: the result store empties (next `rate` evaluation refetches), t
 
 ---
 
-## 3 · Timeout shielding — throw, report, and the validate badge
+## 3 · Timeout shielding — the assembly, and the validate badge
 
 ```js
 const banner = {
@@ -297,18 +300,10 @@ Evaluate with a 50ms budget; the offers request takes ~900ms, `greeting` complet
 
 ```js
 await fig.evaluate(banner, { data: { name: 'Ada' }, timeout: 50 })
-// → { greeting: 'Hi Ada', offers: [] }                   // RETURNS, in throw mode — no throw
+// → { greeting: 'Hi Ada', offers: [] }                   // RETURNS — no throw
 ```
 
-On the deadline: `greeting` finished → contributes its **real** value; `offers` didn't → contributes its **static fallback**; the constant skeleton assembles around them. Pure constant-splicing, zero post-deadline evaluation. Throw mode returns this silently (shielding is author-sanctioned degradation — `trace` records a `shielded-fallback` event on the `offers` hole); report mode is the informative channel:
-
-```js
-await fig.evaluate(banner, { data: { name: 'Ada' }, timeout: 50, mode: 'report' })
-// { result: { greeting: 'Hi Ada', offers: [] },
-//   errors: [ FigTreeError { code: 'timeout', message: 'Evaluation exceeded 50ms' } ] }
-// note: exactly [timeoutError] — a shielded expression CANNOT have other uncaught errors,
-// since every hole root's fallback catches everything inside its hole
-```
+On the deadline: `greeting` finished → contributes its **real** value; `offers` didn't → contributes its **static fallback**; the constant skeleton assembles around them. Pure constant-splicing, zero post-deadline evaluation. The assembly comes back silently: shielding is author-sanctioned degradation, the fallbacks doing what they were written for, and `trace` is where it shows — a `shielded-fallback` event on the `offers` hole.
 
 Now un-shield it — change one fallback to a _dynamic_ expression:
 
@@ -318,8 +313,6 @@ fig.validate(banner2) // → { valid: true, issues: [], timeoutShielded: false }
 
 await fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })
 // ✗ rejects: FigTreeError { code: 'timeout' }            // all-or-nothing: greeting's finished value is discarded
-await fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50, mode: 'report' })
-// { result: null, errors: [ FigTreeError { code: 'timeout' } ] }
 ```
 
 The dynamic fallback still catches _ordinary_ runtime failures (a 503 from the offers API) — it just can't shield the kill switch, because it could start new work past the deadline. Shielding is all-or-nothing per expression precisely so `validate()` can badge it statically — the edit from `banner` to `banner2` is exactly the silent un-shielding hazard the Node-grammar discoverability note warns about, and the badge flipping `true → false` is the mitigation.
@@ -343,19 +336,14 @@ const expr = {
   banner: { $userSummary: { name: '$data.user.name', role: '$data.user.role' } },
 }
 
-await fig.evaluate(expr, { mode: 'report', data: { user: { name: 'Ada', role: 7 } } }) // role is a number
-// {
-//   result: { banner: null },
-//   errors: [
-//     FigTreeError {
-//       code: 'type-check', operator: 'lower',
-//       path: ['banner'],                                 // the CALL NODE, in the input
-//       fragment: 'userSummary',
-//       fragmentPath: ['expression', '$buildString', 2],  // the failing node, inside the registered body
-//       holePath: ['banner'],
-//       message: "lower – parameter 'value': expected string, received number",
-//     },
-//   ],
+await fig.evaluate(expr, { data: { user: { name: 'Ada', role: 7 } } }) // role is a number
+// ✗ rejects:
+// FigTreeError {
+//   code: 'type-check', operator: 'lower',
+//   path: ['banner'],                                 // the CALL NODE, in the input
+//   fragment: 'userSummary',
+//   fragmentPath: ['expression', '$buildString', 2],  // the failing node, inside the registered body
+//   message: "lower – parameter 'value': expected string, received number",
 // }
 ```
 
@@ -377,18 +365,18 @@ const canEdit = {
 // the permissions API is down in both runs
 ```
 
-| Run | `data`               | Result                   | `errors` (report mode)                                                                                                                                                    |
-| --- | -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | `{ isAdmin: true }`  | `true`                   | `[]` — operand 0 settles truthy and _decides_; the in-flight request is **cancelled**, and a failure that already parked would be discarded. Cancellation is not failure. |
-| 2   | `{ isAdmin: false }` | node fails → hole `null` | one error: the http failure (lowest parked index that matters — here the only one)                                                                                        |
+| Run | `data`               | Outcome                                                                                                                                                                     |
+| --- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `{ isAdmin: true }`  | `true` — operand 0 settles truthy and _decides_; the in-flight request is **cancelled**, and a failure that already parked would be discarded. Cancellation is not failure. |
+| 2   | `{ isAdmin: false }` | rejects with the http failure (lowest parked index that matters — here the only one)                                                                                        |
 
-Run 1's teaching point: the outcome is **deterministic** regardless of completion order — even if the request had already failed before `isAdmin` resolved, `or(parked-failure, true)` is `true`; the parked failure never surfaces in report output (agreed in the passes). Run 2: with no decider, the result _depends_ on the failed operand, so the node fails. `trace` is where the full per-operand story lives either way: `value` / `failed-discarded` / `cancelled` statuses per element.
+Run 1's teaching point: the outcome is **deterministic** regardless of completion order — even if the request had already failed before `isAdmin` resolved, `or(parked-failure, true)` is `true`; the parked failure never surfaces (agreed in the passes). Run 2: with no decider, the result _depends_ on the failed operand, so the node fails. `trace` is where the full per-operand story lives either way: `value` / `failed-discarded` / `cancelled` statuses per element.
 
 ---
 
 ## Using these as test cases
 
 - **Inject a scripted mock `HttpClient`** (fixed responses, failure switches, a call counter) and a **recording `CacheStore`** (`{ get, set }` that logs keys). Laziness, memoization, effective-request keying and invalidation all become assertable as _counts and call logs_ — no reaching into engine internals.
-- Binding assertions per example: result values; error `code` / `path` / `holePath` / `fragmentPath` / `cause` presence; `errors` length and tree order; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); recompile-vs-refetch split in step 6; the `timeoutShielded` badge flip; report/throw divergence points.
+- Binding assertions per example: result values; error `code` / `path` / `fragmentPath` / `cause` presence; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); recompile-vs-refetch split in step 6; the `timeoutShielded` badge flip.
 - Non-assertions (illustrative only): cache-key encodings, hash spellings, error message wording, `TraceNode` field names, timing values.
 - These map to testing-strategy **step 2** (hand-authored v3 tests) and are deliberately converter-independent.

@@ -141,21 +141,19 @@ export const decide = async (values: SettlementStream, decider: boolean): Promis
 
 /**
  * The lowest-index parked failure, carrying the others as `related`
- * ("the throw/report invariant" in
+ * ("`FigTreeError` — the shape the area owns" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  *
- * A failing decider is ONE failing node, so it contributes one error —
- * but the siblings that also failed are why it failed, and dropping them
- * loses the only record of a request that was already broken. They ride
- * the raised error instead of becoming entries of their own, which is
- * what keeps one-entry-per-failing-hole true.
+ * A failing decider is ONE failing node, so it raises one error — but the
+ * siblings that also failed are why it failed, and dropping them loses
+ * the only record of a request that was already broken. They ride the
+ * raised error.
  *
  * This is the body's job rather than the engine's for the same reason the
  * lowest-index rule is: `decide` is the only place that ever holds the
- * whole parked pile. It runs in both modes — `related` is a property of
- * the error, not of the mode — and `collectAll` has no counterpart, since
- * it raises as soon as an index is KNOWN lowest and so has no completed
- * pile to attach.
+ * whole parked pile. `collectAll` has no counterpart, since it raises as
+ * soon as an index is KNOWN lowest and so has no completed pile to
+ * attach.
  */
 const withRelated = (parked: Settlement[]): unknown => {
   const [lowest, ...rest] = parked

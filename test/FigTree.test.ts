@@ -32,7 +32,7 @@ describe('new FigTree — registration', () => {
           operators: [[makeOp('alpha'), makeOp('beta')], equalLike()],
           operatorDefaults: { equal: { caseInsensitive: true } },
           timeout: 1000,
-          mode: 'report',
+          trace: true,
         })
     ).not.toThrow()
   })

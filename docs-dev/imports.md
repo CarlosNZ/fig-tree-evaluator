@@ -4,7 +4,7 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`); the `./format` block re-measured with its reading primitives (#199, #201), and the engine after the sample-data read sites and fragment result types (#200). The root's totals and `./migrate` re-measured October 2026, with the caching rework (#204).
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`); the `./format` block re-measured with its reading primitives (#199, #201), and the engine after the sample-data read sites and fragment result types (#200). `./migrate` re-measured October 2026, with the caching rework (#204), and the root's totals with the removal of report mode (#208).
 
 <!-- prettier-ignore -->
 ```ts
@@ -12,15 +12,15 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 // Published as one file plus the chunk it shares with ./format (below), so
 // a consumer's bundler has to shake it, which works because nothing at the
 // file's top level has a side effect a bundler cannot rule out (#193;
-// `pnpm check:package` guards it). Everything imported (36.3 kB) is the
+// `pnpm check:package` guards it). Everything imported (35.9 kB) is the
 // ceiling.
 
-// ── The engine tree: 30.5 kB ─────────────────────────────────────────────
+// ── The engine tree: 30.3 kB ─────────────────────────────────────────────
 import { FigTree } from 'fig-tree-evaluator'
 // The whole runtime: registry, compiler, validate(), evaluator, caches,
-// fragments, report and trace. coreOperators is part of it, since FigTree
+// fragments and trace. coreOperators is part of it, since FigTree
 // registers the core set itself, so FigTree + coreOperators is also
-// 30.5 kB.
+// 30.3 kB.
 import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────

@@ -1,6 +1,6 @@
 /**
  * The recursive evaluator core — the four-kind dispatch over the compile
- * artifact ("One spine, three views" in
+ * artifact ("One spine, two views" in
  * docs-dev/v3-specs/v3-evaluator-methods.md; "Compile → evaluate"
  * in docs-dev/v3-specs/v3-implementation-notes.md). A constant is returned
  * by identity, a reference is resolved, a skeleton evaluates its holes
@@ -110,7 +110,7 @@ const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Pro
   // The hole boundary belongs to the ARTIFACT root's holes alone, and this
   // is the first skeleton an evaluation reaches — so take it, and clear it
   // for everything below: a nested skeleton's holes sit inside a hole
-  // already, where neither degradation nor shielded assembly is defined
+  // already, where shielded assembly is not defined
   const boundary = ctx.rootBoundary
   const inner = boundary === undefined ? ctx : { ...ctx, rootBoundary: undefined }
   // `vars` is functional and consumed on a plain object literal, scoping

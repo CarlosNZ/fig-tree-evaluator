@@ -67,8 +67,8 @@ export const evaluateOperator = async (
     try {
       const answered = await fallback()
       // A fallback firing is the author's designed degradation, so it is
-      // a SUCCESS that `errors` never sees — which makes trace the only
-      // record that it happened, and of what it caught
+      // a SUCCESS — which makes trace the only record that it happened,
+      // and of what it caught
       if (ctx.trace !== undefined && ctx.traceParent !== undefined)
         ctx.trace.markFallback(ctx.traceParent, failure)
       return answered

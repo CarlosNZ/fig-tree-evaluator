@@ -4,9 +4,9 @@
  *
  * Compile-time assertions: `pnpm typecheck` covers the test tree, so a
  * return type that stops following the effective options fails CI. The
- * rule under test is one sentence — the bare value, unless `mode` is
- * `'report'` or `trace` is `true` in the MERGED options — and the matrix
- * is what keeps its two independent axes honest.
+ * rule under test is one sentence — the bare value, unless `trace` is
+ * `true` in the MERGED options — and the matrix is what keeps the merge
+ * honest in both directions.
  *
  * Why there is no `const` type parameter behind any of this: widening
  * applies to a mutable variable declaration, not to inference into a
@@ -27,7 +27,6 @@ const assertType = <T extends true>(): T | undefined => undefined
 // ── Instance-level ──────────────────────────────────────────────────
 
 const plain = new FigTree()
-const reporting = new FigTree({ mode: 'report' })
 const tracing = new FigTree({ trace: true })
 const traceOff = new FigTree({ trace: false })
 
@@ -43,15 +42,12 @@ const instanceLevel = async () => {
   const a = plain.evaluate({})
 
   assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
-  const b = reporting.evaluate({})
+  const b = tracing.evaluate({})
 
-  assertType<Equal<Awaited<typeof c>, EvaluationResult>>()
-  const c = tracing.evaluate({})
+  assertType<Equal<Awaited<typeof c>, unknown>>()
+  const c = traceOff.evaluate({})
 
-  assertType<Equal<Awaited<typeof d>, unknown>>()
-  const d = traceOff.evaluate({})
-
-  return [a, b, c, d]
+  return [a, b, c]
 }
 
 // ── Per-call, and per-call overriding the instance both ways ────────
@@ -61,29 +57,26 @@ const checks = async () => {
   const a = plain.evaluate({})
 
   assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
-  const b = plain.evaluate({}, { mode: 'report' })
+  const b = plain.evaluate({}, { trace: true })
 
-  assertType<Equal<Awaited<typeof c>, EvaluationResult>>()
-  const c = plain.evaluate({}, { trace: true })
+  assertType<Equal<Awaited<typeof c>, unknown>>()
+  const c = plain.evaluate({}, { trace: false })
 
   assertType<Equal<Awaited<typeof d>, unknown>>()
-  const d = plain.evaluate({}, { trace: false })
+  const d = plain.evaluate({}, { data: { x: 1 }, timeout: 50 })
 
+  // A per-call `trace: false` turns the instance's envelope off…
   assertType<Equal<Awaited<typeof e>, unknown>>()
-  const e = plain.evaluate({}, { data: { x: 1 }, timeout: 50 })
+  const e = tracing.evaluate({}, { trace: false })
 
-  // A per-call throw turns the envelope off again…
-  assertType<Equal<Awaited<typeof f>, unknown>>()
-  const f = reporting.evaluate({}, { mode: 'throw' })
+  // …and a call that leaves `trace` alone keeps it
+  assertType<Equal<Awaited<typeof f>, EvaluationResult>>()
+  const f = tracing.evaluate({}, { data: { x: 1 } })
 
-  // …unless trace is still on at the instance, the two being independent
   assertType<Equal<Awaited<typeof g>, EvaluationResult>>()
-  const g = tracing.evaluate({}, { mode: 'throw' })
+  const g = traceOff.evaluate({}, { trace: true })
 
-  assertType<Equal<Awaited<typeof h>, EvaluationResult>>()
-  const h = reporting.evaluate({}, { trace: true })
-
-  return [a, b, c, d, e, f, g, h]
+  return [a, b, c, d, e, f, g]
 }
 
 // ── The cases a `const` type parameter would have broken ────────────
@@ -93,19 +86,19 @@ const withRegistry = new FigTree({
   operatorDefaults: { join: { delimiter: ', ' } },
 })
 
-const reportingWithRegistry = new FigTree({
+const tracingWithRegistry = new FigTree({
   operators: [coreOperators, echoOp()],
-  mode: 'report',
+  trace: true,
 })
 
 const registryChecks = async () => {
   assertType<Equal<Awaited<typeof a>, unknown>>()
   const a = withRegistry.evaluate({})
 
-  // An array literal beside a diagnostic option: the combination a
-  // `const` type parameter would have turned into a readonly tuple
+  // An array literal beside `trace`: the combination a `const` type
+  // parameter would have turned into a readonly tuple
   assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
-  const b = reportingWithRegistry.evaluate({})
+  const b = tracingWithRegistry.evaluate({})
 
   return [a, b]
 }
@@ -117,18 +110,15 @@ const handleChecks = async () => {
   const a = plain.compile({}).evaluate()
 
   assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
-  const b = reporting.compile({}).evaluate()
+  const b = tracing.compile({}).evaluate()
 
   assertType<Equal<Awaited<typeof c>, EvaluationResult>>()
   const c = plain.compile({}).evaluate({ trace: true })
 
   assertType<Equal<Awaited<typeof d>, unknown>>()
-  const d = reporting.compile({}).evaluate({ mode: 'throw' })
+  const d = tracing.compile({}).evaluate({ trace: false })
 
-  assertType<Equal<Awaited<typeof e>, EvaluationResult>>()
-  const e = tracing.compile({}).evaluate({ mode: 'throw' })
-
-  return [a, b, c, d, e]
+  return [a, b, c, d]
 }
 
 // ── The one documented limitation ───────────────────────────────────
@@ -149,7 +139,7 @@ const limitation = async () => {
 test('the return type follows the effective options', async () => {
   // The runtime half of the same rule, so jest has something to run
   expect(await plain.evaluate({ a: 1 })).toEqual({ a: 1 })
-  expect(await reporting.evaluate({ a: 1 })).toEqual({ result: { a: 1 }, errors: [] })
+  expect(await tracing.evaluate({ a: 1 })).toMatchObject({ result: { a: 1 } })
   // The hoisted-options instance still behaves as an envelope at RUNTIME;
   // it is only the static type that cannot follow
   expect(await fromVariable.evaluate({ a: 1 })).toMatchObject({ result: { a: 1 } })

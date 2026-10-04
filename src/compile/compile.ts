@@ -1837,13 +1837,10 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
   // itself stays on the root node, which is where evaluation reads it.
   if (root.kind === 'skeleton')
     return root.holes.map((hole) => ({
-      path: toNodePath(hole.path),
       node: hole.node,
       ...withTimeoutFallback(state, hole.node),
     }))
-  // `root.path` rather than `[]`: a fragment body compiles under a base path,
-  // and a hole must still name where its node sits in the value compiled
-  return [{ path: toNodePath(root.path), node: root, ...withTimeoutFallback(state, root) }]
+  return [{ node: root, ...withTimeoutFallback(state, root) }]
 }
 
 const withTimeoutFallback = (

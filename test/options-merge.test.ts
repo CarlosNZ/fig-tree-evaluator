@@ -8,7 +8,7 @@
  *
  * Two regimes. Instance options — construction and `updateOptions()` —
  * merge by the two-level rule, with `data` the one block that replaces.
- * Per-call options are the five request-scoped keys laid flat over the
+ * Per-call options are the four request-scoped keys laid flat over the
  * instance's: no merging inside a value, `data` replacing by reference,
  * and anything else refused as method misuse.
  *
@@ -94,7 +94,7 @@ describe('instance options merge by the two-level rule (the consequence table)',
   })
 })
 
-describe('per-call options: five request-scoped keys, laid flat over the instance', () => {
+describe('per-call options: four request-scoped keys, laid flat over the instance', () => {
   it('data replaces the instance block — no merge — and is the caller’s own object', async () => {
     const instanceData = { org: 'Acme', user: { name: 'Ada' } }
     const { seen } = withSpy({ data: instanceData })
@@ -107,25 +107,25 @@ describe('per-call options: five request-scoped keys, laid flat over the instanc
     expect((await seen()).data).toBe(instanceData)
   })
 
-  it('mode, trace, timeout and signal override the instance value for the one call', async () => {
+  it('trace, timeout and signal override the instance value for the one call', async () => {
     const controller = new AbortController()
-    const { seen } = withSpy({ mode: 'throw', timeout: 5000 })
-    const options = await seen({ mode: 'report', timeout: 60000, signal: controller.signal })
-    expect(options.mode).toBe('report')
+    const { seen } = withSpy({ trace: false, timeout: 5000 })
+    const options = await seen({ trace: true, timeout: 60000, signal: controller.signal })
+    expect(options.trace).toBe(true)
     expect(options.timeout).toBe(60000)
     expect(options.signal).toBe(controller.signal)
     const again = await seen()
-    expect(again.mode).toBe('throw')
+    expect(again.trace).toBe(false)
     expect(again.timeout).toBe(5000)
     expect(again.signal).toBeUndefined()
   })
 
   it('ignores an undefined value, so an unset variable falls back to the instance', async () => {
     const instanceData = { a: 1 }
-    const { seen } = withSpy({ data: instanceData, mode: 'throw' })
-    const options = await seen({ data: undefined, mode: undefined })
+    const { seen } = withSpy({ data: instanceData, timeout: 5000 })
+    const options = await seen({ data: undefined, timeout: undefined })
     expect(options.data).toBe(instanceData)
-    expect(options.mode).toBe('throw')
+    expect(options.timeout).toBe(5000)
   })
 
   it('a call with no options, or only undefined ones, runs under the instance object itself', async () => {
@@ -152,7 +152,7 @@ describe('per-call options: five request-scoped keys, laid flat over the instanc
     )
     expect(error.code).toBe('invalid-options')
     expect(error.message).toMatch(/not a per-call option/)
-    expect(error.message).toMatch(/data, signal, timeout, mode and trace/)
+    expect(error.message).toMatch(/data, signal, timeout and trace/)
   })
 
   // An AbortSignal has no own enumerable properties, so merging it key by
@@ -181,9 +181,9 @@ describe('per-call options: five request-scoped keys, laid flat over the instanc
 
 describe('the instance is never written back to', () => {
   it('a per-call override lasts exactly one evaluation', async () => {
-    const { seen } = withSpy({ mode: 'throw' })
-    expect((await seen({ mode: 'report' })).mode).toBe('report')
-    expect((await seen()).mode).toBe('throw')
+    const { seen } = withSpy({ timeout: 5000 })
+    expect((await seen({ timeout: 60000 })).timeout).toBe(60000)
+    expect((await seen()).timeout).toBe(5000)
   })
 
   it('does not capture the caller’s options object, to the merge rule’s depth', async () => {

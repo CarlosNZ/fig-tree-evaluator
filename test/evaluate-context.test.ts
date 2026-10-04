@@ -57,12 +57,12 @@ test('context.options is the whole option set: instance configuration with the c
     data: { instance: true },
   })
   const data = { call: true }
-  await fig.evaluate({ $opts: {} }, { data, mode: 'throw' })
+  await fig.evaluate({ $opts: {} }, { data, timeout: 5000 })
   const { options } = spy.contexts[0]
   // Blocks the body never declared an interest in are there all the same
   expect(options.http).toEqual({ baseEndpoint: 'https://x.test', headers: { a: '1' } })
   expect(options.graphQL).toEqual({ endpoint: 'https://g.test' })
-  expect(options.mode).toBe('throw')
+  expect(options.timeout).toBe(5000)
   // Per-call data is the caller's object, not a merge and not a copy
   expect(options.data).toBe(data)
 })

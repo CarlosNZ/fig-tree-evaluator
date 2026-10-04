@@ -4,7 +4,7 @@
  * docs-dev/v3-specs/v3-api.md). Asserts internal artifacts + the issue
  * stream; the black-box surface arrives with validate() (3.3).
  */
-import { compileExpression } from '../src/compile'
+import { compileExpression, toNodePath } from '../src/compile'
 import type { CompileArtifact, OperatorNode, FragmentCallNode } from '../src/compile'
 import { makeCompileRegistry, withFragments } from './fixtures/compileRegistry'
 
@@ -31,14 +31,14 @@ test('an operator node root is the single hole at path []', () => {
   const artifact = compile({ operator: 'plus', values: [1, 2] })
   expect(artifact.root.kind).toBe('operator')
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual([])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual([])
 })
 
 test('a plain-literal root with an embedded node compiles to a skeleton', () => {
   const artifact = compile({ a: { $plus: [1, 2] }, b: 'inert' })
   expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual(['a'])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['a'])
   expect(artifact.holes[0].node.kind).toBe('operator')
 })
 
@@ -46,7 +46,7 @@ test('a reference-string root is an evaluable hole', () => {
   const artifact = compile('$data.user.name')
   expect(artifact.root.kind).toBe('reference')
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual([])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual([])
 })
 
 test('non-plain objects are opaque constants, never traversed', () => {
@@ -107,7 +107,7 @@ test('an unrecognized $name key is inert data with a warning, not an error', () 
 test('plain-literal contents under an unrecognized key still traverse', () => {
   const artifact = compile({ $typo: { inner: { $plus: [1, 2] } } })
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual(['$typo', 'inner'])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['$typo', 'inner'])
 })
 
 test('reserved siblings are legal on a shorthand node', () => {

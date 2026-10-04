@@ -1,9 +1,9 @@
 /**
  * Chunk 4.1 — the dispatch and `evaluate()`'s own behaviour ("One spine,
- * three views" and "evaluate() return shapes" in
+ * two views" and "evaluate() return shapes" in
  * docs-dev/v3-specs/v3-evaluator-methods.md): identity for constants,
  * skeleton splicing, `$data` references, the static-error gate, the probe
- * fast path and the per-call limits. Throw mode only.
+ * fast path and the per-call limits.
  */
 import { FigTree, FigTreeError, type CallOptions } from '../src'
 import { boomOp, echoOp } from './fixtures/evalOperators'

@@ -1,22 +1,17 @@
 /**
- * Worked example 1 in full (docs-dev/v3-specs/v3-worked-examples.md § 1)
- * — Phase 12.1's acceptance test.
+ * Worked example 1 in full (docs-dev/v3-specs/v3-worked-examples.md § 1).
  *
  * One config, five holes, five different fates: plain success, success
  * via the null gradient, designed degradation (a `fallback` catches), a
- * deep uncaught failure, and a failing fallback. The two modes agree on
- * everything except what happens AFTER an uncaught failure, which is the
- * whole point of the example.
+ * deep uncaught failure, and a failing fallback. As authored it rejects;
+ * with a fallback on each field that can fail, every value survives.
  *
  * Only the behaviours are asserted, never the encodings — the doc's own
- * reading rule. One divergence from the doc's printed output, first met
- * at Phase 7 and worth stating: `10 / 0` is stopped by the engine's
- * finite-number guard, so the code is `non-finite-result` rather than the
- * `operator-failure` the example shows, and the message is the guard's.
- * The path, the hole and the fate are as written.
+ * reading rule. Each uncaught failure is asserted with the other one
+ * covered, since which of the two rejects the uncovered config is the one
+ * timing-dependent thing in the example.
  */
 import { FigTree, FigTreeError, ErrorCodes, httpOperators } from '../src'
-import type { EvaluationResult } from '../src'
 import { coreOperators } from '../src/operators'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
@@ -58,77 +53,64 @@ describe('worked example 1 — failures at different depths, different fates', (
   // `user.last` is missing; wins 10, losses 0
   const data = { user: { first: 'Ada', id: 42 }, stats: { wins: 10, losses: 0 } }
 
-  const run = async (): Promise<EvaluationResult> =>
-    (await build().evaluate(dashboard, { mode: 'report', data })) as EvaluationResult
-
-  it('keeps the three healthy values and degrades the two that failed', async () => {
-    const { result } = await run()
-    expect(result).toEqual({
-      meta: { generated: 'v3-example', version: 3 },
-      user: {
-        // null rendered '' — success via the gradient, no error
-        displayName: 'Ada ',
-        // the node's own fallback caught — success, no error
-        avatar: 'https://api.example.com/avatar/default.png',
-      },
-      stats: {
-        total: 10,
-        summary: null, // degraded hole
-      },
-      activity: null, // degraded hole
-    })
+  /** The dashboard with fallbacks on `summary`, `activity`'s backup, or both */
+  const covered = (fields: { summary?: boolean; activity?: boolean }) => ({
+    ...dashboard,
+    stats: {
+      ...dashboard.stats,
+      summary: fields.summary
+        ? { ...dashboard.stats.summary, fallback: 'Win ratio: n/a' }
+        : dashboard.stats.summary,
+    },
+    activity: fields.activity
+      ? { ...dashboard.activity, fallback: { ...dashboard.activity.fallback, fallback: [] } }
+      : dashboard.activity,
   })
 
-  it('collects exactly the two uncaught failures, in tree order', async () => {
-    const { errors } = await run()
-    expect(errors).toHaveLength(2)
-    expect(errors.map((error) => error.holePath)).toEqual([['stats', 'summary'], ['activity']])
+  const run = (expression: unknown) => build().evaluate(expression, { data })
+
+  it('as authored, an uncaught failure rejects the whole call', async () => {
+    const error = await rejection<FigTreeError>(run(dashboard))
+    // Whichever occurred first — the divide, in practice, there being no
+    // network round trip — so membership is what is asserted, not identity
+    expect([ErrorCodes.nonFiniteResult, ErrorCodes.operatorFailure]).toContain(error.code)
   })
 
-  it('the deep failure names the failing node and the hole that degraded', async () => {
-    const { errors } = await run()
-    const [summary] = errors
-    expect(summary.code).toBe(ErrorCodes.nonFiniteResult)
-    expect(summary.operator).toBe('divide')
-    // The failing node — two levels below the hole root, with no fallback
-    // anywhere between
-    expect(summary.path).toEqual(['stats', 'summary', '$buildString', 1])
-    expect(summary.holePath).toEqual(['stats', 'summary'])
+  it('the deep failure names the failing node', async () => {
+    const error = await rejection<FigTreeError>(run(covered({ activity: true })))
+    expect(error.code).toBe(ErrorCodes.nonFiniteResult)
+    expect(error.operator).toBe('divide')
+    // Two levels below the field, with no fallback anywhere between
+    expect(error.path).toEqual(['stats', 'summary', '$buildString', 1])
   })
 
-  it('the failing fallback reports the fallback’s error, the original as `cause`', async () => {
-    const { errors } = await run()
-    const activity = errors[1]
-    expect(activity.operator).toBe('http')
+  it('the failing fallback raises the fallback’s error, the original as `cause`', async () => {
+    const error = await rejection<FigTreeError>(run(covered({ summary: true })))
+    expect(error.operator).toBe('http')
     // `path` names the node that FAILED, which under rule 4 is the
-    // fallback — the doc prints `['activity']` for both ends, which the
-    // engine cannot produce and should not: re-tagging a path a child
-    // already set is exactly what "first tagger wins" forbids, and it is
-    // that rule which makes the deep `summary` path above work. The pair
-    // is more legible for keeping them apart — `cause` names the primary
-    // node, `path` the backup that also failed — and `holePath` is what
-    // answers "which hole degraded" either way
-    expect(activity.path).toEqual(['activity', 'fallback'])
-    expect(activity.holePath).toEqual(['activity'])
-    expect(activity.message).toMatch(/backup\.example\.com/)
-    expect(activity.errorData).toMatchObject({ status: 503 })
-    const cause = activity.cause as FigTreeError
+    // fallback: re-tagging a path a child already set is exactly what
+    // "first tagger wins" forbids, and it is that rule which makes the
+    // deep `summary` path above work. `cause` names the primary node,
+    // `path` the backup that also failed
+    expect(error.path).toEqual(['activity', 'fallback'])
+    expect(error.message).toMatch(/backup\.example\.com/)
+    expect(error.errorData).toMatchObject({ status: 503 })
+    const cause = error.cause as FigTreeError
     expect(cause.message).toMatch(/api\.example\.com/)
   })
 
-  it('the caught fallback and the propagated null contribute nothing to `errors`', async () => {
-    const { errors } = await run()
-    const paths = errors.map((error) => JSON.stringify(error.holePath))
-    expect(paths).not.toContain(JSON.stringify(['user', 'avatar']))
-    expect(paths).not.toContain(JSON.stringify(['user', 'displayName']))
-  })
-
-  it('throw mode rejects with one of the two, and destroys the healthy values', async () => {
-    const error = await rejection<FigTreeError>(build().evaluate(dashboard, { data }))
-    // Whichever occurred first — the divide, in practice, there being no
-    // network round trip — so membership is what is asserted, not identity
-    const { errors } = await run()
-    expect(errors.map((collected) => collected.code)).toContain(error.code)
+  it('with a fallback on each field that can fail, every value survives', async () => {
+    expect(await run(covered({ summary: true, activity: true }))).toEqual({
+      meta: { generated: 'v3-example', version: 3 },
+      user: {
+        // null rendered '' — success via the gradient
+        displayName: 'Ada ',
+        // the node's own fallback caught — success
+        avatar: 'https://api.example.com/avatar/default.png',
+      },
+      stats: { total: 10, summary: 'Win ratio: n/a' },
+      activity: [],
+    })
   })
 
   it("the gradient's opt-outs close the trailing space, and fallback is not one of them", async () => {
@@ -371,17 +353,12 @@ describe('lifecycle — the full example, fetch counts and all', () => {
 
 /**
  * Worked example 3 in full (docs-dev/v3-specs/v3-worked-examples.md § 3) —
- * timeout shielding in throw mode, and the validate badge. The two
- * report-mode lines are Phase 12.
+ * timeout shielding, and the validate badge.
  *
  * The doc's request takes ~900ms against a 50ms budget; the mock's latency
  * is shorter so the suite stays quick, and the relationship is what matters.
- *
- * Report mode's two rows close the example at Phase 12: shielding is the
- * one place the modes disagree about a SUCCESS, since throw mode returns
- * the assembly silently and report mode says the deadline fired.
  */
-describe('worked example 3 — timeout shielding: throw mode and the validate badge', () => {
+describe('worked example 3 — timeout shielding and the validate badge', () => {
   const http = new MockHttpClient({ latencyMs: 300, responses: { offers: [{ id: 7 }] } })
   const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
 
@@ -424,36 +401,6 @@ describe('worked example 3 — timeout shielding: throw mode and the validate ba
       fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })
     )
     expect(error.code).toBe('timeout')
-  })
-
-  it('report mode returns the assembly beside exactly [timeoutError]', async () => {
-    // A cache hit cannot time out: the request the deadline is meant to
-    // cut off has to be in flight
-    fig.clearCache()
-    const { result, errors } = (await fig.evaluate(banner, {
-      data: { name: 'Ada' },
-      timeout: 50,
-      mode: 'report',
-    })) as EvaluationResult
-    expect(result).toEqual({ greeting: 'Hi Ada', offers: [] })
-    // Exactly [timeoutError] — a shielded expression CANNOT have other
-    // uncaught errors, since every hole root's fallback catches
-    // everything inside its own hole
-    expect(errors).toHaveLength(1)
-    expect(errors[0].code).toBe(ErrorCodes.timeout)
-  })
-
-  it('report mode returns null beside the timeout error for the un-shielded banner', async () => {
-    fig.clearCache()
-    const { result, errors } = (await fig.evaluate(banner2, {
-      data: { name: 'Ada' },
-      timeout: 50,
-      mode: 'report',
-    })) as EvaluationResult
-    // All-or-nothing: greeting's finished value is discarded with the rest
-    expect(result).toBeNull()
-    expect(errors).toHaveLength(1)
-    expect(errors[0].code).toBe(ErrorCodes.timeout)
   })
 })
 
@@ -514,24 +461,6 @@ describe('worked example 4 — a failure inside a fragment body', () => {
     })
     expect(strict.validate({ $frag: { role: 7 } }).issues[0].code).toBe(ErrorCodes.typeCheck)
   })
-
-  test('under report, the call degrades and the error keeps BOTH ends of the pointer', async () => {
-    const { result, errors } = (await fig().evaluate(expression, {
-      mode: 'report',
-      data: { user: { name: 'Ada', roles: 7 } },
-    })) as EvaluationResult
-    expect(result).toEqual({ banner: null })
-    expect(errors).toHaveLength(1)
-    const [error] = errors
-    expect(error.code).toBe(ErrorCodes.typeCheck)
-    // The call node, in the input — and the hole it degraded, which for a
-    // fragment call is the call node too
-    expect(error.path).toEqual(['banner'])
-    expect(error.holePath).toEqual(['banner'])
-    // …and where in the registered body it actually went wrong
-    expect(error.fragment).toBe('userSummary')
-    expect(error.fragmentPath).toEqual(['expression', '$buildString', 2])
-  })
 })
 
 // ── Worked example 5 ────────────────────────────────────────────────
@@ -543,8 +472,8 @@ describe('worked example 4 — a failure inside a fragment body', () => {
  * The teaching point is that run 1's outcome is deterministic regardless
  * of completion order. Even where the request has already failed before
  * `isAdmin` resolves, `or(parked-failure, true)` is `true`, and the
- * parked failure never reaches report output. Only when nothing decides
- * does the result depend on the failure.
+ * parked failure never surfaces. Only when nothing decides does the
+ * result depend on the failure.
  */
 describe('worked example 5 — the same failure, mattering and not mattering', () => {
   const canEdit = {
@@ -564,30 +493,17 @@ describe('worked example 5 — the same failure, mattering and not mattering', (
       operators: [coreOperators, httpOperators(new MockHttpClient({ failStatus: 503 }))],
     })
 
-  const run = async (isAdmin: boolean): Promise<EvaluationResult> =>
-    (await build().evaluate(canEdit, { mode: 'report', data: { isAdmin } })) as EvaluationResult
+  const run = (isAdmin: boolean) => build().evaluate(canEdit, { data: { isAdmin } })
 
   test('run 1 — operand 0 decides, so the failure is discarded entirely', async () => {
-    const { result, errors } = await run(true)
-    expect(result).toBe(true)
     // Cancellation is not failure, and neither is a parked failure that
     // lost the race
-    expect(errors).toEqual([])
+    expect(await run(true)).toBe(true)
   })
 
   test('run 2 — with no decider the result depends on it, so the node fails', async () => {
-    const { result, errors } = await run(false)
-    expect(result).toBeNull()
-    expect(errors).toHaveLength(1)
-    expect(errors[0].operator).toBe('http')
-    expect(errors[0].holePath).toEqual([])
-  })
-
-  test('throw mode agrees on both runs — the invariant, on the example', async () => {
-    expect(await build().evaluate(canEdit, { data: { isAdmin: true } })).toBe(true)
-    const error = await rejection<FigTreeError>(
-      build().evaluate(canEdit, { data: { isAdmin: false } })
-    )
+    const error = await rejection<FigTreeError>(run(false))
     expect(error.operator).toBe('http')
+    expect(error.path).toEqual(['$or', 1])
   })
 })

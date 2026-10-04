@@ -4,7 +4,7 @@
  * identity-only flag (obligations A2/A4/B1/B2/B4/B6/C5 in
  * docs-dev/v3-specs/v3-artifact-obligations.md).
  */
-import { compileExpression, renderSegments } from '../src/compile'
+import { compileExpression, toNodePath, renderSegments } from '../src/compile'
 import type { CompileArtifact } from '../src/compile'
 import { canonicalSegments, parsePath } from '../src/primitives'
 import { makeCompileRegistry } from './fixtures/compileRegistry'
@@ -34,7 +34,7 @@ test('worked example 1 shape: constant shells are not holes, deep holes are', ()
   }
   const artifact = compile(dashboard)
   expect(artifact.root.kind).toBe('skeleton')
-  expect(artifact.holes.map((h) => h.path)).toEqual([
+  expect(artifact.holes.map((h) => toNodePath(h.node.path))).toEqual([
     ['user', 'displayName'],
     ['user', 'avatar'],
     ['stats', 'total'],
@@ -45,7 +45,7 @@ test('nested plain literals flatten into the enclosing skeleton', () => {
   const artifact = compile({ a: { b: { c: { $plus: [1, 2] } } } })
   expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual(['a', 'b', 'c'])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['a', 'b', 'c'])
 })
 
 test('a plain literal inside an operator parameter compiles as a skeleton', () => {
@@ -65,7 +65,7 @@ test('arrays with evaluable elements are skeletons too', () => {
   const artifact = compile([1, { $plus: [1, 2] }, 3])
   expect(artifact.root.kind).toBe('skeleton')
   expect(artifact.holes).toHaveLength(1)
-  expect(artifact.holes[0].path).toEqual([1])
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual([1])
 })
 
 // ── Shielding precompute ────────────────────────────────────────────

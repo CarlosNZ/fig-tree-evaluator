@@ -36,9 +36,9 @@ export const isInternalError = (error: unknown): boolean => hasBrand(error, INTE
  * that asked for this work has settled.
  *
  * Cancellation is not failure. Nobody is waiting on an abandoned branch,
- * so this must never be wrapped into a FigTreeError, never reach a
- * `fallback`, and never surface under `mode: 'report'`. It travels the same
- * bail-out as an engine bug for that reason, and for no other.
+ * so this must never be wrapped into a FigTreeError and never reach a
+ * `fallback`. It travels the same bail-out as an engine bug for that
+ * reason, and for no other.
  */
 const CANCELLED: unique symbol = Symbol('fig-tree:cancelled')
 
