@@ -59,7 +59,7 @@ const clamp = defineOperator({
 })
 ```
 
-Everything v2 made the operator author do is absent, deliberately: no type checks (declared, engine-enforced), no null checks (`propagate` short-circuits before the body runs), no `parseChildren` (`positionalParams` is declarative), no `NaN` policing (the finite guard catches `clamp` fed garbage under `runtimeTypeCheck: false`). `{ $clamp: ['$data.score', 0, 100] }` works the moment the definition enters the array.
+Everything v2 made the operator author do is absent, deliberately: no type checks (declared, engine-enforced), no null checks (`propagate` short-circuits before the body runs), no `parseChildren` (`positionalParams` is declarative), no `NaN` policing (the engine's finite guard turns any non-finite result into a runtime failure). `{ $clamp: ['$data.score', 0, 100] }` works the moment the definition enters the array.
 
 The laziness capabilities, on the operator that forced them into the ledger:
 
@@ -230,7 +230,7 @@ interface OperatorContext {
 
 The flip side of the first-class principle: these live in the engine's layers, and a body doing them by hand is a review smell (the implementation-notes posture, now contract):
 
-- Compile-time and runtime **type checking** against the declared types, constraints included (#9); `runtimeTypeCheck: false` degrades exactly the pre-execution layer, per its agreed scope — _at implementation (Phase 4): it removes the type check, the constraints and the derived reject, and nothing else; null-policy enforcement and truthiness are semantics and always run._
+- Compile-time and runtime **type checking** against the declared types, constraints included (#9). The runtime checks always run, so a body can rely on its declared types ("Runtime type checks always run" in [v3-api.md](v3-api.md)).
 - **Null-policy enforcement** — propagate short-circuits, admission rejects, null-means-unset substitutes, `replacesNullAt` replaces (#18): a body sees null only at positions declared `value`.
 - **Truthiness** at declared positions (#4) — one shared `isTruthy()`, booleans delivered.
 - **Boundary normalization**: body result `undefined` → `null`; the **finite-number guard** (#10) converts would-be `NaN`/`±Infinity` results into named runtime failures (code `non-finite-result`) — no more hand-rolled divide-by-zero checks. _Both apply to the body's top-level result only (Phase 4): deep-walking every result would break the O(holes) cost model._

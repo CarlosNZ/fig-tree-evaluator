@@ -27,8 +27,7 @@
  *     table is consulted through the resolved selector; a null at a type
  *     that does not name null is the derived reject (a type error);
  *  4. element-wise null policy — the same per element / per value;
- *  5. the type check and constraints — the one layer `runtimeTypeCheck:
- *     false` removes (null policy and truthiness are semantics, always on);
+ *  5. the type check and constraints;
  *  6. truthiness — `isTruthy` at declared positions, per element where the
  *     declared type is container-only.
  *
@@ -222,7 +221,7 @@ export const resolveParams = async (
 
     // 5–6. the type check + constraints, then truthiness. A null at a type
     //    that does not name null fails the type check: the derived reject
-    value = vet(value, node, name, declared, ctx)
+    value = vet(value, node, name, declared)
 
     // 7. the lazy family's delivery, over a value the layers have passed:
     //    an unsupplied lazy parameter's default, and the degeneration rule
@@ -284,8 +283,7 @@ const demand = (
   name: string,
   declared: ValidatedParameter,
   ctx: EvaluationContext
-): LazyValue =>
-  handleOf(async () => vet(await evaluateNode(supplied, ctx), node, name, declared, ctx))
+): LazyValue => handleOf(async () => vet(await evaluateNode(supplied, ctx), node, name, declared))
 
 /**
  * Layers 5 and 6 — the type check with its constraints, then truthiness —
@@ -296,22 +294,19 @@ const vet = (
   value: unknown,
   node: OperatorNode,
   name: string,
-  declared: ValidatedParameter,
-  ctx: EvaluationContext
+  declared: ValidatedParameter
 ): unknown => {
-  if (ctx.runtimeTypeCheck) {
-    const typed = checkType(value, declared.type)
-    if (!typed.ok) throw typeError(node, name, typed)
-    // Constraints describe a container's shape; a null that the type admits
-    // has none to check
-    if (value !== null && declared.constraints !== undefined) {
-      const constrained = checkConstraintsUnderPolicy(
-        value,
-        declared.constraints,
-        declared.elementNullPolicy !== undefined
-      )
-      if (!constrained.ok) throw typeError(node, name, constrained)
-    }
+  const typed = checkType(value, declared.type)
+  if (!typed.ok) throw typeError(node, name, typed)
+  // Constraints describe a container's shape; a null that the type admits
+  // has none to check
+  if (value !== null && declared.constraints !== undefined) {
+    const constrained = checkConstraintsUnderPolicy(
+      value,
+      declared.constraints,
+      declared.elementNullPolicy !== undefined
+    )
+    if (!constrained.ok) throw typeError(node, name, constrained)
   }
   return declared.truthiness ? applyTruthiness(value, declared.type) : value
 }
@@ -339,8 +334,8 @@ const perElementHandle = (
   declared: ValidatedParameter,
   ctx: EvaluationContext
 ): PerElement => {
-  // Type-checked by the target's own layers, except under
-  // `runtimeTypeCheck: false`, where a non-array iterates over nothing
+  // The target need only admit an array, so a host's `any` or nullable
+  // target can arrive as something else, which iterates over nothing
   const collection = Array.isArray(target) ? target : []
   const as = renamedBinding(node)
   const memo = new Map<number, Promise<unknown>>()
@@ -356,8 +351,7 @@ const perElementHandle = (
         await evaluateNode(supplied, pushBinding(ctx, as, collection[index], index), { index }),
         node,
         name,
-        declared,
-        ctx
+        declared
       ))()
     // Attached where the promise is created, which is the only point early
     // enough: a body that demands an index and then resolves without
@@ -458,9 +452,8 @@ const typeError = (
 /**
  * The declared policy, or the compiled table read through its selector. The
  * selector is read after the defaults pass, so it is the value its own
- * layers will see. Its type is checked here whatever `runtimeTypeCheck`
- * says: the table is semantics, and needs a member of the literal type as
- * its key.
+ * layers will see. Its type is checked here, ahead of its own layers: the
+ * table needs a member of the literal type as its key.
  */
 const effectivePolicy = (
   node: OperatorNode,

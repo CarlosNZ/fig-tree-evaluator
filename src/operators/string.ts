@@ -187,8 +187,7 @@ export const buildString = declareOperator({
   positionalParams: ['template', '...substitutions'],
   returns: 'string',
   evaluate: ({ template, substitutions, trim: trimValues, closeGaps }, context) => {
-    // Mode dispatches on the resolved shape — the `plus` pattern: dispatch
-    // is semantics, so it survives `runtimeTypeCheck: false`, and the
+    // Mode dispatches on the resolved shape — the `plus` pattern: the
     // declared type has already refused anything that is neither
     const list = Array.isArray(substitutions) ? substitutions : undefined
     const named = list === undefined ? (substitutions as Record<string, unknown>) : undefined

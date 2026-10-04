@@ -286,25 +286,6 @@ describe('the runtime type check', () => {
     await figWith([spy]).evaluate({ $pair: { values: [1, '$data.missing'] } })
     expect(spy.calls).toEqual([{ values: [1, null] }])
   })
-
-  test('runtimeTypeCheck: false removes the type layer only', async () => {
-    const spy = spyOp('loose', {
-      s: { type: 'string' },
-      flag: { type: 'any', truthiness: true, required: false },
-      p: { type: ['number', 'null'], required: false },
-    })
-    // Instance configuration, not a per-call option
-    const fig = figWith([spy], { runtimeTypeCheck: false })
-    // literal mismatches are static errors; these arrive dynamically
-    const data = { n: 5 }
-    await fig.evaluate({ $loose: { s: '$data.n', flag: 0 } }, { data })
-    expect(spy.calls[0]).toEqual({ s: 5, flag: false })
-    // null policy is semantics: propagate still propagates
-    expect(await fig.evaluate({ $loose: { s: 'x', p: null } })).toBe(null)
-    // the derived reject is part of the type layer, so a null is delivered
-    await fig.evaluate({ $loose: { s: '$data.missing' } })
-    expect(spy.calls[1]).toEqual({ s: null })
-  })
 })
 
 describe('truthiness delivery (ledger #4)', () => {

@@ -73,18 +73,12 @@ export const plus = declareOperator({
         throw emptyAggregateFailure('the sum', "pin the mode with 'expect' to get its identity")
       return PLUS_IDENTITY[expect]()
     }
-    const mode = expect ?? plusKind(values[0])
-    if (mode === undefined)
-      throw operandTypeFailure(
-        `operands must be numbers, strings, arrays or objects — received ${describeType(values[0])}`
-      )
+    // The declared `homogeneous` constraint has made the operands one of the
+    // four kinds; `expect` pins which, and the constraint knows nothing of it
+    const mode = expect ?? (plusKind(values[0]) as PlusMode)
     const offender = values.find((value) => plusKind(value) !== mode)
     if (offender !== undefined)
-      throw operandTypeFailure(
-        `all operands must be ${mode}s — received ${describeType(offender)}${
-          expect === undefined ? ' beside ' + mode + 's' : ''
-        }`
-      )
+      throw operandTypeFailure(`all operands must be ${mode}s — received ${describeType(offender)}`)
     switch (mode) {
       case 'number':
         return (values as number[]).reduce((sum, value) => sum + value, 0)

@@ -266,10 +266,8 @@ const unsuppliedValue = (
 /**
  * The declaration layers, applied where a value arrives: null-means-unset,
  * then the type check. The same two layers an operator parameter gets, in
- * the same order and with the same opt-outs — `type: ['string', 'null']`
- * receives a null as a value, and `runtimeTypeCheck: false` removes the
- * check while leaving the null reading alone, null policy being semantics
- * rather than validation.
+ * the same order and with the same opt-out — `type: ['string', 'null']`
+ * receives a null as a value.
  */
 const resolveArgument = (
   node: FragmentCallNode,
@@ -285,7 +283,6 @@ const resolveArgument = (
   // declaration itself — `type: ['string', 'null']` receives it as a value
   if (normalized === null && !declared.required && !typeNamesNull(declared.type))
     return declared.default ?? null
-  if (!ctx.runtimeTypeCheck) return normalized
 
   const typed = checkType(normalized, declared.type)
   if (!typed.ok)

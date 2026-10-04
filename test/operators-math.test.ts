@@ -72,13 +72,16 @@ describe('plus', () => {
     )
   })
 
-  test('the body still checks the operands when runtimeTypeCheck is off', async () => {
-    const unchecked = new FigTree({ runtimeTypeCheck: false })
-    const error = await rejection<FigTreeError>(
-      unchecked.evaluate({ $plus: '$data.mixed' }, { data: { mixed: [1, '2'] } })
+  test('dynamic mixed operands fail the declared constraint; expect fails in the body', async () => {
+    const mixed = await failure({ $plus: '$data.mixed' }, { mixed: [1, '2'] })
+    expect(mixed.code).toBe('type-check')
+    expect(mixed.message).toContain('received string beside number')
+    const pinned = await failure(
+      { $plus: { values: '$data.words', expect: 'number' } },
+      { words: ['a', 'b'] }
     )
-    expect(error.code).toBe('type-check')
-    expect(error.message).toContain('all operands must be numbers — received string beside numbers')
+    expect(pinned.code).toBe('type-check')
+    expect(pinned.message).toContain('all operands must be numbers — received string')
   })
 
   test('expect asserts, never converts', async () => {

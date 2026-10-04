@@ -173,20 +173,6 @@ describe('declarations govern what a body receives', () => {
     expect(error.message).toContain("parameter 'withDefault': expected string, received number")
   })
 
-  test('runtimeTypeCheck: false removes the check but not the null reading', async () => {
-    // Instance configuration, not a per-call option
-    const loose = new FigTree({
-      operators: [coreOperators],
-      fragments: { frag },
-      runtimeTypeCheck: false,
-    })
-    const result = (await loose.evaluate(
-      { $frag: { required: 1, withDefault: '$data.n' } },
-      { data: { n: 7 } }
-    )) as Record<string, unknown>
-    expect(result.withDefault).toBe(7)
-  })
-
   test('a literal argument of the wrong type is refused before evaluation', () => {
     const issues = fig().validate({ $frag: { required: 1, withDefault: 7 } }).issues
     expect(issues[0].code).toBe(ErrorCodes.typeCheck)

@@ -107,10 +107,6 @@ export interface FigTreeOptions {
    */
   cache?: { store?: CacheStore; maxSize?: number; maxTime?: number }
 
-  // ── Type checking ───────────────────────────────────────
-  /** Default true. Structural validation is never skippable. */
-  runtimeTypeCheck?: boolean
-
   // ── Diagnostics ─────────────────────────────────────────
   /**
    * Record what happened at every node instance. `trace` changes no

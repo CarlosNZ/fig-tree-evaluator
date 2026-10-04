@@ -71,9 +71,6 @@ interface FigTreeOptions {
   // maxTime is SECONDS, measured from the write, default 1800 (see below).
   // Constructor / updateOptions only — never per-call (the store is instance-lived).
 
-  // ── Type checking ──────────────────────────────────────
-  runtimeTypeCheck?: boolean // default true. Structural validation is NOT skippable (cached, cheap, source of good errors)
-
   // ── Diagnostics ─────────────────────────────────────────
   trace?: boolean           // default false; annotated intermediate values (shape deferred)
 }
@@ -206,7 +203,7 @@ Deferred to other areas:
 | `caseInsensitive`             | **Deleted**           | → `operatorDefaults: { equal: { caseInsensitive: true }, … }`; per-node param remains                                                                                                                                                                      |
 | `allowJSONStringInput`        | **Deleted**           | Caller can `JSON.parse`                                                                                                                                                                                                                                    |
 | `noShorthand`                 | **Deleted**           | Moot — shorthand normalizes once at compile                                                                                                                                                                                                                |
-| `skipRuntimeTypeCheck`        | **Renamed**           | → `runtimeTypeCheck?: boolean`, default `true` (positive name, no double negative)                                                                                                                                                                         |
+| `skipRuntimeTypeCheck`        | **Deleted**           | The runtime type checks always run — see [Runtime type checks always run](#runtime-type-checks-always-run) ([#212](https://github.com/CarlosNZ/fig-tree-evaluator/issues/212))                                                                             |
 | `evaluateFullObject`          | **Deleted**           | Deep evaluation is the only semantics — see [Deep evaluation](#deep-evaluation); no `evaluateDeep` method either                                                                                                                                           |
 | `excludeOperators`            | **Deleted**           | Registration is the restriction mechanism — filter the `operators` array instead (ruled July 2026, Phase-2 implementation)                                                                                                                                 |
 | `useCache`                    | **Deleted**           | Caching is declared by an operator's definition (`cache: true`); the host turns an operator off with `operatorDefaults` `noCache`, an expression a subtree with the `noCache` node key ([#204](https://github.com/CarlosNZ/fig-tree-evaluator/issues/204)) |
@@ -817,9 +814,13 @@ One deliberate distinction: `convert` `to: 'string'` **propagates** null instead
 
 Restating the assessment's rule as policy: **an empty aggregate input is an error, not an identity value** — v2's roulette (empty PLUS returns `[]`, empty MULTIPLY returns `0`) dies. A literal empty array fails at validation; a dynamically-empty input is a runtime failure. Per-operator specifics (whether any aggregate earns an exception) belong to the parameter passes.
 
-### `runtimeTypeCheck: false` — scope
+### Runtime type checks always run
 
-With strictness now being semantics, the option (Options, default `true`) can only skip the **pre-execution parameter checks** — the validation layer that produces good errors. Semantic type dispatch is not skippable: `plus` still inspects types to choose add/concat/merge, truthiness still applies, equality is still strict. Off means out-of-contract inputs produce undefined behaviour (raw JS results or uglier errors thrown from operator bodies) — it is **not** a v2-compatibility coercion mode; v3 has no coercion mode.
+The **pre-execution parameter checks** — each value's declared type and constraints, checked before an operator body runs, and the same checks on fragment arguments — cannot be switched off, so an operator body can rely on its declared types without exception. v2's `skipRuntimeTypeCheck` has no v3 counterpart ([#212](https://github.com/CarlosNZ/fig-tree-evaluator/issues/212)):
+
+- **Skipping them buys no speed.** Timed against 3.0.0-preview.5, the checks were lost in the cost of evaluating the operators: an expression mapping over 200 items was no faster with them off.
+- **Off is not a useful mode.** With strictness being semantics, type dispatch (`plus` choosing add/concat/merge), null policy and truthiness all run regardless, so skipping the checks gave out-of-contract inputs undefined behaviour — raw JS results, or uglier errors thrown from operator bodies — never a v2-compatibility coercion mode; v3 has no coercion mode.
+- **A declared type that is too narrow is fixed in the declaration**, not by switching off the check that enforces it.
 
 ### Deferred
 
@@ -896,7 +897,7 @@ Every call is in exactly one of two modes, decided statically at compile by the 
 **Static arguments — the default face.** `parameters` is a plain object: argument names static, values expressions (the Node-grammar rule, unchanged for this mode).
 
 - Full static validation of the call signature: a missing required parameter or an unknown argument name is a compile error, reported by `validate()` — typo-catching, matching the no-hoisting posture; literal argument values type-check at compile.
-- Dynamic argument values land on the runtime type check as they arrive, governed by `runtimeTypeCheck` exactly as operator parameters are.
+- Dynamic argument values land on the runtime type check as they arrive, exactly as operator parameters do.
 - **Arguments evaluate lazily, memoized per call instance**: an argument evaluates at most once, on the body's first `$params` reference to it; parallel branches share the one in-flight evaluation; an argument referenced only in an `if` branch that never runs never evaluates at all. The lazy-branch principle extended — same semantics and suggested mechanism as `$vars` (References; implementation notes). Deliberate change from v2's evaluate-all-parameters-up-front ([evaluate.ts:96](../../v2-src/evaluate.ts#L96)). Runtime checks on a lazy argument fire at first reference, when its value first exists.
 - **Argument expressions evaluate in the caller's scope** — they are part of the calling expression, so `parameters: { country: '$vars.c' }` reads the _caller's_ vars. The sealed boundary (References) is the body: it sees argument _results_ via `$params`, never the caller's scope. Laziness doesn't change this — the deferred evaluation closes over the caller's scope.
 - A failing argument surfaces at the body's first reference to it and propagates per `fallback` rule 1 — catchable by a fallback inside the body or on the call node. Rejections memoize like vars (the rule-5 corner applies unchanged).

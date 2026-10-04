@@ -74,7 +74,6 @@ export interface EvaluationContext {
    */
   noCache?: true
   strictDataPaths: boolean
-  runtimeTypeCheck: boolean
   /** The innermost enclosing `vars` scope; absent at the root (./scope). */
   scope?: Scope
   /**
@@ -216,7 +215,6 @@ export const createEvaluationContext = (
   rootScope: root,
   cache,
   strictDataPaths: options.strictDataPaths ?? false,
-  runtimeTypeCheck: options.runtimeTypeCheck ?? true,
   ...(trace !== undefined ? { trace } : {}),
 })
 
