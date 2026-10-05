@@ -79,3 +79,15 @@ test('a reference hole is never shielded, so a timeout lists it', () => {
     ['a'],
   ])
 })
+
+test('a call with dynamic arguments is listed: they fail outside the body it lifts from', () => {
+  const withFragment = new FigTree({
+    fragments: { safe: { expression: { $upper: '$data.s', fallback: 'k' } } },
+  })
+  // Shielded all the same: the call lifts the body root's constant
+  expect(underTimeout({ a: { fragment: 'safe', parameters: '$data.args' } }, withFragment)).toEqual(
+    [['a']]
+  )
+  // Static arguments are evaluated inside the body, which catches them
+  expect(underTimeout({ a: { $safe: {} } }, withFragment)).toEqual([])
+})

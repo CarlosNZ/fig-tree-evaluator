@@ -52,12 +52,15 @@ Scopes follow the runtime: an operator node's or call's `vars` are in scope for 
 
 ### Under a timeout
 
-Nothing runs after the deadline, so a top-level value is covered only by a **constant** fallback, which a timeout splices in without running anything. That is exactly timeout shielding (fallback rule 3 in "fallback semantics" in [v3-api.md](v3-api.md)), reported value by value: a value is listed when the compiler found no constant fallback for it, its own, its operator's `operatorDefaults` one, or the one a fragment call lifts from its body's root. When nothing is listed, a timeout assembles the result rather than rejecting.
+Nothing runs after the deadline, so a top-level value is covered only by a **constant** fallback, which a timeout splices in without running anything. That is timeout shielding (fallback rule 3 in "fallback semantics" in [v3-api.md](v3-api.md)), reported value by value: a value is listed when the compiler found no constant fallback for it, its own, its operator's `operatorDefaults` one, or the one a fragment call lifts from its body's root.
+
+The rules without a timeout apply as well, and they list one value shielding passes: a fragment call with dynamic arguments and no fallback of its own. It lifts its body's constant fallback, which a timeout splices in correctly, but its arguments are evaluated and checked before the body runs, outside the body's fallbacks, so a failure there still rejects the evaluation. Every other constant fallback already covers by those rules. When nothing is listed, a timeout assembles the result rather than rejecting, and nothing else can throw.
 
 ### Known consequences
 
 - `{ $plus: [1, 2] }` is listed, although it cannot fail: there are no failure classes.
 - Under a timeout, a reference at the top level is always listed, because timeout shielding never shields a reference (`timeoutFallbackFor` in src/compile/compile.ts) and so a timeout rejects such an expression. A reference has no fallback, so the fix is a `get` node with one. Whether shielding should treat a reference as finished is a separate question.
+- Under a timeout, a nested plain object carrying its own `vars` is listed at its own path, although a plain object cannot carry a fallback. It compiles to a single top-level value, and timeout shielding never gives one that is plain data a constant fallback, so a timeout rejects the expression even when every value inside the object has a constant fallback. The fix is to move its `vars` to the root or onto a node. Letting such an object shield when every value inside it does, as a fragment body that is plain data already does, is an engine change ([#216](https://github.com/CarlosNZ/fig-tree-evaluator/issues/216)).
 - A timeout is counted however quickly the expression would finish. A value doing no I/O settles before the deadline's timer can fire, so it cannot actually be cut off; the analysis does not look for I/O.
 
 ## Why not `validate()`
@@ -66,7 +69,7 @@ Nothing runs after the deadline, so a top-level value is covered only by a **con
 
 ## Deferred
 
-From #209, until the false positives they would remove prove worth the complexity:
+From #209, until the false positives they would remove prove worth the complexity. [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217) carries them in full:
 
 - **Failure classes.** Each operator would declare whether it never fails, fails only on bad input, or can fail whatever its input (`http`, `divide`). Then `{ $plus: [1, 2] }`, with constant arguments that pass the static checks, is safe, and an inner fallback can matter. An operator whose own code never fails can still fail the engine's type check on a typed parameter fed a computed value (`get.path`), so such a node would be safe only where every computed input lands in an `any` parameter. The classes would live in this subpath, as a table, rather than on the definitions.
 - **Reasoning about children's types**: a computed input whose declared `returns` is a subset of the parameter's type cannot fail the type check, as `{ $multiply: [2, 3] }` feeding `plus`. Static, so still cheap.

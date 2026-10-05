@@ -3,7 +3,7 @@ import typescript from '@rollup/plugin-typescript'
 import terser from '@rollup/plugin-terser'
 import dts from 'rollup-plugin-dts'
 import { collectBundleSize, printBundleSize } from './codegen/bundleSize.mjs'
-import { CHUNKS_DIR, ENTRIES } from './codegen/entries.mjs'
+import { CHUNK_NAMES, CHUNKS_DIR, ENTRIES } from './codegen/entries.mjs'
 
 // package.json must name exactly the entries built here, with the paths the
 // build writes — checked before building anything. Twice over: in `exports`,
@@ -82,6 +82,22 @@ const pureAnnotations = () => {
   }
 }
 
+/**
+ * The name of the shared chunk holding `moduleIds`, from CHUNK_NAMES. Paths
+ * are compared with forward slashes, whatever the platform's separator. A
+ * chunk holding none of the listed modules fails the build, so a new one is
+ * named on purpose rather than numbered
+ */
+const chunkName = (moduleIds) => {
+  const ids = moduleIds.map((id) => id.replaceAll('\\', '/'))
+  const match = CHUNK_NAMES.find(({ module }) => ids.some((id) => id.endsWith(`/${module}`)))
+  if (match === undefined)
+    throw new Error(
+      `A shared chunk holds none of CHUNK_NAMES' modules, so it has no name: give it a row in codegen/entries.mjs. It holds ${ids.join(', ')}`
+    )
+  return match.name
+}
+
 export default [
   {
     // One pass over every entry, so shared code is emitted once as a chunk
@@ -96,12 +112,9 @@ export default [
       dir: 'build',
       format: 'esm',
       entryFileNames: '[name].js',
-      // Named by what a chunk holds, never by rollup's numbering, so each
-      // keeps its name in the size reports however the entries' sharing
-      // shifts: the engine `./authoring` shares with the root, and the small
-      // modules `./format` shares with it (codegen/entries.mjs)
-      chunkFileNames: ({ moduleIds }) =>
-        `${CHUNKS_DIR}/${moduleIds.some((id) => id.endsWith('/src/FigTree.ts')) ? 'engine' : 'shared'}.js`,
+      // Named by what a chunk holds, never by rollup's numbering
+      // (CHUNK_NAMES in codegen/entries.mjs)
+      chunkFileNames: ({ moduleIds }) => `${CHUNKS_DIR}/${chunkName(moduleIds)}.js`,
     },
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides

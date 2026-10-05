@@ -154,8 +154,11 @@ const raced = (
 /**
  * The boundary itself: the hole raced against the root's `expiry`.
  *
- * A shielded hole cannot reject with an ordinary failure, its static
- * fallback having caught it. What can still reach the race is a
+ * A shielded hole's static fallback catches its ordinary failures, with
+ * one exception: a fragment call with dynamic arguments evaluates them
+ * before its body, outside the body-root fallback it lifts, so their
+ * failure reaches the race and wins it, rejecting the evaluation as an
+ * unshielded one would. Otherwise what can still reach the race is a
  * kill-switch error or a cancellation from a boundary crossed after the
  * deadline, which the race has already settled — handled, and ignored — or
  * an engine bug before it, which wins its race and surfaces rather than

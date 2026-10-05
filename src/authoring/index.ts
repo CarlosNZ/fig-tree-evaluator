@@ -37,18 +37,21 @@ export const fallbackCoverage = (
   // The call's options laid over the instance's, and checked, as
   // `evaluate()` would; a handle from this copy is always readable
   const { artifact, options: effective } = viewHandle(fig.compile(expression), options)!
-  const strictDataPaths = effective.strictDataPaths ?? false
+  const analysis = new Analysis(effective.strictDataPaths ?? false)
 
-  // Exactly the runtime's shielding: a hole is spliced on a timeout only
-  // when its fallback is constant (`timeoutFallback`)
-  if (effective.timeout !== undefined)
+  // The runtime's shielding: a hole is spliced on a timeout only when its
+  // fallback is constant (`timeoutFallback`). The rules without a timeout
+  // apply too: a fragment call with dynamic arguments lifts its body's
+  // constant fallback, yet its arguments fail outside the body's fallbacks
+  if (effective.timeout !== undefined) {
+    const scope = artifact.root.kind === 'skeleton' ? pushScope(null, artifact.root.vars) : null
     return {
       uncovered: artifact.holes
-        .filter((hole) => hole.timeoutFallback === undefined)
+        .filter((hole) => hole.timeoutFallback === undefined || analysis.mayThrow(hole.node, scope))
         .map((hole) => toNodePath(hole.node.path)),
     }
+  }
 
-  const analysis = new Analysis(strictDataPaths)
   const uncovered: NodePath[] = []
   // A plain object holds no fallback, so its holes are listed one by one,
   // with its vars in scope

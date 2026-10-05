@@ -1150,7 +1150,6 @@ const fig = new FigTree({
       message: "'%2' binds to nothing and renders as its own text &#8212; there is only 1 substitution",
     },
   ],
-  timeoutShielded: false,
 }</code></pre>
       </div>
 
@@ -1195,12 +1194,13 @@ FigTreeError {
       </div>
 
       <div class="panel" data-role="result">
-        <div class="plabel">The broken field, then the badge, then a deadline it survives</div>
+        <div class="plabel">The broken field, then the coverage check, then a deadline it survives</div>
         <pre><code>await fig.evaluate(dashboard, { data })
 // &#8594; { meta: {&#8230;}, header: 'Good evening, Ada', quota: null, incidents: [] }
 
-fig.validate(dashboard)
-// &#8594; { valid: true, issues: [], timeoutShielded: true }
+// import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+fallbackCoverage(fig, dashboard, { timeout: 50 })
+// &#8594; { uncovered: [] }                // every field has a constant fallback
 
 await fig.evaluate(dashboard, { data, timeout: 50 })
 // returns, without throwing:
@@ -1210,8 +1210,8 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
       <ul class="notes">
         <li><strong>Each field now survives its own failure.</strong> <code>quota</code>'s fallback catches the divide, and <code>header</code> and <code>incidents</code> keep their values. The <code>null</code> is the placeholder the author chose for that field, not one the engine imposed.</li>
         <li><strong>An expression is timeout-shielded iff every hole carries a statically constant <code>fallback</code>.</strong> On the deadline, holes that finished contribute their real values, unfinished holes contribute their static fallbacks, and the constant skeleton is spliced around them. No expression work of any kind runs past the deadline, so the bound holds exactly.</li>
-        <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that <code>validate()</code> can badge it. Unshielded, a timeout throws regardless of how many holes happened to finish.</li>
-        <li><strong>The badge is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. Watch for <code>timeoutShielded</code> flipping to <code>false</code>.</li>
+        <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that it is known before anything runs. Unshielded, a timeout throws regardless of how many holes happened to finish. <code>fallbackCoverage</code>, from the <code>fig-tree-evaluator/authoring</code> subpath, checks it without evaluating: under a timeout, it lists each field that lacks a constant fallback.</li>
+        <li><strong>The coverage check is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. <code>fallbackCoverage(fig, dashboard, { timeout: 50 })</code> then answers <code>{ uncovered: [['quota']] }</code>, naming the field to fix.</li>
         <li><strong><code>signal</code> is never shaped by a fallback.</strong> A timeout is the expression's problem to degrade around; an abort means the caller cancelled and nobody is waiting.</li>
         <li><code>validate()</code> never touches the compile cache: it is an authoring tool, and its answer should not depend on what was evaluated before. A host that wants its first <code>evaluate()</code> pre-compiled calls <code>fig.compile(dashboard)</code>, which shares the cache with <code>evaluate()</code>.</li>
       </ul>

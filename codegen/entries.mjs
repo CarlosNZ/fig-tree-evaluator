@@ -51,11 +51,20 @@ export const ENTRIES = [
  * Where code shared between entries lands. The build is one rollup pass over
  * every entry, so a module two entries import is emitted once, here, rather
  * than copied into each — two copies of the brand symbol, `EvaluationData`
- * or `FigTreeError` would break identity across subpaths. There are two:
- * `engine.js`, the engine `./authoring` shares with the root, and
- * `shared.js`, the small modules `./format` shares with both. Each is named
- * by what it holds (rollup.config.mjs) rather than by rollup's numbering, so
- * it keeps its name as its contents change and the PR comment can compare
- * it.
+ * or `FigTreeError` would break identity across subpaths.
  */
 export const CHUNKS_DIR = 'chunks'
+
+/**
+ * Each shared chunk's name, after a module only that chunk holds: the
+ * engine `./authoring` shares with the root, and the small modules
+ * `./format` shares with both. Named by what a chunk holds rather than by
+ * rollup's numbering, so a chunk keeps its name as its contents change and
+ * the PR comment can compare it. A chunk holding none of these fails the
+ * build (rollup.config.mjs) rather than taking a number, so a new one gets a
+ * row here.
+ */
+export const CHUNK_NAMES = [
+  { module: 'src/FigTree.ts', name: 'engine' },
+  { module: 'src/compile/grammar.ts', name: 'shared' },
+]
