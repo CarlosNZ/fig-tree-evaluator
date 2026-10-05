@@ -163,26 +163,34 @@ export const containsNull = (known: Known): Answer =>
 
 /**
  * A container's null elements, or null values, replaced by what is known
- * of the replacement, or dropped when there is none. An object that may
- * hold a null comes out with its keys unknown.
+ * of the replacement. An object that may hold a null comes out with its
+ * keys unknown.
  */
-export const replaceNullElements = (known: Known, replacement?: Known): Known =>
+export const replaceNullElements = (known: Known, replacement: Known): Known =>
   union(
     ...known.map((member): Known => {
       if (containsNull([member]) === 'no') return [member]
       const exact = 'exact' in member ? member.exact : undefined
       if (!Array.isArray(exact) && !('type' in member && member.type === 'array'))
         return [{ type: 'object' }]
-      // Replacing keeps the length; dropping does not
-      const length =
-        replacement === undefined
-          ? undefined
-          : Array.isArray(exact)
-            ? exact.length
-            : (member as { length?: number }).length
-      return arrayOf([withoutNull(elementsOf([member])), replacement ?? NOTHING], length)
+      const length = Array.isArray(exact) ? exact.length : (member as { length?: number }).length
+      return arrayOf([withoutNull(elementsOf([member])), replacement], length)
     })
   )
+
+/**
+ * The containers that hold no null element or value: what is left once a
+ * null among them has propagated. An exact one holding a null is gone.
+ */
+export const withoutNullElements = (known: Known): Known =>
+  known.flatMap((member): Known => {
+    const nulls = containsNull([member])
+    if (nulls === 'no') return [member]
+    if (nulls === 'yes') return NOTHING
+    if (!('type' in member)) return [member]
+    if (member.type === 'array') return [{ ...member, element: withoutNull(member.element ?? ANY) }]
+    return [member]
+  })
 
 // ── Containers ──────────────────────────────────────────────────────
 

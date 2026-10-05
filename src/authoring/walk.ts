@@ -5,10 +5,9 @@
  * catches everything that escapes its node, and what it catches goes to
  * the sink as covered.
  *
- * Every operator node carries one placeholder finding beside its type
- * checks, so a child's failure is passed up whatever its parameter's
- * delivery mode: what the operators fail on, and which children they use,
- * are not modelled.
+ * A child's failure is passed up whatever its parameter's delivery mode:
+ * which children an operator uses is not modelled, so each is taken to be
+ * used.
  */
 import { bindsReference, renamedBinding, splice } from '../compile/artifact'
 import type {
@@ -24,6 +23,8 @@ import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
+import { ownFailures } from './rules'
+import type { RuleOptions } from './rules'
 import {
   ANY,
   NOTHING,
@@ -124,15 +125,6 @@ const isEager = (node: OperatorNode, name: string, child: CompiledNode): boolean
   }
 }
 
-const placeholder = (node: OperatorNode): Failure => ({
-  path: node.path,
-  code: 'operator-failure',
-  message: `${node.name} – a placeholder: taken to be able to fail`,
-  certainty: 'may',
-  operator: node.name,
-  order: [node.order],
-})
-
 /**
  * A plain literal's shape, with each hole's output in its place: an exact
  * value where every hole's is, so the engine's own checks judge it.
@@ -177,10 +169,14 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
 export class Analysis {
   private readonly bodies = new Map<FragmentEntry, Map<string, Analysed>>()
 
+  private readonly strict: boolean
+
   constructor(
-    private readonly strict: boolean,
+    private readonly options: RuleOptions,
     private readonly issues: SequencedIssue[]
-  ) {}
+  ) {
+    this.strict = options.evaluation.strictDataPaths === true
+  }
 
   /** The expression's root, with its fallbacks' catches in `sink`. */
   root(node: CompiledNode, sink: Caught[]): NodeResult {
@@ -254,7 +250,9 @@ export class Analysis {
       parts.push({ result, eager: isEager(node, name, child) })
     }
     const inputs = resolveInputs(node, outputs)
-    const own: Pending[] = [placeholder(node), ...inputs.failures]
+    const own: Pending[] = [...inputs.failures]
+    // A null that must propagate means the body never runs
+    if (inputs.propagates !== 'yes') own.push(...ownFailures(node, inputs, this.options))
 
     const as = renamedBinding(node)
     for (const [name, declared] of definition.resolution.perElement) {

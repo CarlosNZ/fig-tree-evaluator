@@ -23,6 +23,7 @@ import {
   ofType,
   onlyNull,
   replaceNullElements,
+  withoutNullElements,
   union,
   withoutNull,
 } from './known'
@@ -32,6 +33,8 @@ import type { Failure } from './findings'
 export interface Inputs {
   /** What each parameter's value is known to be, past its layers */
   received: Record<string, Known>
+  /** The received parameters that may also have no value at all */
+  absent: Set<string>
   /** The parameters' type-check findings, in declaration order */
   failures: Failure[]
   /**
@@ -99,6 +102,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   const { definition } = node.entry
   const { entries, whole } = definition.resolution
   const received: Record<string, Known> = {}
+  const absent = new Set<string>()
   const failures: Failure[] = []
   const pending: Record<string, Pending> = {}
   const delivered = new Set<string>()
@@ -184,6 +188,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     if (delivered.has(name)) continue
     let known = pending[name]?.known ?? NOTHING
     if (known.length === 0) continue
+    if (pending[name].absent) absent.add(name)
 
     const holder = holders[name]
     if (holder !== undefined)
@@ -211,7 +216,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       if (nulls !== 'no') {
         propagates = nulls === 'yes' ? 'yes' : 'maybe'
         if (nulls === 'yes') break
-        known = replaceNullElements(known)
+        known = withoutNullElements(known)
       }
     }
 
@@ -222,7 +227,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   // A type check is certain only if no null can end the node before it
   if (propagates !== 'no')
     for (const failure of failures) if (failure.certainty === 'always') failure.certainty = 'may'
-  return { received, failures, propagates }
+  return { received, absent, failures, propagates }
 }
 
 /**

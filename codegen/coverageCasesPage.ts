@@ -52,6 +52,7 @@ const OPERATORS = new Set([
   'sql',
   'twice',
   'shaky',
+  'picky',
 ])
 
 const at = (expression: unknown, path: NodePath): unknown =>
@@ -136,7 +137,11 @@ const findingLine = (item: CoverageCase, finding: Finding, covered: boolean): st
   const caught = covered ? `, ${caughtBy(item, finding)}` : ''
   const unwitnessed =
     finding.witness === undefined && finding.will === undefined ? ' (no data makes it happen)' : ''
-  return `- ${covered ? '✓' : '✗'} ${subject} — ${certainty}: \`${finding.code}\`${on}${caught}${exampleOf(finding)}${unwitnessed}`
+  // An external operator's finding stands for any code its own code throws
+  const code = finding.external
+    ? `\`${finding.code}\` (external: whatever code it throws)`
+    : `\`${finding.code}\``
+  return `- ${covered ? '✓' : '✗'} ${subject} — ${certainty}: ${code}${on}${caught}${exampleOf(finding)}${unwitnessed}`
 }
 
 const showFragmentPlace = (fragment: string, path: NodePath | undefined) =>
@@ -221,7 +226,7 @@ ${fragmentList
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-- **Host operators:** \`twice\` doubles a number and declares nothing about how it fails; \`shaky\` fails on an empty string.
+- **Host operators:** \`twice\` doubles a number, and \`shaky\` fails on an empty string, both declaring nothing; \`picky\` fails on one and says so in its \`coverage\`.
 - **Clients:** a working HTTP client answers \`{ n: 1, s: 'x' }\`, and a working SQL connection answers \`[{ a: 1, b: 2 }]\`.
 
 ## Contents

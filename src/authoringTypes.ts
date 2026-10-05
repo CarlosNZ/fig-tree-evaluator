@@ -4,6 +4,7 @@
  * subpaths' types ("Types" in docs-dev/v3-specs/v3-packaging.md).
  */
 import type { FigTreeErrorCode } from './errorCodes'
+import type { ExpectedType } from './typeCheck'
 
 /**
  * What `fallbackCoverage` reports ("What it returns" in
@@ -63,3 +64,62 @@ export interface FallbackCoverageOptions {
    */
   numbers?: 'ordinary' | 'strict'
 }
+
+/**
+ * What an operator declares of its own failures, for `./authoring`
+ * ("Where the rules live" in docs-dev/v3-specs/v3-fallback-coverage.md):
+ * the `coverage` field of a definition. Declaring it says the rules are
+ * complete, and that the operator is pure. Without it, a host operator is
+ * external: it may fail whatever its inputs.
+ */
+export interface OperatorCoverage {
+  /**
+   * The ways its body can fail beside the engine's own checks on its
+   * parameters. Absent or empty: it never fails of itself
+   */
+  failures?: FailureRule[]
+  /** It may fail whatever its inputs: a request, or code nothing describes */
+  external?: true
+}
+
+/**
+ * One way an operator's body can fail: the code its error carries, and the
+ * conditions on what its parameters receive under which it does.
+ */
+export interface FailureRule {
+  code: FigTreeErrorCode
+  /** The parameter the failure is about, which its finding names */
+  parameter?: string
+  /** Tests on parameters, by name; every one must hold. Absent: always holds */
+  when?: Record<string, CoverageTest>
+  /** Options the rule needs, such as { strictDataPaths: true } */
+  options?: Record<string, unknown>
+  /** Holding makes the failure possible, not certain */
+  may?: true
+  /**
+   * A failure only extreme numbers reach: counted under numbers: 'strict'
+   * only
+   */
+  overflow?: true
+}
+
+/** A test on what one parameter receives. */
+export type CoverageTest =
+  /** Equals this value */
+  | string
+  | number
+  | boolean
+  | null
+  /** Has this type */
+  | { type: ExpectedType }
+  /** A number less than this */
+  | { below: number }
+  /** An empty array, string or object */
+  | { empty: true }
+  /** The parameter has a value, supplied or defaulted, or has none */
+  | { supplied: boolean }
+  /** The operator's `validate` hook refuses it */
+  | { invalid: true }
+  /** Some element of an array, or value of an object, passes */
+  | { some: CoverageTest }
+  | { not: CoverageTest }

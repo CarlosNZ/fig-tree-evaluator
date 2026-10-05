@@ -10,6 +10,8 @@
  * either way.
  */
 import { FigTree, viewHandle } from '../FigTree'
+import { FigTreeError } from '../FigTreeError'
+import { ErrorCodes } from '../errorCodes'
 import type { FallbackCoverage, FallbackCoverageOptions } from '../authoringTypes'
 import { coveredFinding, isDemand, report, uncoveredFinding } from './findings'
 import type { Caught, Failure } from './findings'
@@ -41,7 +43,15 @@ export const fallbackCoverage = (
     fig.compile(expression),
     timeout !== undefined ? { timeout } : undefined
   )!
-  const analysis = new Analysis(effective.strictDataPaths ?? false, artifact.issues)
+  const numbers = options?.numbers ?? 'ordinary'
+  if (numbers !== 'ordinary' && numbers !== 'strict')
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message: `'numbers' must be 'ordinary' or 'strict', received ${JSON.stringify(numbers)}`,
+      path: [],
+    })
+  const evaluation = effective as unknown as Record<string, unknown>
+  const analysis = new Analysis({ numbers, evaluation }, artifact.issues)
 
   const caught: Caught[] = []
   const uncovered = analysis

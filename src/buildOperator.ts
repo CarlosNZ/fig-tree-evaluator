@@ -203,6 +203,8 @@ export const assembleOperator = (
   if (def.metadata !== undefined) validated.metadata = def.metadata
   if (def.positionalParams !== undefined) validated.positionalParams = [...def.positionalParams]
   if (def.validate !== undefined) validated.validate = def.validate
+  // Copied, since the artifact is frozen and the literal is the host's
+  if (def.coverage !== undefined) validated.coverage = deepClone(def.coverage)
   validated.fingerprint = fingerprintOf(validated)
 
   return deepFreezeArtifact(validated)

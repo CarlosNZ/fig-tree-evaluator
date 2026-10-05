@@ -45,7 +45,7 @@ interface CoveredFinding extends CoverageFinding {
 - **One finding per way a node can fail**, in tree order, like `validate()`'s issues.
 - **A finding sits where the failure starts**, never repeated on the ancestors it passes through. A fallback there, or on any ancestor, covers it.
 - **A var or an argument is reported once per fallback that catches it.** Its failure is memoised and reaches every place that reads it, so the same finding can be covered by one fallback and uncovered by another route, or covered by two.
-- **`code` is the runtime error's code**, so a finding and the error it predicts are classified the same way.
+- **`code` is the runtime error's code**, so a finding and the error it predicts are classified the same way. The one exception is an external operator, whose one `operator-failure` finding stands for whatever code its own code throws (see "Operator rules").
 - **CI checks `uncovered.length === 0`.** `covered` is for tools that show where fallbacks do their work.
 
 For example, `{ $plus: [{ $divide: ['$data.a', '$data.b'] }, 1] }` gives three uncovered findings on `divide`: `type-check` on `value`, `type-check` on `by`, and `non-finite-result` on `by` (it may be 0). `plus` has none: `divide` returns a number or null, which `plus` accepts. With a fallback on `divide`, all three move to `covered`.
@@ -136,8 +136,10 @@ A rule names the error a failure carries and the conditions under which it happe
 ```ts
 interface FailureRule {
   code: FigTreeErrorCode
+  /** The parameter the failure is about, which its finding names */
+  parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */
-  when?: Record<string, Test>
+  when?: Record<string, CoverageTest>
   /** Options the rule needs, such as { strictDataPaths: true } */
   options?: Record<string, unknown>
   /** Holding makes the failure possible, not certain */
@@ -146,7 +148,7 @@ interface FailureRule {
   overflow?: true
 }
 
-type Test =
+type CoverageTest =
   | string
   | number
   | boolean
@@ -154,36 +156,38 @@ type Test =
   | { type: ExpectedType } // has this type
   | { below: number } // a number less than this
   | { empty: true } // an empty array, string or object
-  | { supplied: boolean } // the author supplied it, or did not
+  | { supplied: boolean } // it has a value, supplied or defaulted, or has none
   | { invalid: true } // the operator's validate hook refuses it
-  | { some: Test } // some element of an array, or value of an object
-  | { not: Test }
+  | { some: CoverageTest } // some element of an array, or value of an object
+  | { not: CoverageTest }
 ```
 
-Each test answers no, maybe or yes from what the walk knows: `{ by: 0 }` is yes when `by` is exactly 0, no when it is exactly 2 or can only be null, maybe when it is an unknown number. A rule's answer is the combination of its tests: no if any is no, yes if all are yes, otherwise maybe. A yes on a rule without `may` gives an `always` finding; any other yes or maybe gives a `may` finding; no gives nothing. `{ invalid: true }` is maybe while the value is unknown; once known, the operator's own `validate` hook decides.
+Each test answers no, maybe or yes from what the walk knows: `{ by: 0 }` is yes when `by` is exactly 0, no when it is exactly 2 or can only be null, maybe when it is an unknown number. A rule's answer is the combination of its tests: no if any is no, yes if all are yes, otherwise maybe. A yes on a rule without `may` gives an `always` finding; any other yes or maybe gives a `may` finding; no gives nothing. A test reads what the parameter receives, once the engine's layers have run: its default, a null replaced. `{ invalid: true }` is maybe while the value is unknown; once known, the operator's own `validate` hook decides, given every parameter known exactly and none of the others, as the static check gives it the literal ones only. A finding names the rule's `parameter`, if it has one. Its message is generated from the rule: `divide – non-finite-result when 'by' is 0`.
 
 The core rules, in full:
 
 ```ts
-divide:   { code: 'non-finite-result', when: { by: 0 } }
+divide:   { code: 'non-finite-result', parameter: 'by', when: { by: 0 } }
           { code: 'non-finite-result', overflow: true }
-modulo:   { code: 'non-finite-result', when: { mod: 0 } }
+modulo:   { code: 'non-finite-result', parameter: 'mod', when: { mod: 0 } }
           { code: 'non-finite-result', overflow: true }
-power:    { code: 'non-finite-result', when: { base: 0, exponent: { below: 0 } } }
-          { code: 'non-finite-result', when: { base: { below: 0 }, exponent: { not: { type: 'integer' } } } }
-          { code: 'non-finite-result', may: true, when: { exponent: { not: { below: 100 } } } }
+power:    { code: 'non-finite-result', parameter: 'base', when: { base: 0, exponent: { below: 0 } } }
+          { code: 'non-finite-result', parameter: 'base', when: { base: { below: 0 }, exponent: { not: { type: 'integer' } } } }
+          { code: 'non-finite-result', parameter: 'exponent', may: true, when: { exponent: { not: { below: 100 } } } }
           { code: 'non-finite-result', overflow: true }
-plus:     { code: 'empty-aggregate', when: { values: { empty: true }, expect: { supplied: false } } }
-          { code: 'type-check', when: { expect: 'number', values: { some: { not: { type: 'number' } } } } }
+round:    { code: 'non-finite-result', parameter: 'decimals', may: true, when: { decimals: { not: { below: 300 } } } }
+          { code: 'non-finite-result', overflow: true }
+plus:     { code: 'empty-aggregate', parameter: 'values', when: { values: { empty: true }, expect: { supplied: false } } }
+          { code: 'type-check', parameter: 'values', when: { expect: 'number', values: { some: { not: { type: 'number' } } } } }
           // …and one each for 'string', 'array', 'object'
           { code: 'non-finite-result', overflow: true }
-subtract, multiply, round:
+subtract, multiply:
           { code: 'non-finite-result', overflow: true }
-min, max: { code: 'empty-aggregate', when: { values: { empty: true } } }
+min, max: { code: 'empty-aggregate', parameter: 'values', when: { values: { empty: true } } }
 match:    { code: 'operator-failure', may: true, when: { default: { supplied: false } } }
-regex:    { code: 'operator-failure', when: { flags: { invalid: true } } }
-          { code: 'operator-failure', when: { pattern: { invalid: true } } }
-get:      { code: 'operator-failure', when: { path: { invalid: true } } }
+regex:    { code: 'operator-failure', parameter: 'flags', when: { flags: { invalid: true } } }
+          { code: 'operator-failure', parameter: 'pattern', when: { pattern: { invalid: true } } }
+get:      { code: 'operator-failure', parameter: 'path', when: { path: { invalid: true } } }
           { code: 'missing-data-path', may: true, options: { strictDataPaths: true }, when: { default: { supplied: false } } }
 convert:  { code: 'operator-failure', when: { to: 'number', value: { type: ['array', 'object'] } } }
           { code: 'operator-failure', may: true, when: { to: 'number', value: { type: 'string' } } }
@@ -192,7 +196,9 @@ convert:  { code: 'operator-failure', when: { to: 'number', value: { type: ['arr
 http, graphQL, sql: external
 ```
 
-`match` and `get` need only the unknown case: with a known value, or a known path and `from`, rule 4 runs them instead. `external` means never run, and may always fail whatever the parameters: only a fallback covers an I/O node.
+`match` and `get` need only the unknown case: with a known value, or a known path and `from`, rule 4 runs them instead. `round`'s first rule, found by the rule checker, is a judgment like `power`'s: `10^decimals` is infinite from 309, and below 300 it takes an extreme value to overflow.
+
+`external` means never run, and may fail whatever the parameters: only a fallback covers an I/O node. An external node gets one finding, `operator-failure`, may, which stands for whatever code its own code throws: an I/O operator refuses a relative URL or a GET with a body with `type-check`, its own `timeout` with `request-timeout`, and a client or a host's body can throw anything. Its code is the one exception to a finding carrying the runtime error's code.
 
 ### Output declarations
 
@@ -233,7 +239,7 @@ floor, ceil: 'integer'
 Split by who writes them:
 
 - **Core operators:** a table in `./authoring`, keyed by the core definition itself rather than its name, so a host operator reusing a core name never inherits its rules. The root never imports it, so `evaluate()` pays nothing: the whole table is about 0.6 kB brotli.
-- **Host operators:** an optional field on the definition, in the same shape (`coverage: { failures?, output?, external? }`, name provisional), checked by `defineOperator()`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A host operator without it is external.
+- **Host operators:** an optional field on the definition, in the same shape (`coverage: { failures?, external? }`, with `output?` from step 4; name provisional), checked by `defineOperator()`: a rule's `when` keys and `parameter` must name declared parameters, each test must be well formed, and `external: true` declares no `failures`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A host operator without it is external. The field is carried onto the built definition and never read by the engine.
 
 The analysis reads the definition's field first, then the core table.
 
@@ -257,16 +263,16 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 
 ## Testing
 
-- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 154 expressions and the findings each should give. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
-- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Until step 3 removes the placeholders, a placeholder stands for any code at its node except `type-check`, which it stands for only on an operator whose own code throws one (`plus`, the I/O operators, a host's): from step 2 the parameters' type checks are reported as themselves.
-- **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It runs in CI only, so its cost does not matter. It is what keeps the core table complete.
+- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 156 expressions and the findings each should give. A finding marked `external` stands for any code at its node, as the analysis's does. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
+- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Codes are matched exactly, except at an external node, whose one finding stands for any code.
+- **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It reads each value from the data, so one compiled node serves every combination, and runs with the suite in about two seconds (test/coverage-rules.test.ts). It is what keeps the core table complete: it found `round`'s rule, and the two questions in "To resolve".
 
 ## Known limits
 
 - **No value ranges.** `{ $divide: [10, { $plus: [<a length>, 1] }] }` is listed: the walk knows the divisor is an integer, not that it is at least 1. Likewise a length is never negative, and `split` never returns an empty array.
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
 - **The `power` threshold**, `exponent` below 100 counting as safe from ordinary overflow, is a judgment.
-- **`http`** with a relative URL and no `http.baseEndpoint` always fails, but is reported as may fail.
+- **An external node's certain failures** are reported as may fail: `http` with a relative URL and no `http.baseEndpoint`, `graphQL` with no endpoint.
 - **A declared `returns` is trusted.** The engine never checks a body's result against it, so a host operator whose body returns outside its `returns` can cause type failures downstream that are not reported. `validate()`'s feeding check relies on `returns` in the same way.
 
 ## Open
@@ -288,3 +294,10 @@ Each step keeps the analysis sound, so it can land and be used at any point. The
 5. **Running nodes** (rule 4). First, nodes whose inputs are all known: folding, certain failures, and the short-circuits. Then stand-ins for non-eager parameters, and one of a few known values, ruling out unused children.
 6. **Timeouts.** The all-or-nothing rule and the no-I/O case.
 7. **Close-out.** v3-authoring.md's `fallbackCoverage` section replaced by this spec, README, docs-dev/imports.md sizes, CHANGELOG, the cases page regenerated, #217 closed.
+
+## To resolve
+
+Raised by the rule checker at step 3, and left open until decided. Until then, the checker and the corpus's strict-numbers case fail on them.
+
+1. **Strict numbers at the result boundary.** The engine refuses a non-finite number at every operator node's result boundary (`normalizeResult` in src/evaluate/operator.ts), so under `numbers: 'strict'`, where data can carry NaN or Infinity, any node that can return a number may fail `non-finite-result`. That includes arithmetic overflow, `floor`, `ceil` and `abs` of NaN, and every operator that passes a value through: `if`, `match`, `get`, `find`, `min` and `max` through `nullValueDefault`, `regex` through `noMatchDefault`, and `convert(NaN, 'number')`. Per-operator `overflow` rules cannot capture the pass-through cases. Recommended: under `strict`, any operator node whose output can include a number gets a `may` `non-finite-result` finding unless a rule already gives one, a generic check like the type checks. The `overflow` rules, and the `overflow` field of `FailureRule`, then add nothing and go. Step 4's output declarations make it precise, and step 5's runs drop it for nodes whose inputs are all known.
+2. **`regex` declares the wrong `returns`.** Its `noMatchDefault` is typed `any` and returned as it is in `extract` mode, yet `regex` declares `returns: ['boolean', 'string', 'array', 'null']`, so `{ $regex: { …, mode: 'extract', noMatchDefault: 5 } }` returns a number its `returns` excludes. That breaks the trust in `returns` (see "Known limits") for a core operator, and point 1 cannot see NaN passing through `regex`. Recommended: `returns: 'any'`, with step 4's output declaration giving the precision back. It is an engine change: it widens what `validate()`'s feeding check accepts, since a `regex` feeding a number parameter is a static error today. The alternative, narrowing `noMatchDefault`'s type, breaks expressions that work today.

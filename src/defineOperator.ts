@@ -44,6 +44,7 @@ import {
   compileNullPolicies,
   type Path,
 } from './buildOperator'
+import { checkCoverage } from './coverageCheck'
 
 /**
  * The `…Default` naming family (contract, Registration & validation). The
@@ -595,6 +596,11 @@ export function defineOperator(
         'timeoutParam',
       ])
   }
+
+  if (def.coverage !== undefined)
+    checkCoverage(def.coverage, declarations, (code, message, path) =>
+      addIssue(code, message, path)
+    )
 
   if (issues.length > 0) throwDefinitionError(issues, operator)
 

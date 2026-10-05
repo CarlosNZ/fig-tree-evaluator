@@ -13,6 +13,7 @@
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
 import type { ValidateHelpers } from './compile/helpers'
+import type { OperatorCoverage } from './authoringTypes'
 import type { OperatorContext } from './runtimeInterface'
 import type { ResolvedParams } from './inference'
 
@@ -186,6 +187,11 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
    */
   cache?: true
   validate?: OperatorValidate
+  /**
+   * What the body can fail on, for `./authoring`'s `fallbackCoverage`.
+   * Without it the operator is taken to fail whatever its inputs.
+   */
+  coverage?: OperatorCoverage
   /** The body, its `params` typed from the declarations above. */
   evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
   /** Declared result type — drives the static feeding-position check. */
@@ -266,6 +272,8 @@ export interface ValidatedOperatorDefinition {
    */
   fingerprint: string
   validate?: OperatorValidate
+  /** As declared; never read by the engine. */
+  coverage?: OperatorCoverage
   evaluate: OperatorEvaluate
   returns: ExpectedType
 }

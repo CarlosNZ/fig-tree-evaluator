@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 154 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 156 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -17,7 +17,7 @@ Where a case uses an instance other than `new FigTree()`:
   - **ratio**: `{ expression: { $divide: ['$params.a', '$params.b'] }, parameters: { a: { type: 'number' }, b: { type: 'number' } } }`
   - **safeRatio**: `{ expression: { $divide: ['$params.a', '$params.b'], fallback: 0 }, parameters: { a: { type: 'number' }, b: { type: 'number' } } }`
   - **shout**: `{ expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } }`
-- **Host operators:** `twice` doubles a number and declares nothing about how it fails; `shaky` fails on an empty string.
+- **Host operators:** `twice` doubles a number, and `shaky` fails on an empty string, both declaring nothing; `picky` fails on one and says so in its `coverage`.
 - **Clients:** a working HTTP client answers `{ n: 1, s: 'x' }`, and a working SQL connection answers `[{ a: 1, b: 2 }]`.
 
 ## Contents
@@ -1277,7 +1277,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: 'https://x.test/a' }
 ```
 
-- ✗ **http** at the root — may fail: `operator-failure`. E.g. with the client failing
+- ✗ **http** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. with the client failing
 
 **a request with a fallback** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1285,7 +1285,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: 'https://x.test/a', fallback: null }
 ```
 
-- ✓ **http** at the root — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 **a response is untyped, and is never fetched by the analysis** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1294,7 +1294,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **plus** at the root — may fail: `type-check` on `values`
-- ✓ **http** at `$plus[0]` — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at `$plus[0]` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 **a relative URL with no baseEndpoint fails every time** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1302,7 +1302,9 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: '/users' }
 ```
 
-- ✗ **http** at the root — always fails: `type-check`
+- ✗ **http** at the root — may fail: `operator-failure` (external: whatever code it throws)
+
+> The request is refused with type-check, which the external finding stands for; it is certain, but an external operator is never run, so it is reported as may fail.
 
 **a relative URL with a baseEndpoint** (with HTTP and SQL clients, and `http.baseEndpoint: 'https://api.test'`)
 
@@ -1310,7 +1312,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: '/users' }
 ```
 
-- ✗ **http** at the root — may fail: `operator-failure`. E.g. with the client failing
+- ✗ **http** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. with the client failing
 
 **graphQL with no endpoint fails every time** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1318,7 +1320,9 @@ Where a case uses an instance other than `new FigTree()`:
 { $graphQL: 'query { a }' }
 ```
 
-- ✗ **graphQL** at the root — always fails: `operator-failure`
+- ✗ **graphQL** at the root — may fail: `operator-failure` (external: whatever code it throws)
+
+> Certain, but an external operator is never run, so it is reported as may fail.
 
 **a query can always fail** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1326,7 +1330,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $sql: 'SELECT a FROM t' }
 ```
 
-- ✗ **sql** at the root — may fail: `operator-failure`. E.g. with the client failing
+- ✗ **sql** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. with the client failing
 
 **a single-value shape over rows the query decides** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1334,8 +1338,9 @@ Where a case uses an instance other than `new FigTree()`:
 { $sql: { query: 'SELECT a, b FROM t', shape: 'firstValue' } }
 ```
 
-- ✗ **sql** at the root — may fail: `type-check`
-- ✗ **sql** at the root — may fail: `operator-failure`. E.g. with the client failing
+- ✗ **sql** at the root — may fail: `operator-failure` (external: whatever code it throws)
+
+> A row of other than one column is refused with type-check, which the external finding stands for, as it does for the client failing.
 
 **a computed method** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1344,8 +1349,9 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **http** at the root — may fail: `type-check` on `method`. E.g. data `{ m: 'put' }`
-- ✗ **http** at the root — may fail: `type-check` on `body`. E.g. data `{ m: 'get' }`
-- ✗ **http** at the root — may fail: `operator-failure`. E.g. data `{ m: 'post' }` with the client failing
+- ✗ **http** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. data `{ m: 'get' }`
+
+> A GET carrying a body is refused with type-check, which the external finding stands for, as it does for the client failing.
 
 **a computed query value** (with HTTP and SQL clients, and no `http.baseEndpoint`)
 
@@ -1353,8 +1359,9 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: { url: 'https://x.test/a', query: { q: '$data.q' } } }
 ```
 
-- ✗ **http** at the root — may fail: `type-check` on `query`. E.g. data `{ q: [1] }`
-- ✗ **http** at the root — may fail: `operator-failure`. E.g. with the client failing
+- ✗ **http** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. data `{ q: [1] }`
+
+> A composite query value is refused with type-check, which the external finding stands for, as it does for the client failing.
 
 **a constant fallback shields a request from a timeout** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
 
@@ -1362,7 +1369,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $http: 'https://x.test/a', fallback: null }
 ```
 
-- ✓ **http** at the root — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 **a fallback that folds is still not a constant to shielding** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
 
@@ -1371,7 +1378,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **http** at the root — may fail: `timeout`. E.g. with a slow client
-- ✓ **http** at the root — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 **under a timeout, a value doing no I/O still needs a constant fallback when another does I/O** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
 
@@ -1380,7 +1387,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **upper** at `b` — may fail: `timeout`. E.g. with a slow client
-- ✓ **http** at `a` — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at `a` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 > Shielding is all-or-nothing: if any value is unshielded, the deadline rejects the whole evaluation.
 
@@ -1399,7 +1406,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✓ **plus** at the root — may fail: `type-check` on `values`, caught by its own fallback
-- ✓ **http** at `$plus[0]` — may fail: `operator-failure`, caught by its own fallback. E.g. with the client failing
+- ✓ **http** at `$plus[0]` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
 ## Host operators
 
@@ -1409,7 +1416,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $twice: 2 }
 ```
 
-- ✗ **twice** at the root — may fail: `operator-failure` (no data makes it happen)
+- ✗ **twice** at the root — may fail: `operator-failure` (external: whatever code it throws) (no data makes it happen)
 
 > A false positive the design accepts: twice never throws, but nothing says so, so it is neither run nor trusted.
 
@@ -1420,7 +1427,24 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **shaky** at the root — may fail: `type-check` on `value`. E.g. data `{ s: 1 }`
-- ✗ **shaky** at the root — may fail: `operator-failure`. E.g. data `{ s: '' }`
+- ✗ **shaky** at the root — may fail: `operator-failure` (external: whatever code it throws). E.g. data `{ s: '' }`
+
+**a host operator that declares its failures** (with the host operators listed at the top)
+
+```json5
+{ $picky: '$data.s' }
+```
+
+- ✗ **picky** at the root — may fail: `type-check` on `value`. E.g. data `{ s: 1 }`
+- ✗ **picky** at the root — may fail: `operator-failure` on `value`. E.g. data `{ s: '' }`
+
+**a declared host operator whose rule cannot hold** (with the host operators listed at the top)
+
+```json5
+{ $picky: { $upper: 'x' } }
+```
+
+- Nothing can throw.
 
 ## False positives the design accepts
 

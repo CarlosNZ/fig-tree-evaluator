@@ -39,6 +39,12 @@ export interface Finding {
   witness?: Record<string, unknown>
   /** For I/O: how the client behaves in the witness run */
   client?: 'fails' | 'slow'
+  /**
+   * An external operator's one `operator-failure` finding, which stands for
+   * whatever code its own code throws: an I/O operator's request and
+   * checks, an undeclared host's body
+   */
+  external?: true
 }
 
 export interface CoverageCase {
@@ -1436,13 +1442,17 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'a request can always fail',
       expression: { $http: 'https://x.test/a' },
       instance: 'io',
-      uncovered: [{ at: [], code: 'operator-failure', client: 'fails', witness: {} }],
+      uncovered: [
+        { at: [], code: 'operator-failure', external: true, client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'a request with a fallback',
       expression: { $http: 'https://x.test/a', fallback: null },
       instance: 'io',
-      covered: [{ at: [], code: 'operator-failure', by: [], client: 'fails', witness: {} }],
+      covered: [
+        { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'a response is untyped, and is never fetched by the analysis',
@@ -1455,6 +1465,7 @@ export const sections: Record<string, CoverageCase[]> = {
         {
           at: ['$plus', 0],
           code: 'operator-failure',
+          external: true,
           by: ['$plus', 0],
           client: 'fails',
           witness: {},
@@ -1465,34 +1476,38 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'a relative URL with no baseEndpoint fails every time',
       expression: { $http: '/users' },
       instance: 'io',
-      uncovered: [{ at: [], code: 'type-check', will: true }],
+      uncovered: [{ at: [], code: 'operator-failure', external: true, witness: {} }],
+      note: 'The request is refused with type-check, which the external finding stands for; it is certain, but an external operator is never run, so it is reported as may fail',
     },
     {
       name: 'a relative URL with a baseEndpoint',
       expression: { $http: '/users' },
       instance: 'ioBase',
-      uncovered: [{ at: [], code: 'operator-failure', client: 'fails', witness: {} }],
+      uncovered: [
+        { at: [], code: 'operator-failure', external: true, client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'graphQL with no endpoint fails every time',
       expression: { $graphQL: 'query { a }' },
       instance: 'io',
-      uncovered: [{ at: [], code: 'operator-failure', will: true }],
+      uncovered: [{ at: [], code: 'operator-failure', external: true, witness: {} }],
+      note: 'Certain, but an external operator is never run, so it is reported as may fail',
     },
     {
       name: 'a query can always fail',
       expression: { $sql: 'SELECT a FROM t' },
       instance: 'io',
-      uncovered: [{ at: [], code: 'operator-failure', client: 'fails', witness: {} }],
+      uncovered: [
+        { at: [], code: 'operator-failure', external: true, client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'a single-value shape over rows the query decides',
       expression: { $sql: { query: 'SELECT a, b FROM t', shape: 'firstValue' } },
       instance: 'io',
-      uncovered: [
-        { at: [], code: 'type-check', witness: {} },
-        { at: [], code: 'operator-failure', client: 'fails', witness: {} },
-      ],
+      uncovered: [{ at: [], code: 'operator-failure', external: true, witness: {} }],
+      note: 'A row of other than one column is refused with type-check, which the external finding stands for, as it does for the client failing',
     },
     {
       name: 'a computed method',
@@ -1500,25 +1515,25 @@ export const sections: Record<string, CoverageCase[]> = {
       instance: 'io',
       uncovered: [
         { at: [], code: 'type-check', parameter: 'method', witness: { m: 'put' } },
-        { at: [], code: 'type-check', parameter: 'body', witness: { m: 'get' } },
-        { at: [], code: 'operator-failure', client: 'fails', witness: { m: 'post' } },
+        { at: [], code: 'operator-failure', external: true, witness: { m: 'get' } },
       ],
+      note: 'A GET carrying a body is refused with type-check, which the external finding stands for, as it does for the client failing',
     },
     {
       name: 'a computed query value',
       expression: { $http: { url: 'https://x.test/a', query: { q: '$data.q' } } },
       instance: 'io',
-      uncovered: [
-        { at: [], code: 'type-check', parameter: 'query', witness: { q: [1] } },
-        { at: [], code: 'operator-failure', client: 'fails', witness: {} },
-      ],
+      uncovered: [{ at: [], code: 'operator-failure', external: true, witness: { q: [1] } }],
+      note: 'A composite query value is refused with type-check, which the external finding stands for, as it does for the client failing',
     },
     {
       name: 'a constant fallback shields a request from a timeout',
       expression: { $http: 'https://x.test/a', fallback: null },
       instance: 'io',
       options: { timeout: 20 },
-      covered: [{ at: [], code: 'operator-failure', by: [], client: 'fails', witness: {} }],
+      covered: [
+        { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'a fallback that folds is still not a constant to shielding',
@@ -1526,7 +1541,9 @@ export const sections: Record<string, CoverageCase[]> = {
       instance: 'io',
       options: { timeout: 20 },
       uncovered: [{ at: [], code: 'timeout', client: 'slow', witness: {} }],
-      covered: [{ at: [], code: 'operator-failure', by: [], client: 'fails', witness: {} }],
+      covered: [
+        { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
+      ],
     },
     {
       name: 'under a timeout, a value doing no I/O still needs a constant fallback when another does I/O',
@@ -1534,7 +1551,16 @@ export const sections: Record<string, CoverageCase[]> = {
       instance: 'io',
       options: { timeout: 20 },
       uncovered: [{ at: ['b'], code: 'timeout', client: 'slow', witness: {} }],
-      covered: [{ at: ['a'], code: 'operator-failure', by: ['a'], client: 'fails', witness: {} }],
+      covered: [
+        {
+          at: ['a'],
+          code: 'operator-failure',
+          external: true,
+          by: ['a'],
+          client: 'fails',
+          witness: {},
+        },
+      ],
       note: 'Shielding is all-or-nothing: if any value is unshielded, the deadline rejects the whole evaluation',
     },
     {
@@ -1555,6 +1581,7 @@ export const sections: Record<string, CoverageCase[]> = {
         {
           at: ['$plus', 0],
           code: 'operator-failure',
+          external: true,
           by: ['$plus', 0],
           client: 'fails',
           witness: {},
@@ -1568,7 +1595,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'an undeclared host operator may throw',
       expression: { $twice: 2 },
       instance: 'host',
-      uncovered: [{ at: [], code: 'operator-failure' }],
+      uncovered: [{ at: [], code: 'operator-failure', external: true }],
       note: 'A false positive the design accepts: twice never throws, but nothing says so, so it is neither run nor trusted',
     },
     {
@@ -1577,8 +1604,22 @@ export const sections: Record<string, CoverageCase[]> = {
       instance: 'host',
       uncovered: [
         { at: [], code: 'type-check', parameter: 'value', witness: { s: 1 } },
-        { at: [], code: 'operator-failure', witness: { s: '' } },
+        { at: [], code: 'operator-failure', external: true, witness: { s: '' } },
       ],
+    },
+    {
+      name: 'a host operator that declares its failures',
+      expression: { $picky: '$data.s' },
+      instance: 'host',
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'value', witness: { s: 1 } },
+        { at: [], code: 'operator-failure', parameter: 'value', witness: { s: '' } },
+      ],
+    },
+    {
+      name: 'a declared host operator whose rule cannot hold',
+      expression: { $picky: { $upper: 'x' } },
+      instance: 'host',
     },
   ],
 

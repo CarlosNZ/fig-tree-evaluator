@@ -184,7 +184,10 @@ export type { ReferenceNamespace } from './compile/artifact'
 // The shapes the `./authoring` subpath's analyses take and return.
 export type {
   CoverageFinding,
+  CoverageTest,
   CoveredFinding,
+  FailureRule,
   FallbackCoverage,
   FallbackCoverageOptions,
+  OperatorCoverage,
 } from './authoringTypes'

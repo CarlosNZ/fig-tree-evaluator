@@ -49,6 +49,8 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** Their verdict never depends on their parameters. Rules for their internal failures (a GET with a body, a missing endpoint) would only turn "may fail" into "always fails", which changes nothing about whether a node is covered.
 
+**And their code (Carl, 2026-10-06, at step 3).** An external node gets one `operator-failure` finding, may, which stands for whatever code its own code throws. An I/O operator refuses some requests with `type-check` (a relative URL, a GET with a body, a composite query value, a row of the wrong shape), its own timeout with `request-timeout`, and a client or an undeclared host's body can throw any code at all, so no exact code could be promised. Rules for each would need test kinds for string prefixes and host options, and would still leave hosts needing the wildcard.
+
 ## Where the rules live (decided 2026-10-05)
 
 **Decision.** Split by who writes them: the core operators' rules in a table in `./authoring`, keyed by the core definition; host operators' rules in an optional field on their definition, checked by `defineOperator()`. A host operator without the field is external.
