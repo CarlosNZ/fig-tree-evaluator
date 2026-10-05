@@ -37,7 +37,7 @@
  * through its wrapper. Nothing is evaluated after the deadline; whatever
  * is still in flight is abandoned at its next node boundary.
  */
-import { isFigTreeError } from '../FigTreeError'
+import { isFigTreeError, type FigTreeError } from '../FigTreeError'
 import type { EvaluationOptions } from '../options'
 import { toNodePath, type ArtifactHole, type CompileArtifact } from '../compile'
 import type { ResultStore } from '../resultCache'
@@ -92,7 +92,7 @@ export const runEvaluation = async (
         )
       : undefined
   const base = createEvaluationContext(options, cache, root, recorder)
-  const boundary = shielded ? holeBoundary(artifact, armed.expiry, recorder) : undefined
+  const boundary = shielded ? holeBoundary(artifact, armed.expiry, timeout, recorder) : undefined
   // A skeleton root hands each of its holes to the boundary; any other
   // root IS its single hole, so the boundary wraps the whole call
   const atRoot = boundary !== undefined && artifact.root.kind !== 'skeleton'
@@ -167,6 +167,7 @@ const raced = (
 const holeBoundary = (
   artifact: CompileArtifact,
   expiry: Promise<never>,
+  ms: number,
   recorder: TraceRecorder | undefined
 ): HoleBoundary => {
   const holes = new Map(artifact.holes.map((hole) => [hole.node, hole]))
@@ -196,14 +197,23 @@ const holeBoundary = (
       expiry.catch((reason) => {
         if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
         if (won) return undefined
+        const value = timeoutFallbackOf(hole)
         // Which holes contributed a real value and which a static
         // fallback is timing-dependent and invisible in the result, so
-        // trace is the only channel that can say
-        recorder?.noteOn(hole.node, { type: 'shielded-fallback' })
-        return timeoutFallbackOf(hole)
+        // trace is the only channel that can say. It says it as it would
+        // for any caught failure: the timeout is what the fallback caught
+        recorder?.markShielded(hole.node, holeTimeout(hole, reason, ms), value)
+        return value
       }),
     ])
   }
+}
+
+/** The timeout as the hole met it, for its trace entry. */
+const holeTimeout = (hole: ArtifactHole, reason: unknown, ms: number): FigTreeError => {
+  const { node } = hole
+  const operator = node.kind === 'operator' ? node.name : undefined
+  return killSwitchError(reason, toNodePath(node.path), { operator, ms })
 }
 
 const timeoutFallbackOf = (hole: ArtifactHole): unknown => {

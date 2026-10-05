@@ -196,25 +196,88 @@ describe('`failed` and `cancelled`', () => {
     const abandoned = (trace.children ?? [])[1]
     expect(abandoned.status).toBe('cancelled')
   })
+})
 
-  it('marks a hole the shielded deadline cut off, and says it took its fallback', async () => {
+// ── Shielded timeouts ───────────────────────────────────────────────
+
+describe('a hole the shielded deadline cut off is traced as a caught failure', () => {
+  const shieldedSetup = (options: object = {}) => {
     const sleep = sleepOp()
     cleanups.push(sleep.cleanup)
-    const fig = setup([sleep.definition])
+    return setup([sleep.definition], { timeout: 50, ...options })
+  }
+
+  /** The entry an ordinary caught failure gets, with the timeout caught. */
+  const answeredBy = (value: unknown) => ({
+    status: 'fallback',
+    value,
+    error: expect.objectContaining({ code: ErrorCodes.timeout }),
+    events: [{ type: 'shielded-fallback' }],
+  })
+
+  it('at the root: the node took its fallback, and its fallback answered', async () => {
+    const fig = shieldedSetup()
+    const { result, trace } = (await fig.evaluate(
+      { operator: 'sleep', ms: 200, fallback: 'late' },
+      { trace: true }
+    )) as EvaluationResult
+    expect(result).toBe('late')
+    expect(trace).toMatchObject(answeredBy('late'))
+    expect(trace.error?.path).toEqual([])
+    expect(trace.error?.message).toMatch(/50ms/)
+    expect(at(trace, ['fallback'])).toMatchObject({ status: 'value', value: 'late' })
+  })
+
+  it('as part of a plain root, beside a sibling that finished', async () => {
+    const fig = shieldedSetup()
     const trace = await traceOf(
       fig,
       {
         greeting: { $buildString: ['Hi %1', '$data.name'], fallback: 'Hi there' },
-        offers: { operator: 'sleep', ms: 300, deaf: true, fallback: [] },
+        a: { operator: 'sleep', ms: 200, fallback: 'late' },
+        b: 1,
       },
-      { data: { name: 'Ada' }, timeout: 40 }
+      { data: { name: 'Ada' } }
     )
-    const offers = at(trace, ['offers'])
-    expect(offers?.status).toBe('cancelled')
-    expect(offers?.events).toContainEqual({ type: 'shielded-fallback' })
-    // The hole that finished contributed a real value and no such event
+    expect(trace.value).toEqual({ greeting: 'Hi Ada', a: 'late', b: 1 })
+    const a = at(trace, ['a'])
+    expect(a).toMatchObject(answeredBy('late'))
+    expect(a?.error?.path).toEqual(['a'])
+    expect(at(trace, ['a', 'fallback'])).toMatchObject({ status: 'value', value: 'late' })
+    // The hole that finished contributed a real value, and no such event
     expect(at(trace, ['greeting'])?.status).toBe('value')
     expect(at(trace, ['greeting'])?.events).toBeUndefined()
+    expect(at(trace, ['greeting', 'fallback'])?.status).toBe('skipped')
+  })
+
+  it('leaves what the deadline cut off beneath the hole cancelled', async () => {
+    const fig = shieldedSetup()
+    const trace = await traceOf(fig, {
+      a: { $plus: [{ operator: 'sleep', ms: 200, deaf: true }, 1], fallback: 0 },
+    })
+    expect(at(trace, ['a'])).toMatchObject(answeredBy(0))
+    const cut = flatten(trace).find((entry) => entry.operator === 'sleep')
+    expect(cut?.status).toBe('cancelled')
+  })
+
+  it('marks the hole alone where the fallback is an operatorDefaults one', async () => {
+    const fig = shieldedSetup({ operatorDefaults: { sleep: { fallback: 'late' } } })
+    const trace = await traceOf(fig, { a: { operator: 'sleep', ms: 200 } })
+    expect(at(trace, ['a'])).toMatchObject(answeredBy('late'))
+    expect(at(trace, ['a', 'fallback'])).toBeUndefined()
+  })
+
+  it("marks the call alone where the fallback is lifted from the fragment's body", async () => {
+    const sleep = sleepOp()
+    cleanups.push(sleep.cleanup)
+    const fig = new FigTree({
+      operators: [coreOperators, sleep.definition],
+      fragments: { slow: { expression: { operator: 'sleep', ms: 200, fallback: 'late' } } },
+      timeout: 50,
+    })
+    const trace = await traceOf(fig, { a: { $slow: {} } })
+    expect(at(trace, ['a'])).toMatchObject(answeredBy('late'))
+    expect(at(trace, ['a', 'fallback'])).toBeUndefined()
   })
 })
 

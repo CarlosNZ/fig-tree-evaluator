@@ -118,7 +118,7 @@ _Settled at Phase-12 planning (September 2026), by spiking the stack before anyt
 | `timeout` fires, expression **shielded**   | **returns the shielded assembly** — no throw, no error signal (rule 3; `trace` is the visibility channel) |
 | `signal` aborts                            | rejects with the abort as a `FigTreeError` (code `aborted`)                                               |
 
-A shielded timeout leaves nothing in the return value to say the deadline fired. That is by design — the static fallbacks are doing what their author wrote them for — and `trace` is where it shows: a `shielded-fallback` event on each hole the deadline cut off.
+A shielded timeout leaves nothing in the return value to say the deadline fired. That is by design — the static fallbacks are doing what their author wrote them for — and `trace` is where it shows. Each hole the deadline cut off is traced as an ordinary caught failure is: status `fallback`, `error` the `timeout` FigTreeError the fallback caught, `value` the static fallback. Where that fallback is the hole's own `fallback` key, its entry is a `value` entry rather than `skipped`; one from `operatorDefaults` or lifted from a fragment body's fallback has no entry of its own. The hole also carries a `shielded-fallback` event, which tells a shielded timeout apart from a fallback that caught an ordinary failure. Work beneath the hole that the deadline cut off stays `cancelled`.
 
 ---
 

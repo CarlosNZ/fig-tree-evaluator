@@ -26,7 +26,11 @@
  *   - **Abandonment.** A hole cut off by a shielded deadline may never
  *     settle at all, so its entry would stay open forever. `finish()`
  *     closes every entry still open as `cancelled`, which is exactly what
- *     it means.
+ *     it means — for everything beneath the hole. The hole itself was
+ *     answered by its static fallback, which the boundary records the
+ *     moment the deadline wins; what the abandoned attempt does after
+ *     that, settling late or being closed by `finish()`, does not
+ *     overwrite it.
  *
  * Cost when off is nothing: there is no recorder on the context, `note`
  * is the no-op stub, and the dispatch takes its existing fast path.
@@ -53,6 +57,8 @@ interface Open {
   children: Placed[]
   /** Static children that produced an instance — the rest are skipped. */
   seen: Set<CompiledNode>
+  /** When the entry opened — the `elapsed` of a hole the deadline cut off. */
+  started: number
 }
 
 /** What the dispatch knows about an instance that the node does not. */
@@ -77,8 +83,11 @@ export interface TraceRecorder {
   markFallback: (entry: TraceNode, caught: FigTreeError) => void
   /** Append an event to an entry. */
   note: (entry: TraceNode, event: TraceEvent) => void
-  /** Append an event to the most recent instance of a static node. */
-  noteOn: (node: CompiledNode, event: TraceEvent) => void
+  /**
+   * Mark the most recent instance of a shielded hole as answered by its
+   * static fallback, the deadline having cut it off.
+   */
+  markShielded: (node: CompiledNode, caught: FigTreeError, value: unknown) => void
   /** Close everything still open as `cancelled`, and return the root. */
   finish: () => TraceNode | undefined
 }
@@ -94,8 +103,10 @@ export const now = (): number => performance.now()
 
 export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
   const open = new Map<TraceNode, Open>()
-  /** The most recent instance of each static node — see `noteOn`. */
+  /** The most recent instance of each static node — see `markShielded`. */
   const latest = new WeakMap<CompiledNode, TraceNode>()
+  /** Entries whose outcome the hole boundary decided — see `close`. */
+  const decided = new WeakSet<TraceNode>()
   let root: TraceNode | undefined
 
   const place = (parent: TraceNode | undefined, placed: Placed, node: CompiledNode) => {
@@ -113,12 +124,17 @@ export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
     const holder = open.get(entry)
     if (holder === undefined) return
     open.delete(entry)
-    // A fallback that answered has already said so; the dispatch only
-    // ever sees the value it produced
-    if (entry.status !== 'fallback') entry.status = status
-    if (detail.error !== undefined && entry.error === undefined) entry.error = detail.error
-    if (status !== 'failed' && status !== 'cancelled') entry.value = detail.value
-    if (detail.elapsed !== undefined) entry.elapsed = detail.elapsed
+    // A hole the shielded deadline cut off was answered by its static
+    // fallback, which is what the result holds; the abandoned attempt
+    // settling late, or not at all, changes nothing about that
+    if (!decided.has(entry)) {
+      // A fallback that answered has already said so; the dispatch only
+      // ever sees the value it produced
+      if (entry.status !== 'fallback') entry.status = status
+      if (detail.error !== undefined && entry.error === undefined) entry.error = detail.error
+      if (status !== 'failed' && status !== 'cancelled') entry.value = detail.value
+      if (detail.elapsed !== undefined) entry.elapsed = detail.elapsed
+    }
     const children = [...holder.children, ...skippedChildren(holder)]
     if (children.length > 0)
       entry.children = children
@@ -130,33 +146,60 @@ export const createTraceRecorder = (warnings: Issue[]): TraceRecorder => {
     ;(entry.events ??= []).push(event)
   }
 
+  const begin = (
+    node: CompiledNode,
+    parent: TraceNode | undefined,
+    source: TraceNode['source'],
+    annotation: TraceAnnotation | undefined
+  ): TraceNode => {
+    const operator = nameOf(node)
+    const ref = refOf(node)
+    const entry: TraceNode = {
+      path: toNodePath(node.path),
+      kind: kindOf(node),
+      status: 'value',
+      ...(source !== undefined ? { source } : {}),
+      ...(operator !== undefined ? { operator } : {}),
+      ...(ref !== undefined ? { ref } : {}),
+      ...(annotation?.var !== undefined ? { var: annotation.var } : {}),
+    }
+    open.set(entry, { node, children: [], seen: new Set(), started: now() })
+    latest.set(node, entry)
+    place(parent, { entry, order: node.order, index: annotation?.index ?? 0 }, node)
+    return entry
+  }
+
   return {
-    enter: (node, parent, frame, annotation) => {
-      const operator = nameOf(node)
-      const ref = refOf(node)
-      const entry: TraceNode = {
-        path: toNodePath(node.path),
-        kind: kindOf(node),
-        status: 'value',
-        ...(frame !== undefined ? { source: { fragment: frame.fragment } } : {}),
-        ...(operator !== undefined ? { operator } : {}),
-        ...(ref !== undefined ? { ref } : {}),
-        ...(annotation?.var !== undefined ? { var: annotation.var } : {}),
-      }
-      open.set(entry, { node, children: [], seen: new Set() })
-      latest.set(node, entry)
-      place(parent, { entry, order: node.order, index: annotation?.index ?? 0 }, node)
-      return entry
-    },
+    enter: (node, parent, frame, annotation) =>
+      begin(
+        node,
+        parent,
+        frame !== undefined ? { fragment: frame.fragment } : undefined,
+        annotation
+      ),
     settle: close,
     markFallback: (entry, caught) => {
       entry.status = 'fallback'
       entry.error = caught
     },
     note: append,
-    noteOn: (node, event) => {
+    markShielded: (node, caught, value) => {
       const entry = latest.get(node)
-      if (entry !== undefined) append(entry, event)
+      const holder = entry === undefined ? undefined : open.get(entry)
+      // A hole that already settled won its race, and was not cut off
+      if (entry === undefined || holder === undefined) return
+      decided.add(entry)
+      entry.status = 'fallback'
+      entry.error = caught
+      entry.value = value
+      entry.elapsed = now() - holder.started
+      append(entry, { type: 'shielded-fallback' })
+      // Where the static fallback is the node's own `fallback` key, that
+      // child is what answered, so it is a `value` entry rather than a
+      // `skipped` one. A fallback from `operatorDefaults` or lifted from a
+      // fragment body has no node here to mark
+      const own = ownFallbackOf(node)
+      if (own !== undefined) close(begin(own, entry, entry.source, undefined), 'value', { value })
     },
     finish: () => {
       // Anything still open was abandoned rather than finished — a hole
@@ -247,6 +290,9 @@ const kindOf = (node: CompiledNode): TraceKind => {
       return 'literal'
   }
 }
+
+const ownFallbackOf = (node: CompiledNode): CompiledNode | undefined =>
+  node.kind === 'operator' || node.kind === 'fragmentCall' ? node.fallback : undefined
 
 const nameOf = (node: CompiledNode): string | undefined =>
   node.kind === 'operator' || node.kind === 'fragmentCall' ? node.name : undefined

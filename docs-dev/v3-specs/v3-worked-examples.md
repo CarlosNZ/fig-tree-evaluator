@@ -303,7 +303,7 @@ await fig.evaluate(banner, { data: { name: 'Ada' }, timeout: 50 })
 // → { greeting: 'Hi Ada', offers: [] }                   // RETURNS — no throw
 ```
 
-On the deadline: `greeting` finished → contributes its **real** value; `offers` didn't → contributes its **static fallback**; the constant skeleton assembles around them. Pure constant-splicing, zero post-deadline evaluation. The assembly comes back silently: shielding is author-sanctioned degradation, the fallbacks doing what they were written for, and `trace` is where it shows — a `shielded-fallback` event on the `offers` hole.
+On the deadline: `greeting` finished → contributes its **real** value; `offers` didn't → contributes its **static fallback**; the constant skeleton assembles around them. Pure constant-splicing, zero post-deadline evaluation. The assembly comes back silently: shielding is author-sanctioned degradation, the fallbacks doing what they were written for, and `trace` is where it shows — the `offers` hole has status `fallback`, with the `timeout` error it caught, the value `[]` and a `shielded-fallback` event, and its `fallback` child has status `value`.
 
 Now un-shield it — change one fallback to a _dynamic_ expression:
 
