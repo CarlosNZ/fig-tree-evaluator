@@ -143,7 +143,9 @@ What the runs give the walk:
 
 `{ $plus: [{ $multiply: [2, 3] }, 1] }` folds to 7; `{ $divide: [1, 0] }` always fails; `{ $divide: [1, { $if: ['$data.c', 0, 2] }] }` may.
 
-**Cost.** One run per combination: the eager inputs' values times each child's outcomes, usually one or two. At most 16, as many exact values as the walk keeps: above that, a child with several outcomes becomes a stand-in, and if there are still too many, the node is not run. A run is one call of the body. A declared host body that waits on something outside the analysis holds the analysis up with it.
+**Cost.** One run per combination: the eager inputs' values times each child's outcomes, usually one or two. At most 16, as many exact values as the walk keeps: above that, a child with several outcomes becomes a stand-in, and if there are still too many, the node is not run. A run is one call of the body.
+
+**A body that does not settle.** A declared host body may wait on something the analysis cannot give it: the host's own state, such as a table it loads at startup, or a signal, which never aborts in a run. An async body still waiting after 100 ms is given up on, and its operator is not run again in that analysis: those nodes are analysed as if not run, by their rules and their declared output. That costs precision, never soundness. Core bodies settle within microtasks.
 
 ## Operator rules
 
@@ -261,7 +263,7 @@ floor, ceil: 'integer'
 Split by who writes them:
 
 - **Core operators:** a table in `./authoring`, keyed by the core definition itself rather than its name, so a host operator reusing a core name never inherits its rules. The root never imports it, so `evaluate()` pays nothing: the whole table is about 0.6 kB brotli.
-- **Host operators:** an optional field on the definition, in the same shape (`coverage: { failures?, external?, output? }`; name provisional), checked by `defineOperator()`: a rule's `when` keys and `parameter`, and the parameters an `output` names, must be declared, each test and output must be well formed, and `external: true` declares no `failures`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A host operator without it is external. The field is carried onto the built definition and never read by the engine.
+- **Host operators:** an optional field on the definition, in the same shape (`coverage: { failures?, external?, output? }`; name provisional), checked by `defineOperator()`: a rule's `when` keys and `parameter`, and the parameters an `output` names, must be declared, each test and output must be well formed, and `external: true` declares no `failures`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A declared body must therefore settle from its parameters alone (see "Running a node"). A host operator without it is external. The field is carried onto the built definition and never read by the engine.
 
 The analysis reads the definition's field first, then the core table.
 

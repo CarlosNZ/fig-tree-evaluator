@@ -18,7 +18,7 @@ import { ErrorCodes } from '../errorCodes'
 import { isTruthy } from '../primitives/truthiness'
 import type { FigTreeErrorCode } from '../errorCodes'
 import type { OperatorNode } from '../compile/artifact'
-import type { ValidatedParameter } from '../operatorDefinition'
+import type { ValidatedOperatorDefinition, ValidatedParameter } from '../operatorDefinition'
 import type { EvaluationOptions } from '../options'
 import type { OperatorContext, Settlement } from '../runtimeInterface'
 import { exactValues, exactly, fits, ofType, union } from './known'
@@ -59,6 +59,16 @@ export interface Ran {
 /** The most runs a node is given: as many values as the walk keeps exactly. */
 const RUN_LIMIT = 16
 
+/**
+ * How long an async body is given to settle, in ms. A body still waiting
+ * after this waits on something the analysis cannot give it: a host's own
+ * state, a signal that never aborts. Core bodies settle within microtasks.
+ */
+const SETTLE_LIMIT = 100
+
+/** Definitions whose body did not settle in time, in one analysis. */
+export type Stalled = Set<ValidatedOperatorDefinition>
+
 /** What a child comes to in one run. */
 type Outcome = { value: unknown } | { fails: true } | { unknown: true }
 
@@ -88,17 +98,20 @@ const outcomesOf = (child: Child, declared: ValidatedParameter): Outcome[] => {
 
 /**
  * The node's runs, or nothing where it cannot be run: an eager input not
- * known exactly, too many combinations, or a body that waits on a stand-in.
- * `outputs` holds what each parameter's child returns, as the walk gives
- * them to `resolveInputs`; `children` the ones delivered to the body to ask
- * for.
+ * known exactly, too many combinations, a body that waits on a stand-in, or
+ * one that does not settle in time, which is then not run again in the same
+ * analysis. `outputs` holds what each parameter's child returns, as the walk
+ * gives them to `resolveInputs`; `children` the ones delivered to the body
+ * to ask for.
  */
 export const runNode = async (
   node: OperatorNode,
   outputs: Record<string, Known>,
   children: Child[],
-  options: RuleOptions
+  options: RuleOptions,
+  stalled: Stalled = new Set()
 ): Promise<Ran | undefined> => {
+  if (stalled.has(node.entry.definition)) return undefined
   const { parameters } = node.entry.definition
   const handed = new Set(children.map((child) => child.param))
   const values: { name: string; outcomes: Outcome[] }[] = []
@@ -138,7 +151,7 @@ export const runNode = async (
     for (const { name, outcomes } of values)
       exact[name] = (pick(outcomes) as { value: unknown }).value
     const chosen = new Map(asked.map(({ child, outcomes }) => [child, pick(outcomes)]))
-    const ending = await runOnce(node, outputs, exact, chosen, options, reached)
+    const ending = await runOnce(node, outputs, exact, chosen, options, reached, stalled)
     if (ending === undefined) return undefined
     endings.push(ending)
   }
@@ -219,7 +232,8 @@ const runOnce = async (
   exact: Record<string, unknown>,
   chosen: Map<Child, Outcome>,
   options: RuleOptions,
-  reached: Set<Child>
+  reached: Set<Child>,
+  stalled: Stalled
 ): Promise<Ending | undefined> => {
   const { definition } = node.entry
   const { parameters } = definition
@@ -473,6 +487,10 @@ const runOnce = async (
     if (passed !== undefined) return { passed }
     if (waited) return undefined
     awaiting = true
+    const timer = setTimeout(() => {
+      stalled.add(definition)
+      stop()
+    }, SETTLE_LIMIT)
     const settled = await Promise.race([
       Promise.resolve(result).then(
         (value) => ({ value }),
@@ -480,6 +498,7 @@ const runOnce = async (
       ),
       stopped,
     ])
+    clearTimeout(timer)
     if (settled === STOPPED) return undefined
     if ('error' in settled) return thrown(settled.error)
     result = settled.value

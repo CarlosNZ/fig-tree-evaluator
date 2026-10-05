@@ -30,7 +30,7 @@ import { argumentInput, checkElementResult, resolveInputs } from './inputs'
 import { ownFailures, rulesOf } from './rules'
 import { atBoundary, operatorOutput } from './outputs'
 import { runNode } from './run'
-import type { Child, Ran } from './run'
+import type { Child, Ran, Stalled } from './run'
 import type { RuleOptions } from './rules'
 import { ANY, NOTHING, tupleOf, drill, elementsOf, exactly, keyOf, objectOf, union } from './known'
 import type { Known } from './known'
@@ -147,6 +147,8 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
 export class Analysis {
   private readonly bodies = new Map<FragmentEntry, Map<string, Analysed>>()
 
+  private readonly stalled: Stalled = new Set()
+
   private readonly strict: boolean
 
   constructor(
@@ -258,7 +260,7 @@ export class Analysis {
         }
       : rulesOf(definition) === 'external'
         ? undefined
-        : await runNode(node, outputs, children, this.options)
+        : await runNode(node, outputs, children, this.options, this.stalled)
     const own: Pending[] = []
     if (ran === undefined) {
       own.push(...inputs.failures)

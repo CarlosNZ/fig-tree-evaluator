@@ -93,6 +93,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** `covered` shows where fallbacks do their work, and a fallback in a branch that never runs does none. Dropping only the uncovered findings would leave a branch never taken listed as protected.
 
+## A body that does not settle (Carl, 2026-10-06, at step 5)
+
+**Decision.** An async body still waiting 100 ms into a run is given up on: the node is analysed as if not run, by its rules and declared output, and its operator is not run again in that analysis. Declaring `coverage` also says the body settles from its parameters alone.
+
+**Why.** A declared host body can wait on something the analysis never provides: a host's translation table loaded at startup, or a signal, which never aborts in a run. Without a limit, `fallbackCoverage` never resolves for any expression holding such a node, and an editor's coverage view stops updating with no error to say why. Giving up loses only precision, and remembering the operator keeps the cost to one wait per analysis. A synchronous body that never returns is beyond any guard, and would hang `evaluate()` the same way.
+
 ## Per-element walks as a step of their own (Carl, 2026-10-06, at step 5)
 
 **Decision.** Walking an iterator's `each` once per element of a known `input` is step 7, after value ranges, not part of step 5.

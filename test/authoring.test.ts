@@ -918,6 +918,31 @@ describe('running a node', () => {
       { path: [], code: external, certainty: 'may' },
     ])
   })
+
+  test('a declared body that does not settle is given up on, and not run again', async () => {
+    let calls = 0
+    const waiting = defineOperator({
+      name: 'waiting',
+      category: 'other',
+      description: 'Waits on state the analysis never has',
+      parameters: { value: { type: 'string' } },
+      positionalParams: ['value'],
+      returns: 'string',
+      coverage: {},
+      evaluate: () => {
+        calls++
+        return new Promise<string>(() => {})
+      },
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [waiting]] })
+    // Its rules and its `returns` decide: a string, which may be empty
+    const expression = {
+      a: { $divide: [1, { $length: { $waiting: 'x' } }] },
+      b: { $waiting: 'y' },
+    }
+    expect(await findings(expression, hosts)).toEqual([divisor(['a'], 'may')])
+    expect(calls).toBe(1)
+  })
 })
 
 test('an invalid node always fails, with its static error', async () => {

@@ -70,8 +70,9 @@ export interface FallbackCoverageOptions {
  * What an operator declares of its own failures, for `./authoring`
  * ("Where the rules live" in docs-dev/v3-specs/v3-fallback-coverage.md):
  * the `coverage` field of a definition. Declaring it says the rules are
- * complete, and that the operator is pure. Without it, a host operator is
- * external: it may fail whatever its inputs.
+ * complete, and that the operator is pure: the analysis runs its body where
+ * its inputs are known, so the body must settle from its parameters alone.
+ * Without it, a host operator is external: it may fail whatever its inputs.
  */
 export interface OperatorCoverage {
   /**
