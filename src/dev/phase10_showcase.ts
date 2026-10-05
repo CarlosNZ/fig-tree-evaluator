@@ -53,7 +53,9 @@ const main = async () => {
     greeting: { $buildString: ['Hi %1', '$data.name'], fallback: 'Hi there' },
     offers: { $http: '/slow', fallback: [] },
   }
-  console.log(`  fallbackCoverage(): ${block(fallbackCoverage(fig, banner, { timeout: 50 }))}\n`)
+  console.log(
+    `  await fallbackCoverage(): ${block(await fallbackCoverage(fig, banner, { timeout: 50 }))}\n`
+  )
   print(
     'greeting finished → its real value; offers did not → its static fallback',
     banner,
@@ -69,7 +71,9 @@ const main = async () => {
   section('One dynamic fallback un-shields the whole expression')
 
   const banner2 = { ...banner, offers: { $http: '/slow', fallback: '$data.cachedOffers' } }
-  console.log(`  fallbackCoverage(): ${block(fallbackCoverage(fig, banner2, { timeout: 50 }))}\n`)
+  console.log(
+    `  await fallbackCoverage(): ${block(await fallbackCoverage(fig, banner2, { timeout: 50 }))}\n`
+  )
   print(
     'a fallback that could start new work past the deadline cannot shield it',
     banner2,

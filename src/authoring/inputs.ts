@@ -7,6 +7,7 @@
  * default chain, null meaning unset, `replacesNullAt`, the null policies,
  * then the type check and constraints.
  */
+import { isTruthy } from '../primitives/truthiness'
 import { typeNamesNull } from '../typeCheck'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
@@ -19,6 +20,7 @@ import {
   containsNull,
   exactly,
   fits,
+  isPlain,
   narrow,
   ofType,
   onlyNull,
@@ -42,6 +44,14 @@ export interface Inputs {
    * body: never, for some inputs, or always
    */
   propagates: Answer
+  /**
+   * Where the layers surely end the node before its body, in the engine's
+   * order: the first type check that must fail, or a null that must
+   * propagate
+   */
+  ends?: Failure | 'null'
+  /** The `replacesNullAt` holders the layers may ask for */
+  consulted: Set<string>
 }
 
 /**
@@ -106,8 +116,10 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   const failures: Failure[] = []
   const pending: Record<string, Pending> = {}
   const delivered = new Set<string>()
-  const holders: Record<string, Known> = {}
+  const holders: Record<string, { name: string; known: Known }> = {}
+  const consulted = new Set<string>()
   let propagates: Answer = 'no'
+  let ends: Failure | 'null' | undefined
 
   const check = (name: string, declared: ValidatedParameter, known: Known, certain: boolean) => {
     const answer = fits(
@@ -117,7 +129,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       declared.elementNullPolicy !== undefined
     )
     if (answer === 'yes') return
-    failures.push({
+    const failure: Failure = {
       path: node.path,
       code: 'type-check',
       message: `${node.name} – parameter '${name}': may receive something other than ${describe(declared.type)}${declared.constraints !== undefined ? ', as constrained' : ''}`,
@@ -125,7 +137,9 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       operator: node.name,
       parameter: name,
       order: [node.order],
-    })
+    }
+    failures.push(failure)
+    if (answer === 'no' && certain) ends ??= failure
   }
 
   // Pass 1: what each supplied parameter starts as
@@ -143,7 +157,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
         if (declared.replacesNullAt !== undefined) {
           const holder = supplied !== undefined ? outputs[name] : defaultOf(node, name, declared)
           if (holder !== undefined)
-            for (const target of declared.replacesNullAt) holders[target] = holder
+            for (const target of declared.replacesNullAt) holders[target] = { name, known: holder }
         } else if (supplied !== undefined) {
           // A handle, vetted when the body demands it, if it does
           delivered.add(name)
@@ -191,13 +205,17 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     if (pending[name].absent) absent.add(name)
 
     const holder = holders[name]
-    if (holder !== undefined)
-      known =
-        declared.elementNullPolicy !== undefined
-          ? replaceNullElements(known, holder)
-          : admitsNull(known)
-            ? union(withoutNull(known), holder)
-            : known
+    if (holder !== undefined) {
+      const replaced =
+        declared.elementNullPolicy !== undefined ? containsNull(known) !== 'no' : admitsNull(known)
+      if (replaced) {
+        consulted.add(holder.name)
+        known =
+          declared.elementNullPolicy !== undefined
+            ? replaceNullElements(known, holder.known)
+            : union(withoutNull(known), holder.known)
+      }
+    }
 
     // `propagate` is inert on a lazily delivered parameter
     const lazily = declared.evaluation !== 'eager' && declared.evaluation !== 'structural'
@@ -206,7 +224,10 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       if (policies.has('propagate')) {
         const certain = policies.size === 1 && onlyNull(known)
         propagates = certain ? 'yes' : 'maybe'
-        if (certain) break
+        if (certain) {
+          ends ??= 'null'
+          break
+        }
         if (policies.size === 1) known = withoutNull(known)
       }
     }
@@ -215,30 +236,57 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       const nulls = containsNull(known)
       if (nulls !== 'no') {
         propagates = nulls === 'yes' ? 'yes' : 'maybe'
-        if (nulls === 'yes') break
+        if (nulls === 'yes') {
+          ends ??= 'null'
+          break
+        }
         known = withoutNullElements(known)
       }
     }
 
     check(name, declared, known, true)
-    received[name] = declared.truthiness ? judged(declared.type) : narrow(known, declared.type)
+    received[name] = vetted(declared, known)
   }
 
   // A type check is certain only if no null can end the node before it
   if (propagates !== 'no')
     for (const failure of failures) if (failure.certainty === 'always') failure.certainty = 'may'
-  return { received, absent, failures, propagates }
+  return { received, absent, failures, propagates, consulted, ...(ends ? { ends } : {}) }
+}
+
+const containerOnly = (type: ExpectedType): boolean => {
+  const members = typeof type === 'string' ? [type] : Array.isArray(type) ? type : []
+  return members.length > 0 && members.every((member) => member === 'array' || member === 'object')
 }
 
 /**
- * What truthiness delivers: a boolean, or for a container-only type a
- * container of them (`applyTruthiness` in src/evaluate/params.ts).
+ * One value judged by truthiness, element by element for a container-only
+ * type (`applyTruthiness` in src/evaluate/params.ts).
  */
-const judged = (type: ExpectedType): Known => {
-  const members = typeof type === 'string' ? [type] : Array.isArray(type) ? type : []
-  const containerOnly =
-    members.length > 0 && members.every((member) => member === 'array' || member === 'object')
-  return containerOnly ? ANY : ofType('boolean')
+export const judge = (value: unknown, type: ExpectedType): unknown => {
+  if (containerOnly(type)) {
+    if (Array.isArray(value)) return value.map(isTruthy)
+    if (isPlain(value)) {
+      const judgedValues: Record<string, unknown> = {}
+      for (const [key, element] of Object.entries(value)) judgedValues[key] = isTruthy(element)
+      return judgedValues
+    }
+  }
+  return isTruthy(value)
+}
+
+/**
+ * What a parameter delivers once its type check passes: the value, or
+ * what truthiness makes of it, exactly where the value is known exactly.
+ */
+export const vetted = (declared: ValidatedParameter, known: Known): Known => {
+  const passed = narrow(known, declared.type)
+  if (!declared.truthiness) return passed
+  if (passed.length > 0 && passed.every((member) => 'exact' in member))
+    return union(
+      ...passed.map((member) => exactly(judge((member as { exact: unknown }).exact, declared.type)))
+    )
+  return containerOnly(declared.type) ? ANY : ofType('boolean')
 }
 
 /**

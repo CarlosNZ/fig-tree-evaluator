@@ -21,7 +21,8 @@ import { Analysis } from './walk'
  * Where each node of an expression can fail, and which fallback, if any,
  * catches it (docs-dev/v3-specs/v3-fallback-coverage.md). A failure is
  * reported where it starts, once, and is covered by the nearest fallback
- * above it.
+ * above it. Async, because the analysis runs a pure node's own body where
+ * enough is known of its inputs, and a body is async.
  *
  * Under a timeout nothing runs after the deadline, so a top-level value is
  * shielded only by a constant fallback: the instance's `timeout`, or the
@@ -29,11 +30,11 @@ import { Analysis } from './walk'
  * expression compiles through `compile()`, so it shares the compile cache
  * with `evaluate()`.
  */
-export const fallbackCoverage = (
+export const fallbackCoverage = async (
   fig: unknown,
   expression: unknown,
   options?: FallbackCoverageOptions
-): FallbackCoverage => {
+): Promise<FallbackCoverage> => {
   if (!(fig instanceof FigTree)) throw new TypeError('fallbackCoverage() takes a FigTree instance')
   // The call's timeout laid over the instance's options, and checked, as
   // `evaluate()` would; the analysis's own options are not evaluate()'s.
@@ -54,10 +55,10 @@ export const fallbackCoverage = (
   const analysis = new Analysis({ numbers, evaluation }, artifact.issues)
 
   const caught: Caught[] = []
-  const uncovered = analysis
-    .root(artifact.root, caught)
+  const { escapes } = await analysis.root(artifact.root, caught)
+  const uncovered = escapes
     // A demand is a body's, and every call answers its own
-    .escapes.filter((pending): pending is Failure => !isDemand(pending))
+    .filter((pending): pending is Failure => !isDemand(pending))
     .map(uncoveredFinding)
 
   // The runtime's shielding: a hole is spliced on a timeout only when its

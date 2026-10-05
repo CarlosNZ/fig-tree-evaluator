@@ -59,6 +59,12 @@ export const ANY: Known = [
 
 export const exactly = (value: unknown): Known => [{ exact: value === undefined ? null : value }]
 
+/** The values a known is exactly, if it is one of a few. */
+export const exactValues = (known: Known): unknown[] | undefined =>
+  known.length > 0 && known.every((member) => 'exact' in member)
+    ? known.map((member) => (member as { exact: unknown }).exact)
+    : undefined
+
 export const isNull = (member: Member): boolean =>
   'exact' in member ? member.exact === null : member.type === 'null'
 
@@ -177,14 +183,22 @@ export const containsNull = (known: Known): Answer =>
 
 /**
  * A container's null elements, or null values, replaced by what is known
- * of the replacement. An object that may hold a null comes out with its
- * keys unknown.
+ * of the replacement: exactly, where both are known exactly. Otherwise an
+ * object that may hold a null comes out with its keys unknown.
  */
 export const replaceNullElements = (known: Known, replacement: Known): Known =>
   union(
     ...known.map((member): Known => {
       if (containsNull([member]) === 'no') return [member]
       const exact = 'exact' in member ? member.exact : undefined
+      if (replacement.length === 1 && 'exact' in replacement[0] && 'exact' in member) {
+        const by = replacement[0].exact
+        const swap = (value: unknown) => (value === null ? by : value)
+        if (Array.isArray(exact)) return exactly(exact.map(swap))
+        const swapped: Record<string, unknown> = {}
+        for (const [key, value] of Object.entries(exact as object)) swapped[key] = swap(value)
+        return exactly(swapped)
+      }
       if (!Array.isArray(exact) && !('type' in member && member.type === 'array'))
         return [{ type: 'object' }]
       const length = Array.isArray(exact) ? exact.length : (member as { length?: number }).length
@@ -213,7 +227,7 @@ export const withoutNullElements = (known: Known): Known =>
 // ── Containers ──────────────────────────────────────────────────────
 
 /** The engine's `isPlainObject` (src/utils.ts): any non-array object. */
-const isPlain = (value: unknown): value is Record<string, unknown> =>
+export const isPlain = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /** What an iterator binds `$element` to: the elements of what is an array. */

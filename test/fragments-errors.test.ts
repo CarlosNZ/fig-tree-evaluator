@@ -97,9 +97,9 @@ describe('nested calls report the innermost body', () => {
 
 describe('timeout shielding through a call', () => {
   // The values a timeout can cut off: each is an uncovered `timeout` finding
-  const uncoveredUnderTimeout = (fig: FigTree, expression: unknown) =>
-    fallbackCoverage(fig, expression, { timeout: 30 })
-      .uncovered.filter((finding) => finding.code === 'timeout')
+  const uncoveredUnderTimeout = async (fig: FigTree, expression: unknown) =>
+    (await fallbackCoverage(fig, expression, { timeout: 30 })).uncovered
+      .filter((finding) => finding.code === 'timeout')
       .map((finding) => finding.path)
 
   const cleanups: (() => void)[] = []
@@ -116,7 +116,7 @@ describe('timeout shielding through a call', () => {
     const fig = build({ slowFrag: { expression: { $sleep: [300], fallback: 'shielded' } } }, [
       sleep.definition,
     ])
-    expect(uncoveredUnderTimeout(fig, { a: { $slowFrag: {} } })).toEqual([])
+    expect(await uncoveredUnderTimeout(fig, { a: { $slowFrag: {} } })).toEqual([])
     expect(await fig.evaluate({ a: { $slowFrag: {} } }, { timeout: 30 })).toEqual({
       a: 'shielded',
     })
@@ -145,8 +145,8 @@ describe('timeout shielding through a call', () => {
       },
       [sleep.definition]
     )
-    expect(uncoveredUnderTimeout(fig, { a: { $wrapper: {} } })).toEqual([])
-    expect(uncoveredUnderTimeout(fig, { a: { $outer: {} } })).toEqual([])
+    expect(await uncoveredUnderTimeout(fig, { a: { $wrapper: {} } })).toEqual([])
+    expect(await uncoveredUnderTimeout(fig, { a: { $outer: {} } })).toEqual([])
     expect(await fig.evaluate({ a: { $outer: {} } }, { timeout: 30 })).toEqual({
       a: 'shielded',
     })
@@ -168,7 +168,7 @@ describe('timeout shielding through a call', () => {
       },
       [sleep.definition]
     )
-    expect(uncoveredUnderTimeout(fig, { a: { $card: {} } })).toEqual([])
+    expect(await uncoveredUnderTimeout(fig, { a: { $card: {} } })).toEqual([])
     expect(await fig.evaluate({ a: { $card: {} } }, { timeout: 30 })).toEqual({
       a: { title: 'untitled', body: '' },
     })
@@ -187,7 +187,7 @@ describe('timeout shielding through a call', () => {
       },
       [sleep.definition]
     )
-    expect(uncoveredUnderTimeout(fig, { a: { $card: {} } })).toEqual([['a']])
+    expect(await uncoveredUnderTimeout(fig, { a: { $card: {} } })).toEqual([['a']])
     const error = await rejection<FigTreeError>(fig.evaluate({ a: { $card: {} } }, { timeout: 30 }))
     expect(error.code).toBe(ErrorCodes.timeout)
   })
@@ -195,7 +195,7 @@ describe('timeout shielding through a call', () => {
   test('a body with no static fallback leaves the call unshielded', async () => {
     const sleep = slow()
     const fig = build({ slowFrag: { expression: { $sleep: [300] } } }, [sleep.definition])
-    expect(uncoveredUnderTimeout(fig, { a: { $slowFrag: {} } })).toEqual([['a']])
+    expect(await uncoveredUnderTimeout(fig, { a: { $slowFrag: {} } })).toEqual([['a']])
     const error = await rejection<FigTreeError>(
       fig.evaluate({ a: { $slowFrag: {} } }, { timeout: 30 })
     )
@@ -210,7 +210,7 @@ describe('timeout shielding through a call', () => {
     const sleep = slow()
     const fig = build({ slowFrag: { expression: { $sleep: [300] } } }, [sleep.definition])
     const expression = { a: { $slowFrag: {}, fallback: { $sleep: [1] } } }
-    expect(uncoveredUnderTimeout(fig, expression)).toEqual([['a']])
+    expect(await uncoveredUnderTimeout(fig, expression)).toEqual([['a']])
     const error = await rejection<FigTreeError>(fig.evaluate(expression, { timeout: 30 }))
     expect(error.code).toBe(ErrorCodes.timeout)
   })

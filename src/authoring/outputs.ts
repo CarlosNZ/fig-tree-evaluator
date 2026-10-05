@@ -21,6 +21,7 @@ import {
   admitsNull,
   arrayOf,
   elementsOf,
+  exactValues,
   exactly,
   finite,
   fits,
@@ -81,12 +82,6 @@ interface Received {
   /** Each `perElement` parameter's result for one element */
   elements: Record<string, Known>
 }
-
-/** The values a parameter is known to be exactly, if it is. */
-const exactValues = (known: Known): unknown[] | undefined =>
-  known.length > 0 && known.every((member) => 'exact' in member)
-    ? known.map((member) => (member as { exact: unknown }).exact)
-    : undefined
 
 /** The members of a parameter's declared literal union, if it is one. */
 const literalsOf = (received: Received, name: string): unknown[] | undefined => {
@@ -189,7 +184,19 @@ export const operatorOutput = (
   )
   if (fromNonFinite && fits(output, 'number') !== 'no') output = union(output, NON_FINITE)
   if (inputs.propagates === 'maybe') output = union(output, exactly(null))
+  return atBoundary(node, output, numbers, inputs.propagates === 'no')
+}
 
+/**
+ * What passes the result boundary, and the failure there if a non-finite
+ * number can reach it: certain where nothing else can, and `certain` allows.
+ */
+export const atBoundary = (
+  node: OperatorNode,
+  output: Known,
+  numbers: 'ordinary' | 'strict',
+  certain: boolean
+): { output: Known; boundary?: Failure } => {
   const nonFinite = mayBeNonFinite(output)
   const counted = numbers === 'strict' ? nonFinite : mayBeNonFinite(finiteExcept(output))
   const passed = finite(output)
@@ -200,7 +207,7 @@ export const operatorOutput = (
       path: node.path,
       code: 'non-finite-result',
       message: `${node.name} – non-finite-result possible: a NaN or infinite number may reach its result`,
-      certainty: passed.length === 0 && inputs.propagates === 'no' ? 'always' : 'may',
+      certainty: passed.length === 0 && certain ? 'always' : 'may',
       operator: node.name,
       order: [node.order],
     },

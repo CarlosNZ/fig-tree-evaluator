@@ -13,7 +13,7 @@
  * values only, so they are checked here, where `pnpm typecheck` fails if one
  * goes missing.
  */
-import { ErrorCodes, FigTree, coreOperators, defineOperator } from '../src'
+import { ErrorCodes, FigTree, OperatorFailure, coreOperators, defineOperator } from '../src'
 import type {
   CoverageFinding,
   CoverageTest,
@@ -51,21 +51,21 @@ const where = (finding: CoverageFinding | CoveredFinding) => ({
   ...('coveredByFragmentPath' in finding ? { byFragmentPath: finding.coveredByFragmentPath } : {}),
 })
 
-const coverage = (expression: unknown, instance: FigTree = fig) => {
-  const { uncovered, covered } = fallbackCoverage(instance, expression)
+const coverage = async (expression: unknown, instance: FigTree = fig) => {
+  const { uncovered, covered } = await fallbackCoverage(instance, expression)
   return { uncovered: uncovered.map(where), covered: covered.map(where) }
 }
-const uncovered = (expression: unknown, instance: FigTree = fig) =>
-  coverage(expression, instance).uncovered.map((finding) => finding.path)
+const uncovered = async (expression: unknown, instance: FigTree = fig) =>
+  (await coverage(expression, instance)).uncovered.map((finding) => finding.path)
 
 /** What an external node gives */
 const external = 'operator-failure'
 const node = { $risky: 1 }
 
-test('the subpath exports fallbackCoverage alone, and its types from the root', () => {
+test('the subpath exports fallbackCoverage alone, and its types from the root', async () => {
   expect(Object.keys(authoring)).toEqual(['fallbackCoverage'])
   const options: FallbackCoverageOptions = { timeout: 50, numbers: 'strict' }
-  const result: FallbackCoverage = fallbackCoverage(fig, 1, options)
+  const result: FallbackCoverage = await fallbackCoverage(fig, 1, options)
   expect(result).toEqual({ uncovered: [], covered: [] })
   const test: CoverageTest = { not: { below: 0 } }
   const rule: FailureRule = { code: 'operator-failure', when: { value: test } }
@@ -73,12 +73,12 @@ test('the subpath exports fallbackCoverage alone, and its types from the root', 
   expect(declared.failures).toHaveLength(1)
 })
 
-test('a finding carries its code, certainty, operator, parameter and message', () => {
-  expect(fallbackCoverage(fig, { $divide: [1, 0] }).uncovered).toEqual([
+test('a finding carries its code, certainty, operator, parameter and message', async () => {
+  expect((await fallbackCoverage(fig, { $divide: [1, 0] })).uncovered).toEqual([
     {
       path: [],
       code: ErrorCodes.nonFiniteResult,
-      message: "divide – non-finite-result when 'by' is 0",
+      message: 'divide – produced a non-finite number (Infinity)',
       certainty: 'always',
       operator: 'divide',
       parameter: 'by',
@@ -94,18 +94,20 @@ describe('numbers', () => {
     ],
   }
 
-  test("'strict' counts overflow on numbers the walk cannot pin down, 'ordinary' does not", () => {
-    expect(fallbackCoverage(fig, sum).uncovered).toEqual([])
-    expect(fallbackCoverage(fig, sum, { numbers: 'ordinary' }).uncovered).toEqual([])
+  test("'strict' counts overflow on numbers the walk cannot pin down, 'ordinary' does not", async () => {
+    expect((await fallbackCoverage(fig, sum)).uncovered).toEqual([])
+    expect((await fallbackCoverage(fig, sum, { numbers: 'ordinary' })).uncovered).toEqual([])
     expect(
-      fallbackCoverage(fig, sum, { numbers: 'strict' }).uncovered.map((finding) => finding.code)
+      (await fallbackCoverage(fig, sum, { numbers: 'strict' })).uncovered.map(
+        (finding) => finding.code
+      )
     ).toEqual([ErrorCodes.nonFiniteResult])
   })
 
-  test('anything else is refused', () => {
-    expect(() =>
+  test('anything else is refused', async () => {
+    await expect(
       fallbackCoverage(fig, 1, { numbers: 'loose' as FallbackCoverageOptions['numbers'] })
-    ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidOptions }))
+    ).rejects.toThrow(expect.objectContaining({ code: ErrorCodes.invalidOptions }))
   })
 })
 
@@ -125,14 +127,14 @@ describe('where a finding sits', () => {
       [[], ['$risky'], ['$risky', '$risky']],
     ],
     ['a reference, which cannot throw without strictDataPaths', { a: '$data.x' }, []],
-  ])('%s', (_label, expression, expected) => {
-    expect(uncovered(expression)).toEqual(expected)
+  ])('%s', async (_label, expression, expected) => {
+    expect(await uncovered(expression)).toEqual(expected)
   })
 })
 
 describe('a fallback covers everything under it', () => {
-  test('a root fallback covers the root and every node below it', () => {
-    expect(coverage({ $risky: { $risky: ' s ' }, fallback: '' })).toEqual({
+  test('a root fallback covers the root and every node below it', async () => {
+    expect(await coverage({ $risky: { $risky: ' s ' }, fallback: '' })).toEqual({
       uncovered: [],
       covered: [
         { path: [], code: external, by: [] },
@@ -141,23 +143,25 @@ describe('a fallback covers everything under it', () => {
     })
   })
 
-  test('the nearest fallback is the one that covers', () => {
-    expect(coverage({ $risky: { $risky: ' s ', fallback: 'x' }, fallback: '' }).covered).toEqual([
+  test('the nearest fallback is the one that covers', async () => {
+    expect(
+      (await coverage({ $risky: { $risky: ' s ', fallback: 'x' }, fallback: '' })).covered
+    ).toEqual([
       { path: [], code: external, by: [] },
       { path: ['$risky'], code: external, by: ['$risky'] },
     ])
   })
 
-  test('an inner fallback leaves the node above it uncovered', () => {
-    expect(coverage({ greeting: { $risky: { $risky: 'n', fallback: 'there' } } })).toEqual({
+  test('an inner fallback leaves the node above it uncovered', async () => {
+    expect(await coverage({ greeting: { $risky: { $risky: 'n', fallback: 'there' } } })).toEqual({
       uncovered: [{ path: ['greeting'], code: external }],
       covered: [{ path: ['greeting', '$risky'], code: external, by: ['greeting', '$risky'] }],
     })
   })
 
-  test('an inner fallback is enough where the node above it cannot fail', () => {
+  test('an inner fallback is enough where the node above it cannot fail', async () => {
     const greeting = { $buildString: ['Hi %1', { $risky: '$data.n', fallback: 'there' }] }
-    expect(coverage({ greeting })).toEqual({
+    expect(await coverage({ greeting })).toEqual({
       uncovered: [],
       covered: [
         {
@@ -169,11 +173,11 @@ describe('a fallback covers everything under it', () => {
     })
   })
 
-  test('adding a fallback at each uncovered node covers the expression', () => {
+  test('adding a fallback at each uncovered node covers the expression', async () => {
     const before = { a: node, b: { $risky: '$data.y' }, c: '$data.z' }
-    expect(uncovered(before)).toEqual([['a'], ['b']])
+    expect(await uncovered(before)).toEqual([['a'], ['b']])
     const after = { ...before, a: { ...node, fallback: 0 }, b: { ...before.b, fallback: false } }
-    expect(uncovered(after)).toEqual([])
+    expect(await uncovered(after)).toEqual([])
   })
 })
 
@@ -186,26 +190,26 @@ describe("a fallback's own failures escape its node", () => {
     ['an operator node', { $risky: 'backup' }, [['fallback']]],
     ['an operator node with a fallback of its own', { $risky: 'backup', fallback: null }, []],
     ['plain data holding an operator node', { from: { $risky: 'backup' } }, [['fallback', 'from']]],
-  ])('%s', (_label, fallback, expected) => {
-    const result = coverage({ ...node, fallback })
+  ])('%s', async (_label, fallback, expected) => {
+    const result = await coverage({ ...node, fallback })
     expect(result.uncovered.map((finding) => finding.path)).toEqual(expected)
     expect(result.covered).toContainEqual({ path: [], code: external, by: [] })
   })
 })
 
 describe('an operatorDefaults fallback', () => {
-  test('covers a node with none of its own, as a value never evaluated', () => {
+  test('covers a node with none of its own, as a value never evaluated', async () => {
     const withDefault = withRisky({ operatorDefaults: { risky: { fallback: 0 } } })
-    expect(coverage({ a: node }, withDefault)).toEqual({
+    expect(await coverage({ a: node }, withDefault)).toEqual({
       uncovered: [],
       covered: [{ path: ['a'], code: external, by: ['a'] }],
     })
     // Returned as it is, so even a reference-shaped string cannot throw
     const literal = withRisky({ operatorDefaults: { risky: { fallback: '$data.x' } } })
-    expect(uncovered({ a: node }, literal)).toEqual([])
+    expect(await uncovered({ a: node }, literal)).toEqual([])
     // Another operator's default covers nothing here
     const other = withRisky({ operatorDefaults: { plus: { fallback: 0 } } })
-    expect(uncovered({ a: node }, other)).toEqual([['a']])
+    expect(await uncovered({ a: node }, other)).toEqual([['a']])
   })
 })
 
@@ -233,26 +237,28 @@ describe('$vars references, through their definitions', () => {
       { section: { vars: { x: '$data.x' }, a: '$vars.x', b: { $risky: 'x' } } },
       [['section', 'b']],
     ],
-  ])('%s', (_label, expression, expected) => {
-    expect(uncovered(expression)).toEqual(expected)
+  ])('%s', async (_label, expression, expected) => {
+    expect(await uncovered(expression)).toEqual(expected)
   })
 
-  test('a var read twice is reported once', () => {
+  test('a var read twice is reported once', async () => {
     const expression = {
       operator: 'risky',
       value: [{ $risky: '$vars.n' }, { $risky: '$vars.n' }],
       vars: { n: { $risky: 'S' } },
     }
-    expect(uncovered(expression).filter((path) => path[0] === 'vars')).toEqual([['vars', 'n']])
+    expect((await uncovered(expression)).filter((path) => path[0] === 'vars')).toEqual([
+      ['vars', 'n'],
+    ])
   })
 
-  test('a var is covered by the fallback above each place it is read', () => {
+  test('a var is covered by the fallback above each place it is read', async () => {
     const expression = {
       operator: 'risky',
       value: [{ $risky: '$vars.n', fallback: 'u' }, { $risky: '$vars.n' }],
       vars: { n: { $risky: 'S' } },
     }
-    const result = coverage(expression)
+    const result = await coverage(expression)
     expect(result.uncovered).toContainEqual({ path: ['vars', 'n'], code: external })
     expect(result.covered).toContainEqual({
       path: ['vars', 'n'],
@@ -261,11 +267,11 @@ describe('$vars references, through their definitions', () => {
     })
   })
 
-  test("a node's own vars are in scope for its fallback", () => {
+  test("a node's own vars are in scope for its fallback", async () => {
     const expression = {
       a: { vars: { v: { $risky: 's' } }, $risky: 'T', fallback: '$vars.v' },
     }
-    expect(coverage(expression)).toEqual({
+    expect(await coverage(expression)).toEqual({
       uncovered: [{ path: ['a', 'vars', 'v'], code: external }],
       covered: [{ path: ['a'], code: external, by: ['a'] }],
     })
@@ -275,28 +281,32 @@ describe('$vars references, through their definitions', () => {
 describe('strictDataPaths', () => {
   const strict = withRisky({ strictDataPaths: true })
 
-  test('a reference that drills may throw, a bare namespace may not', () => {
-    expect(coverage({ a: '$data.x', b: '$data' }, strict).uncovered).toEqual([
+  test('a reference that drills may throw, a bare namespace may not', async () => {
+    expect((await coverage({ a: '$data.x', b: '$data' }, strict)).uncovered).toEqual([
       { path: ['a'], code: ErrorCodes.missingDataPath },
     ])
-    expect(uncovered({ a: '$data.x', b: '$data' })).toEqual([])
+    expect(await uncovered({ a: '$data.x', b: '$data' })).toEqual([])
   })
 
-  test('a reference fallback that drills does not cover', () => {
-    expect(coverage({ ...node, fallback: '$data.backup' }, strict).uncovered).toEqual([
+  test('a reference fallback that drills does not cover', async () => {
+    expect((await coverage({ ...node, fallback: '$data.backup' }, strict)).uncovered).toEqual([
       { path: ['fallback'], code: ErrorCodes.missingDataPath },
     ])
   })
 
-  test('a var drilled past its name may throw, the var itself may not', () => {
+  test('a var drilled past its name may throw, the var itself may not', async () => {
     const vars = { user: '$data' }
-    expect(uncovered({ vars, a: '$vars.user', b: '$vars.user.name' }, strict)).toEqual([['b']])
+    expect(await uncovered({ vars, a: '$vars.user', b: '$vars.user.name' }, strict)).toEqual([
+      ['b'],
+    ])
   })
 
-  test('$element drills into what an element can be, $index never drills', () => {
+  test('$element drills into what an element can be, $index never drills', async () => {
     const each = ['$element.x', '$index']
-    expect(coverage({ $map: { input: [{ x: 1 }, { x: 2 }], each } }, strict).uncovered).toEqual([])
-    expect(coverage({ $map: { input: [{ x: 1 }, {}], each } }, strict).uncovered).toEqual([
+    expect(
+      (await coverage({ $map: { input: [{ x: 1 }, { x: 2 }], each } }, strict)).uncovered
+    ).toEqual([])
+    expect((await coverage({ $map: { input: [{ x: 1 }, {}], each } }, strict)).uncovered).toEqual([
       { path: ['$map', 'each', 0], code: ErrorCodes.missingDataPath },
     ])
   })
@@ -320,25 +330,25 @@ describe('fragment calls', () => {
       outer: { expression: { $echo: { s: { $lower: '$data.s' } } } },
     },
   })
-  const calls = (expression: unknown) => coverage(expression, withFragments)
+  const calls = async (expression: unknown) => await coverage(expression, withFragments)
   const body = ['expression']
 
-  test('a failure in the body is reported at the call, with its place in the body', () => {
-    expect(calls({ a: { $unsafe: {} } })).toEqual({
+  test('a failure in the body is reported at the call, with its place in the body', async () => {
+    expect(await calls({ a: { $unsafe: {} } })).toEqual({
       uncovered: [{ path: ['a'], code: external, fragment: 'unsafe', fragmentPath: body }],
       covered: [],
     })
   })
 
-  test('a call takes its own fallback', () => {
-    expect(calls({ a: { $unsafe: {}, fallback: 0 } })).toEqual({
+  test('a call takes its own fallback', async () => {
+    expect(await calls({ a: { $unsafe: {}, fallback: 0 } })).toEqual({
       uncovered: [],
       covered: [{ path: ['a'], code: external, fragment: 'unsafe', fragmentPath: body, by: ['a'] }],
     })
   })
 
-  test('a fallback in the body covers at the call, with its place in the body', () => {
-    expect(calls({ a: { $safe: {} } })).toEqual({
+  test('a fallback in the body covers at the call, with its place in the body', async () => {
+    expect(await calls({ a: { $safe: {} } })).toEqual({
       uncovered: [],
       covered: [
         {
@@ -351,16 +361,16 @@ describe('fragment calls', () => {
         },
       ],
     })
-    expect(calls({ a: { $card: {} } }).uncovered).toEqual([])
+    expect((await calls({ a: { $card: {} } })).uncovered).toEqual([])
   })
 
-  test('a constant argument cannot fail', () => {
-    expect(calls({ a: { $echo: { s: 'x' } } }).uncovered).toEqual([])
+  test('a constant argument cannot fail', async () => {
+    expect((await calls({ a: { $echo: { s: 'x' } } })).uncovered).toEqual([])
   })
 
-  test("a computed argument fails where the body reads it, so the body's fallbacks catch it", () => {
+  test("a computed argument fails where the body reads it, so the body's fallbacks catch it", async () => {
     // Read under the root's fallback, then again by that fallback itself
-    expect(calls({ a: { $echo: { s: '$data.s' } } })).toEqual({
+    expect(await calls({ a: { $echo: { s: '$data.s' } } })).toEqual({
       uncovered: [{ path: ['a', '$echo', 's'], code: ErrorCodes.typeCheck, parameter: 's' }],
       covered: [
         {
@@ -382,19 +392,19 @@ describe('fragment calls', () => {
     })
   })
 
-  test('an argument the body reads outside any fallback escapes the call', () => {
-    expect(calls({ a: { $plain: { x: { $plus: ['$data.n', 1] } } } }).uncovered).toEqual([
+  test('an argument the body reads outside any fallback escapes the call', async () => {
+    expect((await calls({ a: { $plain: { x: { $plus: ['$data.n', 1] } } } })).uncovered).toEqual([
       { path: ['a', '$plain', 'x'], code: ErrorCodes.typeCheck, parameter: 'x' },
       { path: ['a', '$plain', 'x'], code: ErrorCodes.typeCheck, parameter: 'values' },
     ])
   })
 
-  test('an argument the body never reads is never evaluated', () => {
-    expect(calls({ a: { $safe: {} }, b: { $plain: {} } }).uncovered).toEqual([])
+  test('an argument the body never reads is never evaluated', async () => {
+    expect((await calls({ a: { $safe: {} }, b: { $plain: {} } })).uncovered).toEqual([])
   })
 
-  test('an argument written in a body is reported at the outer call', () => {
-    const result = calls({ a: { $outer: {} } })
+  test('an argument written in a body is reported at the outer call', async () => {
+    const result = await calls({ a: { $outer: {} } })
     const at = { path: ['a'], fragment: 'outer', fragmentPath: ['expression', '$echo', 's'] }
     // lower may return null, which echo's required `s` refuses
     expect(result.uncovered).toEqual([
@@ -411,18 +421,20 @@ describe('fragment calls', () => {
     })
   })
 
-  test('dynamic arguments are checked before the body runs, outside its fallbacks', () => {
-    expect(calls({ a: { fragment: 'safe', parameters: '$data.args' } }).uncovered).toEqual([
+  test('dynamic arguments are checked before the body runs, outside its fallbacks', async () => {
+    expect((await calls({ a: { fragment: 'safe', parameters: '$data.args' } })).uncovered).toEqual([
       { path: ['a', 'parameters'], code: ErrorCodes.typeCheck },
     ])
-    expect(calls({ a: { fragment: 'needs', parameters: '$data.args' } }).uncovered).toEqual([
-      { path: ['a', 'parameters'], code: ErrorCodes.typeCheck },
-      { path: ['a', 'parameters'], code: ErrorCodes.missingRequired },
-    ])
+    expect((await calls({ a: { fragment: 'needs', parameters: '$data.args' } })).uncovered).toEqual(
+      [
+        { path: ['a', 'parameters'], code: ErrorCodes.typeCheck },
+        { path: ['a', 'parameters'], code: ErrorCodes.missingRequired },
+      ]
+    )
   })
 
-  test('a call to an unknown fragment always fails', () => {
-    expect(fallbackCoverage(withFragments, { a: { fragment: 'nope' } }).uncovered).toEqual([
+  test('a call to an unknown fragment always fails', async () => {
+    expect((await fallbackCoverage(withFragments, { a: { fragment: 'nope' } })).uncovered).toEqual([
       expect.objectContaining({
         path: ['a'],
         code: ErrorCodes.unknownFragment,
@@ -434,8 +446,8 @@ describe('fragment calls', () => {
 
 describe('type checks between nodes', () => {
   /** The findings with their certainty. */
-  const checks = (expression: unknown, instance: FigTree = fig) => {
-    const { uncovered, covered } = fallbackCoverage(instance, expression)
+  const checks = async (expression: unknown, instance: FigTree = fig) => {
+    const { uncovered, covered } = await fallbackCoverage(instance, expression)
     const shown = (finding: CoverageFinding | CoveredFinding) => ({
       ...where(finding),
       certainty: finding.certainty,
@@ -449,65 +461,68 @@ describe('type checks between nodes', () => {
     certainty,
   })
 
-  test('untyped data may fail a typed parameter, never an any one', () => {
-    expect(checks({ $lower: '$data.s' }).uncovered).toEqual([typeCheck([], 'value')])
-    expect(checks({ $not: '$data.x' }).uncovered).toEqual([])
+  test('untyped data may fail a typed parameter, never an any one', async () => {
+    expect((await checks({ $lower: '$data.s' })).uncovered).toEqual([typeCheck([], 'value')])
+    expect((await checks({ $not: '$data.x' })).uncovered).toEqual([])
   })
 
-  test("a child's declared returns that fit pass, and a fallback widens them", () => {
-    expect(checks({ $upper: { $trim: 'x' } }).uncovered).toEqual([])
-    expect(checks({ $multiply: [{ $length: '$data.s', fallback: 'none' }, 2] }).uncovered).toEqual([
-      typeCheck([], 'values'),
+  test("a child's declared returns that fit pass, and a fallback widens them", async () => {
+    expect((await checks({ $upper: { $trim: 'x' } })).uncovered).toEqual([])
+    expect(
+      (await checks({ $multiply: [{ $length: '$data.s', fallback: 'none' }, 2] })).uncovered
+    ).toEqual([typeCheck([], 'values')])
+  })
+
+  test('a value that can never fit fails whenever the node is reached', async () => {
+    const expression = { $map: { input: [1, 2], each: { $upper: '$element' } } }
+    expect((await checks(expression)).uncovered).toEqual([
+      typeCheck(['$map', 'each'], 'value', 'always'),
     ])
   })
 
-  test('a value that can never fit fails whenever the node is reached', () => {
-    const expression = { $map: { input: [1, 2], each: { $upper: '$element' } } }
-    expect(checks(expression).uncovered).toEqual([typeCheck(['$map', 'each'], 'value', 'always')])
-  })
-
-  test('a null at an optional parameter takes its default', () => {
+  test('a null at an optional parameter takes its default', async () => {
     const expression = { $split: ['a,b', { $lower: '$data.d', fallback: ',' }] }
-    expect(checks(expression)).toEqual({
+    expect(await checks(expression)).toEqual({
       uncovered: [],
       covered: [{ ...typeCheck(['$split', 1], 'value'), by: ['$split', 1] }],
     })
   })
 
-  test('a propagated null meets a parameter that refuses it, unless a default absorbs it', () => {
+  test('a propagated null meets a parameter that refuses it, unless a default absorbs it', async () => {
     const input = { $split: [{ $lower: 'S' }, ','] }
-    expect(checks({ $map: { input, each: '$element' } }).uncovered).toEqual([])
+    expect((await checks({ $map: { input, each: '$element' } })).uncovered).toEqual([])
     const nullable = { $split: [{ $get: 's', fallback: null }, ','] }
-    expect(checks({ $map: { input: nullable, each: '$element' } }).uncovered).toEqual([
+    expect((await checks({ $map: { input: nullable, each: '$element' } })).uncovered).toEqual([
       typeCheck([], 'input'),
       typeCheck(['$map', 'input'], 'value'),
     ])
     expect(
-      checks({ $map: { input: nullable, nullInputDefault: [], each: '$element' } }).uncovered
+      (await checks({ $map: { input: nullable, nullInputDefault: [], each: '$element' } }))
+        .uncovered
     ).toEqual([typeCheck(['$map', 'input'], 'value')])
   })
 
-  test('$element is what an element can be, and $index an integer', () => {
+  test('$element is what an element can be, and $index an integer', async () => {
     const words = { $map: { input: ['a', 'b'], each: { $upper: '$element' } } }
-    expect(checks(words).uncovered).toEqual([])
+    expect((await checks(words)).uncovered).toEqual([])
     const renamed = { $map: { input: ['a', 'b'], as: 'word', each: { $upper: '$word' } } }
-    expect(checks(renamed).uncovered).toEqual([])
+    expect((await checks(renamed)).uncovered).toEqual([])
     const places = { $map: { input: [1.25, 2.5], each: { $plus: ['$index', 1] } } }
-    expect(checks(places).uncovered).toEqual([])
+    expect((await checks(places)).uncovered).toEqual([])
   })
 
-  test("a var's reference is what its definition returns", () => {
-    expect(checks({ $multiply: ['$vars.n', 2], vars: { n: 3 } }).uncovered).toEqual([])
-    expect(checks({ $multiply: ['$vars.n', 2], vars: { n: 'x' } }).uncovered).toEqual([
+  test("a var's reference is what its definition returns", async () => {
+    expect((await checks({ $multiply: ['$vars.n', 2], vars: { n: 3 } })).uncovered).toEqual([])
+    expect((await checks({ $multiply: ['$vars.n', 2], vars: { n: 'x' } })).uncovered).toEqual([
       typeCheck([], 'values', 'always'),
     ])
   })
 
-  test('a drill into a known value finds what is there, under strictDataPaths too', () => {
+  test('a drill into a known value finds what is there, under strictDataPaths too', async () => {
     const strict = new FigTree({ strictDataPaths: true })
     const vars = { o: { a: 1 } }
-    expect(checks({ $plus: ['$vars.o.a', 1], vars }, strict).uncovered).toEqual([])
-    expect(checks({ $plus: ['$vars.o.b', 1], vars }, strict).uncovered).toEqual([
+    expect((await checks({ $plus: ['$vars.o.a', 1], vars }, strict)).uncovered).toEqual([])
+    expect((await checks({ $plus: ['$vars.o.b', 1], vars }, strict)).uncovered).toEqual([
       { path: ['$plus', 0], code: ErrorCodes.missingDataPath, certainty: 'always' },
     ])
   })
@@ -525,28 +540,30 @@ describe('type checks between nodes', () => {
         },
       },
     })
-    const calls = (expression: unknown) => checks(expression, withFragments)
+    const calls = async (expression: unknown) => await checks(expression, withFragments)
 
-    test('a parameter is what its argument passes as', () => {
-      expect(calls({ $double: { n: 3 } }).uncovered).toEqual([])
+    test('a parameter is what its argument passes as', async () => {
+      expect((await calls({ $double: { n: 3 } })).uncovered).toEqual([])
       // The argument is checked at the call; the body then reads a number
-      expect(calls({ $double: { n: '$data.x' } }).uncovered).toEqual([
+      expect((await calls({ $double: { n: '$data.x' } })).uncovered).toEqual([
         typeCheck(['$double', 'n'], 'n'),
       ])
     })
 
-    test('an optional parameter with no argument is its default', () => {
-      expect(calls({ $label: {} }).uncovered).toEqual([])
+    test('an optional parameter with no argument is its default', async () => {
+      expect((await calls({ $label: {} })).uncovered).toEqual([])
       // A string or null, and a null takes the default
-      expect(calls({ $label: { s: { $lower: 'S', fallback: null } } }).uncovered).toEqual([])
+      expect((await calls({ $label: { s: { $lower: 'S', fallback: null } } })).uncovered).toEqual(
+        []
+      )
       // `get` returns anything, which the declaration may refuse
-      expect(calls({ $label: { s: { $get: 's' } } }).uncovered).toEqual([
+      expect((await calls({ $label: { s: { $get: 's' } } })).uncovered).toEqual([
         typeCheck(['$label', 's'], 's'),
       ])
     })
 
-    test('a dynamic call reads the declarations', () => {
-      expect(calls({ fragment: 'double', parameters: '$data.args' }).uncovered).toEqual([
+    test('a dynamic call reads the declarations', async () => {
+      expect((await calls({ fragment: 'double', parameters: '$data.args' })).uncovered).toEqual([
         { path: ['parameters'], code: ErrorCodes.typeCheck, certainty: 'may' },
         { path: ['parameters'], code: ErrorCodes.missingRequired, certainty: 'may' },
       ])
@@ -555,8 +572,8 @@ describe('type checks between nodes', () => {
 })
 
 describe('what a node returns', () => {
-  const findings = (expression: unknown, options?: FallbackCoverageOptions) =>
-    fallbackCoverage(fig, expression, options).uncovered.map((finding) => ({
+  const findings = async (expression: unknown, options?: FallbackCoverageOptions) =>
+    (await fallbackCoverage(fig, expression, options)).uncovered.map((finding) => ({
       ...where(finding),
       certainty: finding.certainty,
     }))
@@ -585,22 +602,27 @@ describe('what a node returns', () => {
       { $upper: { $regex: { value: 'abc', pattern: 'a+', mode: 'extract', noMatchDefault: '' } } },
     ],
     ['map: an array of what each element gives', { $join: { $map: { input: [1], each: 'x' } } }],
-  ])('%s', (_label, expression) => {
-    expect(findings(expression).filter((finding) => finding.path.length === 0)).toEqual([])
+  ])('%s', async (_label, expression) => {
+    expect((await findings(expression)).filter((finding) => finding.path.length === 0)).toEqual([])
   })
 
-  test('firstOf past a candidate that may be null', () => {
-    expect(findings({ $upper: { $firstOf: ['$data.x', 'a'] } })).toEqual([typeCheck([], 'value')])
+  test('firstOf past a candidate that may be null', async () => {
+    expect(await findings({ $upper: { $firstOf: ['$data.x', 'a'] } })).toEqual([
+      typeCheck([], 'value'),
+    ])
   })
 
-  test("plus is of its operands' kind, not one of them", () => {
-    // -1 + 1 is 0: the divisor is an integer, not -1 or 1
-    expect(findings({ $divide: [10, { $plus: [-1, 1] }] })).toEqual([
+  test("plus is of its operands' kind, not one of them", async () => {
+    // Six operands of two values each are too many combinations to run, and
+    // their sum may be 0: the divisor is an integer, not -1 or 1
+    const sign = { $if: ['$data.c', -1, 1] }
+    const sum = { $plus: [sign, sign, sign, sign, sign, sign] }
+    expect(await findings({ $divide: [10, sum] })).toEqual([
       { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
     ])
   })
 
-  test("a host operator's declared output", () => {
+  test("a host operator's declared output", async () => {
     const echo = defineOperator({
       name: 'echo',
       category: 'other',
@@ -611,7 +633,7 @@ describe('what a node returns', () => {
       evaluate: ({ value }) => value,
     })
     const hosts = new FigTree({ operators: [coreOperators, [echo]] })
-    expect(fallbackCoverage(hosts, { $upper: { $echo: 'x' } }).uncovered).toEqual([])
+    expect((await fallbackCoverage(hosts, { $upper: { $echo: 'x' } })).uncovered).toEqual([])
     expect(() =>
       defineOperator({
         name: 'bad',
@@ -628,22 +650,25 @@ describe('what a node returns', () => {
     const strict = { numbers: 'strict' as const }
     const nonFinite = { path: [], code: ErrorCodes.nonFiniteResult, certainty: 'may' }
 
-    test('a number from the data may be NaN, wherever it is returned', () => {
+    test('a number from the data may be NaN, wherever it is returned', async () => {
       const passed = { $if: ['$data.c', '$data.n', 0] }
-      expect(findings(passed, strict)).toEqual([nonFinite])
-      expect(findings(passed)).toEqual([])
-      expect(findings({ $floor: '$data.n' }, strict)).toEqual([typeCheck([], 'value'), nonFinite])
+      expect(await findings(passed, strict)).toEqual([nonFinite])
+      expect(await findings(passed)).toEqual([])
+      expect(await findings({ $floor: '$data.n' }, strict)).toEqual([
+        typeCheck([], 'value'),
+        nonFinite,
+      ])
     })
 
-    test('a number the walk knows, or one no NaN can reach, is never refused', () => {
-      expect(findings({ $if: ['$data.c', 1, 2] }, strict)).toEqual([])
-      expect(findings({ $length: '$data.s' }, strict)).toEqual([typeCheck([], 'value')])
+    test('a number the walk knows, or one no NaN can reach, is never refused', async () => {
+      expect(await findings({ $if: ['$data.c', 1, 2] }, strict)).toEqual([])
+      expect(await findings({ $length: '$data.s' }, strict)).toEqual([typeCheck([], 'value')])
     })
 
-    test('what passes the boundary is finite', () => {
+    test('what passes the boundary is finite', async () => {
       // floor may be refused, but what it gives abs is a finite integer
       expect(
-        findings({ $abs: { $floor: '$data.n', fallback: 0 } }, strict).filter(
+        (await findings({ $abs: { $floor: '$data.n', fallback: 0 } }, strict)).filter(
           (finding) => finding.path.length === 0
         )
       ).toEqual([])
@@ -652,40 +677,43 @@ describe('what a node returns', () => {
 })
 
 describe("an operator's own failures", () => {
-  const ownFindings = (expression: unknown, instance: FigTree = fig) =>
-    fallbackCoverage(instance, expression).uncovered.map((finding) => ({
+  const ownFindings = async (expression: unknown, instance: FigTree = fig) =>
+    (await fallbackCoverage(instance, expression)).uncovered.map((finding) => ({
       ...where(finding),
       certainty: finding.certainty,
     }))
 
-  test('a core rule answers from what its parameters receive', () => {
-    expect(ownFindings({ $divide: [6, 3] })).toEqual([])
-    expect(ownFindings({ $divide: [6, { $length: '$data.s', fallback: 1 }] })).toEqual([
+  test('a core rule answers from what its parameters receive', async () => {
+    expect(await ownFindings({ $divide: [6, 3] })).toEqual([])
+    expect(await ownFindings({ $divide: [6, { $length: '$data.s', fallback: 1 }] })).toEqual([
       { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
     ])
-    // A split is an array of strings, which may be empty for all the walk knows
-    expect(ownFindings({ $min: { $split: ['a,b', ','] } })).toEqual([
+    // A split of an unknown string is an array of strings, which may be
+    // empty for all the walk knows
+    const split = { $split: [{ $buildString: ['%1', '$data.s'] }, ','] }
+    expect(await ownFindings({ $min: split })).toEqual([
       { path: [], code: ErrorCodes.emptyAggregate, parameter: 'values', certainty: 'may' },
     ])
   })
 
-  test('a rule that needs an option counts only under it', () => {
-    expect(ownFindings({ $get: 'a.b' })).toEqual([])
-    expect(ownFindings({ $get: 'a.b' }, withRisky({ strictDataPaths: true }))).toEqual([
+  test('a rule that needs an option counts only under it', async () => {
+    expect(await ownFindings({ $get: 'a.b' })).toEqual([])
+    expect(await ownFindings({ $get: 'a.b' }, withRisky({ strictDataPaths: true }))).toEqual([
       { path: [], code: ErrorCodes.missingDataPath, certainty: 'may' },
     ])
   })
 
-  test('a validate hook decides a value once it is known', () => {
-    expect(ownFindings({ $regex: ['$data.s', 'a+'] })).toEqual([
+  test('a validate hook decides a value once it is known', async () => {
+    expect(await ownFindings({ $regex: ['$data.s', 'a+'] })).toEqual([
       { path: [], code: ErrorCodes.typeCheck, parameter: 'value', certainty: 'may' },
     ])
-    // A computed pattern is a string the hook has not seen
-    expect(ownFindings({ $regex: ['abc', { $lower: 'A+' }] })).toEqual([
+    // A pattern computed from the data is a string the hook has not seen
+    const pattern = { $lower: '$data.p', fallback: 'a+' }
+    expect(await ownFindings({ $regex: ['abc', pattern] })).toEqual([
       { path: [], code: ErrorCodes.operatorFailure, parameter: 'pattern', certainty: 'may' },
     ])
-    expect(ownFindings({ $regex: ['abc', '$vars.p'], vars: { p: 'a+' } })).toEqual([])
-    expect(ownFindings({ $regex: ['abc', '$vars.p'], vars: { p: 'a[' } })).toEqual([
+    expect(await ownFindings({ $regex: ['abc', '$vars.p'], vars: { p: 'a+' } })).toEqual([])
+    expect(await ownFindings({ $regex: ['abc', '$vars.p'], vars: { p: 'a[' } })).toEqual([
       { path: [], code: ErrorCodes.operatorFailure, parameter: 'pattern', certainty: 'always' },
     ])
   })
@@ -705,28 +733,32 @@ describe("an operator's own failures", () => {
       coverage: {
         failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }],
       },
+      evaluate: ({ value }) => {
+        if (value === '') throw new OperatorFailure('nothing to pick')
+        return value
+      },
     })
     const fetching = defineOperator({ ...base, name: 'fetching', coverage: { external: true } })
     const hosts = new FigTree({ operators: [coreOperators, [picky, fetching]] })
 
-    test('a declared one fails only as its rules say', () => {
-      expect(ownFindings({ $picky: 'x' }, hosts)).toEqual([])
-      expect(ownFindings({ $picky: '' }, hosts)).toEqual([
+    test('a declared one fails only as its rules say', async () => {
+      expect(await ownFindings({ $picky: 'x' }, hosts)).toEqual([])
+      expect(await ownFindings({ $picky: '' }, hosts)).toEqual([
         { path: [], code: ErrorCodes.operatorFailure, parameter: 'value', certainty: 'always' },
       ])
     })
 
-    test('an undeclared one, or one declared external, may fail whatever its inputs', () => {
-      expect(ownFindings(node)).toEqual([{ path: [], code: external, certainty: 'may' }])
-      expect(ownFindings({ $fetching: 'x' }, hosts)).toEqual([
+    test('an undeclared one, or one declared external, may fail whatever its inputs', async () => {
+      expect(await ownFindings(node)).toEqual([{ path: [], code: external, certainty: 'may' }])
+      expect(await ownFindings({ $fetching: 'x' }, hosts)).toEqual([
         { path: [], code: external, certainty: 'may' },
       ])
     })
 
-    test('a host operator reusing a core name does not inherit its rules', () => {
+    test('a host operator reusing a core name does not inherit its rules', async () => {
       const divide = defineOperator({ ...base, name: 'divide' })
       const own = new FigTree({ operators: [[divide]] })
-      expect(ownFindings({ $divide: 'x' }, own)).toEqual([
+      expect(await ownFindings({ $divide: 'x' }, own)).toEqual([
         { path: [], code: external, certainty: 'may' },
       ])
     })
@@ -751,21 +783,160 @@ describe("an operator's own failures", () => {
   })
 })
 
-test('an invalid node always fails, with its static error', () => {
-  expect(fallbackCoverage(fig, { a: { operator: 'plus', fragment: 'f' }, b: 1 }).uncovered).toEqual(
-    [expect.objectContaining({ path: ['a'], code: ErrorCodes.malformedNode, certainty: 'always' })]
-  )
+describe('running a node', () => {
+  const findings = async (expression: unknown, instance: FigTree = fig) =>
+    (await fallbackCoverage(instance, expression)).uncovered.map((finding) => ({
+      ...where(finding),
+      certainty: finding.certainty,
+    }))
+  const typeCheck = (path: (string | number)[], parameter: string) => ({
+    path,
+    code: ErrorCodes.typeCheck,
+    parameter,
+    certainty: 'may',
+  })
+  const divisor = (path: (string | number)[], certainty: 'may' | 'always') => ({
+    path,
+    code: ErrorCodes.nonFiniteResult,
+    parameter: 'by',
+    certainty,
+  })
+  const lower = { $lower: '$data.s' }
+
+  test('a node on known inputs folds, so what it gives is exact', async () => {
+    expect(await findings({ $divide: [1, { $plus: [{ $multiply: [2, 3] }, 1] }] })).toEqual([])
+    expect(await findings({ $divide: [1, { $subtract: [2, 2] }] })).toEqual([divisor([], 'always')])
+  })
+
+  test("a run's failure carries the engine's code and message, and a rule's parameter", async () => {
+    const empty = { $min: { $filter: { input: [1, 2], each: false } } }
+    expect((await fallbackCoverage(fig, empty)).uncovered).toEqual([
+      {
+        path: [],
+        code: ErrorCodes.emptyAggregate,
+        message: expect.stringContaining('min – '),
+        certainty: 'always',
+        operator: 'min',
+        parameter: 'values',
+      },
+    ])
+  })
+
+  test('an input that is one of a few values: a run for each', async () => {
+    expect(await findings({ $divide: [1, { $if: ['$data.c', 0, 2] }] })).toEqual([
+      divisor([], 'may'),
+    ])
+    expect(await findings({ $divide: [1, { $if: ['$data.c', 1, 2] }] })).toEqual([])
+  })
+
+  test('a child no run asks for reports nothing, its fallbacks included', async () => {
+    const risky = { $divide: [1, '$data.n'] }
+    const none = { uncovered: [], covered: [] }
+    expect(await coverage({ $if: [true, 'x', risky] })).toEqual(none)
+    expect(await coverage({ $if: [true, 'x', { ...risky, fallback: 0 }] })).toEqual(none)
+    expect(await coverage({ $match: { value: 'b', branches: { a: risky, b: 1 } } })).toEqual(none)
+    expect(await coverage({ $get: { path: 'x', from: { x: 1 }, default: risky } })).toEqual(none)
+  })
+
+  test('a child whose value is not known is handed back, failures and all', async () => {
+    expect(await findings({ $if: [true, lower, 'x'] })).toEqual([typeCheck(['$if', 1], 'value')])
+    // What it hands back is what the branch gives, here anything
+    expect(await findings({ $upper: { $if: [true, '$data.n', 'x'] } })).toEqual([
+      typeCheck([], 'value'),
+    ])
+    expect(await findings({ $upper: { $if: [false, '$data.n', 'x'] } })).toEqual([])
+    const branches = { a: '$data.x', b: 'B' }
+    expect(await findings({ $upper: { $match: { value: 'a', branches } } })).toEqual([
+      typeCheck([], 'value'),
+    ])
+  })
+
+  test('a body that waits on a value nothing knows is not run', async () => {
+    // firstOf skips a null, so whether it goes on depends on the data
+    expect(await findings({ $firstOf: ['$data.a', lower] })).toEqual([
+      typeCheck(['$firstOf', 1], 'value'),
+    ])
+    expect(await findings({ $firstOf: ['a', lower] })).toEqual([])
+  })
+
+  test('a decider is decided by a known operand, wherever it is', async () => {
+    expect(await findings({ $or: [true, lower] })).toEqual([])
+    expect(await findings({ $or: [lower, true] })).toEqual([])
+    expect(await findings({ $and: [lower, false] })).toEqual([])
+    expect(await findings({ $or: [false, lower] })).toEqual([typeCheck(['$or', 1], 'value')])
+  })
+
+  test("an operand's failure is parked, and raised only where nothing decides", async () => {
+    const fails = { $divide: [1, 0] }
+    expect(await findings({ $or: [fails, true] })).toEqual([])
+    expect(await findings({ $or: [fails, false] })).toEqual([divisor(['$or', 0], 'always')])
+  })
+
+  test("a race starts every operand, so an operand's own fallbacks count", async () => {
+    const guarded = { $divide: [1, '$data.n'], fallback: 0 }
+    const { covered } = await fallbackCoverage(fig, { $or: [true, guarded] })
+    expect(covered.map((finding) => finding.coveredBy)).toEqual([
+      ['$or', 1],
+      ['$or', 1],
+    ])
+  })
+
+  test('an eager child that always fails means its node never runs', async () => {
+    // subtract's own check on `minus` is moot
+    expect(await findings({ $subtract: [{ $divide: [1, 0] }, '$data.s'] })).toEqual([
+      divisor(['$subtract', 0], 'always'),
+    ])
+  })
+
+  test('a holder the layers never ask for is never evaluated', async () => {
+    const each = '$element'
+    expect(await findings({ $map: { input: [1], nullInputDefault: node, each } })).toEqual([])
+  })
+
+  test('a declared host body is run, async or not, and its run replaces its rules', async () => {
+    const later = defineOperator({
+      name: 'later',
+      category: 'other',
+      description: 'Refuses a negative number, a tick later',
+      parameters: { value: { type: 'number' } },
+      positionalParams: ['value'],
+      returns: 'number',
+      coverage: {},
+      evaluate: async ({ value }) => {
+        await Promise.resolve()
+        if (value < 0) throw new OperatorFailure('negative')
+        return value
+      },
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [risky, later]] })
+    expect(await findings({ $later: -1 }, hosts)).toEqual([
+      { path: [], code: ErrorCodes.operatorFailure, certainty: 'always' },
+    ])
+    expect(await findings({ $divide: [1, { $later: 2 }] }, hosts)).toEqual([])
+    // An undeclared one is never run
+    expect(await findings({ $risky: 2 }, hosts)).toEqual([
+      { path: [], code: external, certainty: 'may' },
+    ])
+  })
+})
+
+test('an invalid node always fails, with its static error', async () => {
+  expect(
+    (await fallbackCoverage(fig, { a: { operator: 'plus', fragment: 'f' }, b: 1 })).uncovered
+  ).toEqual([
+    expect.objectContaining({ path: ['a'], code: ErrorCodes.malformedNode, certainty: 'always' }),
+  ])
 })
 
 describe('misuse', () => {
-  test('anything but a FigTree instance is a TypeError', () => {
-    expect(() => fallbackCoverage({}, 1)).toThrow(TypeError)
-    expect(() => fallbackCoverage(undefined, 1)).toThrow(TypeError)
+  test('anything but a FigTree instance is a TypeError', async () => {
+    await expect(fallbackCoverage({}, 1)).rejects.toThrow(TypeError)
+    await expect(fallbackCoverage(undefined, 1)).rejects.toThrow(TypeError)
   })
 
-  test('a bad timeout is refused as evaluate() refuses it', () => {
+  test('a bad timeout is refused as evaluate() refuses it', async () => {
     for (const timeout of [0, -1, Number.NaN, Infinity, '50' as unknown as number])
-      expect(() => fallbackCoverage(fig, 1, { timeout })).toThrow(
+      await expect(fallbackCoverage(fig, 1, { timeout })).rejects.toThrow(
         expect.objectContaining({ code: ErrorCodes.invalidOptions })
       )
   })

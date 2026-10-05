@@ -656,6 +656,11 @@ export const sections: Record<string, CoverageCase[]> = {
       expression: { $match: { value: 'a', branches: { a: '$data.x', b: 2 } } },
     },
     {
+      name: 'match fed a choice of known keys',
+      expression: { $match: { value: { $if: ['$data.c', 'a', 'b'] }, branches: { a: 1, b: 2 } } },
+      note: 'The value is one of a few known values, so match runs once with each, and both find a branch',
+    },
+    {
       name: 'regex with untyped data',
       expression: { $regex: ['$data.s', 'a+'] },
       uncovered: [{ at: [], code: 'type-check', parameter: 'value', witness: { s: 1 } }],
@@ -814,6 +819,11 @@ export const sections: Record<string, CoverageCase[]> = {
       expression: { $if: [true, 'x', { $lower: '$data.s' }] },
     },
     {
+      name: 'a computed branch a constant condition takes',
+      expression: { $if: [true, { $lower: '$data.s' }, 'x'] },
+      uncovered: [{ at: ['$if', 1], code: 'type-check', parameter: 'value', witness: { s: 1 } }],
+    },
+    {
       name: 'a certain failure in the branch a constant condition takes',
       expression: { $if: [false, 'x', { $divide: [1, 0] }] },
       uncovered: [{ at: ['$if', 2], code: 'non-finite-result', will: true }],
@@ -826,6 +836,26 @@ export const sections: Record<string, CoverageCase[]> = {
     {
       name: 'or decided by a constant',
       expression: { $or: [true, { $lower: '$data.s' }] },
+    },
+    {
+      name: 'or decided by a constant still starts every operand',
+      expression: { $or: [true, { $divide: [1, '$data.n'], fallback: 0 }] },
+      covered: [
+        {
+          at: ['$or', 1],
+          code: 'type-check',
+          parameter: 'by',
+          by: ['$or', 1],
+          witness: { n: 'a' },
+        },
+        {
+          at: ['$or', 1],
+          code: 'non-finite-result',
+          parameter: 'by',
+          by: ['$or', 1],
+          witness: { n: 0 },
+        },
+      ],
     },
     {
       name: 'or not decided by a constant',
@@ -1671,12 +1701,6 @@ export const sections: Record<string, CoverageCase[]> = {
         },
       ],
       note: 'The empty-aggregate finding is the false positive: split always returns at least one piece',
-    },
-    {
-      name: 'match fed a choice of known keys',
-      expression: { $match: { value: { $if: ['$data.c', 'a', 'b'] }, branches: { a: 1, b: 2 } } },
-      uncovered: [{ at: [], code: 'operator-failure' }],
-      open: 'Should an output type keep a small set of known values (here a or b), so match can prove it? Then this case has no findings',
     },
   ],
 }

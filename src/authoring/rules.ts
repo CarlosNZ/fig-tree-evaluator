@@ -18,7 +18,7 @@ import type { CoverageTest, FailureRule } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
-import { ANY, combine, fits } from './known'
+import { ANY, combine, fits, isPlain } from './known'
 import type { Answer, Known, Member } from './known'
 import type { Inputs } from './inputs'
 import type { Failure } from './findings'
@@ -126,9 +126,6 @@ const invert = (answer: Answer): Answer =>
 /** Whether any of several conditions holds. */
 const any = (answers: Answer[]): Answer =>
   answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
-
-const isPlain = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /** A test against one member of what a parameter receives. */
 const testMember = (test: CoverageTest, member: Member): Answer => {

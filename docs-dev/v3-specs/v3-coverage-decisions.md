@@ -75,6 +75,30 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** Without them the analysis lists failures that cannot happen whenever a value is known only by type: Carl's example, `{ $divide: [10, { $plus: [{ $length: '$data.s', fallback: 0 }, 1] }] }`, is reported as a possible division by zero. The spec had listed "no value ranges" as a known limit without the choice ever being put to Carl. Ranges were left out because they are a third kind of per-operator knowledge beside failure rules and output declarations; putting them inside the output declarations keeps it to two, and running nodes (step 5) already covers values known exactly, so ranges are what remains for values that are not.
 
+## `fallbackCoverage` is async (Carl, 2026-10-06, at step 5)
+
+**Decision.** `fallbackCoverage` returns a promise of the same `{ uncovered, covered }`.
+
+**Why.** Running a node calls its own body, and eight pure core operators have async bodies: `firstOf`, `and`, `or`, `find`, `filter`, `map`, `some` and `every`, which read their children one at a time or as they settle. A synchronous analysis could run only the bodies that answer synchronously, so `or` with a constant `true`, `firstOf` stopping early and folding through an iterator would be lost, for a reason no author can see: `{ $if: [true, …] }` would be precise and `{ $or: [true, …] }` not. v3 is unreleased, so the signature is cheapest to change now.
+
+## Running a node: the walk's own runner (agreed 2026-10-06, at step 5)
+
+**Decision.** A run calls the operator's own body, on parameters `resolveInputs` resolves from exact values, through handles and streams the analysis owns, with a stand-in for each child whose value is not known. A child counts where a run reaches it, and its failure where a run's answer depended on it or the body handed it straight back. A body that waits on a stand-in makes the run inconclusive, and the node is then not run, except a synchronous body handing the stand-in's own promise straight back. A child that may fail is run failing as well as with its values. The details are in "Running a node" in the spec.
+
+**Why.** The engine's node wrapper hides what a body does with each child, and its race delivery starts every operand, so "which stand-ins it asked for" would say `{ $or: [true, X] }` asks for X. A stand-in handing the body a placeholder value would be unsound wherever the body inspects it: `firstOf` would take a placeholder for a value that is not null and stop early. Running through the wrapper would also mean importing the engine's evaluator. The rule checker holds every run to the engine's evaluation, so the runner cannot drift from it.
+
+## A child no run reaches reports nothing (Carl, 2026-10-06, at step 5)
+
+**Decision.** A child that no run reaches reports neither its failures nor what its own fallbacks catch. A child a run reached, but whose failure no answer depended on (an operand a decider parked), reports only what its own fallbacks catch, since the engine did start it.
+
+**Why.** `covered` shows where fallbacks do their work, and a fallback in a branch that never runs does none. Dropping only the uncovered findings would leave a branch never taken listed as protected.
+
+## Per-element walks as a step of their own (Carl, 2026-10-06, at step 5)
+
+**Decision.** Walking an iterator's `each` once per element of a known `input` is step 7, after value ranges, not part of step 5.
+
+**Why.** It is a mechanism the spec did not have, with a rule of its own for merging findings across elements: a finding certain for one element and absent for another is only possible at that node, since the node is reached for both. Its payoff is iterators over literal arrays, which are rare in real expressions; `{ $some: { input: [0, 1], each: { $divide: [1, '$element'] } } }` is the corpus case that needs it.
+
 ## Open
 
 - **Where the analysis's own options sit.** `fallbackCoverage`'s options hold only `timeout` today, which stands in for an option the host passes to `evaluate()`. The number setting is the first option belonging to the analysis itself. How the two kinds are kept apart is deferred.

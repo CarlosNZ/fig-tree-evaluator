@@ -59,8 +59,9 @@ export interface FallbackCoverageOptions {
   timeout?: number
   /**
    * How strictly the analysis treats numbers ("Numbers" in
-   * docs-dev/v3-specs/v3-fallback-coverage.md). Accepted, and without effect
-   * until the operators' failure rules are in place.
+   * docs-dev/v3-specs/v3-fallback-coverage.md): whether overflow on numbers
+   * it cannot pin down counts, and whether a number from the data may be
+   * NaN or infinite. 'ordinary' by default.
    */
   numbers?: 'ordinary' | 'strict'
 }

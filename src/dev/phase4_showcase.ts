@@ -239,7 +239,7 @@ const main = async () => {
   )
   await show('divide by zero degrades to null', { $divide: [1, 0] }, {}, host)
   console.log(
-    `  fallbackCoverage() counts the default fallbacks, even under a timeout: ${JSON.stringify(fallbackCoverage(host, { a: { $plus: [1] }, b: { $divide: [1, 2] } }, { timeout: 50 }))}\n`
+    `  await fallbackCoverage() counts the default fallbacks, even under a timeout: ${JSON.stringify(await fallbackCoverage(host, { a: { $plus: [1] }, b: { $divide: [1, 2] } }, { timeout: 50 }))}\n`
   )
 
   section('A custom operator, written against the contract')

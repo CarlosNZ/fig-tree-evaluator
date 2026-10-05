@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 156 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 158 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -612,6 +612,16 @@ Where a case uses an instance other than `new FigTree()`:
 
 - Nothing can throw.
 
+**match fed a choice of known keys**
+
+```json5
+{ $match: { value: { $if: ['$data.c', 'a', 'b'] }, branches: { a: 1, b: 2 } } }
+```
+
+- Nothing can throw.
+
+> The value is one of a few known values, so match runs once with each, and both find a branch.
+
 **regex with untyped data**
 
 ```json5
@@ -746,6 +756,14 @@ Where a case uses an instance other than `new FigTree()`:
 
 - Nothing can throw.
 
+**a computed branch a constant condition takes**
+
+```json5
+{ $if: [true, { $lower: '$data.s' }, 'x'] }
+```
+
+- ✗ **lower** at `$if[1]` — may fail: `type-check` on `value`. E.g. data `{ s: 1 }`
+
 **a certain failure in the branch a constant condition takes**
 
 ```json5
@@ -771,6 +789,15 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - Nothing can throw.
+
+**or decided by a constant still starts every operand**
+
+```json5
+{ $or: [true, { $divide: [1, '$data.n'], fallback: 0 }] }
+```
+
+- ✓ **divide** at `$or[1]` — may fail: `type-check` on `by`, caught by its own fallback. E.g. data `{ n: 'a' }`
+- ✓ **divide** at `$or[1]` — may fail: `non-finite-result` on `by`, caught by its own fallback. E.g. data `{ n: 0 }`
 
 **or not decided by a constant**
 
@@ -1481,13 +1508,3 @@ Where a case uses an instance other than `new FigTree()`:
 - ✓ **lower** at `$min.$split[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
 
 > The empty-aggregate finding is the false positive: split always returns at least one piece.
-
-**match fed a choice of known keys**
-
-```json5
-{ $match: { value: { $if: ['$data.c', 'a', 'b'] }, branches: { a: 1, b: 2 } } }
-```
-
-- ✗ **match** at the root — may fail: `operator-failure` (no data makes it happen)
-
-> **Open:** Should an output type keep a small set of known values (here a or b), so match can prove it? Then this case has no findings.

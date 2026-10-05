@@ -368,7 +368,7 @@ const unsound = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
       problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
     for (const failure of caught) {
       // A shielded hole's trace entry: whether the analysis reports it is
-      // step 7's question
+      // step 8's question
       if (timed && failure.code === 'timeout') continue
       if (!analysis.covered.some((f) => accounts(f, failure)))
         problems.push(`covered ${JSON.stringify(failure)} with ${shown}`)
@@ -451,7 +451,7 @@ for (const [section, cases] of Object.entries(sections))
       const seen = await outcomes(item)
       expect(unpredicted(item, seen)).toEqual([])
 
-      const analysis = fallbackCoverage(fig, item.expression, item.options)
+      const analysis = await fallbackCoverage(fig, item.expression, item.options)
       expect(unsound(analysis, seen)).toEqual([])
       progress.total++
       if (exact(item, analysis)) progress.exact++

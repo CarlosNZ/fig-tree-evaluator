@@ -19,47 +19,47 @@ const fig = new FigTree({ operators: [compileOps()] })
 const timeouts = (findings: CoverageFinding[]) =>
   findings.filter((finding) => finding.code === 'timeout').map((finding) => finding.path)
 
-const underTimeout = (expression: unknown, instance: FigTree = fig) =>
-  timeouts(fallbackCoverage(instance, expression, { timeout: 50 }).uncovered)
+const underTimeout = async (expression: unknown, instance: FigTree = fig) =>
+  timeouts((await fallbackCoverage(instance, expression, { timeout: 50 })).uncovered)
 
-test('worked example 3: one dynamic fallback leaves its hole uncovered', () => {
+test('worked example 3: one dynamic fallback leaves its hole uncovered', async () => {
   const banner = {
     greeting: { $format: ['Hi %1', '$data.name'], fallback: 'Hi there' },
     offers: { operator: 'http', url: 'https://api.example.com/offers', fallback: [] },
   }
-  expect(underTimeout(banner)).toEqual([])
+  expect(await underTimeout(banner)).toEqual([])
 
   const banner2 = {
     ...banner,
     offers: { ...banner.offers, fallback: '$data.cachedOffers' },
   }
-  expect(underTimeout(banner2)).toEqual([['offers']])
+  expect(await underTimeout(banner2)).toEqual([['offers']])
 })
 
-test('every hole root needs a constant fallback, and each that lacks one is listed', () => {
+test('every hole root needs a constant fallback, and each that lacks one is listed', async () => {
   const partial = {
     a: { $http: 'https://x.test', fallback: [] },
     b: { $plus: ['$data.x', 1] },
   }
-  expect(underTimeout(partial)).toEqual([['b']])
+  expect(await underTimeout(partial)).toEqual([['b']])
 })
 
-test('a node root is covered by its own constant fallback', () => {
-  expect(underTimeout({ $http: 'https://x.test', fallback: null })).toEqual([])
-  expect(underTimeout({ $http: 'https://x.test' })).toEqual([[]])
+test('a node root is covered by its own constant fallback', async () => {
+  expect(await underTimeout({ $http: 'https://x.test', fallback: null })).toEqual([])
+  expect(await underTimeout({ $http: 'https://x.test' })).toEqual([[]])
 })
 
-test('an operatorDefaults fallback counts when it is constant', () => {
+test('an operatorDefaults fallback counts when it is constant', async () => {
   const shieldedByDefaults = new FigTree({
     operators: [compileOps()],
     operatorDefaults: { http: { fallback: 'offline' } },
   })
-  expect(underTimeout({ a: { $http: 'https://x.test' } }, shieldedByDefaults)).toEqual([])
+  expect(await underTimeout({ a: { $http: 'https://x.test' } }, shieldedByDefaults)).toEqual([])
   // The same expression on the plain instance is uncovered
-  expect(underTimeout({ a: { $http: 'https://x.test' } })).toEqual([['a']])
+  expect(await underTimeout({ a: { $http: 'https://x.test' } })).toEqual([['a']])
 })
 
-test('a vars block on a plain-literal root does not uncover its holes', () => {
+test('a vars block on a plain-literal root does not uncover its holes', async () => {
   // Phase-5 correction: the root skeleton was treated as a single hole when
   // it carried vars, and a skeleton has no fallback of its own — so an
   // expression whose every hole was shielded reported unshielded
@@ -68,45 +68,49 @@ test('a vars block on a plain-literal root does not uncover its holes', () => {
     offers: { $http: { url: '$vars.base' }, fallback: [] },
     banner: { $http: { url: '$vars.base' }, fallback: 'none' },
   }
-  expect(underTimeout(shared)).toEqual([])
+  expect(await underTimeout(shared)).toEqual([])
 
   const partial = { ...shared, banner: { $http: { url: '$vars.base' } } }
-  expect(underTimeout(partial)).toEqual([['banner']])
+  expect(await underTimeout(partial)).toEqual([['banner']])
 })
 
-test('the instance timeout applies with no timeout passed', () => {
+test('the instance timeout applies with no timeout passed', async () => {
   const timed = new FigTree({ operators: [compileOps()], timeout: 50 })
   const expression = { a: { $http: 'https://x.test', fallback: '$data.cached' } }
-  expect(timeouts(fallbackCoverage(timed, expression).uncovered)).toEqual([['a']])
+  expect(timeouts((await fallbackCoverage(timed, expression)).uncovered)).toEqual([['a']])
   // Without any timeout, a dynamic fallback that cannot throw covers it
-  expect(fallbackCoverage(fig, expression).uncovered).toEqual([])
+  expect((await fallbackCoverage(fig, expression)).uncovered).toEqual([])
 })
 
-test('a reference hole is never shielded, so a timeout lists it', () => {
-  expect(underTimeout({ a: '$data.x', b: { $http: 'https://x.test', fallback: null } })).toEqual([
-    ['a'],
-  ])
+test('a reference hole is never shielded, so a timeout lists it', async () => {
+  expect(
+    await underTimeout({ a: '$data.x', b: { $http: 'https://x.test', fallback: null } })
+  ).toEqual([['a']])
 })
 
-test("a call lifts its body root's constant fallback", () => {
+test("a call lifts its body root's constant fallback", async () => {
   const withFragment = new FigTree({
     fragments: { safe: { expression: { $upper: '$data.s', fallback: 'k' } } },
   })
-  const all = (expression: unknown) =>
-    fallbackCoverage(withFragment, expression, { timeout: 50 }).uncovered.map((finding) => [
+  const all = async (expression: unknown) =>
+    (await fallbackCoverage(withFragment, expression, { timeout: 50 })).uncovered.map((finding) => [
       finding.path,
       finding.code,
     ])
-  expect(all({ a: { $safe: {} } })).toEqual([])
+  expect(await all({ a: { $safe: {} } })).toEqual([])
   // Shielded all the same, but its arguments are evaluated and checked
   // before the body runs, outside the body's fallbacks
-  expect(all({ a: { fragment: 'safe', parameters: '$data.args' } })).toEqual([
+  expect(await all({ a: { fragment: 'safe', parameters: '$data.args' } })).toEqual([
     [['a', 'parameters'], 'type-check'],
   ])
 })
 
-test('a timeout finding sits beside the findings without one', () => {
-  const { uncovered } = fallbackCoverage(fig, { b: { $plus: ['$data.x', 1] } }, { timeout: 50 })
+test('a timeout finding sits beside the findings without one', async () => {
+  const { uncovered } = await fallbackCoverage(
+    fig,
+    { b: { $plus: ['$data.x', 1] } },
+    { timeout: 50 }
+  )
   expect(uncovered).toEqual([
     expect.objectContaining({ path: ['b'], code: 'operator-failure' }),
     {

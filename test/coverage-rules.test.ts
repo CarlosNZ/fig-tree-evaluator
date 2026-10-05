@@ -11,6 +11,10 @@
  * - Every value the engine returns must be admitted by the output the
  *   analysis gives the node: its output declaration, or its `returns`, past
  *   the result boundary.
+ * - Every run of the node (rule 4, src/authoring/run.ts), with each
+ *   parameter known exactly, must end as the engine's evaluation does: the
+ *   same value, or a certain failure with the same code. Every operator
+ *   must be run at least once.
  *
  * This is what keeps the core table complete. Each parameter reads its
  * value from the data, so one compiled node serves every combination.
@@ -24,6 +28,8 @@ import { elementsOf, exactly } from '../src/authoring/known'
 import type { Known } from '../src/authoring/known'
 import { CORE_RULES, answerRule } from '../src/authoring/rules'
 import { operatorOutput } from '../src/authoring/outputs'
+import { runNode } from '../src/authoring/run'
+import type { Child } from '../src/authoring/run'
 import type { ExpectedType } from '../src/typeCheck'
 
 const MISSING = Symbol('missing')
@@ -101,6 +107,9 @@ interface Report {
   unpredicted: string[]
   unadmitted: string[]
   fired: Set<number>
+  /** Runs that ended otherwise than the engine's evaluation */
+  misrun: string[]
+  runs: number
 }
 
 const isPlain = (value: unknown): value is Record<string, unknown> =>
@@ -219,6 +228,30 @@ const check = async (
       if (!isFigTreeError(error)) throw error
       failed = error.code
     }
+
+    // The run, with each child known exactly: a lazy parameter or an `each`
+    // is a child the body asks for, the rest are values
+    const given: Record<string, Known> = {}
+    const children: Child[] = []
+    for (const name of present) {
+      const { evaluation } = definition.parameters[name]
+      const result = { verdict: 'no' as const, escapes: [], output: outputs[name] }
+      if (evaluation === 'lazy' || evaluation === 'perElement')
+        children.push({ param: name, result })
+      if (evaluation !== 'perElement') given[name] = outputs[name]
+    }
+    const ran = await runNode(node, given, children, level)
+    if (ran !== undefined) {
+      report.runs++
+      const ends = ran.fails
+        ? ran.failures.filter((f) => f.certainty === 'always').map((f) => f.code)
+        : ran.output.map((member) => JSON.stringify((member as { exact: unknown }).exact, replacer))
+      const expected = failed ?? JSON.stringify(result, replacer)
+      if ((ends.length !== 1 || ends[0] !== expected) && report.misrun.length < 8)
+        report.misrun.push(
+          `${expected}, but the run ended ${JSON.stringify(ends)}, with ${JSON.stringify(values, replacer)}`
+        )
+    }
     if (failed === undefined) {
       if (!admits(output, result) && report.unadmitted.length < 8)
         report.unadmitted.push(
@@ -243,10 +276,18 @@ describe('the core failure rules', () => {
   test.each(coreOperators.map((definition) => [definition.name, definition] as const))(
     '%s',
     async (_name, definition) => {
-      const report: Report = { unpredicted: [], unadmitted: [], fired: new Set() }
+      const report: Report = {
+        unpredicted: [],
+        unadmitted: [],
+        fired: new Set(),
+        misrun: [],
+        runs: 0,
+      }
       for (const level of LEVELS) await check(definition, level, report)
       expect(report.unpredicted).toEqual([])
       expect(report.unadmitted).toEqual([])
+      expect(report.misrun).toEqual([])
+      expect(report.runs).toBeGreaterThan(0)
       const rules = CORE_RULES[definition.name] ?? []
       const dead = rules.filter((_rule, r) => !report.fired.has(r))
       expect(dead).toEqual([])
