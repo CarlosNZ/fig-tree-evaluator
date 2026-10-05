@@ -55,6 +55,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** Definitions are shared by every instance, so the cost of carrying the rules on them is bundle size, not memory: about 0.6 kB brotli, paid by every consumer of the root whether or not it uses `./authoring`. Keeping that cost away from `evaluate()` is why the subpath exists. A host has nowhere more natural than its own definition, and the bytes are its own. The rule checker and a key test keep the separate core table from drifting.
 
+## Fragment calls and their arguments (agreed 2026-10-05, at step 1)
+
+**Decision.** A fragment call has no finding of its own: it reports its body's findings at itself, with `fragment` and `fragmentPath`, and its arguments' findings where the engine raises them. A static argument's failures, its declared type check included, keep the argument's own path and are caught by whatever catches the body's first read of `$params.x`. A dynamic call's arguments are checked before the body runs, at `parameters`, outside the body's fallbacks. A `$params` reference fails by itself only on a strict drill. The walk records each read of a parameter as a demand, which each call answers with its argument's findings, so a body is still walked once.
+
+**Why.** It is what the engine does (src/evaluate/fragment.ts): an argument is a lazy, memoised thunk in the caller's frame, demanded by the body, so its failure travels up the body from the read. A placeholder at the call would be a finding at a place nothing fails, and the soundness test places every caught failure at its exact fallback, which only following the reads gets right: `safeRatio`'s root fallback catches its argument's type check.
+
 ## Open
 
 - **Where the analysis's own options sit.** `fallbackCoverage`'s options hold only `timeout` today, which stands in for an option the host passes to `evaluate()`. The number setting is the first option belonging to the analysis itself. How the two kinds are kept apart is deferred.

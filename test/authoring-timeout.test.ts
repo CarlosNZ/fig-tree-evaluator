@@ -4,15 +4,23 @@
  * Worked example 3 in docs-dev/v3-specs/v3-worked-examples.md is the
  * acceptance test; what shielding promises at runtime is asserted in
  * test/evaluate-timeout.test.ts.
+ *
+ * Each top-level value without a constant fallback is an uncovered
+ * `timeout` finding at its path. The findings without a timeout are
+ * reported beside them, and are asserted in test/authoring.test.ts.
  */
 import { FigTree } from '../src'
+import type { CoverageFinding } from '../src'
 import { fallbackCoverage } from '../src/authoring'
 import { compileOps } from './fixtures/compileRegistry'
 
 const fig = new FigTree({ operators: [compileOps()] })
 
+const timeouts = (findings: CoverageFinding[]) =>
+  findings.filter((finding) => finding.code === 'timeout').map((finding) => finding.path)
+
 const underTimeout = (expression: unknown, instance: FigTree = fig) =>
-  fallbackCoverage(instance, expression, { timeout: 50 }).uncovered
+  timeouts(fallbackCoverage(instance, expression, { timeout: 50 }).uncovered)
 
 test('worked example 3: one dynamic fallback leaves its hole uncovered', () => {
   const banner = {
@@ -69,7 +77,7 @@ test('a vars block on a plain-literal root does not uncover its holes', () => {
 test('the instance timeout applies with no timeout passed', () => {
   const timed = new FigTree({ operators: [compileOps()], timeout: 50 })
   const expression = { a: { $http: 'https://x.test', fallback: '$data.cached' } }
-  expect(fallbackCoverage(timed, expression).uncovered).toEqual([['a']])
+  expect(timeouts(fallbackCoverage(timed, expression).uncovered)).toEqual([['a']])
   // Without any timeout, a dynamic fallback that cannot throw covers it
   expect(fallbackCoverage(fig, expression).uncovered).toEqual([])
 })
@@ -80,14 +88,32 @@ test('a reference hole is never shielded, so a timeout lists it', () => {
   ])
 })
 
-test('a call with dynamic arguments is listed: they fail outside the body it lifts from', () => {
+test("a call lifts its body root's constant fallback", () => {
   const withFragment = new FigTree({
     fragments: { safe: { expression: { $upper: '$data.s', fallback: 'k' } } },
   })
-  // Shielded all the same: the call lifts the body root's constant
-  expect(underTimeout({ a: { fragment: 'safe', parameters: '$data.args' } }, withFragment)).toEqual(
-    [['a']]
-  )
-  // Static arguments are evaluated inside the body, which catches them
-  expect(underTimeout({ a: { $safe: {} } }, withFragment)).toEqual([])
+  const all = (expression: unknown) =>
+    fallbackCoverage(withFragment, expression, { timeout: 50 }).uncovered.map((finding) => [
+      finding.path,
+      finding.code,
+    ])
+  expect(all({ a: { $safe: {} } })).toEqual([])
+  // Shielded all the same, but its arguments are evaluated and checked
+  // before the body runs, outside the body's fallbacks
+  expect(all({ a: { fragment: 'safe', parameters: '$data.args' } })).toEqual([
+    [['a', 'parameters'], 'type-check'],
+  ])
+})
+
+test('a timeout finding sits beside the findings without one', () => {
+  const { uncovered } = fallbackCoverage(fig, { b: { $plus: ['$data.x', 1] } }, { timeout: 50 })
+  expect(uncovered).toEqual([
+    expect.objectContaining({ path: ['b'], code: 'operator-failure' }),
+    {
+      path: ['b'],
+      code: 'timeout',
+      message: expect.stringContaining('constant fallback'),
+      certainty: 'may',
+    },
+  ])
 })

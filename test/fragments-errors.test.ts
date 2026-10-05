@@ -96,8 +96,11 @@ describe('nested calls report the innermost body', () => {
 // ── Shielding lifts through a call ──────────────────────────────────
 
 describe('timeout shielding through a call', () => {
+  // The values a timeout can cut off: each is an uncovered `timeout` finding
   const uncoveredUnderTimeout = (fig: FigTree, expression: unknown) =>
-    fallbackCoverage(fig, expression, { timeout: 30 }).uncovered
+    fallbackCoverage(fig, expression, { timeout: 30 })
+      .uncovered.filter((finding) => finding.code === 'timeout')
+      .map((finding) => finding.path)
 
   const cleanups: (() => void)[] = []
   afterEach(() => cleanups.splice(0).forEach((clear) => clear()))

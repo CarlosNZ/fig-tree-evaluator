@@ -9,7 +9,14 @@
  * - every failure the engine shows over a spread of data was predicted,
  *   so a case lists nothing short.
  *
- * When the analysis exists, each case also asserts its result here.
+ * Then the analysis over each case:
+ *
+ * - soundness, which must hold at every step of #217: every failure seen
+ *   over the spread is among the analysis's findings, uncovered if it
+ *   rejected the evaluation, covered at the fallback the trace shows
+ *   caught it;
+ * - progress, reported and never failed on: how many cases give exactly
+ *   their expected findings.
  */
 import {
   FigTree,
@@ -20,13 +27,23 @@ import {
   isFigTreeError,
   sqlOperators,
 } from '../src'
-import type { FigTreeError, HttpClient, SqlConnection, TraceNode } from '../src'
+import type {
+  CoverageFinding,
+  CoveredFinding,
+  FallbackCoverage,
+  FigTreeError,
+  HttpClient,
+  SqlConnection,
+  TraceNode,
+} from '../src'
+import { fallbackCoverage } from '../src/authoring'
 import { fragments, sections } from './coverage-cases'
 import type { CoverageCase, Finding, NodePath } from './coverage-cases'
 
 // ── The instances a case can name ───────────────────────────────────
 
-let clientMode: 'ok' | 'fails' | 'slow' = 'ok'
+type ClientMode = 'ok' | 'fails' | 'slow'
+let clientMode: ClientMode = 'ok'
 
 const behave = async <T>(value: T): Promise<T> => {
   if (clientMode === 'fails') throw new OperatorFailure('the client failed')
@@ -253,28 +270,146 @@ function* spread(item: CoverageCase): Generator<Record<string, unknown>> {
   }
 }
 
+/** What one run over the spread showed. */
+interface Seen extends Outcome {
+  data: Record<string, unknown>
+  /** Run under the case's timeout, with a slow client */
+  timed: boolean
+}
+
+/**
+ * Every run over the spread, for each way the client can behave. A case
+ * with a timeout also runs once under it with a slow client, which only
+ * the analysis's check reads.
+ */
+const outcomes = async (item: CoverageCase): Promise<Seen[]> => {
+  const seen: Seen[] = []
+  const io = item.instance === 'io' || item.instance === 'ioBase'
+  const modes: ClientMode[] = io ? ['ok', 'fails'] : ['ok']
+  try {
+    for (const mode of modes) {
+      clientMode = mode
+      for (const data of spread(item))
+        seen.push({ data, timed: false, ...(await run(item, data, false)) })
+    }
+    if (io && item.options?.timeout !== undefined) {
+      clientMode = 'slow'
+      for (const data of spread(item))
+        seen.push({ data, timed: true, ...(await run(item, data, true)) })
+    }
+  } finally {
+    clientMode = 'ok'
+  }
+  return seen
+}
+
 /** Every failure seen over the spread that no finding predicts. */
-const unpredicted = async (item: CoverageCase): Promise<string[]> => {
+const unpredicted = (item: CoverageCase, seen: Seen[]): string[] => {
   const problems: string[] = []
   const uncovered = item.uncovered ?? []
   const covered = item.covered ?? []
-  const modes = item.instance === 'io' || item.instance === 'ioBase' ? ['ok', 'fails'] : ['ok']
-  for (const mode of modes) {
-    clientMode = mode as typeof clientMode
-    for (const data of spread(item)) {
-      const { rejected, caught } = await run(item, data, false)
-      const shown = JSON.stringify(data)
-      if (rejected !== undefined && !uncovered.some((f) => matches(f, locate(rejected))))
-        problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
-      for (const seen of caught)
-        if (!covered.some((f) => matches(f, seen)))
-          problems.push(`covered ${JSON.stringify(seen)} with ${shown}`)
-      if (problems.length >= 5) break
-    }
+  for (const { data, timed, rejected, caught } of seen) {
+    if (timed) continue
+    const shown = JSON.stringify(data)
+    if (rejected !== undefined && !uncovered.some((f) => matches(f, locate(rejected))))
+      problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
+    for (const failure of caught)
+      if (!covered.some((f) => matches(f, failure)))
+        problems.push(`covered ${JSON.stringify(failure)} with ${shown}`)
+    if (problems.length >= 5) break
   }
-  clientMode = 'ok'
   return problems
 }
+
+// ── The analysis against the engine ─────────────────────────────────
+
+/**
+ * Whether a finding's code accounts for a failure's. Until the operators'
+ * failure rules land (step 3 of #217), every operator node carries a
+ * placeholder `operator-failure`, which stands for any code at its node.
+ * Code-exact matching starts at step 3: set this to true then.
+ */
+const CODE_EXACT = false
+const codeAccounts = (finding: CoverageFinding, seen: Located) =>
+  finding.code === seen.code || (!CODE_EXACT && finding.code === 'operator-failure')
+
+const accounts = (finding: CoverageFinding | CoveredFinding, seen: Located | Caught): boolean =>
+  codeAccounts(finding, seen) &&
+  // The deadline rejects the evaluation as a whole, at the root
+  same(seen.at, finding.code === 'timeout' ? [] : finding.path) &&
+  finding.fragment === seen.fragment &&
+  same(finding.fragmentPath, seen.fragmentPath) &&
+  (!('by' in seen) ||
+    ('coveredBy' in finding &&
+      same(finding.coveredBy, seen.by) &&
+      same(finding.coveredByFragmentPath, seen.byFragmentPath)))
+
+/** Every failure seen over the spread that the analysis did not report. */
+const unsound = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
+  const problems: string[] = []
+  for (const { data, timed, rejected, caught } of seen) {
+    const shown = JSON.stringify(data)
+    if (rejected !== undefined && !analysis.uncovered.some((f) => accounts(f, locate(rejected))))
+      problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
+    for (const failure of caught) {
+      // A shielded hole's trace entry: whether the analysis reports it is
+      // step 6's question
+      if (timed && failure.code === 'timeout') continue
+      if (!analysis.covered.some((f) => accounts(f, failure)))
+        problems.push(`covered ${JSON.stringify(failure)} with ${shown}`)
+    }
+    if (problems.length >= 5) break
+  }
+  return problems
+}
+
+/**
+ * A finding as the progress count compares it: the corpus's terms mapped
+ * to the analysis's. A `parameter` counts only where the corpus names one.
+ */
+const compared = (finding: Finding | CoverageFinding | CoveredFinding, parameter: boolean) => {
+  const corpus = 'at' in finding
+  return JSON.stringify({
+    path: corpus ? finding.at : finding.path,
+    code: finding.code,
+    certainty: corpus ? (finding.will ? 'always' : 'may') : finding.certainty,
+    parameter: parameter ? finding.parameter : undefined,
+    fragment: finding.fragment,
+    fragmentPath: finding.fragmentPath,
+    by: corpus ? finding.by : 'coveredBy' in finding ? finding.coveredBy : undefined,
+    byFragmentPath: corpus
+      ? finding.byFragmentPath
+      : 'coveredBy' in finding
+        ? finding.coveredByFragmentPath
+        : undefined,
+  })
+}
+
+/** Each expected finding claims one actual finding, and none is left over. */
+const sameFindings = (expected: Finding[], actual: CoverageFinding[]): boolean => {
+  if (expected.length !== actual.length) return false
+  const pool = [...actual]
+  return expected.every((finding) => {
+    const parameter = finding.parameter !== undefined
+    const key = compared(finding, parameter)
+    const index = pool.findIndex((candidate) => compared(candidate, parameter) === key)
+    if (index === -1) return false
+    pool.splice(index, 1)
+    return true
+  })
+}
+
+const exact = (item: CoverageCase, analysis: FallbackCoverage): boolean =>
+  sameFindings(item.uncovered ?? [], analysis.uncovered) &&
+  sameFindings(item.covered ?? [], analysis.covered)
+
+const progress = { exact: 0, total: 0 }
+afterAll(() => {
+  if (progress.total > 0)
+    console.log(
+      `fallbackCoverage: ${progress.exact} of ${progress.total} cases give exactly their expected findings`
+    )
+})
 
 // ── The checks ──────────────────────────────────────────────────────
 
@@ -298,6 +433,12 @@ for (const [section, cases] of Object.entries(sections))
           if (!happened) throw new Error(`not witnessed: ${JSON.stringify(finding)}`)
         }
 
-      expect(await unpredicted(item)).toEqual([])
+      const seen = await outcomes(item)
+      expect(unpredicted(item, seen)).toEqual([])
+
+      const analysis = fallbackCoverage(fig, item.expression, item.options)
+      expect(unsound(analysis, seen)).toEqual([])
+      progress.total++
+      if (exact(item, analysis)) progress.exact++
     })
   })

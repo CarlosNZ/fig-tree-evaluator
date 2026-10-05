@@ -370,7 +370,7 @@ describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
 
   it('every hole root carries a static fallback, so none is uncovered under a timeout', () => {
-    expect(fallbackCoverage(fig, banner, { timeout: 50 })).toEqual({ uncovered: [] })
+    expect(fallbackCoverage(fig, banner, { timeout: 50 }).uncovered).toEqual([])
   })
 
   it('under the budget, greeting contributes its real value and offers its static fallback', async () => {
@@ -389,7 +389,9 @@ describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   })
 
   it('one dynamic fallback un-shields the whole expression: its hole is listed, the timeout throws', async () => {
-    expect(fallbackCoverage(fig, banner2, { timeout: 50 })).toEqual({ uncovered: [['offers']] })
+    expect(fallbackCoverage(fig, banner2, { timeout: 50 }).uncovered).toEqual([
+      expect.objectContaining({ path: ['offers'], code: 'timeout' }),
+    ])
     // The step above left the offers in the result cache, and a cache hit
     // cannot time out: the request the deadline is meant to cut off has to
     // be in flight

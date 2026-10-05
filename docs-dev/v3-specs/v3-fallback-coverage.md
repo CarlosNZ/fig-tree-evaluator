@@ -44,6 +44,7 @@ interface CoveredFinding extends CoverageFinding {
 
 - **One finding per way a node can fail**, in tree order, like `validate()`'s issues.
 - **A finding sits where the failure starts**, never repeated on the ancestors it passes through. A fallback there, or on any ancestor, covers it.
+- **A var or an argument is reported once per fallback that catches it.** Its failure is memoised and reaches every place that reads it, so the same finding can be covered by one fallback and uncovered by another route, or covered by two.
 - **`code` is the runtime error's code**, so a finding and the error it predicts are classified the same way.
 - **CI checks `uncovered.length === 0`.** `covered` is for tools that show where fallbacks do their work.
 
@@ -70,6 +71,14 @@ What the walk knows about a value is one of:
 - **a type**: `number`, `string | null`, an array whose elements are numbers, an object with known keys. A `$data` reference is `any`.
 
 This representation is internal: richer than `ExpectedType` (element types, keys, exact values) and free to change.
+
+### Fragment calls
+
+A failure inside a body is reported at the call, with `fragment` and `fragmentPath`; the call itself fails on nothing of its own. Where an argument's failure surfaces depends on the arguments mode, as at runtime:
+
+- **Static arguments** are evaluated when the body first reads `$params.x`, so a body fallback above that read catches the argument's failures. They keep the argument's own path, in the caller, with no `fragmentPath`, and include the declaration's type check on what the argument returns. An argument the body never reads is never evaluated. The walk records each read of a parameter as a demand that travels up the body like a failure, and each call answers its demands with its arguments' findings.
+- **Dynamic arguments** are evaluated and checked before the body runs: `type-check`, and `missing-required` where a parameter is required, at `parameters`. Only the call's own fallback, or one above it, catches them, and the body reads values that can no longer fail.
+- A `$params` reference itself fails only on a drill under `strictDataPaths`.
 
 ### The seven rules
 
@@ -271,7 +280,7 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 
 Each step keeps the analysis sound, so it can land and be used at any point. The corpus measures progress: how many of the 154 cases give exactly their expected findings.
 
-1. **Shape and walk skeleton.** The new result types and the `numbers` option (accepted, no effect yet). The walk over the compiled tree, with scopes (vars, element bindings, fragment bodies), passing children's failures up for every delivery mode (rule 3, conservatively) and applying fallbacks (rule 6), with today's timeout logic carried into the new shape. Every operator node and fragment call gets one placeholder finding, `operator-failure`, may. The soundness test is added, and test/authoring\*.test.ts move to the new shape. Result: today's precision, reported per node, with `covered`.
+1. **Shape and walk skeleton.** The new result types and the `numbers` option (accepted, no effect yet). The walk over the compiled tree, with scopes (vars, element bindings, fragment bodies), passing children's failures up for every delivery mode (rule 3, conservatively) and applying fallbacks (rule 6), with today's timeout logic carried into the new shape. Every operator node gets one placeholder finding, `operator-failure`, may. A fragment call gets none, since it fails on nothing of its own: it reports its body's findings, the placeholders included, and its arguments' (see "Fragment calls"). The soundness test is added, and test/authoring\*.test.ts move to the new shape. Result: today's precision, reported per node, with `covered`.
 2. **Types between nodes** (rules 1, 2 and 7 without declarations). The internal representation of what is known about a value. Inputs with defaults and the null rules in the engine's order; outputs from `returns`, null propagation and fallbacks; `$data` as `any`, `$element` from the input's elements, `$index` an integer, `$vars` from their definitions, `$params` from the fragment's declarations, analysed per call. The subset type check, giving real `type-check` findings. The placeholder finding stays.
 3. **Declared rules** (rule 5). The rule types and their no/maybe/yes evaluation, the core table in `./authoring`, `external` for the I/O operators and undeclared host operators, the host field and its check in `defineOperator()`. The placeholder finding goes; the `numbers` option takes effect. The rule checker is added.
 4. **Output declarations** (rule 7). The output types and the core output table.
