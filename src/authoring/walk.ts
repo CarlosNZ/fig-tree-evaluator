@@ -24,19 +24,9 @@ import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
 import { ownFailures } from './rules'
+import { operatorOutput } from './outputs'
 import type { RuleOptions } from './rules'
-import {
-  ANY,
-  NOTHING,
-  arrayOf,
-  drill,
-  elementsOf,
-  exactly,
-  keyOf,
-  objectOf,
-  ofType,
-  union,
-} from './known'
+import { ANY, NOTHING, tupleOf, drill, elementsOf, exactly, keyOf, objectOf, union } from './known'
 import type { Known } from './known'
 
 export type Verdict = 'no' | 'may' | 'always'
@@ -146,10 +136,7 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
     const under = (key: string | number) => inner.filter((hole) => hole.at[depth] === key)
     // A skeleton leaves its holes' slots empty, which `map` would skip
     if (Array.isArray(value))
-      return arrayOf(
-        Array.from(value, (element, i) => build(element, depth + 1, under(i))),
-        value.length
-      )
+      return tupleOf(Array.from(value, (element, i) => build(element, depth + 1, under(i))))
     const source = value as Record<string, unknown>
     const keys = new Set([...Object.keys(source), ...inner.map((hole) => String(hole.at[depth]))])
     const known: Record<string, Known> = {}
@@ -209,11 +196,7 @@ export class Analysis {
           result: this.walk(element, ctx),
           eager: false,
         }))
-        const output = arrayOf(
-          parts.map((part) => part.result.output),
-          node.nodes.length
-        )
-        return combine([], parts, output)
+        return combine([], parts, tupleOf(parts.map((part) => part.result.output)))
       }
       case 'entries': {
         const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
@@ -255,21 +238,23 @@ export class Analysis {
     if (inputs.propagates !== 'yes') own.push(...ownFailures(node, inputs, this.options))
 
     const as = renamedBinding(node)
+    const elements: Record<string, Known> = {}
     for (const [name, declared] of definition.resolution.perElement) {
       const child = node.params[name]
       if (child === undefined || declared.over === undefined) continue
       const element = elementsOf(inputs.received[declared.over] ?? NOTHING)
       const result = this.walk(child, { ...inner, bindings: { as, element, parent: ctx.bindings } })
       parts.push({ result, eager: false })
+      elements[name] = result.output
       const failure = checkElementResult(node, name, declared, result.output)
       if (failure !== undefined) own.push(failure)
     }
 
-    // A null that propagates is the node's result, without the body
-    const output =
-      inputs.propagates === 'yes'
-        ? NULL
-        : union(ofType(definition.returns), inputs.propagates === 'maybe' ? NULL : NOTHING)
+    const { output, boundary } = operatorOutput(node, inputs, elements, this.options.numbers)
+    // One `non-finite-result` finding a node, whether a rule or the result
+    // boundary says so
+    if (boundary !== undefined && !own.some((f) => !isDemand(f) && f.code === boundary.code))
+      own.push(boundary)
     return this.withFallback(node, combine(own, parts, output), inner)
   }
 

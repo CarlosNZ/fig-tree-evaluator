@@ -554,6 +554,103 @@ describe('type checks between nodes', () => {
   })
 })
 
+describe('what a node returns', () => {
+  const findings = (expression: unknown, options?: FallbackCoverageOptions) =>
+    fallbackCoverage(fig, expression, options).uncovered.map((finding) => ({
+      ...where(finding),
+      certainty: finding.certainty,
+    }))
+  const typeCheck = (path: (string | number)[], parameter: string) => ({
+    path,
+    code: ErrorCodes.typeCheck,
+    parameter,
+    certainty: 'may',
+  })
+
+  test.each([
+    ['if: one of its branches', { $upper: { $if: ['$data.c', 'a', 'b'] } }],
+    [
+      'match: one of its branches or its default',
+      { $upper: { $match: { value: 'k', branches: { k: 'x', j: 'y' }, default: 'z' } } },
+    ],
+    ['firstOf: stops at a candidate never null', { $upper: { $firstOf: ['a', '$data.x'] } }],
+    ['min: one of its values', { $upper: { $min: ['a', 'b'] } }],
+    ['split: an array of strings', { $join: { $split: ['a,b', ','] } }],
+    [
+      'convert: the type it converts to',
+      { $plus: [{ $convert: ['$data.n', 'number'], fallback: 0 }, 1] },
+    ],
+    [
+      'regex: by its mode',
+      { $upper: { $regex: { value: 'abc', pattern: 'a+', mode: 'extract', noMatchDefault: '' } } },
+    ],
+    ['map: an array of what each element gives', { $join: { $map: { input: [1], each: 'x' } } }],
+  ])('%s', (_label, expression) => {
+    expect(findings(expression).filter((finding) => finding.path.length === 0)).toEqual([])
+  })
+
+  test('firstOf past a candidate that may be null', () => {
+    expect(findings({ $upper: { $firstOf: ['$data.x', 'a'] } })).toEqual([typeCheck([], 'value')])
+  })
+
+  test("plus is of its operands' kind, not one of them", () => {
+    // -1 + 1 is 0: the divisor is an integer, not -1 or 1
+    expect(findings({ $divide: [10, { $plus: [-1, 1] }] })).toEqual([
+      { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
+    ])
+  })
+
+  test("a host operator's declared output", () => {
+    const echo = defineOperator({
+      name: 'echo',
+      category: 'other',
+      description: 'Returns its value',
+      parameters: { value: {} },
+      positionalParams: ['value'],
+      coverage: { failures: [], output: { param: 'value' } },
+      evaluate: ({ value }) => value,
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [echo]] })
+    expect(fallbackCoverage(hosts, { $upper: { $echo: 'x' } }).uncovered).toEqual([])
+    expect(() =>
+      defineOperator({
+        name: 'bad',
+        category: 'other',
+        description: 'd',
+        parameters: { value: {} },
+        coverage: { output: { param: 'nope' } },
+        evaluate: () => 1,
+      })
+    ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidDefinition }))
+  })
+
+  describe('the result boundary, under strict numbers', () => {
+    const strict = { numbers: 'strict' as const }
+    const nonFinite = { path: [], code: ErrorCodes.nonFiniteResult, certainty: 'may' }
+
+    test('a number from the data may be NaN, wherever it is returned', () => {
+      const passed = { $if: ['$data.c', '$data.n', 0] }
+      expect(findings(passed, strict)).toEqual([nonFinite])
+      expect(findings(passed)).toEqual([])
+      expect(findings({ $floor: '$data.n' }, strict)).toEqual([typeCheck([], 'value'), nonFinite])
+    })
+
+    test('a number the walk knows, or one no NaN can reach, is never refused', () => {
+      expect(findings({ $if: ['$data.c', 1, 2] }, strict)).toEqual([])
+      expect(findings({ $length: '$data.s' }, strict)).toEqual([typeCheck([], 'value')])
+    })
+
+    test('what passes the boundary is finite', () => {
+      // floor may be refused, but what it gives abs is a finite integer
+      expect(
+        findings({ $abs: { $floor: '$data.n', fallback: 0 } }, strict).filter(
+          (finding) => finding.path.length === 0
+        )
+      ).toEqual([])
+    })
+  })
+})
+
 describe("an operator's own failures", () => {
   const ownFindings = (expression: unknown, instance: FigTree = fig) =>
     fallbackCoverage(instance, expression).uncovered.map((finding) => ({
@@ -566,9 +663,8 @@ describe("an operator's own failures", () => {
     expect(ownFindings({ $divide: [6, { $length: '$data.s', fallback: 1 }] })).toEqual([
       { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
     ])
-    // A split is an array of unknown elements until output declarations
+    // A split is an array of strings, which may be empty for all the walk knows
     expect(ownFindings({ $min: { $split: ['a,b', ','] } })).toEqual([
-      { path: [], code: ErrorCodes.typeCheck, parameter: 'values', certainty: 'may' },
       { path: [], code: ErrorCodes.emptyAggregate, parameter: 'values', certainty: 'may' },
     ])
   })

@@ -8,6 +8,9 @@
  *   does not answer no.
  * - Every rule must answer yes, or maybe for a `may` rule, at least once
  *   where the engine really fails with its code: no rule that never fires.
+ * - Every value the engine returns must be admitted by the output the
+ *   analysis gives the node: its output declaration, or its `returns`, past
+ *   the result boundary.
  *
  * This is what keeps the core table complete. Each parameter reads its
  * value from the data, so one compiled node serves every combination.
@@ -20,6 +23,7 @@ import { checkElementResult, resolveInputs } from '../src/authoring/inputs'
 import { elementsOf, exactly } from '../src/authoring/known'
 import type { Known } from '../src/authoring/known'
 import { CORE_RULES, answerRule } from '../src/authoring/rules'
+import { operatorOutput } from '../src/authoring/outputs'
 import type { ExpectedType } from '../src/typeCheck'
 
 const MISSING = Symbol('missing')
@@ -95,8 +99,52 @@ const SAMPLES = 1500
 
 interface Report {
   unpredicted: string[]
+  unadmitted: string[]
   fired: Set<number>
 }
+
+const isPlain = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Whether a value is one of those a Known admits. */
+const admits = (known: Known, value: unknown): boolean =>
+  known.some((member) => {
+    if ('exact' in member) return Object.is(member.exact, value) || deepEqual(member.exact, value)
+    switch (member.type) {
+      case 'string':
+      case 'boolean':
+        return typeof value === member.type
+      case 'number':
+        return typeof value === 'number' && Number.isFinite(value)
+      case 'integer':
+        return Number.isInteger(value)
+      case 'nonFinite':
+        return typeof value === 'number' && !Number.isFinite(value)
+      case 'null':
+        return value === null
+      case 'opaque':
+        return typeof value === 'function' || (isPlain(value) && !isPlainData(value))
+      case 'array':
+        if (!Array.isArray(value)) return false
+        if (member.length !== undefined && value.length !== member.length) return false
+        if (member.items !== undefined) return value.every((v, i) => admits(member.items![i], v))
+        return member.element === undefined || value.every((v) => admits(member.element!, v))
+      case 'object':
+        if (!isPlain(value)) return false
+        if (member.keys === undefined) return true
+        return (
+          Object.keys(value).every((key) => Object.hasOwn(member.keys!, key)) &&
+          Object.entries(member.keys).every(([key, inner]) => admits(inner, value[key] ?? null))
+        )
+    }
+  })
+
+const isPlainData = (value: object) => {
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+const deepEqual = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
 
 /** One operator at one level: each combination run and predicted. */
 const check = async (
@@ -151,6 +199,11 @@ const check = async (
         const failure = checkElementResult(node, name, declared, outputs[name])
         if (failure !== undefined) predicted.add(failure.code)
       }
+    const elements: Record<string, Known> = {}
+    for (const [name] of definition.resolution.perElement)
+      if (Object.hasOwn(values, name)) elements[name] = outputs[name]
+    const { output, boundary } = operatorOutput(node, inputs, elements, level.numbers)
+    if (boundary !== undefined) predicted.add(boundary.code)
     const answers = rules.map((rule) =>
       inputs.propagates === 'yes'
         ? 'no'
@@ -159,13 +212,20 @@ const check = async (
     rules.forEach((rule, r) => answers[r] !== 'no' && predicted.add(rule.code))
 
     let failed: string | undefined
+    let result: unknown
     try {
-      await level.fig.evaluate(expression, { data: values })
+      result = await level.fig.evaluate(expression, { data: values })
     } catch (error) {
       if (!isFigTreeError(error)) throw error
       failed = error.code
     }
-    if (failed === undefined) continue
+    if (failed === undefined) {
+      if (!admits(output, result) && report.unadmitted.length < 8)
+        report.unadmitted.push(
+          `${JSON.stringify(result, replacer)} with ${JSON.stringify(values, replacer)}`
+        )
+      continue
+    }
     if (!predicted.has(failed) && report.unpredicted.length < 8)
       report.unpredicted.push(`${failed} with ${JSON.stringify(values, replacer)}`)
     rules.forEach((rule, r) => {
@@ -183,9 +243,10 @@ describe('the core failure rules', () => {
   test.each(coreOperators.map((definition) => [definition.name, definition] as const))(
     '%s',
     async (_name, definition) => {
-      const report: Report = { unpredicted: [], fired: new Set() }
+      const report: Report = { unpredicted: [], unadmitted: [], fired: new Set() }
       for (const level of LEVELS) await check(definition, level, report)
       expect(report.unpredicted).toEqual([])
+      expect(report.unadmitted).toEqual([])
       const rules = CORE_RULES[definition.name] ?? []
       const dead = rules.filter((_rule, r) => !report.fired.has(r))
       expect(dead).toEqual([])

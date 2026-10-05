@@ -142,7 +142,9 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
   if ('below' in test) {
     if ('exact' in member)
       return typeof member.exact === 'number' && member.exact < test.below ? 'yes' : 'no'
-    return member.type === 'number' || member.type === 'integer' ? 'maybe' : 'no'
+    return member.type === 'number' || member.type === 'integer' || member.type === 'nonFinite'
+      ? 'maybe'
+      : 'no'
   }
   if ('empty' in test) {
     if ('exact' in member) {

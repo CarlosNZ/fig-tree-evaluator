@@ -89,21 +89,21 @@ const byOrder = (a: number[], b: number[]): number => {
 /**
  * The public lists: in tree order, each finding once. A var or an argument
  * is read wherever it is referenced, so one failure can reach the same
- * place, or the same fallback, by more than one route.
+ * place, or the same fallback, by more than one route; and two rules can
+ * give one node the same failure. Findings alike but for their message are
+ * one, `always` if either is.
  */
 export const report = <T extends CoverageFinding>(
   items: { order: number[]; finding: T }[]
 ): T[] => {
-  const seen = new Set<string>()
-  return [...items]
-    .sort((a, b) => byOrder(a.order, b.order))
-    .map((item) => item.finding)
-    .filter((finding) => {
-      const key = JSON.stringify(finding)
-      if (seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
+  const kept = new Map<string, T>()
+  for (const { finding } of [...items].sort((a, b) => byOrder(a.order, b.order))) {
+    const key = JSON.stringify({ ...finding, message: undefined, certainty: undefined })
+    const earlier = kept.get(key)
+    if (earlier === undefined) kept.set(key, finding)
+    else if (finding.certainty === 'always') earlier.certainty = 'always'
+  }
+  return [...kept.values()]
 }
 
 export const uncoveredFinding = (failure: Failure) => ({

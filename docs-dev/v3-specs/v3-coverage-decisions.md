@@ -63,6 +63,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** It is what the engine does (src/evaluate/fragment.ts): an argument is a lazy, memoised thunk in the caller's frame, demanded by the body, so its failure travels up the body from the read. A placeholder at the call would be a finding at a place nothing fails, and the soundness test places every caught failure at its exact fallback, which only following the reads gets right: `safeRatio`'s root fallback catches its argument's type check.
 
+## Strict numbers at the result boundary (decided 2026-10-06, at step 4)
+
+**Decision.** The walk tracks, on each number it knows of, whether it may be NaN or infinite. Under `strict`, a number from the data may be; an operator returning a number may return one if a number it receives may be one; an output declaration carries one through an operator that hands a value on. A node whose result may be one may fail `non-finite-result` at the result boundary, unless a rule already says so, and what passes the boundary is finite. The `overflow` rules stay, for arithmetic on large finite numbers.
+
+**Why.** The rule checker found that under `strict`, `if`, `match`, `get`, `find`, `min`, `max`, `regex`, `convert`, `floor`, `ceil` and `abs` all fail when handed NaN, because the engine refuses a non-finite result at every node. No per-operator rule describes that: it is the engine's check, like a type check. Of the options, flagging every number-returning node under `strict` was simpler but would have listed `{ $length: '$data.s' }`; dropping NaN from `strict` would have left a host passing JS data with no warning.
+
 ## Open
 
 - **Where the analysis's own options sit.** `fallbackCoverage`'s options hold only `timeout` today, which stands in for an option the host passes to `evaluate()`. The number setting is the first option belonging to the analysis itself. How the two kinds are kept apart is deferred.

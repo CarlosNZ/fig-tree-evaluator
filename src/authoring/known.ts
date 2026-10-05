@@ -24,8 +24,17 @@ export type Member =
    * engine's `object` admits any non-array object, a Date included
    */
   | { type: 'string' | 'number' | 'integer' | 'boolean' | 'null' | 'opaque' }
-  /** `element` absent: anything */
-  | { type: 'array'; element?: Known; length?: number }
+  /**
+   * NaN or an infinity: a number the engine refuses as a node's result.
+   * Data can carry one only under `numbers: 'strict'`, which is the only
+   * level that reports it
+   */
+  | { type: 'nonFinite' }
+  /**
+   * `element` absent: anything. `items`: each element in order, where the
+   * array is a literal whose length is known
+   */
+  | { type: 'array'; element?: Known; length?: number; items?: readonly Known[] }
   /** `keys` absent: any keys, with any values; present: exactly these */
   | { type: 'object'; keys?: Record<string, Known> }
 
@@ -45,6 +54,7 @@ export const ANY: Known = [
   { type: 'array' },
   { type: 'object' },
   { type: 'opaque' },
+  { type: 'nonFinite' },
 ]
 
 export const exactly = (value: unknown): Known => [{ exact: value === undefined ? null : value }]
@@ -85,7 +95,9 @@ const exactKey = (value: unknown): string =>
 const memberKey = (member: Member): string => {
   if ('exact' in member) return exactKey(member.exact)
   if (member.type === 'array')
-    return `a${member.length ?? ''}(${member.element === undefined ? '*' : keyOf(member.element)})`
+    return member.items !== undefined
+      ? `a[${member.items.map(keyOf).join(';')}]`
+      : `a${member.length ?? ''}(${member.element === undefined ? '*' : keyOf(member.element)})`
   if (member.type === 'object')
     return member.keys === undefined
       ? 'o'
@@ -100,14 +112,16 @@ const memberKey = (member: Member): string => {
 export const keyOf = (known: Known): string => known.map(memberKey).sort().join('|')
 
 /** The member a value belongs to, without its exact value. */
-const typeOfValue = (value: unknown): Member => {
+export const typeOfValue = (value: unknown): Member => {
   if (value === null) return { type: 'null' }
   if (Array.isArray(value)) return { type: 'array' }
   switch (typeof value) {
     case 'string':
       return { type: 'string' }
     case 'number':
-      return { type: Number.isInteger(value) ? 'integer' : 'number' }
+      return {
+        type: Number.isInteger(value) ? 'integer' : Number.isFinite(value) ? 'number' : 'nonFinite',
+      }
     case 'boolean':
       return { type: 'boolean' }
     case 'object': {
@@ -188,8 +202,12 @@ export const withoutNullElements = (known: Known): Known =>
     if (nulls === 'no') return [member]
     if (nulls === 'yes') return NOTHING
     if (!('type' in member)) return [member]
-    if (member.type === 'array') return [{ ...member, element: withoutNull(member.element ?? ANY) }]
-    return [member]
+    if (member.type !== 'array') return [member]
+    const { items, ...rest } = member
+    if (items === undefined) return [{ ...rest, element: withoutNull(member.element ?? ANY) }]
+    // A literal whose every slot is null-free: none can be null alone
+    const kept = items.map(withoutNull)
+    return kept.some((item) => item.length === 0) ? NOTHING : tupleOf(kept)
   })
 
 // ── Containers ──────────────────────────────────────────────────────
@@ -215,6 +233,49 @@ export const elementsOf = (known: Known): Known =>
 export const arrayOf = (elements: Known[], length?: number): Known => [
   { type: 'array', element: union(...elements), ...(length !== undefined ? { length } : {}) },
 ]
+
+/** A literal array: what each element is, in order. */
+export const tupleOf = (items: readonly Known[]): Known => [
+  { type: 'array', element: union(...items), length: items.length, items },
+]
+
+/** What an object's values can be. */
+export const valuesOf = (known: Known): Known =>
+  union(
+    ...known.map((member): Known => {
+      if ('exact' in member)
+        return isPlain(member.exact)
+          ? union(...Object.values(member.exact).map((value) => exactly(value)))
+          : NOTHING
+      if (member.type !== 'object') return NOTHING
+      return member.keys === undefined ? ANY : union(...Object.values(member.keys))
+    })
+  )
+
+/**
+ * The kinds of values a known holds: each exact value widened to its type,
+ * so an operation over them, such as a sum, is not taken for one of them.
+ */
+export const kindOf = (known: Known): Known =>
+  union(known.map((member) => ('exact' in member ? typeOfValue(member.exact) : member)))
+
+/** Whether a value may be a number the engine refuses as a result. */
+export const mayBeNonFinite = (known: Known): Answer =>
+  any(
+    known.map((member): Answer => {
+      if ('exact' in member)
+        return typeof member.exact === 'number' && !Number.isFinite(member.exact) ? 'yes' : 'no'
+      return member.type === 'nonFinite' ? 'maybe' : 'no'
+    })
+  )
+
+/** What is left once the engine has refused a non-finite result. */
+export const finite = (known: Known): Known =>
+  known.filter((member) =>
+    'exact' in member
+      ? typeof member.exact !== 'number' || Number.isFinite(member.exact)
+      : member.type !== 'nonFinite'
+  )
 
 export const objectOf = (keys: Record<string, Known>): Known => [{ type: 'object', keys }]
 
@@ -255,6 +316,8 @@ export const drill = (
             return typeof segment === 'number' ? 'no' : 'maybe'
           const inRange =
             member.length === undefined ? 'maybe' : index < member.length ? 'yes' : 'no'
+          if (member.items !== undefined && inRange === 'yes')
+            return step(member.items[index], 'yes')
           return step(member.element ?? ANY, inRange)
         }
         case 'object':
@@ -273,6 +336,10 @@ export const drill = (
 }
 
 // ── Fitting a declared type ─────────────────────────────────────────
+
+/** Whether any of several conditions holds. */
+const any = (answers: Answer[]): Answer =>
+  answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
 
 /** Every member's answer: yes if all are, no if all are, maybe otherwise. */
 export const combine = (answers: Answer[]): Answer => {
@@ -303,6 +370,9 @@ const memberFitsType = (
       return basics.includes('integer') || basics.includes('number') ? 'yes' : 'no'
     case 'opaque':
       return basics.includes('object') ? 'maybe' : 'no'
+    case 'nonFinite':
+      // The `number` type admits NaN and the infinities; `integer` does not
+      return basics.includes('number') ? 'yes' : 'no'
     default:
       return basics.includes(member.type) ? 'yes' : 'no'
   }

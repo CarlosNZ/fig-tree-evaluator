@@ -42,7 +42,7 @@ export const ENTRIES = [
     subpath: './authoring',
     name: 'authoring/index',
     source: 'src/authoring/index.ts',
-    budget: 36_900,
+    budget: 39_450,
     marker: 'fallbackCoverage() takes',
   },
 ]

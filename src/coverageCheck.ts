@@ -10,7 +10,7 @@ import { isPlainObject } from './utils'
 
 type Report = (code: string, message: string, path: (string | number)[]) => void
 
-const COVERAGE_KEYS = new Set(['failures', 'external'])
+const COVERAGE_KEYS = new Set(['failures', 'external', 'output'])
 const RULE_KEYS = new Set(['code', 'parameter', 'when', 'options', 'may', 'overflow'])
 
 /** Whether a value is a test of the coverage vocabulary. */
@@ -38,6 +38,33 @@ const isTest = (test: unknown): boolean => {
   }
 }
 
+const NAMING = ['param', 'elementOf', 'kindOf', 'typeNamedBy', 'firstNonNull']
+
+/**
+ * Whether a value is an output declaration of the coverage vocabulary, each
+ * parameter it names declared.
+ */
+const isOutput = (output: unknown, declared: (name: unknown) => boolean): boolean => {
+  if (isExpectedType(output)) return true
+  if (!isPlainObject(output)) return false
+  const keys = Object.keys(output)
+  if (keys.length === 1 && NAMING.includes(keys[0])) return declared(output[keys[0]])
+  if (keys.length === 1 && keys[0] === 'arrayOf') return isOutput(output.arrayOf, declared)
+  if (keys.length === 1 && keys[0] === 'oneOf')
+    return (
+      Array.isArray(output.oneOf) &&
+      output.oneOf.length > 0 &&
+      output.oneOf.every((option) => isOutput(option, declared))
+    )
+  if (keys.length === 2 && 'byParam' in output && 'cases' in output)
+    return (
+      declared(output.byParam) &&
+      isPlainObject(output.cases) &&
+      Object.values(output.cases).every((option) => isOutput(option, declared))
+    )
+  return false
+}
+
 export const checkCoverage = (
   coverage: unknown,
   parameters: Record<string, unknown>,
@@ -48,14 +75,16 @@ export const checkCoverage = (
   if (!isPlainObject(coverage)) return fail("'coverage' must be a plain object")
   for (const key of Object.keys(coverage))
     if (!COVERAGE_KEYS.has(key)) fail(`'${key}' is not a coverage field`, key)
-  const { failures, external } = coverage
+  const { failures, external, output } = coverage
+  const declared = (name: unknown) => typeof name === 'string' && Object.hasOwn(parameters, name)
   if (external !== undefined && external !== true)
     fail("'external' must be the literal true", 'external')
+  if (output !== undefined && !isOutput(output, declared))
+    fail("'output' must be a type, or an output declaration naming declared parameters", 'output')
   if (failures === undefined) return
   if (!Array.isArray(failures)) return fail("'failures' must be an array of rules", 'failures')
   if (external === true)
     fail("an external operator declares no 'failures': it may fail whatever its inputs", 'failures')
-  const declared = (name: unknown) => typeof name === 'string' && Object.hasOwn(parameters, name)
   failures.forEach((rule: unknown, index) => {
     const at = (...path: (string | number)[]) => ['failures', index, ...path]
     if (!isPlainObject(rule)) return fail('a rule must be a plain object', ...at())

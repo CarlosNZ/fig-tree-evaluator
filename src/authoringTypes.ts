@@ -80,6 +80,8 @@ export interface OperatorCoverage {
   failures?: FailureRule[]
   /** It may fail whatever its inputs: a request, or code nothing describes */
   external?: true
+  /** What a node returns, where its inputs narrow its `returns` */
+  output?: CoverageOutput
 }
 
 /**
@@ -123,3 +125,25 @@ export type CoverageTest =
   /** Some element of an array, or value of an object, passes */
   | { some: CoverageTest }
   | { not: CoverageTest }
+
+/**
+ * What an operator node returns, in terms of what its parameters receive
+ * ("Output declarations" in docs-dev/v3-specs/v3-fallback-coverage.md).
+ */
+export type CoverageOutput =
+  /** A fixed type */
+  | ExpectedType
+  /** What that parameter receives: each element or entry of a lazy container */
+  | { param: string }
+  /** An element of an array parameter */
+  | { elementOf: string }
+  /** The types of an array parameter's elements, as a sum of them is */
+  | { kindOf: string }
+  | { arrayOf: CoverageOutput }
+  | { oneOf: CoverageOutput[] }
+  /** The type a literal parameter names */
+  | { typeNamedBy: string }
+  /** Chosen by a literal parameter */
+  | { byParam: string; cases: Record<string, CoverageOutput> }
+  /** The first of an array parameter's elements that is not null */
+  | { firstNonNull: string }
