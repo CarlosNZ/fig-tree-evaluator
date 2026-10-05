@@ -69,6 +69,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** The rule checker found that under `strict`, `if`, `match`, `get`, `find`, `min`, `max`, `regex`, `convert`, `floor`, `ceil` and `abs` all fail when handed NaN, because the engine refuses a non-finite result at every node. No per-operator rule describes that: it is the engine's check, like a type check. Of the options, flagging every number-returning node under `strict` was simpler but would have listed `{ $length: '$data.s' }`; dropping NaN from `strict` would have left a host passing JS data with no warning.
 
+## Value ranges (taken up 2026-10-06, after step 4)
+
+**Decision.** The walk gains value ranges, as step 6, after running nodes: bounds on numbers and minimum lengths, declared in the output declarations (the core table in `./authoring`, a host's `coverage.output`), with range arithmetic for the few operators that compute one. The failure rules read them through their existing tests.
+
+**Why.** Without them the analysis lists failures that cannot happen whenever a value is known only by type: Carl's example, `{ $divide: [10, { $plus: [{ $length: '$data.s', fallback: 0 }, 1] }] }`, is reported as a possible division by zero. The spec had listed "no value ranges" as a known limit without the choice ever being put to Carl. Ranges were left out because they are a third kind of per-operator knowledge beside failure rules and output declarations; putting them inside the output declarations keeps it to two, and running nodes (step 5) already covers values known exactly, so ranges are what remains for values that are not.
+
 ## Open
 
 - **Where the analysis's own options sit.** `fallbackCoverage`'s options hold only `timeout` today, which stands in for an option the host passes to `evaluate()`. The number setting is the first option belonging to the analysis itself. How the two kinds are kept apart is deferred.

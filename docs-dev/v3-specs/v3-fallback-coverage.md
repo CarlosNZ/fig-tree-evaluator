@@ -245,6 +245,18 @@ Split by who writes them:
 
 The analysis reads the definition's field first, then the core table.
 
+## Value ranges
+
+_To build at step 6 (agreed with Carl, 2026-10-06)._
+
+The walk knows a value's type, not its range, so `{ $divide: [10, { $plus: [{ $length: '$data.s', fallback: 0 }, 1] }] }` is listed: it knows the divisor is an integer, not that it is at least 1. Ranges close that, and the like: a length is never negative, `split` never returns an empty array, a computed `decimals` is usually small.
+
+- **What the walk knows** gains bounds: a minimum and maximum on a number, and a minimum length on an array or string.
+- **Where they are declared:** in the output declarations, since a range is part of what a node returns. The core operators' are in the output table in `./authoring`, a host's in its `coverage.output`, checked by `defineOperator()` as outputs already are. Nothing reaches the engine, so `evaluate()` pays nothing.
+- **The output vocabulary** gains bounds on a fixed type (`{ type: 'integer', min: 0 }` for `length`; `minLength` for arrays and strings, so `split` declares at least one element) and a few arithmetic forms over parameters (`{ sum: 'values' }`, `{ difference: ['value', 'minus'] }`, and the like for `multiply`, `abs`, `min` and `max`). The range arithmetic sits once in the walk's value representation; an operator, or a host's, declares only which operation it performs.
+- **The failure rules** need no change: their tests read what a parameter receives, so with a range `{ by: 0 }` answers no where 0 is outside it, and `{ below }` and `{ empty }` read the bounds. The test vocabulary may gain an `{ above }` beside `{ below }`.
+- **The rule checker** covers it unchanged: a declared range is part of an output, and every value the engine returns must be admitted by it.
+
 ## Numbers
 
 How strictly the analysis treats numbers is its own option, not the evaluator's:
@@ -273,7 +285,7 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 
 ## Known limits
 
-- **No value ranges.** `{ $divide: [10, { $plus: [<a length>, 1] }] }` is listed: the walk knows the divisor is an integer, not that it is at least 1. Likewise a length is never negative, and `split` never returns an empty array.
+- **No value ranges, until step 6.** `{ $divide: [10, { $plus: [<a length>, 1] }] }` is listed: the walk knows the divisor is an integer, not that it is at least 1. Likewise a length is never negative, and `split` never returns an empty array (see "Value ranges").
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
 - **The `power` and `round` thresholds**, `exponent` below 100 and `decimals` below 300 counting as safe from ordinary overflow, are judgments. Without value ranges, every `round` with a computed `decimals` gets a `may` finding.
 - **`regex` declares a `returns` its `extract` mode breaks** ([#218](https://github.com/CarlosNZ/fig-tree-evaluator/issues/218)). The walk reads its output declaration instead, so the analysis is unaffected; `validate()`'s feeding check is not.
@@ -297,5 +309,6 @@ Each step keeps the analysis sound, so it can land and be used at any point. The
 3. **Declared rules** (rule 5). The rule types and their no/maybe/yes evaluation, the core table in `./authoring`, `external` for the I/O operators and undeclared host operators, the host field and its check in `defineOperator()`. The placeholder finding goes; the `numbers` option takes effect. The rule checker is added.
 4. **Output declarations** (rule 7). The output types and the core output table, the result boundary under `strict` numbers, and the rule checker's check of outputs.
 5. **Running nodes** (rule 4). First, nodes whose inputs are all known: folding, certain failures, and the short-circuits. Then stand-ins for non-eager parameters, and one of a few known values, ruling out unused children.
-6. **Timeouts.** The all-or-nothing rule and the no-I/O case.
-7. **Close-out.** v3-authoring.md's `fallbackCoverage` section replaced by this spec, README, docs-dev/imports.md sizes, CHANGELOG, the cases page regenerated, #217 closed.
+6. **Value ranges.** Bounds in what the walk knows, the range forms of the output vocabulary and their arithmetic, the core operators' ranges, and the tests reading them (see "Value ranges").
+7. **Timeouts.** The all-or-nothing rule and the no-I/O case.
+8. **Close-out.** v3-authoring.md's `fallbackCoverage` section replaced by this spec, README, docs-dev/imports.md sizes, CHANGELOG, the cases page regenerated, #217 closed.

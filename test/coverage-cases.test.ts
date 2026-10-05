@@ -368,7 +368,7 @@ const unsound = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
       problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
     for (const failure of caught) {
       // A shielded hole's trace entry: whether the analysis reports it is
-      // step 6's question
+      // step 7's question
       if (timed && failure.code === 'timeout') continue
       if (!analysis.covered.some((f) => accounts(f, failure)))
         problems.push(`covered ${JSON.stringify(failure)} with ${shown}`)
