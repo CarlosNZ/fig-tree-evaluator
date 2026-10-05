@@ -5,8 +5,10 @@
  * soundness check is test/coverage-cases.test.ts.
  *
  * Every operator node carries one placeholder finding until the operators'
- * failure rules land, so these tests are about where findings sit and which
- * fallback covers them.
+ * failure rules land. The tests of where findings sit and which fallback
+ * covers them give their operators constant inputs, so that the
+ * placeholders are all they report; type checks between nodes have their
+ * own section.
  *
  * The subpath's types export from the root. test/exports.test.ts lists
  * values only, so they are checked here, where `pnpm typecheck` fails if one
@@ -28,6 +30,7 @@ const fig = new FigTree()
 const where = (finding: CoverageFinding | CoveredFinding) => ({
   path: finding.path,
   code: finding.code,
+  ...(finding.parameter !== undefined ? { parameter: finding.parameter } : {}),
   ...(finding.fragment !== undefined
     ? { fragment: finding.fragment, fragmentPath: finding.fragmentPath }
     : {}),
@@ -43,7 +46,7 @@ const uncovered = (expression: unknown, instance: FigTree = fig) =>
   coverage(expression, instance).uncovered.map((finding) => finding.path)
 
 const placeholder = 'operator-failure'
-const divide = { $divide: ['$data.a', '$data.b'] }
+const divide = { $divide: [6, 3] }
 
 test('the subpath exports fallbackCoverage alone, and its types from the root', () => {
   expect(Object.keys(authoring)).toEqual(['fallbackCoverage'])
@@ -80,7 +83,7 @@ describe('where a finding sits', () => {
     ],
     [
       'every node down a chain, each where it starts',
-      { $upper: { $trim: { $lower: '$data.s' } } },
+      { $upper: { $trim: { $lower: 'S' } } },
       [[], ['$upper'], ['$upper', '$trim']],
     ],
     ['a reference, which cannot throw without strictDataPaths', { a: '$data.x' }, []],
@@ -91,7 +94,7 @@ describe('where a finding sits', () => {
 
 describe('a fallback covers everything under it', () => {
   test('a root fallback covers the root and every node below it', () => {
-    expect(coverage({ $upper: { $trim: '$data.s' }, fallback: '' })).toEqual({
+    expect(coverage({ $upper: { $trim: ' s ' }, fallback: '' })).toEqual({
       uncovered: [],
       covered: [
         { path: [], code: placeholder, by: [] },
@@ -101,17 +104,15 @@ describe('a fallback covers everything under it', () => {
   })
 
   test('the nearest fallback is the one that covers', () => {
-    expect(coverage({ $upper: { $trim: '$data.s', fallback: 'x' }, fallback: '' }).covered).toEqual(
-      [
-        { path: [], code: placeholder, by: [] },
-        { path: ['$upper'], code: placeholder, by: ['$upper'] },
-      ]
-    )
+    expect(coverage({ $upper: { $trim: ' s ', fallback: 'x' }, fallback: '' }).covered).toEqual([
+      { path: [], code: placeholder, by: [] },
+      { path: ['$upper'], code: placeholder, by: ['$upper'] },
+    ])
   })
 
   test('an inner fallback leaves the node above it uncovered', () => {
     expect(
-      coverage({ greeting: { $buildString: ['Hi %1', { $upper: '$data.n', fallback: 'there' }] } })
+      coverage({ greeting: { $buildString: ['Hi %1', { $upper: 'n', fallback: 'there' }] } })
     ).toEqual({
       uncovered: [{ path: ['greeting'], code: placeholder }],
       covered: [
@@ -169,24 +170,20 @@ describe('$vars references, through their definitions', () => {
     ['a var defined by a reference', { vars: { user: '$data.user' }, name: '$vars.user.name' }, []],
     [
       'a var defined by an uncovered node, reported at its definition',
-      { vars: { total: { $plus: ['$data.a', 1] } }, t: '$vars.total' },
+      { vars: { total: { $plus: [2, 1] } }, t: '$vars.total' },
       [['vars', 'total']],
     ],
     [
       'a var defined by a covered node',
-      { vars: { total: { $plus: ['$data.a', 1], fallback: 0 } }, t: '$vars.total' },
+      { vars: { total: { $plus: [2, 1], fallback: 0 } }, t: '$vars.total' },
       [],
     ],
     [
       'a var through another var',
-      { vars: { a: { $upper: '$data.s' }, b: '$vars.a' }, t: '$vars.b' },
+      { vars: { a: { $upper: 's' }, b: '$vars.a' }, t: '$vars.b' },
       [['vars', 'a']],
     ],
-    [
-      'a var nothing references is never evaluated',
-      { vars: { a: { $upper: '$data.s' } }, t: 1 },
-      [],
-    ],
+    ['a var nothing references is never evaluated', { vars: { a: { $upper: 's' } }, t: 1 }, []],
     [
       'a nested plain object with vars',
       { section: { vars: { x: '$data.x' }, a: '$vars.x', b: { $upper: 'x' } } },
@@ -199,7 +196,7 @@ describe('$vars references, through their definitions', () => {
   test('a var read twice is reported once', () => {
     const expression = {
       $plus: [{ $upper: '$vars.n' }, { $trim: '$vars.n' }],
-      vars: { n: { $lower: '$data.s' } },
+      vars: { n: { $lower: 'S' } },
     }
     expect(uncovered(expression).filter((path) => path[0] === 'vars')).toEqual([['vars', 'n']])
   })
@@ -207,7 +204,7 @@ describe('$vars references, through their definitions', () => {
   test('a var is covered by the fallback above each place it is read', () => {
     const expression = {
       $plus: [{ $upper: '$vars.n', fallback: 'u' }, { $trim: '$vars.n' }],
-      vars: { n: { $lower: '$data.s' } },
+      vars: { n: { $lower: 'S' } },
     }
     const result = coverage(expression)
     expect(result.uncovered).toContainEqual({ path: ['vars', 'n'], code: placeholder })
@@ -220,7 +217,7 @@ describe('$vars references, through their definitions', () => {
 
   test("a node's own vars are in scope for its fallback", () => {
     const expression = {
-      a: { vars: { v: { $upper: '$data.s' } }, $lower: '$data.t', fallback: '$vars.v' },
+      a: { vars: { v: { $upper: 's' } }, $lower: 'T', fallback: '$vars.v' },
     }
     expect(coverage(expression)).toEqual({
       uncovered: [{ path: ['a', 'vars', 'v'], code: placeholder }],
@@ -250,22 +247,28 @@ describe('strictDataPaths', () => {
     expect(uncovered({ vars, a: '$vars.user', b: '$vars.user.name' }, strict)).toEqual([['b']])
   })
 
-  test('$element drills, $index never does', () => {
-    const expression = { $map: { input: [], each: ['$element.x', '$index'] } }
-    expect(uncovered(expression, strict)).toEqual([[], ['$map', 'each', 0]])
+  test('$element drills into what an element can be, $index never drills', () => {
+    const each = ['$element.x', '$index']
+    expect(coverage({ $map: { input: [{ x: 1 }, { x: 2 }], each } }, strict).uncovered).toEqual([
+      { path: [], code: placeholder },
+    ])
+    expect(coverage({ $map: { input: [{ x: 1 }, {}], each } }, strict).uncovered).toEqual([
+      { path: [], code: placeholder },
+      { path: ['$map', 'each', 0], code: ErrorCodes.missingDataPath },
+    ])
   })
 })
 
 describe('fragment calls', () => {
   const withFragments = new FigTree({
     fragments: {
-      safe: { expression: { $upper: '$data.s', fallback: '$data.t' } },
-      unsafe: { expression: { $upper: '$data.s' } },
+      safe: { expression: { $upper: 's', fallback: '$data.t' } },
+      unsafe: { expression: { $upper: 's' } },
       echo: {
         expression: { $upper: '$params.s', fallback: '$params.s' },
         parameters: { s: { type: 'string' } },
       },
-      card: { expression: { title: { $upper: '$data.t', fallback: '' }, body: '$data.b' } },
+      card: { expression: { title: { $upper: 't', fallback: '' }, body: '$data.b' } },
       plain: { expression: { a: '$params.x' }, parameters: { x: { type: 'number' } } },
       needs: {
         expression: { $not: '$params.x' },
@@ -317,7 +320,7 @@ describe('fragment calls', () => {
   test("a computed argument fails where the body reads it, so the body's fallbacks catch it", () => {
     // Read under the root's fallback, then again by that fallback itself
     expect(calls({ a: { $echo: { s: '$data.s' } } })).toEqual({
-      uncovered: [{ path: ['a', '$echo', 's'], code: ErrorCodes.typeCheck }],
+      uncovered: [{ path: ['a', '$echo', 's'], code: ErrorCodes.typeCheck, parameter: 's' }],
       covered: [
         {
           path: ['a'],
@@ -327,15 +330,22 @@ describe('fragment calls', () => {
           by: ['a'],
           byFragmentPath: body,
         },
-        { path: ['a', '$echo', 's'], code: ErrorCodes.typeCheck, by: ['a'], byFragmentPath: body },
+        {
+          path: ['a', '$echo', 's'],
+          code: ErrorCodes.typeCheck,
+          parameter: 's',
+          by: ['a'],
+          byFragmentPath: body,
+        },
       ],
     })
   })
 
   test('an argument the body reads outside any fallback escapes the call', () => {
     expect(calls({ a: { $plain: { x: { $plus: ['$data.n', 1] } } } }).uncovered).toEqual([
-      { path: ['a', '$plain', 'x'], code: ErrorCodes.typeCheck },
+      { path: ['a', '$plain', 'x'], code: ErrorCodes.typeCheck, parameter: 'x' },
       { path: ['a', '$plain', 'x'], code: placeholder },
+      { path: ['a', '$plain', 'x'], code: ErrorCodes.typeCheck, parameter: 'values' },
     ])
   })
 
@@ -345,19 +355,12 @@ describe('fragment calls', () => {
 
   test('an argument written in a body is reported at the outer call', () => {
     const result = calls({ a: { $outer: {} } })
+    const at = { path: ['a'], fragment: 'outer', fragmentPath: ['expression', '$echo', 's'] }
+    // lower may return null, which echo's required `s` refuses
     expect(result.uncovered).toEqual([
-      {
-        path: ['a'],
-        code: ErrorCodes.typeCheck,
-        fragment: 'outer',
-        fragmentPath: ['expression', '$echo', 's'],
-      },
-      {
-        path: ['a'],
-        code: placeholder,
-        fragment: 'outer',
-        fragmentPath: ['expression', '$echo', 's'],
-      },
+      { ...at, code: ErrorCodes.typeCheck, parameter: 's' },
+      { ...at, code: placeholder },
+      { ...at, code: ErrorCodes.typeCheck, parameter: 'value' },
     ])
     expect(result.covered).toContainEqual({
       path: ['a'],
@@ -388,6 +391,131 @@ describe('fragment calls', () => {
         certainty: 'always',
       }),
     ])
+  })
+})
+
+describe('type checks between nodes', () => {
+  /** The findings beside the placeholders, with their certainty. */
+  const checks = (expression: unknown, instance: FigTree = fig) => {
+    const { uncovered, covered } = fallbackCoverage(instance, expression)
+    const shown = (finding: CoverageFinding | CoveredFinding) => ({
+      ...where(finding),
+      certainty: finding.certainty,
+    })
+    return {
+      uncovered: uncovered.filter((f) => f.code !== placeholder).map(shown),
+      covered: covered.filter((f) => f.code !== placeholder).map(shown),
+    }
+  }
+  const typeCheck = (path: (string | number)[], parameter: string, certainty = 'may') => ({
+    path,
+    code: ErrorCodes.typeCheck,
+    parameter,
+    certainty,
+  })
+
+  test('untyped data may fail a typed parameter, never an any one', () => {
+    expect(checks({ $lower: '$data.s' }).uncovered).toEqual([typeCheck([], 'value')])
+    expect(checks({ $not: '$data.x' }).uncovered).toEqual([])
+  })
+
+  test("a child's declared returns that fit pass, and a fallback widens them", () => {
+    expect(checks({ $upper: { $trim: 'x' } }).uncovered).toEqual([])
+    expect(checks({ $multiply: [{ $length: 'abc', fallback: 'none' }, 2] }).uncovered).toEqual([
+      typeCheck([], 'values'),
+    ])
+  })
+
+  test('a value that can never fit fails whenever the node is reached', () => {
+    const expression = { $map: { input: [1, 2], each: { $upper: '$element' } } }
+    expect(checks(expression).uncovered).toEqual([typeCheck(['$map', 'each'], 'value', 'always')])
+  })
+
+  test('a null at an optional parameter takes its default', () => {
+    const expression = { $split: ['a,b', { $lower: '$data.d', fallback: ',' }] }
+    expect(checks(expression)).toEqual({
+      uncovered: [],
+      covered: [{ ...typeCheck(['$split', 1], 'value'), by: ['$split', 1] }],
+    })
+  })
+
+  test('a propagated null meets a parameter that refuses it, unless a default absorbs it', () => {
+    const input = { $split: [{ $lower: 'S' }, ','] }
+    expect(checks({ $map: { input, each: '$element' } }).uncovered).toEqual([])
+    const nullable = { $split: [{ $get: 's', fallback: null }, ','] }
+    expect(checks({ $map: { input: nullable, each: '$element' } }).uncovered).toEqual([
+      typeCheck([], 'input'),
+      typeCheck(['$map', 'input'], 'value'),
+    ])
+    expect(
+      checks({ $map: { input: nullable, nullInputDefault: [], each: '$element' } }).uncovered
+    ).toEqual([typeCheck(['$map', 'input'], 'value')])
+  })
+
+  test('$element is what an element can be, and $index an integer', () => {
+    const words = { $map: { input: ['a', 'b'], each: { $upper: '$element' } } }
+    expect(checks(words).uncovered).toEqual([])
+    const renamed = { $map: { input: ['a', 'b'], as: 'word', each: { $upper: '$word' } } }
+    expect(checks(renamed).uncovered).toEqual([])
+    const places = { $map: { input: [1.25, 2.5], each: { $round: [1.5, '$index'] } } }
+    expect(checks(places).uncovered).toEqual([])
+  })
+
+  test("a var's reference is what its definition returns", () => {
+    expect(checks({ $multiply: ['$vars.n', 2], vars: { n: 3 } }).uncovered).toEqual([])
+    expect(checks({ $multiply: ['$vars.n', 2], vars: { n: 'x' } }).uncovered).toEqual([
+      typeCheck([], 'values', 'always'),
+    ])
+  })
+
+  test('a drill into a known value finds what is there, under strictDataPaths too', () => {
+    const strict = new FigTree({ strictDataPaths: true })
+    const vars = { o: { a: 1 } }
+    expect(checks({ $plus: ['$vars.o.a', 1], vars }, strict).uncovered).toEqual([])
+    expect(checks({ $plus: ['$vars.o.b', 1], vars }, strict).uncovered).toEqual([
+      { path: ['$plus', 0], code: ErrorCodes.missingDataPath, certainty: 'always' },
+    ])
+  })
+
+  describe('a fragment body, per call', () => {
+    const withFragments = new FigTree({
+      fragments: {
+        double: {
+          expression: { $multiply: ['$params.n', 2] },
+          parameters: { n: { type: 'number' } },
+        },
+        label: {
+          expression: { $upper: '$params.s' },
+          parameters: { s: { type: 'string', default: 'none' } },
+        },
+      },
+    })
+    const calls = (expression: unknown) => checks(expression, withFragments)
+
+    test('a parameter is what its argument passes as', () => {
+      expect(calls({ $double: { n: 3 } }).uncovered).toEqual([])
+      // The argument is checked at the call; the body then reads a number
+      expect(calls({ $double: { n: '$data.x' } }).uncovered).toEqual([
+        typeCheck(['$double', 'n'], 'n'),
+      ])
+    })
+
+    test('an optional parameter with no argument is its default', () => {
+      expect(calls({ $label: {} }).uncovered).toEqual([])
+      // A string or null, and a null takes the default
+      expect(calls({ $label: { s: { $lower: 'S', fallback: null } } }).uncovered).toEqual([])
+      // `get` returns anything, which the declaration may refuse
+      expect(calls({ $label: { s: { $get: 's' } } }).uncovered).toEqual([
+        typeCheck(['$label', 's'], 's'),
+      ])
+    })
+
+    test('a dynamic call reads the declarations', () => {
+      expect(calls({ fragment: 'double', parameters: '$data.args' }).uncovered).toEqual([
+        { path: ['parameters'], code: ErrorCodes.typeCheck, certainty: 'may' },
+        { path: ['parameters'], code: ErrorCodes.missingRequired, certainty: 'may' },
+      ])
+    })
   })
 })
 

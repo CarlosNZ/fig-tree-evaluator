@@ -326,12 +326,20 @@ const unpredicted = (item: CoverageCase, seen: Seen[]): string[] => {
 /**
  * Whether a finding's code accounts for a failure's. Until the operators'
  * failure rules land (step 3 of #217), every operator node carries a
- * placeholder `operator-failure`, which stands for any code at its node.
- * Code-exact matching starts at step 3: set this to true then.
+ * placeholder `operator-failure`, which stands for any code at its node
+ * except `type-check`: the analysis reports the engine's parameter checks
+ * as themselves, so a placeholder stands for one only on an operator whose
+ * own code throws it. Code-exact matching starts at step 3: set CODE_EXACT
+ * to true then.
  */
 const CODE_EXACT = false
+/** `plus`'s operand kinds, the I/O operators' requests, and host code. */
+const RAISES_TYPE_CHECK = new Set(['plus', 'http', 'graphQL', 'sql', 'twice', 'shaky'])
 const codeAccounts = (finding: CoverageFinding, seen: Located) =>
-  finding.code === seen.code || (!CODE_EXACT && finding.code === 'operator-failure')
+  finding.code === seen.code ||
+  (!CODE_EXACT &&
+    finding.code === 'operator-failure' &&
+    (seen.code !== 'type-check' || RAISES_TYPE_CHECK.has(finding.operator ?? '')))
 
 const accounts = (finding: CoverageFinding | CoveredFinding, seen: Located | Caught): boolean =>
   codeAccounts(finding, seen) &&
@@ -403,11 +411,35 @@ const exact = (item: CoverageCase, analysis: FallbackCoverage): boolean =>
   sameFindings(item.uncovered ?? [], analysis.uncovered) &&
   sameFindings(item.covered ?? [], analysis.covered)
 
-const progress = { exact: 0, total: 0 }
+/**
+ * The codes the analysis models so far, beside its placeholders. Until
+ * step 3 removes them, a case is also counted exact apart from them: the
+ * placeholders dropped, and the corpus held to these codes.
+ */
+const MODELLED = new Set(['type-check', 'missing-data-path', 'missing-required', 'timeout'])
+const isPlaceholder = (finding: CoverageFinding) =>
+  finding.code === 'operator-failure' && finding.message.includes('placeholder')
+
+const exactApartFromPlaceholders = (item: CoverageCase, analysis: FallbackCoverage): boolean => {
+  const modelled = (findings: Finding[] | undefined) =>
+    (findings ?? []).filter((finding) => MODELLED.has(finding.code))
+  return (
+    sameFindings(
+      modelled(item.uncovered),
+      analysis.uncovered.filter((f) => !isPlaceholder(f))
+    ) &&
+    sameFindings(
+      modelled(item.covered),
+      analysis.covered.filter((f) => !isPlaceholder(f))
+    )
+  )
+}
+
+const progress = { exact: 0, apart: 0, total: 0 }
 afterAll(() => {
   if (progress.total > 0)
     console.log(
-      `fallbackCoverage: ${progress.exact} of ${progress.total} cases give exactly their expected findings`
+      `fallbackCoverage: ${progress.exact} of ${progress.total} cases give exactly their expected findings, ${progress.apart} apart from placeholders`
     )
 })
 
@@ -440,5 +472,6 @@ for (const [section, cases] of Object.entries(sections))
       expect(unsound(analysis, seen)).toEqual([])
       progress.total++
       if (exact(item, analysis)) progress.exact++
+      if (exactApartFromPlaceholders(item, analysis)) progress.apart++
     })
   })

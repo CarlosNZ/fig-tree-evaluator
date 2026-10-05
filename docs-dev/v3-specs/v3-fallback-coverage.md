@@ -258,7 +258,7 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 ## Testing
 
 - **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 154 expressions and the findings each should give. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
-- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure.
+- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Until step 3 removes the placeholders, a placeholder stands for any code at its node except `type-check`, which it stands for only on an operator whose own code throws one (`plus`, the I/O operators, a host's): from step 2 the parameters' type checks are reported as themselves.
 - **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It runs in CI only, so its cost does not matter. It is what keeps the core table complete.
 
 ## Known limits
@@ -267,6 +267,7 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
 - **The `power` threshold**, `exponent` below 100 counting as safe from ordinary overflow, is a judgment.
 - **`http`** with a relative URL and no `http.baseEndpoint` always fails, but is reported as may fail.
+- **A declared `returns` is trusted.** The engine never checks a body's result against it, so a host operator whose body returns outside its `returns` can cause type failures downstream that are not reported. `validate()`'s feeding check relies on `returns` in the same way.
 
 ## Open
 

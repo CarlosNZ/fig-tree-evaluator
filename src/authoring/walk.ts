@@ -1,23 +1,42 @@
 /**
  * The coverage walk ("The walk" in docs-dev/v3-specs/v3-fallback-coverage.md):
- * post-order over the compiled tree, giving every node a verdict and the
- * failures that can leave it uncaught. A fallback catches everything that
- * escapes its node, and what it catches goes to the sink as covered.
+ * post-order over the compiled tree, giving every node a verdict, the
+ * failures that can leave it uncaught, and what it can return. A fallback
+ * catches everything that escapes its node, and what it catches goes to
+ * the sink as covered.
  *
- * Every operator node carries one placeholder finding, so a child's failure
- * is passed up whatever its parameter's delivery mode: what the operators
- * fail on, and which children they use, are not modelled.
+ * Every operator node carries one placeholder finding beside its type
+ * checks, so a child's failure is passed up whatever its parameter's
+ * delivery mode: what the operators fail on, and which children they use,
+ * are not modelled.
  */
+import { bindsReference, renamedBinding, splice } from '../compile/artifact'
 import type {
   CompiledNode,
   FragmentCallNode,
   OperatorNode,
   ReferenceNode,
   SequencedIssue,
+  SkeletonNode,
 } from '../compile/artifact'
-import type { FragmentEntry } from '../fragments'
+import type { FragmentEntry, FragmentParameter } from '../fragments'
+import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
+import { argumentInput, checkElementResult, resolveInputs } from './inputs'
+import {
+  ANY,
+  NOTHING,
+  arrayOf,
+  drill,
+  elementsOf,
+  exactly,
+  keyOf,
+  objectOf,
+  ofType,
+  union,
+} from './known'
+import type { Known } from './known'
 
 export type Verdict = 'no' | 'may' | 'always'
 
@@ -27,6 +46,8 @@ export interface NodeResult {
   verdict: Verdict
   /** What can leave the node uncaught, each where it starts */
   escapes: Pending[]
+  /** What the node can return; nothing, when it never does */
+  output: Known
 }
 
 /** A vars block in force, linked to the scope it was declared in. */
@@ -35,12 +56,23 @@ type Scope = { vars: Record<string, CompiledNode>; parent: Scope } | null
 const pushScope = (parent: Scope, vars: Record<string, CompiledNode> | undefined): Scope =>
   vars === undefined ? parent : { vars, parent }
 
-/** Where a node is walked: its scope, its frame's sink, its frame's body. */
+/** An iterator's binding frame: the `as` name, and what an element can be. */
+type Bindings = { as: string | null; element: Known; parent: Bindings } | null
+
+/** The input, or one fragment body as one call binds its parameters. */
+interface Frame {
+  /** Each var definition walked here, with what its fallbacks caught */
+  vars: Map<CompiledNode, Analysed>
+  entry?: FragmentEntry
+  params?: Record<string, Known>
+}
+
+/** Where a node is walked. */
 interface Context {
   scope: Scope
+  bindings: Bindings
   sink: Caught[]
-  /** The fragment whose body this is; absent in the input itself */
-  body?: FragmentEntry
+  frame: Frame
 }
 
 /** A subtree walked on its own, with what its fallbacks caught. */
@@ -49,18 +81,28 @@ interface Analysed {
   covered: Caught[]
 }
 
-const SAFE: NodeResult = { verdict: 'no', escapes: [] }
+const SAFE: NodeResult = { verdict: 'no', escapes: [], output: NOTHING }
+const NONE: Analysed = { result: SAFE, covered: [] }
+const INTEGER: Known = [{ type: 'integer' }]
+const NULL = exactly(null)
 
 /**
- * A node's failures from its own and its children's. Only an eager child
- * that always fails makes the node always fail; anything else that escapes
- * makes it able to.
+ * A node's failures from its own and its children's. Only an eager child,
+ * or a check of its own, that always fails makes the node always fail, and
+ * then it never returns; anything else that escapes makes it able to fail.
  */
-const combine = (own: Pending[], parts: { result: NodeResult; eager: boolean }[]): NodeResult => {
+const combine = (
+  own: Pending[],
+  parts: { result: NodeResult; eager: boolean }[],
+  output: Known
+): NodeResult => {
   const escapes = [...own]
   for (const part of parts) escapes.push(...part.result.escapes)
-  const always = parts.some((part) => part.eager && part.result.verdict === 'always')
-  return { verdict: always ? 'always' : escapes.length > 0 ? 'may' : 'no', escapes }
+  const always =
+    parts.some((part) => part.eager && part.result.verdict === 'always') ||
+    own.some((pending) => !isDemand(pending) && pending.certainty === 'always')
+  if (always) return { verdict: 'always', escapes, output: NOTHING }
+  return { verdict: escapes.length > 0 ? 'may' : 'no', escapes, output }
 }
 
 /**
@@ -85,20 +127,55 @@ const isEager = (node: OperatorNode, name: string, child: CompiledNode): boolean
 const placeholder = (node: OperatorNode): Failure => ({
   path: node.path,
   code: 'operator-failure',
-  message: `${node.name} – a placeholder: what this operator can fail on is not modelled, so it is taken to be able to fail`,
+  message: `${node.name} – a placeholder: taken to be able to fail`,
   certainty: 'may',
   operator: node.name,
   order: [node.order],
 })
 
 /**
- * Var definitions are walked once each, in the scope they were declared in,
- * and fragment bodies once each, apart from any call's arguments: a body
- * reading a parameter leaves a demand, which each call answers.
+ * A plain literal's shape, with each hole's output in its place: an exact
+ * value where every hole's is, so the engine's own checks judge it.
+ */
+const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
+  if (outputs.every((output) => output.length === 1 && 'exact' in output[0]))
+    return exactly(
+      splice(
+        node.skeleton,
+        node.holes,
+        outputs.map((output) => (output[0] as { exact: unknown }).exact)
+      )
+    )
+  const holes = node.holes.map((hole, i) => ({ at: hole.at, output: outputs[i] }))
+  const build = (value: unknown, depth: number, inner: typeof holes): Known => {
+    const here = inner.find((hole) => hole.at.length === depth)
+    if (here !== undefined) return here.output
+    if (inner.length === 0) return exactly(value)
+    const under = (key: string | number) => inner.filter((hole) => hole.at[depth] === key)
+    // A skeleton leaves its holes' slots empty, which `map` would skip
+    if (Array.isArray(value))
+      return arrayOf(
+        Array.from(value, (element, i) => build(element, depth + 1, under(i))),
+        value.length
+      )
+    const source = value as Record<string, unknown>
+    const keys = new Set([...Object.keys(source), ...inner.map((hole) => String(hole.at[depth]))])
+    const known: Record<string, Known> = {}
+    for (const key of keys) known[key] = build(source[key], depth + 1, under(key))
+    return objectOf(known)
+  }
+  return build(node.skeleton, 0, holes)
+}
+
+/**
+ * Var definitions are walked once each per frame, in the scope they were
+ * declared in. A fragment body is walked once for each set of arguments it
+ * is called with, with its parameters bound to what they receive; a body
+ * reading a parameter leaves a demand, which the call answers with the
+ * argument's own findings.
  */
 export class Analysis {
-  private readonly vars = new Map<CompiledNode, Analysed>()
-  private readonly bodies = new Map<FragmentEntry, Analysed>()
+  private readonly bodies = new Map<FragmentEntry, Map<string, Analysed>>()
 
   constructor(
     private readonly strict: boolean,
@@ -107,13 +184,13 @@ export class Analysis {
 
   /** The expression's root, with its fallbacks' catches in `sink`. */
   root(node: CompiledNode, sink: Caught[]): NodeResult {
-    return this.walk(node, { scope: null, sink })
+    return this.walk(node, { scope: null, bindings: null, sink, frame: { vars: new Map() } })
   }
 
   private walk(node: CompiledNode, ctx: Context): NodeResult {
     switch (node.kind) {
       case 'constant':
-        return SAFE
+        return { ...SAFE, output: exactly(node.value) }
       case 'invalid':
         return this.staticError(node, 'malformed-node')
       case 'reference':
@@ -125,20 +202,32 @@ export class Analysis {
           result: this.walk(hole.node, inner),
           eager: true,
         }))
-        return combine([], parts)
-      }
-      case 'elements':
-        return combine(
-          [],
-          node.nodes.map((element) => ({ result: this.walk(element, ctx), eager: false }))
+        const output = skeletonOutput(
+          node,
+          parts.map((part) => part.result.output)
         )
-      case 'entries': {
-        const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
-        const parts = Object.values(node.entries).map((value) => ({
-          result: this.walk(value, inner),
+        return combine([], parts, output)
+      }
+      case 'elements': {
+        const parts = node.nodes.map((element) => ({
+          result: this.walk(element, ctx),
           eager: false,
         }))
-        return combine([], parts)
+        const output = arrayOf(
+          parts.map((part) => part.result.output),
+          node.nodes.length
+        )
+        return combine([], parts, output)
+      }
+      case 'entries': {
+        const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
+        const keys: Record<string, Known> = {}
+        const parts = Object.entries(node.entries).map(([key, value]) => {
+          const result = this.walk(value, inner)
+          keys[key] = result.output
+          return { result, eager: false }
+        })
+        return combine([], parts, objectOf(keys))
       }
       case 'operator':
         return this.operator(node, ctx)
@@ -148,14 +237,42 @@ export class Analysis {
     return node satisfies never
   }
 
-  /** The node's vars are in scope for its parameters and its fallback. */
+  /**
+   * The node's vars are in scope for its parameters and its fallback. A
+   * `perElement` parameter is walked last, with `$element` bound to the
+   * elements of what its `over` sibling receives.
+   */
   private operator(node: OperatorNode, ctx: Context): NodeResult {
+    const { definition } = node.entry
     const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
-    const parts = Object.entries(node.params).map(([name, child]) => ({
-      result: this.walk(child, inner),
-      eager: isEager(node, name, child),
-    }))
-    return this.withFallback(node, combine([placeholder(node)], parts), inner)
+    const outputs: Record<string, Known> = {}
+    const parts: { result: NodeResult; eager: boolean }[] = []
+    for (const [name, child] of Object.entries(node.params)) {
+      if (definition.parameters[name]?.evaluation === 'perElement') continue
+      const result = this.walk(child, inner)
+      outputs[name] = result.output
+      parts.push({ result, eager: isEager(node, name, child) })
+    }
+    const inputs = resolveInputs(node, outputs)
+    const own: Pending[] = [placeholder(node), ...inputs.failures]
+
+    const as = renamedBinding(node)
+    for (const [name, declared] of definition.resolution.perElement) {
+      const child = node.params[name]
+      if (child === undefined || declared.over === undefined) continue
+      const element = elementsOf(inputs.received[declared.over] ?? NOTHING)
+      const result = this.walk(child, { ...inner, bindings: { as, element, parent: ctx.bindings } })
+      parts.push({ result, eager: false })
+      const failure = checkElementResult(node, name, declared, result.output)
+      if (failure !== undefined) own.push(failure)
+    }
+
+    // A null that propagates is the node's result, without the body
+    const output =
+      inputs.propagates === 'yes'
+        ? NULL
+        : union(ofType(definition.returns), inputs.propagates === 'maybe' ? NULL : NOTHING)
+    return this.withFallback(node, combine(own, parts, output), inner)
   }
 
   /**
@@ -175,59 +292,94 @@ export class Analysis {
     if (node.fallback === undefined && !fromDefaults) return attempt
     const by = { path: node.path }
     for (const pending of attempt.escapes) ctx.sink.push({ pending, by })
-    if (node.fallback === undefined) return SAFE
+    if (node.fallback === undefined)
+      return { ...SAFE, output: union(attempt.output, exactly(defaults!.fallback)) }
     const answer = this.walk(node.fallback, ctx)
     // The fallback runs only when the attempt fails
     const verdict =
       attempt.verdict === 'always' || answer.verdict !== 'always' ? answer.verdict : 'may'
-    return { verdict, escapes: answer.escapes }
+    return {
+      verdict,
+      escapes: answer.escapes,
+      output: union(attempt.output, answer.output),
+    }
   }
 
   /**
-   * A missing path throws only under `strictDataPaths`, and only where the
-   * reference drills past what it names; `$index` never drills. A var
-   * passes on whatever its definition can fail on, and a parameter leaves a
-   * demand for its argument.
+   * A var passes on whatever its definition can fail on and return, and a
+   * parameter leaves a demand for its argument. A missing path is null,
+   * or under `strictDataPaths` a failure, where the reference drills past
+   * what it names; `$index` never drills.
    */
   private reference(node: ReferenceNode, ctx: Context): NodeResult {
-    const { namespace, segments } = node
-    const named = namespace === 'vars' || namespace === 'params'
-    const own: Pending[] = []
-    if (this.strict && namespace !== 'index' && segments.length > (named ? 1 : 0))
-      own.push({
-        path: node.path,
-        code: 'missing-data-path',
-        message: `'${node.raw}' may be absent (strictDataPaths)`,
-        certainty: 'may',
-        order: [node.order],
-      })
-    if (namespace === 'vars') {
-      const definition = this.varDefinition(segments[0], ctx)
-      if (definition === undefined) return this.staticError(node, 'unresolved-var')
-      ctx.sink.push(...definition.covered)
-      return combine(own, [{ result: definition.result, eager: true }])
+    const { segments } = node
+    switch (node.namespace) {
+      case 'index':
+        return { ...SAFE, output: INTEGER }
+      case 'data':
+        return this.drilled(node, ANY, segments, [], [])
+      case 'element': {
+        for (let frame = ctx.bindings; frame !== null; frame = frame.parent)
+          if (bindsReference(frame.as, 'element', node.binding))
+            return this.drilled(node, frame.element, segments, [], [])
+        return this.staticError(node, 'unresolved-binding')
+      }
+      case 'vars': {
+        const definition = this.varDefinition(segments[0], ctx)
+        if (definition === undefined) return this.staticError(node, 'unresolved-var')
+        ctx.sink.push(...definition.covered)
+        const parts = [{ result: definition.result, eager: true }]
+        return this.drilled(node, definition.result.output, segments.slice(1), parts, [])
+      }
+      case 'params': {
+        const { entry, params = {} } = ctx.frame
+        if (entry === undefined) return this.staticError(node, 'unresolved-param')
+        const [name, ...rest] = segments
+        // Bare `$params` reads every declared parameter
+        if (name === undefined) {
+          const demands = Object.keys(entry.parameters).map((declared) => ({ demand: declared }))
+          return this.drilled(node, objectOf(params), [], [], demands)
+        }
+        const known = typeof name === 'string' ? (params[name] ?? ANY) : ANY
+        return this.drilled(node, known, rest, [], [{ demand: String(name) }])
+      }
     }
-    if (namespace === 'params') {
-      if (ctx.body === undefined) return this.staticError(node, 'unresolved-param')
-      // Bare `$params` reads every declared parameter
-      const names = segments.length === 0 ? Object.keys(ctx.body.parameters) : [segments[0]]
-      for (const name of names) if (typeof name === 'string') own.push({ demand: name })
+    return node.namespace satisfies never
+  }
+
+  private drilled(
+    node: ReferenceNode,
+    known: Known,
+    segments: PathSegment[],
+    parts: { result: NodeResult; eager: boolean }[],
+    own: Pending[]
+  ): NodeResult {
+    const { value, found } = drill(known, segments)
+    if (found === 'yes') return combine(own, parts, value)
+    if (!this.strict) return combine(own, parts, union(value, NULL))
+    const missing: Failure = {
+      path: node.path,
+      code: 'missing-data-path',
+      message: `'${node.raw}' may be absent (strictDataPaths)`,
+      certainty: found === 'no' ? 'always' : 'may',
+      order: [node.order],
     }
-    return combine(own, [])
+    return combine([...own, missing], parts, value)
   }
 
   private varDefinition(name: unknown, ctx: Context): Analysed | undefined {
+    const known = ctx.frame.vars
     for (let frame = ctx.scope; frame !== null; frame = frame.parent) {
       if (typeof name !== 'string' || !Object.hasOwn(frame.vars, name)) continue
       const definition = frame.vars[name]
-      const known = this.vars.get(definition)
-      if (known !== undefined) return known
+      const cached = known.get(definition)
+      if (cached !== undefined) return cached
       // Provisional, so a cycle (already a static error) ends here
-      this.vars.set(definition, { result: SAFE, covered: [] })
+      known.set(definition, { result: { ...SAFE, output: ANY }, covered: [] })
       const covered: Caught[] = []
       const result = this.walk(definition, { ...ctx, scope: frame, sink: covered })
       const analysed = { result, covered }
-      this.vars.set(definition, analysed)
+      known.set(definition, analysed)
       return analysed
     }
     return undefined
@@ -246,36 +398,31 @@ export class Analysis {
     const { entry } = node
     if (entry === undefined) return this.staticError(node, 'unknown-fragment')
     const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
-    const body = this.body(entry)
     const own: Pending[] = []
     const parts: { result: NodeResult; eager: boolean }[] = []
+    const bound: Record<string, Known> = {}
     const answers = new Map<string, Analysed>()
+
+    if (node.argumentsMode === 'static')
+      for (const [name, declared] of Object.entries(entry.parameters)) {
+        const argument = this.argument(node, name, declared, inner)
+        answers.set(name, argument)
+        bound[name] = argument.result.output
+      }
+    else {
+      const source = node.parameters as CompiledNode
+      const result = this.walk(source, inner)
+      parts.push({ result, eager: true })
+      own.push(...dynamicArguments(node, entry, source, bound))
+    }
+
     // What a demand for `name` brings in: nothing for a dynamic call
     const answer = (name: string): Analysed => {
-      let known = answers.get(name)
-      if (known === undefined) {
-        known = node.argumentsMode === 'static' ? this.argument(node, entry, name, inner) : NONE
-        answers.set(name, known)
-      }
+      const known = answers.get(name) ?? NONE
       ctx.sink.push(...known.covered)
       return known
     }
-
-    if (node.argumentsMode === 'dynamic') {
-      const source = node.parameters as CompiledNode
-      parts.push({ result: this.walk(source, inner), eager: true })
-      const failure = (code: string, message: string): Failure => ({
-        path: source.path,
-        code,
-        message: `fragment '${node.name}' – ${message}`,
-        certainty: 'may',
-        order: [source.order],
-      })
-      own.push(failure('type-check', "'parameters' may not match the declared parameters"))
-      if (Object.values(entry.parameters).some((declared) => declared.required))
-        own.push(failure('missing-required', "'parameters' may omit a required parameter"))
-    }
-
+    const body = this.body(entry, bound)
     for (const { pending, by } of body.covered) {
       const lifted = liftCatcher(by, node)
       if (!isDemand(pending)) ctx.sink.push({ pending: liftFailure(pending, node), by: lifted })
@@ -288,49 +435,46 @@ export class Analysis {
       else own.push(liftFailure(pending, node))
     }
     // A body that always fails fails every call
-    parts.push({ result: { verdict: body.result.verdict, escapes: [] }, eager: true })
-    return this.withFallback(node, combine(own, parts), inner)
+    parts.push({ result: { ...body.result, escapes: [] }, eager: true })
+    return this.withFallback(node, combine(own, parts, body.result.output), inner)
   }
 
   /**
    * A static call's argument: its own failures, and the declaration's check
-   * of what it returns. A literal argument was checked statically, and an
-   * unsupplied one takes its default.
+   * of what it returns. An unsupplied one takes its default, else null.
    */
   private argument(
     node: FragmentCallNode,
-    entry: FragmentEntry,
     name: string,
+    declared: FragmentParameter,
     ctx: Context
   ): Analysed {
     const supplied = (node.parameters as Record<string, CompiledNode> | undefined)?.[name]
-    const declared = entry.parameters[name]
-    if (supplied === undefined || declared === undefined) return NONE
+    if (supplied === undefined)
+      return { result: { ...SAFE, output: exactly(declared.default ?? null) }, covered: [] }
     const covered: Caught[] = []
     const result = this.walk(supplied, { ...ctx, sink: covered })
-    const checked =
-      supplied.kind !== 'constant' && !(declared.type === 'any' && !declared.constraints)
-    if (!checked) return { result, covered }
-    const check: Failure = {
-      path: supplied.path,
-      code: 'type-check',
-      message: `fragment '${node.name}' – parameter '${name}': the argument may not fit the declared type`,
-      certainty: 'may',
-      parameter: name,
-      order: [supplied.order],
-    }
-    return { result: combine([check], [{ result, eager: true }]), covered }
+    const { known, answer } = argumentInput(declared, result.output)
+    const own: Failure[] =
+      answer === 'yes' ? [] : [argumentCheck(node, name, supplied.path, supplied.order)]
+    return { result: combine(own, [{ result, eager: true }], known), covered }
   }
 
-  private body(entry: FragmentEntry): Analysed {
-    const known = this.bodies.get(entry)
+  private body(entry: FragmentEntry, params: Record<string, Known>): Analysed {
+    const key = Object.keys(params)
+      .map((name) => `${name}=${keyOf(params[name])}`)
+      .join(';')
+    let calls = this.bodies.get(entry)
+    if (calls === undefined) this.bodies.set(entry, (calls = new Map()))
+    const known = calls.get(key)
     if (known !== undefined) return known
     // Provisional, so a cycle (already refused at registration) ends here
-    this.bodies.set(entry, NONE)
+    calls.set(key, { result: { ...SAFE, output: ANY }, covered: [] })
     const covered: Caught[] = []
-    const result = this.walk(entry.body, { scope: null, sink: covered, body: entry })
+    const frame: Frame = { vars: new Map(), entry, params }
+    const result = this.walk(entry.body, { scope: null, bindings: null, sink: covered, frame })
     const analysed = { result, covered }
-    this.bodies.set(entry, analysed)
+    calls.set(key, analysed)
     return analysed
   }
 
@@ -346,8 +490,47 @@ export class Analysis {
       certainty: 'always',
       order: [node.order],
     }
-    return { verdict: 'always', escapes: [failure] }
+    return combine([failure], [], NOTHING)
   }
 }
 
-const NONE: Analysed = { result: SAFE, covered: [] }
+const argumentCheck = (
+  node: FragmentCallNode,
+  name: string,
+  path: FragmentCallNode['path'],
+  order: number
+): Failure => ({
+  path,
+  code: 'type-check',
+  message: `fragment '${node.name}' – parameter '${name}': the argument may not fit the declared type`,
+  certainty: 'may',
+  parameter: name,
+  order: [order],
+})
+
+/**
+ * A dynamic call's arguments object, checked whole before the body runs
+ * (`dynamicFrame` in src/evaluate/fragment.ts): it must be an object, and
+ * a required parameter must be in it. Its shape is not followed, so each
+ * parameter is bound to whatever its declaration admits.
+ */
+const dynamicArguments = (
+  node: FragmentCallNode,
+  entry: FragmentEntry,
+  source: CompiledNode,
+  bound: Record<string, Known>
+): Failure[] => {
+  const failure = (code: string, message: string): Failure => ({
+    path: source.path,
+    code,
+    message: `fragment '${node.name}' – ${message}`,
+    certainty: 'may',
+    order: [source.order],
+  })
+  const declared = Object.entries(entry.parameters)
+  for (const [name, parameter] of declared) bound[name] = argumentInput(parameter, ANY).known
+  const failures = [failure('type-check', "'parameters' may not match the declared parameters")]
+  if (declared.some(([, parameter]) => parameter.required))
+    failures.push(failure('missing-required', "'parameters' may omit a required parameter"))
+  return failures
+}
