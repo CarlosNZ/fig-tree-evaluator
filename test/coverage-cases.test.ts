@@ -20,8 +20,8 @@ import {
   isFigTreeError,
   sqlOperators,
 } from '../src'
-import type { FigTreeError, FragmentDefinition, HttpClient, SqlConnection, TraceNode } from '../src'
-import { sections } from './coverage-cases'
+import type { FigTreeError, HttpClient, SqlConnection, TraceNode } from '../src'
+import { fragments, sections } from './coverage-cases'
 import type { CoverageCase, Finding, NodePath } from './coverage-cases'
 
 // ── The instances a case can name ───────────────────────────────────
@@ -42,24 +42,6 @@ const ioDefaults = {
   http: { noCache: true as const },
   graphQL: { noCache: true as const },
   sql: { noCache: true as const },
-}
-
-const twoNumbers = { a: { type: 'number' }, b: { type: 'number' } } as const
-const fragments: Record<string, FragmentDefinition> = {
-  double: {
-    expression: { $multiply: ['$params.n', 2] },
-    parameters: { n: { type: 'number' } },
-  },
-  maybeDouble: {
-    expression: { $multiply: ['$params.n', 2] },
-    parameters: { n: { type: ['number', 'null'] } },
-  },
-  ratio: { expression: { $divide: ['$params.a', '$params.b'] }, parameters: twoNumbers },
-  safeRatio: {
-    expression: { $divide: ['$params.a', '$params.b'], fallback: 0 },
-    parameters: twoNumbers,
-  },
-  shout: { expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } },
 }
 
 const twice = defineOperator({

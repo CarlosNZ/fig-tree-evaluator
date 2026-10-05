@@ -17,7 +17,7 @@
  * explains. `open` records a question the case raises; its expectation is
  * the recommended answer.
  */
-import type { FigTreeErrorCode } from '../src'
+import type { FigTreeErrorCode, FragmentDefinition } from '../src'
 
 export type NodePath = (string | number)[]
 
@@ -52,6 +52,25 @@ export interface CoverageCase {
   covered?: Finding[]
   note?: string
   open?: string
+}
+
+const twoNumbers = { a: { type: 'number' }, b: { type: 'number' } } as const
+/** The fragments the `fragments` instance registers. */
+export const fragments: Record<string, FragmentDefinition> = {
+  double: {
+    expression: { $multiply: ['$params.n', 2] },
+    parameters: { n: { type: 'number' } },
+  },
+  maybeDouble: {
+    expression: { $multiply: ['$params.n', 2] },
+    parameters: { n: { type: ['number', 'null'] } },
+  },
+  ratio: { expression: { $divide: ['$params.a', '$params.b'] }, parameters: twoNumbers },
+  safeRatio: {
+    expression: { $divide: ['$params.a', '$params.b'], fallback: 0 },
+    parameters: twoNumbers,
+  },
+  shout: { expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } },
 }
 
 export const sections: Record<string, CoverageCase[]> = {
@@ -1132,7 +1151,9 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'an untyped argument',
       expression: { $double: { n: '$data.x' } },
       instance: 'fragments',
-      uncovered: [{ at: ['$double', 'n'], code: 'type-check', witness: { x: 'a' } }],
+      uncovered: [
+        { at: ['$double', 'n'], code: 'type-check', parameter: 'n', witness: { x: 'a' } },
+      ],
     },
     {
       name: 'a propagated null at a parameter that excludes null',
