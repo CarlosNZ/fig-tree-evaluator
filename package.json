@@ -22,6 +22,10 @@
     "./format": {
       "types": "./build/format/index.d.ts",
       "default": "./build/format/index.js"
+    },
+    "./authoring": {
+      "types": "./build/authoring/index.d.ts",
+      "default": "./build/authoring/index.js"
     }
   },
   "typesVersions": {
@@ -34,6 +38,9 @@
       ],
       "format": [
         "./build/format/index.d.ts"
+      ],
+      "authoring": [
+        "./build/authoring/index.d.ts"
       ]
     }
   },

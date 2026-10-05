@@ -69,8 +69,8 @@ inspect(
 
 // ── Precomputations: shielding and dependencies ──────────────────────
 
-// A constant `fallback` on every hole makes the expression shielded — the
-// editor's badge, computed statically.
+// A constant `fallback` on every hole makes the expression shielded, which
+// the compiler works out statically.
 inspect(
   { operator: 'http', url: 'https://example.com/api', fallback: null },
   { label: '10 · a statically shielded hole' }

@@ -48,8 +48,4 @@ export interface ValidationResult {
   valid: boolean
   /** All findings, in tree order; empty when clean. */
   issues: Issue[]
-  /**
-   * The fallback rule-3 badge — statically computed, surfaced for the editor.
-   */
-  timeoutShielded: boolean
 }

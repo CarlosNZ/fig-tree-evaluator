@@ -62,7 +62,7 @@ _Added at review (Carl, July 2026): the shapes and rulings in this doc are easie
 What falls out of the table:
 
 - **Plain `evaluate()` is the only surface the engine optimizes for.** Every other surface may pay bookkeeping; this path must not.
-- **Production resilience is fallbacks.** A failure a `fallback` catches is success, so one failing field never takes its siblings down with it: the author puts a fallback on each field that can fail, holding a placeholder of that field's own type, and a host that doesn't write the expressions but wants the guarantee sets `operatorDefaults` fallbacks. There is no evaluation mode for it (see "Why there is no report mode (#208)"). Whether the fallbacks are in place is a static question, so its answer belongs to `validate()`: `timeoutShielded` today, and the "can this throw?" verdict of [#209](https://github.com/CarlosNZ/fig-tree-evaluator/issues/209).
+- **Production resilience is fallbacks.** A failure a `fallback` catches is success, so one failing field never takes its siblings down with it: the author puts a fallback on each field that can fail, holding a placeholder of that field's own type, and a host that doesn't write the expressions but wants the guarantee sets `operatorDefaults` fallbacks. There is no evaluation mode for it (see "Why there is no report mode (#208)"). Whether the fallbacks are in place is a static question with no runtime role, so it is answered outside the engine, by `fallbackCoverage` in the `./authoring` subpath ([v3-authoring.md](v3-authoring.md), [#209](https://github.com/CarlosNZ/fig-tree-evaluator/issues/209)), which lists each top-level value no fallback covers.
 - **Trace is the debugging tool — in-band-style diagnostics live here.** The editor's failure display (highlight the responsible path in red) is trace consumption, not result inspection: a failing run under `trace: true` throws a `FigTreeError` carrying the partial instance tree as `error.trace` — the failed node marked, with its error attached, and what the run never reached marked as never run — and the editor paints from that tree. The result value never needs to carry diagnostics because the trace tree carries them, addressable by path.
 - **The authoring dry-run** — evaluating against sample data to find where an expression fails — is the editor's: it evaluates sub-trees on their own, so each failure point can be tested in isolation. A dedicated authoring option remains a possible later addition if that proves not enough.
 - **Validate against the rest**: `validate()` needs no data and runs synchronously at keystroke rate; trace requires an actual evaluation. The editor is expected to use both — validate continuously, trace on preview runs.
@@ -279,7 +279,6 @@ fig.validate(expression, options?): ValidationResult   // synchronous
 interface ValidationResult {
   valid: boolean               // no error-severity issues
   issues: Issue[]              // tree order; empty when clean
-  timeoutShielded: boolean     // the rule-3 badge — statically computed, surfaced for the editor
 }
 
 interface Issue {
@@ -361,7 +360,6 @@ fig.validate({
 })
 // {
 //   valid: false,
-//   timeoutShielded: false,
 //   issues: [
 //     { severity: 'error', code: 'unknown-node-key', path: ['thn'], operator: 'if',
 //       parameter: 'thn', suggestion: 'then',

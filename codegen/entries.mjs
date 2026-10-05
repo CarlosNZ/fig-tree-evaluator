@@ -38,15 +38,24 @@ export const ENTRIES = [
     budget: 6_950,
     marker: 'referencesAsGet',
   },
+  {
+    subpath: './authoring',
+    name: 'authoring/index',
+    source: 'src/authoring/index.ts',
+    budget: 32_600,
+    marker: 'fallbackCoverage() takes',
+  },
 ]
 
 /**
  * Where code shared between entries lands. The build is one rollup pass over
  * every entry, so a module two entries import is emitted once, here, rather
  * than copied into each — two copies of the brand symbol, `EvaluationData`
- * or `FigTreeError` would break identity across subpaths. The name is fixed
- * rather than taken from a module inside it, so the chunk keeps its name as
- * its contents change and the PR comment can compare it; should a second
- * chunk appear, rollup numbers it (`shared2.js`).
+ * or `FigTreeError` would break identity across subpaths. There are two:
+ * `engine.js`, the engine `./authoring` shares with the root, and
+ * `shared.js`, the small modules `./format` shares with both. Each is named
+ * by what it holds (rollup.config.mjs) rather than by rollup's numbering, so
+ * it keeps its name as its contents change and the PR comment can compare
+ * it.
  */
 export const CHUNKS_DIR = 'chunks'

@@ -8,6 +8,7 @@
  * one of these (implementation-plan working rule 7).
  */
 import { FigTree, defineOperator, OperatorFailure } from '../index'
+import { fallbackCoverage } from '../authoring'
 import { outcome, print, section } from './showcase'
 
 const fig = new FigTree({ data: { org: 'Acme' } })
@@ -238,7 +239,7 @@ const main = async () => {
   )
   await show('divide by zero degrades to null', { $divide: [1, 0] }, {}, host)
   console.log(
-    `  validate() sees the default fallbacks as shielding: ${host.validate({ a: { $plus: [1] }, b: { $divide: [1, 2] } }).timeoutShielded}\n`
+    `  fallbackCoverage() counts the default fallbacks, even under a timeout: ${JSON.stringify(fallbackCoverage(host, { a: { $plus: [1] }, b: { $divide: [1, 2] } }, { timeout: 50 }))}\n`
   )
 
   section('A custom operator, written against the contract')
@@ -314,7 +315,7 @@ const main = async () => {
     name: { $uper: '$data.name' },
     ratio: { $round: [{ $equal: [1, 1] }] },
   })
-  console.log(`  valid: ${report.valid}, timeoutShielded: ${report.timeoutShielded}\n`)
+  console.log(`  valid: ${report.valid}\n`)
   for (const issue of report.issues)
     console.log(
       `  ${issue.severity.padEnd(7)} ${issue.code.padEnd(24)} ${JSON.stringify(issue.path).padEnd(14)} ${issue.message}`

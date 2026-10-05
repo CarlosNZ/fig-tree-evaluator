@@ -296,6 +296,6 @@ export const inspect = (expression: unknown, options: InspectOptions = {}): void
   // option-dependent checks (maxDepth/maxNodes, sample data) the artifact
   // deliberately never stores
   const result = new FigTree({ ...figOptions, operators }).validate(expression)
-  console.log(`\nvalidate(): valid ${result.valid}   timeoutShielded ${result.timeoutShielded}`)
+  console.log(`\nvalidate(): valid ${result.valid}`)
   printIssues('validate() issues', result.issues)
 }

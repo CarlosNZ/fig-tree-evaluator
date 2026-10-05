@@ -31,7 +31,7 @@ One consequence for [v3-artifact-obligations.md](v3-artifact-obligations.md), wh
 | `holes`                 | Dropped — which nodes are holes follows from `canonicalForm`, and each hole's `timeoutFallback` rides its node                                                                                                                                 |
 | `issues`                | Agreed — `validate()`'s list, with each compile-stream entry's `order`                                                                                                                                                                         |
 | `hasErrors`             | Dropped — `issues` states it: any error-severity entry is what `validate()` calls invalid and `evaluate()` would refuse, and an error carrying an `order` is the compile stream's own                                                          |
-| `timeoutShielded`       | Agreed — the artifact's flag, renamed from `shielded` to match `validate()`'s badge                                                                                                                                                            |
+| `timeoutShielded`       | Agreed — the artifact's flag, renamed from `shielded` to match `validate()`'s badge (which left `validate()` with #209; the report keeps the flag)                                                                                             |
 | `nodeCount`, `maxDepth` | Agreed — the artifact's numbers as they are: composed through fragment calls, the values the limits compare against                                                                                                                            |
 | `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders                                                                                                                         |
 | `identityOnly`          | Dropped — a compile-cache eligibility flag, so machinery; the markers in `canonicalForm` show more, literal payloads included                                                                                                                  |
@@ -155,7 +155,7 @@ type InspectIssue = Issue & { order?: number }
 
 ### `timeoutShielded`
 
-The artifact's flag, under the name `validate()` already publishes it by: true when every top-level hole has a `timeoutFallback` (see "Timeout shielding" above). It is kept although it can be derived, because deriving it means applying the top-level-hole rule rather than reading a list, and because it is the switch that decides whether any `timeoutFallback` is used at all. A constant expression is vacuously shielded — nothing in it can time out. The artifact field was renamed from `shielded` to `timeoutShielded` alongside, so the report still mirrors it.
+The artifact's flag, under the name `validate()` published it by until #209: true when every top-level hole has a `timeoutFallback` (see "Timeout shielding" above). It is kept although it can be derived, because deriving it means applying the top-level-hole rule rather than reading a list, and because it is the switch that decides whether any `timeoutFallback` is used at all. A constant expression is vacuously shielded — nothing in it can time out. The artifact field was renamed from `shielded` to `timeoutShielded` alongside, so the report still mirrors it.
 
 ### `nodeCount`, `maxDepth`
 

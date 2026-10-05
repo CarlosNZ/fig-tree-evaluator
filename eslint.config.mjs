@@ -35,6 +35,11 @@ const SUBPATH_BANS = [
     message:
       'The root entry never imports a subpath: the format conversions are editor tooling, so importing them here would ship them to every host.',
   },
+  {
+    group: ['**/authoring', '**/authoring/**'],
+    message:
+      'The root entry never imports a subpath: the authoring analyses are editor tooling, so importing them here would ship them to every host.',
+  },
 ]
 
 export default tseslint.config(
@@ -97,7 +102,13 @@ export default tseslint.config(
     // The root side of src/ — everything but the subpaths themselves and the
     // playground, which may import anything
     files: ['src/**/*.ts'],
-    ignores: ['src/editor-hints/**', 'src/migrate/**', 'src/format/**', 'src/dev/**'],
+    ignores: [
+      'src/editor-hints/**',
+      'src/migrate/**',
+      'src/format/**',
+      'src/authoring/**',
+      'src/dev/**',
+    ],
     rules: {
       'no-restricted-imports': ['error', { patterns: [V2_BAN, V2_PACKAGE_BAN, ...SUBPATH_BANS] }],
     },
@@ -161,6 +172,30 @@ export default tseslint.config(
               allowTypeImports: true,
               message:
                 'src/format/ imports values only from inside the folder and from the small root modules it shares with the engine (`import type` from anywhere).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // ./authoring analyses the compiled tree, so it reads a compiled handle
+    // through src/FigTree.ts ("`./authoring`" in
+    // docs-dev/v3-specs/v3-packaging.md), and paths through the artifact's
+    // own helper. Its value imports outside the folder are held to those two
+    // modules, so nothing else is pulled into the chunk by accident. Type
+    // imports erase at build, so they may come from anywhere.
+    files: ['src/authoring/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^(?!\\./|\\.\\./(FigTree|compile/artifact)$)',
+              allowTypeImports: true,
+              message:
+                'src/authoring/ imports values only from inside the folder, ../FigTree and ../compile/artifact (`import type` from anywhere).',
             },
           ],
         },

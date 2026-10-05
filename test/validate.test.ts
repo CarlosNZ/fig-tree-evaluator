@@ -13,7 +13,7 @@ test('validate is synchronous and returns the ValidationResult shape', () => {
   const result = fig.validate({ $plus: [1, 2] })
   expect(result.valid).toBe(true)
   expect(result.issues).toEqual([])
-  expect(typeof result.timeoutShielded).toBe('boolean')
+  expect(Object.keys(result).sort()).toEqual(['issues', 'valid'])
 })
 
 test('validate never throws on expression content', () => {
@@ -72,7 +72,6 @@ test('the evaluator-methods worked example: typo key, unresolved var, inert oper
     else: '$vars.username',
   })
   expect(result.valid).toBe(false)
-  expect(result.timeoutShielded).toBe(false)
 
   const unknownKey = result.issues.find((issue) => issue.code === 'unknown-node-key')
   expect(unknownKey?.severity).toBe('error')
@@ -151,7 +150,7 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
   })
 })
 
-test('a fully-constant expression validates clean and vacuously shielded', () => {
+test('a fully-constant expression validates clean', () => {
   const result = fig.validate({ plain: ['data', { nested: true }] })
-  expect(result).toEqual({ valid: true, issues: [], timeoutShielded: true })
+  expect(result).toEqual({ valid: true, issues: [] })
 })

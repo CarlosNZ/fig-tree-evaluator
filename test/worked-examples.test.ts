@@ -13,6 +13,7 @@
  */
 import { FigTree, FigTreeError, ErrorCodes, httpOperators } from '../src'
 import { coreOperators } from '../src/operators'
+import { fallbackCoverage } from '../src/authoring'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
 import { compileSpyOp } from './fixtures/evalOperators'
@@ -353,12 +354,12 @@ describe('lifecycle — the full example, fetch counts and all', () => {
 
 /**
  * Worked example 3 in full (docs-dev/v3-specs/v3-worked-examples.md § 3) —
- * timeout shielding, and the validate badge.
+ * timeout shielding, and what `fallbackCoverage` reports of it.
  *
  * The doc's request takes ~900ms against a 50ms budget; the mock's latency
  * is shorter so the suite stays quick, and the relationship is what matters.
  */
-describe('worked example 3 — timeout shielding and the validate badge', () => {
+describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   const http = new MockHttpClient({ latencyMs: 300, responses: { offers: [{ id: 7 }] } })
   const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
 
@@ -368,8 +369,8 @@ describe('worked example 3 — timeout shielding and the validate badge', () => 
   }
   const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
 
-  it('every hole root carries a static fallback, so validate badges it shielded', () => {
-    expect(fig.validate(banner)).toEqual({ valid: true, issues: [], timeoutShielded: true })
+  it('every hole root carries a static fallback, so none is uncovered under a timeout', () => {
+    expect(fallbackCoverage(fig, banner, { timeout: 50 })).toEqual({ uncovered: [] })
   })
 
   it('under the budget, greeting contributes its real value and offers its static fallback', async () => {
@@ -387,8 +388,8 @@ describe('worked example 3 — timeout shielding and the validate badge', () => 
     expect(http.callCount).toBe(2)
   })
 
-  it('one dynamic fallback un-shields the whole expression: the badge flips, the timeout throws', async () => {
-    expect(fig.validate(banner2)).toEqual({ valid: true, issues: [], timeoutShielded: false })
+  it('one dynamic fallback un-shields the whole expression: its hole is listed, the timeout throws', async () => {
+    expect(fallbackCoverage(fig, banner2, { timeout: 50 })).toEqual({ uncovered: [['offers']] })
     // The step above left the offers in the result cache, and a cache hit
     // cannot time out: the request the deadline is meant to cut off has to
     // be in flight

@@ -7,9 +7,9 @@
  * inventory in "The root entry" there, which test/exports.test.ts holds this
  * file to; the types follow that doc's "Types" list.
  *
- * The root never imports the `./editor-hints` or `./migrate` subpaths. The
- * types of editor-hints' data are exported here instead, so that subpath
- * stays a data module.
+ * The root never imports a subpath. The subpaths' types are exported here
+ * instead, so editor-hints stays a data module and each of the others holds
+ * only its own code.
  */
 export { version } from './version'
 
@@ -179,3 +179,7 @@ export type {
 export type { ObjectClass, PositionalLayout, PositionalShape } from './compile/grammar'
 export type { ReferenceRecognition, ReferenceScope } from './compile/references'
 export type { ReferenceNamespace } from './compile/artifact'
+
+// ── Authoring ────────────────────────────────────────────────────────────
+// The shapes the `./authoring` subpath's analyses take and return.
+export type { FallbackCoverage, FallbackCoverageOptions } from './authoringTypes'

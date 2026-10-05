@@ -284,7 +284,7 @@ The mirror image: the result store empties (next `rate` evaluation refetches), t
 
 ---
 
-## 3 · Timeout shielding — the assembly, and the validate badge
+## 3 · Timeout shielding — the assembly, and fallbackCoverage
 
 ```js
 const banner = {
@@ -292,8 +292,8 @@ const banner = {
   offers: { operator: 'http', url: 'https://api.example.com/offers', fallback: [] }, // static fallback
 }
 
-fig.validate(banner)
-// { valid: true, issues: [], timeoutShielded: true }     // every hole root carries a STATIC fallback
+fallbackCoverage(fig, banner, { timeout: 50 })
+// { uncovered: [] }                                      // every hole root carries a STATIC fallback
 ```
 
 Evaluate with a 50ms budget; the offers request takes ~900ms, `greeting` completes in ~1ms:
@@ -309,13 +309,13 @@ Now un-shield it — change one fallback to a _dynamic_ expression:
 
 ```js
 const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
-fig.validate(banner2) // → { valid: true, issues: [], timeoutShielded: false }
+fallbackCoverage(fig, banner2, { timeout: 50 }) // → { uncovered: [['offers']] }
 
 await fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })
 // ✗ rejects: FigTreeError { code: 'timeout' }            // all-or-nothing: greeting's finished value is discarded
 ```
 
-The dynamic fallback still catches _ordinary_ runtime failures (a 503 from the offers API) — it just can't shield the kill switch, because it could start new work past the deadline. Shielding is all-or-nothing per expression precisely so `validate()` can badge it statically — the edit from `banner` to `banner2` is exactly the silent un-shielding hazard the Node-grammar discoverability note warns about, and the badge flipping `true → false` is the mitigation.
+The dynamic fallback still catches _ordinary_ runtime failures (a 503 from the offers API) — it just can't shield the kill switch, because it could start new work past the deadline. Shielding is all-or-nothing per expression precisely so it can be known statically — the edit from `banner` to `banner2` is exactly the silent un-shielding hazard the Node-grammar discoverability note warns about, and `fallbackCoverage` (in `fig-tree-evaluator/authoring`, [v3-authoring.md](v3-authoring.md)) naming `offers` as uncovered under the timeout is the mitigation. Before #209, `validate()` reported this as a single `timeoutShielded` flag.
 
 ---
 
@@ -377,6 +377,6 @@ Run 1's teaching point: the outcome is **deterministic** regardless of completio
 ## Using these as test cases
 
 - **Inject a scripted mock `HttpClient`** (fixed responses, failure switches, a call counter) and a **recording `CacheStore`** (`{ get, set }` that logs keys). Laziness, memoization, effective-request keying and invalidation all become assertable as _counts and call logs_ — no reaching into engine internals.
-- Binding assertions per example: result values; error `code` / `path` / `fragmentPath` / `cause` presence; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); recompile-vs-refetch split in step 6; the `timeoutShielded` badge flip.
+- Binding assertions per example: result values; error `code` / `path` / `fragmentPath` / `cause` presence; fetch counts per step (1 / 1 / 1 / 1 / 3 across the lifecycle); which cache layer hit (observable indirectly: step 4's content hit = no recompile = still no fetch); recompile-vs-refetch split in step 6; `fallbackCoverage` under the timeout going from `[]` to `[['offers']]`.
 - Non-assertions (illustrative only): cache-key encodings, hash spellings, error message wording, `TraceNode` field names, timing values.
 - These map to testing-strategy **step 2** (hand-authored v3 tests) and are deliberately converter-independent.

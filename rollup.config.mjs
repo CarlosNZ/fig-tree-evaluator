@@ -96,7 +96,12 @@ export default [
       dir: 'build',
       format: 'esm',
       entryFileNames: '[name].js',
-      chunkFileNames: `${CHUNKS_DIR}/shared.js`,
+      // Named by what a chunk holds, never by rollup's numbering, so each
+      // keeps its name in the size reports however the entries' sharing
+      // shifts: the engine `./authoring` shares with the root, and the small
+      // modules `./format` shares with it (codegen/entries.mjs)
+      chunkFileNames: ({ moduleIds }) =>
+        `${CHUNKS_DIR}/${moduleIds.some((id) => id.endsWith('/src/FigTree.ts')) ? 'engine' : 'shared'}.js`,
     },
     // Compiler settings come from tsconfig.json (ES2022 / ESNext modules) —
     // the single source of truth; no inline overrides

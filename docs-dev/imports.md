@@ -4,23 +4,24 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`); the `./format` block re-measured with its reading primitives (#199, #201), and the engine after the sample-data read sites and fragment result types (#200). `./migrate` re-measured October 2026, with the caching rework (#204), and the root's totals with the removal of report mode (#208).
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. Measured September 2026, at the #193 fix (after `e6c02cd`); the `./format` block re-measured with its reading primitives (#199, #201), and the engine after the sample-data read sites and fragment result types (#200). `./migrate` re-measured October 2026, with the caching rework (#204), and the root's totals with the removal of report mode (#208). The root and `./authoring` re-measured October 2026, with the engine chunk the two share (#209).
 
 <!-- prettier-ignore -->
 ```ts
 // ═══ Root: 'fig-tree-evaluator' → build/index.js ═════════════════════════
-// Published as one file plus the chunk it shares with ./format (below), so
-// a consumer's bundler has to shake it, which works because nothing at the
-// file's top level has a side effect a bundler cannot rule out (#193;
-// `pnpm check:package` guards it). Everything imported (35.9 kB) is the
+// Published as one file over two chunks: the engine, which it shares with
+// ./authoring, and the small modules it shares with ./format (both below).
+// A consumer's bundler has to shake them, which works because nothing at
+// their top level has a side effect a bundler cannot rule out (#193;
+// `pnpm check:package` guards it). Everything imported (36.4 kB) is the
 // ceiling.
 
-// ── The engine tree: 30.3 kB ─────────────────────────────────────────────
+// ── The engine tree: 30.6 kB ─────────────────────────────────────────────
 import { FigTree } from 'fig-tree-evaluator'
 // The whole runtime: registry, compiler, validate(), evaluator, caches,
 // fragments and trace. coreOperators is part of it, since FigTree
 // registers the core set itself, so FigTree + coreOperators is also
-// 30.3 kB.
+// 30.6 kB.
 import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────
@@ -81,6 +82,7 @@ import type {
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
   ObjectClass, PositionalLayout, PositionalShape, ReferenceRecognition, ReferenceNamespace,
+  FallbackCoverage, FallbackCoverageOptions,
 } from 'fig-tree-evaluator'
 
 // ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 20.2 kB ══════
@@ -101,8 +103,8 @@ import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 // few small root modules with the engine: the reference grammar, the shared
 // grammar in src/compile/grammar.ts, the type intersection, the path
 // parser, FigTreeError and ErrorCodes. The build emits those once, in
-// build/chunks/shared.js, which the root imports too (the one shared chunk;
-// figures below include it).
+// build/chunks/shared.js, which the root and ./authoring import too
+// (figures below include it).
 
 // ── The conversions ──────────────────────────────────────────────────────
 import { toCanonical } from 'fig-tree-evaluator/format' // 4.6 kB
@@ -123,6 +125,15 @@ import { typesIntersect } from 'fig-tree-evaluator/format' // 0.38 kB
 // the conversions; ObjectClass, PositionalShape, PositionalLayout,
 // ReferenceRecognition, ReferenceNamespace, ReferenceScope, for the
 // primitives.
+
+// ═══ 'fig-tree-evaluator/authoring' → build/authoring/index.js: 31.1 kB ══
+// Analyses the compiled tree, so it shares the engine with the root: the
+// build emits it once, in build/chunks/engine.js, which the root imports
+// too (figures below include it). A caller passes it a FigTree, so the
+// engine is in the bundle already, and beside FigTree it costs 0.5 kB.
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring' // 31.1 kB alone; +0.5 kB beside FigTree
+// Its types come from the root, listed there under "The subpaths' shapes":
+// FallbackCoverage, FallbackCoverageOptions.
 ```
 
-One shared chunk: `./format` and the root share the modules listed in its block, emitted once under `build/chunks/`, so there is one `FigTreeError` class for both. `./migrate` and `./editor-hints` import only types from the root, so their bundles are fully separate. An entry's size budget (`codegen/entries.mjs`) counts its own file compressed together with the chunks it imports.
+Two shared chunks, under `build/chunks/`, each named by what it holds: `engine.js`, the engine the root shares with `./authoring`, and `shared.js`, the modules listed in `./format`'s block, which all three share. Each module is emitted once, so there is one `FigTreeError` class for every entry. `./migrate` and `./editor-hints` import only types from the root, so their bundles are fully separate. An entry's size budget (`codegen/entries.mjs`) counts its own file compressed together with the chunks it imports.

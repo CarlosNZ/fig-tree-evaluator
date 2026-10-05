@@ -314,7 +314,6 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
       issues,
-      timeoutShielded: artifact.timeoutShielded,
     }
   }
 
@@ -516,12 +515,13 @@ let readHandle: ReadHandle | undefined
 
 /**
  * A handle's view, or `undefined` for anything that is not a handle —
- * `CompiledExpression`'s own accessor for the inspector. It lives beside
- * the class rather than on it because anything on the class is public: an
- * instance method would hand the artifact to every holder, and a static
- * one would be reachable through `handle.constructor`. Internal, not
- * barrel surface: it is what lets the inspector live in its own module and
- * stay out of any bundle that never imports it.
+ * `CompiledExpression`'s own accessor for the inspector and the
+ * `./authoring` analyses. It lives beside the class rather than on it
+ * because anything on the class is public: an instance method would hand
+ * the artifact to every holder, and a static one would be reachable
+ * through `handle.constructor`. Internal, not barrel surface: it is what
+ * lets the inspector and `./authoring` live in their own modules and stay
+ * out of any bundle that never imports them.
  */
 export const viewHandle: ReadHandle = (value, call) => readHandle?.(value, call)
 

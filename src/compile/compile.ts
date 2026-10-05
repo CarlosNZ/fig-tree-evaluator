@@ -37,8 +37,8 @@
  *   returns them to the order a reader sees in the document.
  * - **shielding** — a hole whose `fallback` is constant can be filled
  *   without evaluating anything. When every hole has one the expression is
- *   `timeoutShielded`: a timeout becomes constant assembly, and the flag is
- *   the `validate()` badge of the same name.
+ *   `timeoutShielded`: a timeout becomes constant assembly. The
+ *   `./authoring` subpath reports the holes without one (`fallbackCoverage`).
  *
  * One scope concern lives here rather than in the check layer: iterator
  * `as` renaming. Renamed bindings (`$order`, `$orderIndex`) are

@@ -106,7 +106,6 @@ describe('operatorDefaults fallback — the instance-wide catch', () => {
     })
     expect(await fig.evaluate({ $boom: 1 })).toBe('default-fb')
     expect(await fig.evaluate({ $boom: 1, fallback: 'mine' })).toBe('mine')
-    expect(fig.validate({ $boom: 1 }).timeoutShielded).toBe(true)
   })
 })
 
