@@ -23,6 +23,8 @@ pnpm format:check         # the same check CI runs — fails on anything unforma
 pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
 pnpm check:package        # after build: size budgets, tree-shake fixture, packed-package smoke test
 pnpm size                 # re-print the bundle-size report for the existing build/
+pnpm size:imports         # what each import costs, as a tree of what shares what (fresh build, ~5s);
+                          # --write puts it in docs-dev/imports.md
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm getVersion           # regenerate src/version.ts from package.json
 pnpm extractV2Table       # regenerate the converter's two tables (src/migrate/) from the v2 package and the core definitions
