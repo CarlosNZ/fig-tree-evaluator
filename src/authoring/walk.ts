@@ -485,7 +485,7 @@ export class Analysis {
     ctx: Context
   ): Promise<NodeResult> {
     if (attempt.verdict === 'no') return attempt
-    const defaults = node.kind === 'operator' ? node.entry.instanceDefaults : undefined
+    const defaults = node.kind === 'operator' ? node.entry.hostDefaults : undefined
     const fromDefaults = defaults !== undefined && Object.hasOwn(defaults, 'fallback')
     if (node.fallback === undefined && !fromDefaults) return attempt
     const by = { path: node.path }

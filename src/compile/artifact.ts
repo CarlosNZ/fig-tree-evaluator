@@ -92,7 +92,7 @@ export interface ReferenceNode extends CompiledBase {
  * An operator node in canonical form (A1): canonical `name`, named
  * parameters only — shorthand faces, symbol aliases and positional payloads
  * are all normalized away here. `entry` bakes the registry resolution into
- * the artifact (C3), `instanceDefaults` included; each parameter's delivery
+ * the artifact (C3), `hostDefaults` included; each parameter's delivery
  * mode is bound through `entry.definition.parameters` (B3).
  */
 export interface OperatorNode extends CompiledBase {
@@ -247,7 +247,7 @@ export type CompiledNode =
 /**
  * A top-level hole: a maximal evaluable node (A2). `timeoutFallback` is the
  * shielding precompute (B2) — present iff the hole root's fallback subtree
- * (or its operator's `instanceDefaults.fallback`) is classified constant;
+ * (or its operator's `hostDefaults.fallback`) is classified constant;
  * the wrapper object distinguishes an absent fallback from a constant
  * `null` one.
  */

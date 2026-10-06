@@ -122,8 +122,8 @@ const describeNode = (node: CompiledNode): string => {
       const marks: string[] = []
       if (node.noCache === true) marks.push('noCache')
       if (node.precomputed !== undefined) marks.push('precomputed')
-      if (node.entry.instanceDefaults !== undefined)
-        marks.push(`instanceDefaults ${Object.keys(node.entry.instanceDefaults).join('+')}`)
+      if (node.entry.hostDefaults !== undefined)
+        marks.push(`hostDefaults ${Object.keys(node.entry.hostDefaults).join('+')}`)
       return `operator  ${node.name}${marks.length === 0 ? '' : `  {${marks.join('; ')}}`}`
     }
     case 'fragmentCall':

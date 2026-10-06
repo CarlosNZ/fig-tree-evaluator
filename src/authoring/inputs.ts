@@ -80,7 +80,7 @@ const defaultOf = (
   name: string,
   declared: ValidatedParameter
 ): Known | undefined => {
-  const defaults = node.entry.instanceDefaults
+  const defaults = node.entry.hostDefaults
   if (defaults !== undefined && Object.hasOwn(defaults, name)) return exactly(defaults[name])
   if (!('default' in declared)) return undefined
   // The `EvaluationData` sentinel delivers the evaluation data

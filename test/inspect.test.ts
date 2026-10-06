@@ -255,7 +255,7 @@ describe('canonicalForm', () => {
       { $join: ['a', '$data.b'], noCache: true },
       { operatorDefaults: { join: { delimiter: '-' } } }
     )
-    expect(canonicalForm).toMatchObject({ noCache: true, instanceDefaults: ['delimiter'] })
+    expect(canonicalForm).toMatchObject({ noCache: true, hostDefaults: ['delimiter'] })
   })
 })
 
@@ -278,7 +278,7 @@ describe('timeoutFallback', () => {
     expect(hole('authored')).toMatchObject({ timeoutFallback: 0 })
     expect(hole('defaulted')).toMatchObject({
       timeoutFallback: 'unknown',
-      instanceDefaults: ['fallback'],
+      hostDefaults: ['fallback'],
     })
     expect(hole('defaulted')).not.toHaveProperty('fallback')
     expect(hole('lifted')).toMatchObject({ timeoutFallback: 'Hello!' })

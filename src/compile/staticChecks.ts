@@ -214,14 +214,14 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
  * replaces null elements only, and a whole null reaches the type check.
  */
 const nullIsReplaced = (node: OperatorNode, target: string) => {
-  const { definition, instanceDefaults } = node.entry
+  const { definition, hostDefaults } = node.entry
   if (definition.parameters[target]?.elementNullPolicy !== undefined) return false
   for (const [name, declared] of definition.resolution.entries) {
     if (!declared.replacesNullAt?.includes(target)) continue
     const holder = node.params[name]
     if (holder === undefined) {
-      const fromDefaults = instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)
-      if (fromDefaults && instanceDefaults[name] !== null) return true
+      const fromDefaults = hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)
+      if (fromDefaults && hostDefaults[name] !== null) return true
     } else if (!(holder.kind === 'constant' && holder.value === null)) return true
   }
   return false
@@ -344,7 +344,7 @@ const checkInstanceFallback = (
   node: OperatorNode,
   nullReplaced: boolean
 ) => {
-  const defaults = node.entry.instanceDefaults
+  const defaults = node.entry.hostDefaults
   if (defaults === undefined || !Object.hasOwn(defaults, 'fallback')) return
   const unfit = valueMismatch(declared, defaults.fallback, nullReplaced)
   if (unfit !== undefined)

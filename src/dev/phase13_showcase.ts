@@ -117,8 +117,7 @@ const parameterLine = (name: string, info: OperatorInfo): string => {
   const bits = [String(block(parameter.type))]
   if (!parameter.required) bits.push('optional')
   if (Object.hasOwn(parameter, 'default')) bits.push(`default ${block(parameter.default)}`)
-  if (Object.hasOwn(parameter, 'instanceDefault'))
-    bits.push(`instance ${block(parameter.instanceDefault)}`)
+  if (Object.hasOwn(parameter, 'hostDefault')) bits.push(`host ${block(parameter.hostDefault)}`)
   if (parameter.evaluation !== 'eager') bits.push(parameter.evaluation)
   return `      ${name.padEnd(16)}${bits.join(', ')}`
 }
@@ -150,7 +149,7 @@ const main = async () => {
       info.cache ? 'caches' : null,
       info.restParam !== null ? `rest: ${info.restParam}` : null,
       info.timeoutParam !== null ? `deadline: ${info.timeoutParam}` : null,
-      info.instanceNoCache === true ? 'caching turned off by operatorDefaults' : null,
+      info.hostNoCache === true ? 'caching turned off by operatorDefaults' : null,
     ].filter((flag) => flag !== null)
     console.log(`  ${name} — ${info.description}`)
     for (const parameter of Object.keys(info.parameters))
@@ -160,7 +159,7 @@ const main = async () => {
   }
 
   console.log(
-    '  Authored value and instance override are reported side by side —\n' +
+    '  Authored value and host override are reported side by side —\n' +
       "  `round.decimals` still declares 0, and this host's 2 sits beside it,\n" +
       '  so a tool can tell a definition from a deployment.\n'
   )

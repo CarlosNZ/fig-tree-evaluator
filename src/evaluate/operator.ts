@@ -198,7 +198,7 @@ const classifyBodyFailure = (
 const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {
   const own = node.fallback
   if (own !== undefined) return () => evaluateNode(own, ctx)
-  const defaults = node.entry.instanceDefaults
+  const defaults = node.entry.hostDefaults
   if (defaults !== undefined && Object.hasOwn(defaults, 'fallback')) return () => defaults.fallback
   return undefined
 }

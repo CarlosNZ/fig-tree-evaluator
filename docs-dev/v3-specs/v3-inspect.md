@@ -75,7 +75,7 @@ type InspectNode = { order: number; path: Path } & (
       fallback?: InspectNode
       timeoutFallback?: Json // the constant a timeout splices in; present iff shielded
       noCache?: true
-      instanceDefaults?: string[]
+      hostDefaults?: string[]
     }
   | {
       kind: 'fragmentCall'
@@ -106,7 +106,7 @@ type InspectNode = { order: number; path: Path } & (
 - **`path`** — the node's location in the source as authored: the path issues and `FigTreeError` report. It differs from the node's position in the tree wherever normalization moved things — `["status", "$match", 0]` is `match`'s `value` parameter.
 - **Key order** — `order`, `kind`, `path`, then `vars` where present (compiled first, and in scope for everything below it), then the kind's own fields.
 - **`reference`** — the canonical spelling: namespace aliases normalized (`$d.customer.name` → `$data.customer.name`), the drill path rendered by `renderSegments` (so a `[*]` projection survives), and an `as` binding under its bound name (`$item.name`, with `binding: "item"`). `authored` keeps the raw spelling.
-- **`operator`** — the canonical name only; the registry entry behind it is machinery. `instanceDefaults` lists the keys `operatorDefaults` applied to the node; the values are in `options.operatorDefaults`.
+- **`operator`** — the canonical name only; the registry entry behind it is machinery. `hostDefaults` lists the keys `operatorDefaults` applied to the node; the values are in `options.operatorDefaults`.
 - **`fragmentCall`** — `resolved` is false only where the name resolved to nothing, which is already an error issue. The body is not in the report at all: the names of every fragment reachable are in `dependencies.fragments`, and the rest is `getFragments()`'s (see `fragments` in the table).
 - **`timeoutFallback`** — on an `operator` or `fragmentCall` node that is a top-level hole, where the hole has one: the constant itself, converted like any authored value. The key's presence is the fact, so a constant `null` fallback reads as `timeoutFallback: null`. See "Timeout shielding" below.
 - **`skeleton`** — `shape` is the constant container with each hole's slot holding `"<hole>"`, and `holes` lists each hole's splice position `at` (relative to the shape) with its node. The `at` list is what identifies the holes, so an authored `"<hole>"` string cannot be mistaken for one. A hole's absolute path is its node's `path`. The shape is filled by the engine's own `splice()`, a placeholder standing in for each hole's value, so it is assembled exactly as evaluation assembles a result. In an object shape the hole keys therefore follow the constant ones rather than keeping their authored places — the artifact's skeleton holds a hole's key only as its `at` — and a `__proto__` key reads as the engine treats it, dropped beside a hole ([#182](https://github.com/CarlosNZ/fig-tree-evaluator/issues/182)).
@@ -129,7 +129,7 @@ The rule: a constant is a node where it fills a slot that needs one — a parame
 A top-level hole takes its `timeoutFallback` from one of three sources, and only the first is visible on the node without it:
 
 - its own constant `fallback` — `total`, `0`, beside its `fallback` node;
-- a constant `fallback` in `operatorDefaults` — `contact`, `"unknown"`, which the node otherwise shows only as `instanceDefaults: ["fallback"]`;
+- a constant `fallback` in `operatorDefaults` — `contact`, `"unknown"`, which the node otherwise shows only as `hostDefaults: ["fallback"]`;
 - for a fragment call with no `fallback` of its own, the timeout fallback of its target's body, lifted — `greeting`, `"Hello!"`, invisible at the call site.
 
 A dynamic `fallback` (`fallback: '$data.x'`) never counts, since it could start new work past the deadline.
@@ -343,7 +343,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
             }
           },
           "timeoutFallback": "unknown",
-          "instanceDefaults": ["fallback"]
+          "hostDefaults": ["fallback"]
         }
       },
       {

@@ -144,25 +144,25 @@ describe('operatorDefaults — reported beside, never merged over', () => {
   test('a parameter override sits beside the authored default', () => {
     const decimals = find(snapshot, 'round').parameters.decimals
     expect(decimals.default).toBe(0) // what the operator declares
-    expect(decimals.instanceDefault).toBe(2) // what this host set
+    expect(decimals.hostDefault).toBe(2) // what this host set
   })
 
   test('the modifier overrides get their own keys', () => {
-    expect(find(snapshot, 'custom').instanceNoCache).toBe(true)
+    expect(find(snapshot, 'custom').hostNoCache).toBe(true)
     expect(find(snapshot, 'custom').cache).toBe(true) // still the definition's
-    expect(find(snapshot, 'regex').instanceFallback).toBe(null)
+    expect(find(snapshot, 'regex').hostFallback).toBe(null)
   })
 
   test('presence, not value — an override OF null is distinguishable', () => {
     const regex = find(snapshot, 'regex')
-    expect(Object.hasOwn(regex.parameters.noMatchDefault, 'instanceDefault')).toBe(true)
-    expect(regex.parameters.noMatchDefault.instanceDefault).toBe(null)
-    expect(Object.hasOwn(regex, 'instanceFallback')).toBe(true)
+    expect(Object.hasOwn(regex.parameters.noMatchDefault, 'hostDefault')).toBe(true)
+    expect(regex.parameters.noMatchDefault.hostDefault).toBe(null)
+    expect(Object.hasOwn(regex, 'hostFallback')).toBe(true)
     // ...and an operator with no entry carries no override keys at all
     const plus = find(snapshot, 'plus')
-    expect(Object.hasOwn(plus, 'instanceNoCache')).toBe(false)
-    expect(Object.hasOwn(plus, 'instanceFallback')).toBe(false)
-    expect(Object.hasOwn(plus.parameters.values, 'instanceDefault')).toBe(false)
+    expect(Object.hasOwn(plus, 'hostNoCache')).toBe(false)
+    expect(Object.hasOwn(plus, 'hostFallback')).toBe(false)
+    expect(Object.hasOwn(plus.parameters.values, 'hostDefault')).toBe(false)
   })
 
   test('noCache on an operator that never caches is refused at construction', () => {

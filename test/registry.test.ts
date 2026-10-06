@@ -138,12 +138,12 @@ describe('buildRegistry — operatorDefaults validation', () => {
       operatorDefaults: { equal: { caseInsensitive: true, fallback: 0 } },
     })
     const entry = resolveOperator(registry, 'equal')
-    expect(entry?.instanceDefaults).toEqual({ caseInsensitive: true, fallback: 0 })
-    expect(Object.isFrozen(entry?.instanceDefaults)).toBe(true)
+    expect(entry?.hostDefaults).toEqual({ caseInsensitive: true, fallback: 0 })
+    expect(Object.isFrozen(entry?.hostDefaults)).toBe(true)
   })
 
   it('leaves entries without defaults bare', () => {
     const registry = buildRegistry({ operators: [equalLike()] })
-    expect(resolveOperator(registry, 'equal')?.instanceDefaults).toBeUndefined()
+    expect(resolveOperator(registry, 'equal')?.hostDefaults).toBeUndefined()
   })
 })

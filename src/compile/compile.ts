@@ -1900,7 +1900,7 @@ const timeoutFallbackFor = (
   if (node.fallback !== undefined)
     return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
   if (node.kind === 'operator') {
-    const defaults = node.entry.instanceDefaults
+    const defaults = node.entry.hostDefaults
     // The registry stores operatorDefaults fallbacks unclassified — the
     // shared probe answers constancy for them (src/compile/probe.ts)
     if (

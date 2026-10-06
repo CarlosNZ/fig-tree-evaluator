@@ -38,7 +38,7 @@ export interface RegistryEntry {
    * plus the `fallback` / `noCache` modifier pseudo-keys, as authored.
    * Absent when `operatorDefaults` has no entry for it.
    */
-  instanceDefaults?: Readonly<Record<string, unknown>>
+  hostDefaults?: Readonly<Record<string, unknown>>
 }
 
 /**
@@ -49,7 +49,7 @@ export interface RegistryEntry {
  * introspection share.
  */
 export const operatorCaches = (entry: RegistryEntry): boolean =>
-  entry.definition.cache && entry.instanceDefaults?.noCache !== true
+  entry.definition.cache && entry.hostDefaults?.noCache !== true
 
 export interface OperatorRegistry {
   /** Canonical name → entry; insertion order is registration order. */
@@ -312,7 +312,7 @@ const validateOperatorDefaults = (
         }
       }
     }
-    if (valid) entry.instanceDefaults = Object.freeze({ ...defaults })
+    if (valid) entry.hostDefaults = Object.freeze({ ...defaults })
   }
 }
 

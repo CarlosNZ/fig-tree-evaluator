@@ -71,7 +71,7 @@ export const resolveParams = async (
   node: OperatorNode,
   ctx: EvaluationContext
 ): Promise<ResolvedParameters> => {
-  const { definition, instanceDefaults } = node.entry
+  const { definition, hostDefaults } = node.entry
   const { entries, whole, perElement } = definition.resolution
 
   // ── Pass 1: start everything ──────────────────────────────────────
@@ -111,8 +111,8 @@ export const resolveParams = async (
           const thunk =
             supplied !== undefined
               ? once(() => evaluateNode(supplied, ctx))
-              : instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)
-                ? once(() => instanceDefaults[name])
+              : hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)
+                ? once(() => hostDefaults[name])
                 : undefined
           if (thunk !== undefined)
             for (const target of declared.replacesNullAt) (holders ??= {})[target] = thunk
@@ -176,8 +176,8 @@ export const resolveParams = async (
     const unset =
       value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
     if (!unset) continue
-    if (instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name)) {
-      resolved[name] = instanceDefaults[name]
+    if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)) {
+      resolved[name] = hostDefaults[name]
     } else if ('default' in declared) {
       resolved[name] = declared.default === EvaluationData ? ctx.data : declared.default
     } else {

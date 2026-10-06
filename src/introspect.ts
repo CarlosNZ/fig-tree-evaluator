@@ -93,7 +93,7 @@ export const toDependencies = (dependencies: ArtifactDependencies): Dependencies
 /**
  * One parameter as `getOperators()` reports it: the validated declaration,
  * every documented default already filled by `defineOperator()`, plus the
- * instance override where `operatorDefaults` supplies one.
+ * host's override where `operatorDefaults` supplies one.
  *
  * `default` travels as authored, which includes the `EvaluationData`
  * sentinel (`get.from` declares it). That is a symbol: it survives a
@@ -108,8 +108,10 @@ export interface ParameterInfo extends ValidatedParameter {
    * there is an override — `null` is a legitimate one, so a consumer must
    * read presence, not value. Never merged over `default`: a tool has to
    * be able to tell what the operator declares from what this host set.
+   * The line is the role, not the author — on a host's own operator, the
+   * host wrote `default` too, as the definition's author.
    */
-  instanceDefault?: unknown
+  hostDefault?: unknown
 }
 
 /**
@@ -140,16 +142,16 @@ export interface OperatorInfo extends Omit<
    * `true` where `operatorDefaults` turned this operator's caching off;
    * absent otherwise. Caching can only be turned off after the definition
    * declares it, so the operator caches on this instance when
-   * `cache && !instanceNoCache` — the one field where a present override
+   * `cache && !hostNoCache` — the one field where a present override
    * does not simply win over the definition's value.
    */
-  instanceNoCache?: true
+  hostNoCache?: true
   /**
    * What `operatorDefaults` set as this operator's fallback. No
    * definition-level counterpart exists — `fallback` is a node grammar
    * key, not a declaration.
    */
-  instanceFallback?: unknown
+  hostFallback?: unknown
 }
 
 /** One fragment as `getFragments()` reports it. The body is withheld. */
@@ -210,12 +212,12 @@ export interface FragmentInfo {
  */
 export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
   [...registry.operators.values()].map((entry) => {
-    const { definition, instanceDefaults } = entry
+    const { definition, hostDefaults } = entry
     const info: OperatorInfo = {
       name: definition.name,
       category: definition.category,
       description: definition.description,
-      parameters: parameterSnapshot(definition.parameters, instanceDefaults),
+      parameters: parameterSnapshot(definition.parameters, hostDefaults),
       restParam: definition.restParam,
       timeoutParam: definition.timeoutParam,
       cache: definition.cache,
@@ -228,10 +230,9 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
       info.positionalParams = definition.positionalParams
     // Presence by `hasOwn`, never by value: an override OF null is a real
     // override, and "degrade to null" is the common fallback
-    if (instanceDefaults !== undefined) {
-      if (instanceDefaults.noCache === true) info.instanceNoCache = true
-      if (Object.hasOwn(instanceDefaults, 'fallback'))
-        info.instanceFallback = instanceDefaults.fallback
+    if (hostDefaults !== undefined) {
+      if (hostDefaults.noCache === true) info.hostNoCache = true
+      if (Object.hasOwn(hostDefaults, 'fallback')) info.hostFallback = hostDefaults.fallback
     }
     return info
   })
@@ -244,13 +245,13 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
  */
 const parameterSnapshot = (
   parameters: Record<string, ValidatedParameter>,
-  instanceDefaults: Readonly<Record<string, unknown>> | undefined
+  hostDefaults: Readonly<Record<string, unknown>> | undefined
 ): Record<string, ParameterInfo> => {
   const snapshot: Record<string, ParameterInfo> = {}
   for (const [name, parameter] of Object.entries(parameters)) {
     const info: ParameterInfo = { ...parameter }
-    if (instanceDefaults !== undefined && Object.hasOwn(instanceDefaults, name))
-      info.instanceDefault = instanceDefaults[name]
+    if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name))
+      info.hostDefault = hostDefaults[name]
     snapshot[name] = info
   }
   return snapshot

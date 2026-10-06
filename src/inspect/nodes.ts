@@ -11,7 +11,7 @@
  * report's shape names a few fields its own way and derives others — a
  * rendered `reference` beside its `authored` spelling, `operator`, `shape`
  * and `elements` for the artifact's `name`, `skeleton` and `nodes`, and
- * `resolved`, `instanceDefaults` and `timeoutFallback` from what is dropped
+ * `resolved`, `hostDefaults` and `timeoutFallback` from what is dropped
  * — which is why each kind is built by its own case.
  */
 import {
@@ -49,7 +49,7 @@ export type InspectNode = { order: number; path: Path } & (
       /** The constant a top-level hole's timeout assembly splices in. */
       timeoutFallback?: Json
       noCache?: true
-      instanceDefaults?: string[]
+      hostDefaults?: string[]
     }
   | {
       kind: 'fragmentCall'
@@ -119,9 +119,9 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
           ...(node.fallback === undefined ? {} : { fallback: render(node.fallback) }),
           ...shielding(node),
           ...(node.noCache === undefined ? {} : { noCache: node.noCache }),
-          ...(node.entry.instanceDefaults === undefined
+          ...(node.entry.hostDefaults === undefined
             ? {}
-            : { instanceDefaults: Object.keys(node.entry.instanceDefaults) }),
+            : { hostDefaults: Object.keys(node.entry.hostDefaults) }),
         }
       case 'fragmentCall':
         return {
