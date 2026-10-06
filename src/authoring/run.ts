@@ -31,11 +31,12 @@ import type { NodeResult } from './walk'
 
 /**
  * A child the body may ask for: a lazy parameter's, an element or entry of
- * a literal container at a container-lazy parameter, or an `each`.
+ * a literal container at a container-lazy parameter, or an `each`, walked
+ * once or once per element.
  */
 export interface Child {
   param: string
-  /** The element's index, or the entry's key */
+  /** The element's index or the entry's key; an `each`'s element's index */
   at?: number | string
   result: NodeResult
 }
@@ -124,11 +125,10 @@ export const runNode = async (
   const asked = children.map((child) => {
     const declared = parameters[child.param]
     const outcomes = outcomesOf(child, declared)
-    // An `each` comes to the same for every element, as far as the walk knows
-    return {
-      child,
-      outcomes: declared.evaluation === 'perElement' && outcomes.length > 1 ? [UNKNOWN] : outcomes,
-    }
+    // An `each` walked once comes to the same for every element, as far as
+    // the walk knows
+    const once = declared.evaluation === 'perElement' && child.at === undefined
+    return { child, outcomes: once && outcomes.length > 1 ? [UNKNOWN] : outcomes }
   })
   const count = () =>
     [...values, ...asked].reduce((product, { outcomes }) => product * outcomes.length, 1)
@@ -198,7 +198,7 @@ export const runNode = async (
  * an element is judged for truthiness only.
  */
 const handedBack = (child: Child, declared: ValidatedParameter): Known =>
-  child.at === undefined
+  child.at === undefined || declared.evaluation === 'perElement'
     ? vetted(declared, child.result.output)
     : declared.truthiness
       ? ofType('boolean')
@@ -324,17 +324,20 @@ const runOnce = async (
     (value: unknown): unknown =>
       declared.truthiness ? isTruthy(value) : value
 
-  /** What the body gets on asking for a child. */
-  const answer = (child: Child, vet: (value: unknown) => unknown): Promise<unknown> => {
-    reached.add(child)
-    const outcome = chosen.get(child)!
+  /**
+   * What the body gets on asking for a child: a stand-in for an element the
+   * walk has none for.
+   */
+  const answer = (child: Child | undefined, vet: (value: unknown) => unknown): Promise<unknown> => {
+    if (child !== undefined) reached.add(child)
+    const outcome = child === undefined ? UNKNOWN : chosen.get(child)!
     if ('unknown' in outcome) {
       const pending = new Promise<never>(() => {})
-      standIns.set(pending, child)
+      if (child !== undefined) standIns.set(pending, child)
       waitOnUnknown()
       return pending
     }
-    if ('fails' in outcome) return rejected(marker(child))
+    if ('fails' in outcome) return rejected(marker(child!))
     try {
       return Promise.resolve(vet(outcome.value))
     } catch (error) {
@@ -433,23 +436,30 @@ const runOnce = async (
   }
 
   for (const [name, declared] of definition.resolution.perElement) {
-    const child = byParam.get(name)?.[0]
-    if (child === undefined || declared.over === undefined) continue
+    if (node.params[name] === undefined || declared.over === undefined) continue
+    const children = byParam.get(name) ?? []
     const over = params[declared.over]
     const collection = Array.isArray(over) ? over : []
+    // Walked once for every element, or once for each element it is given
+    const once = children.length === 1 && children[0].at === undefined
+    if (!once && children.length !== collection.length) return undefined
+    // An index the input does not have gets a stand-in
+    const childAt = (index: number): Child | undefined =>
+      children[once ? (index >= 0 && index < collection.length ? 0 : -1) : index]
     const vet = vetParameter(name, declared)
     const asked = new Map<number, Promise<unknown>>()
     const each = {
       evaluate: (index: number) => {
         let pending = asked.get(index)
-        if (pending === undefined) asked.set(index, (pending = answer(child, vet)))
+        if (pending === undefined) asked.set(index, (pending = answer(childAt(index), vet)))
         return pending
       },
-      settle: () =>
-        stream(
-          collection.map((_element, index) => ({ index, child })),
-          vet
-        ),
+      settle: () => {
+        const items = collection.map((_element, index) => ({ index, child: childAt(index)! }))
+        // The engine starts every element at once
+        for (const { child } of items) reached.add(child)
+        return stream(items, vet)
+      },
     }
     made.add(each)
     params[name] = each

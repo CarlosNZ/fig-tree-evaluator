@@ -15,6 +15,8 @@
  *   over the spread is among the analysis's findings, uncovered if it
  *   rejected the evaluation, covered at the fallback the trace shows
  *   caught it;
+ * - certainty: no node the analysis says always fails is shown returning a
+ *   value, wherever the trace shows it evaluated;
  * - progress, reported and never failed on: how many cases give exactly
  *   their expected findings.
  */
@@ -165,6 +167,27 @@ const caughtIn = (root: TraceNode | undefined): Caught[] => {
   return found
 }
 
+/**
+ * Every node a trace shows returning a value, located as a finding is: its
+ * code is the empty string, since it has none.
+ */
+const returnedIn = (root: TraceNode | undefined): Located[] => {
+  const found: Located[] = []
+  const visit = (entry: TraceNode, call: TraceNode | undefined) => {
+    const body = entry.source?.fragment
+    if (entry.status === 'value')
+      found.push(
+        body !== undefined
+          ? { at: call!.path, code: '', fragment: body, fragmentPath: entry.path }
+          : { at: entry.path, code: '' }
+      )
+    const next = entry.kind === 'fragment' && body === undefined ? entry : call
+    for (const child of entry.children ?? []) visit(child, next)
+  }
+  if (root !== undefined) visit(root, undefined)
+  return found
+}
+
 const matches = (finding: Finding, seen: Located | Caught): boolean =>
   (finding.code === seen.code || finding.external === true) &&
   // The deadline rejects the evaluation as a whole, at the root
@@ -179,6 +202,7 @@ const matches = (finding: Finding, seen: Located | Caught): boolean =>
 interface Outcome {
   rejected?: FigTreeError
   caught: Caught[]
+  returned: Located[]
 }
 
 const run = async (
@@ -194,10 +218,10 @@ const run = async (
       trace: true,
       ...(timeout !== undefined ? { timeout } : {}),
     })
-    return { caught: caughtIn(trace) }
+    return { caught: caughtIn(trace), returned: returnedIn(trace) }
   } catch (error) {
     if (!isFigTreeError(error)) throw error
-    return { rejected: error, caught: caughtIn(error.trace) }
+    return { rejected: error, caught: caughtIn(error.trace), returned: returnedIn(error.trace) }
   }
 }
 
@@ -381,6 +405,32 @@ const unsound = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
 }
 
 /**
+ * Every finding the analysis says always fails whenever its node is
+ * reached, where the trace shows that node returning a value.
+ */
+const uncertain = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
+  const problems: string[] = []
+  const certain = [...analysis.uncovered, ...analysis.covered].filter(
+    (finding) => finding.certainty === 'always'
+  )
+  for (const { data, timed, returned } of seen) {
+    if (timed) continue
+    for (const finding of certain)
+      if (
+        returned.some(
+          (node) =>
+            same(node.at, finding.path) &&
+            node.fragment === finding.fragment &&
+            same(node.fragmentPath, finding.fragmentPath)
+        )
+      )
+        problems.push(`${JSON.stringify(finding)} returned with ${JSON.stringify(data)}`)
+    if (problems.length >= 5) break
+  }
+  return problems
+}
+
+/**
  * A finding as the progress count compares it: the corpus's terms mapped
  * to the analysis's. A `parameter` counts only where the corpus names one.
  */
@@ -455,6 +505,7 @@ for (const [section, cases] of Object.entries(sections))
 
       const analysis = await fallbackCoverage(fig, item.expression, item.options)
       expect(unsound(analysis, seen)).toEqual([])
+      expect(uncertain(analysis, seen)).toEqual([])
       progress.total++
       if (exact(item, analysis)) progress.exact++
     })

@@ -1107,6 +1107,174 @@ describe('running a node', () => {
   })
 })
 
+describe('per-element walks', () => {
+  const findings = async (expression: unknown) =>
+    (await fallbackCoverage(fig, expression)).uncovered.map((finding) => ({
+      ...where(finding),
+      certainty: finding.certainty,
+    }))
+  const divisor = (path: (string | number)[], certainty: 'may' | 'always') => ({
+    path,
+    code: ErrorCodes.nonFiniteResult,
+    parameter: 'by',
+    certainty,
+  })
+  const inverse = { $divide: [1, '$element'] }
+
+  test('each element is walked with its own $element and $index', async () => {
+    // Element 1 decides some before element 0's division by 0 matters
+    expect(await findings({ $some: { input: [0, 1], each: inverse } })).toEqual([])
+    const each = { $divide: [1, '$nIndex'] }
+    expect(await findings({ $some: { input: ['a', 'b'], as: 'n', each } })).toEqual([])
+  })
+
+  test('an element that gives one of a few values is run with each of them', async () => {
+    // Element 0 matches or not, element 1 always does: find never needs its
+    // noMatchDefault, so it never returns null
+    const each = { $if: ['$data.c', true, { $equal: ['$index', 1] }] }
+    const found = { $find: { input: [[1], [2]], each } }
+    expect(await findings({ $map: { input: found, each: '$element' } })).toEqual([])
+  })
+
+  test('a failure certain for one element and absent for another may happen', async () => {
+    // Nothing decides every, so element 0's parked failure fails it
+    expect(await findings({ $every: { input: [0, 1], each: inverse } })).toEqual([
+      divisor(['$every', 'each'], 'may'),
+    ])
+    expect(await findings({ $map: { input: [0, 0], each: inverse } })).toEqual([
+      divisor(['$map', 'each'], 'always'),
+    ])
+  })
+
+  test('an element a decider never needed reports only what its own fallbacks catch', async () => {
+    const each = { ...inverse, fallback: false }
+    const { uncovered, covered } = await fallbackCoverage(fig, {
+      $some: { input: [1, 0], each },
+    })
+    expect(uncovered).toEqual([])
+    expect(
+      covered.map(({ path, certainty, coveredBy }) => ({ path, certainty, coveredBy }))
+    ).toEqual([{ path: ['$some', 'each'], certainty: 'may', coveredBy: ['$some', 'each'] }])
+  })
+
+  test('a vars block in an each is walked per element, one outside it once', async () => {
+    const vars = { d: { $subtract: ['$element', 1] } }
+    expect(
+      await findings({ $map: { input: [2, 1], each: { $divide: [1, '$vars.d'], vars } } })
+    ).toEqual([divisor(['$map', 'each'], 'may')])
+    const outside = {
+      $map: { input: [1, 2], each: { $plus: ['$element', '$vars.k'] } },
+      vars: { k: { $length: '$data.s' } },
+    }
+    expect(await coverage(outside)).toEqual({
+      uncovered: [{ path: ['vars', 'k'], code: ErrorCodes.typeCheck, parameter: 'value' }],
+      covered: [],
+    })
+  })
+
+  test('a var reads the bindings where it is declared', async () => {
+    // x is the outer element, an array, whatever the inner one is
+    const each = {
+      $map: { input: '$element', each: { $upper: '$vars.x' } },
+      vars: { x: '$element' },
+    }
+    expect(await findings({ $map: { input: [['a'], ['b']], each } })).toEqual([
+      {
+        path: ['$map', 'each', '$map', 'each'],
+        code: ErrorCodes.typeCheck,
+        parameter: 'value',
+        certainty: 'always',
+      },
+    ])
+  })
+
+  test('a map not run keeps what each element gave, in order', async () => {
+    // Two elements, each from 1 up: never empty
+    const each = { $plus: ['$element', { $length: '$data.s', fallback: 0 }] }
+    expect(await findings({ $max: { $map: { input: [1, 2], each } } })).toEqual([])
+    expect(await findings({ $divide: [1, { $max: { $map: { input: [1, 2], each } } }] })).toEqual(
+      []
+    )
+  })
+
+  test('past 16 walks of a node, its each is walked once', async () => {
+    const many = Array.from({ length: 17 }, (_, i) => i)
+    expect(await findings({ $some: { input: many, each: inverse } })).toEqual([
+      divisor(['$some', 'each'], 'may'),
+    ])
+    // Nested walks multiply: 8 × 2 are walked per element, 9 × 2 are not
+    const nested = (rows: number) => ({
+      $map: {
+        input: Array.from({ length: rows }, () => [0, 1]),
+        each: { $some: { input: '$element', each: inverse } },
+      },
+    })
+    expect(await findings(nested(8))).toEqual([])
+    expect(await findings(nested(9))).toEqual([divisor(['$map', 'each', '$some', 'each'], 'may')])
+  })
+
+  test('an empty input walks no element', async () => {
+    expect(await findings({ $map: { input: [], each: { $divide: [1, 0] } } })).toEqual([])
+  })
+
+  test('a host body asking for an element the input does not have is not run', async () => {
+    const sixth = defineOperator({
+      name: 'sixth',
+      category: 'array',
+      description: 'What each gives for the sixth element',
+      parameters: {
+        input: { type: 'array' },
+        each: { type: 'any', evaluation: 'perElement', over: 'input' },
+      },
+      positionalParams: ['input', 'each'],
+      coverage: {},
+      evaluate: ({ each }) => each.evaluate(5),
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [sixth]] })
+    // The engine binds no element, so it returns null and nothing fails; a
+    // run giving it the one element's value would say the root always does
+    const { uncovered } = await fallbackCoverage(hosts, {
+      $divide: [1, { $subtract: [{ $sixth: { input: [2], each: '$element' } }, 2] }],
+    })
+    expect(uncovered.map(({ path, certainty }) => ({ path, certainty }))).toEqual([
+      { path: [], certainty: 'may' },
+      { path: ['$divide', 1], certainty: 'may' },
+    ])
+  })
+})
+
+describe('a fragment call', () => {
+  const withFragments = withRisky({
+    fragments: {
+      maybeFail: {
+        expression: { $if: ['$params.c', { $divide: [1, 0] }, 1] },
+        parameters: { c: { type: 'any' } },
+      },
+      ratio: {
+        expression: { $divide: ['$params.a', '$params.b'] },
+        parameters: { a: { type: 'number' }, b: { type: 'number' } },
+      },
+    },
+  })
+
+  test('is not certain to fail for a certain failure its body or argument may skip', async () => {
+    // Each call returns 1 where it returns, so the root divides by 0
+    const calls = [
+      { $maybeFail: { c: '$data.c' } },
+      { $ratio: { a: { $if: ['$data.c', { $divide: [1, 0] }, 2] }, b: 2 } },
+    ]
+    for (const call of calls) {
+      const { uncovered } = await fallbackCoverage(withFragments, {
+        $divide: [1, { $subtract: [call, 1] }],
+      })
+      // Whatever the call returns, the root's own check still counts
+      expect(uncovered.map(where)).toContainEqual(
+        expect.objectContaining({ path: [], code: ErrorCodes.nonFiniteResult })
+      )
+    }
+  })
+})
+
 test('an invalid node always fails, with its static error', async () => {
   expect(
     (await fallbackCoverage(fig, { a: { operator: 'plus', fragment: 'f' }, b: 1 })).uncovered

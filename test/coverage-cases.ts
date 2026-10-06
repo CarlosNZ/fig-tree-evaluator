@@ -77,6 +77,10 @@ export const fragments: Record<string, FragmentDefinition> = {
     parameters: twoNumbers,
   },
   shout: { expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } },
+  maybeFail: {
+    expression: { $if: ['$params.c', { $divide: [1, 0] }, 1] },
+    parameters: { c: { type: 'any' } },
+  },
 }
 
 export const sections: Record<string, CoverageCase[]> = {
@@ -1258,6 +1262,105 @@ export const sections: Record<string, CoverageCase[]> = {
     },
   ],
 
+  'Per-element walks': [
+    {
+      name: 'a decider decided early still starts every element',
+      expression: { $some: { input: [1, 0], each: { $divide: [1, '$element'], fallback: false } } },
+      covered: [
+        {
+          at: ['$some', 'each'],
+          code: 'non-finite-result',
+          parameter: 'by',
+          by: ['$some', 'each'],
+          witness: {},
+        },
+      ],
+    },
+    {
+      name: 'every, with nothing deciding, fails on an element’s parked failure',
+      expression: { $every: { input: [0, 1], each: { $divide: [1, '$element'] } } },
+      uncovered: [
+        { at: ['$every', 'each'], code: 'non-finite-result', parameter: 'by', witness: {} },
+      ],
+    },
+    {
+      name: 'a renamed $index, per element',
+      expression: { $some: { input: ['a', 'b'], as: 'n', each: { $divide: [1, '$nIndex'] } } },
+    },
+    {
+      name: 'a vars block in each is walked per element',
+      expression: {
+        $map: {
+          input: [2, 1],
+          each: { $divide: [1, '$vars.d'], vars: { d: { $subtract: ['$element', 1] } } },
+        },
+      },
+      uncovered: [
+        { at: ['$map', 'each'], code: 'non-finite-result', parameter: 'by', witness: {} },
+      ],
+    },
+    {
+      name: 'a var in each reads the bindings where it is declared',
+      expression: {
+        $map: {
+          input: [['a'], ['b']],
+          each: {
+            $map: { input: '$element', each: { $upper: '$vars.x' } },
+            vars: { x: '$element' },
+          },
+        },
+      },
+      uncovered: [
+        {
+          at: ['$map', 'each', '$map', 'each'],
+          code: 'type-check',
+          parameter: 'value',
+          will: true,
+        },
+      ],
+    },
+    {
+      name: 'nested iterators, per element',
+      expression: {
+        $map: {
+          input: [[0, 1], [2]],
+          each: { $some: { input: '$element', each: { $divide: [1, '$element'] } } },
+        },
+      },
+    },
+    {
+      name: 'a map not run keeps what each element gave, in order',
+      expression: {
+        $max: {
+          $map: {
+            input: [1, 2],
+            each: { $plus: ['$element', { $length: '$data.s', fallback: 0 }] },
+          },
+        },
+      },
+      covered: [
+        {
+          at: ['$max', '$map', 'each', '$plus', 1],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$max', '$map', 'each', '$plus', 1],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'past 16 elements, each is walked once',
+      expression: {
+        $some: {
+          input: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+          each: { $divide: [1, '$element'] },
+        },
+      },
+      uncovered: [{ at: ['$some', 'each'], code: 'non-finite-result', parameter: 'by' }],
+      note: 'Element 1 decides some before element 0’s division by 0 matters, but an each over more than 16 elements is walked once, with $element any of them',
+    },
+  ],
+
   Vars: [
     {
       name: 'a var’s type flows to its references',
@@ -1479,6 +1582,43 @@ export const sections: Record<string, CoverageCase[]> = {
           by: [],
           byFragmentPath: ['expression'],
           witness: { args: { a: 1, b: 0 } },
+        },
+      ],
+    },
+    {
+      name: 'a certain failure the body may skip leaves the call’s parents their checks',
+      expression: { $divide: [1, { $subtract: [{ $maybeFail: { c: '$data.c' } }, 1] }] },
+      instance: 'fragments',
+      uncovered: [
+        { at: [], code: 'non-finite-result', parameter: 'by', will: true },
+        {
+          at: ['$divide', 1, '$subtract', 0],
+          fragment: 'maybeFail',
+          fragmentPath: ['expression', '$if', 1],
+          code: 'non-finite-result',
+          parameter: 'by',
+          will: true,
+          witness: { c: true },
+        },
+      ],
+    },
+    {
+      name: 'a certain failure an argument may skip leaves the call’s parents their checks',
+      expression: {
+        $divide: [
+          1,
+          { $subtract: [{ $ratio: { a: { $if: ['$data.c', { $divide: [1, 0] }, 2] }, b: 2 } }, 1] },
+        ],
+      },
+      instance: 'fragments',
+      uncovered: [
+        { at: [], code: 'non-finite-result', parameter: 'by', will: true },
+        {
+          at: ['$divide', 1, '$subtract', 0, '$ratio', 'a', '$if', 1],
+          code: 'non-finite-result',
+          parameter: 'by',
+          will: true,
+          witness: { c: true },
         },
       ],
     },

@@ -32,7 +32,18 @@ import { atBoundary, operatorOutput } from './outputs'
 import { runNode } from './run'
 import type { Child, Ran, Stalled } from './run'
 import type { RuleOptions } from './rules'
-import { ANY, NOTHING, tupleOf, drill, elementsOf, exactly, keyOf, objectOf, union } from './known'
+import {
+  ANY,
+  NOTHING,
+  tupleOf,
+  drill,
+  elementsOf,
+  exactValues,
+  exactly,
+  keyOf,
+  objectOf,
+  union,
+} from './known'
 import type { Known } from './known'
 
 export type Verdict = 'no' | 'may' | 'always'
@@ -47,19 +58,29 @@ export interface NodeResult {
   output: Known
 }
 
-/** A vars block in force, linked to the scope it was declared in. */
-type Scope = { vars: Record<string, CompiledNode>; parent: Scope } | null
+/**
+ * A vars block in force. Its vars are walked where it was declared, once
+ * each, so a block inside an `each` walked per element is walked per
+ * element, and one outside it once for all of them.
+ */
+interface Block {
+  vars: Record<string, CompiledNode>
+  /** Where the block was declared; its `scope` is the enclosing one */
+  at: Context
+  /** Each var walked so far, with what its fallbacks caught */
+  known: Map<string, Analysed>
+}
 
-const pushScope = (parent: Scope, vars: Record<string, CompiledNode> | undefined): Scope =>
-  vars === undefined ? parent : { vars, parent }
+type Scope = Block | null
 
-/** An iterator's binding frame: the `as` name, and what an element can be. */
-type Bindings = { as: string | null; element: Known; parent: Bindings } | null
+const pushScope = (ctx: Context, vars: Record<string, CompiledNode> | undefined): Scope =>
+  vars === undefined ? ctx.scope : { vars, at: ctx, known: new Map() }
+
+/** An iterator's binding frame: the `as` name, and what each binding can be. */
+type Bindings = { as: string | null; element: Known; index: Known; parent: Bindings } | null
 
 /** The input, or one fragment body as one call binds its parameters. */
 interface Frame {
-  /** Each var definition walked here, with what its fallbacks caught */
-  vars: Map<CompiledNode, Analysed>
   entry?: FragmentEntry
   params?: Record<string, Known>
 }
@@ -70,6 +91,11 @@ interface Context {
   bindings: Bindings
   sink: Caught[]
   frame: Frame
+  /**
+   * How many times the node is walked for the `each` walks it sits in: the
+   * product of their element counts
+   */
+  walks: number
 }
 
 /** A subtree walked on its own, with what its fallbacks caught. */
@@ -91,6 +117,11 @@ const NONE: Analysed = { result: SAFE, covered: [] }
 /** What `$index` can be */
 const INDEX: Known = [{ type: 'integer', min: 0 }]
 const NULL = exactly(null)
+/**
+ * The most times one node is walked for the `each` walks it sits in: as
+ * many values as the walk keeps exactly
+ */
+const WALK_LIMIT = 16
 
 /**
  * A node's failures from its own and its children's. Only an eager child,
@@ -105,6 +136,35 @@ const combine = (own: Pending[], parts: Part[], output: Known): NodeResult => {
     own.some((pending) => !isDemand(pending) && pending.certainty === 'always')
   if (always) return { verdict: 'always', escapes, output: NOTHING }
   return { verdict: escapes.length > 0 ? 'may' : 'no', escapes, output }
+}
+
+const failureKey = (failure: Failure): string =>
+  `${failure.order}|${failure.code}|${failure.parameter}`
+
+/**
+ * An `each` walked per element, as the elements a run reached report it: a
+ * failure is certain only where it is for every one of them, since its node
+ * is reached for each.
+ */
+const certainForEvery = (walks: Apart[]): void => {
+  const certain = walks.map(
+    (walk) =>
+      new Set(
+        [...walk.result.escapes, ...walk.covered.map(({ pending }) => pending)]
+          .filter((pending) => !isDemand(pending) && pending.certainty === 'always')
+          .map((pending) => failureKey(pending as Failure))
+      )
+  )
+  const merge = (pending: Pending): Pending =>
+    isDemand(pending) ||
+    pending.certainty === 'may' ||
+    certain.every((keys) => keys.has(failureKey(pending)))
+      ? pending
+      : { ...pending, certainty: 'may' }
+  for (const walk of walks) {
+    walk.result = { ...walk.result, escapes: walk.result.escapes.map(merge) }
+    walk.covered = walk.covered.map(({ pending, by }) => ({ pending: merge(pending), by }))
+  }
 }
 
 /**
@@ -161,7 +221,7 @@ export class Analysis {
 
   /** The expression's root, with its fallbacks' catches in `sink`. */
   root(node: CompiledNode, sink: Caught[]): Promise<NodeResult> {
-    return this.walk(node, { scope: null, bindings: null, sink, frame: { vars: new Map() } })
+    return this.walk(node, { scope: null, bindings: null, sink, frame: {}, walks: 1 })
   }
 
   private async walk(node: CompiledNode, ctx: Context): Promise<NodeResult> {
@@ -174,7 +234,7 @@ export class Analysis {
         return this.reference(node, ctx)
       case 'skeleton': {
         // Every hole is evaluated
-        const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
+        const inner = { ...ctx, scope: pushScope(ctx, node.vars) }
         const parts: Part[] = []
         for (const hole of node.holes)
           parts.push({ result: await this.walk(hole.node, inner), eager: true })
@@ -205,12 +265,14 @@ export class Analysis {
    * parameter the body asks for (a lazy one, the elements of a literal
    * container at a container-lazy one, an `each`) is walked apart, and
    * counts only where a run reaches it, or where the node is not run. A
-   * `perElement` parameter is walked last, with `$element` bound to the
-   * elements of what its `over` sibling receives.
+   * `perElement` parameter is walked last: once per element, with `$element`
+   * and `$index` bound to it, where its `over` sibling receives one exact
+   * array and the walks stay within the limit; otherwise once, with
+   * `$element` any of the elements.
    */
   private async operator(node: OperatorNode, ctx: Context): Promise<NodeResult> {
     const { definition } = node.entry
-    const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
+    const inner = { ...ctx, scope: pushScope(ctx, node.vars) }
     const outputs: Record<string, Known> = {}
     const parts: Part[] = []
     const children: Apart[] = []
@@ -235,14 +297,35 @@ export class Analysis {
 
     const as = renamedBinding(node)
     const elements: Record<string, Known> = {}
+    const items: Record<string, Known[]> = {}
     for (const [name, declared] of definition.resolution.perElement) {
       const child = node.params[name]
       if (child === undefined || declared.over === undefined) continue
-      const element = elementsOf(inputs.received[declared.over] ?? NOTHING)
-      const bindings = { as, element, parent: ctx.bindings }
-      const apart = await this.apart(name, child, { ...inner, bindings })
-      children.push(apart)
-      elements[name] = apart.result.output
+      const over = inputs.received[declared.over] ?? NOTHING
+      const exact = exactValues(over)
+      const collection = exact?.length === 1 && Array.isArray(exact[0]) ? exact[0] : undefined
+      const walks = ctx.walks * (collection?.length ?? Infinity)
+      if (walks <= WALK_LIMIT) {
+        const results: Known[] = []
+        for (const [index, element] of Array.from(collection!).entries()) {
+          const bindings = {
+            as,
+            element: exactly(element),
+            index: exactly(index),
+            parent: ctx.bindings,
+          }
+          const apart = await this.apart(name, child, { ...inner, bindings, walks }, index)
+          children.push(apart)
+          results.push(apart.result.output)
+        }
+        items[name] = results
+        elements[name] = union(...results)
+      } else {
+        const bindings = { as, element: elementsOf(over), index: INDEX, parent: ctx.bindings }
+        const apart = await this.apart(name, child, { ...inner, bindings })
+        children.push(apart)
+        elements[name] = apart.result.output
+      }
     }
 
     // An eager child that always fails means the body never runs: its own
@@ -262,6 +345,10 @@ export class Analysis {
       : rulesOf(definition) === 'external'
         ? undefined
         : await runNode(node, outputs, children, this.options, this.stalled)
+    for (const name of Object.keys(items))
+      certainForEvery(
+        children.filter((child) => child.param === name && (ran?.reached.has(child) ?? true))
+      )
     const own: Pending[] = []
     if (ran === undefined) {
       own.push(...inputs.failures)
@@ -282,7 +369,7 @@ export class Analysis {
 
     const { output, boundary } =
       ran === undefined
-        ? operatorOutput(node, inputs, elements, this.options.numbers)
+        ? operatorOutput(node, inputs, elements, this.options.numbers, items)
         : atBoundary(node, ran.output, this.options.numbers, false)
     // One `non-finite-result` finding a node, whether a rule or the result
     // boundary says so
@@ -337,7 +424,7 @@ export class Analysis {
       }
       return tupleOf(items)
     }
-    const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
+    const inner = { ...ctx, scope: pushScope(ctx, node.vars) }
     const keys: Record<string, Known> = {}
     for (const [key, value] of Object.entries(node.entries)) {
       const apart = await this.apart(param, value, inner, key)
@@ -384,16 +471,17 @@ export class Analysis {
    * what it names; `$index` never drills.
    */
   private async reference(node: ReferenceNode, ctx: Context): Promise<NodeResult> {
-    const { segments } = node
-    switch (node.namespace) {
-      case 'index':
-        return { ...SAFE, output: INDEX }
+    const { segments, namespace } = node
+    switch (namespace) {
       case 'data':
         return this.drilled(node, ANY, segments, [], [])
-      case 'element': {
+      case 'element':
+      case 'index': {
         for (let frame = ctx.bindings; frame !== null; frame = frame.parent)
-          if (bindsReference(frame.as, 'element', node.binding))
-            return this.drilled(node, frame.element, segments, [], [])
+          if (bindsReference(frame.as, namespace, node.binding))
+            return namespace === 'index'
+              ? { ...SAFE, output: frame.index }
+              : this.drilled(node, frame.element, segments, [], [])
         return this.staticError(node, 'unresolved-binding')
       }
       case 'vars': {
@@ -416,7 +504,7 @@ export class Analysis {
         return this.drilled(node, known, rest, [], [{ demand: String(name) }])
       }
     }
-    return node.namespace satisfies never
+    return namespace satisfies never
   }
 
   private drilled(
@@ -439,19 +527,18 @@ export class Analysis {
     return combine([...own, missing], parts, value)
   }
 
+  /** A var, walked where its block was declared, with its bindings. */
   private async varDefinition(name: unknown, ctx: Context): Promise<Analysed | undefined> {
-    const known = ctx.frame.vars
-    for (let frame = ctx.scope; frame !== null; frame = frame.parent) {
-      if (typeof name !== 'string' || !Object.hasOwn(frame.vars, name)) continue
-      const definition = frame.vars[name]
-      const cached = known.get(definition)
+    for (let block = ctx.scope; block !== null; block = block.at.scope) {
+      if (typeof name !== 'string' || !Object.hasOwn(block.vars, name)) continue
+      const cached = block.known.get(name)
       if (cached !== undefined) return cached
       // Provisional, so a cycle (already a static error) ends here
-      known.set(definition, { result: { ...SAFE, output: ANY }, covered: [] })
+      block.known.set(name, { result: { ...SAFE, output: ANY }, covered: [] })
       const covered: Caught[] = []
-      const result = await this.walk(definition, { ...ctx, scope: frame, sink: covered })
+      const result = await this.walk(block.vars[name], { ...block.at, scope: block, sink: covered })
       const analysed = { result, covered }
-      known.set(definition, analysed)
+      block.known.set(name, analysed)
       return analysed
     }
     return undefined
@@ -469,7 +556,7 @@ export class Analysis {
   private async call(node: FragmentCallNode, ctx: Context): Promise<NodeResult> {
     const { entry } = node
     if (entry === undefined) return this.staticError(node, 'unknown-fragment')
-    const inner = { ...ctx, scope: pushScope(ctx.scope, node.vars) }
+    const inner = { ...ctx, scope: pushScope(ctx, node.vars) }
     const own: Pending[] = []
     const parts: Part[] = []
     const bound: Record<string, Known> = {}
@@ -502,12 +589,18 @@ export class Analysis {
         for (const escaped of answer(pending.demand).result.escapes)
           ctx.sink.push({ pending: escaped, by: lifted })
     }
+    const escapes: Pending[] = []
     for (const pending of body.result.escapes) {
-      if (isDemand(pending)) own.push(...answer(pending.demand).result.escapes)
-      else own.push(liftFailure(pending, node))
+      if (isDemand(pending)) escapes.push(...answer(pending.demand).result.escapes)
+      else escapes.push(liftFailure(pending, node))
     }
-    // A body that always fails fails every call
-    parts.push({ result: { ...body.result, escapes: [] }, eager: true })
+    // A body that always fails fails every call. What escapes the body is
+    // not the call's own: a failure certain where it starts may sit in a
+    // branch the body does not always take
+    parts.push(
+      { result: { ...body.result, escapes: [] }, eager: true },
+      { result: { ...SAFE, escapes }, eager: false }
+    )
     return this.withFallback(node, combine(own, parts, body.result.output), inner)
   }
 
@@ -543,12 +636,13 @@ export class Analysis {
     // Provisional, so a cycle (already refused at registration) ends here
     calls.set(key, { result: { ...SAFE, output: ANY }, covered: [] })
     const covered: Caught[] = []
-    const frame: Frame = { vars: new Map(), entry, params }
+    const frame: Frame = { entry, params }
     const result = await this.walk(entry.body, {
       scope: null,
       bindings: null,
       sink: covered,
       frame,
+      walks: 1,
     })
     const analysed = { result, covered }
     calls.set(key, analysed)

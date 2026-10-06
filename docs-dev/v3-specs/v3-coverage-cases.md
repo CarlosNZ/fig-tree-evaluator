@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 163 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 173 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -17,6 +17,7 @@ Where a case uses an instance other than `new FigTree()`:
   - **ratio**: `{ expression: { $divide: ['$params.a', '$params.b'] }, parameters: { a: { type: 'number' }, b: { type: 'number' } } }`
   - **safeRatio**: `{ expression: { $divide: ['$params.a', '$params.b'], fallback: 0 }, parameters: { a: { type: 'number' }, b: { type: 'number' } } }`
   - **shout**: `{ expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } }`
+  - **maybeFail**: `{ expression: { $if: ['$params.c', { $divide: [1, 0] }, 1] }, parameters: { c: { type: 'any' } } }`
 - **Host operators:** `twice` doubles a number, and `shaky` fails on an empty string, both declaring nothing; `picky` fails on one and says so in its `coverage`.
 - **Clients:** a working HTTP client answers `{ n: 1, s: 'x' }`, and a working SQL connection answers `[{ a: 1, b: 2 }]`.
 
@@ -31,6 +32,7 @@ Where a case uses an instance other than `new FigTree()`:
 - [Where failures surface, and fallbacks](#where-failures-surface-and-fallbacks)
 - [Laziness and deciders](#laziness-and-deciders)
 - [Iterators and bindings](#iterators-and-bindings)
+- [Per-element walks](#per-element-walks)
 - [Vars](#vars)
 - [Fragments](#fragments)
 - [Plain data](#plain-data)
@@ -1115,6 +1117,98 @@ Where a case uses an instance other than `new FigTree()`:
 - ✗ **map** at `$map.each` — may fail: `type-check` on `input`. E.g. data `{ rows: ['x'] }`
 - ✗ **plus** at `$map.each.$map.each` — may fail: `type-check` on `values`. E.g. data `{ rows: [['a']] }`
 
+## Per-element walks
+
+**a decider decided early still starts every element**
+
+```json5
+{ $some: { input: [1, 0], each: { $divide: [1, '$element'], fallback: false } } }
+```
+
+- ✓ **divide** at `$some.each` — may fail: `non-finite-result` on `by`, caught by its own fallback
+
+**every, with nothing deciding, fails on an element’s parked failure**
+
+```json5
+{ $every: { input: [0, 1], each: { $divide: [1, '$element'] } } }
+```
+
+- ✗ **divide** at `$every.each` — may fail: `non-finite-result` on `by`
+
+**a renamed $index, per element**
+
+```json5
+{ $some: { input: ['a', 'b'], as: 'n', each: { $divide: [1, '$nIndex'] } } }
+```
+
+- Nothing can throw.
+
+**a vars block in each is walked per element**
+
+```json5
+{
+  $map: {
+    input: [2, 1],
+    each: { $divide: [1, '$vars.d'], vars: { d: { $subtract: ['$element', 1] } } },
+  },
+}
+```
+
+- ✗ **divide** at `$map.each` — may fail: `non-finite-result` on `by`
+
+**a var in each reads the bindings where it is declared**
+
+```json5
+{
+  $map: {
+    input: [['a'], ['b']],
+    each: { $map: { input: '$element', each: { $upper: '$vars.x' } }, vars: { x: '$element' } },
+  },
+}
+```
+
+- ✗ **upper** at `$map.each.$map.each` — always fails: `type-check` on `value`
+
+**nested iterators, per element**
+
+```json5
+{
+  $map: {
+    input: [[0, 1], [2]],
+    each: { $some: { input: '$element', each: { $divide: [1, '$element'] } } },
+  },
+}
+```
+
+- Nothing can throw.
+
+**a map not run keeps what each element gave, in order**
+
+```json5
+{
+  $max: {
+    $map: { input: [1, 2], each: { $plus: ['$element', { $length: '$data.s', fallback: 0 }] } },
+  },
+}
+```
+
+- ✓ **length** at `$max.$map.each.$plus[1]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**past 16 elements, each is walked once**
+
+```json5
+{
+  $some: {
+    input: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    each: { $divide: [1, '$element'] },
+  },
+}
+```
+
+- ✗ **divide** at `$some.each` — may fail: `non-finite-result` on `by` (no data makes it happen)
+
+> Element 1 decides some before element 0’s division by 0 matters, but an each over more than 16 elements is walked once, with $element any of them.
+
 ## Vars
 
 **a var’s type flows to its references**
@@ -1257,6 +1351,29 @@ Where a case uses an instance other than `new FigTree()`:
 - ✗ the arguments of fragment **safeRatio** — may fail: `type-check`. E.g. data `{ args: { a: 1, b: 'x' } }`
 - ✗ the arguments of fragment **safeRatio** — may fail: `missing-required`. E.g. data `{ args: {} }`
 - ✓ the body of fragment **safeRatio**, called at the root — may fail: `non-finite-result` on `by`, caught by the fallback on the body of fragment **safeRatio**. E.g. data `{ args: { a: 1, b: 0 } }`
+
+**a certain failure the body may skip leaves the call’s parents their checks** (with the fragments listed at the top)
+
+```json5
+{ $divide: [1, { $subtract: [{ $maybeFail: { c: '$data.c' } }, 1] }] }
+```
+
+- ✗ **divide** at the root — always fails: `non-finite-result` on `by`
+- ✗ `$if[1]` in the body of fragment **maybeFail**, called at `$divide[1].$subtract[0]` — always fails: `non-finite-result` on `by`. E.g. data `{ c: true }`
+
+**a certain failure an argument may skip leaves the call’s parents their checks** (with the fragments listed at the top)
+
+```json5
+{
+  $divide: [
+    1,
+    { $subtract: [{ $ratio: { a: { $if: ['$data.c', { $divide: [1, 0] }, 2] }, b: 2 } }, 1] },
+  ],
+}
+```
+
+- ✗ **divide** at the root — always fails: `non-finite-result` on `by`
+- ✗ **divide** at `$divide[1].$subtract[0].$ratio.a.$if[1]` — always fails: `non-finite-result` on `by`. E.g. data `{ c: true }`
 
 ## Plain data
 

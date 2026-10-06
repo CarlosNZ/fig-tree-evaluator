@@ -36,6 +36,7 @@ import {
   ofType,
   productOf,
   sumOf,
+  tupleOf,
   union,
   valuesOf,
   withoutNull,
@@ -98,6 +99,8 @@ interface Received {
   inputs: Inputs
   /** Each `perElement` parameter's result for one element */
   elements: Record<string, Known>
+  /** Each one walked per element: its result for each, in order */
+  items: Record<string, Known[]>
 }
 
 /** The members of a parameter's declared literal union, if it is one. */
@@ -152,11 +155,14 @@ const evaluate = (declared: CoverageOutput, received: Received): Known => {
   }
   if ('elementOf' in declared) return elementsOf(at(declared.elementOf))
   if ('kindOf' in declared) return kindOf(elementsOf(at(declared.kindOf)))
-  if ('arrayOf' in declared)
-    return arrayOf(
-      [evaluate(declared.arrayOf, received)],
-      declared.minLength ? { minLength: declared.minLength } : {}
-    )
+  if ('arrayOf' in declared) {
+    const { arrayOf: of, minLength } = declared
+    // What each element gave, in order, where each was walked on its own
+    const items = typeof of === 'object' && 'param' in of ? received.items[of.param] : undefined
+    return items !== undefined
+      ? tupleOf(items)
+      : arrayOf([evaluate(of, received)], minLength ? { minLength } : {})
+  }
   if ('oneOf' in declared)
     return union(...declared.oneOf.map((option) => evaluate(option, received)))
   if ('typeNamedBy' in declared) {
@@ -196,14 +202,15 @@ export const operatorOutput = (
   node: OperatorNode,
   inputs: Inputs,
   elements: Record<string, Known>,
-  numbers: 'ordinary' | 'strict'
+  numbers: 'ordinary' | 'strict',
+  items: Record<string, Known[]> = {}
 ): { output: Known; boundary?: Failure } => {
   if (inputs.propagates === 'yes') return { output: exactly(null) }
   const { definition } = node.entry
   const declared = outputOf(definition)
   let output =
     declared !== undefined
-      ? evaluate(declared, { definition, inputs, elements })
+      ? evaluate(declared, { definition, inputs, elements, items })
       : ofType(definition.returns)
   // A number computed from NaN or an infinity is one too: floor, round, a
   // conversion

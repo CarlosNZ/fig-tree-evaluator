@@ -23,7 +23,9 @@
  * - Every run of the node (rule 4, src/authoring/run.ts), with each
  *   parameter known exactly, must end as the engine's evaluation does: the
  *   same value, or a certain failure with the same code. Every operator
- *   must be run at least once.
+ *   must be run at least once. An iterator is run again with its `each`
+ *   walked per element: each element giving a value of its own, or failing,
+ *   as the engine's evaluation of each does.
  *
  * This is what keeps the core table complete. Each parameter reads its
  * value from the data, so one compiled node serves every combination.
@@ -38,7 +40,8 @@ import type { Known } from '../src/authoring/known'
 import { CORE_RULES, answerRule, ownFailures, testKnown } from '../src/authoring/rules'
 import { operatorOutput } from '../src/authoring/outputs'
 import { runNode } from '../src/authoring/run'
-import type { Child } from '../src/authoring/run'
+import type { Child, Ran } from '../src/authoring/run'
+import type { Failure } from '../src/authoring/findings'
 import type { ExpectedType } from '../src/typeCheck'
 
 const MISSING = Symbol('missing')
@@ -132,6 +135,8 @@ interface Report {
   /** Runs that ended otherwise than the engine's evaluation */
   misrun: string[]
   runs: number
+  /** Runs with `each` walked per element */
+  elementRuns: number
 }
 
 const isPlain = (value: unknown): value is Record<string, unknown> =>
@@ -222,6 +227,32 @@ const around = (value: unknown, pick: () => number): Known => {
   return exactly(value)
 }
 
+/**
+ * How a node's runs ended: each value, or the codes of a certain failure,
+ * its own or an element's it let through.
+ */
+const endsOf = (ran: Ran): string[] =>
+  ran.fails
+    ? [
+        ...ran.failures.filter((f) => f.certainty === 'always').map((f) => f.code),
+        ...[...ran.escaped].flatMap((child) =>
+          child.result.escapes.map((pending) => (pending as Failure).code)
+        ),
+      ]
+    : ran.output.map((member) => JSON.stringify((member as { exact: unknown }).exact, replacer))
+
+/**
+ * An `each` whose element `i` gives `results[i]`, or fails where `fails[i]`
+ * holds.
+ */
+const PER_ELEMENT = {
+  $if: [
+    { $get: { path: ['fails', '$index'] } },
+    { $divide: [1, 0] },
+    { $get: { path: ['results', '$index'] } },
+  ],
+}
+
 /** What the analysis predicts of what the parameters are known to be. */
 const predict = (
   node: OperatorNode,
@@ -271,6 +302,17 @@ const check = async (
   let seed = 11
   const next = () => (seed = (seed * 48271) % 2147483647)
   const nodes = new Map<string, OperatorNode>()
+  const compiled = (shape: string, expression: unknown) => {
+    let node = nodes.get(shape)
+    if (node === undefined) {
+      const handle = level.fig.compile(expression)
+      if (handle.hasErrors) return undefined
+      node = viewHandle(handle)!.artifact.root as OperatorNode
+      nodes.set(shape, node)
+    }
+    return node
+  }
+  const [iterated] = definition.resolution.perElement
 
   for (let i = 0; i < Math.min(total, SAMPLES); i++) {
     let index = total <= SAMPLES ? i : next() % total
@@ -285,14 +327,8 @@ const check = async (
       operator: definition.name,
       ...Object.fromEntries(present.map((name) => [name, `$data.${name}`])),
     }
-    const shape = present.join(',')
-    let node = nodes.get(shape)
-    if (node === undefined) {
-      const handle = level.fig.compile(expression)
-      if (handle.hasErrors) continue
-      node = viewHandle(handle)!.artifact.root as OperatorNode
-      nodes.set(shape, node)
-    }
+    const node = compiled(present.join(','), expression)
+    if (node === undefined) continue
 
     // What the analysis predicts of these exact values, and of a few ranges
     // around them
@@ -335,14 +371,60 @@ const check = async (
     const ran = await runNode(node, given, children, level)
     if (ran !== undefined) {
       report.runs++
-      const ends = ran.fails
-        ? ran.failures.filter((f) => f.certainty === 'always').map((f) => f.code)
-        : ran.output.map((member) => JSON.stringify((member as { exact: unknown }).exact, replacer))
+      const ends = endsOf(ran)
       const expected = failed ?? JSON.stringify(result, replacer)
       if ((ends.length !== 1 || ends[0] !== expected) && report.misrun.length < 8)
         report.misrun.push(
           `${expected}, but the run ended ${JSON.stringify(ends)}, with ${JSON.stringify(values, replacer)}`
         )
+    }
+
+    // The run again with `each` walked per element, where it iterates an array
+    const collection = iterated && values[iterated[1].over!]
+    if (iterated !== undefined && present.includes(iterated[0]) && Array.isArray(collection)) {
+      const [name, declared] = iterated
+      // What an element gives has passed its node's result boundary
+      const pool = poolOf(declared.type, level.numbers === 'strict').filter(
+        (value) => typeof value !== 'number' || Number.isFinite(value)
+      )
+      const data = {
+        ...values,
+        results: collection.map(() => pool[next() % pool.length]),
+        fails: collection.map(() => next() % 4 === 0),
+      }
+      const variant = { ...expression, [name]: PER_ELEMENT }
+      const perElement = compiled(`${present.join(',')}:each`, variant)!
+      let expected: string
+      try {
+        expected = JSON.stringify(await level.fig.evaluate(variant, { data }), replacer)
+      } catch (error) {
+        if (!isFigTreeError(error)) throw error
+        expected = error.code
+      }
+      const failure: Failure = {
+        path: perElement.path,
+        code: 'non-finite-result',
+        message: '',
+        certainty: 'always',
+        order: [perElement.order],
+      }
+      const elements: Child[] = collection.map((_element, index) => ({
+        param: name,
+        at: index,
+        result: data.fails[index]
+          ? { verdict: 'always', escapes: [failure], output: [] }
+          : { verdict: 'no', escapes: [], output: exactly(data.results[index]) },
+      }))
+      const lazy = children.filter((child) => child.param !== name)
+      const again = await runNode(perElement, given, [...lazy, ...elements], level)
+      if (again !== undefined) {
+        report.elementRuns++
+        const ends = endsOf(again)
+        if ((ends.length !== 1 || ends[0] !== expected) && report.misrun.length < 8)
+          report.misrun.push(
+            `${expected}, but the run per element ended ${JSON.stringify(ends)}, with ${JSON.stringify(data, replacer)}`
+          )
+      }
     }
     for (const { prediction } of ranged)
       for (const rule of rules)
@@ -391,6 +473,7 @@ describe('the core failure rules', () => {
         fired: new Set(),
         misrun: [],
         runs: 0,
+        elementRuns: 0,
       }
       for (const level of LEVELS) await check(definition, level, report)
       expect(report.unpredicted).toEqual([])
@@ -399,6 +482,7 @@ describe('the core failure rules', () => {
       expect(report.misread).toEqual([])
       expect(report.misrun).toEqual([])
       expect(report.runs).toBeGreaterThan(0)
+      if (definition.resolution.perElement.length > 0) expect(report.elementRuns).toBeGreaterThan(0)
       const rules = CORE_RULES[definition.name] ?? []
       const dead = rules.filter((_rule, r) => !report.fired.has(r))
       expect(dead).toEqual([])
