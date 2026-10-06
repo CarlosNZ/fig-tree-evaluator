@@ -131,8 +131,19 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** The engine's deadline is a timer, which cannot fire while an evaluation is running on promises alone: a pure expression doing 33 ms of work finishes under a 1 ms timeout. So a host setting a timeout on its instance would otherwise see a `timeout` on nearly every value of every expression. A declared host body awaiting a timer was cut off in the same probe, so declaring `coverage` cannot exempt an operator: it says what a body fails on and returns, not how long it takes. A decider answers as soon as a known operand decides, and the engine does not wait for the operands it started (`{ $or: [true, { $http: 'https://x.test/a' }] }`, with a request taking 100 ms, returned in 2 ms), hence "waited on" rather than "reached", which needs one more set in a run. A covered `timeout` is a constant fallback doing its work, and the trace records it, so the runner could stop skipping those entries. That check found the runner's external wildcard matching a timeout at a request's own node, which hid a missing covered finding.
 
+## The close-out (Carl, 2026-10-06, at step 9)
+
+**Decision.**
+
+- **`strictNumbers`**, a boolean defaulting to false, replaces the `numbers` levels `'ordinary'` and `'strict'`.
+- **The host field is `analysis`**, not `coverage`, and the exported types follow: `OperatorAnalysis`, `FailureTest` and `DeclaredOutput`, beside `FailureRule`.
+- **`fallbackCoverage` loses its `timeout` option.** It reads the instance's options, `timeout` included, so its only option is its own.
+- **`floor` and `ceil` declare `returns: 'integer'`** in their definitions, through the shared `unary` helper, and leave the output table.
+- **Exactness is a check:** the corpus runner fails a case whose findings differ from its expected ones, and names each difference.
+- **Follow-ups go to issues:** the wording of every message ([#219](https://github.com/CarlosNZ/fig-tree-evaluator/issues/219)); a warning for a fallback that can never fire, a data shape, and a host iterator asking for an element its input lacks ([#220](https://github.com/CarlosNZ/fig-tree-evaluator/issues/220)); a default whole-evaluation timeout ([#221](https://github.com/CarlosNZ/fig-tree-evaluator/issues/221)).
+
+**Why.** Two levels were all eight steps ever needed, and a boolean reads as `strictDataPaths` does; a level called "bounded" would have clashed with value ranges' bounds. The field holds what static analysis may assume of an operator, its failures, its output and that it is pure, so naming it after one analysis would mislead the next to read it; `failureCoverage` fitted only two of its three parts. The `timeout` option stood in for a per-call `evaluate()` option, but since step 8 only whether a timeout is in force matters, never its value, and a host that passes one per call can analyse with an instance that carries it; without it, the options are the analysis's own, which settles where they sit. `Math.floor` and `Math.ceil` of a finite number are integers, a non-finite result never passes the result boundary, and nothing read the narrower type until #217. Without exactness as a check, a change that made the analysis less precise but still sound passed CI, only a logged count falling.
+
 ## Open
 
-- **Where the analysis's own options sit.** `fallbackCoverage`'s options hold only `timeout` today, which stands in for an option the host passes to `evaluate()`. The number setting is the first option belonging to the analysis itself. How the two kinds are kept apart is deferred.
-- **The level names** for the number setting.
-- **A data shape**, floated and not taken up: a host passing the shape of its evaluation data, so that a `$data` reference has a type rather than `any`.
+All carried to the issues above.

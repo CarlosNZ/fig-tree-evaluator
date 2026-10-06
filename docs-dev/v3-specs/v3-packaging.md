@@ -118,7 +118,7 @@ Grouped by owning doc; packaging adds no shapes of its own, it only fixes what i
 - **Editor hints**: `OperatorHints`, `OperatorHintMap`, `FragmentHints`, `CategoryHints`, `CategoryHintMap`, `TypeSeeds` — the documented key convention for definition authors ([v3-operator-parameters.md](v3-operator-parameters.md) § The editor-hints module), and for a fragment's `metadata`.
 - **Migration**: `V2Options`, `MigrationResult`, `FragmentMigrationResult`, `MigrationIssue` — what `./migrate`'s two functions take and return ("Surface" in [v3-converter.md](v3-converter.md)).
 - **Format**: `Registry`, `Spelling`, `NameOptions`, `CanonicalOptions`, `ShorthandOptions` — what `./format`'s four conversions take ("Surface" in [v3-format.md](v3-format.md)); `ObjectClass`, `ReferenceRecognition`, `ReferenceNamespace`, `ReferenceScope`, `PositionalShape`, `PositionalLayout` — what its reading primitives take and return ("Reading primitives" there).
-- **Authoring**: `FallbackCoverage`, `FallbackCoverageOptions`, `CoverageFinding`, `CoveredFinding` — what `./authoring`'s `fallbackCoverage` returns and takes; `OperatorCoverage`, `FailureRule`, `CoverageTest`, `CoverageOutput` — the `coverage` field a definition declares for it ([v3-fallback-coverage.md](v3-fallback-coverage.md)).
+- **Authoring**: `FallbackCoverage`, `FallbackCoverageOptions`, `CoverageFinding`, `CoveredFinding` — what `./authoring`'s `fallbackCoverage` returns and takes; `OperatorAnalysis`, `FailureRule`, `FailureTest`, `DeclaredOutput` — the `analysis` field a definition declares for it ([v3-fallback-coverage.md](v3-fallback-coverage.md)).
 
 ## `./migrate`
 
@@ -141,7 +141,7 @@ Converts a v3 expression between its forms, for the editor's "To shorthand" and 
 
 ## `./authoring`
 
-Static analyses for authoring tools: answers about an expression that nothing at runtime needs, so `evaluate()` never pays for them. Its function, `fallbackCoverage`, and the rules behind it are in [v3-authoring.md](v3-authoring.md). Packaging fixes:
+Static analyses for authoring tools: answers about an expression that nothing at runtime needs, so `evaluate()` never pays for them. Its function, `fallbackCoverage`, is described in [v3-authoring.md](v3-authoring.md), and the rules behind it in [v3-fallback-coverage.md](v3-fallback-coverage.md). Packaging fixes:
 
 - The subpath name: `fig-tree-evaluator/authoring` ([#209](https://github.com/CarlosNZ/fig-tree-evaluator/issues/209), Carl, October 2026).
 - **It shares the engine with the root.** It analyses the compiled tree, so it compiles through `fig.compile()` and reads the handle with `viewHandle`, the internal reader in `src/FigTree.ts` that `inspect()` uses, which is not barrel surface. Inside `src/authoring/`, value imports outside the folder are limited by lint to `src/FigTree.ts`, `src/compile/artifact.ts`, and the engine's type checks and path resolution (`src/typeCheck.ts`, `src/typeIntersection.ts`, `src/primitives/path.ts`), so the analysis judges values exactly as the runtime does; all of them are already in the chunks the subpath shares. The root and `./authoring` both importing the engine, the build emits it once, as `build/chunks/engine.js`, which the root's own file imports. A consumer pays nothing for this: anyone calling `fallbackCoverage` passes it a `FigTree`, so the engine is in their bundle already, and the chunk is that same code. The subpath's budget counts the chunk, so it reads at about the engine's size.

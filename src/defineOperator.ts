@@ -44,7 +44,7 @@ import {
   compileNullPolicies,
   type Path,
 } from './buildOperator'
-import { checkCoverage } from './coverageCheck'
+import { checkAnalysis } from './analysisCheck'
 
 /**
  * The `…Default` naming family (contract, Registration & validation). The
@@ -597,8 +597,8 @@ export function defineOperator(
       ])
   }
 
-  if (def.coverage !== undefined)
-    checkCoverage(def.coverage, declarations, (code, message, path) =>
+  if (def.analysis !== undefined)
+    checkAnalysis(def.analysis, declarations, (code, message, path) =>
       addIssue(code, message, path)
     )
 

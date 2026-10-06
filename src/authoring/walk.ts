@@ -385,8 +385,8 @@ export class Analysis {
 
     const { output, boundary } =
       ran === undefined
-        ? operatorOutput(node, inputs, elements, this.options.numbers, items)
-        : atBoundary(node, ran.output, this.options.numbers, false)
+        ? operatorOutput(node, inputs, elements, this.options.strictNumbers, items)
+        : atBoundary(node, ran.output, this.options.strictNumbers, false)
     // One `non-finite-result` finding a node, whether a rule or the result
     // boundary says so
     if (boundary !== undefined && !own.some((f) => !isDemand(f) && f.code === boundary.code))

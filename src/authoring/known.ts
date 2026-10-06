@@ -30,8 +30,8 @@ export type Member =
   | { type: 'boolean' | 'null' | 'opaque' }
   /**
    * NaN or an infinity: a number the engine refuses as a node's result.
-   * Data can carry one only under `numbers: 'strict'`, which is the only
-   * level that reports it
+   * Data can carry one only under `strictNumbers`, the only setting that
+   * reports it
    */
   | { type: 'nonFinite' }
   /**

@@ -1,5 +1,5 @@
 /**
- * `defineOperator()`'s check of a definition's `coverage` field ("Where the
+ * `defineOperator()`'s check of a definition's `analysis` field ("Where the
  * rules live" in docs-dev/v3-specs/v3-fallback-coverage.md). The field is
  * read only by `./authoring`, but a malformed one is the host's mistake,
  * so it is refused at registration like any other.
@@ -10,10 +10,10 @@ import { isPlainObject } from './utils'
 
 type Report = (code: string, message: string, path: (string | number)[]) => void
 
-const COVERAGE_KEYS = new Set(['failures', 'external', 'output'])
+const ANALYSIS_KEYS = new Set(['failures', 'external', 'output'])
 const RULE_KEYS = new Set(['code', 'parameter', 'when', 'options', 'may', 'overflow'])
 
-/** Whether a value is a test of the coverage vocabulary. */
+/** Whether a value is a test of the failure rules' vocabulary. */
 const isTest = (test: unknown): boolean => {
   if (test === null || ['string', 'number', 'boolean'].includes(typeof test)) return true
   if (!isPlainObject(test)) return false
@@ -82,8 +82,8 @@ const isBounded = (output: Record<string, unknown>): boolean => {
 }
 
 /**
- * Whether a value is an output declaration of the coverage vocabulary, each
- * parameter it names declared.
+ * Whether a value is an output declaration, each parameter it names
+ * declared.
  */
 const isOutput = (output: unknown, declared: (name: unknown) => boolean): boolean => {
   if (isExpectedType(output)) return true
@@ -115,17 +115,17 @@ const isOutput = (output: unknown, declared: (name: unknown) => boolean): boolea
   return false
 }
 
-export const checkCoverage = (
-  coverage: unknown,
+export const checkAnalysis = (
+  analysis: unknown,
   parameters: Record<string, unknown>,
   report: Report
 ): void => {
   const fail = (message: string, ...path: (string | number)[]) =>
-    report(ErrorCodes.invalidDefinition, message, ['coverage', ...path])
-  if (!isPlainObject(coverage)) return fail("'coverage' must be a plain object")
-  for (const key of Object.keys(coverage))
-    if (!COVERAGE_KEYS.has(key)) fail(`'${key}' is not a coverage field`, key)
-  const { failures, external, output } = coverage
+    report(ErrorCodes.invalidDefinition, message, ['analysis', ...path])
+  if (!isPlainObject(analysis)) return fail("'analysis' must be a plain object")
+  for (const key of Object.keys(analysis))
+    if (!ANALYSIS_KEYS.has(key)) fail(`'${key}' is not an analysis field`, key)
+  const { failures, external, output } = analysis
   const declared = (name: unknown) => typeof name === 'string' && Object.hasOwn(parameters, name)
   if (external !== undefined && external !== true)
     fail("'external' must be the literal true", 'external')

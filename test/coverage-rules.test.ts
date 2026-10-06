@@ -113,9 +113,9 @@ const poolOf = (type: ExpectedType, strict: boolean): unknown[] => {
 }
 
 const LEVELS = [
-  { numbers: 'ordinary' as const, fig: new FigTree(), evaluation: {} },
+  { strictNumbers: false, fig: new FigTree(), evaluation: {} },
   {
-    numbers: 'strict' as const,
+    strictNumbers: true,
     fig: new FigTree({ strictDataPaths: true }),
     evaluation: { strictDataPaths: true },
   },
@@ -260,7 +260,7 @@ const predict = (
   outputs: Record<string, Known>,
   level: (typeof LEVELS)[number]
 ) => {
-  const options = { numbers: level.numbers, evaluation: level.evaluation }
+  const options = { strictNumbers: level.strictNumbers, evaluation: level.evaluation }
   const inputs = resolveInputs(node, outputs)
   const failures = [...inputs.failures]
   for (const [name, declared] of definition.resolution.perElement)
@@ -272,7 +272,7 @@ const predict = (
   const elements: Record<string, Known> = {}
   for (const [name] of definition.resolution.perElement)
     if (Object.hasOwn(outputs, name)) elements[name] = outputs[name]
-  const { output, boundary } = operatorOutput(node, inputs, elements, level.numbers)
+  const { output, boundary } = operatorOutput(node, inputs, elements, level.strictNumbers)
   if (boundary !== undefined) failures.push(boundary)
   if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options))
   return {
@@ -295,7 +295,7 @@ const check = async (
     .map(([name]) => name)
   const pools = names.map((name) => {
     const declared = definition.parameters[name]
-    const pool = poolOf(declared.type, level.numbers === 'strict')
+    const pool = poolOf(declared.type, level.strictNumbers)
     return declared.required ? pool : [MISSING, ...pool]
   })
   const total = pools.reduce((product, pool) => product * pool.length, 1)
@@ -345,7 +345,10 @@ const check = async (
     const answers = rules.map((rule) =>
       inputs.propagates === 'yes'
         ? 'no'
-        : answerRule(node, rule, inputs, { numbers: level.numbers, evaluation: level.evaluation })
+        : answerRule(node, rule, inputs, {
+            strictNumbers: level.strictNumbers,
+            evaluation: level.evaluation,
+          })
     )
 
     let failed: string | undefined
@@ -384,7 +387,7 @@ const check = async (
     if (iterated !== undefined && present.includes(iterated[0]) && Array.isArray(collection)) {
       const [name, declared] = iterated
       // What an element gives has passed its node's result boundary
-      const pool = poolOf(declared.type, level.numbers === 'strict').filter(
+      const pool = poolOf(declared.type, level.strictNumbers).filter(
         (value) => typeof value !== 'number' || Number.isFinite(value)
       )
       const data = {

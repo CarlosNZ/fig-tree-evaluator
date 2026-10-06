@@ -9,12 +9,12 @@
  * The core operators' rules are a table here, keyed by the built
  * definitions themselves, so a host operator reusing a core name never
  * inherits them, and the root never carries them. A host operator declares
- * its own in the definition's `coverage` field. An operator with neither,
+ * its own in the definition's `analysis` field. An operator with neither,
  * the I/O operators included, is external: it may fail whatever its inputs.
  */
 import { validateHelpers } from '../compile/helpers'
 import { coreOperators } from '../operators'
-import type { CoverageTest, FailureRule } from '../authoringTypes'
+import type { FailureTest, FailureRule } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
@@ -114,7 +114,7 @@ let core: Map<ValidatedOperatorDefinition, FailureRule[]> | undefined
  * whatever its inputs.
  */
 export const rulesOf = (definition: ValidatedOperatorDefinition): FailureRule[] | 'external' => {
-  const declared = definition.coverage
+  const declared = definition.analysis
   if (declared !== undefined) return declared.external ? 'external' : (declared.failures ?? [])
   core ??= new Map(coreOperators.map((built) => [built, CORE_RULES[built.name] ?? []]))
   return core.get(definition) ?? 'external'
@@ -123,11 +123,11 @@ export const rulesOf = (definition: ValidatedOperatorDefinition): FailureRule[] 
 /**
  * Whether an operator's body can wait on something outside the evaluation,
  * so a timeout can cut it off: one doing I/O, and any of the host's, since
- * declaring `coverage` says what a body fails on and returns, not how long
+ * declaring `analysis` says what a body fails on and returns, not how long
  * it takes. A core body waits only on its children.
  */
 export const mayWait = (definition: ValidatedOperatorDefinition): boolean =>
-  definition.coverage !== undefined || rulesOf(definition) === 'external'
+  definition.analysis !== undefined || rulesOf(definition) === 'external'
 
 // ── The tests ───────────────────────────────────────────────────────
 
@@ -139,7 +139,7 @@ const any = (answers: Answer[]): Answer =>
   answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
 
 /** A test against one member of what a parameter receives. */
-const testMember = (test: CoverageTest, member: Member): Answer => {
+const testMember = (test: FailureTest, member: Member): Answer => {
   if (test === null || typeof test !== 'object') {
     if ('exact' in member) return member.exact === test ? 'yes' : 'no'
     const type: ExpectedType = test === null ? 'null' : { literal: [test] }
@@ -215,7 +215,7 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
 }
 
 /** A test against everything a parameter may receive. */
-export const testKnown = (test: CoverageTest, known: Known): Answer =>
+export const testKnown = (test: FailureTest, known: Known): Answer =>
   known.length === 0 ? 'no' : combine(known.map((member) => testMember(test, member)))
 
 const exactValue = (known: Known | undefined): { value: unknown } | undefined =>
@@ -246,7 +246,7 @@ const refused = (node: OperatorNode, name: string, inputs: Inputs): Answer => {
 const testParameter = (
   node: OperatorNode,
   name: string,
-  test: CoverageTest,
+  test: FailureTest,
   inputs: Inputs
 ): Answer => {
   const known = inputs.received[name]
@@ -261,7 +261,7 @@ const testParameter = (
 
 // ── Messages ────────────────────────────────────────────────────────
 
-const phrase = (test: CoverageTest): string => {
+const phrase = (test: FailureTest): string => {
   if (test === null || typeof test !== 'object') return JSON.stringify(test)
   if ('type' in test)
     return typeof test.type === 'string' ? `a ${test.type}` : `of type ${JSON.stringify(test.type)}`
@@ -291,7 +291,8 @@ const describeRule = (operator: string, rule: FailureRule): string => {
 // ── Rule 5 ──────────────────────────────────────────────────────────
 
 export interface RuleOptions {
-  numbers: 'ordinary' | 'strict'
+  /** Whether overflow and non-finite numbers from the data count */
+  strictNumbers: boolean
   /** The evaluation options in force, which a rule's `options` must match */
   evaluation: Record<string, unknown>
 }
@@ -303,7 +304,7 @@ export const answerRule = (
   inputs: Inputs,
   options: RuleOptions
 ): Answer => {
-  if (rule.overflow && options.numbers !== 'strict') return 'no'
+  if (rule.overflow && !options.strictNumbers) return 'no'
   for (const [key, value] of Object.entries(rule.options ?? {}))
     if ((options.evaluation[key] ?? false) !== value) return 'no'
   const answers = Object.entries(rule.when ?? {}).map(([name, test]) =>

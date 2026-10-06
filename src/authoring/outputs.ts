@@ -8,12 +8,12 @@
  * itself is in ./known.ts, so a declaration names only its operation.
  *
  * Then the result boundary: the engine refuses a NaN or infinite result at
- * every operator node. Under `numbers: 'strict'`, where a number from the
- * data may be one, a node that may return one may fail there, and what
+ * every operator node. Under `strictNumbers`, where a number from the data
+ * may be one, a node that may return one may fail there, and what
  * passes the boundary is finite either way.
  */
 import { coreOperators } from '../operators'
-import type { CoverageOutput } from '../authoringTypes'
+import type { DeclaredOutput } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
@@ -46,7 +46,7 @@ import type { Inputs } from './inputs'
 import type { Failure } from './findings'
 
 /** The core output declarations, by operator name. */
-export const CORE_OUTPUTS: Record<string, CoverageOutput> = {
+export const CORE_OUTPUTS: Record<string, DeclaredOutput> = {
   if: { oneOf: [{ param: 'then' }, { param: 'else' }] },
   match: { oneOf: [{ param: 'branches' }, { param: 'default' }] },
   firstOf: { firstNonNull: 'values' },
@@ -75,14 +75,12 @@ export const CORE_OUTPUTS: Record<string, CoverageOutput> = {
       match: { arrayOf: 'string' },
     },
   },
-  floor: 'integer',
-  ceil: 'integer',
 }
 
-let core: Map<ValidatedOperatorDefinition, CoverageOutput> | undefined
+let core: Map<ValidatedOperatorDefinition, DeclaredOutput> | undefined
 
-const outputOf = (definition: ValidatedOperatorDefinition): CoverageOutput | undefined => {
-  if (definition.coverage !== undefined) return definition.coverage.output
+const outputOf = (definition: ValidatedOperatorDefinition): DeclaredOutput | undefined => {
+  if (definition.analysis !== undefined) return definition.analysis.output
   core ??= new Map(
     coreOperators
       .filter((built) => Object.hasOwn(CORE_OUTPUTS, built.name))
@@ -131,10 +129,10 @@ const firstNonNull = (known: Known): Known =>
     })
   )
 
-const isType = (declared: CoverageOutput): declared is ExpectedType =>
+const isType = (declared: DeclaredOutput): declared is ExpectedType =>
   typeof declared === 'string' || Array.isArray(declared) || 'literal' in declared
 
-const evaluate = (declared: CoverageOutput, received: Received): Known => {
+const evaluate = (declared: DeclaredOutput, received: Received): Known => {
   const { inputs } = received
   const at = (name: string) => inputs.received[name] ?? NOTHING
   if (isType(declared)) return ofType(declared)
@@ -202,7 +200,7 @@ export const operatorOutput = (
   node: OperatorNode,
   inputs: Inputs,
   elements: Record<string, Known>,
-  numbers: 'ordinary' | 'strict',
+  strictNumbers: boolean,
   items: Record<string, Known[]> = {}
 ): { output: Known; boundary?: Failure } => {
   if (inputs.propagates === 'yes') return { output: exactly(null) }
@@ -219,7 +217,7 @@ export const operatorOutput = (
   )
   if (fromNonFinite && fits(output, 'number') !== 'no') output = union(output, NON_FINITE)
   if (inputs.propagates === 'maybe') output = union(output, exactly(null))
-  return atBoundary(node, output, numbers, inputs.propagates === 'no')
+  return atBoundary(node, output, strictNumbers, inputs.propagates === 'no')
 }
 
 /**
@@ -229,11 +227,11 @@ export const operatorOutput = (
 export const atBoundary = (
   node: OperatorNode,
   output: Known,
-  numbers: 'ordinary' | 'strict',
+  strictNumbers: boolean,
   certain: boolean
 ): { output: Known; boundary?: Failure } => {
   const nonFinite = mayBeNonFinite(output)
-  const counted = numbers === 'strict' ? nonFinite : mayBeNonFinite(finiteExcept(output))
+  const counted = strictNumbers ? nonFinite : mayBeNonFinite(finiteExcept(output))
   const passed = finite(output)
   if (counted === 'no') return { output: passed }
   return {

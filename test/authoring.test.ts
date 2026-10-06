@@ -6,7 +6,7 @@
  * checked against the engine in test/coverage-rules.test.ts.
  *
  * The tests of where findings sit and which fallback covers them use
- * `risky`, a host operator that declares no `coverage`, so is external: it
+ * `risky`, a host operator that declares no `analysis`, so is external: it
  * gives one `operator-failure` wherever it is, and nothing else.
  *
  * The subpath's types export from the root. test/exports.test.ts lists
@@ -16,13 +16,13 @@
 import { ErrorCodes, FigTree, OperatorFailure, coreOperators, defineOperator } from '../src'
 import type {
   CoverageFinding,
-  CoverageTest,
+  FailureTest,
   CoveredFinding,
   FailureRule,
   FallbackCoverage,
   FallbackCoverageOptions,
   FigTreeOptions,
-  OperatorCoverage,
+  OperatorAnalysis,
 } from '../src'
 import * as authoring from '../src/authoring'
 import { fallbackCoverage } from '../src/authoring'
@@ -64,12 +64,12 @@ const node = { $risky: 1 }
 
 test('the subpath exports fallbackCoverage alone, and its types from the root', async () => {
   expect(Object.keys(authoring)).toEqual(['fallbackCoverage'])
-  const options: FallbackCoverageOptions = { timeout: 50, numbers: 'strict' }
+  const options: FallbackCoverageOptions = { strictNumbers: true }
   const result: FallbackCoverage = await fallbackCoverage(fig, 1, options)
   expect(result).toEqual({ uncovered: [], covered: [] })
-  const test: CoverageTest = { not: { below: 0 } }
+  const test: FailureTest = { not: { below: 0 } }
   const rule: FailureRule = { code: 'operator-failure', when: { value: test } }
-  const declared: OperatorCoverage = { failures: [rule] }
+  const declared: OperatorAnalysis = { failures: [rule] }
   expect(declared.failures).toHaveLength(1)
 })
 
@@ -86,7 +86,7 @@ test('a finding carries its code, certainty, operator, parameter and message', a
   ])
 })
 
-describe('numbers', () => {
+describe('strictNumbers', () => {
   const sum = {
     $plus: [
       { $length: '$data.a', fallback: 0 },
@@ -94,11 +94,11 @@ describe('numbers', () => {
     ],
   }
 
-  test("'strict' counts overflow on numbers the walk cannot pin down, 'ordinary' does not", async () => {
+  test('counts overflow on numbers the walk cannot pin down, which is off by default', async () => {
     expect((await fallbackCoverage(fig, sum)).uncovered).toEqual([])
-    expect((await fallbackCoverage(fig, sum, { numbers: 'ordinary' })).uncovered).toEqual([])
+    expect((await fallbackCoverage(fig, sum, { strictNumbers: false })).uncovered).toEqual([])
     expect(
-      (await fallbackCoverage(fig, sum, { numbers: 'strict' })).uncovered.map(
+      (await fallbackCoverage(fig, sum, { strictNumbers: true })).uncovered.map(
         (finding) => finding.code
       )
     ).toEqual([ErrorCodes.nonFiniteResult])
@@ -109,7 +109,7 @@ describe('numbers', () => {
     // gives 0, and divide fails
     const count = { $length: { $buildString: ['%1', '$data.x'] } }
     const ratio = { $divide: [1, { $subtract: [count, 1] }] }
-    const { uncovered } = await fallbackCoverage(fig, ratio, { numbers: 'strict' })
+    const { uncovered } = await fallbackCoverage(fig, ratio, { strictNumbers: true })
     expect(
       uncovered.map((finding) => ({ ...where(finding), certainty: finding.certainty }))
     ).toEqual([
@@ -119,9 +119,9 @@ describe('numbers', () => {
     ])
   })
 
-  test('anything else is refused', async () => {
+  test('anything but a boolean is refused', async () => {
     await expect(
-      fallbackCoverage(fig, 1, { numbers: 'loose' as FallbackCoverageOptions['numbers'] })
+      fallbackCoverage(fig, 1, { strictNumbers: 'yes' as unknown as boolean })
     ).rejects.toThrow(expect.objectContaining({ code: ErrorCodes.invalidOptions }))
   })
 })
@@ -644,7 +644,7 @@ describe('what a node returns', () => {
       description: 'Returns its value',
       parameters: { value: {} },
       positionalParams: ['value'],
-      coverage: { failures: [], output: { param: 'value' } },
+      analysis: { failures: [], output: { param: 'value' } },
       evaluate: ({ value }) => value,
     })
     const hosts = new FigTree({ operators: [coreOperators, [echo]] })
@@ -655,14 +655,14 @@ describe('what a node returns', () => {
         category: 'other',
         description: 'd',
         parameters: { value: {} },
-        coverage: { output: { param: 'nope' } },
+        analysis: { output: { param: 'nope' } },
         evaluate: () => 1,
       })
     ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidDefinition }))
   })
 
   describe('the result boundary, under strict numbers', () => {
-    const strict = { numbers: 'strict' as const }
+    const strict = { strictNumbers: true }
     const nonFinite = { path: [], code: ErrorCodes.nonFiniteResult, certainty: 'may' }
 
     test('a number from the data may be NaN, wherever it is returned', async () => {
@@ -747,7 +747,7 @@ describe('value ranges', () => {
       parameters: values,
       positionalParams: ['...values'],
       returns: 'number',
-      coverage: { output: { sum: 'values' } },
+      analysis: { output: { sum: 'values' } },
       evaluate: ({ values }) => (values as number[]).reduce((sum, value) => sum + value, 0),
     })
     const word = defineOperator({
@@ -757,7 +757,7 @@ describe('value ranges', () => {
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
-      coverage: { output: { type: 'string', minLength: 1 } },
+      analysis: { output: { type: 'string', minLength: 1 } },
       evaluate: ({ value }) => value || '-',
     })
     const picky = defineOperator({
@@ -767,7 +767,7 @@ describe('value ranges', () => {
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
-      coverage: { failures: [{ code: 'operator-failure', when: { value: { empty: true } } }] },
+      analysis: { failures: [{ code: 'operator-failure', when: { value: { empty: true } } }] },
       evaluate: ({ value }) => {
         if (value === '') throw new OperatorFailure('nothing to pick')
         return value
@@ -802,7 +802,7 @@ describe('value ranges', () => {
           category: 'math',
           description: 'd',
           parameters: { value: { type: 'number' }, values: { type: 'array' } },
-          coverage: { output },
+          analysis: { output },
           evaluate: () => 1,
         } as unknown as Parameters<typeof defineOperator>[0])
       const refused = expect.objectContaining({ code: ErrorCodes.invalidDefinition })
@@ -892,7 +892,7 @@ describe("an operator's own failures", () => {
     const picky = defineOperator({
       ...base,
       name: 'picky',
-      coverage: {
+      analysis: {
         failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }],
       },
       evaluate: ({ value }) => {
@@ -900,7 +900,7 @@ describe("an operator's own failures", () => {
         return value
       },
     })
-    const fetching = defineOperator({ ...base, name: 'fetching', coverage: { external: true } })
+    const fetching = defineOperator({ ...base, name: 'fetching', analysis: { external: true } })
     const hosts = new FigTree({ operators: [coreOperators, [picky, fetching]] })
 
     test('a declared one fails only as its rules say', async () => {
@@ -925,10 +925,10 @@ describe("an operator's own failures", () => {
       ])
     })
 
-    test('defineOperator() refuses a malformed coverage', () => {
-      const refused = (coverage: unknown) =>
+    test('defineOperator() refuses a malformed analysis', () => {
+      const refused = (analysis: unknown) =>
         expect(() =>
-          defineOperator({ ...base, name: 'bad', coverage } as unknown as Parameters<
+          defineOperator({ ...base, name: 'bad', analysis } as unknown as Parameters<
             typeof defineOperator
           >[0])
         ).toThrow(expect.objectContaining({ code: ErrorCodes.invalidDefinition }))
@@ -1063,7 +1063,7 @@ describe('running a node', () => {
       parameters: { value: { type: 'number' } },
       positionalParams: ['value'],
       returns: 'number',
-      coverage: {},
+      analysis: {},
       evaluate: async ({ value }) => {
         await Promise.resolve()
         if (value < 0) throw new OperatorFailure('negative')
@@ -1090,7 +1090,7 @@ describe('running a node', () => {
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
-      coverage: {},
+      analysis: {},
       evaluate: () => {
         calls++
         return new Promise<string>(() => {})
@@ -1227,7 +1227,7 @@ describe('per-element walks', () => {
         each: { type: 'any', evaluation: 'perElement', over: 'input' },
       },
       positionalParams: ['input', 'each'],
-      coverage: {},
+      analysis: {},
       evaluate: ({ each }) => each.evaluate(5),
     })
     const hosts = new FigTree({ operators: [coreOperators, [sixth]] })
@@ -1287,12 +1287,5 @@ describe('misuse', () => {
   test('anything but a FigTree instance is a TypeError', async () => {
     await expect(fallbackCoverage({}, 1)).rejects.toThrow(TypeError)
     await expect(fallbackCoverage(undefined, 1)).rejects.toThrow(TypeError)
-  })
-
-  test('a bad timeout is refused as evaluate() refuses it', async () => {
-    for (const timeout of [0, -1, Number.NaN, Infinity, '50' as unknown as number])
-      await expect(fallbackCoverage(fig, 1, { timeout })).rejects.toThrow(
-        expect.objectContaining({ code: ErrorCodes.invalidOptions })
-      )
   })
 })

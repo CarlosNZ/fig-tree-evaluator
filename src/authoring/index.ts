@@ -24,13 +24,13 @@ import { Analysis } from './walk'
  * above it. Async, because the analysis runs a pure node's own body where
  * enough is known of its inputs, and a body is async.
  *
- * Under a timeout nothing runs after the deadline, so a top-level value is
- * shielded only by a constant fallback: the instance's `timeout`, or the
- * one passed here for a host that passes it to `evaluate()` per call. Only
- * an evaluation that waits on something outside it can be cut off, and
- * shielding is all or nothing (see "Timeouts" in the spec). The expression
- * compiles through `compile()`, so it shares the compile cache with
- * `evaluate()`.
+ * It answers as the instance would evaluate the expression, under the
+ * instance's own options: under its `timeout`, nothing runs after the
+ * deadline, so a top-level value is shielded only by a constant fallback.
+ * Only an evaluation that waits on something outside it can be cut off,
+ * and shielding is all or nothing (see "Timeouts" in the spec). The
+ * expression compiles through `compile()`, so it shares the compile cache
+ * with `evaluate()`.
  */
 export const fallbackCoverage = async (
   fig: unknown,
@@ -38,23 +38,17 @@ export const fallbackCoverage = async (
   options?: FallbackCoverageOptions
 ): Promise<FallbackCoverage> => {
   if (!(fig instanceof FigTree)) throw new TypeError('fallbackCoverage() takes a FigTree instance')
-  // The call's timeout laid over the instance's options, and checked, as
-  // `evaluate()` would; the analysis's own options are not evaluate()'s.
-  // A handle from this copy is always readable
-  const timeout = options?.timeout
-  const { artifact, options: effective } = viewHandle(
-    fig.compile(expression),
-    timeout !== undefined ? { timeout } : undefined
-  )!
-  const numbers = options?.numbers ?? 'ordinary'
-  if (numbers !== 'ordinary' && numbers !== 'strict')
+  const strictNumbers = options?.strictNumbers ?? false
+  if (typeof strictNumbers !== 'boolean')
     throw new FigTreeError({
       code: ErrorCodes.invalidOptions,
-      message: `'numbers' must be 'ordinary' or 'strict', received ${JSON.stringify(numbers)}`,
+      message: `'strictNumbers' must be a boolean, received ${JSON.stringify(strictNumbers)}`,
       path: [],
     })
+  // A handle from this copy is always readable
+  const { artifact, options: effective } = viewHandle(fig.compile(expression))!
   const evaluation = effective as unknown as Record<string, unknown>
-  const analysis = new Analysis({ numbers, evaluation }, artifact.issues)
+  const analysis = new Analysis({ strictNumbers, evaluation }, artifact.issues)
 
   const caught: Caught[] = []
   const { escapes, waits } = await analysis.root(artifact.root, caught)

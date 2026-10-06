@@ -30,10 +30,14 @@ const timed = async (run: () => Promise<unknown>) => {
 }
 
 const main = async () => {
-  const fig = new FigTree({
+  const options = {
     operators: [coreOperators, httpOperators(client)],
     http: { baseEndpoint: 'https://api.example.com' },
-  })
+  }
+  const fig = new FigTree(options)
+  // The analysis reads the instance's options, so it asks an instance with
+  // the timeout
+  const underTimeout = new FigTree({ ...options, timeout: 50 })
 
   section('A deadline over a request that never answers')
 
@@ -54,7 +58,7 @@ const main = async () => {
     offers: { $http: '/slow', fallback: [] },
   }
   console.log(
-    `  await fallbackCoverage(): ${block(await fallbackCoverage(fig, banner, { timeout: 50 }))}\n`
+    `  await fallbackCoverage(): ${block(await fallbackCoverage(underTimeout, banner))}\n`
   )
   print(
     'greeting finished → its real value; offers did not → its static fallback',
@@ -72,7 +76,7 @@ const main = async () => {
 
   const banner2 = { ...banner, offers: { $http: '/slow', fallback: '$data.cachedOffers' } }
   console.log(
-    `  await fallbackCoverage(): ${block(await fallbackCoverage(fig, banner2, { timeout: 50 }))}\n`
+    `  await fallbackCoverage(): ${block(await fallbackCoverage(underTimeout, banner2))}\n`
   )
   print(
     'a fallback that could start new work past the deadline cannot shield it',

@@ -362,6 +362,8 @@ describe('lifecycle — the full example, fetch counts and all', () => {
 describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   const http = new MockHttpClient({ latencyMs: 300, responses: { offers: [{ id: 7 }] } })
   const fig = new FigTree({ operators: [coreOperators, httpOperators(http)] })
+  // The analysis reads the timeout from the instance it is given
+  const timed = new FigTree({ operators: [coreOperators, httpOperators(http)], timeout: 50 })
 
   const banner = {
     greeting: { $buildString: ['Hi %1', '$data.name'], fallback: 'Hi there' },
@@ -370,7 +372,7 @@ describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
 
   it('every hole root carries a static fallback, so none is uncovered under a timeout', async () => {
-    expect((await fallbackCoverage(fig, banner, { timeout: 50 })).uncovered).toEqual([])
+    expect((await fallbackCoverage(timed, banner)).uncovered).toEqual([])
   })
 
   it('under the budget, greeting contributes its real value and offers its static fallback', async () => {
@@ -389,7 +391,7 @@ describe('worked example 3 — timeout shielding and fallbackCoverage', () => {
   })
 
   it('one dynamic fallback un-shields the whole expression: its hole is listed, the timeout throws', async () => {
-    expect((await fallbackCoverage(fig, banner2, { timeout: 50 })).uncovered).toEqual([
+    expect((await fallbackCoverage(timed, banner2)).uncovered).toEqual([
       expect.objectContaining({ path: ['offers'], code: 'timeout' }),
     ])
     // The step above left the offers in the result cache, and a cache hit

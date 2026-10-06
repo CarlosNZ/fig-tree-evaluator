@@ -14,17 +14,21 @@
  * asserted in test/authoring.test.ts.
  */
 import { FigTree, coreOperators, defineOperator } from '../src'
-import type { CoverageFinding } from '../src'
+import type { CoverageFinding, FigTreeOptions } from '../src'
 import { fallbackCoverage } from '../src/authoring'
 import { compileOps } from './fixtures/compileRegistry'
 
-const fig = new FigTree({ operators: [compileOps()] })
+const standIns: FigTreeOptions = { operators: [compileOps()] }
+const fig = new FigTree(standIns)
+
+/** An instance with a timeout, which is where the analysis reads it from. */
+const timed = (options: FigTreeOptions = standIns) => new FigTree({ ...options, timeout: 50 })
 
 const timeouts = (findings: CoverageFinding[]) =>
   findings.filter((finding) => finding.code === 'timeout').map((finding) => finding.path)
 
-const underTimeout = async (expression: unknown, instance: FigTree = fig) =>
-  timeouts((await fallbackCoverage(instance, expression, { timeout: 50 })).uncovered)
+const underTimeout = async (expression: unknown, options?: FigTreeOptions) =>
+  timeouts((await fallbackCoverage(timed(options), expression)).uncovered)
 
 test('worked example 3: one dynamic fallback leaves its hole uncovered', async () => {
   const banner = {
@@ -54,10 +58,10 @@ test('a node root is covered by its own constant fallback', async () => {
 })
 
 test('an operatorDefaults fallback counts when it is constant', async () => {
-  const shieldedByDefaults = new FigTree({
+  const shieldedByDefaults = {
     operators: [compileOps()],
     operatorDefaults: { http: { fallback: 'offline' } },
-  })
+  }
   expect(await underTimeout({ a: { $http: 'https://x.test' } }, shieldedByDefaults)).toEqual([])
   // The same expression on the plain instance is uncovered
   expect(await underTimeout({ a: { $http: 'https://x.test' } })).toEqual([['a']])
@@ -78,10 +82,9 @@ test('a vars block on a plain-literal root does not uncover its holes', async ()
   expect(await underTimeout(partial)).toEqual([['banner']])
 })
 
-test('the instance timeout applies with no timeout passed', async () => {
-  const timed = new FigTree({ operators: [compileOps()], timeout: 50 })
+test("the analysis reads the instance's timeout", async () => {
   const expression = { a: { $http: 'https://x.test', fallback: '$data.cached' } }
-  expect(timeouts((await fallbackCoverage(timed, expression)).uncovered)).toEqual([['a']])
+  expect(timeouts((await fallbackCoverage(timed(), expression)).uncovered)).toEqual([['a']])
   // Without any timeout, a dynamic fallback that cannot throw covers it
   expect((await fallbackCoverage(fig, expression)).uncovered).toEqual([])
 })
@@ -93,11 +96,11 @@ test('a reference hole is never shielded, so a timeout lists it', async () => {
 })
 
 test("a call lifts its body root's constant fallback", async () => {
-  const withFragment = new FigTree({
+  const withFragment = timed({
     fragments: { safe: { expression: { $upper: '$data.s', fallback: 'k' } } },
   })
   const all = async (expression: unknown) =>
-    (await fallbackCoverage(withFragment, expression, { timeout: 50 })).uncovered.map((finding) => [
+    (await fallbackCoverage(withFragment, expression)).uncovered.map((finding) => [
       finding.path,
       finding.code,
     ])
@@ -110,11 +113,7 @@ test("a call lifts its body root's constant fallback", async () => {
 })
 
 test('a timeout finding sits beside the findings without one', async () => {
-  const { uncovered } = await fallbackCoverage(
-    fig,
-    { b: { $plus: ['$data.x', 1] } },
-    { timeout: 50 }
-  )
+  const { uncovered } = await fallbackCoverage(timed(), { b: { $plus: ['$data.x', 1] } })
   expect(uncovered).toEqual([
     expect.objectContaining({ path: ['b'], code: 'operator-failure' }),
     {
@@ -142,20 +141,20 @@ describe('only an evaluation that can wait can be cut off', () => {
     parameters: { value: { type: 'number' } },
     positionalParams: ['value'],
     returns: 'number',
-    coverage: {},
+    analysis: {},
     evaluate: async ({ value }) => {
       await new Promise((resolve) => setTimeout(resolve, 1))
       return value
     },
   })
-  const waiting = new FigTree({
+  const waiting: FigTreeOptions = {
     operators: [coreOperators, [io, nap]],
     fragments: {
       fetch: { expression: { $io: 1 } },
       echo: { expression: '$params.v', parameters: { v: { type: 'any' } } },
       ignore: { expression: 1, parameters: { v: { type: 'any' } } },
     },
-  })
+  }
   const cutOff = (expression: unknown) => underTimeout(expression, waiting)
   const fetched = { $io: 1 }
 
@@ -190,7 +189,7 @@ describe('only an evaluation that can wait can be cut off', () => {
 
   test('a shielded value that can wait is covered against the timeout, one that cannot is not', async () => {
     const shielded = { a: { $io: 1, fallback: 0 }, b: { $upper: 'x', fallback: '' } }
-    const { uncovered, covered } = await fallbackCoverage(waiting, shielded, { timeout: 50 })
+    const { uncovered, covered } = await fallbackCoverage(timed(waiting), shielded)
     expect(timeouts(uncovered)).toEqual([])
     expect(
       covered

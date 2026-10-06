@@ -50,31 +50,29 @@ export interface CoveredFinding extends CoverageFinding {
   coveredByFragmentPath?: (string | number)[]
 }
 
-/** What `fallbackCoverage` takes beside the instance and the expression. */
+/**
+ * The analysis's own options. The evaluation options it reads, such as
+ * `timeout` and `strictDataPaths`, are the instance's.
+ */
 export interface FallbackCoverageOptions {
   /**
-   * A timeout the host passes to `evaluate()` per call, which the instance
-   * cannot know of. Its own `timeout` applies without it.
+   * Treat numbers strictly ("Numbers" in
+   * docs-dev/v3-specs/v3-fallback-coverage.md): overflow on numbers the
+   * analysis cannot pin down counts, and a number from the data may be NaN
+   * or infinite. False by default.
    */
-  timeout?: number
-  /**
-   * How strictly the analysis treats numbers ("Numbers" in
-   * docs-dev/v3-specs/v3-fallback-coverage.md): whether overflow on numbers
-   * it cannot pin down counts, and whether a number from the data may be
-   * NaN or infinite. 'ordinary' by default.
-   */
-  numbers?: 'ordinary' | 'strict'
+  strictNumbers?: boolean
 }
 
 /**
- * What an operator declares of its own failures, for `./authoring`
+ * What static analysis may assume of an operator, for `./authoring`
  * ("Where the rules live" in docs-dev/v3-specs/v3-fallback-coverage.md):
- * the `coverage` field of a definition. Declaring it says the rules are
+ * the `analysis` field of a definition. Declaring it says the rules are
  * complete, and that the operator is pure: the analysis runs its body where
  * its inputs are known, so the body must settle from its parameters alone.
  * Without it, a host operator is external: it may fail whatever its inputs.
  */
-export interface OperatorCoverage {
+export interface OperatorAnalysis {
   /**
    * The ways its body can fail beside the engine's own checks on its
    * parameters. Absent or empty: it never fails of itself
@@ -83,7 +81,7 @@ export interface OperatorCoverage {
   /** It may fail whatever its inputs: a request, or code nothing describes */
   external?: true
   /** What a node returns, where its inputs narrow its `returns` */
-  output?: CoverageOutput
+  output?: DeclaredOutput
 }
 
 /**
@@ -95,20 +93,17 @@ export interface FailureRule {
   /** The parameter the failure is about, which its finding names */
   parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */
-  when?: Record<string, CoverageTest>
+  when?: Record<string, FailureTest>
   /** Options the rule needs, such as { strictDataPaths: true } */
   options?: Record<string, unknown>
   /** Holding makes the failure possible, not certain */
   may?: true
-  /**
-   * A failure only extreme numbers reach: counted under numbers: 'strict'
-   * only
-   */
+  /** A failure only extreme numbers reach: counted under strictNumbers only */
   overflow?: true
 }
 
 /** A test on what one parameter receives. */
-export type CoverageTest =
+export type FailureTest =
   /** Equals this value */
   | string
   | number
@@ -125,14 +120,14 @@ export type CoverageTest =
   /** The operator's `validate` hook refuses it */
   | { invalid: true }
   /** Some element of an array, or value of an object, passes */
-  | { some: CoverageTest }
-  | { not: CoverageTest }
+  | { some: FailureTest }
+  | { not: FailureTest }
 
 /**
  * What an operator node returns, in terms of what its parameters receive
  * ("Output declarations" in docs-dev/v3-specs/v3-fallback-coverage.md).
  */
-export type CoverageOutput =
+export type DeclaredOutput =
   /** A fixed type */
   | ExpectedType
   /** A number between `min` and `max`, inclusive, where they are given */
@@ -145,15 +140,15 @@ export type CoverageOutput =
   | { elementOf: string }
   /** The types of an array parameter's elements, as a sum of them is */
   | { kindOf: string }
-  | { arrayOf: CoverageOutput; minLength?: number }
-  | { oneOf: CoverageOutput[] }
+  | { arrayOf: DeclaredOutput; minLength?: number }
+  | { oneOf: DeclaredOutput[] }
   /** The type a literal parameter names */
   | { typeNamedBy: string }
   /**
    * Chosen by a literal parameter: the case it names, else `otherwise`; all
    * of them where it is not known
    */
-  | { byParam: string; cases: Record<string, CoverageOutput>; otherwise?: CoverageOutput }
+  | { byParam: string; cases: Record<string, DeclaredOutput>; otherwise?: DeclaredOutput }
   /** The first of an array parameter's elements that is not null */
   | { firstNonNull: string }
   /**

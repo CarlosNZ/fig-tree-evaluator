@@ -1,12 +1,12 @@
 # FigTree v3 — Precise fallback coverage
 
-_Spec (Claude, October 2026), from the [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217) design discussion with Carl. It replaces the `fallbackCoverage` section of [v3-authoring.md](v3-authoring.md) once built. The reasoning behind each decision is logged in [v3-coverage-decisions.md](v3-coverage-decisions.md); what every operator can fail on is in [v3-failure-inventory.md](v3-failure-inventory.md); the expected results, case by case, are in [v3-coverage-cases.md](v3-coverage-cases.md)._
+_Spec (Claude, October 2026), from the [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217) design discussion with Carl. Built: this records what `fallbackCoverage` does, and replaces the version first specified in [v3-authoring.md](v3-authoring.md). The reasoning behind each decision is logged in [v3-coverage-decisions.md](v3-coverage-decisions.md); what every operator can fail on is in [v3-failure-inventory.md](v3-failure-inventory.md); the expected results, case by case, are in [v3-coverage-cases.md](v3-coverage-cases.md)._
 
-## What changes
+## What it does
 
-Today `fallbackCoverage` assumes every operator node can throw. Only a fallback on a top-level value counts, and `{ $plus: [1, 2] }` is listed as a risk although it cannot fail.
+The first `fallbackCoverage` ([#209](https://github.com/CarlosNZ/fig-tree-evaluator/issues/209)) assumed every operator node could throw: only a fallback on a top-level value counted, and `{ $plus: [1, 2] }` was listed as a risk although it cannot fail.
 
-The precise version works out which nodes can actually throw, and why. It walks the expression from the leaves up, giving each node a verdict and an output type, so an inner fallback counts and a node that cannot fail is not listed. It stays in `./authoring`, so `evaluate()` pays nothing for any of it.
+This version works out which nodes can actually throw, and why. It walks the expression from the leaves up, giving each node a verdict and an output type, so an inner fallback counts and a node that cannot fail is not listed. It stays in `./authoring`, so `evaluate()` pays nothing for any of it.
 
 ## What it returns
 
@@ -53,10 +53,9 @@ For example, `{ $plus: [{ $divide: ['$data.a', '$data.b'] }, 1] }` gives three u
 
 ### Options
 
-- **`timeout`**, as today: a timeout the host passes to `evaluate()` per call, laid over the instance's own. The analysis reads whichever is in force (see "Timeouts"). An I/O operator's own `timeout` parameter is something else: it makes that request fail with `request-timeout`, which its finding stands for.
-- **`numbers`**: `'ordinary'` (the default) or `'strict'`. See "Numbers". Names provisional.
+- **`strictNumbers`**: `false` by default. See "Numbers".
 
-Where the analysis's own options sit beside the stand-ins for `evaluate()`'s options is deferred.
+That is the analysis's only option. It answers as the instance would evaluate the expression, so the evaluation options it reads, `timeout` and `strictDataPaths`, are the instance's own. A host that passes a timeout to `evaluate()` per call analyses with an instance that carries it. An I/O operator's own `timeout` parameter is something else: it makes that request fail with `request-timeout`, which its finding stands for.
 
 ## The walk
 
@@ -160,7 +159,7 @@ What the runs give the walk:
 
 ## Operator rules
 
-Twenty-seven of the forty pure core operators need no **failure rules**: everything that can make them throw is a type check, a null rejection or a constraint, all read from their definitions. The other thirteen declare them. Separately, eighteen operators declare an **output** narrower than their `returns`.
+Twenty-seven of the forty pure core operators need no **failure rules**: everything that can make them throw is a type check, a null rejection or a constraint, all read from their definitions. The other thirteen declare them. Separately, sixteen operators declare an **output** narrower than their `returns`.
 
 ### Failure rules
 
@@ -172,16 +171,16 @@ interface FailureRule {
   /** The parameter the failure is about, which its finding names */
   parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */
-  when?: Record<string, CoverageTest>
+  when?: Record<string, FailureTest>
   /** Options the rule needs, such as { strictDataPaths: true } */
   options?: Record<string, unknown>
   /** Holding makes the failure possible, not certain */
   may?: true
-  /** An overflow only extreme inputs reach: counted under numbers: 'strict' only, never certain */
+  /** An overflow only extreme inputs reach: counted under strictNumbers only, never certain */
   overflow?: true
 }
 
-type CoverageTest =
+type FailureTest =
   | string
   | number
   | boolean
@@ -191,8 +190,8 @@ type CoverageTest =
   | { empty: true } // an empty array, string or object
   | { supplied: boolean } // it has a value, supplied or defaulted, or has none
   | { invalid: true } // the operator's validate hook refuses it
-  | { some: CoverageTest } // some element of an array, or value of an object
-  | { not: CoverageTest }
+  | { some: FailureTest } // some element of an array, or value of an object
+  | { not: FailureTest }
 ```
 
 Each test answers no, maybe or yes from what the walk knows: `{ by: 0 }` is yes when `by` is exactly 0, no when it is exactly 2 or can only be null, maybe when it is an unknown number. A rule's answer is the combination of its tests: no if any is no, yes if all are yes, otherwise maybe. A yes on a rule without `may` or `overflow` gives an `always` finding; any other yes or maybe gives a `may` finding; no gives nothing. An overflow takes extreme numbers, which no test can ask for, so it is never certain: an `always` there would tell the walk that the node never returns, and its parent's own checks would be skipped. A test reads what the parameter receives, once the engine's layers have run: its default, a null replaced. `{ invalid: true }` is maybe while the value is unknown; once known, the operator's own `validate` hook decides, given every parameter known exactly and none of the others, as the static check gives it the literal ones only. A finding names the rule's `parameter`, if it has one. Its message is generated from the rule: `divide – non-finite-result when 'by' is 0`.
@@ -238,17 +237,17 @@ http, graphQL, sql: external
 For operators whose `returns` is wider than what a node can return:
 
 ```ts
-type CoverageOutput =
+type DeclaredOutput =
   | ExpectedType // a fixed type
   | { type: 'number' | 'integer'; min?: number; max?: number } // a number within bounds, inclusive
   | { type: 'string' | 'array'; minLength?: number } // at least so long (a string in code points)
   | { param: string } // what that parameter receives
   | { elementOf: string } // an element of an array parameter
   | { kindOf: string } // the types of an array parameter's elements, widened
-  | { arrayOf: CoverageOutput; minLength?: number }
-  | { oneOf: CoverageOutput[] }
+  | { arrayOf: DeclaredOutput; minLength?: number }
+  | { oneOf: DeclaredOutput[] }
   | { typeNamedBy: string } // the type a literal parameter names
-  | { byParam: string; cases: Record<string, CoverageOutput>; otherwise?: CoverageOutput } // chosen by a literal parameter
+  | { byParam: string; cases: Record<string, DeclaredOutput>; otherwise?: DeclaredOutput } // chosen by a literal parameter
   | { firstNonNull: string } // firstOf's candidates
   | { sum: string } // the sum of an array parameter's elements
   | { product: string } // the product of an array parameter's numbers
@@ -275,7 +274,6 @@ map:         { arrayOf: { param: 'each' } }
 split:       { byParam: 'delimiter', cases: { '': { arrayOf: 'string' } }, otherwise: { arrayOf: 'string', minLength: 1 } }
 convert:     { typeNamedBy: 'to' }
 regex:       { byParam: 'mode', cases: { test: 'boolean', extract: { oneOf: ['string', { param: 'noMatchDefault' }] }, match: { arrayOf: 'string' } } }
-floor, ceil: 'integer'
 ```
 
 `{ param }` over a container-lazy parameter (`match.branches`, `firstOf.values`) means the union of its entries or elements, and over a `perElement` parameter (`map.each`) what one element gives; `{ arrayOf }` of that, where each element was walked on its own, is their results in order. `{ elementOf }` is one of the elements as it is, which is right for `min` and `max`; `{ kindOf }` widens each exact element to its type, which is right for `plus`, since a sum is none of its operands: `{ $plus: [-1, 1] }` is an integer, not -1 or 1. `{ typeNamedBy }` and `{ byParam }` take the named type or case when the parameter is known exactly, and every one otherwise; `byParam`'s `otherwise` is the case for any value its `cases` do not name. `split` needs it: an empty delimiter splits into code points, so `split('', '')` is `[]`, while any other delimiter gives at least one piece. The arithmetic forms are in "Value ranges". `{ firstNonNull }` reads a literal array's elements in order, and stops at the first that cannot be null.
@@ -287,7 +285,7 @@ floor, ceil: 'integer'
 Split by who writes them:
 
 - **Core operators:** a table in `./authoring`, keyed by the core definition itself rather than its name, so a host operator reusing a core name never inherits its rules. The root never imports it, so `evaluate()` pays nothing: the whole table is about 0.6 kB brotli.
-- **Host operators:** an optional field on the definition, in the same shape (`coverage: { failures?, external?, output? }`; name provisional), checked by `defineOperator()`: a rule's `when` keys and `parameter`, and the parameters an `output` names, must be declared, each test and output must be well formed, and `external: true` declares no `failures`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A declared body must therefore settle from its parameters alone (see "Running a node"). A host operator without it is external. The field is carried onto the built definition and never read by the engine.
+- **Host operators:** an optional field on the definition, in the same shape (`analysis: { failures?, external?, output? }`), checked by `defineOperator()`: a rule's `when` keys and `parameter`, and the parameters an `output` names, must be declared, each test and output must be well formed, and `external: true` declares no `failures`. Declaring it says the operator is pure, so the walk may run it, and that its rules are complete. A declared body must therefore settle from its parameters alone (see "Running a node"). A host operator without it is external. The field is carried onto the built definition and never read by the engine.
 
 The analysis reads the definition's field first, then the core table.
 
@@ -302,7 +300,7 @@ The walk knows a value's bounds as well as its type, so `{ $divide: [10, { $plus
 - **`narrow`** turns a number range checked as an integer into an integer range, its bounds rounded inwards; a literal type keeps the literals inside the range.
 - **`fits`** admits a literal only inside the bounds, an integer where the member is one, and no shorter than `minLength`. A drill below an array's `minLength` finds its element.
 
-**Where they are declared.** In the output declarations, since a range is part of what a node returns: the core table in `./authoring`, a host's `coverage.output`, which `defineOperator()` checks as it checks any output (bounds finite and in order, only on a number type; `minLength` a non-negative integer, only on a string or array; every parameter named declared). Nothing reaches the engine, so `evaluate()` pays nothing.
+**Where they are declared.** In the output declarations, since a range is part of what a node returns: the core table in `./authoring`, a host's `analysis.output`, which `defineOperator()` checks as it checks any output (bounds finite and in order, only on a number type; `minLength` a non-negative integer, only on a string or array; every parameter named declared). Nothing reaches the engine, so `evaluate()` pays nothing.
 
 **The arithmetic** sits once in the walk's value representation (src/authoring/known.ts); a declaration names only the operation. Each computes its bounds with the operation the body performs, in the same order (a sum from 0, a product from 1, left to right), so what the body returns is within them: rounding never reverses an order, and a bound that overflows is open.
 
@@ -320,37 +318,37 @@ The walk knows a value's bounds as well as its type, so `{ $divide: [10, { $plus
 
 ## Numbers
 
-How strictly the analysis treats numbers is its own option, not the evaluator's:
+How strictly the analysis treats numbers is its own option, `strictNumbers`, not the evaluator's:
 
-- **`'ordinary'` (default):** arithmetic stays in range, except where everyday inputs overflow (`power`, `round`), and numbers in the data are finite. Rules marked `overflow` are not counted.
-- **`'strict'`:** every arithmetic node on unknown numbers may overflow (the `overflow` rules count), and any number from the data may be NaN or Infinity.
+- **Off (the default):** arithmetic stays in range, except where everyday inputs overflow (`power`, `round`), and numbers in the data are finite. Rules marked `overflow` are not counted.
+- **On:** every arithmetic node on unknown numbers may overflow (the `overflow` rules count), and any number from the data may be NaN or Infinity.
 
-Non-finite results that are not overflow (`divide` by 0, `0^-1`, a negative base with a fractional exponent) count at both levels.
+Non-finite results that are not overflow (`divide` by 0, `0^-1`, a negative base with a fractional exponent) count either way.
 
-**The result boundary.** The engine refuses a NaN or infinite result at every operator node (`normalizeResult` in src/evaluate/operator.ts), not only at arithmetic. So the walk tracks, on each number it knows of, whether it may be non-finite: a number from the data may be, under `strict`; an operator returning a number may return one if a number it receives may be one (`floor`, `round`, `convert`); and an output declaration carries one through an operator that hands a value on (`if`, `match`, `get`, `min`). Under `strict`, a node whose result may be a non-finite number may fail `non-finite-result` there, unless a rule already says so; at both levels, so does one handed a non-finite constant. What passes the boundary is finite, so `{ $abs: { $floor: '$data.n', fallback: 0 } }` reports `floor` but not `abs`. A number the walk knows, or one no non-finite number can reach (`{ $length: '$data.s' }`), is never reported.
+**The result boundary.** The engine refuses a NaN or infinite result at every operator node (`normalizeResult` in src/evaluate/operator.ts), not only at arithmetic. So the walk tracks, on each number it knows of, whether it may be non-finite: a number from the data may be, under `strictNumbers`; an operator returning a number may return one if a number it receives may be one (`floor`, `round`, `convert`); and an output declaration carries one through an operator that hands a value on (`if`, `match`, `get`, `min`). Under `strictNumbers`, a node whose result may be a non-finite number may fail `non-finite-result` there, unless a rule already says so; either way, so does one handed a non-finite constant. What passes the boundary is finite, so `{ $abs: { $floor: '$data.n', fallback: 0 } }` reports `floor` but not `abs`. A number the walk knows, or one no non-finite number can reach (`{ $length: '$data.s' }`), is never reported.
 
 ## Timeouts
 
 Under a timeout, nothing runs after the deadline, so only a constant fallback can stand in for a value that has not finished, and shielding is all or nothing: if any top-level value lacks a constant fallback, the deadline rejects the whole evaluation; if every one has one, each value still unfinished at the deadline gets its fallback in its place. Only an evaluation that waits on something outside it can be cut off: one that runs on promises alone finishes before the deadline's timer can fire, however long it takes. So:
 
-- **What can wait** is an I/O operator, and any host operator, declared or not: declaring `coverage` says what a body fails on and returns, not how long it takes, and a declared body may wait on a timer. A node waits where one of these is evaluated under it, through a var it reads, a fallback that can run, a fragment body, or an argument the body reads. As with failures, a child no run reaches does not count, and neither does one a run started but never waited on: `{ $or: [true, { $http: 'https://x.test/a' }] }` answers before its request does.
+- **What can wait** is an I/O operator, and any host operator, declared or not: declaring `analysis` says what a body fails on and returns, not how long it takes, and a declared body may wait on a timer. A node waits where one of these is evaluated under it, through a var it reads, a fallback that can run, a fragment body, or an argument the body reads. As with failures, a child no run reaches does not count, and neither does one a run started but never waited on: `{ $or: [true, { $http: 'https://x.test/a' }] }` answers before its request does.
 - **If anything can wait** and some top-level value lacks a constant fallback, every value lacking one is an uncovered `timeout` finding, including those that cannot wait themselves.
 - **If anything can wait** and every top-level value has a constant fallback, each value that can wait is a covered `timeout` finding, covered by itself: the deadline may put its fallback in its place.
 - **If nothing can**, a timeout adds nothing.
 
-A constant fallback here means a literal one, as the engine's shielding reads it: a fallback that folds to a constant does not shield. The fragment-call exception carries over from v3-authoring.md: a call with dynamic arguments fails outside its body's fallbacks.
+The timeout is the instance's (see "Options"). A constant fallback here means a literal one, as the engine's shielding reads it: a fallback that folds to a constant does not shield. A call with no fallback of its own shields with the one its body's root lifts, but a call with dynamic arguments still fails outside its body's fallbacks, which the walk reports as the call's own failures (see "Fragment calls").
 
 ## Testing
 
-- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 180 expressions and the findings each should give. A finding marked `external` stands for any code at its node, as the analysis's does. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
-- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Codes are matched exactly, except at an external node, whose one finding stands for any code its own code throws, which a timeout never is. A case with a timeout is evaluated under it as well, with a slow client where it does I/O, so a value cut off must be a `timeout` finding, covered at that value where its fallback stood in. A wrong `always` is unsound too, so no node the analysis says always fails may be shown returning a value, wherever the trace shows it evaluated.
-- **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It also checks the outputs: every value the engine returns must be admitted by the output the walk gives the node, so a wrong declaration, which would hide failures downstream, fails it. And it checks the runs: every run of the node, with each parameter known exactly, must end as the engine's evaluation does, with the same value or a certain failure with the same code, and every operator must be run at least once. An iterator is run again with its `each` walked per element, each element giving a value of its own or failing, against the engine's evaluation of an `each` that does the same. The outputs and the predictions are checked again with each parameter known only by a few ranges around its value (bounded at it on one side or both, reaching past it, a least length, an array's elements widened in turn), and a test's yes or no on a range must be its answer for the value in it. Where the analysis says the node always fails, the engine must fail. It reads each value from the data, so one compiled node serves every combination, and runs with the suite in about five seconds (test/coverage-rules.test.ts). It is what keeps the core tables complete: it found `round`'s rule, the result boundary under `strict`, and `regex`'s `returns` ([#218](https://github.com/CarlosNZ/fig-tree-evaluator/issues/218)), and that an overflow is never certain.
+- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 180 expressions and the findings each should give. A finding marked `external` stands for any code at its node, as the analysis's does. Each finding's witness is checked against the engine, and the analysis must give each case exactly its findings: no more and no fewer, each with the same certainty and covering fallback.
+- **Soundness:** each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Codes are matched exactly, except at an external node, whose one finding stands for any code its own code throws, which a timeout never is. A case with a timeout is evaluated under it as well, with a slow client where it does I/O, so a value cut off must be a `timeout` finding, covered at that value where its fallback stood in. A wrong `always` is unsound too, so no node the analysis says always fails may be shown returning a value, wherever the trace shows it evaluated.
+- **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It also checks the outputs: every value the engine returns must be admitted by the output the walk gives the node, so a wrong declaration, which would hide failures downstream, fails it. And it checks the runs: every run of the node, with each parameter known exactly, must end as the engine's evaluation does, with the same value or a certain failure with the same code, and every operator must be run at least once. An iterator is run again with its `each` walked per element, each element giving a value of its own or failing, against the engine's evaluation of an `each` that does the same. The outputs and the predictions are checked again with each parameter known only by a few ranges around its value (bounded at it on one side or both, reaching past it, a least length, an array's elements widened in turn), and a test's yes or no on a range must be its answer for the value in it. Where the analysis says the node always fails, the engine must fail. It reads each value from the data, so one compiled node serves every combination, and runs with the suite in about five seconds (test/coverage-rules.test.ts). It is what keeps the core tables complete: it found `round`'s rule, the result boundary under `strictNumbers`, and `regex`'s `returns` ([#218](https://github.com/CarlosNZ/fig-tree-evaluator/issues/218)), and that an overflow is never certain.
 
 ## Known limits
 
 - **Ranges come from a few operators only.** `divide`, `modulo`, `power`, `round`, `floor` and `ceil` declare no arithmetic, so `{ $divide: [<a length>, 2] }` is any number, and a length has no upper bound. Over an array whose length is not known, a sum or product is bounded by its elements' sign alone.
 - **`plus` with `expect: 'number'` has no range:** `{ typeNamedBy: 'expect' }` adds every number, for the empty case's identity.
-- **Under `strict`, an overflow rule counts whatever the ranges:** `{ $plus: [<a length>, 1] }` may overflow, although its operands are bounded.
+- **Under `strictNumbers`, an overflow rule counts whatever the ranges:** `{ $plus: [<a length>, 1] }` may overflow, although its operands are bounded.
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
 - **Under a timeout, a host operator is taken to wait**, declared or not, though its body may be synchronous: `{ a: { $twice: 2 }, b: { $upper: 'x' } }` lists a `timeout` on both values.
 - **Per-element walks need one exact array of a few elements.** Over 17 elements, or over a literal with a computed element, an `each` is walked once, with `$element` any of the elements, so a run sees every element give the same: `some` over the integers 0 to 16, with `{ $divide: [1, '$element'] }`, lists the division by 0, although element 1 decides `some` before it matters.
@@ -358,27 +356,25 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 - **The `power` and `round` thresholds**, `exponent` below 100 and `decimals` below 300 counting as safe from ordinary overflow, are judgments. A computed `decimals` gets a `may` finding unless a range keeps it below 300: `{ $min: [<a length>, 4] }` does, a length alone does not, since a string of 618 characters makes `{ $divide: [<its length>, 2] }` 309.
 - **`regex` declares a `returns` its `extract` mode breaks** ([#218](https://github.com/CarlosNZ/fig-tree-evaluator/issues/218)). The walk reads its output declaration instead, so the analysis is unaffected; `validate()`'s feeding check is not.
 - **An external node's certain failures** are reported as may fail: `http` with a relative URL and no `http.baseEndpoint`, `graphQL` with no endpoint.
-- **A host body that asks for an element its input does not have** is not followed. The engine evaluates `each` there with `$element` null, and no walk binds it so, so a failure that gives is missed: a host operator returning `each.evaluate(5)` over `[[1]]`, with `{ $map: { input: '$element', each: 1 } }` as its `each`, fails `type-check` and is not reported. A run treats such an index as a stand-in, so it never answers wrongly; core bodies only ever call `settle()`. Walking `each` once more with `$element` null, for host operators only, would close it.
+- **A host body that asks for an element its input does not have** is not followed. The engine evaluates `each` there with `$element` null, and no walk binds it so, so a failure that gives is missed: a host operator returning `each.evaluate(5)` over `[[1]]`, with `{ $map: { input: '$element', each: 1 } }` as its `each`, fails `type-check` and is not reported. A run treats such an index as a stand-in, so it never answers wrongly; core bodies only ever call `settle()`. Walking `each` once more with `$element` null, for host operators only, would close it ([#220](https://github.com/CarlosNZ/fig-tree-evaluator/issues/220)).
 - **A declared `returns` is trusted.** The engine never checks a body's result against it, so a host operator whose body returns outside its `returns` can cause type failures downstream that are not reported. `validate()`'s feeding check relies on `returns` in the same way.
 
-## Open
+## Follow-ups
 
-- The names: the `numbers` levels, and the host definition field.
-- Where the analysis's own options sit beside the stand-ins for `evaluate()`'s (deferred).
-- Whether to warn about a fallback that can never fire. A child no run reaches reports nothing, its failures included (decided at step 5).
-- Whether `floor` and `ceil` should declare `returns: 'integer'` in their definitions rather than in the output table.
-- Finding messages: their wording, generated from the rule or the run.
+- **Wording:** finding messages, generated from the rule or the run, are part of the review of every message before release ([#219](https://github.com/CarlosNZ/fig-tree-evaluator/issues/219)).
+- **A warning for a fallback that can never fire, a data shape, and a host iterator asking for an element its input does not have** ([#220](https://github.com/CarlosNZ/fig-tree-evaluator/issues/220)).
+- **A default whole-evaluation timeout**, armed only where an expression can wait ([#221](https://github.com/CarlosNZ/fig-tree-evaluator/issues/221)). With one in force, every expression that can wait would be analysed under it.
 
 ## Development steps
 
-Each step keeps the analysis sound, so it can land and be used at any point. The corpus measures progress: how many of its cases give exactly their expected findings.
+Built in nine steps, each kept sound so it could land on its own. The corpus measured progress as each landed; at the close, every case gives exactly its expected findings, and the runner fails on any that does not.
 
-1. **Shape and walk skeleton.** The new result types and the `numbers` option (accepted, no effect yet). The walk over the compiled tree, with scopes (vars, element bindings, fragment bodies), passing children's failures up for every delivery mode (rule 3, conservatively) and applying fallbacks (rule 6), with today's timeout logic carried into the new shape. Every operator node gets one placeholder finding, `operator-failure`, may. A fragment call gets none, since it fails on nothing of its own: it reports its body's findings, the placeholders included, and its arguments' (see "Fragment calls"). The soundness test is added, and test/authoring\*.test.ts move to the new shape. Result: today's precision, reported per node, with `covered`.
+1. **Shape and walk skeleton.** The new result types and the numbers option, `strictNumbers` since step 9 (accepted, no effect yet). The walk over the compiled tree, with scopes (vars, element bindings, fragment bodies), passing children's failures up for every delivery mode (rule 3, conservatively) and applying fallbacks (rule 6), with today's timeout logic carried into the new shape. Every operator node gets one placeholder finding, `operator-failure`, may. A fragment call gets none, since it fails on nothing of its own: it reports its body's findings, the placeholders included, and its arguments' (see "Fragment calls"). The soundness test is added, and test/authoring\*.test.ts move to the new shape. Result: today's precision, reported per node, with `covered`.
 2. **Types between nodes** (rules 1, 2 and 7 without declarations). The internal representation of what is known about a value. Inputs with defaults and the null rules in the engine's order; outputs from `returns`, null propagation and fallbacks; `$data` as `any`, `$element` from the input's elements, `$index` an integer, `$vars` from their definitions, `$params` from the fragment's declarations, analysed per call. The subset type check, giving real `type-check` findings. The placeholder finding stays.
-3. **Declared rules** (rule 5). The rule types and their no/maybe/yes evaluation, the core table in `./authoring`, `external` for the I/O operators and undeclared host operators, the host field and its check in `defineOperator()`. The placeholder finding goes; the `numbers` option takes effect. The rule checker is added.
-4. **Output declarations** (rule 7). The output types and the core output table, the result boundary under `strict` numbers, and the rule checker's check of outputs.
+3. **Declared rules** (rule 5). The rule types and their no/maybe/yes evaluation, the core table in `./authoring`, `external` for the I/O operators and undeclared host operators, the host field and its check in `defineOperator()`. The placeholder finding goes; the numbers option takes effect. The rule checker is added.
+4. **Output declarations** (rule 7). The output types and the core output table, the result boundary under strict numbers, and the rule checker's check of outputs.
 5. **Running nodes** (rule 4). `fallbackCoverage` becomes async. The runner: nodes whose inputs are all known (folding, certain failures, the short-circuits), one run per combination of a few known values, and stand-ins for children whose value is not known, ruling out unused children. The rule checker's check of runs against the engine.
 6. **Value ranges.** Bounds in what the walk knows, the range forms of the output vocabulary and their arithmetic, the core operators' ranges, and the tests reading them (see "Value ranges").
 7. **Per-element walks.** Where an iterator's `input` is known exactly, its `each` walked once per element, with `$element` and `$index` bound to that element, so a run sees what each element gives. Findings merged across the elements' walks, `always` only where every element a run reached says so.
 8. **Timeouts.** The all-or-nothing rule and the no-I/O case.
-9. **Close-out.** v3-authoring.md's `fallbackCoverage` section replaced by this spec, README, docs-dev/imports.md sizes, CHANGELOG, the cases page regenerated, #217 closed.
+9. **Close-out.** The public names settled: `strictNumbers` for the numbers option, and `analysis` for the host field. `fallbackCoverage`'s `timeout` option removed, so the analysis reads the instance's. `floor` and `ceil` declare `returns: 'integer'` in their definitions, which leaves the output table. Exactness made a check the corpus fails on. v3-authoring.md's section replaced by a pointer to this spec, docs-dev/imports.md updated, the cases page regenerated, #217 closed. The README and CHANGELOG are left to v3's release.

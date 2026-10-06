@@ -18,7 +18,7 @@ Where a case uses an instance other than `new FigTree()`:
   - **safeRatio**: `{ expression: { $divide: ['$params.a', '$params.b'], fallback: 0 }, parameters: { a: { type: 'number' }, b: { type: 'number' } } }`
   - **shout**: `{ expression: { $upper: '$params.s' }, parameters: { s: { type: 'string' } } }`
   - **maybeFail**: `{ expression: { $if: ['$params.c', { $divide: [1, 0] }, 1] }, parameters: { c: { type: 'any' } } }`
-- **Host operators:** `twice` doubles a number, and `shaky` fails on an empty string, both declaring nothing; `picky` fails on one and says so in its `coverage`.
+- **Host operators:** `twice` doubles a number, and `shaky` fails on an empty string, both declaring nothing; `picky` fails on one and says so in its `analysis`; `nap` hands its number back after a 30 ms timer, and declares that it fails on nothing.
 - **Clients:** a working HTTP client answers `{ n: 1, s: 'x' }`, and a working SQL connection answers `[{ a: 1, b: 2 }]`.
 
 ## Contents
@@ -1452,7 +1452,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✓ **convert** at `$plus[1]` — may fail: `operator-failure`, caught by its own fallback. E.g. data `{ b: 'x' }`
 - ✓ **convert** at `$plus[1]` — may fail: `non-finite-result`, caught by its own fallback. E.g. data `{ b: 'Infinity' }`
 
-**strict numbers: plus may overflow** (analysis options `{ numbers: 'strict' }`)
+**strict numbers: plus may overflow** (analysis options `{ strictNumbers: true }`)
 
 ```json5
 {
@@ -1477,7 +1477,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✗ **floor** at the root — may fail: `type-check` on `value`. E.g. data `{ n: 'a' }`
 
-**strict numbers: data may be NaN** (analysis options `{ numbers: 'strict' }`)
+**strict numbers: data may be NaN** (analysis options `{ strictNumbers: true }`)
 
 ```json5
 { $floor: '$data.n' }
@@ -1580,7 +1580,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 > A composite query value is refused with type-check, which the external finding stands for, as it does for the client failing.
 
-**a constant fallback shields a request from a timeout** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**a constant fallback shields a request from a timeout** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { $http: 'https://x.test/a', fallback: null }
@@ -1589,7 +1589,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 - ✓ **http** at the root — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
 
-**a fallback that folds is still not a constant to shielding** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**a fallback that folds is still not a constant to shielding** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { $http: 'https://x.test/a', fallback: { $lower: 'X' } }
@@ -1598,7 +1598,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✗ **http** at the root — may fail: `timeout`. E.g. with a slow client
 - ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
-**under a timeout, a value doing no I/O still needs a constant fallback when another does I/O** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a value doing no I/O still needs a constant fallback when another does I/O** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $http: 'https://x.test/a', fallback: 1 }, b: { $upper: 'x' } }
@@ -1609,7 +1609,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 > Shielding is all-or-nothing: if any value is unshielded, the deadline rejects the whole evaluation.
 
-**under a timeout, nothing doing I/O means nothing can be cut off** (analysis options `{ timeout: 20 }`)
+**under a timeout, nothing doing I/O means nothing can be cut off** (under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $upper: 'x' }, b: { $lower: 'Y' } }
@@ -1617,7 +1617,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 - Nothing can throw.
 
-**a constant fallback on the root shields everything under it** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**a constant fallback on the root shields everything under it** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { $plus: [{ $http: { url: 'https://x.test/a', returnPath: 's' }, fallback: 1 }, 1], fallback: 0 }
@@ -1627,7 +1627,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✓ **http** at `$plus[0]` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 - ✓ **plus** at the root — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
 
-**under a timeout, a shielded value doing no I/O is never cut off** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a shielded value doing no I/O is never cut off** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $http: 'https://x.test/a', fallback: 1 }, b: { $upper: 'x', fallback: 'X' } }
@@ -1636,7 +1636,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✓ **http** at `a` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 - ✓ **http** at `a` — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
 
-**under a timeout, a request read through a var can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a request read through a var can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: '$vars.r', b: { $upper: 'x' }, vars: { r: { $http: 'https://x.test/a', fallback: null } } }
@@ -1646,7 +1646,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✗ **upper** at `b` — may fail: `timeout`. E.g. with a slow client
 - ✓ **http** at `vars.r` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
 
-**under a timeout, a request in a fallback can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a request in a fallback can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $upper: '$data.s', fallback: { $http: 'https://x.test/a' } }, b: { $lower: 'Y' } }
@@ -1657,7 +1657,7 @@ Where a case uses an instance other than `new FigTree()`:
 - ✗ **lower** at `b` — may fail: `timeout`. E.g. data `{ s: 1 }` with a slow client
 - ✓ **upper** at `a` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
 
-**under a timeout, a request in a branch never taken never waits** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a request in a branch never taken never waits** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $if: [true, 1, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } }
@@ -1665,7 +1665,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 - Nothing can throw.
 
-**under a timeout, a request a decider never waits for** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+**under a timeout, a request a decider never waits for** (with HTTP and SQL clients, and no `http.baseEndpoint`; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $or: [true, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } }
@@ -1675,7 +1675,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 ## Host operators
 
-**under a timeout, an undeclared host operator may wait** (with the host operators listed at the top; analysis options `{ timeout: 20 }`)
+**under a timeout, an undeclared host operator may wait** (with the host operators listed at the top; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $twice: 2 }, b: { $upper: 'x' } }
@@ -1687,7 +1687,7 @@ Where a case uses an instance other than `new FigTree()`:
 
 > False positives the design accepts: twice never throws and never waits, but nothing says so.
 
-**under a timeout, a declared host operator may wait** (with the host operators listed at the top; analysis options `{ timeout: 20 }`)
+**under a timeout, a declared host operator may wait** (with the host operators listed at the top; under a 20 ms timeout on the instance)
 
 ```json5
 { a: { $nap: 1 } }

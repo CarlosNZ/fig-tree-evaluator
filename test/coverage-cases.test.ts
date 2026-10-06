@@ -1,6 +1,5 @@
 /**
- * Checks the #217 case corpus (test/coverage-cases.ts) against the engine,
- * ahead of the analysis it is written for:
+ * Checks the #217 case corpus (test/coverage-cases.ts) against the engine:
  *
  * - every expression is valid, since the analysis means nothing otherwise;
  * - every finding with a witness, or a certain one, really happens: the
@@ -11,14 +10,13 @@
  *
  * Then the analysis over each case:
  *
- * - soundness, which must hold at every step of #217: every failure seen
- *   over the spread is among the analysis's findings, uncovered if it
- *   rejected the evaluation, covered at the fallback the trace shows
- *   caught it;
+ * - soundness: every failure seen over the spread is among the analysis's
+ *   findings, uncovered if it rejected the evaluation, covered at the
+ *   fallback the trace shows caught it;
  * - certainty: no node the analysis says always fails is shown returning a
  *   value, wherever the trace shows it evaluated;
- * - progress, reported and never failed on: how many cases give exactly
- *   their expected findings.
+ * - exactness: the analysis gives exactly the case's findings, no more and
+ *   no fewer, each with the same certainty and covering fallback.
  */
 import {
   FigTree,
@@ -34,6 +32,7 @@ import type {
   CoveredFinding,
   FallbackCoverage,
   FigTreeError,
+  FigTreeOptions,
   HttpClient,
   SqlConnection,
   TraceNode,
@@ -93,7 +92,7 @@ const picky = defineOperator({
   parameters: { value: { type: 'string' } },
   positionalParams: ['value'],
   returns: 'string',
-  coverage: { failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }] },
+  analysis: { failures: [{ code: 'operator-failure', parameter: 'value', when: { value: '' } }] },
   evaluate: ({ value }) => {
     if (value === '') throw new OperatorFailure('nothing to pick')
     return value
@@ -107,25 +106,47 @@ const nap = defineOperator({
   parameters: { value: { type: 'number' } },
   positionalParams: ['value'],
   returns: 'number',
-  coverage: {},
+  analysis: {},
   evaluate: async ({ value }) => {
     await new Promise((resolve) => setTimeout(resolve, 30))
     return value
   },
 })
 
-const instances: Record<NonNullable<CoverageCase['instance']> | 'default', FigTree> = {
-  default: new FigTree(),
-  strict: new FigTree({ strictDataPaths: true }),
-  fragments: new FigTree({ fragments }),
-  lowerDefault: new FigTree({ operatorDefaults: { lower: { fallback: '' } } }),
-  io: new FigTree({ operators: io, operatorDefaults: ioDefaults }),
-  ioBase: new FigTree({
+const instanceOptions: Record<NonNullable<CoverageCase['instance']> | 'default', FigTreeOptions> = {
+  default: {},
+  strict: { strictDataPaths: true },
+  fragments: { fragments },
+  lowerDefault: { operatorDefaults: { lower: { fallback: '' } } },
+  io: { operators: io, operatorDefaults: ioDefaults },
+  ioBase: {
     operators: io,
     operatorDefaults: ioDefaults,
     http: { baseEndpoint: 'https://api.test' },
-  }),
-  host: new FigTree({ operators: [coreOperators, [twice, shaky, picky, nap]] }),
+  },
+  host: { operators: [coreOperators, [twice, shaky, picky, nap]] },
+}
+
+const instances = new Map<string, FigTree>()
+
+/**
+ * A case's instance, carrying the case's timeout where `timed` asks for it:
+ * the analysis reads its timeout from the instance, as evaluate() does.
+ */
+const instanceOf = (item: CoverageCase, timed: boolean): FigTree => {
+  const name = item.instance ?? 'default'
+  const timeout = timed ? item.timeout : undefined
+  const key = `${name}:${timeout ?? ''}`
+  let fig = instances.get(key)
+  if (fig === undefined)
+    instances.set(
+      key,
+      (fig = new FigTree({
+        ...instanceOptions[name],
+        ...(timeout !== undefined ? { timeout } : {}),
+      }))
+    )
+  return fig
 }
 
 // ── Locating a failure the way a finding does ───────────────────────
@@ -230,13 +251,10 @@ const run = async (
   data: Record<string, unknown>,
   withTimeout: boolean
 ): Promise<Outcome> => {
-  const fig = instances[item.instance ?? 'default']
-  const timeout = withTimeout ? item.options?.timeout : undefined
   try {
-    const { trace } = await fig.evaluate(item.expression, {
+    const { trace } = await instanceOf(item, withTimeout).evaluate(item.expression, {
       data,
       trace: true,
-      ...(timeout !== undefined ? { timeout } : {}),
     })
     return { caught: caughtIn(trace), returned: returnedIn(trace) }
   } catch (error) {
@@ -315,7 +333,7 @@ const assign = (data: Record<string, unknown>, segments: string[], value: unknow
 /** The pool over every path: all combinations, or a fixed sample of them. */
 function* spread(item: CoverageCase): Generator<Record<string, unknown>> {
   const paths = [...dataPaths(item.expression).values()]
-  const pool = item.options?.numbers === 'strict' ? STRICT : ORDINARY
+  const pool = item.options?.strictNumbers === true ? STRICT : ORDINARY
   const total = pool.length ** paths.length
   let seed = 7
   const next = () => (seed = (seed * 48271) % 2147483647)
@@ -353,7 +371,7 @@ const outcomes = async (item: CoverageCase): Promise<Seen[]> => {
       for (const data of spread(item))
         seen.push({ data, timed: false, ...(await run(item, data, false)) })
     }
-    if (item.options?.timeout !== undefined) {
+    if (item.timeout !== undefined) {
       clientMode = 'slow'
       for (const data of spread(item))
         seen.push({ data, timed: true, ...(await run(item, data, true)) })
@@ -472,38 +490,35 @@ const compared = (finding: Finding | CoverageFinding | CoveredFinding, parameter
   })
 }
 
-/** Each expected finding claims one actual finding, and none is left over. */
-const sameFindings = (expected: Finding[], actual: CoverageFinding[]): boolean => {
-  if (expected.length !== actual.length) return false
+/**
+ * Where a list differs from the case's: each expected finding claims one
+ * actual finding, and any left over is extra.
+ */
+const differences = (expected: Finding[], actual: CoverageFinding[], list: string): string[] => {
   const pool = [...actual]
-  return expected.every((finding) => {
+  const missing: string[] = []
+  for (const finding of expected) {
     const parameter = finding.parameter !== undefined
     const key = compared(finding, parameter)
     const index = pool.findIndex((candidate) => compared(candidate, parameter) === key)
-    if (index === -1) return false
-    pool.splice(index, 1)
-    return true
-  })
+    if (index === -1) missing.push(`missing ${list} ${key}`)
+    else pool.splice(index, 1)
+  }
+  return [...missing, ...pool.map((finding) => `extra ${list} ${compared(finding, true)}`)]
 }
 
-const exact = (item: CoverageCase, analysis: FallbackCoverage): boolean =>
-  sameFindings(item.uncovered ?? [], analysis.uncovered) &&
-  sameFindings(item.covered ?? [], analysis.covered)
-
-const progress = { exact: 0, total: 0 }
-afterAll(() => {
-  if (progress.total > 0)
-    console.log(
-      `fallbackCoverage: ${progress.exact} of ${progress.total} cases give exactly their expected findings`
-    )
-})
+/** Every way the analysis's findings differ from the case's. */
+const inexact = (item: CoverageCase, analysis: FallbackCoverage): string[] => [
+  ...differences(item.uncovered ?? [], analysis.uncovered, 'uncovered'),
+  ...differences(item.covered ?? [], analysis.covered, 'covered'),
+]
 
 // ── The checks ──────────────────────────────────────────────────────
 
 for (const [section, cases] of Object.entries(sections))
   describe(section, () => {
     test.each(cases.map((item) => [item.name, item] as const))('%s', async (_name, item) => {
-      const fig = instances[item.instance ?? 'default']
+      const fig = instanceOf(item, false)
       expect(fig.validate(item.expression).issues.filter((i) => i.severity === 'error')).toEqual([])
 
       for (const [list, covered] of [
@@ -523,10 +538,9 @@ for (const [section, cases] of Object.entries(sections))
       const seen = await outcomes(item)
       expect(unpredicted(item, seen)).toEqual([])
 
-      const analysis = await fallbackCoverage(fig, item.expression, item.options)
+      const analysis = await fallbackCoverage(instanceOf(item, true), item.expression, item.options)
       expect(unsound(analysis, seen)).toEqual([])
       expect(uncertain(analysis, seen)).toEqual([])
-      progress.total++
-      if (exact(item, analysis)) progress.exact++
+      expect(inexact(item, analysis)).toEqual([])
     })
   })

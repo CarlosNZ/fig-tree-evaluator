@@ -1,16 +1,18 @@
 /**
  * The case corpus for the precise `fallbackCoverage` of #217
- * (docs-dev/v3-specs/v3-coverage-decisions.md). Each case is an expression
+ * (docs-dev/v3-specs/v3-fallback-coverage.md). Each case is an expression
  * and the findings the analysis should report for it: the failures nothing
  * catches (`uncovered`) and the ones a fallback catches (`covered`).
  *
- * The analysis is not built yet, so test/coverage-cases.test.ts checks the
- * corpus against the engine instead:
+ * test/coverage-cases.test.ts checks the corpus against the engine:
  *
  * - a finding's `witness` is data under which `evaluate()` really fails
  *   that way, so a listed finding is not a false positive;
  * - every failure the engine shows over a spread of data was predicted, so
  *   nothing that can fail is missing.
+ *
+ * It then checks the analysis gives each case exactly its findings, and
+ * against the engine, that it is sound.
  *
  * A finding with no witness is either certain (`will`, any data reaches
  * it) or a false positive the design accepts, which its case's `note`
@@ -52,8 +54,10 @@ export interface CoverageCase {
   expression: unknown
   /** An instance from test/coverage-cases.test.ts; default `new FigTree()` */
   instance?: 'strict' | 'fragments' | 'lowerDefault' | 'io' | 'ioBase' | 'host'
+  /** A timeout on the instance, in ms, which the case is analysed under */
+  timeout?: number
   /** `fallbackCoverage`'s own options */
-  options?: { timeout?: number; numbers?: 'strict' }
+  options?: { strictNumbers?: true }
   uncovered?: Finding[]
   covered?: Finding[]
   note?: string
@@ -1698,7 +1702,7 @@ export const sections: Record<string, CoverageCase[]> = {
           { $convert: ['$data.b', 'number'], fallback: 0 },
         ],
       },
-      options: { numbers: 'strict' },
+      options: { strictNumbers: true },
       uncovered: [{ at: [], code: 'non-finite-result', witness: { a: '1e308', b: '1e308' } }],
       covered: [
         { at: ['$plus', 0], code: 'operator-failure', by: ['$plus', 0], witness: { a: 'x' } },
@@ -1725,7 +1729,7 @@ export const sections: Record<string, CoverageCase[]> = {
     {
       name: 'strict numbers: data may be NaN',
       expression: { $floor: '$data.n' },
-      options: { numbers: 'strict' },
+      options: { strictNumbers: true },
       uncovered: [
         { at: [], code: 'type-check', parameter: 'value', witness: { n: 'a' } },
         { at: [], code: 'non-finite-result', witness: { n: NaN } },
@@ -1826,7 +1830,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'a constant fallback shields a request from a timeout',
       expression: { $http: 'https://x.test/a', fallback: null },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       covered: [
         { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
         { at: [], code: 'timeout', by: [], client: 'slow', witness: {} },
@@ -1836,7 +1840,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'a fallback that folds is still not a constant to shielding',
       expression: { $http: 'https://x.test/a', fallback: { $lower: 'X' } },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [{ at: [], code: 'timeout', client: 'slow', witness: {} }],
       covered: [
         { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
@@ -1846,7 +1850,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'under a timeout, a value doing no I/O still needs a constant fallback when another does I/O',
       expression: { a: { $http: 'https://x.test/a', fallback: 1 }, b: { $upper: 'x' } },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [{ at: ['b'], code: 'timeout', client: 'slow', witness: {} }],
       covered: [
         {
@@ -1863,7 +1867,7 @@ export const sections: Record<string, CoverageCase[]> = {
     {
       name: 'under a timeout, nothing doing I/O means nothing can be cut off',
       expression: { a: { $upper: 'x' }, b: { $lower: 'Y' } },
-      options: { timeout: 20 },
+      timeout: 20,
     },
     {
       name: 'a constant fallback on the root shields everything under it',
@@ -1872,7 +1876,7 @@ export const sections: Record<string, CoverageCase[]> = {
         fallback: 0,
       },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       covered: [
         { at: [], code: 'type-check', parameter: 'values', by: [], witness: {} },
         {
@@ -1893,7 +1897,7 @@ export const sections: Record<string, CoverageCase[]> = {
         b: { $upper: 'x', fallback: 'X' },
       },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       covered: [
         {
           at: ['a'],
@@ -1914,7 +1918,7 @@ export const sections: Record<string, CoverageCase[]> = {
         vars: { r: { $http: 'https://x.test/a', fallback: null } },
       },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [
         { at: ['a'], code: 'timeout', client: 'slow', witness: {} },
         { at: ['b'], code: 'timeout', client: 'slow', witness: {} },
@@ -1937,7 +1941,7 @@ export const sections: Record<string, CoverageCase[]> = {
         b: { $lower: 'Y' },
       },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [
         {
           at: ['a', 'fallback'],
@@ -1960,13 +1964,13 @@ export const sections: Record<string, CoverageCase[]> = {
         b: { $upper: 'x' },
       },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
     },
     {
       name: 'under a timeout, a request a decider never waits for',
       expression: { a: { $or: [true, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } },
       instance: 'io',
-      options: { timeout: 20 },
+      timeout: 20,
     },
   ],
 
@@ -1975,7 +1979,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'under a timeout, an undeclared host operator may wait',
       expression: { a: { $twice: 2 }, b: { $upper: 'x' } },
       instance: 'host',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [
         { at: ['a'], code: 'operator-failure', external: true },
         { at: ['a'], code: 'timeout' },
@@ -1987,7 +1991,7 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'under a timeout, a declared host operator may wait',
       expression: { a: { $nap: 1 } },
       instance: 'host',
-      options: { timeout: 20 },
+      timeout: 20,
       uncovered: [{ at: ['a'], code: 'timeout', witness: {} }],
     },
     {

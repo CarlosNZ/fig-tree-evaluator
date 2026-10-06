@@ -170,6 +170,7 @@ const calledAt = (item: CoverageCase, path: NodePath): string => {
 const caseBlock = (item: CoverageCase): string => {
   const context = [
     item.instance !== undefined ? INSTANCES[item.instance] : undefined,
+    item.timeout !== undefined ? `under a ${item.timeout} ms timeout on the instance` : undefined,
     item.options !== undefined ? `analysis options \`${oneLine(item.options)}\`` : undefined,
   ].filter((part) => part !== undefined)
   const findings = [
@@ -206,6 +207,12 @@ const LEGEND = [
   'false positive the design accepts, and its case says why.',
 ].join(' ')
 
+const HOST_OPERATORS = [
+  '`twice` doubles a number, and `shaky` fails on an empty string, both declaring nothing;',
+  '`picky` fails on one and says so in its `analysis`; `nap` hands its number back after a',
+  '30 ms timer, and declares that it fails on nothing.',
+].join(' ')
+
 const count = Object.values(sections).reduce((sum, cases) => sum + cases.length, 0)
 
 const page = `# FigTree v3 — Fallback coverage cases
@@ -226,7 +233,7 @@ ${fragmentList
   .split('\n')
   .map((line) => `  ${line}`)
   .join('\n')}
-- **Host operators:** \`twice\` doubles a number, and \`shaky\` fails on an empty string, both declaring nothing; \`picky\` fails on one and says so in its \`coverage\`.
+- **Host operators:** ${HOST_OPERATORS}
 - **Clients:** a working HTTP client answers \`{ n: 1, s: 'x' }\`, and a working SQL connection answers \`[{ a: 1, b: 2 }]\`.
 
 ## Contents

@@ -292,9 +292,15 @@ const banner = {
   offers: { operator: 'http', url: 'https://api.example.com/offers', fallback: [] }, // static fallback
 }
 
-fallbackCoverage(fig, banner, { timeout: 50 })
-// { uncovered: [] }                                      // every hole root carries a STATIC fallback
+// fallbackCoverage answers under the instance's timeout, so it is asked of one that has it
+const timed = new FigTree({ operators: [coreOperators, httpOperators()], timeout: 50 })
+
+await fallbackCoverage(timed, banner)
+// uncovered: []                                          // every hole root carries a STATIC fallback
+// covered: at ['offers'], 'operator-failure' and 'timeout', both caught by offers' own fallback
 ```
+
+`covered` shows the fallback's two jobs: catching the request's failure, and standing in for `offers` if the deadline cuts it off. `greeting` has neither entry: it cannot fail, and it does no I/O, so no deadline can cut it off.
 
 Evaluate with a 50ms budget; the offers request takes ~900ms, `greeting` completes in ~1ms:
 
@@ -309,7 +315,7 @@ Now un-shield it — change one fallback to a _dynamic_ expression:
 
 ```js
 const banner2 = { ...banner, offers: { ...banner.offers, fallback: '$data.cachedOffers' } }
-fallbackCoverage(fig, banner2, { timeout: 50 }) // → { uncovered: [['offers']] }
+await fallbackCoverage(timed, banner2) // uncovered: one 'timeout' finding, at ['offers']
 
 await fig.evaluate(banner2, { data: { name: 'Ada' }, timeout: 50 })
 // ✗ rejects: FigTreeError { code: 'timeout' }            // all-or-nothing: greeting's finished value is discarded
