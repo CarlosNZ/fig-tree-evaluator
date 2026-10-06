@@ -34,3 +34,15 @@ export const renderText = (value: unknown): string => {
   if (Array.isArray(value)) return ARRAY
   return OBJECT
 }
+
+/** A value that renders to the `ARRAY` / `OBJECT` placeholder. */
+export const isComposite = (value: unknown): boolean => value !== null && typeof value === 'object'
+
+/**
+ * The static error for a LITERAL composite in a rendering position
+ * (`join`'s element, `buildString`'s substitution): unlike a data-driven
+ * composite it can only ever render as the placeholder, so it is an
+ * authoring slip with no reading behind it.
+ */
+export const COMPOSITE_RENDER_ERROR =
+  'a composite element renders as a placeholder, never as text — drill in, or join it explicitly'

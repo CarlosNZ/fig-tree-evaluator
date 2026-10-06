@@ -91,6 +91,84 @@ describe('skeletons splice hole results into a copy', () => {
   })
 })
 
+describe('a sparse array compiles as its undefined elements do (#178)', () => {
+  const core = new FigTree()
+  // eslint-disable-next-line no-sparse-arrays
+  const sparse = [1, , 3]
+
+  test('validate() reports it rather than throwing', () => {
+    expect(core.validate(sparse)).toEqual({ valid: true, issues: [] })
+  })
+
+  test('compile() and evaluate() read the gap as null', async () => {
+    expect(await core.compile(sparse).evaluate()).toStrictEqual([1, null, 3])
+    expect(await core.evaluate(sparse)).toStrictEqual([1, null, 3])
+    expect(await core.evaluate({ $plus: sparse })).toBe(
+      await core.evaluate({ $plus: [1, undefined, 3] })
+    )
+  })
+
+  test('a gap beside a hole', async () => {
+    const holes = new Array(3) as unknown[]
+    holes[1] = '$data.x'
+    expect(await core.evaluate(holes, { data: { x: 'X' } })).toStrictEqual([null, 'X', null])
+  })
+
+  test('a gap in a lazyElements parameter is a null element', async () => {
+    // eslint-disable-next-line no-sparse-arrays
+    expect(await core.evaluate({ $and: [true, , '$data.x'] }, { data: { x: true } })).toBe(false)
+    // eslint-disable-next-line no-sparse-arrays
+    expect(await core.evaluate({ $firstOf: [, , '$data.x'] }, { data: { x: 2 } })).toBe(2)
+  })
+})
+
+describe('a __proto__ key is data like any other key (#182)', () => {
+  // Only JSON can carry an own `__proto__` key: an object literal's sets the
+  // prototype instead
+  const parse = (json: string): unknown => JSON.parse(json)
+  const own = (result: unknown): unknown =>
+    Object.getOwnPropertyDescriptor(result as object, '__proto__')?.value
+  const isPlain = (result: unknown): boolean => Object.getPrototypeOf(result) === Object.prototype
+
+  test('a hole at the key lands as an own property', async () => {
+    const result = await fig.evaluate(parse('{"__proto__": "$data.x", "a": 1}'), {
+      data: { x: 'X' },
+    })
+    expect(Object.keys(result as object).sort()).toEqual(['__proto__', 'a'])
+    expect(own(result)).toBe('X')
+    expect(isPlain(result)).toBe(true)
+  })
+
+  test('a constant at the key survives beside a hole', async () => {
+    const result = await fig.evaluate(parse('{"__proto__": 5, "b": "$data.y"}'), {
+      data: { y: 'Y' },
+    })
+    expect(Object.keys(result as object).sort()).toEqual(['__proto__', 'b'])
+    expect(own(result)).toBe(5)
+  })
+
+  test('an all-constant container still comes back by identity, key intact', async () => {
+    const input = parse('{"__proto__": 5, "b": 1}')
+    expect(await fig.evaluate(input)).toBe(input)
+  })
+
+  test("an object value never becomes the result's prototype", async () => {
+    const o = { x: 1 }
+    const result = await fig.evaluate(parse('{"__proto__": "$data.o", "a": 1}'), { data: { o } })
+    expect(own(result)).toBe(o)
+    expect(isPlain(result)).toBe(true)
+    expect((result as { x?: unknown }).x).toBeUndefined()
+  })
+
+  test('a nested literal at the key is spliced into, not adopted', async () => {
+    const result = await fig.evaluate(parse('{"__proto__": {"x": "$data.v"}, "a": 1}'), {
+      data: { v: 'V' },
+    })
+    expect(own(result)).toEqual({ x: 'V' })
+    expect(isPlain(result)).toBe(true)
+  })
+})
+
 describe('$data references', () => {
   const data = { user: { name: 'Ada', tags: ['x', 'y'] }, orders: [{ total: 1 }, { total: 2 }] }
 

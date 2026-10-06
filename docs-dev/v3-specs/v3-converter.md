@@ -558,12 +558,13 @@ Branches on the node beside a computed `branches` were reached when the computed
 
 **Measured differences on converted nodes**, beyond the renames:
 
-| v2 node                                                                       | v2                           | converted, in v3 | Disposition                   |
-| ----------------------------------------------------------------------------- | ---------------------------- | ---------------- | ----------------------------- |
-| `{ operator: 'getData', property: 'user.nope' }`                              | error                        | `null`           | none: v3 is more lenient      |
-| `{ operator: 'stringSubstitution', string: '%1 %2', substitutions: ['a'] }`   | `'a '`                       | `'a %2'`         | `validate()` warns; guide     |
-| `{ operator: 'stringSubstitution', string: '[%1]', substitutions: [null] }`   | `'[null]'`; `'[]'` in 2.23.2 | `'[]'`           | none: 2.23.2 renders `''` too |
-| `numberMapping: { count: { 1: 'one friend', other: '{} friends' } }`, count 2 | `'You have 2 friends'`       | `'You have 2'`   | `non-convertible` issue       |
+| v2 node                                                                         | v2                           | converted, in v3   | Disposition                   |
+| ------------------------------------------------------------------------------- | ---------------------------- | ------------------ | ----------------------------- |
+| `{ operator: 'getData', property: 'user.nope' }`                                | error                        | `null`             | none: v3 is more lenient      |
+| `{ operator: 'stringSubstitution', string: '%1 %2', substitutions: ['a'] }`     | `'a '`                       | `'a %2'`           | `validate()` warns; guide     |
+| `{ operator: 'stringSubstitution', string: '[%1]', substitutions: [null] }`     | `'[null]'`; `'[]'` in 2.23.2 | `'[]'`             | none: 2.23.2 renders `''` too |
+| `{ operator: 'stringSubstitution', string: '%1', substitutions: [['a', 'b']] }` | `'a,b'`                      | `validate()` error | `validate()` errors; guide    |
+| `numberMapping: { count: { 1: 'one friend', other: '{} friends' } }`, count 2   | `'You have 2 friends'`       | `'You have 2'`     | `non-convertible` issue       |
 
 The other measured cases give the same answer in both: literal, missing-with-`fallback`, stored-null, empty and indexed paths, `additionalData` on both sides of the merge, and computed paths; positional templates with gapped, repeated and `$` tokens, v2's default trim and `trimWhiteSpace: false`, numbers and `%` text; named tokens from substitutions, from `data` (drilled, indexed and missing) and mixed; `children`; `buildObject` in both forms, with a malformed element and a boolean key; `match` on strings, numbers and booleans, with a `fallback` branch, root branches, the root-against-`branches` precedence and an array of branches; and PASSTHRU over a node, a constant and `children`.
 

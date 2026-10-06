@@ -104,6 +104,7 @@ import { ErrorCodes } from '../errorCodes'
 import type { Issue, Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
 import { isPlainDataObject, nearestName } from '../utils'
+import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
@@ -143,7 +144,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-import { extendPath, hasError, sortIssues, toNodePath } from './artifact'
+import { extendPath, hasError, setOwn, sortIssues, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 /** The reference-namespace words `as` names may not collide with. */
@@ -495,13 +496,16 @@ const walkArray = (
   depth: number,
   order: number
 ): CompiledNode => {
-  const entries = raw.map((element, i) => ({
+  // Array.from visits every index, so an unassigned slot (a sparse array,
+  // which only a host building expressions in JavaScript can produce)
+  // reads as undefined and normalizes to null like an assigned one; map
+  // would skip the slot and leave a gap in the entries
+  const entries = Array.from(raw, (element, i) => ({
     key: i as string | number,
-    rawChild: element === undefined ? null : element,
-    node: walk(state, element === undefined ? null : element, extendPath(path, i), depth + 1),
+    rawChild: element,
+    node: walk(state, element, extendPath(path, i), depth + 1),
   }))
-  const changed = raw.some((element) => element === undefined)
-  return assembleContainer(state, raw, entries, true, changed, undefined, path, order)
+  return assembleContainer(state, raw, entries, true, false, undefined, path, order)
 }
 
 // ── Objects: node-kind classification ───────────────────────────────
@@ -783,6 +787,40 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
 }
 
 /**
+ * The one error on `buildString`'s literal face: a literal substitution
+ * that is statically an array or object can only ever render as its
+ * placeholder, so it is reported exactly as `join` reports a composite
+ * element — once, at the parameter. `Object.values` reads both faces and
+ * the skeleton alike: a dynamic element is an empty slot or a missing key
+ * there, and a nested literal is flattened in as a value, so `[['x',
+ * '$data.y']]` is caught while `['$data.tags']` is not.
+ */
+const reportCompositeSubstitutions = (state: WalkState, node: OperatorNode) => {
+  const supplied = node.params.substitutions
+  if (supplied === undefined) return
+  const literal =
+    supplied.kind === 'constant'
+      ? supplied.value
+      : supplied.kind === 'skeleton'
+        ? supplied.skeleton
+        : undefined
+  if (!Array.isArray(literal) && !isPlainDataObject(literal)) return
+  if (!Object.values(literal).some(isComposite)) return
+  emit(
+    state,
+    'error',
+    ErrorCodes.operatorValidate,
+    COMPOSITE_RENDER_ERROR,
+    supplied.path,
+    supplied.order,
+    {
+      operator: node.name,
+      parameter: 'substitutions',
+    }
+  )
+}
+
+/**
  * `buildString`'s compile-time half, and the one place a template is ever
  * scanned for references (References rule 4's sanctioned embedding): a
  * LITERAL template is authored tree, so `{{$data.x}}` in one IS that
@@ -802,12 +840,14 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
  * supplied map a reference token is not recognized, renders itself, and
  * draws a warning here (ruled with Carl, September 2026).
  *
- * The literal-face findings live here rather than in a `validate` hook
- * for the same reason: the injection turns `substitutions` into a
- * skeleton, and hooks see constant parameters only.
+ * The literal-face findings — the token warnings and the composite
+ * error — live here rather than in a `validate` hook for the same reason:
+ * the injection turns `substitutions` into a skeleton, and hooks see
+ * constant parameters only.
  */
 const compileTemplate = (state: WalkState, node: OperatorNode) => {
   if (node.name !== 'buildString') return
+  reportCompositeSubstitutions(state, node)
   const template = node.params.template
   if (template?.kind !== 'constant' || typeof template.value !== 'string') return
 
@@ -861,11 +901,12 @@ const growSubstitutions = (
 }
 
 /**
- * The literal-face findings, all warnings: the runtime behaviour they
- * describe is defined and graceful (an unbound token renders its own
- * text), so an error — which would refuse the expression outright — would
- * also refuse a percent-encoded URL in a positional template, the case
- * the no-escape design leans on.
+ * The token findings, all warnings: the runtime behaviour they describe
+ * is defined and graceful (an unbound token renders its own text), so an
+ * error — which would refuse the expression outright — would also refuse
+ * a percent-encoded URL in a positional template, the case the no-escape
+ * design leans on. The one error on the literal face is a composite
+ * substitution (`reportCompositeSubstitutions`), which has no reading.
  *
  * A mismatch is reported once, at the token. An unbound token and a spare
  * substitution are usually one slip (`'%1 %3'` with two values), so the
@@ -1077,13 +1118,12 @@ const walkSlice = (
     entry.offset,
     containerDepth
   )
-  const changed = entry.elements.some((element) => element === undefined)
   return assembleContainer(
     state,
     entry.elements,
     children,
     true,
-    changed,
+    false,
     undefined,
     entry.basePath,
     order
@@ -1108,15 +1148,11 @@ const sliceChildren = (
   offset: number,
   containerDepth: number
 ): ContainerEntry[] =>
-  elements.map((element, j) => ({
+  // Array.from, not map: an unassigned slot is visited (see walkArray)
+  Array.from(elements, (element, j) => ({
     key: j as string | number,
-    rawChild: element === undefined ? null : element,
-    node: walk(
-      state,
-      element === undefined ? null : element,
-      extendPath(basePath, offset + j),
-      containerDepth + 1
-    ),
+    rawChild: element,
+    node: walk(state, element, extendPath(basePath, offset + j), containerDepth + 1),
   }))
 
 /**
@@ -1145,8 +1181,7 @@ const walkElementsParam = (
   const children = sliceChildren(state, raw, basePath, offset, containerDepth)
 
   if (children.every((child) => child.node.kind === 'constant')) {
-    const changed = raw.some((element) => element === undefined)
-    return assembleContainer(state, raw, children, true, changed, undefined, basePath, order)
+    return assembleContainer(state, raw, children, true, false, undefined, basePath, order)
   }
   const node: ElementsNode = {
     kind: 'elements',
@@ -1789,7 +1824,7 @@ const assembleContainer = (
 
   for (const { key, rawChild, node } of entries) {
     if (node.kind === 'constant') {
-      skeleton[key] = node.value
+      setOwn(skeleton, key, node.value)
       if (node.value !== rawChild) changed = true
       continue
     }
@@ -1797,7 +1832,7 @@ const assembleContainer = (
     // Nested plain literals flatten into the enclosing skeleton — unless
     // they carry a vars block, which makes them their own evaluable unit
     if (node.kind === 'skeleton' && node.vars === undefined) {
-      skeleton[key] = node.skeleton
+      setOwn(skeleton, key, node.skeleton)
       holes.push(...node.holes.map((hole) => ({ ...hole, at: [key, ...hole.at] })))
       continue
     }

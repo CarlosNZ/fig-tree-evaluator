@@ -1078,7 +1078,10 @@ const BATCH_3: Example[] = [
       trim: true,
     },
     issues: [{ code: 'drilled-substitution-token', path: ['string'] }],
-    differs: { v2: { value: 'Hi Bo' }, v3: { value: 'Hi {{user.name}}' } },
+    // The drilled-into substitution is a literal composite, which v3's
+    // validate() refuses (#187): the guide's, with the token
+    differs: { v2: { value: 'Hi Bo' }, v3: { error: true } },
+    invalid: true,
   },
   {
     name: '`numberMapping` has no v3 counterpart',

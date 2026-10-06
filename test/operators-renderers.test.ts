@@ -134,9 +134,10 @@ describe('buildString — named {{name}}', () => {
 
   test('bare path drilling inside a token is dead — v2 resolved it', async () => {
     expect(
-      await ev({
-        $buildString: { template: '{{inner.two}}', substitutions: { inner: { two: 'x' } } },
-      })
+      await ev(
+        { $buildString: { template: '{{inner.two}}', substitutions: { inner: '$data.inner' } } },
+        { inner: { two: 'x' } }
+      )
     ).toBe('{{inner.two}}')
   })
 
@@ -484,7 +485,7 @@ describe('buildString — reference tokens', () => {
 
 // ── buildString: the literal-face findings ──────────────────────────
 
-describe('buildString — literal-face findings are warnings, never errors', () => {
+describe('buildString — the token findings are warnings, never errors', () => {
   const findings = (expression: unknown) =>
     fig.validate(expression).issues.map((issue) => [issue.severity, issue.code, issue.message])
   const unbound = (message: string) => ['warning', 'unbound-token', message]
@@ -613,6 +614,56 @@ describe('buildString — literal-face findings are warnings, never errors', () 
 })
 
 // ── join ────────────────────────────────────────────────────────────
+
+describe('buildString — a statically-composite literal substitution is an error', () => {
+  const message =
+    'a composite element renders as a placeholder, never as text — drill in, or join it explicitly'
+  const composite = (expression: unknown) => {
+    const result = fig.validate(expression)
+    expect(result.valid).toBe(false)
+    expect(result.issues).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        code: 'operator-validate',
+        operator: 'buildString',
+        parameter: 'substitutions',
+        message,
+      }),
+    ])
+  }
+
+  test('an array or object element of a literal array, on either face', () => {
+    composite({ operator: 'buildString', template: 'a %1', substitutions: [['x', 'y']] })
+    composite({ operator: 'buildString', template: 'a %1', substitutions: [{ k: 1 }] })
+    composite({ $buildString: ['a %1', ['x']] })
+  })
+
+  test('an array or object value of a literal map', () => {
+    composite({ operator: 'buildString', template: 'a {{v}}', substitutions: { v: ['x'] } })
+    composite({ operator: 'buildString', template: 'a {{v}}', substitutions: { v: { k: 1 } } })
+  })
+
+  test('a literal composite beside dynamic siblings, or holding one, is still literal', () => {
+    composite({
+      $buildString: { template: '{{a}} {{b}}', substitutions: { a: '$data.x', b: [1] } },
+    })
+    composite({ $buildString: ['%1', ['x', '$data.y']] })
+  })
+
+  test('the check reads the substitutions, not the template — join parity', () => {
+    composite({ $buildString: { template: '$data.tpl', substitutions: [['x']] } })
+    composite({ $buildString: { template: 'no tokens', substitutions: [['x']] } })
+  })
+
+  test('a dynamic composite is a data condition: valid, and renders its placeholder', async () => {
+    expect(fig.validate({ $buildString: ['%1', '$data.tags'] }).valid).toBe(true)
+    expect(await ev({ $buildString: ['%1', '$data.tags'] }, { tags: [1] })).toBe('<array>')
+  })
+
+  test('evaluate() refuses it at the static gate, as join does', async () => {
+    await expect(fig.evaluate({ $buildString: ['a %1', ['x']] })).rejects.toThrow(message)
+  })
+})
 
 describe('join', () => {
   test('the flat literal list — the everyday positional face', async () => {

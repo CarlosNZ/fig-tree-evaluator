@@ -18,6 +18,7 @@ import {
   toCodePoints,
   trim as trimText,
 } from '../primitives'
+import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { scanTemplate } from '../templateTokens'
 import { emptyAggregateWarning } from './shared'
 
@@ -80,9 +81,6 @@ export const split = declareOperator({
 
 // ── The renderers ───────────────────────────────────────────────────
 
-/** A value that renders to a `<array>` / `<object>` placeholder. */
-const isComposite = (value: unknown): boolean => value !== null && typeof value === 'object'
-
 /**
  * A literal `values` element that is statically a composite: it can only
  * ever render as the placeholder, so unlike a data-driven composite it is
@@ -94,8 +92,7 @@ const compositeValuesErrors = (literalParams: Record<string, unknown>): Validate
         {
           severity: 'error',
           parameter: 'values',
-          message:
-            'a composite element renders as a placeholder, never as text — drill in, or join it explicitly',
+          message: COMPOSITE_RENDER_ERROR,
         },
       ]
     : []
