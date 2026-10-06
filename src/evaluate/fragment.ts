@@ -113,7 +113,12 @@ export const evaluateFragment = async (
     // time this branch runs — it is not part of the attempt, and must not
     // be refused by the abort that ended it
     try {
-      return await evaluateNode(fallback, scoped)
+      const answered = await evaluateNode(fallback, scoped)
+      // A success, as an operator node's fallback is, so the call's own
+      // trace entry is the only record that it fired and of what it caught
+      if (ctx.trace !== undefined && ctx.traceParent !== undefined && isFigTreeError(failure))
+        ctx.trace.markFallback(ctx.traceParent, failure)
+      return answered
     } catch (fallbackError) {
       if (
         isInternalError(fallbackError) ||
