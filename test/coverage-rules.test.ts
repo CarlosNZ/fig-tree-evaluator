@@ -11,6 +11,15 @@
  * - Every value the engine returns must be admitted by the output the
  *   analysis gives the node: its output declaration, or its `returns`, past
  *   the result boundary.
+ * - Each of those holds again with every parameter known only by a range
+ *   around its value ("Value ranges" in the spec): a number bounded on one
+ *   side or both, a string or array by its least length, an array's
+ *   elements widened in turn. The arithmetic and the tests must hold over
+ *   ranges, not only over single values.
+ * - Where the analysis says the node always fails, the engine must fail:
+ *   `always` lets the walk drop the node's output and its parent's checks.
+ * - A rule's test reads a range as it reads the values in it: a yes or a
+ *   no on the range is its answer for every value there.
  * - Every run of the node (rule 4, src/authoring/run.ts), with each
  *   parameter known exactly, must end as the engine's evaluation does: the
  *   same value, or a certain failure with the same code. Every operator
@@ -24,9 +33,9 @@ import type { FailureRule, ValidatedOperatorDefinition } from '../src'
 import { viewHandle } from '../src/FigTree'
 import type { OperatorNode } from '../src/compile/artifact'
 import { checkElementResult, resolveInputs } from '../src/authoring/inputs'
-import { elementsOf, exactly } from '../src/authoring/known'
+import { elementsOf, exactly, tupleOf, union } from '../src/authoring/known'
 import type { Known } from '../src/authoring/known'
-import { CORE_RULES, answerRule } from '../src/authoring/rules'
+import { CORE_RULES, answerRule, ownFailures, testKnown } from '../src/authoring/rules'
 import { operatorOutput } from '../src/authoring/outputs'
 import { runNode } from '../src/authoring/run'
 import type { Child } from '../src/authoring/run'
@@ -51,6 +60,13 @@ const ARRAYS = [
   [{}],
   [{ key: 'a', value: 1 }],
   [1, 'a'],
+]
+/** Under `strict`: NaN, which compares equal to anything, and infinities */
+const EXTREME_ARRAYS = [
+  [NaN, 1],
+  [3, NaN, 1],
+  [2, Infinity],
+  [-Infinity, 1],
 ]
 const OBJECTS = [{}, { a: 1 }, { a: null }, { b: 'x' }]
 /**
@@ -78,7 +94,7 @@ const poolOf = (type: ExpectedType, strict: boolean): unknown[] => {
         pool.push(true, false)
         break
       case 'array':
-        pool.push(...ARRAYS)
+        pool.push(...ARRAYS, ...(strict ? EXTREME_ARRAYS : []))
         break
       case 'object':
         pool.push(...OBJECTS)
@@ -102,10 +118,16 @@ const LEVELS = [
   },
 ]
 const SAMPLES = 1500
+/** The ranges each sample is also known as */
+const RANGES = 4
 
 interface Report {
   unpredicted: string[]
   unadmitted: string[]
+  /** Certain failures the engine did not fail with */
+  uncertain: string[]
+  /** Tests whose answer on a range is not their answer on a value in it */
+  misread: string[]
   fired: Set<number>
   /** Runs that ended otherwise than the engine's evaluation */
   misrun: string[]
@@ -121,12 +143,17 @@ const admits = (known: Known, value: unknown): boolean =>
     if ('exact' in member) return Object.is(member.exact, value) || deepEqual(member.exact, value)
     switch (member.type) {
       case 'string':
+        return typeof value === 'string' && Array.from(value).length >= (member.minLength ?? 0)
       case 'boolean':
         return typeof value === member.type
       case 'number':
-        return typeof value === 'number' && Number.isFinite(value)
       case 'integer':
-        return Number.isInteger(value)
+        return (
+          typeof value === 'number' &&
+          (member.type === 'integer' ? Number.isInteger(value) : Number.isFinite(value)) &&
+          !(value < (member.min ?? -Infinity)) &&
+          !(value > (member.max ?? Infinity))
+        )
       case 'nonFinite':
         return typeof value === 'number' && !Number.isFinite(value)
       case 'null':
@@ -136,6 +163,7 @@ const admits = (known: Known, value: unknown): boolean =>
       case 'array':
         if (!Array.isArray(value)) return false
         if (member.length !== undefined && value.length !== member.length) return false
+        if (value.length < (member.minLength ?? 0)) return false
         if (member.items !== undefined) return value.every((v, i) => admits(member.items![i], v))
         return member.element === undefined || value.every((v) => admits(member.element!, v))
       case 'object':
@@ -154,6 +182,75 @@ const isPlainData = (value: object) => {
 }
 
 const deepEqual = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+
+/**
+ * A range around a value, of a shape `pick` chooses: a number bounded at
+ * itself on one side or both, reaching 3 past it on the other, or a little
+ * around it; a string or array at least its own length, or less, an
+ * array's elements widened in turn, in order or not. An empty array may be
+ * of numbers that are not there. Anything else stays exact.
+ */
+const around = (value: unknown, pick: () => number): Known => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const type = Number.isInteger(value) ? 'integer' : 'number'
+    switch (pick() % 6) {
+      case 0:
+        return [{ type, min: value }]
+      case 1:
+        return [{ type, max: value }]
+      case 2:
+        return [{ type, min: value, max: value }]
+      case 3:
+        return [{ type, min: value, max: value + 3 }]
+      case 4:
+        return [{ type, min: value - 3, max: value }]
+      default:
+        return [{ type: 'number', min: value - 0.5, max: value + 0.5 }]
+    }
+  }
+  const least = (length: number) => (pick() % 2 === 0 ? length : 0)
+  if (typeof value === 'string')
+    return [{ type: 'string', minLength: least(Array.from(value).length) }]
+  if (Array.isArray(value)) {
+    const items = value.map((element) => around(element, pick))
+    if (value.length === 0)
+      return [{ type: 'array', element: around(pick() % 2 === 0 ? 1 : -1, pick) }]
+    return pick() % 2 === 0
+      ? tupleOf(items)
+      : [{ type: 'array', element: union(...items), minLength: least(value.length) }]
+  }
+  return exactly(value)
+}
+
+/** What the analysis predicts of what the parameters are known to be. */
+const predict = (
+  node: OperatorNode,
+  definition: ValidatedOperatorDefinition,
+  outputs: Record<string, Known>,
+  level: (typeof LEVELS)[number]
+) => {
+  const options = { numbers: level.numbers, evaluation: level.evaluation }
+  const inputs = resolveInputs(node, outputs)
+  const failures = [...inputs.failures]
+  for (const [name, declared] of definition.resolution.perElement)
+    if (Object.hasOwn(outputs, name) && declared.over !== undefined) {
+      if (elementsOf(inputs.received[declared.over] ?? []).length === 0) continue
+      const failure = checkElementResult(node, name, declared, outputs[name])
+      if (failure !== undefined) failures.push(failure)
+    }
+  const elements: Record<string, Known> = {}
+  for (const [name] of definition.resolution.perElement)
+    if (Object.hasOwn(outputs, name)) elements[name] = outputs[name]
+  const { output, boundary } = operatorOutput(node, inputs, elements, level.numbers)
+  if (boundary !== undefined) failures.push(boundary)
+  if (inputs.propagates !== 'yes') failures.push(...ownFailures(node, inputs, options))
+  return {
+    inputs,
+    output,
+    predicted: new Set(failures.map((failure) => failure.code)),
+    certain: failures.some((failure) => failure.certainty === 'always'),
+  }
+}
 
 /** One operator at one level: each combination run and predicted. */
 const check = async (
@@ -197,28 +294,23 @@ const check = async (
       nodes.set(shape, node)
     }
 
-    // What the analysis predicts of these exact values
+    // What the analysis predicts of these exact values, and of a few ranges
+    // around them
     const outputs: Record<string, Known> = {}
     for (const name of present) outputs[name] = exactly(values[name])
-    const inputs = resolveInputs(node, outputs)
-    const predicted = new Set(inputs.failures.map((failure) => failure.code))
-    for (const [name, declared] of definition.resolution.perElement)
-      if (Object.hasOwn(values, name) && declared.over !== undefined) {
-        if (elementsOf(inputs.received[declared.over] ?? []).length === 0) continue
-        const failure = checkElementResult(node, name, declared, outputs[name])
-        if (failure !== undefined) predicted.add(failure.code)
-      }
-    const elements: Record<string, Known> = {}
-    for (const [name] of definition.resolution.perElement)
-      if (Object.hasOwn(values, name)) elements[name] = outputs[name]
-    const { output, boundary } = operatorOutput(node, inputs, elements, level.numbers)
-    if (boundary !== undefined) predicted.add(boundary.code)
+    const exact = { prediction: predict(node, definition, outputs, level), as: '' }
+    const ranged = Array.from({ length: RANGES }, () => {
+      const widened: Record<string, Known> = {}
+      for (const name of present) widened[name] = around(values[name], next)
+      const as = ` as ${JSON.stringify(widened, replacer)}`
+      return { prediction: predict(node, definition, widened, level), as }
+    })
+    const { inputs } = exact.prediction
     const answers = rules.map((rule) =>
       inputs.propagates === 'yes'
         ? 'no'
         : answerRule(node, rule, inputs, { numbers: level.numbers, evaluation: level.evaluation })
     )
-    rules.forEach((rule, r) => answers[r] !== 'no' && predicted.add(rule.code))
 
     let failed: string | undefined
     let result: unknown
@@ -252,15 +344,30 @@ const check = async (
           `${expected}, but the run ended ${JSON.stringify(ends)}, with ${JSON.stringify(values, replacer)}`
         )
     }
-    if (failed === undefined) {
-      if (!admits(output, result) && report.unadmitted.length < 8)
-        report.unadmitted.push(
-          `${JSON.stringify(result, replacer)} with ${JSON.stringify(values, replacer)}`
-        )
-      continue
+    for (const { prediction } of ranged)
+      for (const rule of rules)
+        for (const [name, test] of Object.entries(rule.when ?? {})) {
+          const range = prediction.inputs.received[name]
+          const value = inputs.received[name]
+          if (range === undefined || value === undefined) continue
+          const answer = testKnown(test, range)
+          if (answer !== 'maybe' && answer !== testKnown(test, value) && report.misread.length < 8)
+            report.misread.push(
+              `${JSON.stringify(test)} is ${answer} on ${JSON.stringify(range, replacer)}, not on ${JSON.stringify(value, replacer)}`
+            )
+        }
+
+    for (const { prediction, as } of [exact, ...ranged]) {
+      const shown = `with ${JSON.stringify(values, replacer)}${as}`
+      if (failed === undefined) {
+        if (prediction.certain && report.uncertain.length < 8)
+          report.uncertain.push(`${JSON.stringify(result, replacer)} ${shown}`)
+        if (!admits(prediction.output, result) && report.unadmitted.length < 8)
+          report.unadmitted.push(`${JSON.stringify(result, replacer)} ${shown}`)
+      } else if (!prediction.predicted.has(failed) && report.unpredicted.length < 8)
+        report.unpredicted.push(`${failed} ${shown}`)
     }
-    if (!predicted.has(failed) && report.unpredicted.length < 8)
-      report.unpredicted.push(`${failed} with ${JSON.stringify(values, replacer)}`)
+    if (failed === undefined) continue
     rules.forEach((rule, r) => {
       const fires = answers[r] === 'yes' || (rule.may === true && answers[r] === 'maybe')
       if (fires && rule.code === failed) report.fired.add(r)
@@ -279,6 +386,8 @@ describe('the core failure rules', () => {
       const report: Report = {
         unpredicted: [],
         unadmitted: [],
+        uncertain: [],
+        misread: [],
         fired: new Set(),
         misrun: [],
         runs: 0,
@@ -286,6 +395,8 @@ describe('the core failure rules', () => {
       for (const level of LEVELS) await check(definition, level, report)
       expect(report.unpredicted).toEqual([])
       expect(report.unadmitted).toEqual([])
+      expect(report.uncertain).toEqual([])
+      expect(report.misread).toEqual([])
       expect(report.misrun).toEqual([])
       expect(report.runs).toBeGreaterThan(0)
       const rules = CORE_RULES[definition.name] ?? []

@@ -135,17 +135,39 @@ export type CoverageTest =
 export type CoverageOutput =
   /** A fixed type */
   | ExpectedType
+  /** A number between `min` and `max`, inclusive, where they are given */
+  | { type: 'number' | 'integer'; min?: number; max?: number }
+  /** A string or array at least `minLength` long (a string in code points) */
+  | { type: 'string' | 'array'; minLength?: number }
   /** What that parameter receives: each element or entry of a lazy container */
   | { param: string }
   /** An element of an array parameter */
   | { elementOf: string }
   /** The types of an array parameter's elements, as a sum of them is */
   | { kindOf: string }
-  | { arrayOf: CoverageOutput }
+  | { arrayOf: CoverageOutput; minLength?: number }
   | { oneOf: CoverageOutput[] }
   /** The type a literal parameter names */
   | { typeNamedBy: string }
-  /** Chosen by a literal parameter */
-  | { byParam: string; cases: Record<string, CoverageOutput> }
+  /**
+   * Chosen by a literal parameter: the case it names, else `otherwise`; all
+   * of them where it is not known
+   */
+  | { byParam: string; cases: Record<string, CoverageOutput>; otherwise?: CoverageOutput }
   /** The first of an array parameter's elements that is not null */
   | { firstNonNull: string }
+  /**
+   * The sum of an array parameter's elements, from 0 and in order: a range
+   * for numbers, the kind of anything else
+   */
+  | { sum: string }
+  /** The product of an array parameter's numbers, from 1 and in order */
+  | { product: string }
+  /** One number parameter less another */
+  | { difference: [string, string] }
+  /** A number parameter's absolute value */
+  | { abs: string }
+  /** The least of an array parameter's elements: numbers by value */
+  | { min: string }
+  /** The greatest of an array parameter's elements: numbers by value */
+  | { max: string }

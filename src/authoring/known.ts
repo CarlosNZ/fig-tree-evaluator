@@ -19,11 +19,15 @@ import type { PathSegment } from '../primitives/path'
 
 export type Member =
   | { exact: unknown }
+  /** A finite number, between `min` and `max` inclusive where they are given */
+  | { type: 'number' | 'integer'; min?: number; max?: number }
+  /** At least `minLength` code points long, where it is given */
+  | { type: 'string'; minLength?: number }
   /**
    * `opaque`: a value with no basic type, such as a Date or a function. The
    * engine's `object` admits any non-array object, a Date included
    */
-  | { type: 'string' | 'number' | 'integer' | 'boolean' | 'null' | 'opaque' }
+  | { type: 'boolean' | 'null' | 'opaque' }
   /**
    * NaN or an infinity: a number the engine refuses as a node's result.
    * Data can carry one only under `numbers: 'strict'`, which is the only
@@ -32,9 +36,16 @@ export type Member =
   | { type: 'nonFinite' }
   /**
    * `element` absent: anything. `items`: each element in order, where the
-   * array is a literal whose length is known
+   * array is a literal whose length is known. `minLength`: a least length,
+   * where the length itself is not known
    */
-  | { type: 'array'; element?: Known; length?: number; items?: readonly Known[] }
+  | {
+      type: 'array'
+      element?: Known
+      length?: number
+      minLength?: number
+      items?: readonly Known[]
+    }
   /** `keys` absent: any keys, with any values; present: exactly these */
   | { type: 'object'; keys?: Record<string, Known> }
 
@@ -103,7 +114,7 @@ const memberKey = (member: Member): string => {
   if (member.type === 'array')
     return member.items !== undefined
       ? `a[${member.items.map(keyOf).join(';')}]`
-      : `a${member.length ?? ''}(${member.element === undefined ? '*' : keyOf(member.element)})`
+      : `a${member.length ?? ''}+${member.minLength ?? ''}(${member.element === undefined ? '*' : keyOf(member.element)})`
   if (member.type === 'object')
     return member.keys === undefined
       ? 'o'
@@ -111,7 +122,9 @@ const memberKey = (member: Member): string => {
           .sort()
           .map((key) => `${JSON.stringify(key)}:${keyOf(member.keys![key])}`)
           .join(',')}}`
-  return member.type
+  // A bounded scalar: its bounds, in the order they were made
+  const { type, ...bounds } = member
+  return `${type}${JSON.stringify(bounds)}`
 }
 
 /** A stable rendering, for caching an analysis by what it was given. */
@@ -151,9 +164,53 @@ export const union = (...knowns: Known[]): Known => {
       seen.add(key)
       members.push(member)
     }
-  if (members.filter((member) => 'exact' in member).length <= EXACT_LIMIT) return members
-  return union(members.map((member) => ('exact' in member ? typeOfValue(member.exact) : member)))
+  const exacts = members.filter((member) => 'exact' in member).map((member) => member.exact)
+  if (exacts.length <= EXACT_LIMIT) return members
+  return union(
+    members.filter((member) => !('exact' in member)),
+    widen(exacts)
+  )
 }
+
+const isNumber = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isFinite(value)
+
+/** A string's length as `length` counts it, in code points. */
+const codePoints = (value: string): number => Array.from(value).length
+
+/**
+ * Exact values past the limit, widened to what they span: the numbers to a
+ * range, integers apart, and the strings and arrays to their least length.
+ */
+const widen = (values: unknown[]): Known => {
+  const shortest = (type: 'string' | 'array', lengths: number[]): Known =>
+    lengths.length === 0 ? NOTHING : [atLeast({ type }, Math.min(...lengths))]
+  return union(
+    ...[true, false].map((integer) =>
+      ofSpan(
+        hull(
+          values.map((value) =>
+            isNumber(value) && Number.isInteger(value) === integer ? spanOfValue(value) : undefined
+          )
+        )
+      )
+    ),
+    shortest(
+      'string',
+      values.filter((value): value is string => typeof value === 'string').map(codePoints)
+    ),
+    shortest(
+      'array',
+      values.filter(Array.isArray).map((value) => value.length)
+    ),
+    ...values
+      .filter((value) => !isNumber(value) && typeof value !== 'string' && !Array.isArray(value))
+      .map((value) => [typeOfValue(value)])
+  )
+}
+
+const atLeast = (member: { type: 'string' | 'array' }, minLength: number | undefined): Member =>
+  minLength ? { ...member, minLength } : member
 
 // ── Null ────────────────────────────────────────────────────────────
 
@@ -201,8 +258,11 @@ export const replaceNullElements = (known: Known, replacement: Known): Known =>
       }
       if (!Array.isArray(exact) && !('type' in member && member.type === 'array'))
         return [{ type: 'object' }]
-      const length = Array.isArray(exact) ? exact.length : (member as { length?: number }).length
-      return arrayOf([withoutNull(elementsOf([member])), replacement], length)
+      const { length, minLength } = member as { length?: number; minLength?: number }
+      return arrayOf(
+        [withoutNull(elementsOf([member])), replacement],
+        Array.isArray(exact) ? { length: exact.length } : { length, minLength }
+      )
     })
   )
 
@@ -243,10 +303,11 @@ export const elementsOf = (known: Known): Known =>
     })
   )
 
-/** An array of these elements, `length` long where that is known. */
-export const arrayOf = (elements: Known[], length?: number): Known => [
-  { type: 'array', element: union(...elements), ...(length !== undefined ? { length } : {}) },
-]
+/** An array of these elements, with its length or least length where known. */
+export const arrayOf = (
+  elements: Known[],
+  lengths: { length?: number; minLength?: number } = {}
+): Known => [{ type: 'array', element: union(...elements), ...lengths }]
 
 /** A literal array: what each element is, in order. */
 export const tupleOf = (items: readonly Known[]): Known => [
@@ -329,7 +390,13 @@ export const drill = (
           if (!Number.isInteger(index) || index < 0)
             return typeof segment === 'number' ? 'no' : 'maybe'
           const inRange =
-            member.length === undefined ? 'maybe' : index < member.length ? 'yes' : 'no'
+            member.length !== undefined
+              ? index < member.length
+                ? 'yes'
+                : 'no'
+              : index < (member.minLength ?? 0)
+                ? 'yes'
+                : 'maybe'
           if (member.items !== undefined && inRange === 'yes')
             return step(member.items[index], 'yes')
           return step(member.element ?? ANY, inRange)
@@ -348,6 +415,250 @@ export const drill = (
   )
   return { value: union(...values), found: known.length === 0 ? 'yes' : found }
 }
+
+// ── Ranges ──────────────────────────────────────────────────────────
+
+/**
+ * The finite numbers a known can be, as one span: inclusive bounds,
+ * infinite where open, and whether every one is an integer. Each operation
+ * below computes its bounds with the operation its body performs, in the
+ * same order, so what the body returns is within them: rounding never
+ * reverses an order, and a bound that overflows is open.
+ */
+export interface Span {
+  min: number
+  max: number
+  integer: boolean
+}
+
+const ZERO: Span = { min: 0, max: 0, integer: true }
+const ONE: Span = { min: 1, max: 1, integer: true }
+
+const spanOfValue = (value: number): Span => ({
+  min: value,
+  max: value,
+  integer: Number.isInteger(value),
+})
+
+const spanOfMember = (member: Member): Span | undefined => {
+  if ('exact' in member) return isNumber(member.exact) ? spanOfValue(member.exact) : undefined
+  return member.type === 'number' || member.type === 'integer'
+    ? {
+        min: member.min ?? -Infinity,
+        max: member.max ?? Infinity,
+        integer: member.type === 'integer',
+      }
+    : undefined
+}
+
+const hull = (spans: (Span | undefined)[]): Span | undefined =>
+  spans.reduce<Span | undefined>(
+    (a, b) =>
+      a === undefined || b === undefined
+        ? (a ?? b)
+        : {
+            min: Math.min(a.min, b.min),
+            max: Math.max(a.max, b.max),
+            integer: a.integer && b.integer,
+          },
+    undefined
+  )
+
+export const spanOf = (known: Known): Span | undefined => hull(known.map(spanOfMember))
+
+/**
+ * The numbers in a span: none where it holds none, and a bound only where
+ * it is finite, so a NaN bound is open too.
+ */
+export const ofSpan = (span: Span | undefined): Known => {
+  if (span === undefined) return NOTHING
+  const min = span.integer ? Math.ceil(span.min) : span.min
+  const max = span.integer ? Math.floor(span.max) : span.max
+  if (min > max) return NOTHING
+  return [
+    {
+      type: span.integer ? 'integer' : 'number',
+      ...(min > -Infinity ? { min } : {}),
+      ...(max < Infinity ? { max } : {}),
+    },
+  ]
+}
+
+/** A declared type with bounds: `{ type: 'integer', min: 0 }`. */
+export const bounded = (declared: {
+  type: 'number' | 'integer' | 'string' | 'array'
+  min?: number
+  max?: number
+  minLength?: number
+}): Known => {
+  const { type, min = -Infinity, max = Infinity } = declared
+  return type === 'number' || type === 'integer'
+    ? ofSpan({ min, max, integer: type === 'integer' })
+    : [atLeast({ type }, declared.minLength)]
+}
+
+/** What is not a number, NaN and the infinities included. */
+const withoutNumbers = (known: Known): Known =>
+  known.filter((member) =>
+    'exact' in member
+      ? typeof member.exact !== 'number'
+      : !['number', 'integer', 'nonFinite'].includes(member.type)
+  )
+
+/**
+ * An array's elements that are NaN or an infinity, as they are: a sum, a
+ * product or an extreme with one among them is one too.
+ */
+const nonFiniteElements = (known: Known): Known =>
+  elementsOf(known).filter((member) => mayBeNonFinite([member]) !== 'no')
+
+/**
+ * An operation over an array's elements, member by member: `items` over a
+ * literal's elements in order, `some` over an array whose length is not
+ * known, given what any one element can be and how many there are at least.
+ */
+const overElements = (
+  known: Known,
+  items: (items: readonly Known[]) => Known,
+  some: (element: Known, least: number) => Known
+): Known =>
+  union(
+    ...known.map((member): Known => {
+      if ('exact' in member)
+        return Array.isArray(member.exact)
+          ? items(Array.from(member.exact, (value) => exactly(value)))
+          : NOTHING
+      if (member.type !== 'array') return NOTHING
+      if (member.items !== undefined) return items(member.items)
+      if (member.length === 0) return some(NOTHING, 0)
+      return some(member.element ?? ANY, member.length ?? member.minLength ?? 0)
+    })
+  )
+
+/**
+ * A literal's elements' spans folded in order. An element with no finite
+ * number means the numbers' case never happens.
+ */
+const fold = (items: readonly Known[], start: Span, step: (a: Span, b: Span) => Span) =>
+  items.reduce<Span | undefined>((total, item) => {
+    const span = spanOf(item)
+    return total && span && step(total, span)
+  }, start)
+
+const add = (a: Span, b: Span): Span => ({
+  min: a.min + b.min,
+  max: a.max + b.max,
+  integer: a.integer && b.integer,
+})
+
+/** A factor of 0 gives 0, an open bound included. */
+const timesBound = (x: number, y: number): number => (x === 0 || y === 0 ? 0 : x * y)
+
+const times = (a: Span, b: Span): Span => {
+  const corners = [
+    timesBound(a.min, b.min),
+    timesBound(a.min, b.max),
+    timesBound(a.max, b.min),
+    timesBound(a.max, b.max),
+  ]
+  return { min: Math.min(...corners), max: Math.max(...corners), integer: a.integer && b.integer }
+}
+
+/**
+ * What adding an array's elements gives (`plus`): the numbers' sum, from 0
+ * and in order, and the kind of anything else. Where the count is not
+ * known, only the sign of the elements bounds it: past at least one
+ * element, a sum of numbers from 0 up is at least any of them.
+ */
+export const sumOf = (known: Known): Known =>
+  union(
+    kindOf(withoutNumbers(elementsOf(known))),
+    nonFiniteElements(known),
+    overElements(
+      known,
+      (items) => ofSpan(fold(items, ZERO, add)),
+      (element, least) => {
+        const span = spanOf(element)
+        if (span === undefined) return least === 0 ? ofSpan(ZERO) : NOTHING
+        const one = least > 0
+        return ofSpan({
+          min: span.min >= 0 ? (one ? span.min : 0) : -Infinity,
+          max: span.max <= 0 ? (one ? span.max : 0) : Infinity,
+          integer: span.integer,
+        })
+      }
+    )
+  )
+
+/**
+ * What multiplying an array's numbers gives (`multiply`), from 1 and in
+ * order. Where the count is not known, factors within ±1 keep the product
+ * within ±1, and factors from 1 up keep it from 1 up.
+ */
+export const productOf = (known: Known): Known =>
+  union(
+    nonFiniteElements(known),
+    overElements(
+      known,
+      (items) => ofSpan(fold(items, ONE, times)),
+      (element, least) => {
+        const span = spanOf(element)
+        if (span === undefined) return least === 0 ? ofSpan(ONE) : NOTHING
+        const small = span.min >= -1 && span.max <= 1
+        return ofSpan({
+          min: span.min >= 1 ? 1 : span.min >= 0 ? 0 : small ? -1 : -Infinity,
+          max: small ? 1 : Infinity,
+          integer: span.integer,
+        })
+      }
+    )
+  )
+
+/** One number less another (`subtract`). */
+export const differenceOf = (value: Known, minus: Known): Known => {
+  const a = spanOf(value)
+  const b = spanOf(minus)
+  return ofSpan(
+    a && b && { min: a.min - b.max, max: a.max - b.min, integer: a.integer && b.integer }
+  )
+}
+
+export const absOf = (known: Known): Known => {
+  const span = spanOf(known)
+  if (span === undefined) return NOTHING
+  const { min, max } = span
+  if (min >= 0) return ofSpan(span)
+  return ofSpan(
+    max <= 0 ? { ...span, min: -max, max: -min } : { ...span, min: 0, max: Math.max(-min, max) }
+  )
+}
+
+/**
+ * The least or greatest of an array's elements (`min`, `max`): for numbers,
+ * a span between the elements' own, and anything else as it is. NaN
+ * compares equal to anything, so where an element may be one, the answer
+ * is any of the elements.
+ */
+export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
+  union(
+    withoutNumbers(elementsOf(known)),
+    nonFiniteElements(known),
+    overElements(
+      known,
+      (items) => {
+        const spans = items.map(spanOf)
+        if (items.some((item) => mayBeNonFinite(item) !== 'no')) return ofSpan(hull(spans))
+        if (spans.length === 0 || spans.includes(undefined)) return NOTHING
+        const pick = which === 'min' ? Math.min : Math.max
+        return ofSpan({
+          min: pick(...spans.map((span) => span!.min)),
+          max: pick(...spans.map((span) => span!.max)),
+          integer: spans.every((span) => span!.integer),
+        })
+      },
+      (element) => ofSpan(spanOf(element))
+    )
+  )
 
 // ── Fitting a declared type ─────────────────────────────────────────
 
@@ -371,8 +682,19 @@ const memberFitsType = (
   type: ExpectedType
 ): Answer => {
   if (isLiteralType(type)) {
-    const admits = (value: string | number | boolean) =>
-      member.type === 'integer' ? Number.isInteger(value) : typeof value === member.type
+    const admits = (value: string | number | boolean) => {
+      const span = spanOfMember(member)
+      if (span !== undefined)
+        return (
+          typeof value === 'number' &&
+          (!span.integer || Number.isInteger(value)) &&
+          value >= span.min &&
+          value <= span.max
+        )
+      if (member.type === 'string')
+        return typeof value === 'string' && codePoints(value) >= (member.minLength ?? 0)
+      return typeof value === member.type
+    }
     return type.literal.some(admits) ? 'maybe' : 'no'
   }
   const basics: readonly BasicType[] = typeof type === 'string' ? [type] : type
@@ -475,7 +797,8 @@ export const fits = (
 
 /**
  * What passes a type check: the members that can, narrowed to the type
- * where the type is narrower (a number checked as an integer is one).
+ * where the type is narrower (a number checked as an integer is one, within
+ * the same bounds).
  */
 export const narrow = (known: Known, type: ExpectedType): Known => {
   if (fits(known, type) === 'yes') return known
@@ -487,7 +810,7 @@ export const narrow = (known: Known, type: ExpectedType): Known => {
         return type.literal
           .filter((value) => fits([member], { literal: [value] }) !== 'no')
           .map((value) => ({ exact: value }))
-      if (member.type === 'number') return [{ type: 'integer' }]
+      if (member.type === 'number') return ofSpan({ ...spanOfMember(member)!, integer: true })
       return [member]
     })
   )

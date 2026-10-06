@@ -104,6 +104,21 @@ describe('numbers', () => {
     ).toEqual([ErrorCodes.nonFiniteResult])
   })
 
+  test('an overflow is never certain, so the node above it still checks its inputs', async () => {
+    // Never null, so only the overflow could end subtract; with x 'a' it
+    // gives 0, and divide fails
+    const count = { $length: { $buildString: ['%1', '$data.x'] } }
+    const ratio = { $divide: [1, { $subtract: [count, 1] }] }
+    const { uncovered } = await fallbackCoverage(fig, ratio, { numbers: 'strict' })
+    expect(
+      uncovered.map((finding) => ({ ...where(finding), certainty: finding.certainty }))
+    ).toEqual([
+      { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
+      { path: [], code: ErrorCodes.nonFiniteResult, certainty: 'may' },
+      { path: ['$divide', 1], code: ErrorCodes.nonFiniteResult, certainty: 'may' },
+    ])
+  })
+
   test('anything else is refused', async () => {
     await expect(
       fallbackCoverage(fig, 1, { numbers: 'loose' as FallbackCoverageOptions['numbers'] })
@@ -676,6 +691,150 @@ describe('what a node returns', () => {
   })
 })
 
+describe('value ranges', () => {
+  const findings = async (expression: unknown, instance: FigTree = fig) =>
+    (await fallbackCoverage(instance, expression)).uncovered.map((finding) => ({
+      ...where(finding),
+      certainty: finding.certainty,
+    }))
+  /** A length, a non-negative integer the walk does not know */
+  const length = { $length: '$data.s', fallback: 0 }
+  /** A string the walk does not know */
+  const text = { $buildString: ['%1', '$data.s'] }
+  const byZero = { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' }
+
+  test.each([
+    ['a length is never negative', { $power: [length, 0.5] }],
+    ['a sum of lengths and 1 is never 0', { $divide: [10, { $plus: [length, 1] }] }],
+    [
+      'a product of factors from 1 up is never 0',
+      { $divide: [10, { $multiply: [{ $plus: [length, 1] }, 2] }] },
+    ],
+    [
+      'an absolute value is never negative',
+      { $power: [{ $abs: { $subtract: [length, 5] } }, 0.5] },
+    ],
+    ['the greater of a length and 1 is at least 1', { $divide: [10, { $max: [length, 1] }] }],
+    ['the lesser of a length and 4 is at most 4', { $round: [1.5, { $min: [length, 4] }] }],
+    [
+      '$index is never negative',
+      { $map: { input: [1, 2], each: { $divide: [1, { $plus: ['$index', 1] }] } } },
+    ],
+  ])('%s', async (_label, expression) => {
+    expect(await findings(expression)).toEqual([])
+  })
+
+  test('a difference of a length and 1 may be 0', async () => {
+    expect(await findings({ $divide: [10, { $subtract: [length, 1] }] })).toEqual([byZero])
+  })
+
+  test('past the exact-value limit, numbers widen to the range they span', async () => {
+    const branches = (from: number) =>
+      Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`k${i}`, from + i]))
+    const divisor = (from: number) => ({
+      $divide: [1, { $match: { value: text, branches: branches(from), default: 50 } }],
+    })
+    expect(await findings(divisor(1))).toEqual([])
+    expect(await findings(divisor(0))).toEqual([byZero])
+  })
+
+  describe("a host operator's declared range", () => {
+    const values = { values: { type: 'array' as const } }
+    const total = defineOperator({
+      name: 'total',
+      category: 'math',
+      description: 'The sum of some numbers',
+      parameters: values,
+      positionalParams: ['...values'],
+      returns: 'number',
+      coverage: { output: { sum: 'values' } },
+      evaluate: ({ values }) => (values as number[]).reduce((sum, value) => sum + value, 0),
+    })
+    const word = defineOperator({
+      name: 'word',
+      category: 'string',
+      description: 'Its value, or a placeholder for an empty one',
+      parameters: { value: { type: 'string' } },
+      positionalParams: ['value'],
+      returns: 'string',
+      coverage: { output: { type: 'string', minLength: 1 } },
+      evaluate: ({ value }) => value || '-',
+    })
+    const picky = defineOperator({
+      name: 'picky',
+      category: 'string',
+      description: 'Refuses an empty string',
+      parameters: { value: { type: 'string' } },
+      positionalParams: ['value'],
+      returns: 'string',
+      coverage: { failures: [{ code: 'operator-failure', when: { value: { empty: true } } }] },
+      evaluate: ({ value }) => {
+        if (value === '') throw new OperatorFailure('nothing to pick')
+        return value
+      },
+    })
+    const hosts = new FigTree({ operators: [coreOperators, [total, word, picky]] })
+
+    test('reaches the rules of the node it feeds', async () => {
+      expect(await findings({ $picky: { $word: text } }, hosts)).toEqual([])
+      expect(await findings({ $picky: text }, hosts)).toEqual([
+        { path: [], code: ErrorCodes.operatorFailure, certainty: 'may' },
+      ])
+    })
+
+    test('a sum over an array that may be empty may be 0', async () => {
+      const ones = { $map: { input: '$data.list', nullInputDefault: [], each: 1 } }
+      expect(await findings({ $divide: [1, { $total: ones }] }, hosts)).toEqual([
+        { ...byZero, path: [] },
+        {
+          path: ['$divide', 1, '$total'],
+          code: ErrorCodes.typeCheck,
+          parameter: 'input',
+          certainty: 'may',
+        },
+      ])
+    })
+
+    test('defineOperator() refuses a malformed range', () => {
+      const declare = (output: unknown) => () =>
+        defineOperator({
+          name: 'ranged',
+          category: 'math',
+          description: 'd',
+          parameters: { value: { type: 'number' }, values: { type: 'array' } },
+          coverage: { output },
+          evaluate: () => 1,
+        } as unknown as Parameters<typeof defineOperator>[0])
+      const refused = expect.objectContaining({ code: ErrorCodes.invalidDefinition })
+      for (const output of [
+        { type: 'integer', min: 0, max: 9 },
+        { type: 'string', minLength: 1 },
+        { arrayOf: 'string', minLength: 1 },
+        { difference: ['value', 'value'] },
+        { byParam: 'value', cases: { '': 'string' }, otherwise: { type: 'array', minLength: 1 } },
+        { oneOf: [{ sum: 'values' }, { product: 'values' }, { abs: 'value' }] },
+        { oneOf: [{ min: 'values' }, { max: 'values' }] },
+      ])
+        expect(declare(output)).not.toThrow()
+      for (const output of [
+        { type: 'integer', min: 'a' },
+        { type: 'integer', min: 2, max: 1 },
+        { type: 'number', max: Infinity },
+        { type: 'integer', minLength: 1 },
+        { type: 'string', min: 0 },
+        { type: 'any', min: 0 },
+        { type: 'array', minLength: -1 },
+        { arrayOf: 'string', minLength: 0.5 },
+        { difference: ['value'] },
+        { difference: ['value', 'nope'] },
+        { sum: 'nope' },
+        { byParam: 'value', cases: {}, otherwise: { param: 'nope' } },
+      ])
+        expect(declare(output)).toThrow(refused)
+    })
+  })
+})
+
 describe("an operator's own failures", () => {
   const ownFindings = async (expression: unknown, instance: FigTree = fig) =>
     (await fallbackCoverage(instance, expression)).uncovered.map((finding) => ({
@@ -688,10 +847,13 @@ describe("an operator's own failures", () => {
     expect(await ownFindings({ $divide: [6, { $length: '$data.s', fallback: 1 }] })).toEqual([
       { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by', certainty: 'may' },
     ])
-    // A split of an unknown string is an array of strings, which may be
-    // empty for all the walk knows
-    const split = { $split: [{ $buildString: ['%1', '$data.s'] }, ','] }
-    expect(await ownFindings({ $min: split })).toEqual([
+    // A split on a delimiter always has a piece; a split into code points
+    // has none where the string is empty
+    const split = (delimiter: string) => ({
+      $split: [{ $buildString: ['%1', '$data.s'] }, delimiter],
+    })
+    expect(await ownFindings({ $min: split(',') })).toEqual([])
+    expect(await ownFindings({ $min: split('') })).toEqual([
       { path: [], code: ErrorCodes.emptyAggregate, parameter: 'values', certainty: 'may' },
     ])
   })

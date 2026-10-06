@@ -57,9 +57,11 @@ export const CORE_RULES: Record<string, FailureRule[]> = {
   modulo: [{ code: NON_FINITE, parameter: 'mod', when: { mod: 0 } }, OVERFLOW],
   power: [
     { code: NON_FINITE, parameter: 'base', when: { base: 0, exponent: { below: 0 } } },
+    // Not certain: an infinite base or exponent can make it 0 instead
     {
       code: NON_FINITE,
       parameter: 'base',
+      may: true,
       when: { base: { below: 0 }, exponent: { not: { type: 'integer' } } },
     },
     {
@@ -139,9 +141,13 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
   if ('below' in test) {
     if ('exact' in member)
       return typeof member.exact === 'number' && member.exact < test.below ? 'yes' : 'no'
-    return member.type === 'number' || member.type === 'integer' || member.type === 'nonFinite'
-      ? 'maybe'
-      : 'no'
+    if (member.type === 'number' || member.type === 'integer')
+      return (member.max ?? Infinity) < test.below
+        ? 'yes'
+        : (member.min ?? -Infinity) >= test.below
+          ? 'no'
+          : 'maybe'
+    return member.type === 'nonFinite' ? 'maybe' : 'no'
   }
   if ('empty' in test) {
     if ('exact' in member) {
@@ -152,7 +158,8 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
     }
     switch (member.type) {
       case 'array':
-        return member.length === undefined ? 'maybe' : member.length === 0 ? 'yes' : 'no'
+        if (member.length !== undefined) return member.length === 0 ? 'yes' : 'no'
+        return member.minLength ? 'no' : 'maybe'
       case 'object':
         return member.keys === undefined
           ? 'maybe'
@@ -160,7 +167,7 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
             ? 'yes'
             : 'no'
       case 'string':
-        return 'maybe'
+        return member.minLength ? 'no' : 'maybe'
       default:
         return 'no'
     }
@@ -178,7 +185,7 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
     if (member.type === 'array') {
       if (member.length === 0) return 'no'
       const element = testKnown(test.some, member.element ?? ANY)
-      return element === 'yes' && member.length !== undefined
+      return element === 'yes' && (member.length !== undefined || member.minLength)
         ? 'yes'
         : element === 'no'
           ? 'no'
@@ -199,7 +206,7 @@ const testMember = (test: CoverageTest, member: Member): Answer => {
 }
 
 /** A test against everything a parameter may receive. */
-const testKnown = (test: CoverageTest, known: Known): Answer =>
+export const testKnown = (test: CoverageTest, known: Known): Answer =>
   known.length === 0 ? 'no' : combine(known.map((member) => testMember(test, member)))
 
 const exactValue = (known: Known | undefined): { value: unknown } | undefined =>
@@ -300,8 +307,10 @@ export const answerRule = (
 /**
  * The node's own failures, by its rules: one finding for each rule that can
  * hold, `always` where it must and no null can end the node first. An
- * external operator may fail whatever its inputs, with whatever code its
- * own code throws, which the one `operator-failure` finding stands for.
+ * overflow takes extreme numbers, which a rule cannot ask for, so it is
+ * never certain. An external operator may fail whatever its inputs, with
+ * whatever code its own code throws, which the one `operator-failure`
+ * finding stands for.
  */
 export const ownFailures = (
   node: OperatorNode,
@@ -327,7 +336,10 @@ export const ownFailures = (
       ...at,
       code: rule.code,
       message: describeRule(node.name, rule),
-      certainty: answer === 'yes' && !rule.may && inputs.propagates === 'no' ? 'always' : 'may',
+      certainty:
+        answer === 'yes' && !rule.may && !rule.overflow && inputs.propagates === 'no'
+          ? 'always'
+          : 'may',
       ...(rule.parameter !== undefined ? { parameter: rule.parameter } : {}),
     })
   }

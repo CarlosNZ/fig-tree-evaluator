@@ -88,7 +88,8 @@ type Part = { result: NodeResult; eager: boolean }
 
 const SAFE: NodeResult = { verdict: 'no', escapes: [], output: NOTHING }
 const NONE: Analysed = { result: SAFE, covered: [] }
-const INTEGER: Known = [{ type: 'integer' }]
+/** What `$index` can be */
+const INDEX: Known = [{ type: 'integer', min: 0 }]
 const NULL = exactly(null)
 
 /**
@@ -386,7 +387,7 @@ export class Analysis {
     const { segments } = node
     switch (node.namespace) {
       case 'index':
-        return { ...SAFE, output: INTEGER }
+        return { ...SAFE, output: INDEX }
       case 'data':
         return this.drilled(node, ANY, segments, [], [])
       case 'element': {

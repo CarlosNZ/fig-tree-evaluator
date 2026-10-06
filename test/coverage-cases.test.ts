@@ -242,6 +242,8 @@ const ORDINARY: unknown[] = [
   [['a']],
   {},
   { a: 1 },
+  // Long enough that its length overflows power(2, …) and round's shift
+  'x'.repeat(1100),
 ]
 const STRICT: unknown[] = [...ORDINARY, NaN, Infinity, 1e308, '1e308']
 const MAX_RUNS = 1500

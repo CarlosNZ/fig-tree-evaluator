@@ -199,6 +199,14 @@ export const sections: Record<string, CoverageCase[]> = {
       expression: {
         $round: [3.14159, { $floor: { $divide: [{ $length: '$data.s', fallback: 4 }, 2] } }],
       },
+      uncovered: [
+        {
+          at: [],
+          code: 'non-finite-result',
+          parameter: 'decimals',
+          witness: { s: 'a'.repeat(618) },
+        },
+      ],
       covered: [
         {
           at: ['$round', 1, '$floor', '$divide', 0],
@@ -212,7 +220,15 @@ export const sections: Record<string, CoverageCase[]> = {
     {
       name: 'a number where an integer is required',
       expression: { $round: [3.14159, { $divide: [{ $length: '$data.s', fallback: 4 }, 2] }] },
-      uncovered: [{ at: [], code: 'type-check', parameter: 'decimals', witness: { s: 'abc' } }],
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'decimals', witness: { s: 'abc' } },
+        {
+          at: [],
+          code: 'non-finite-result',
+          parameter: 'decimals',
+          witness: { s: 'a'.repeat(618) },
+        },
+      ],
       covered: [
         {
           at: ['$round', 1, '$divide', 0],
@@ -702,6 +718,116 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'buildObject with a computed key',
       expression: { $buildObject: [{ key: '$data.k', value: 1 }] },
       uncovered: [{ at: [], code: 'type-check', parameter: 'entries', witness: { k: [] } }],
+    },
+  ],
+
+  'Value ranges': [
+    {
+      name: 'a length plus 1 is never 0',
+      expression: { $divide: [10, { $plus: [{ $length: '$data.list', fallback: 0 }, 1] }] },
+      covered: [
+        {
+          at: ['$divide', 1, '$plus', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$divide', 1, '$plus', 0],
+          witness: { list: 1 },
+        },
+      ],
+    },
+    {
+      name: 'a base that cannot be negative',
+      expression: { $power: [{ $length: '$data.s', fallback: 1 }, 0.5] },
+      covered: [
+        {
+          at: ['$power', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$power', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'split on a delimiter never returns an empty array',
+      expression: { $min: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } },
+      uncovered: [{ at: [], code: 'type-check', parameter: 'values', witness: { s: null } }],
+      covered: [
+        {
+          at: ['$min', '$split', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$min', '$split', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'split on a delimiter from the data may return an empty array',
+      expression: { $min: { $split: [{ $lower: '$data.s', fallback: '' }, '$data.d'] } },
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'values', witness: { s: null } },
+        { at: [], code: 'empty-aggregate', parameter: 'values', witness: { s: '', d: '' } },
+        { at: ['$min'], code: 'type-check', parameter: 'delimiter', witness: { s: 'a', d: 1 } },
+      ],
+      covered: [
+        {
+          at: ['$min', '$split', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$min', '$split', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'the greater of a length and 1 is never 0',
+      expression: { $divide: [10, { $max: [{ $length: '$data.list', fallback: 0 }, 1] }] },
+      covered: [
+        {
+          at: ['$divide', 1, '$max', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$divide', 1, '$max', 0],
+          witness: { list: 1 },
+        },
+      ],
+    },
+    {
+      name: 'a length less 1 may be 0',
+      expression: { $divide: [10, { $subtract: [{ $length: '$data.s', fallback: 0 }, 1] }] },
+      uncovered: [{ at: [], code: 'non-finite-result', parameter: 'by', witness: { s: 'a' } }],
+      covered: [
+        {
+          at: ['$divide', 1, '$subtract', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$divide', 1, '$subtract', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: 'an absolute value is never negative',
+      expression: {
+        $power: [{ $abs: { $subtract: [{ $length: '$data.s', fallback: 0 }, 5] } }, 0.5],
+      },
+      covered: [
+        {
+          at: ['$power', 0, '$abs', '$subtract', 0],
+          code: 'type-check',
+          parameter: 'value',
+          by: ['$power', 0, '$abs', '$subtract', 0],
+          witness: { s: 1 },
+        },
+      ],
+    },
+    {
+      name: '$index plus 1 is never 0',
+      expression: {
+        $map: { input: '$data.list', each: { $divide: [1, { $plus: ['$index', 1] }] } },
+      },
+      uncovered: [{ at: [], code: 'type-check', parameter: 'input', witness: { list: 1 } }],
     },
   ],
 
@@ -1650,57 +1776,6 @@ export const sections: Record<string, CoverageCase[]> = {
       name: 'a declared host operator whose rule cannot hold',
       expression: { $picky: { $upper: 'x' } },
       instance: 'host',
-    },
-  ],
-
-  'False positives the design accepts': [
-    {
-      name: 'a divisor that cannot be 0, but only a value range would show it',
-      expression: { $divide: [10, { $plus: [{ $length: '$data.list', fallback: 0 }, 1] }] },
-      uncovered: [{ at: [], code: 'non-finite-result', parameter: 'by' }],
-      covered: [
-        {
-          at: ['$divide', 1, '$plus', 0],
-          code: 'type-check',
-          parameter: 'value',
-          by: ['$divide', 1, '$plus', 0],
-          witness: { list: 1 },
-        },
-      ],
-      note: 'The walk knows length + 1 is an integer, not that it is at least 1',
-    },
-    {
-      name: 'a base that cannot be negative',
-      expression: { $power: [{ $length: '$data.s', fallback: 1 }, 0.5] },
-      uncovered: [{ at: [], code: 'non-finite-result', parameter: 'base' }],
-      covered: [
-        {
-          at: ['$power', 0],
-          code: 'type-check',
-          parameter: 'value',
-          by: ['$power', 0],
-          witness: { s: 1 },
-        },
-      ],
-      note: 'A length is never negative, but the walk knows only that it is an integer',
-    },
-    {
-      name: 'split never returns an empty array',
-      expression: { $min: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } },
-      uncovered: [
-        { at: [], code: 'type-check', parameter: 'values', witness: { s: null } },
-        { at: [], code: 'empty-aggregate', parameter: 'values' },
-      ],
-      covered: [
-        {
-          at: ['$min', '$split', 0],
-          code: 'type-check',
-          parameter: 'value',
-          by: ['$min', '$split', 0],
-          witness: { s: 1 },
-        },
-      ],
-      note: 'The empty-aggregate finding is the false positive: split always returns at least one piece',
     },
   ],
 }

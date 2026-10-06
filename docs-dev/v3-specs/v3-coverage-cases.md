@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 158 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 163 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -27,6 +27,7 @@ Where a case uses an instance other than `new FigTree()`:
 - [Types between nodes](#types-between-nodes)
 - [Null](#null)
 - [Operator conditions with some inputs known](#operator-conditions-with-some-inputs-known)
+- [Value ranges](#value-ranges)
 - [Where failures surface, and fallbacks](#where-failures-surface-and-fallbacks)
 - [Laziness and deciders](#laziness-and-deciders)
 - [Iterators and bindings](#iterators-and-bindings)
@@ -36,7 +37,6 @@ Where a case uses an instance other than `new FigTree()`:
 - [Options](#options)
 - [I/O and timeouts](#io-and-timeouts)
 - [Host operators](#host-operators)
-- [False positives the design accepts](#false-positives-the-design-accepts)
 
 ## Constants and folding
 
@@ -243,6 +243,7 @@ Where a case uses an instance other than `new FigTree()`:
 { $round: [3.14159, { $floor: { $divide: [{ $length: '$data.s', fallback: 4 }, 2] } }] }
 ```
 
+- ✗ **round** at the root — may fail: `non-finite-result` on `decimals`. E.g. data `{ s: 'aaaa…' (618 characters) }`
 - ✓ **length** at `$round[1].$floor.$divide[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
 
 **a number where an integer is required**
@@ -252,6 +253,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **round** at the root — may fail: `type-check` on `decimals`. E.g. data `{ s: 'abc' }`
+- ✗ **round** at the root — may fail: `non-finite-result` on `decimals`. E.g. data `{ s: 'aaaa…' (618 characters) }`
 - ✓ **length** at `$round[1].$divide[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
 
 **join never returns null**
@@ -656,6 +658,77 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✗ **buildObject** at the root — may fail: `type-check` on `entries`. E.g. data `{ k: [] }`
+
+## Value ranges
+
+**a length plus 1 is never 0**
+
+```json5
+{ $divide: [10, { $plus: [{ $length: '$data.list', fallback: 0 }, 1] }] }
+```
+
+- ✓ **length** at `$divide[1].$plus[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ list: 1 }`
+
+**a base that cannot be negative**
+
+```json5
+{ $power: [{ $length: '$data.s', fallback: 1 }, 0.5] }
+```
+
+- ✓ **length** at `$power[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**split on a delimiter never returns an empty array**
+
+```json5
+{ $min: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } }
+```
+
+- ✗ **min** at the root — may fail: `type-check` on `values`. E.g. data `{ s: null }`
+- ✓ **lower** at `$min.$split[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**split on a delimiter from the data may return an empty array**
+
+```json5
+{ $min: { $split: [{ $lower: '$data.s', fallback: '' }, '$data.d'] } }
+```
+
+- ✗ **min** at the root — may fail: `type-check` on `values`. E.g. data `{ s: null }`
+- ✗ **min** at the root — may fail: `empty-aggregate` on `values`. E.g. data `{ s: '', d: '' }`
+- ✗ **split** at `$min` — may fail: `type-check` on `delimiter`. E.g. data `{ s: 'a', d: 1 }`
+- ✓ **lower** at `$min.$split[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**the greater of a length and 1 is never 0**
+
+```json5
+{ $divide: [10, { $max: [{ $length: '$data.list', fallback: 0 }, 1] }] }
+```
+
+- ✓ **length** at `$divide[1].$max[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ list: 1 }`
+
+**a length less 1 may be 0**
+
+```json5
+{ $divide: [10, { $subtract: [{ $length: '$data.s', fallback: 0 }, 1] }] }
+```
+
+- ✗ **divide** at the root — may fail: `non-finite-result` on `by`. E.g. data `{ s: 'a' }`
+- ✓ **length** at `$divide[1].$subtract[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**an absolute value is never negative**
+
+```json5
+{ $power: [{ $abs: { $subtract: [{ $length: '$data.s', fallback: 0 }, 5] } }, 0.5] }
+```
+
+- ✓ **length** at `$power[0].$abs.$subtract[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**$index plus 1 is never 0**
+
+```json5
+{ $map: { input: '$data.list', each: { $divide: [1, { $plus: ['$index', 1] }] } } }
+```
+
+- ✗ **map** at the root — may fail: `type-check` on `input`. E.g. data `{ list: 1 }`
 
 ## Where failures surface, and fallbacks
 
@@ -1472,39 +1545,3 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - Nothing can throw.
-
-## False positives the design accepts
-
-**a divisor that cannot be 0, but only a value range would show it**
-
-```json5
-{ $divide: [10, { $plus: [{ $length: '$data.list', fallback: 0 }, 1] }] }
-```
-
-- ✗ **divide** at the root — may fail: `non-finite-result` on `by` (no data makes it happen)
-- ✓ **length** at `$divide[1].$plus[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ list: 1 }`
-
-> The walk knows length + 1 is an integer, not that it is at least 1.
-
-**a base that cannot be negative**
-
-```json5
-{ $power: [{ $length: '$data.s', fallback: 1 }, 0.5] }
-```
-
-- ✗ **power** at the root — may fail: `non-finite-result` on `base` (no data makes it happen)
-- ✓ **length** at `$power[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
-
-> A length is never negative, but the walk knows only that it is an integer.
-
-**split never returns an empty array**
-
-```json5
-{ $min: { $split: [{ $lower: '$data.s', fallback: '' }, ','] } }
-```
-
-- ✗ **min** at the root — may fail: `type-check` on `values`. E.g. data `{ s: null }`
-- ✗ **min** at the root — may fail: `empty-aggregate` on `values` (no data makes it happen)
-- ✓ **lower** at `$min.$split[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
-
-> The empty-aggregate finding is the false positive: split always returns at least one piece.

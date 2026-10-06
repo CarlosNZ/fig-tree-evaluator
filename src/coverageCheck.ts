@@ -38,7 +38,48 @@ const isTest = (test: unknown): boolean => {
   }
 }
 
-const NAMING = ['param', 'elementOf', 'kindOf', 'typeNamedBy', 'firstNonNull']
+const NAMING = [
+  'param',
+  'elementOf',
+  'kindOf',
+  'typeNamedBy',
+  'firstNonNull',
+  'sum',
+  'product',
+  'abs',
+  'min',
+  'max',
+]
+
+const isBound = (value: unknown) =>
+  value === undefined || (typeof value === 'number' && Number.isFinite(value))
+
+const isLength = (value: unknown) =>
+  value === undefined || (Number.isInteger(value) && (value as number) >= 0)
+
+/** Whether only these keys, and `required`, are present. */
+const only = (value: Record<string, unknown>, required: string, ...optional: string[]) =>
+  required in value && Object.keys(value).every((key) => key === required || optional.includes(key))
+
+/**
+ * Whether a value is a fixed type with bounds: finite bounds in order on a
+ * number type, a length on a string or array.
+ */
+const isBounded = (output: Record<string, unknown>): boolean => {
+  const { type, min, max, minLength } = output
+  if (type === 'number' || type === 'integer')
+    return (
+      only(output, 'type', 'min', 'max') &&
+      isBound(min) &&
+      isBound(max) &&
+      !((min as number) > (max as number))
+    )
+  return (
+    (type === 'string' || type === 'array') &&
+    only(output, 'type', 'minLength') &&
+    isLength(minLength)
+  )
+}
 
 /**
  * Whether a value is an output declaration of the coverage vocabulary, each
@@ -49,18 +90,27 @@ const isOutput = (output: unknown, declared: (name: unknown) => boolean): boolea
   if (!isPlainObject(output)) return false
   const keys = Object.keys(output)
   if (keys.length === 1 && NAMING.includes(keys[0])) return declared(output[keys[0]])
-  if (keys.length === 1 && keys[0] === 'arrayOf') return isOutput(output.arrayOf, declared)
-  if (keys.length === 1 && keys[0] === 'oneOf')
+  if ('type' in output) return isBounded(output)
+  if (only(output, 'difference'))
+    return (
+      Array.isArray(output.difference) &&
+      output.difference.length === 2 &&
+      output.difference.every(declared)
+    )
+  if (only(output, 'arrayOf', 'minLength'))
+    return isLength(output.minLength) && isOutput(output.arrayOf, declared)
+  if (only(output, 'oneOf'))
     return (
       Array.isArray(output.oneOf) &&
       output.oneOf.length > 0 &&
       output.oneOf.every((option) => isOutput(option, declared))
     )
-  if (keys.length === 2 && 'byParam' in output && 'cases' in output)
+  if (only(output, 'byParam', 'cases', 'otherwise') && 'cases' in output)
     return (
       declared(output.byParam) &&
       isPlainObject(output.cases) &&
-      Object.values(output.cases).every((option) => isOutput(option, declared))
+      Object.values(output.cases).every((option) => isOutput(option, declared)) &&
+      (output.otherwise === undefined || isOutput(output.otherwise, declared))
     )
   return false
 }

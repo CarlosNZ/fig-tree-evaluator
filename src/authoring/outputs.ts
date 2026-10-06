@@ -3,7 +3,9 @@
  * docs-dev/v3-specs/v3-fallback-coverage.md): what an operator node
  * returns. An operator whose `returns` is wider than what a node can return
  * declares how its inputs narrow it, in a table here for the core operators
- * and in a host's `coverage.output`; any other returns its `returns`.
+ * and in a host's `coverage.output`; any other returns its `returns`. A
+ * declaration can bound what it returns ("Value ranges"): the arithmetic
+ * itself is in ./known.ts, so a declaration names only its operation.
  *
  * Then the result boundary: the engine refuses a NaN or infinite result at
  * every operator node. Under `numbers: 'strict'`, where a number from the
@@ -18,16 +20,22 @@ import type { ExpectedType } from '../typeCheck'
 import {
   ANY,
   NOTHING,
+  absOf,
   admitsNull,
   arrayOf,
+  bounded,
+  differenceOf,
   elementsOf,
   exactValues,
   exactly,
+  extremeOf,
   finite,
   fits,
   kindOf,
   mayBeNonFinite,
   ofType,
+  productOf,
+  sumOf,
   union,
   valuesOf,
   withoutNull,
@@ -42,12 +50,21 @@ export const CORE_OUTPUTS: Record<string, CoverageOutput> = {
   match: { oneOf: [{ param: 'branches' }, { param: 'default' }] },
   firstOf: { firstNonNull: 'values' },
   find: { oneOf: [{ elementOf: 'input' }, { param: 'noMatchDefault' }] },
-  plus: { oneOf: [{ kindOf: 'values' }, { typeNamedBy: 'expect' }] },
-  min: { elementOf: 'values' },
-  max: { elementOf: 'values' },
+  plus: { oneOf: [{ sum: 'values' }, { typeNamedBy: 'expect' }] },
+  subtract: { difference: ['value', 'minus'] },
+  multiply: { product: 'values' },
+  abs: { abs: 'value' },
+  min: { min: 'values' },
+  max: { max: 'values' },
+  length: { type: 'integer', min: 0 },
   filter: { arrayOf: { elementOf: 'input' } },
   map: { arrayOf: { param: 'each' } },
-  split: { arrayOf: 'string' },
+  // An empty delimiter splits into code points, so '' gives no piece at all
+  split: {
+    byParam: 'delimiter',
+    cases: { '': { arrayOf: 'string' } },
+    otherwise: { arrayOf: 'string', minLength: 1 },
+  },
   convert: { typeNamedBy: 'to' },
   regex: {
     byParam: 'mode',
@@ -116,17 +133,30 @@ const isType = (declared: CoverageOutput): declared is ExpectedType =>
 
 const evaluate = (declared: CoverageOutput, received: Received): Known => {
   const { inputs } = received
+  const at = (name: string) => inputs.received[name] ?? NOTHING
   if (isType(declared)) return ofType(declared)
+  if ('type' in declared) return bounded(declared)
+  if ('sum' in declared) return sumOf(at(declared.sum))
+  if ('product' in declared) return productOf(at(declared.product))
+  if ('difference' in declared)
+    return differenceOf(...(declared.difference.map(at) as [Known, Known]))
+  if ('abs' in declared) return absOf(at(declared.abs))
+  if ('min' in declared) return extremeOf(at(declared.min), 'min')
+  if ('max' in declared) return extremeOf(at(declared.max), 'max')
   if ('param' in declared) {
     const name = declared.param
     if (Object.hasOwn(received.elements, name)) return received.elements[name]
-    const known = inputs.received[name] ?? NOTHING
+    const known = at(name)
     const evaluation = received.definition.parameters[name]?.evaluation ?? 'eager'
     return CONTAINER_LAZY.has(evaluation) ? union(elementsOf(known), valuesOf(known)) : known
   }
-  if ('elementOf' in declared) return elementsOf(inputs.received[declared.elementOf] ?? NOTHING)
-  if ('kindOf' in declared) return kindOf(elementsOf(inputs.received[declared.kindOf] ?? NOTHING))
-  if ('arrayOf' in declared) return arrayOf([evaluate(declared.arrayOf, received)])
+  if ('elementOf' in declared) return elementsOf(at(declared.elementOf))
+  if ('kindOf' in declared) return kindOf(elementsOf(at(declared.kindOf)))
+  if ('arrayOf' in declared)
+    return arrayOf(
+      [evaluate(declared.arrayOf, received)],
+      declared.minLength ? { minLength: declared.minLength } : {}
+    )
   if ('oneOf' in declared)
     return union(...declared.oneOf.map((option) => evaluate(option, received)))
   if ('typeNamedBy' in declared) {
@@ -143,19 +173,17 @@ const evaluate = (declared: CoverageOutput, received: Received): Known => {
         )
   }
   if ('byParam' in declared) {
+    const { cases, otherwise } = declared
     const known = inputs.received[declared.byParam]
     const chosen = known === undefined ? undefined : exactValues(known)
-    const cases = chosen ?? Object.keys(declared.cases)
+    const options = chosen?.map((value) =>
+      typeof value === 'string' && Object.hasOwn(cases, value) ? cases[value] : otherwise
+    ) ?? [...Object.values(cases), otherwise]
     return union(
-      ...cases
-        .filter(
-          (value): value is string =>
-            typeof value === 'string' && Object.hasOwn(declared.cases, value)
-        )
-        .map((value) => evaluate(declared.cases[value], received))
+      ...options.map((option) => (option === undefined ? NOTHING : evaluate(option, received)))
     )
   }
-  return firstNonNull(inputs.received[declared.firstNonNull] ?? NOTHING)
+  return firstNonNull(at(declared.firstNonNull))
 }
 
 const NON_FINITE: Known = [{ type: 'nonFinite' }]
