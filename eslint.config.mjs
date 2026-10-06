@@ -182,13 +182,13 @@ export default tseslint.config(
     // ./authoring analyses the compiled tree, so it reads a compiled handle
     // through src/FigTree.ts ("`./authoring`" in
     // docs-dev/v3-specs/v3-packaging.md), paths through the artifact's own
-    // helper, and judges values by the engine's own type checks, path
-    // resolution, truthiness and validate hooks, classifies a body's throw as
-    // the engine does, and keys its rules by the core operators, so the
-    // analysis and the runtime cannot disagree. Its value imports outside the
-    // folder are held to those modules, all already in the chunks it shares, so
-    // nothing else is pulled in by accident. Type imports erase at build, so
-    // they may come from anywhere.
+    // helper, and judges values by the engine's own type checks, plain-object
+    // test, path resolution, truthiness and validate hooks, classifies a
+    // body's throw as the engine does, and keys its rules by the core
+    // operators, so the analysis and the runtime cannot disagree. Its value
+    // imports outside the folder are held to those modules, all already in
+    // the chunks it shares, so nothing else is pulled in by accident. Type
+    // imports erase at build, so they may come from anywhere.
     files: ['src/authoring/*.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
@@ -197,7 +197,7 @@ export default tseslint.config(
           patterns: [
             {
               regex:
-                '^(?!\\./|\\.\\./(FigTree|FigTreeError|OperatorFailure|errorCodes|compile/artifact|compile/helpers|operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness)$)',
+                '^(?!\\./|\\.\\./(FigTree|FigTreeError|OperatorFailure|errorCodes|compile/artifact|compile/helpers|operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness|utils)$)',
               allowTypeImports: true,
               message:
                 'src/authoring/ imports values only from inside the folder and the engine modules its chunks hold already (`import type` from anywhere).',

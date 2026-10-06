@@ -16,6 +16,7 @@ import type { BasicType, Constraints, ExpectedType, TypeDeclaration } from '../t
 import { isLiteralType } from '../typeIntersection'
 import { WILDCARD, resolvePath } from '../primitives/path'
 import type { PathSegment } from '../primitives/path'
+import { isPlainObject } from '../utils'
 
 export type Member =
   | { exact: unknown }
@@ -239,7 +240,11 @@ export const containsNull = (known: Known): Answer =>
     known.map((member): Answer => {
       if ('exact' in member) {
         const { exact } = member
-        const values = Array.isArray(exact) ? exact : isPlain(exact) ? Object.values(exact) : []
+        const values = Array.isArray(exact)
+          ? exact
+          : isPlainObject(exact)
+            ? Object.values(exact)
+            : []
         return values.includes(null) ? 'yes' : 'no'
       }
       if (member.type === 'array')
@@ -296,10 +301,6 @@ export const withoutNullElements = (known: Known): Known =>
 
 // ── Containers ──────────────────────────────────────────────────────
 
-/** The engine's `isPlainObject` (src/utils.ts): any non-array object. */
-export const isPlain = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
 /** What an iterator binds `$element` to: the elements of what is an array. */
 export const elementsOf = (known: Known): Known =>
   unionOf(
@@ -329,7 +330,7 @@ export const valuesOf = (known: Known): Known =>
   unionOf(
     known.map((member): Known => {
       if ('exact' in member)
-        return isPlain(member.exact)
+        return isPlainObject(member.exact)
           ? unionOf(Object.values(member.exact).map((value) => exactly(value)))
           : NOTHING
       if (member.type !== 'object') return NOTHING
@@ -679,7 +680,7 @@ export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
 // ── Fitting a declared type ─────────────────────────────────────────
 
 /** Whether any of several conditions holds. */
-const any = (answers: Answer[]): Answer =>
+export const any = (answers: Answer[]): Answer =>
   answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
 
 /** Every member's answer: yes if all are, no if all are, maybe otherwise. */
