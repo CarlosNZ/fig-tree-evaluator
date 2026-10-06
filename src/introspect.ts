@@ -140,8 +140,8 @@ export interface OperatorInfo extends Omit<
    * `true` where `operatorDefaults` turned this operator's caching off;
    * absent otherwise. Caching can only be turned off after the definition
    * declares it, so the operator caches on this instance when
-   * `cache && !instanceNoCache` — the one field whose composition is not
-   * `instanceX ?? X`.
+   * `cache && !instanceNoCache` — the one field where a present override
+   * does not simply win over the definition's value.
    */
   instanceNoCache?: true
   /**

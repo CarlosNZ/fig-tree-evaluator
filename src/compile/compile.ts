@@ -1905,7 +1905,7 @@ const timeoutFallbackFor = (
     // shared probe answers constancy for them (src/compile/probe.ts)
     if (
       defaults !== undefined &&
-      'fallback' in defaults &&
+      Object.hasOwn(defaults, 'fallback') &&
       probeConstant(defaults.fallback, state.registry).constant
     )
       return { value: defaults.fallback }

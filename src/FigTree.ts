@@ -261,8 +261,9 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    *
    * Options are reported **as supplied**, not as effective: no default is
    * materialized into the result. That is deliberately the opposite of
-   * `getOperators()`, which reports effective defaults, because the
-   * question here is "what was I configured with".
+   * `getOperators()`, which reports each definition with its documented
+   * defaults filled in, because the question here is "what was I
+   * configured with".
    */
   getOptions(): EvaluationOptions {
     return copyOptions(this.state.evaluation)
