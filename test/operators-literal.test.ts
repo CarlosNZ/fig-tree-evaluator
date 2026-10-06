@@ -88,7 +88,9 @@ describe('literal — ordinary outward', () => {
   })
 
   test('enclosing operators treat it as the value it is', async () => {
-    expect(await ev({ $buildString: ['%1', { $literal: { a: 1 } }] })).toBe('<object>')
+    // A quoted composite is a literal composite in a rendering position:
+    // the same static error a bare one draws
+    expect(codes({ $buildString: ['%1', { $literal: { a: 1 } }] })).toContain('operator-validate')
     expect(await ev({ $length: { $literal: [1, 2, 3] } })).toBe(3)
   })
 
