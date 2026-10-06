@@ -16,6 +16,7 @@ import type { BasicType, Constraints, ExpectedType, TypeDeclaration } from '../t
 import { isLiteralType } from '../typeIntersection'
 import { WILDCARD, resolvePath } from '../primitives/path'
 import type { PathSegment } from '../primitives/path'
+import { isPlainObject } from '../utils'
 
 export type Member =
   | { exact: unknown }
@@ -84,7 +85,7 @@ export const ofType = (type: ExpectedType): Known => {
   if (isLiteralType(type)) return type.literal.map((value) => ({ exact: value }))
   const basics: readonly BasicType[] = typeof type === 'string' ? [type] : type
   if (basics.includes('any')) return ANY
-  return union(...basics.map((basic): Known => [{ type: basic as Exclude<BasicType, 'any'> }]))
+  return unionOf(basics.map((basic): Known => [{ type: basic as Exclude<BasicType, 'any'> }]))
 }
 
 // ── Union ───────────────────────────────────────────────────────────
@@ -154,7 +155,12 @@ export const typeOfValue = (value: unknown): Member => {
   }
 }
 
-export const union = (...knowns: Known[]): Known => {
+/**
+ * What any of the knowns admits, each member once. A list as long as the
+ * expression makes it, such as a literal's elements, is passed whole:
+ * spread into arguments, a long one overflows the call stack.
+ */
+export const unionOf = (knowns: readonly Known[]): Known => {
   const seen = new Set<string>()
   const members: Member[] = []
   for (const known of knowns)
@@ -172,6 +178,8 @@ export const union = (...knowns: Known[]): Known => {
   )
 }
 
+export const union = (...knowns: Known[]): Known => unionOf(knowns)
+
 const isNumber = (value: unknown): value is number =>
   typeof value === 'number' && Number.isFinite(value)
 
@@ -183,9 +191,12 @@ const codePoints = (value: string): number => Array.from(value).length
  * range, integers apart, and the strings and arrays to their least length.
  */
 const widen = (values: unknown[]): Known => {
-  const shortest = (type: 'string' | 'array', lengths: number[]): Known =>
-    lengths.length === 0 ? NOTHING : [atLeast({ type }, Math.min(...lengths))]
-  return union(
+  const shortest = (type: 'string' | 'array', lengths: number[]): Known => {
+    if (lengths.length === 0) return NOTHING
+    const least = lengths.reduce((a, b) => Math.min(a, b))
+    return [atLeast({ type }, least)]
+  }
+  return unionOf([
     ...[true, false].map((integer) =>
       ofSpan(
         hull(
@@ -205,8 +216,8 @@ const widen = (values: unknown[]): Known => {
     ),
     ...values
       .filter((value) => !isNumber(value) && typeof value !== 'string' && !Array.isArray(value))
-      .map((value) => [typeOfValue(value)])
-  )
+      .map((value) => [typeOfValue(value)]),
+  ])
 }
 
 const atLeast = (member: { type: 'string' | 'array' }, minLength: number | undefined): Member =>
@@ -229,7 +240,11 @@ export const containsNull = (known: Known): Answer =>
     known.map((member): Answer => {
       if ('exact' in member) {
         const { exact } = member
-        const values = Array.isArray(exact) ? exact : isPlain(exact) ? Object.values(exact) : []
+        const values = Array.isArray(exact)
+          ? exact
+          : isPlainObject(exact)
+            ? Object.values(exact)
+            : []
         return values.includes(null) ? 'yes' : 'no'
       }
       if (member.type === 'array')
@@ -244,8 +259,8 @@ export const containsNull = (known: Known): Answer =>
  * object that may hold a null comes out with its keys unknown.
  */
 export const replaceNullElements = (known: Known, replacement: Known): Known =>
-  union(
-    ...known.map((member): Known => {
+  unionOf(
+    known.map((member): Known => {
       if (containsNull([member]) === 'no') return [member]
       const exact = 'exact' in member ? member.exact : undefined
       if (replacement.length === 1 && 'exact' in replacement[0] && 'exact' in member) {
@@ -286,17 +301,13 @@ export const withoutNullElements = (known: Known): Known =>
 
 // ── Containers ──────────────────────────────────────────────────────
 
-/** The engine's `isPlainObject` (src/utils.ts): any non-array object. */
-export const isPlain = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
 /** What an iterator binds `$element` to: the elements of what is an array. */
 export const elementsOf = (known: Known): Known =>
-  union(
-    ...known.map((member): Known => {
+  unionOf(
+    known.map((member): Known => {
       if ('exact' in member)
         return Array.isArray(member.exact)
-          ? union(...Array.from(member.exact, (element) => exactly(element)))
+          ? unionOf(Array.from(member.exact, (element) => exactly(element)))
           : NOTHING
       if (member.type === 'array') return member.length === 0 ? NOTHING : (member.element ?? ANY)
       return NOTHING
@@ -307,23 +318,23 @@ export const elementsOf = (known: Known): Known =>
 export const arrayOf = (
   elements: Known[],
   lengths: { length?: number; minLength?: number } = {}
-): Known => [{ type: 'array', element: union(...elements), ...lengths }]
+): Known => [{ type: 'array', element: unionOf(elements), ...lengths }]
 
 /** A literal array: what each element is, in order. */
 export const tupleOf = (items: readonly Known[]): Known => [
-  { type: 'array', element: union(...items), length: items.length, items },
+  { type: 'array', element: unionOf(items), length: items.length, items },
 ]
 
 /** What an object's values can be. */
 export const valuesOf = (known: Known): Known =>
-  union(
-    ...known.map((member): Known => {
+  unionOf(
+    known.map((member): Known => {
       if ('exact' in member)
-        return isPlain(member.exact)
-          ? union(...Object.values(member.exact).map((value) => exactly(value)))
+        return isPlainObject(member.exact)
+          ? unionOf(Object.values(member.exact).map((value) => exactly(value)))
           : NOTHING
       if (member.type !== 'object') return NOTHING
-      return member.keys === undefined ? ANY : union(...Object.values(member.keys))
+      return member.keys === undefined ? ANY : unionOf(Object.values(member.keys))
     })
   )
 
@@ -363,6 +374,13 @@ export const drill = (
   segments: readonly PathSegment[]
 ): { value: Known; found: Answer } => {
   if (segments.length === 0) return { value: known, found: 'yes' }
+  const [segment, ...rest] = segments
+  // An array, an object and an opaque value can each hold anything, so what
+  // is below anything is drilled once a level, not once for each of them,
+  // which would multiply with every segment
+  let belowAny: { value: Known; found: Answer } | undefined
+  const below = (inner: Known) =>
+    inner === ANY ? (belowAny ??= drill(ANY, rest)) : drill(inner, rest)
   const values: Known[] = []
   const found = combine(
     known.map((member): Answer => {
@@ -371,10 +389,9 @@ export const drill = (
         if (result.found) values.push(exactly(result.value))
         return result.found ? 'yes' : 'no'
       }
-      const [segment, ...rest] = segments
       const step = (inner: Known, here: Answer): Answer => {
         if (here === 'no') return 'no'
-        const deeper = drill(inner, rest)
+        const deeper = below(inner)
         values.push(deeper.value)
         return here === 'yes' ? deeper.found : deeper.found === 'no' ? 'no' : 'maybe'
       }
@@ -413,7 +430,7 @@ export const drill = (
       }
     })
   )
-  return { value: union(...values), found: known.length === 0 ? 'yes' : found }
+  return { value: unionOf(values), found: known.length === 0 ? 'yes' : found }
 }
 
 // ── Ranges ──────────────────────────────────────────────────────────
@@ -522,8 +539,8 @@ const overElements = (
   items: (items: readonly Known[]) => Known,
   some: (element: Known, least: number) => Known
 ): Known =>
-  union(
-    ...known.map((member): Known => {
+  unionOf(
+    known.map((member): Known => {
       if ('exact' in member)
         return Array.isArray(member.exact)
           ? items(Array.from(member.exact, (value) => exactly(value)))
@@ -651,8 +668,8 @@ export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
         if (spans.length === 0 || spans.includes(undefined)) return NOTHING
         const pick = which === 'min' ? Math.min : Math.max
         return ofSpan({
-          min: pick(...spans.map((span) => span!.min)),
-          max: pick(...spans.map((span) => span!.max)),
+          min: spans.map((span) => span!.min).reduce((a, b) => pick(a, b)),
+          max: spans.map((span) => span!.max).reduce((a, b) => pick(a, b)),
           integer: spans.every((span) => span!.integer),
         })
       },
@@ -663,7 +680,7 @@ export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
 // ── Fitting a declared type ─────────────────────────────────────────
 
 /** Whether any of several conditions holds. */
-const any = (answers: Answer[]): Answer =>
+export const any = (answers: Answer[]): Answer =>
   answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
 
 /** Every member's answer: yes if all are, no if all are, maybe otherwise. */
@@ -802,8 +819,8 @@ export const fits = (
  */
 export const narrow = (known: Known, type: ExpectedType): Known => {
   if (fits(known, type) === 'yes') return known
-  return union(
-    ...known.map((member): Known => {
+  return unionOf(
+    known.map((member): Known => {
       if (fits([member], type) === 'no') return NOTHING
       if ('exact' in member) return [member]
       if (isLiteralType(type))

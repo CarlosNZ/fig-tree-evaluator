@@ -9,6 +9,7 @@
  */
 import { isTruthy } from '../primitives/truthiness'
 import { typeNamesNull } from '../typeCheck'
+import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
 import type { ValidatedParameter } from '../operatorDefinition'
@@ -20,13 +21,13 @@ import {
   containsNull,
   exactly,
   fits,
-  isPlain,
   narrow,
   ofType,
   onlyNull,
   replaceNullElements,
   withoutNullElements,
   union,
+  unionOf,
   withoutNull,
 } from './known'
 import type { Answer, Known } from './known'
@@ -266,7 +267,7 @@ const containerOnly = (type: ExpectedType): boolean => {
 export const judge = (value: unknown, type: ExpectedType): unknown => {
   if (containerOnly(type)) {
     if (Array.isArray(value)) return value.map(isTruthy)
-    if (isPlain(value)) {
+    if (isPlainObject(value)) {
       const judgedValues: Record<string, unknown> = {}
       for (const [key, element] of Object.entries(value)) judgedValues[key] = isTruthy(element)
       return judgedValues
@@ -283,8 +284,8 @@ export const vetted = (declared: ValidatedParameter, known: Known): Known => {
   const passed = narrow(known, declared.type)
   if (!declared.truthiness) return passed
   if (passed.length > 0 && passed.every((member) => 'exact' in member))
-    return union(
-      ...passed.map((member) => exactly(judge((member as { exact: unknown }).exact, declared.type)))
+    return unionOf(
+      passed.map((member) => exactly(judge((member as { exact: unknown }).exact, declared.type)))
     )
   return containerOnly(declared.type) ? ANY : ofType('boolean')
 }

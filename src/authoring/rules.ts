@@ -14,11 +14,12 @@
  */
 import { validateHelpers } from '../compile/helpers'
 import { coreOperators } from '../operators'
+import { isPlainObject } from '../utils'
 import type { FailureTest, FailureRule } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
-import { ANY, combine, fits, isPlain } from './known'
+import { ANY, any, combine, fits } from './known'
 import type { Answer, Known, Member } from './known'
 import type { Inputs } from './inputs'
 import type { Failure } from './findings'
@@ -134,10 +135,6 @@ export const mayWait = (definition: ValidatedOperatorDefinition): boolean =>
 const invert = (answer: Answer): Answer =>
   answer === 'yes' ? 'no' : answer === 'no' ? 'yes' : 'maybe'
 
-/** Whether any of several conditions holds. */
-const any = (answers: Answer[]): Answer =>
-  answers.includes('yes') ? 'yes' : answers.includes('maybe') ? 'maybe' : 'no'
-
 /** A test against one member of what a parameter receives. */
 const testMember = (test: FailureTest, member: Member): Answer => {
   if (test === null || typeof test !== 'object') {
@@ -163,7 +160,7 @@ const testMember = (test: FailureTest, member: Member): Answer => {
       const { exact } = member
       if (typeof exact === 'string' || Array.isArray(exact))
         return exact.length === 0 ? 'yes' : 'no'
-      return isPlain(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
+      return isPlainObject(exact) && Object.keys(exact).length === 0 ? 'yes' : 'no'
     }
     switch (member.type) {
       case 'array':
@@ -186,7 +183,7 @@ const testMember = (test: FailureTest, member: Member): Answer => {
       const { exact } = member
       const values = Array.isArray(exact)
         ? Array.from(exact)
-        : isPlain(exact)
+        : isPlainObject(exact)
           ? Object.values(exact)
           : []
       return any(values.map((value) => testMember(test.some, { exact: value ?? null })))

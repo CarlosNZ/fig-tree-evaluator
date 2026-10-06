@@ -3,7 +3,7 @@
  * docs-dev/v3-specs/v3-fallback-coverage.md): what an operator node
  * returns. An operator whose `returns` is wider than what a node can return
  * declares how its inputs narrow it, in a table here for the core operators
- * and in a host's `coverage.output`; any other returns its `returns`. A
+ * and in a host's `analysis.output`; any other returns its `returns`. A
  * declaration can bound what it returns ("Value ranges"): the arithmetic
  * itself is in ./known.ts, so a declaration names only its operation.
  *
@@ -38,6 +38,7 @@ import {
   sumOf,
   tupleOf,
   union,
+  unionOf,
   valuesOf,
   withoutNull,
 } from './known'
@@ -109,8 +110,8 @@ const literalsOf = (received: Received, name: string): unknown[] | undefined => 
 
 /** firstOf's answer: each candidate's non-null value, up to one never null. */
 const firstNonNull = (known: Known): Known =>
-  union(
-    ...known.map((member: Member): Known => {
+  unionOf(
+    known.map((member: Member): Known => {
       const items =
         'exact' in member
           ? Array.isArray(member.exact)
@@ -123,9 +124,9 @@ const firstNonNull = (known: Known): Known =>
       const found: Known[] = []
       for (const item of items) {
         found.push(withoutNull(item))
-        if (!admitsNull(item)) return union(...found)
+        if (!admitsNull(item)) return unionOf(found)
       }
-      return union(...found, exactly(null))
+      return unionOf([...found, exactly(null)])
     })
   )
 
@@ -162,7 +163,7 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
       : arrayOf([evaluate(of, received)], minLength ? { minLength } : {})
   }
   if ('oneOf' in declared)
-    return union(...declared.oneOf.map((option) => evaluate(option, received)))
+    return unionOf(declared.oneOf.map((option) => evaluate(option, received)))
   if ('typeNamedBy' in declared) {
     const name = declared.typeNamedBy
     const known = inputs.received[name]
@@ -170,8 +171,8 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
     const names = exactValues(known) ?? literalsOf(received, name)
     return names === undefined
       ? ANY
-      : union(
-          ...names
+      : unionOf(
+          names
             .filter((type) => typeof type === 'string')
             .map((type) => ofType(type as ExpectedType))
         )
@@ -183,8 +184,8 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
     const options = chosen?.map((value) =>
       typeof value === 'string' && Object.hasOwn(cases, value) ? cases[value] : otherwise
     ) ?? [...Object.values(cases), otherwise]
-    return union(
-      ...options.map((option) => (option === undefined ? NOTHING : evaluate(option, received)))
+    return unionOf(
+      options.map((option) => (option === undefined ? NOTHING : evaluate(option, received)))
     )
   }
   return firstNonNull(at(declared.firstNonNull))

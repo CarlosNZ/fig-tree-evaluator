@@ -43,6 +43,7 @@ import {
   keyOf,
   objectOf,
   union,
+  unionOf,
 } from './known'
 import type { Known } from './known'
 
@@ -129,13 +130,21 @@ const NULL = exactly(null)
 const WALK_LIMIT = 16
 
 /**
+ * Each item onto the list in turn: a subtree can hold more findings than
+ * one call can take as spread arguments.
+ */
+const append = <T>(list: T[], items: readonly T[]): void => {
+  for (const item of items) list.push(item)
+}
+
+/**
  * A node's failures from its own and its children's. Only an eager child,
  * or a check of its own, that always fails makes the node always fail, and
  * then it never returns; anything else that escapes makes it able to fail.
  */
 const combine = (own: Pending[], parts: Part[], output: Known): NodeResult => {
   const escapes = [...own]
-  for (const part of parts) escapes.push(...part.result.escapes)
+  for (const part of parts) append(escapes, part.result.escapes)
   const waits = parts.some((part) => part.result.waits)
   const always =
     parts.some((part) => part.eager && part.result.verdict === 'always') ||
@@ -191,7 +200,14 @@ const skeletonOutput = (node: SkeletonNode, outputs: Known[]): Known => {
     const here = inner.find((hole) => hole.at.length === depth)
     if (here !== undefined) return here.output
     if (inner.length === 0) return exactly(value)
-    const under = (key: string | number) => inner.filter((hole) => hole.at[depth] === key)
+    // Each key's holes, gathered in one pass: a literal can hold thousands
+    const groups = new Map<string | number, typeof holes>()
+    for (const hole of inner) {
+      const group = groups.get(hole.at[depth])
+      if (group === undefined) groups.set(hole.at[depth], [hole])
+      else group.push(hole)
+    }
+    const under = (key: string | number) => groups.get(key) ?? []
     // A skeleton leaves its holes' slots empty, which `map` would skip
     if (Array.isArray(value))
       return tupleOf(Array.from(value, (element, i) => build(element, depth + 1, under(i))))
@@ -263,7 +279,7 @@ export class Analysis {
       case 'entries': {
         const children: Apart[] = []
         const output = await this.container('', node, ctx, children)
-        for (const child of children) ctx.sink.push(...child.covered)
+        for (const child of children) append(ctx.sink, child.covered)
         const parts = children.map(({ result }) => ({ result, eager: false }))
         return combine([], parts, output)
       }
@@ -334,7 +350,7 @@ export class Analysis {
           results.push(apart.result.output)
         }
         items[name] = results
-        elements[name] = union(...results)
+        elements[name] = unionOf(results)
       } else {
         const bindings = { as, element: elementsOf(over), index: INDEX, parent: ctx.bindings }
         const apart = await this.apart(name, child, { ...inner, bindings })
@@ -367,10 +383,10 @@ export class Analysis {
       )
     const own: Pending[] = []
     if (ran === undefined) {
-      own.push(...inputs.failures)
+      append(own, inputs.failures)
       // A null that must propagate means the body never runs
-      if (inputs.propagates !== 'yes') own.push(...ownFailures(node, inputs, this.options))
-    } else own.push(...ran.failures)
+      if (inputs.propagates !== 'yes') append(own, ownFailures(node, inputs, this.options))
+    } else append(own, ran.failures)
     for (const child of children) {
       if (ran !== undefined && !ran.passed.has(child)) continue
       // Vetted as the body asks for it: a lazy parameter's own check is in
@@ -380,7 +396,10 @@ export class Analysis {
         const failure = checkElementResult(node, child.param, declared, child.result.output)
         if (failure !== undefined) own.push(failure)
       } else if (ran !== undefined && child.at === undefined)
-        own.push(...inputs.failures.filter((failure) => failure.parameter === child.param))
+        append(
+          own,
+          inputs.failures.filter((failure) => failure.parameter === child.param)
+        )
     }
 
     const { output, boundary } =
@@ -394,7 +413,7 @@ export class Analysis {
 
     for (const child of children) {
       if (ran !== undefined && !ran.reached.has(child)) continue
-      ctx.sink.push(...child.covered)
+      append(ctx.sink, child.covered)
       // A child the node runs without its failure still reads what it reads,
       // and one started but never waited on holds nothing up
       const escapes =
@@ -509,7 +528,7 @@ export class Analysis {
       case 'vars': {
         const definition = await this.varDefinition(segments[0], ctx)
         if (definition === undefined) return this.staticError(node, 'unresolved-var')
-        ctx.sink.push(...definition.covered)
+        append(ctx.sink, definition.covered)
         const parts = [{ result: definition.result, eager: true }]
         return this.drilled(node, definition.result.output, segments.slice(1), parts, [])
       }
@@ -594,14 +613,14 @@ export class Analysis {
       const source = node.parameters as CompiledNode
       const result = await this.walk(source, inner)
       parts.push({ result, eager: true })
-      own.push(...dynamicArguments(node, entry, source, bound))
+      append(own, dynamicArguments(node, entry, source, bound))
     }
 
     // What a demand for `name` brings in: nothing for a dynamic call
     let waits = false
     const answer = (name: string): Analysed => {
       const known = answers.get(name) ?? NONE
-      ctx.sink.push(...known.covered)
+      append(ctx.sink, known.covered)
       waits ||= known.result.waits === true
       return known
     }
@@ -615,7 +634,7 @@ export class Analysis {
     }
     const escapes: Pending[] = []
     for (const pending of body.result.escapes) {
-      if (isDemand(pending)) escapes.push(...answer(pending.demand).result.escapes)
+      if (isDemand(pending)) append(escapes, answer(pending.demand).result.escapes)
       else escapes.push(liftFailure(pending, node))
     }
     // A body that always fails fails every call. What escapes the body is
