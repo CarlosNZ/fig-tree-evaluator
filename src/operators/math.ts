@@ -195,7 +195,8 @@ const unary = (
   name: string,
   description: string,
   valueDescription: string,
-  compute: (value: number) => number
+  compute: (value: number) => number,
+  returns: 'number' | 'integer' = 'number'
 ) =>
   declareOperator({
     name,
@@ -203,21 +204,25 @@ const unary = (
     description,
     parameters: { value: { type: ['number', 'null'], description: valueDescription } },
     positionalParams: ['value'],
-    returns: 'number',
+    returns,
     evaluate: ({ value }) => compute(value),
   })
 
+// A finite number rounds to an integer, and a non-finite one never passes
+// the result boundary
 export const floor = unary(
   'floor',
   'Round down toward negative infinity',
   'The number to round down',
-  Math.floor
+  Math.floor,
+  'integer'
 )
 export const ceil = unary(
   'ceil',
   'Round up toward positive infinity',
   'The number to round up',
-  Math.ceil
+  Math.ceil,
+  'integer'
 )
 export const abs = unary('abs', 'The absolute value', 'The number', Math.abs)
 

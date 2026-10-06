@@ -23,9 +23,12 @@ pnpm format:check         # the same check CI runs — fails on anything unforma
 pnpm build                # getVersion + clean + rollup ESM bundle + .d.ts into build/
 pnpm check:package        # after build: size budgets, tree-shake fixture, packed-package smoke test
 pnpm size                 # re-print the bundle-size report for the existing build/
+pnpm size:imports         # what each import costs, as a tree of what shares what (fresh build, ~5s);
+                          # --write puts it in docs-dev/imports.md
 pnpm compile              # tsc only (typecheck + emit, no bundling)
 pnpm getVersion           # regenerate src/version.ts from package.json
 pnpm extractV2Table       # regenerate the converter's two tables (src/migrate/) from the v2 package and the core definitions
+pnpm coverageCases        # regenerate docs-dev/v3-specs/v3-coverage-cases.md, the readable page of the #217 case corpus
 pnpm differential         # every v2 test case through v2, and converted through v3: ✗ in full, ⚠ as a line, a summary;
                           # writes every differing case in full to differential/out/differences.md (gitignored)
 pnpm differential 42 57   # those cases in full: expression, conversion, issues, both outcomes
@@ -79,6 +82,7 @@ src/
 ### Generated files — do not hand-edit
 
 - **`src/version.ts`** — built from `package.json` by `codegen/getVersion.ts` (run `pnpm getVersion`; `pnpm build` runs it first).
+- **`docs-dev/v3-specs/v3-coverage-cases.md`** — the #217 case corpus (`test/coverage-cases.ts`) as a readable page, one expression and its expected findings per case. Built by `codegen/coverageCasesPage.ts` (run `pnpm coverageCases`) after any change to the cases.
 - **`differential/sqlRecordings.ts`** — what a live Northwind Postgres answered to each query the differential's cases send, which the runner replays offline. Written by `pnpm differential --record-sql`.
 - **`src/migrate/v2/operators.generated.ts`** and **`src/migrate/v3Names.generated.ts`** — the v2 converter's reference tables, built by `codegen/extractV2Table.ts` (run `pnpm extractV2Table`) from the published v2 package (the devDependency `fig-tree-evaluator-v2`) and from the core and I/O operators' definitions. `test/migrate-table.test.ts` fails when either differs from a fresh extraction, so re-run it after bumping the v2 package or renaming or re-aliasing an operator.
 
@@ -86,7 +90,7 @@ There is no alias table: v3's aliases live on their operators' definitions, and 
 
 ### Things easy to get wrong
 
-- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints`, `./migrate`, `./format` and `./authoring`. Their types export from the root. `src/format/` may import values only from the small root modules lint allows it, since whatever it imports lands in the shared chunk; `src/authoring/` only from `src/FigTree.ts` (`FigTree`, `viewHandle`) and `src/compile/artifact.ts`.
+- Everything the root exports is contract: `test/exports.test.ts` holds `src/index.ts` to the value list in "The root entry" in docs-dev/v3-specs/v3-packaging.md, so a new export is a spec change first. Tooling-side code lives in subpaths the root never imports (enforced by lint): `./editor-hints`, `./migrate`, `./format` and `./authoring`. Their types export from the root. `src/format/` may import values only from the small root modules lint allows it, since whatever it imports lands in the shared chunk; `src/authoring/` only from the engine modules lint lists for it, all already in the chunks it shares: `src/FigTree.ts` (`FigTree`, `viewHandle`), `src/compile/artifact.ts`, the validate hooks' helpers (`src/compile/helpers.ts`), the core operators (`src/operators/`), the error classes and codes (`src/FigTreeError.ts`, `src/OperatorFailure.ts`, `src/errorCodes.ts`), and the engine's type checks, path resolution, truthiness and plain-object test (`src/typeCheck.ts`, `src/typeIntersection.ts`, `src/primitives/path.ts`, `src/primitives/truthiness.ts`, `src/utils.ts`).
 - The root ships as one file over its chunks, so `sideEffects: false` cannot shake it: a consumer's bundler keeps any top-level statement it cannot prove side-effect-free, and everything that statement reaches. Three constructs in `src/` break this: a top-level call (mark its callee pure by adding it to `PURE_CALLEES` in `rollup.config.mjs`), an object or array spread in a top-level literal (name the parts instead, as `src/operators/array.ts` does), and a class `static {}` block (no annotation helps; restructure). `pnpm check:package`'s small-import consumer fails on a leak, naming what leaked (#193).
 - HTTP and SQL clients are deliberately **not** bundled (keeps bundle size down); they're passed in by the consumer via options. Keep it that way.
 - `src/dev/playground.ts` is gitignored (copied from `playground_example.ts` on first `pnpm dev`) — never commit it.

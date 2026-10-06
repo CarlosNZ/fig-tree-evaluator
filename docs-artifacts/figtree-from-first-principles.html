@@ -740,7 +740,7 @@
 
     <p>Two more things precomputed into the notes (which is why per-instance argument defaults invalidate them — a default safety net changes the answer), and an extra concept for the author to learn.</p>
 
-    <p class="in-code"><b>in the code</b>The safety net is <code>fallback</code>. The precomputed facts are each hole's <code>timeoutFallback</code> and the artifact-level <code>timeoutShielded</code> flag, which <code>fallbackCoverage</code> from <code>fig-tree-evaluator/authoring</code> reports field by field. Failures are <code>FigTreeError</code>, carrying <code>path</code>, plus <code>fragment</code> and <code>fragmentPath</code> for a failure inside a fragment body.</p>
+    <p class="in-code"><b>in the code</b>The safety net is <code>fallback</code>. The precomputed facts are each hole's <code>timeoutFallback</code> and the artifact-level <code>timeoutShielded</code> flag. <code>fallbackCoverage</code>, from <code>fig-tree-evaluator/authoring</code>, reads them field by field: under the instance's timeout, where anything in the expression waits on I/O, it lists each field without a constant safety net, alongside every failure no safety net catches. Failures are <code>FigTreeError</code>, carrying <code>path</code>, plus <code>fragment</code> and <code>fragmentPath</code> for a failure inside a fragment body.</p>
   </section>
 
   <section class="stage" id="repeat">

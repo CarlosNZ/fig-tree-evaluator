@@ -13,6 +13,7 @@
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
 import type { ValidateHelpers } from './compile/helpers'
+import type { OperatorAnalysis } from './authoringTypes'
 import type { OperatorContext } from './runtimeInterface'
 import type { ResolvedParams } from './inference'
 
@@ -186,6 +187,13 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
    */
   cache?: true
   validate?: OperatorValidate
+  /**
+   * What static analysis may assume of the operator, for `./authoring`'s
+   * `fallbackCoverage`: what its body fails on and returns. Declaring it
+   * also says the body is pure, so the analysis may run it. Without it the
+   * operator is taken to fail whatever its inputs.
+   */
+  analysis?: OperatorAnalysis
   /** The body, its `params` typed from the declarations above. */
   evaluate: (params: ResolvedParams<P>, context: OperatorContext) => unknown
   /** Declared result type — drives the static feeding-position check. */
@@ -266,6 +274,8 @@ export interface ValidatedOperatorDefinition {
    */
   fingerprint: string
   validate?: OperatorValidate
+  /** As declared; never read by the engine. */
+  analysis?: OperatorAnalysis
   evaluate: OperatorEvaluate
   returns: ExpectedType
 }

@@ -238,8 +238,11 @@ const main = async () => {
     host
   )
   await show('divide by zero degrades to null', { $divide: [1, 0] }, {}, host)
+  // The analysis reads the timeout from the instance it is given
+  const timed = new FigTree({ ...host.getOptions(), timeout: 50 })
+  const both = { a: { $plus: [1] }, b: { $divide: [1, 2] } }
   console.log(
-    `  fallbackCoverage() counts the default fallbacks, even under a timeout: ${JSON.stringify(fallbackCoverage(host, { a: { $plus: [1] }, b: { $divide: [1, 2] } }, { timeout: 50 }))}\n`
+    `  await fallbackCoverage() counts the default fallbacks, even under a timeout: ${JSON.stringify(await fallbackCoverage(timed, both))}\n`
   )
 
   section('A custom operator, written against the contract')

@@ -74,6 +74,7 @@
     "getVersion": "tsx codegen/getVersion.ts",
     "checkDefinitions": "tsx codegen/checkDefinitions.ts",
     "extractV2Table": "tsx codegen/extractV2Table.ts",
+    "coverageCases": "tsx codegen/coverageCasesPage.ts",
     "differential": "tsx differential/index.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -81,6 +82,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.test.json && tsc -p tsconfig.globals.json",
     "build": "pnpm getVersion && pnpm checkDefinitions && rimraf ./build && rollup -c && rimraf ./build/dts",
     "size": "node codegen/bundleSize.mjs",
+    "size:imports": "node codegen/importTree.mjs",
     "check:package": "node codegen/checkPackage.mjs",
     "compile": "rimraf ./build && tsc",
     "dev": "node codegen/dev.mjs",
@@ -92,6 +94,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@jridgewell/trace-mapping": "^0.3.31",
     "@rollup/plugin-terser": "^0.4.4",
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/jest": "^30.0.0",

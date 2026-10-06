@@ -44,6 +44,7 @@ import {
   compileNullPolicies,
   type Path,
 } from './buildOperator'
+import { checkAnalysis } from './analysisCheck'
 
 /**
  * The `…Default` naming family (contract, Registration & validation). The
@@ -595,6 +596,11 @@ export function defineOperator(
         'timeoutParam',
       ])
   }
+
+  if (def.analysis !== undefined)
+    checkAnalysis(def.analysis, declarations, (code, message, path) =>
+      addIssue(code, message, path)
+    )
 
   if (issues.length > 0) throwDefinitionError(issues, operator)
 

@@ -1199,8 +1199,12 @@ FigTreeError {
 // &#8594; { meta: {&#8230;}, header: 'Good evening, Ada', quota: null, incidents: [] }
 
 // import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
-fallbackCoverage(fig, dashboard, { timeout: 50 })
-// &#8594; { uncovered: [] }                // every field has a constant fallback
+// It answers as an instance evaluates, so it reads the instance's timeout
+const timed = new FigTree({ operators: [coreOperators, httpOperators()], timeout: 50 })
+await fallbackCoverage(timed, dashboard)
+// &#8594; uncovered: []   // nothing can reject the call
+//   covered: the divide's failures, caught by quota's fallback; the request
+//   failing, and the deadline cutting it off, caught by incidents' fallback
 
 await fig.evaluate(dashboard, { data, timeout: 50 })
 // returns, without throwing:
@@ -1210,8 +1214,8 @@ await fig.evaluate(dashboard, { data, timeout: 50 })
       <ul class="notes">
         <li><strong>Each field now survives its own failure.</strong> <code>quota</code>'s fallback catches the divide, and <code>header</code> and <code>incidents</code> keep their values. The <code>null</code> is the placeholder the author chose for that field, not one the engine imposed.</li>
         <li><strong>An expression is timeout-shielded iff every hole carries a statically constant <code>fallback</code>.</strong> On the deadline, holes that finished contribute their real values, unfinished holes contribute their static fallbacks, and the constant skeleton is spliced around them. No expression work of any kind runs past the deadline, so the bound holds exactly.</li>
-        <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that it is known before anything runs. Unshielded, a timeout throws regardless of how many holes happened to finish. <code>fallbackCoverage</code>, from the <code>fig-tree-evaluator/authoring</code> subpath, checks it without evaluating: under a timeout, it lists each field that lacks a constant fallback.</li>
-        <li><strong>The coverage check is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. <code>fallbackCoverage(fig, dashboard, { timeout: 50 })</code> then answers <code>{ uncovered: [['quota']] }</code>, naming the field to fix.</li>
+        <li><strong>Shielding is all-or-nothing per expression</strong>, precisely so that it is known before anything runs. Unshielded, a timeout throws regardless of how many holes happened to finish. <code>fallbackCoverage</code>, from the <code>fig-tree-evaluator/authoring</code> subpath, checks it without evaluating. It lists every failure nothing catches, each where it starts, and every failure a fallback catches. Under the instance's timeout, where anything in the config can wait on I/O, each field without a constant fallback is a <code>timeout</code> nothing catches.</li>
+        <li><strong>The coverage check is the mitigation for a real hazard.</strong> Shielding rides constancy, which is not visually obvious: editing one static fallback into <code>'$data.cachedQuota'</code> silently un-shields the whole expression, because a dynamic fallback could start new work past the deadline. It still catches ordinary runtime failures &#8212; it just can't shield the kill switch. <code>fallbackCoverage(timed, dashboard)</code> then lists one uncovered <code>timeout</code>, at <code>['quota']</code>, naming the field to fix.</li>
         <li><strong><code>signal</code> is never shaped by a fallback.</strong> A timeout is the expression's problem to degrade around; an abort means the caller cancelled and nobody is waiting.</li>
         <li><code>validate()</code> never touches the compile cache: it is an authoring tool, and its answer should not depend on what was evaluated before. A host that wants its first <code>evaluate()</code> pre-compiled calls <code>fig.compile(dashboard)</code>, which shares the cache with <code>evaluate()</code>.</li>
       </ul>
