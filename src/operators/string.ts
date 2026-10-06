@@ -323,8 +323,9 @@ export const regex = declareOperator({
       description:
         'test gives a boolean, extract the first matching substring, match every one of them',
     },
+    // A string, as a match is, so `returns` holds for every mode
     noMatchDefault: {
-      type: 'any',
+      type: ['string', 'null'],
       required: false,
       default: null,
       nullPolicy: 'value',

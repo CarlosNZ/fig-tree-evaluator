@@ -54,9 +54,19 @@ describe('regex — extract', () => {
   test('noMatchDefault answers instead', async () => {
     expect(
       await ev({
-        $regex: { value: 'no digits', pattern: '\\d+', mode: 'extract', noMatchDefault: 0 },
+        $regex: { value: 'no digits', pattern: '\\d+', mode: 'extract', noMatchDefault: 'none' },
       })
-    ).toBe(0)
+    ).toBe('none')
+  })
+
+  test('noMatchDefault is a string, as a match is, so the declared returns holds', async () => {
+    const extract = (noMatchDefault: unknown) => ({
+      $regex: { value: 'no digits', pattern: '\\d+', mode: 'extract', noMatchDefault },
+    })
+    expect(codes(extract(0))).toContain('type-check')
+    expect((await failure(extract('$data.d'), { d: 0 })).code).toBe('type-check')
+    // So regex never feeds a number position, whatever its default (#218)
+    expect(codes({ $round: [1.2345, extract('2')] })).toContain('returns-mismatch')
   })
 
   test('a matched empty string is a MATCH and passes through', async () => {
@@ -72,7 +82,7 @@ describe('regex — extract', () => {
           value: 'a1',
           pattern: '\\d',
           mode: 'extract',
-          noMatchDefault: { $divide: [1, 0] },
+          noMatchDefault: { $convert: [{ a: 1 }, 'string'] },
         },
       })
     ).toBe('1')
@@ -112,6 +122,27 @@ describe('regex — extract', () => {
         { weight: 'no digits' }
       )
     ).toBeNull()
+  })
+
+  test('…or answers a number, as a string default converted', async () => {
+    expect(
+      await ev(
+        {
+          $convert: {
+            value: {
+              $regex: {
+                value: '$data.weight',
+                pattern: '\\d+',
+                mode: 'extract',
+                noMatchDefault: '0',
+              },
+            },
+            to: 'number',
+          },
+        },
+        { weight: 'no digits' }
+      )
+    ).toBe(0)
   })
 })
 
