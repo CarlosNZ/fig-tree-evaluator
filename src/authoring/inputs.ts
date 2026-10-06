@@ -27,6 +27,7 @@ import {
   replaceNullElements,
   withoutNullElements,
   union,
+  unionOf,
   withoutNull,
 } from './known'
 import type { Answer, Known } from './known'
@@ -283,8 +284,8 @@ export const vetted = (declared: ValidatedParameter, known: Known): Known => {
   const passed = narrow(known, declared.type)
   if (!declared.truthiness) return passed
   if (passed.length > 0 && passed.every((member) => 'exact' in member))
-    return union(
-      ...passed.map((member) => exactly(judge((member as { exact: unknown }).exact, declared.type)))
+    return unionOf(
+      passed.map((member) => exactly(judge((member as { exact: unknown }).exact, declared.type)))
     )
   return containerOnly(declared.type) ? ANY : ofType('boolean')
 }

@@ -21,7 +21,7 @@ import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition, ValidatedParameter } from '../operatorDefinition'
 import type { EvaluationOptions } from '../options'
 import type { OperatorContext, Settlement } from '../runtimeInterface'
-import { exactValues, exactly, fits, ofType, union } from './known'
+import { exactValues, exactly, fits, ofType, unionOf } from './known'
 import type { Known } from './known'
 import { judge, resolveInputs, vetted } from './inputs'
 import type { Failure } from './findings'
@@ -191,7 +191,7 @@ export const runNode = async (
     certainty: count === endings.length ? 'always' : 'may',
   }))
   return {
-    output: union(...output),
+    output: unionOf(output),
     failures,
     reached,
     awaited,

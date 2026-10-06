@@ -1275,6 +1275,38 @@ describe('a fragment call', () => {
   })
 })
 
+describe('a long literal', () => {
+  // More elements than one call takes as spread arguments
+  const long = Array.from({ length: 200_000 }, (_, i) => i + 1)
+  const computed = { $divide: [1, '$data.x'] }
+
+  test("as an iterator's input, its elements widen to the range they span", async () => {
+    const each = { $divide: [1, '$element'] }
+    expect(await uncovered({ $some: { input: long, each } })).toEqual([])
+  })
+
+  test('with a computed element, which fails where it sits', async () => {
+    const cases: [unknown, (string | number)[]][] = [
+      [[...long, computed], [200_000]],
+      [{ $max: [...long, computed] }, ['$max', 200_000]],
+    ]
+    for (const [expression, path] of cases)
+      expect((await coverage(expression)).uncovered).toEqual([
+        { path, code: ErrorCodes.typeCheck, parameter: 'by' },
+        { path, code: ErrorCodes.nonFiniteResult, parameter: 'by' },
+      ])
+  })
+})
+
+test('a deep path into the data takes no longer to follow than its depth', async () => {
+  // Each index could be into an array, an object or an opaque value
+  const path = (depth: number) => ['$data', ...Array.from({ length: depth }, (_, i) => i)].join('.')
+  const start = performance.now()
+  const deep = await coverage({ $plus: [path(14), 1] })
+  expect(performance.now() - start).toBeLessThan(1000)
+  expect(deep).toEqual(await coverage({ $plus: [path(2), 1] }))
+})
+
 test('an invalid node always fails, with its static error', async () => {
   expect(
     (await fallbackCoverage(fig, { a: { operator: 'plus', fragment: 'f' }, b: 1 })).uncovered
