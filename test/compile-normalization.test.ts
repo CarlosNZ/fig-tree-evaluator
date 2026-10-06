@@ -218,6 +218,25 @@ test('undefined array elements read as null', () => {
   expect((node.params.values as { value?: unknown }).value).toEqual([1, null, 3])
 })
 
+test('an unassigned array slot reads as null, exactly as an undefined element does (#178)', () => {
+  // eslint-disable-next-line no-sparse-arrays
+  const artifact = compile([1, , 3])
+  expect(artifact.root.kind).toBe('constant')
+  expect((artifact.root as { value?: unknown }).value).toStrictEqual([1, null, 3])
+
+  // eslint-disable-next-line no-sparse-arrays
+  const node = rootOp({ $plus: [1, , 3] })
+  expect((node.params.values as { value?: unknown }).value).toStrictEqual([1, null, 3])
+
+  const holes = new Array(3) as unknown[]
+  holes[1] = '$data.x'
+  const skeleton = compile(holes).root as SkeletonNode
+  expect(skeleton.kind).toBe('skeleton')
+  const slots = skeleton.skeleton as unknown[]
+  expect([slots[0], 1 in slots, slots[2]]).toEqual([null, false, null])
+  expect(skeleton.holes.map((hole) => hole.at)).toEqual([[1]])
+})
+
 // ── Skeleton identity ───────────────────────────────────────────────
 
 test('a fully-constant unchanged input is kept by reference', () => {

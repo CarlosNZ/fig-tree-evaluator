@@ -144,7 +144,7 @@ import type {
   SkeletonHole,
   SkeletonNode,
 } from './artifact'
-import { extendPath, hasError, sortIssues, toNodePath } from './artifact'
+import { extendPath, hasError, setOwn, sortIssues, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 /** The reference-namespace words `as` names may not collide with. */
@@ -496,13 +496,16 @@ const walkArray = (
   depth: number,
   order: number
 ): CompiledNode => {
-  const entries = raw.map((element, i) => ({
+  // Array.from visits every index, so an unassigned slot (a sparse array,
+  // which only a host building expressions in JavaScript can produce)
+  // reads as undefined and normalizes to null like an assigned one; map
+  // would skip the slot and leave a gap in the entries
+  const entries = Array.from(raw, (element, i) => ({
     key: i as string | number,
-    rawChild: element === undefined ? null : element,
-    node: walk(state, element === undefined ? null : element, extendPath(path, i), depth + 1),
+    rawChild: element,
+    node: walk(state, element, extendPath(path, i), depth + 1),
   }))
-  const changed = raw.some((element) => element === undefined)
-  return assembleContainer(state, raw, entries, true, changed, undefined, path, order)
+  return assembleContainer(state, raw, entries, true, false, undefined, path, order)
 }
 
 // ── Objects: node-kind classification ───────────────────────────────
@@ -1115,13 +1118,12 @@ const walkSlice = (
     entry.offset,
     containerDepth
   )
-  const changed = entry.elements.some((element) => element === undefined)
   return assembleContainer(
     state,
     entry.elements,
     children,
     true,
-    changed,
+    false,
     undefined,
     entry.basePath,
     order
@@ -1146,15 +1148,11 @@ const sliceChildren = (
   offset: number,
   containerDepth: number
 ): ContainerEntry[] =>
-  elements.map((element, j) => ({
+  // Array.from, not map: an unassigned slot is visited (see walkArray)
+  Array.from(elements, (element, j) => ({
     key: j as string | number,
-    rawChild: element === undefined ? null : element,
-    node: walk(
-      state,
-      element === undefined ? null : element,
-      extendPath(basePath, offset + j),
-      containerDepth + 1
-    ),
+    rawChild: element,
+    node: walk(state, element, extendPath(basePath, offset + j), containerDepth + 1),
   }))
 
 /**
@@ -1183,8 +1181,7 @@ const walkElementsParam = (
   const children = sliceChildren(state, raw, basePath, offset, containerDepth)
 
   if (children.every((child) => child.node.kind === 'constant')) {
-    const changed = raw.some((element) => element === undefined)
-    return assembleContainer(state, raw, children, true, changed, undefined, basePath, order)
+    return assembleContainer(state, raw, children, true, false, undefined, basePath, order)
   }
   const node: ElementsNode = {
     kind: 'elements',
@@ -1827,7 +1824,7 @@ const assembleContainer = (
 
   for (const { key, rawChild, node } of entries) {
     if (node.kind === 'constant') {
-      skeleton[key] = node.value
+      setOwn(skeleton, key, node.value)
       if (node.value !== rawChild) changed = true
       continue
     }
@@ -1835,7 +1832,7 @@ const assembleContainer = (
     // Nested plain literals flatten into the enclosing skeleton — unless
     // they carry a vars block, which makes them their own evaluable unit
     if (node.kind === 'skeleton' && node.vars === undefined) {
-      skeleton[key] = node.skeleton
+      setOwn(skeleton, key, node.skeleton)
       holes.push(...node.holes.map((hole) => ({ ...hole, at: [key, ...hole.at] })))
       continue
     }

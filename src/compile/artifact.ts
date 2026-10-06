@@ -450,6 +450,23 @@ export const bindsReference = (
 type Container = Record<string | number, unknown>
 
 /**
+ * Writes `value` as an own property of `target`. Assignment would route a
+ * `__proto__` key through the prototype accessor — ignored for a
+ * primitive, a prototype swap for an object — so that one key is defined
+ * instead; every other key takes the plain, fast assignment.
+ */
+export const setOwn = (target: object, key: string | number, value: unknown): void => {
+  if (key === '__proto__')
+    Object.defineProperty(target, key, {
+      value,
+      writable: true,
+      enumerable: true,
+      configurable: true,
+    })
+  else (target as Record<string | number, unknown>)[key] = value
+}
+
+/**
  * Splice hole values into the skeleton, copying only the containers on
  * each splice path. Constant subtrees off those paths stay shared with the
  * artifact and the input — the documented results-are-read-only contract.
@@ -478,7 +495,7 @@ const setAt = (
 ): unknown => {
   const copy = copyOnce(container as Container, copied)
   const [key, ...rest] = at
-  copy[key] = rest.length === 0 ? value : setAt(copy[key], rest, value, copied)
+  setOwn(copy, key, rest.length === 0 ? value : setAt(copy[key], rest, value, copied))
   return copy
 }
 
