@@ -100,6 +100,20 @@ const picky = defineOperator({
   },
 })
 
+const nap = defineOperator({
+  name: 'nap',
+  category: 'other',
+  description: 'Hands its value back after a short wait',
+  parameters: { value: { type: 'number' } },
+  positionalParams: ['value'],
+  returns: 'number',
+  coverage: {},
+  evaluate: async ({ value }) => {
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    return value
+  },
+})
+
 const instances: Record<NonNullable<CoverageCase['instance']> | 'default', FigTree> = {
   default: new FigTree(),
   strict: new FigTree({ strictDataPaths: true }),
@@ -111,7 +125,7 @@ const instances: Record<NonNullable<CoverageCase['instance']> | 'default', FigTr
     operatorDefaults: ioDefaults,
     http: { baseEndpoint: 'https://api.test' },
   }),
-  host: new FigTree({ operators: [coreOperators, [twice, shaky, picky]] }),
+  host: new FigTree({ operators: [coreOperators, [twice, shaky, picky, nap]] }),
 }
 
 // ── Locating a failure the way a finding does ───────────────────────
@@ -188,10 +202,16 @@ const returnedIn = (root: TraceNode | undefined): Located[] => {
   return found
 }
 
+/**
+ * Where a failure is seen: a timeout that rejects the evaluation rejects it
+ * as a whole, at the root, while one a value's fallback catches is at it.
+ */
+const seenAt = (code: string, at: NodePath, seen: Located | Caught): NodePath =>
+  code === 'timeout' && !('by' in seen) ? [] : at
+
 const matches = (finding: Finding, seen: Located | Caught): boolean =>
   (finding.code === seen.code || finding.external === true) &&
-  // The deadline rejects the evaluation as a whole, at the root
-  same(seen.at, finding.code === 'timeout' ? [] : finding.at) &&
+  same(seen.at, seenAt(finding.code, finding.at, seen)) &&
   finding.fragment === seen.fragment &&
   same(finding.fragmentPath, seen.fragmentPath) &&
   (!('by' in seen) ||
@@ -319,8 +339,9 @@ interface Seen extends Outcome {
 
 /**
  * Every run over the spread, for each way the client can behave. A case
- * with a timeout also runs once under it with a slow client, which only
- * the analysis's check reads.
+ * with a timeout also runs under it, with a slow client where it has one,
+ * which only the analysis's check reads: a case doing no I/O must never be
+ * cut off.
  */
 const outcomes = async (item: CoverageCase): Promise<Seen[]> => {
   const seen: Seen[] = []
@@ -332,7 +353,7 @@ const outcomes = async (item: CoverageCase): Promise<Seen[]> => {
       for (const data of spread(item))
         seen.push({ data, timed: false, ...(await run(item, data, false)) })
     }
-    if (io && item.options?.timeout !== undefined) {
+    if (item.options?.timeout !== undefined) {
       clientMode = 'slow'
       for (const data of spread(item))
         seen.push({ data, timed: true, ...(await run(item, data, true)) })
@@ -368,16 +389,18 @@ const unpredicted = (item: CoverageCase, seen: Seen[]): string[] => {
  * one `operator-failure` finding stands for whatever code its own code
  * throws ("Operator rules" in docs-dev/v3-specs/v3-fallback-coverage.md):
  * the I/O operators' requests and checks, and an undeclared host's body.
+ * The deadline is the engine's, so a timeout is never its own.
  */
 const EXTERNAL = new Set(['http', 'graphQL', 'sql', 'twice', 'shaky'])
 const codeAccounts = (finding: CoverageFinding, seen: Located) =>
   finding.code === seen.code ||
-  (finding.code === 'operator-failure' && EXTERNAL.has(finding.operator ?? ''))
+  (finding.code === 'operator-failure' &&
+    seen.code !== 'timeout' &&
+    EXTERNAL.has(finding.operator ?? ''))
 
 const accounts = (finding: CoverageFinding | CoveredFinding, seen: Located | Caught): boolean =>
   codeAccounts(finding, seen) &&
-  // The deadline rejects the evaluation as a whole, at the root
-  same(seen.at, finding.code === 'timeout' ? [] : finding.path) &&
+  same(seen.at, seenAt(finding.code, finding.path, seen)) &&
   finding.fragment === seen.fragment &&
   same(finding.fragmentPath, seen.fragmentPath) &&
   (!('by' in seen) ||
@@ -389,13 +412,10 @@ const accounts = (finding: CoverageFinding | CoveredFinding, seen: Located | Cau
 const unsound = (analysis: FallbackCoverage, seen: Seen[]): string[] => {
   const problems: string[] = []
   for (const { data, timed, rejected, caught } of seen) {
-    const shown = JSON.stringify(data)
+    const shown = `${JSON.stringify(data)}${timed ? ' under the timeout' : ''}`
     if (rejected !== undefined && !analysis.uncovered.some((f) => accounts(f, locate(rejected))))
       problems.push(`uncovered ${JSON.stringify(locate(rejected))} with ${shown}`)
     for (const failure of caught) {
-      // A shielded hole's trace entry: whether the analysis reports it is
-      // step 8's question
-      if (timed && failure.code === 'timeout') continue
       if (!analysis.covered.some((f) => accounts(f, failure)))
         problems.push(`covered ${JSON.stringify(failure)} with ${shown}`)
     }

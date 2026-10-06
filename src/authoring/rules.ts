@@ -120,6 +120,15 @@ export const rulesOf = (definition: ValidatedOperatorDefinition): FailureRule[] 
   return core.get(definition) ?? 'external'
 }
 
+/**
+ * Whether an operator's body can wait on something outside the evaluation,
+ * so a timeout can cut it off: one doing I/O, and any of the host's, since
+ * declaring `coverage` says what a body fails on and returns, not how long
+ * it takes. A core body waits only on its children.
+ */
+export const mayWait = (definition: ValidatedOperatorDefinition): boolean =>
+  definition.coverage !== undefined || rulesOf(definition) === 'external'
+
 // ── The tests ───────────────────────────────────────────────────────
 
 const invert = (answer: Answer): Answer =>

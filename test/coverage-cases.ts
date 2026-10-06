@@ -1829,6 +1829,7 @@ export const sections: Record<string, CoverageCase[]> = {
       options: { timeout: 20 },
       covered: [
         { at: [], code: 'operator-failure', external: true, by: [], client: 'fails', witness: {} },
+        { at: [], code: 'timeout', by: [], client: 'slow', witness: {} },
       ],
     },
     {
@@ -1882,11 +1883,113 @@ export const sections: Record<string, CoverageCase[]> = {
           client: 'fails',
           witness: {},
         },
+        { at: [], code: 'timeout', by: [], client: 'slow', witness: {} },
       ],
+    },
+    {
+      name: 'under a timeout, a shielded value doing no I/O is never cut off',
+      expression: {
+        a: { $http: 'https://x.test/a', fallback: 1 },
+        b: { $upper: 'x', fallback: 'X' },
+      },
+      instance: 'io',
+      options: { timeout: 20 },
+      covered: [
+        {
+          at: ['a'],
+          code: 'operator-failure',
+          external: true,
+          by: ['a'],
+          client: 'fails',
+          witness: {},
+        },
+        { at: ['a'], code: 'timeout', by: ['a'], client: 'slow', witness: {} },
+      ],
+    },
+    {
+      name: 'under a timeout, a request read through a var can wait',
+      expression: {
+        a: '$vars.r',
+        b: { $upper: 'x' },
+        vars: { r: { $http: 'https://x.test/a', fallback: null } },
+      },
+      instance: 'io',
+      options: { timeout: 20 },
+      uncovered: [
+        { at: ['a'], code: 'timeout', client: 'slow', witness: {} },
+        { at: ['b'], code: 'timeout', client: 'slow', witness: {} },
+      ],
+      covered: [
+        {
+          at: ['vars', 'r'],
+          code: 'operator-failure',
+          external: true,
+          by: ['vars', 'r'],
+          client: 'fails',
+          witness: {},
+        },
+      ],
+    },
+    {
+      name: 'under a timeout, a request in a fallback can wait',
+      expression: {
+        a: { $upper: '$data.s', fallback: { $http: 'https://x.test/a' } },
+        b: { $lower: 'Y' },
+      },
+      instance: 'io',
+      options: { timeout: 20 },
+      uncovered: [
+        {
+          at: ['a', 'fallback'],
+          code: 'operator-failure',
+          external: true,
+          client: 'fails',
+          witness: { s: 1 },
+        },
+        { at: ['a'], code: 'timeout', client: 'slow', witness: { s: 1 } },
+        { at: ['b'], code: 'timeout', client: 'slow', witness: { s: 1 } },
+      ],
+      covered: [
+        { at: ['a'], code: 'type-check', parameter: 'value', by: ['a'], witness: { s: 1 } },
+      ],
+    },
+    {
+      name: 'under a timeout, a request in a branch never taken never waits',
+      expression: {
+        a: { $if: [true, 1, { $http: 'https://x.test/a' }] },
+        b: { $upper: 'x' },
+      },
+      instance: 'io',
+      options: { timeout: 20 },
+    },
+    {
+      name: 'under a timeout, a request a decider never waits for',
+      expression: { a: { $or: [true, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } },
+      instance: 'io',
+      options: { timeout: 20 },
     },
   ],
 
   'Host operators': [
+    {
+      name: 'under a timeout, an undeclared host operator may wait',
+      expression: { a: { $twice: 2 }, b: { $upper: 'x' } },
+      instance: 'host',
+      options: { timeout: 20 },
+      uncovered: [
+        { at: ['a'], code: 'operator-failure', external: true },
+        { at: ['a'], code: 'timeout' },
+        { at: ['b'], code: 'timeout' },
+      ],
+      note: 'False positives the design accepts: twice never throws and never waits, but nothing says so',
+    },
+    {
+      name: 'under a timeout, a declared host operator may wait',
+      expression: { a: { $nap: 1 } },
+      instance: 'host',
+      options: { timeout: 20 },
+      uncovered: [{ at: ['a'], code: 'timeout', witness: {} }],
+    },
     {
       name: 'an undeclared host operator may throw',
       expression: { $twice: 2 },

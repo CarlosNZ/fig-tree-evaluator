@@ -27,7 +27,7 @@ import type { PathSegment } from '../primitives/path'
 import { isDemand, liftCatcher, liftFailure } from './findings'
 import type { Caught, Failure, Pending } from './findings'
 import { argumentInput, checkElementResult, resolveInputs } from './inputs'
-import { ownFailures, rulesOf } from './rules'
+import { mayWait, ownFailures, rulesOf } from './rules'
 import { atBoundary, operatorOutput } from './outputs'
 import { runNode } from './run'
 import type { Child, Ran, Stalled } from './run'
@@ -56,6 +56,11 @@ export interface NodeResult {
   escapes: Pending[]
   /** What the node can return; nothing, when it never does */
   output: Known
+  /**
+   * Whether evaluating it can wait on something outside the evaluation, so
+   * a timeout can cut it off
+   */
+  waits?: boolean
 }
 
 /**
@@ -131,11 +136,12 @@ const WALK_LIMIT = 16
 const combine = (own: Pending[], parts: Part[], output: Known): NodeResult => {
   const escapes = [...own]
   for (const part of parts) escapes.push(...part.result.escapes)
+  const waits = parts.some((part) => part.result.waits)
   const always =
     parts.some((part) => part.eager && part.result.verdict === 'always') ||
     own.some((pending) => !isDemand(pending) && pending.certainty === 'always')
-  if (always) return { verdict: 'always', escapes, output: NOTHING }
-  return { verdict: escapes.length > 0 ? 'may' : 'no', escapes, output }
+  if (always) return { verdict: 'always', escapes, output: NOTHING, waits }
+  return { verdict: escapes.length > 0 ? 'may' : 'no', escapes, output, waits }
 }
 
 const failureKey = (failure: Failure): string =>
@@ -210,6 +216,9 @@ export class Analysis {
 
   private readonly stalled: Stalled = new Set()
 
+  /** Every node whose evaluation can wait on something outside it. */
+  readonly waiting = new Set<CompiledNode>()
+
   private readonly strict: boolean
 
   constructor(
@@ -225,6 +234,12 @@ export class Analysis {
   }
 
   private async walk(node: CompiledNode, ctx: Context): Promise<NodeResult> {
+    const result = await this.visit(node, ctx)
+    if (result.waits) this.waiting.add(node)
+    return result
+  }
+
+  private async visit(node: CompiledNode, ctx: Context): Promise<NodeResult> {
     switch (node.kind) {
       case 'constant':
         return { ...SAFE, output: exactly(node.value) }
@@ -338,6 +353,7 @@ export class Analysis {
           reached: new Set(
             children.filter((child) => definition.parameters[child.param].evaluation === 'race')
           ),
+          awaited: new Set(),
           escaped: new Set(),
           passed: new Set(),
           fails: true,
@@ -379,16 +395,20 @@ export class Analysis {
     for (const child of children) {
       if (ran !== undefined && !ran.reached.has(child)) continue
       ctx.sink.push(...child.covered)
-      // A child the node runs without its failure still reads what it reads
+      // A child the node runs without its failure still reads what it reads,
+      // and one started but never waited on holds nothing up
       const escapes =
         ran === undefined || ran.escaped.has(child)
           ? child.result.escapes
           : child.result.escapes.filter(isDemand)
-      parts.push({ result: { ...child.result, escapes }, eager: false })
+      const waits = child.result.waits && (ran?.awaited.has(child) ?? true)
+      parts.push({ result: { ...child.result, escapes, waits }, eager: false })
     }
     const attempt = combine(own, parts, output)
     // Every run failed: the node never returns
     if (ran?.fails === true) Object.assign(attempt, { verdict: 'always', output: NOTHING })
+    // An operator of the host's, or one doing I/O, can wait on anything
+    if (mayWait(definition)) attempt.waits = true
     return this.withFallback(node, attempt, inner)
   }
 
@@ -451,8 +471,9 @@ export class Analysis {
     if (node.fallback === undefined && !fromDefaults) return attempt
     const by = { path: node.path }
     for (const pending of attempt.escapes) ctx.sink.push({ pending, by })
+    const { waits } = attempt
     if (node.fallback === undefined)
-      return { ...SAFE, output: union(attempt.output, exactly(defaults!.fallback)) }
+      return { ...SAFE, output: union(attempt.output, exactly(defaults!.fallback)), waits }
     const answer = await this.walk(node.fallback, ctx)
     // The fallback runs only when the attempt fails
     const verdict =
@@ -461,6 +482,7 @@ export class Analysis {
       verdict,
       escapes: answer.escapes,
       output: union(attempt.output, answer.output),
+      waits: waits || answer.waits,
     }
   }
 
@@ -576,9 +598,11 @@ export class Analysis {
     }
 
     // What a demand for `name` brings in: nothing for a dynamic call
+    let waits = false
     const answer = (name: string): Analysed => {
       const known = answers.get(name) ?? NONE
       ctx.sink.push(...known.covered)
+      waits ||= known.result.waits === true
       return known
     }
     const body = await this.body(entry, bound)
@@ -599,7 +623,7 @@ export class Analysis {
     // branch the body does not always take
     parts.push(
       { result: { ...body.result, escapes: [] }, eager: true },
-      { result: { ...SAFE, escapes }, eager: false }
+      { result: { ...SAFE, escapes, waits }, eager: false }
     )
     return this.withFallback(node, combine(own, parts, body.result.output), inner)
   }

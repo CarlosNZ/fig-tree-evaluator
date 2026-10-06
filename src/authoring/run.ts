@@ -49,6 +49,12 @@ export interface Ran {
   failures: Failure[]
   /** The children some run evaluated */
   reached: Set<Child>
+  /**
+   * The children some run waited on: all those reached but a race's elements
+   * and an `each`'s, which the engine starts whether the body needs them or
+   * not
+   */
+  awaited: Set<Child>
   /** The children whose failure some run let through, or handed back */
   escaped: Set<Child>
   /** The children some run handed straight back as its answer */
@@ -139,6 +145,7 @@ export const runNode = async (
   if (total > RUN_LIMIT) return undefined
 
   const reached = new Set<Child>()
+  const awaited = new Set<Child>()
   const endings: Ending[] = []
   for (let i = 0; i < total; i++) {
     let index = i
@@ -151,7 +158,7 @@ export const runNode = async (
     for (const { name, outcomes } of values)
       exact[name] = (pick(outcomes) as { value: unknown }).value
     const chosen = new Map(asked.map(({ child, outcomes }) => [child, pick(outcomes)]))
-    const ending = await runOnce(node, outputs, exact, chosen, options, reached, stalled)
+    const ending = await runOnce(node, outputs, exact, chosen, options, reached, awaited, stalled)
     if (ending === undefined) return undefined
     endings.push(ending)
   }
@@ -187,6 +194,7 @@ export const runNode = async (
     output: union(...output),
     failures,
     reached,
+    awaited,
     escaped,
     passed,
     fails: failed === endings.length,
@@ -233,8 +241,14 @@ const runOnce = async (
   chosen: Map<Child, Outcome>,
   options: RuleOptions,
   reached: Set<Child>,
+  awaited: Set<Child>,
   stalled: Stalled
 ): Promise<Ending | undefined> => {
+  /** A child whose value or failure the run waits on. */
+  const waitOn = (child: Child) => {
+    reached.add(child)
+    awaited.add(child)
+  }
   const { definition } = node.entry
   const { parameters } = definition
   const given: Record<string, Known> = { ...outputs }
@@ -251,7 +265,7 @@ const runOnce = async (
     if (!inputs.consulted.has(child.param)) continue
     // A holder the layers ask for, with no value to give
     if (!('value' in outcome)) return undefined
-    reached.add(child)
+    waitOn(child)
   }
   // The parameter a failure is about: the one a type check names, else the
   // one a rule with its code names, where that rule holds here
@@ -329,7 +343,7 @@ const runOnce = async (
    * walk has none for.
    */
   const answer = (child: Child | undefined, vet: (value: unknown) => unknown): Promise<unknown> => {
-    if (child !== undefined) reached.add(child)
+    if (child !== undefined) waitOn(child)
     const outcome = child === undefined ? UNKNOWN : chosen.get(child)!
     if ('unknown' in outcome) {
       const pending = new Promise<never>(() => {})
@@ -355,7 +369,7 @@ const runOnce = async (
   const stream = (items: Item[], vet: (value: unknown) => unknown) => {
     const settle = ({ index, child, value }: Item): Settlement => {
       if (child === undefined) return { index, ok: true, value: vet(value) }
-      reached.add(child)
+      waitOn(child)
       const outcome = chosen.get(child)!
       if ('fails' in outcome) return { index, ok: false, error: marker(child) }
       try {

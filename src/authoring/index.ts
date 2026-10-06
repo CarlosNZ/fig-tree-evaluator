@@ -26,9 +26,11 @@ import { Analysis } from './walk'
  *
  * Under a timeout nothing runs after the deadline, so a top-level value is
  * shielded only by a constant fallback: the instance's `timeout`, or the
- * one passed here for a host that passes it to `evaluate()` per call. The
- * expression compiles through `compile()`, so it shares the compile cache
- * with `evaluate()`.
+ * one passed here for a host that passes it to `evaluate()` per call. Only
+ * an evaluation that waits on something outside it can be cut off, and
+ * shielding is all or nothing (see "Timeouts" in the spec). The expression
+ * compiles through `compile()`, so it shares the compile cache with
+ * `evaluate()`.
  */
 export const fallbackCoverage = async (
   fig: unknown,
@@ -55,26 +57,42 @@ export const fallbackCoverage = async (
   const analysis = new Analysis({ numbers, evaluation }, artifact.issues)
 
   const caught: Caught[] = []
-  const { escapes } = await analysis.root(artifact.root, caught)
+  const { escapes, waits } = await analysis.root(artifact.root, caught)
   const uncovered = escapes
     // A demand is a body's, and every call answers its own
     .filter((pending): pending is Failure => !isDemand(pending))
     .map(uncoveredFinding)
 
-  // The runtime's shielding: a hole is spliced on a timeout only when its
-  // fallback is constant (`timeoutFallback`)
-  if (effective.timeout !== undefined)
-    for (const hole of artifact.holes)
-      if (hole.timeoutFallback === undefined)
-        uncovered.push(
-          uncoveredFinding({
-            path: hole.node.path,
-            code: 'timeout',
-            message: 'may be cut off by the timeout: it has no constant fallback to shield it',
-            certainty: 'may',
-            order: [hole.node.order],
-          })
-        )
+  // The runtime's shielding: on a timeout, every hole is spliced with its
+  // constant fallback (`timeoutFallback`) if every hole has one, and the
+  // evaluation is rejected otherwise. An evaluation that never waits
+  // finishes before the deadline's timer can fire
+  if (effective.timeout !== undefined && waits)
+    for (const { node, timeoutFallback } of artifact.holes) {
+      const at = {
+        path: node.path,
+        code: 'timeout',
+        certainty: 'may' as const,
+        order: [node.order],
+      }
+      if (!artifact.timeoutShielded) {
+        if (timeoutFallback === undefined)
+          uncovered.push(
+            uncoveredFinding({
+              ...at,
+              message:
+                'the timeout may reject the evaluation: something in it can wait, and this value has no constant fallback to shield it',
+            })
+          )
+      } else if (analysis.waiting.has(node))
+        caught.push({
+          pending: {
+            ...at,
+            message: 'may be cut off by the timeout, which puts its constant fallback in its place',
+          },
+          by: { path: node.path },
+        })
+    }
 
   const covered = caught.flatMap(({ pending, by }) =>
     isDemand(pending) ? [] : [coveredFinding(pending, by)]

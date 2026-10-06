@@ -5,11 +5,15 @@
  * acceptance test; what shielding promises at runtime is asserted in
  * test/evaluate-timeout.test.ts.
  *
- * Each top-level value without a constant fallback is an uncovered
- * `timeout` finding at its path. The findings without a timeout are
- * reported beside them, and are asserted in test/authoring.test.ts.
+ * Only an evaluation that can wait on something outside it can be cut off.
+ * Where one can, shielding is all or nothing: each top-level value without
+ * a constant fallback is an uncovered `timeout` finding at its path, and
+ * where every value has one, each that can wait is a covered one. The
+ * operators of ./fixtures/compileRegistry are the host's, so any of them can
+ * wait. The findings without a timeout are reported beside them, and are
+ * asserted in test/authoring.test.ts.
  */
-import { FigTree } from '../src'
+import { FigTree, coreOperators, defineOperator } from '../src'
 import type { CoverageFinding } from '../src'
 import { fallbackCoverage } from '../src/authoring'
 import { compileOps } from './fixtures/compileRegistry'
@@ -120,4 +124,78 @@ test('a timeout finding sits beside the findings without one', async () => {
       certainty: 'may',
     },
   ])
+})
+
+describe('only an evaluation that can wait can be cut off', () => {
+  const io = defineOperator({
+    name: 'io',
+    category: 'other',
+    description: 'Anything, fetched by code nothing describes',
+    parameters: { value: {} },
+    positionalParams: ['value'],
+    evaluate: ({ value }) => value,
+  })
+  const nap = defineOperator({
+    name: 'nap',
+    category: 'other',
+    description: 'A number, handed back once a timer fires',
+    parameters: { value: { type: 'number' } },
+    positionalParams: ['value'],
+    returns: 'number',
+    coverage: {},
+    evaluate: async ({ value }) => {
+      await new Promise((resolve) => setTimeout(resolve, 1))
+      return value
+    },
+  })
+  const waiting = new FigTree({
+    operators: [coreOperators, [io, nap]],
+    fragments: {
+      fetch: { expression: { $io: 1 } },
+      echo: { expression: '$params.v', parameters: { v: { type: 'any' } } },
+      ignore: { expression: 1, parameters: { v: { type: 'any' } } },
+    },
+  })
+  const cutOff = (expression: unknown) => underTimeout(expression, waiting)
+  const fetched = { $io: 1 }
+
+  test('nothing that can wait means nothing can be cut off', async () => {
+    expect(await cutOff({ a: { $upper: 'x' }, b: { $plus: ['$data.x', 1] } })).toEqual([])
+  })
+
+  test('a host operator can wait, declared or not, and so can every value beside it', async () => {
+    expect(await cutOff({ a: fetched, b: { $upper: 'x' } })).toEqual([['a'], ['b']])
+    expect(await cutOff({ a: { $nap: 1 } })).toEqual([['a']])
+  })
+
+  test('waiting is read through vars, fallbacks, fragment bodies and arguments', async () => {
+    expect(await cutOff({ a: '$vars.r', vars: { r: fetched } })).toEqual([['a']])
+    expect(await cutOff({ a: { $upper: '$data.s', fallback: fetched } })).toEqual([['a']])
+    // upper cannot fail here, so its fallback never runs
+    expect(await cutOff({ a: { $upper: 'x', fallback: fetched } })).toEqual([])
+    expect(await cutOff({ a: { $fetch: {} } })).toEqual([['a']])
+    expect(await cutOff({ a: { $echo: { v: fetched } } })).toEqual([['a']])
+    // An argument the body never reads is never evaluated
+    expect(await cutOff({ a: { $ignore: { v: fetched } } })).toEqual([])
+  })
+
+  test('a child no run waits on holds nothing up', async () => {
+    expect(await cutOff({ a: { $if: [true, 1, fetched] } })).toEqual([])
+    // A decider starts every operand, but answers before this one does
+    expect(await cutOff({ a: { $or: [true, fetched] } })).toEqual([])
+    expect(await cutOff({ a: { $or: [false, fetched] } })).toEqual([['a']])
+    const each = { $if: [{ $equal: ['$index', 0] }, true, fetched] }
+    expect(await cutOff({ a: { $some: { input: [1, 2], each } } })).toEqual([])
+  })
+
+  test('a shielded value that can wait is covered against the timeout, one that cannot is not', async () => {
+    const shielded = { a: { $io: 1, fallback: 0 }, b: { $upper: 'x', fallback: '' } }
+    const { uncovered, covered } = await fallbackCoverage(waiting, shielded, { timeout: 50 })
+    expect(timeouts(uncovered)).toEqual([])
+    expect(
+      covered
+        .filter((finding) => finding.code === 'timeout')
+        .map((finding) => [finding.path, finding.coveredBy])
+    ).toEqual([[['a'], ['a']]])
+  })
 })

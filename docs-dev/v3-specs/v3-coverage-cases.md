@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 173 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 180 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -1587,6 +1587,7 @@ Where a case uses an instance other than `new FigTree()`:
 ```
 
 - ✓ **http** at the root — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
+- ✓ **http** at the root — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
 
 **a fallback that folds is still not a constant to shielding** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
 
@@ -1624,8 +1625,75 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✓ **plus** at the root — may fail: `type-check` on `values`, caught by its own fallback
 - ✓ **http** at `$plus[0]` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
+- ✓ **plus** at the root — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
+
+**under a timeout, a shielded value doing no I/O is never cut off** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $http: 'https://x.test/a', fallback: 1 }, b: { $upper: 'x', fallback: 'X' } }
+```
+
+- ✓ **http** at `a` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
+- ✓ **http** at `a` — may fail: `timeout`, caught by its own fallback. E.g. with a slow client
+
+**under a timeout, a request read through a var can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: '$vars.r', b: { $upper: 'x' }, vars: { r: { $http: 'https://x.test/a', fallback: null } } }
+```
+
+- ✗ `$vars.r` at `a` — may fail: `timeout`. E.g. with a slow client
+- ✗ **upper** at `b` — may fail: `timeout`. E.g. with a slow client
+- ✓ **http** at `vars.r` — may fail: `operator-failure` (external: whatever code it throws), caught by its own fallback. E.g. with the client failing
+
+**under a timeout, a request in a fallback can wait** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $upper: '$data.s', fallback: { $http: 'https://x.test/a' } }, b: { $lower: 'Y' } }
+```
+
+- ✗ **http** at `a.fallback` — may fail: `operator-failure` (external: whatever code it throws). E.g. data `{ s: 1 }` with the client failing
+- ✗ **upper** at `a` — may fail: `timeout`. E.g. data `{ s: 1 }` with a slow client
+- ✗ **lower** at `b` — may fail: `timeout`. E.g. data `{ s: 1 }` with a slow client
+- ✓ **upper** at `a` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ s: 1 }`
+
+**under a timeout, a request in a branch never taken never waits** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $if: [true, 1, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } }
+```
+
+- Nothing can throw.
+
+**under a timeout, a request a decider never waits for** (with HTTP and SQL clients, and no `http.baseEndpoint`; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $or: [true, { $http: 'https://x.test/a' }] }, b: { $upper: 'x' } }
+```
+
+- Nothing can throw.
 
 ## Host operators
+
+**under a timeout, an undeclared host operator may wait** (with the host operators listed at the top; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $twice: 2 }, b: { $upper: 'x' } }
+```
+
+- ✗ **twice** at `a` — may fail: `operator-failure` (external: whatever code it throws) (no data makes it happen)
+- ✗ **twice** at `a` — may fail: `timeout` (no data makes it happen)
+- ✗ **upper** at `b` — may fail: `timeout` (no data makes it happen)
+
+> False positives the design accepts: twice never throws and never waits, but nothing says so.
+
+**under a timeout, a declared host operator may wait** (with the host operators listed at the top; analysis options `{ timeout: 20 }`)
+
+```json5
+{ a: { $nap: 1 } }
+```
+
+- ✗ the call to fragment **nap** at `a` — may fail: `timeout`
 
 **an undeclared host operator may throw** (with the host operators listed at the top)
 

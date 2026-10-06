@@ -53,7 +53,7 @@ For example, `{ $plus: [{ $divide: ['$data.a', '$data.b'] }, 1] }` gives three u
 
 ### Options
 
-- **`timeout`**, as today: a timeout the host passes to `evaluate()` per call.
+- **`timeout`**, as today: a timeout the host passes to `evaluate()` per call, laid over the instance's own. The analysis reads whichever is in force (see "Timeouts"). An I/O operator's own `timeout` parameter is something else: it makes that request fail with `request-timeout`, which its finding stands for.
 - **`numbers`**: `'ordinary'` (the default) or `'strict'`. See "Numbers". Names provisional.
 
 Where the analysis's own options sit beside the stand-ins for `evaluate()`'s options is deferred.
@@ -331,17 +331,19 @@ Non-finite results that are not overflow (`divide` by 0, `0^-1`, a negative base
 
 ## Timeouts
 
-Under a timeout, nothing runs after the deadline, and shielding is all or nothing: if any top-level value lacks a constant fallback, the deadline rejects the whole evaluation. So:
+Under a timeout, nothing runs after the deadline, so only a constant fallback can stand in for a value that has not finished, and shielding is all or nothing: if any top-level value lacks a constant fallback, the deadline rejects the whole evaluation; if every one has one, each value still unfinished at the deadline gets its fallback in its place. Only an evaluation that waits on something outside it can be cut off: one that runs on promises alone finishes before the deadline's timer can fire, however long it takes. So:
 
-- **If anything can do I/O** (an I/O operator, or an external host operator), every top-level value needs a constant fallback, including those doing no I/O. Each that lacks one is an uncovered `timeout` finding on that value.
-- **If nothing can**, every value settles before the deadline's timer can fire, and a timeout adds nothing.
+- **What can wait** is an I/O operator, and any host operator, declared or not: declaring `coverage` says what a body fails on and returns, not how long it takes, and a declared body may wait on a timer. A node waits where one of these is evaluated under it, through a var it reads, a fallback that can run, a fragment body, or an argument the body reads. As with failures, a child no run reaches does not count, and neither does one a run started but never waited on: `{ $or: [true, { $http: 'https://x.test/a' }] }` answers before its request does.
+- **If anything can wait** and some top-level value lacks a constant fallback, every value lacking one is an uncovered `timeout` finding, including those that cannot wait themselves.
+- **If anything can wait** and every top-level value has a constant fallback, each value that can wait is a covered `timeout` finding, covered by itself: the deadline may put its fallback in its place.
+- **If nothing can**, a timeout adds nothing.
 
 A constant fallback here means a literal one, as the engine's shielding reads it: a fallback that folds to a constant does not shield. The fragment-call exception carries over from v3-authoring.md: a call with dynamic arguments fails outside its body's fallbacks.
 
 ## Testing
 
-- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 173 expressions and the findings each should give. A finding marked `external` stands for any code at its node, as the analysis's does. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
-- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Codes are matched exactly, except at an external node, whose one finding stands for any code. A wrong `always` is unsound too, so no node the analysis says always fails may be shown returning a value, wherever the trace shows it evaluated.
+- **The corpus**, test/coverage-cases.ts (readable as v3-coverage-cases.md): 180 expressions and the findings each should give. A finding marked `external` stands for any code at its node, as the analysis's does. Each finding's witness is checked against the engine already; the analysis's results are asserted against the expected findings as each step lands.
+- **Soundness**, at every step: each corpus expression is evaluated over a spread of data values, and every failure the engine shows must be among the analysis's findings, uncovered or covered at the right fallback. A step may leave false positives, never a missed failure. Codes are matched exactly, except at an external node, whose one finding stands for any code its own code throws, which a timeout never is. A case with a timeout is evaluated under it as well, with a slow client where it does I/O, so a value cut off must be a `timeout` finding, covered at that value where its fallback stood in. A wrong `always` is unsound too, so no node the analysis says always fails may be shown returning a value, wherever the trace shows it evaluated.
 - **The rule checker:** each pure core operator runs over edge-case values for its parameters' types, and every failure the engine shows must be predicted by its rules or its type checks, with no rule that never fires. It also checks the outputs: every value the engine returns must be admitted by the output the walk gives the node, so a wrong declaration, which would hide failures downstream, fails it. And it checks the runs: every run of the node, with each parameter known exactly, must end as the engine's evaluation does, with the same value or a certain failure with the same code, and every operator must be run at least once. An iterator is run again with its `each` walked per element, each element giving a value of its own or failing, against the engine's evaluation of an `each` that does the same. The outputs and the predictions are checked again with each parameter known only by a few ranges around its value (bounded at it on one side or both, reaching past it, a least length, an array's elements widened in turn), and a test's yes or no on a range must be its answer for the value in it. Where the analysis says the node always fails, the engine must fail. It reads each value from the data, so one compiled node serves every combination, and runs with the suite in about five seconds (test/coverage-rules.test.ts). It is what keeps the core tables complete: it found `round`'s rule, the result boundary under `strict`, and `regex`'s `returns` ([#218](https://github.com/CarlosNZ/fig-tree-evaluator/issues/218)), and that an overflow is never certain.
 
 ## Known limits
@@ -350,6 +352,7 @@ A constant fallback here means a literal one, as the engine's shielding reads it
 - **`plus` with `expect: 'number'` has no range:** `{ typeNamedBy: 'expect' }` adds every number, for the empty case's identity.
 - **Under `strict`, an overflow rule counts whatever the ranges:** `{ $plus: [<a length>, 1] }` may overflow, although its operands are bounded.
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
+- **Under a timeout, a host operator is taken to wait**, declared or not, though its body may be synchronous: `{ a: { $twice: 2 }, b: { $upper: 'x' } }` lists a `timeout` on both values.
 - **Per-element walks need one exact array of a few elements.** Over 17 elements, or over a literal with a computed element, an `each` is walked once, with `$element` any of the elements, so a run sees every element give the same: `some` over the integers 0 to 16, with `{ $divide: [1, '$element'] }`, lists the division by 0, although element 1 decides `some` before it matters.
 - **A race body is taken to answer the same whatever order its operands settle in**, as the operator contract has it. A host operator's race body that took whichever operand answered first would break that.
 - **The `power` and `round` thresholds**, `exponent` below 100 and `decimals` below 300 counting as safe from ordinary overflow, are judgments. A computed `decimals` gets a `may` finding unless a range keeps it below 300: `{ $min: [<a length>, 4] }` does, a length alone does not, since a string of 618 characters makes `{ $divide: [<its length>, 2] }` 309.
