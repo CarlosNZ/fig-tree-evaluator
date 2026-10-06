@@ -184,7 +184,7 @@ const main = async () => {
     full({ '//': 'node', $abs: { '//': 'payload', value: -1 } })
   )
   print(
-    'a get becoming a reference is the one place a comment is lost',
+    'a commented get keeps its node rather than lose the comment',
     { '//': 'why', operator: 'get', path: 'user.name' },
     short({ '//': 'why', operator: 'get', path: 'user.name' })
   )

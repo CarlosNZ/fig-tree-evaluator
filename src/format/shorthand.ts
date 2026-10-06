@@ -89,10 +89,12 @@ export const shorthandWriter = (options: ShorthandOptions = {}): Writer => {
     const params = converted.filter(([name]) => name !== '//')
 
     // A get becomes its reference wherever a string can carry it: no
-    // modifier beside it, though a comment is dropped
+    // modifier or comment beside it, on the node or in its payload
     if (getAsReference && read.operator.name === 'get') {
-      const modified = read.slots.some((slot) => slot.kind === 'keep' && slot.key !== '//')
-      const reference = modified ? null : paramsToReference(new Map(params), referenceNames)
+      const kept =
+        read.slots.some((slot) => slot.kind === 'keep') ||
+        read.params.some(([name]) => name === '//')
+      const reference = kept ? null : paramsToReference(new Map(params), referenceNames)
       if (reference !== null) return reference
     }
 

@@ -144,9 +144,19 @@ describe('with the core operators', () => {
       ['a read from a var', { operator: 'get', path: 'a', from: '$vars.r' }, '$vars.r.a'],
       ['a shorthand read', { $get: 'a' }, '$d.a'],
       [
-        'a commented read — the comment is dropped',
+        'a commented read keeps its node',
         { '//': 'why', operator: 'get', path: 'a' },
-        '$d.a',
+        { '//': 'why', $get: 'a' },
+      ],
+      [
+        'a read commented in its payload keeps its node',
+        { $get: { '//': 'why', path: 'a' } },
+        { '//': 'why', $get: 'a' },
+      ],
+      [
+        'a commented read inside a converted node',
+        { operator: 'plus', values: [{ '//': 'why', operator: 'get', path: 'x' }, 1] },
+        { $plus: [{ '//': 'why', $get: 'x' }, 1] },
       ],
       [
         'a read with a fallback',
@@ -166,6 +176,26 @@ describe('with the core operators', () => {
       ],
     ])('%s', (_label, input, output) => {
       expectForm(shorthand(input), output)
+    })
+
+    test.each([
+      [
+        'a commented read',
+        { '//': 'why', operator: 'get', path: 'a' },
+        { '//': 'why', $get: { path: 'a' } },
+      ],
+      [
+        'a read commented in its payload',
+        { $get: { '//': 'why', path: 'a' } },
+        { $get: { '//': 'why', path: 'a' } },
+      ],
+      [
+        'a commented read inside a converted node',
+        { operator: 'plus', values: [{ '//': 'why', operator: 'get', path: 'x' }, 1] },
+        { $plus: { values: [{ '//': 'why', $get: { path: 'x' } }, 1] } },
+      ],
+    ])("%s keeps its node under arguments: 'named'", (_label, input, output) => {
+      expectForm(shorthand(input, { arguments: 'named' }), output)
     })
 
     test('getAsReference: false keeps the node', () => {

@@ -136,7 +136,7 @@ The target is the compiler's canonical form, apart from spellings: the result co
 - **Operator node** becomes `{ $name: payload }`, where `name` follows `operatorNames` and modifiers stay as sibling keys. The sibling-key rule means every canonical operator node has a shorthand form.
 - **Fragment call** becomes `{ $frag: parameters }`, with `{ $frag: {} }` for a call with no `parameters`. Fragments take only the named payload. **A call whose `parameters` is a reference string stays canonical**, because the shorthand payload has to be an object: this is the one node with no shorthand form. That includes a reference the conversion itself made: `{ fragment: 'greet', parameters: { operator: 'get', path: 'person' } }` becomes `{ fragment: 'greet', parameters: '$d.person' }` under `getAsReference`, not `{ $greet: '$d.person' }`, which is illegal. A `noCache` on the call stays beside it, as on any call.
 - **`literal`** becomes `{ $literal: X }`.
-- **`get`**, with `getAsReference` on, becomes a reference whenever `toReference` accepts it. Otherwise it is an ordinary operator node.
+- **`get`**, with `getAsReference` on, becomes a reference whenever `toReference` accepts it and it carries no `//`, on the node or in its payload ("Comments", below). Otherwise it is an ordinary operator node.
 - **Already-shorthand nodes** are re-rendered from their parameters, so the result depends only on what the node means, not on how it was written. That makes `toShorthand` idempotent.
 
 ### Choosing the payload
@@ -194,10 +194,10 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 
 ## Comments
 
-**A comment never stops a conversion.** It is kept wherever the requested form has room for it, and dropped where keeping it would block that form. Comments are not part of the round-trip promise. Where the editor thinks a lost comment matters, it can check the input for one and ask before converting.
+**A comment never stops a conversion.** It is kept wherever the requested form has room for it, and dropped where keeping it would block that form. Comments are not part of the round-trip promise.
 
-- **A `get` becoming a reference loses its `//`**, since a string can't carry one. This is the only case where a comment is dropped, and it is the default in `toShorthand` (`getAsReference` is on).
-- **The usual place for a comment is on the node**, beside `operator` or the `$name` key: `{ '//': 'why', $if: { condition: c, … } }`. There it survives every conversion except a `get` becoming a reference.
+- **`toReference` drops a `get`'s `//`**, since a string can't carry one. This is the only case where a comment is dropped: called directly, `toReference` has been asked for the reference. Where the editor thinks a lost comment matters, it can check the node for one before calling it. `toShorthand` never drops a comment: under `getAsReference`, a commented `get` keeps its node, in the shorthand form any other node takes, so `{ '//': 'why', operator: 'get', path: 'x' }` becomes `{ '//': 'why', $get: 'x' }`.
+- **The usual place for a comment is on the node**, beside `operator` or the `$name` key: `{ '//': 'why', $if: { condition: c, … } }`. There it survives every conversion except `toReference`.
 - **A `//` inside a named payload** (`{ $if: { '//': 'why', condition: c, … } }`, which the compiler skips) moves onto the node, immediately before the invocation key. That happens in `toCanonical`, which has no payload to keep it in, and in `toShorthand` whenever the node takes a positional or single-value payload. Once moved, it stays on the node, so a named → positional → named round trip leaves the comment in the usual place. The move never crosses a node boundary: a payload is its own node's parameter list, and a child node's comments stay on the child. If the node already has its own `//`, the two become an array in the node's comment's place, `[nodeComment, payloadComment]`: nothing is blocked, so both are kept. Either one may already be an array, and the result is flattened, so a comment is never more than one level deep. The editor never writes a comment inside a payload, so this case comes only from hand-written or pasted JSON.
 - **A `//` inside a fragment call's `parameters` stays where it is**, since `parameters` exists in both forms. So does every node-level `//` and every `//` in a plain object.
 
@@ -236,7 +236,7 @@ The subpath also exports five of the compiler's own functions, for tools that re
 The compiler is the oracle, so most tests need no data.
 
 - **Compile equivalence**, which happens only in the tests: the functions never compile. For both functions, with `getAsReference` off, the compiled output must equal the compiled input once source paths and order are ignored. This runs over a modest curated corpus of v3 expressions, and over the differential corpus's converted expressions (`differential/`). It needs a small comparator that strips `path` and `order` from an artifact. The suite is collated with the rest at release prep.
-- **Round trip and idempotence**, with `getAsReference` off, so that no comment is dropped:
+- **Round trip and idempotence**, with `getAsReference` off, so that every `get` stays a node:
   - `toCanonical(toShorthand(x))` equals `toCanonical(x)`
   - `toCanonical(toCanonical(x))` equals `toCanonical(x)`
   - `toShorthand(toShorthand(x))` equals `toShorthand(x)`
@@ -244,7 +244,7 @@ The compiler is the oracle, so most tests need no data.
   One known exception: `{ fragment: 'f' }` goes to `{ $f: {} }`, which comes back as `{ fragment: 'f', parameters: {} }`. The test normalises it.
 
 - **Payload choice.** A table of operators by shape — no positional parameters, leading only, rest only, leading plus rest — against supplied sets, covering gaps, empty rests, computed rests and each collapse case.
-- **`getAsReference`, `toGet` and `toReference`.** Evaluation tests with data, including missing paths, with `strictDataPaths` both on and off, and each `from` namespace. A commented `get` converts, and loses its comment.
+- **`getAsReference`, `toGet` and `toReference`.** Evaluation tests with data, including missing paths, with `strictDataPaths` both on and off, and each `from` namespace. A commented `get` stays a node under `toShorthand`, in both argument forms, and keeps its comment. `toReference` still converts it, and drops the comment.
 - **Comments.** Each placement in "Comments" above, including the two-comment array.
 - **Malformed shapes.** Every shape listed under "What the walk visits" throws a `FigTreeError` with its code and path, and no input is mutated.
 - **The converter's promise.** `deepEqual(toCanonical(x, fig, { operatorNames: 'canonical', referenceNames: 'canonical' }), x)` over the converter's output checks its "canonical v3 throughout" promise. The converter's one documented exception, a call on a converted v2 custom function written in the positional shorthand ("Batch 5" in [v3-converter.md](v3-converter.md)), is expected to come back canonical.

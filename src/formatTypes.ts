@@ -54,6 +54,9 @@ export interface ShorthandOptions extends NameOptions {
    * back the same, and the named payload otherwise. Default `'positional'`.
    */
   arguments?: 'positional' | 'named'
-  /** Converts every `get` node `toReference` accepts. Default `true`. */
+  /**
+   * Converts every `get` node `toReference` accepts, unless it carries a
+   * `//` comment, which a reference can't. Default `true`.
+   */
   getAsReference?: boolean
 }
