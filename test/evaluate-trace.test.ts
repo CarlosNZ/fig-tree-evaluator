@@ -176,6 +176,37 @@ describe('`fallback` — the only record that designed degradation happened', ()
     // …and the fallback's own evaluation is a child of it
     expect(at(trace, ['avatar', 'fallback'])?.status).toBe('value')
   })
+
+  describe('on a fragment call', () => {
+    const fragments: Record<string, FragmentDefinition> = {
+      failing: { expression: { operator: 'boom', value: 'x' } },
+    }
+
+    it('marks the call, with the failure anchored to it', async () => {
+      const trace = await traceOf(setup([], { fragments }), {
+        avatar: { fragment: 'failing', fallback: 'default.png' },
+      })
+      const call = at(trace, ['avatar'])
+      expect(call).toMatchObject({ kind: 'fragment', status: 'fallback', value: 'default.png' })
+      expect(call?.error).toMatchObject({
+        code: ErrorCodes.operatorFailure,
+        fragment: 'failing',
+        fragmentPath: ['expression'],
+        path: ['avatar'],
+      })
+      expect(at(trace, ['avatar', 'fallback'])?.status).toBe('value')
+    })
+
+    it('marks the call failed where its fallback fails too', async () => {
+      const { trace } = await rejection<FigTreeError>(
+        setup([], { fragments }).evaluate(
+          { avatar: { fragment: 'failing', fallback: { $boom: 'y' } } },
+          { trace: true }
+        )
+      )
+      expect(at(trace as TraceNode, ['avatar'])?.status).toBe('failed')
+    })
+  })
 })
 
 describe('`failed` and `cancelled`', () => {
