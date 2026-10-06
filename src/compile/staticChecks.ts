@@ -723,39 +723,43 @@ const popVars = (state: CheckState, frame: VarsFrame | null) => {
 }
 
 const detectCycles = (state: CheckState, frame: VarsFrame) => {
+  // Each cycle is reported once, on its member declared first, naming the
+  // others. A var that only leads into a cycle is not a member and gets no
+  // issue: the issue's path is where the dependency has to be broken.
+  const declarationIndex = new Map([...frame.names.keys()].map((name, i) => [name, i]))
+  const stack: string[] = []
   const visiting = new Set<string>()
   const done = new Set<string>()
   const reported = new Set<string>()
 
-  const dfs = (name: string): boolean => {
-    if (done.has(name)) return false
-    if (visiting.has(name)) return true
-    visiting.add(name)
-    for (const target of frame.edges.get(name) ?? []) {
-      if (dfs(target)) {
-        visiting.delete(name)
-        done.add(name)
-        return true
-      }
-    }
-    visiting.delete(name)
-    done.add(name)
-    return false
+  const report = (members: string[]) => {
+    const ordered = [...members].sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
+    const key = ordered.join('\0')
+    if (reported.has(key)) return
+    reported.add(key)
+    const quoted = ordered.map((name) => `'${name}'`)
+    const message =
+      quoted.length === 1
+        ? `${quoted[0]} depends on itself`
+        : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]} form a vars cycle — a var may not depend on itself`
+    const entry = frame.names.get(ordered[0])!
+    emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
   }
 
-  for (const name of frame.names.keys()) {
-    if (done.has(name) || reported.has(name)) continue
-    if (dfs(name)) {
-      const entry = frame.names.get(name)!
-      emit(
-        state,
-        'error',
-        ErrorCodes.varCycle,
-        `'${name}' participates in a vars cycle — a var may not depend on itself`,
-        entry.declaredAt,
-        entry.order
-      )
-      reported.add(name)
+  const dfs = (name: string) => {
+    if (done.has(name)) return
+    if (visiting.has(name)) {
+      // A back edge: the stack from this var onward is exactly the cycle
+      report(stack.slice(stack.indexOf(name)))
+      return
     }
+    visiting.add(name)
+    stack.push(name)
+    for (const target of frame.edges.get(name) ?? []) dfs(target)
+    stack.pop()
+    visiting.delete(name)
+    done.add(name)
   }
+
+  for (const name of frame.names.keys()) dfs(name)
 }

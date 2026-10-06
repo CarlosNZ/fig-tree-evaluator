@@ -220,6 +220,50 @@ describe('vars cycles, shadowing, unreferenced', () => {
     )
   })
 
+  test('a cycle is reported on its members, not on a var that leads into it (#230)', () => {
+    const issues = fig.validate({
+      vars: { c: '$vars.a', a: '$vars.b', b: '$vars.a' },
+      x: '$vars.c',
+    }).issues
+    const cycles = issues.filter((issue) => issue.code === 'var-cycle')
+    expect(cycles).toHaveLength(1)
+    expect(cycles[0].path).toEqual(['vars', 'a'])
+    expect(cycles[0].message).toBe("'a' and 'b' form a vars cycle — a var may not depend on itself")
+  })
+
+  test('a self-cycle and a three-var cycle name their members', () => {
+    const self = fig.validate({ vars: { a: '$vars.a' }, x: '$vars.a' }).issues
+    expect(self.filter((issue) => issue.code === 'var-cycle')).toEqual([
+      expect.objectContaining({
+        path: ['vars', 'a'],
+        message: "'a' depends on itself",
+      }),
+    ])
+
+    const three = fig.validate({
+      vars: { a: '$vars.b', b: '$vars.c', c: '$vars.a' },
+      x: '$vars.a',
+    }).issues
+    expect(three.filter((issue) => issue.code === 'var-cycle')).toEqual([
+      expect.objectContaining({
+        path: ['vars', 'a'],
+        message: "'a', 'b' and 'c' form a vars cycle — a var may not depend on itself",
+      }),
+    ])
+  })
+
+  test('two separate cycles in one block are both reported', () => {
+    const issues = fig.validate({
+      vars: { a: '$vars.b', b: '$vars.a', c: '$vars.d', d: '$vars.c' },
+      x: ['$vars.a', '$vars.c'],
+    }).issues
+    const paths = issues.filter((issue) => issue.code === 'var-cycle').map((issue) => issue.path)
+    expect(paths).toEqual([
+      ['vars', 'a'],
+      ['vars', 'c'],
+    ])
+  })
+
   test('a same-block chain without a loop is fine', () => {
     expect(
       errorCodes({ operator: 'plus', vars: { a: '$vars.b', b: 1 }, values: ['$vars.a'] })
