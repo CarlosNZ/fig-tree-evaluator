@@ -1919,9 +1919,21 @@ const timeoutFallbackFor = (
   return node.entry?.timeoutFallback
 }
 
-/** Every invocable name — operators, aliases, fragments — for suggestions. */
-const allInvocationNames = (state: WalkState): string[] => [
-  ...state.registry.operators.keys(),
-  ...state.registry.aliases.keys(),
-  ...state.registry.fragments.keys(),
-]
+/**
+ * Every invocable name — operators, aliases, fragments — for suggestions.
+ * Built once per registry: a registry is immutable (an update that changes
+ * it builds a new one), and an expression with many unrecognized `$` keys
+ * asks for the list once per key (#215).
+ */
+const invocationNamesByRegistry = new WeakMap<OperatorRegistry, string[]>()
+const allInvocationNames = (state: WalkState): string[] => {
+  const known = invocationNamesByRegistry.get(state.registry)
+  if (known !== undefined) return known
+  const names = [
+    ...state.registry.operators.keys(),
+    ...state.registry.aliases.keys(),
+    ...state.registry.fragments.keys(),
+  ]
+  invocationNamesByRegistry.set(state.registry, names)
+  return names
+}

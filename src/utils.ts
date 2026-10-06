@@ -45,38 +45,56 @@ export const isPlainDataObject = (value: unknown): value is Record<string, unkno
 }
 
 /**
- * Levenshtein edit distance — powers the cheap did-you-mean suggestions in
- * compile/validate messages. Plain dynamic-programming, fine for name-length
- * strings.
+ * Levenshtein edit distance, bounded: the exact distance when it is at
+ * most `max`, otherwise any value above `max`. Two rows of the usual
+ * dynamic-programming table, swapped rather than reallocated, and the
+ * walk stops at the first row whose smallest entry already exceeds the
+ * bound, since distances only grow down the table. Candidates whose
+ * lengths differ by more than `max` are rejected before the table starts.
+ * Compile raises a did-you-mean on every unrecognized `$` key it meets, so
+ * this runs on hosts whose data carries such keys (#215).
  */
-export const editDistance = (a: string, b: string): number => {
+export const editDistanceWithin = (a: string, b: string, max: number): number => {
   if (a === b) return 0
-  const rows = a.length + 1
-  const cols = b.length + 1
-  let prev = Array.from({ length: cols }, (_, j) => j)
-  for (let i = 1; i < rows; i++) {
-    const current = [i]
-    for (let j = 1; j < cols; j++) {
-      const substitution = prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
-      current.push(Math.min(prev[j] + 1, current[j - 1] + 1, substitution))
+  const rows = a.length
+  const cols = b.length
+  if (Math.abs(rows - cols) > max) return max + 1
+  let prev: number[] = new Array(cols + 1)
+  let current: number[] = new Array(cols + 1)
+  for (let j = 0; j <= cols; j++) prev[j] = j
+  for (let i = 1; i <= rows; i++) {
+    current[0] = i
+    let rowMin = i
+    const code = a.charCodeAt(i - 1)
+    for (let j = 1; j <= cols; j++) {
+      const substitution = prev[j - 1] + (code === b.charCodeAt(j - 1) ? 0 : 1)
+      const distance = Math.min(prev[j] + 1, current[j - 1] + 1, substitution)
+      current[j] = distance
+      if (distance < rowMin) rowMin = distance
     }
+    if (rowMin > max) return max + 1
+    const swap = prev
     prev = current
+    current = swap
   }
-  return prev[cols - 1]
+  return prev[cols]
 }
 
 /**
  * The nearest candidate within edit distance 2, for did-you-mean hints;
- * undefined when nothing is close enough.
+ * undefined when nothing is close enough. The first of equally near
+ * candidates wins, so each distance is computed only as far as it has to
+ * beat the best so far.
  */
 export const nearestName = (name: string, candidates: Iterable<string>): string | undefined => {
   let best: string | undefined
   let bestDistance = 3
   for (const candidate of candidates) {
-    const distance = editDistance(name, candidate)
+    const distance = editDistanceWithin(name, candidate, bestDistance - 1)
     if (distance < bestDistance) {
       best = candidate
       bestDistance = distance
+      if (distance === 0) break
     }
   }
   return best

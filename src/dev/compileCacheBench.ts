@@ -14,9 +14,9 @@
  * it from three directions.
  *
  * Only registered operators appear in the shapes. An unregistered `$name`
- * earns a did-you-mean warning, whose edit-distance scan over every
- * registered name costs more than the rest of the compile put together —
- * that would measure the suggestion machinery, not the compiler.
+ * earns a did-you-mean warning, with an edit-distance scan over every
+ * registered name — that would measure the suggestion machinery, not the
+ * compiler.
  */
 import { buildRegistry } from '../registry'
 import { coreOperators } from '../operators'
