@@ -51,6 +51,14 @@ interface CoveredFinding extends CoverageFinding {
 
 For example, `{ $plus: [{ $divide: ['$data.a', '$data.b'] }, 1] }` gives three uncovered findings on `divide`: `type-check` on `value`, `type-check` on `by`, and `non-finite-result` on `by` (it may be 0). `plus` has none: `divide` returns a number or null, which `plus` accepts. With a fallback on `divide`, all three move to `covered`.
 
+### Static errors
+
+An expression with a static error, anything `validate()` reports at error severity, never runs: `evaluate()` refuses it before anything starts, so no fallback is ever reached ("fallback semantics" in [v3-api.md](v3-api.md)). Its report is every static error, `uncovered` with certainty `always`, and `covered` is empty. Nothing is walked, so none of the failures the expression could have at runtime are listed until the errors are fixed (agreed with Carl, October 2026, [#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)).
+
+The errors come in the order `evaluate()` reads them: the instance's `maxDepth` and `maxNodes` first, then the rest in tree order. So `uncovered[0]` is the error `evaluate()` throws. Each finding carries the issue's path, code, message, operator and parameter.
+
+For example, `{ a: { $plus: [{ operator: 'gone' }, 1], fallback: 0 }, b: { $divide: ['$data.n', '$data.d'] } }` gives one finding, `unknown-operator` at `['a', '$plus', 0]`, uncovered although `a` has a fallback. `b`'s divide findings appear once `gone` is fixed.
+
 ### Options
 
 - **`strictNumbers`**: `false` by default. See "Numbers".

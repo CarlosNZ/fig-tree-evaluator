@@ -22,7 +22,7 @@ The question it answers: **which failures can reject an evaluation, and which fa
 - **`uncovered`** lists the failures nothing catches, each where it starts, so each can reject `evaluate()`. CI checks that it is empty.
 - **`covered`** lists the failures a fallback catches, each with the fallback that does, for tools that show where fallbacks do their work.
 - **Options** are the instance's: it answers as the instance would evaluate the expression, under its `timeout` and `strictDataPaths`. Its one option of its own is `strictNumbers`.
-- **Meaningful for a valid expression only.** An invalid expression never runs: `evaluate()` throws its static error, which `validate()` reports.
+- **An invalid expression reports its static errors.** It never runs: `evaluate()` refuses it before anything starts. So every static error is `uncovered`, with certainty `always`, nothing is `covered`, and nothing is walked ("Static errors" in [v3-fallback-coverage.md](v3-fallback-coverage.md), [#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)).
 - The expression compiles through `fig.compile()`, so it shares the compile cache with `evaluate()`. Unlike `validate()`, which stays out of the cache, it is called once per committed edit rather than per keystroke, and a cache miss only ever costs a recompile.
 
 How it works is specified in [v3-fallback-coverage.md](v3-fallback-coverage.md), built in [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217): which nodes can throw and why, the failure rules and output declarations operators carry, the nodes it runs, value ranges, per-element walks and timeouts. It replaced the version first specified here, which took every operator node to be able to throw and listed only top-level values.

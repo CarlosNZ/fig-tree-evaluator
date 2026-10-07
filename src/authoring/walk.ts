@@ -19,7 +19,6 @@ import type {
   FragmentCallNode,
   OperatorNode,
   ReferenceNode,
-  SequencedIssue,
   SkeletonNode,
 } from '../compile/artifact'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
@@ -237,10 +236,7 @@ export class Analysis {
 
   private readonly strict: boolean
 
-  constructor(
-    private readonly options: RuleOptions,
-    private readonly issues: SequencedIssue[]
-  ) {
+  constructor(private readonly options: RuleOptions) {
     this.strict = options.evaluation.strictDataPaths === true
   }
 
@@ -260,7 +256,7 @@ export class Analysis {
       case 'constant':
         return { ...SAFE, output: exactly(node.value) }
       case 'invalid':
-        return this.staticError(node, 'malformed-node')
+        throw refused('an invalid node')
       case 'reference':
         return this.reference(node, ctx)
       case 'skeleton': {
@@ -523,18 +519,18 @@ export class Analysis {
             return namespace === 'index'
               ? { ...SAFE, output: frame.index }
               : this.drilled(node, frame.element, segments, [], [])
-        return this.staticError(node, 'unresolved-binding')
+        throw refused(`an unresolved '${node.raw}'`)
       }
       case 'vars': {
         const definition = await this.varDefinition(segments[0], ctx)
-        if (definition === undefined) return this.staticError(node, 'unresolved-var')
+        if (definition === undefined) throw refused(`an unresolved '${node.raw}'`)
         append(ctx.sink, definition.covered)
         const parts = [{ result: definition.result, eager: true }]
         return this.drilled(node, definition.result.output, segments.slice(1), parts, [])
       }
       case 'params': {
         const { entry, params = {} } = ctx.frame
-        if (entry === undefined) return this.staticError(node, 'unresolved-param')
+        if (entry === undefined) throw refused(`'${node.raw}' outside a fragment body`)
         const [name, ...rest] = segments
         // Bare `$params` reads every declared parameter
         if (name === undefined) {
@@ -596,7 +592,7 @@ export class Analysis {
    */
   private async call(node: FragmentCallNode, ctx: Context): Promise<NodeResult> {
     const { entry } = node
-    if (entry === undefined) return this.staticError(node, 'unknown-fragment')
+    if (entry === undefined) throw refused(`a call to the unknown fragment '${node.name}'`)
     const inner = { ...ctx, scope: pushScope(ctx, node.vars) }
     const own: Pending[] = []
     const parts: Part[] = []
@@ -691,22 +687,17 @@ export class Analysis {
     calls.set(key, analysed)
     return analysed
   }
-
-  /** A node the static checks refused, which never runs. */
-  private staticError(node: CompiledNode, code: string): NodeResult {
-    const issue = this.issues.find(
-      (sequenced) => sequenced.order === node.order && sequenced.issue.severity === 'error'
-    )?.issue
-    const failure: Failure = {
-      path: node.path,
-      code: issue?.code ?? code,
-      message: issue?.message ?? 'a static error',
-      certainty: 'always',
-      order: [node.order],
-    }
-    return combine([failure], [], NOTHING)
-  }
 }
+
+/**
+ * What only an expression with a static error holds. The walk runs on
+ * error-free artifacts alone, since `fallbackCoverage` reports a static
+ * error without walking, so reaching one is a bug in the analysis.
+ */
+const refused = (what: string): Error =>
+  new Error(
+    `[fig-tree internal] ${what} reached the coverage walk — the static gate should have refused it`
+  )
 
 const argumentCheck = (
   node: FragmentCallNode,

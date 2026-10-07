@@ -184,8 +184,9 @@ export default tseslint.config(
     // docs-dev/v3-specs/v3-packaging.md), paths through the artifact's own
     // helper, and judges values by the engine's own type checks, plain-object
     // test, path resolution, truthiness and validate hooks, classifies a
-    // body's throw as the engine does, and keys its rules by the core
-    // operators, so the analysis and the runtime cannot disagree. Its value
+    // body's throw as the engine does, keys its rules by the core operators
+    // and reads the static gate's limits, so the analysis and the runtime
+    // cannot disagree. Its value
     // imports outside the folder are held to those modules, all already in
     // the chunks it shares, so nothing else is pulled in by accident. Type
     // imports erase at build, so they may come from anywhere.
@@ -197,7 +198,8 @@ export default tseslint.config(
           patterns: [
             {
               regex:
-                '^(?!\\./|\\.\\./(FigTree|FigTreeError|OperatorFailure|errorCodes|compile/artifact|compile/helpers|operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness|utils)$)',
+                '^(?!\\./|\\.\\./(FigTree|FigTreeError|OperatorFailure|errorCodes|compile/artifact|compile/helpers|' +
+                'operators|typeCheck|typeIntersection|primitives/path|primitives/truthiness|utils|validation)$)',
               allowTypeImports: true,
               message:
                 'src/authoring/ imports values only from inside the folder and the engine modules its chunks hold already (`import type` from anywhere).',

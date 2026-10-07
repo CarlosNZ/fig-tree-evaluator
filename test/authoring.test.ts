@@ -338,6 +338,7 @@ describe('fragment calls', () => {
       },
       card: { expression: { title: { $risky: 't', fallback: '' }, body: '$data.b' } },
       plain: { expression: { a: '$params.x' }, parameters: { x: { type: 'number' } } },
+      unread: { expression: 'fixed', parameters: { x: { type: 'number' } } },
       needs: {
         expression: { $not: '$params.x' },
         parameters: { x: { type: 'any', required: true } },
@@ -415,7 +416,10 @@ describe('fragment calls', () => {
   })
 
   test('an argument the body never reads is never evaluated', async () => {
-    expect((await calls({ a: { $safe: {} }, b: { $plain: {} } })).uncovered).toEqual([])
+    // The argument would fail as it does at `plain`, were it evaluated
+    expect((await calls({ a: { $unread: { x: { $plus: ['$data.n', 1] } } } })).uncovered).toEqual(
+      []
+    )
   })
 
   test('an argument written in a body is reported at the outer call', async () => {
@@ -1307,12 +1311,117 @@ test('a deep path into the data takes no longer to follow than its depth', async
   expect(deep).toEqual(await coverage({ $plus: [path(2), 1] }))
 })
 
-test('an invalid node always fails, with its static error', async () => {
-  expect(
-    (await fallbackCoverage(fig, { a: { operator: 'plus', fragment: 'f' }, b: 1 })).uncovered
-  ).toEqual([
-    expect.objectContaining({ path: ['a'], code: ErrorCodes.malformedNode, certainty: 'always' }),
-  ])
+describe('static errors', () => {
+  // `evaluate()` refuses an expression with a static error before anything
+  // runs, so every one is uncovered, whatever fallback encloses it, nothing
+  // is covered, and nothing is walked
+  const cases: [string, unknown, FigTree, ReturnType<typeof where>[]][] = [
+    [
+      'an unknown operator under an enclosing fallback',
+      { a: { $plus: [{ operator: 'gone' }, 1], fallback: 0 } },
+      fig,
+      [{ path: ['a', '$plus', 0], code: ErrorCodes.unknownOperator }],
+    ],
+    [
+      'a missing required parameter: the body is never run without it',
+      { operator: 'if', condition: true, fallback: 1 },
+      fig,
+      [{ path: [], code: ErrorCodes.missingRequired, parameter: 'then' }],
+    ],
+    [
+      'an unresolved var',
+      { operator: 'plus', values: ['$vars.nope', 1], fallback: 0 },
+      fig,
+      [{ path: ['values', 0], code: ErrorCodes.unresolvedVar }],
+    ],
+    [
+      'a literal of the wrong type',
+      { $plus: ['x', 2], fallback: 0 },
+      fig,
+      [{ path: ['$plus'], code: ErrorCodes.typeCheck, parameter: 'values' }],
+    ],
+    [
+      'an unrecognized $ key, a fallback beside it',
+      { $myPluginOp: [1, 2], fallback: 'x' },
+      fig,
+      [{ path: ['$myPluginOp'], code: ErrorCodes.unrecognizedIdentifier }],
+    ],
+    [
+      'an unrecognized $ key inside a call, whose literal it also makes the wrong type',
+      { $plus: [1, { $myPluginOp: 1 }], fallback: 0 },
+      fig,
+      [
+        { path: ['$plus'], code: ErrorCodes.typeCheck, parameter: 'values' },
+        { path: ['$plus', 1, '$myPluginOp'], code: ErrorCodes.unrecognizedIdentifier },
+      ],
+    ],
+    [
+      'an invalid node',
+      { a: { operator: 'plus', fragment: 'f' }, b: 1 },
+      fig,
+      [{ path: ['a'], code: ErrorCodes.malformedNode }],
+    ],
+    [
+      "several, in validate()'s order, and none of the walk's findings beside them",
+      { a: { operator: 'gone' }, b: { $divide: ['$data.n', '$data.d'] }, c: '$vars.nope' },
+      fig,
+      [
+        { path: ['a'], code: ErrorCodes.unknownOperator },
+        { path: ['c'], code: ErrorCodes.unresolvedVar },
+      ],
+    ],
+    [
+      "the instance's limits, first, as the gate reads them",
+      { a: { $plus: [1, '$vars.nope'] }, b: { $plus: [1, 2] } },
+      withRisky({ maxNodes: 1 }),
+      [
+        { path: [], code: ErrorCodes.maxNodesExceeded },
+        { path: ['a', '$plus', 1], code: ErrorCodes.unresolvedVar },
+      ],
+    ],
+    [
+      'under a timeout, with no timeout finding: nothing runs to wait',
+      { $risky: { operator: 'gone' } },
+      withRisky({ timeout: 50 }),
+      [{ path: ['$risky'], code: ErrorCodes.unknownOperator }],
+    ],
+  ]
+
+  test.each(cases)('%s', async (_label, expression, instance, expected) => {
+    const { uncovered, covered } = await fallbackCoverage(instance, expression)
+    expect(uncovered.map(where)).toEqual(expected)
+    expect(uncovered.every((finding) => finding.certainty === 'always')).toBe(true)
+    expect(covered).toEqual([])
+  })
+
+  test.each(cases)(
+    'agrees with validate() and evaluate(): %s',
+    async (_label, expression, instance) => {
+      const { uncovered } = await fallbackCoverage(instance, expression)
+      const errors = instance
+        .validate(expression)
+        .issues.filter((issue) => issue.severity === 'error')
+      expect(uncovered).toEqual(
+        errors.map(({ path, code, message, operator, parameter }) => ({
+          path,
+          code,
+          message,
+          certainty: 'always',
+          ...(operator !== undefined ? { operator } : {}),
+          ...(parameter !== undefined ? { parameter } : {}),
+        }))
+      )
+      // The one `evaluate()` throws is the first
+      await expect(instance.evaluate(expression)).rejects.toMatchObject({
+        code: uncovered[0].code,
+        path: uncovered[0].path,
+      })
+    }
+  )
+
+  test('warnings alone do not stop the walk', async () => {
+    expect(await uncovered({ a: '$typo', b: { $divide: [1, '$data.d'] } })).toEqual([['b'], ['b']])
+  })
 })
 
 describe('misuse', () => {

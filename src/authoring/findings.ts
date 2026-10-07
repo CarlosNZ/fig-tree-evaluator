@@ -9,6 +9,7 @@
 import { toNodePath } from '../compile/artifact'
 import type { FragmentCallNode, LinkedPath, NodePath } from '../compile/artifact'
 import type { FigTreeErrorCode } from '../errorCodes'
+import type { Issue } from '../issues'
 import type { CoverageFinding, CoveredFinding } from '../authoringTypes'
 
 /** One way a node can fail, where the failure starts. */
@@ -80,6 +81,27 @@ const toFinding = (failure: Failure): CoverageFinding => {
     ...(fragment !== undefined ? { fragment, fragmentPath } : {}),
   }
 }
+
+/**
+ * A static error as an uncovered finding: `evaluate()` refuses the call
+ * before anything runs, so no fallback is ever reached. The issue's
+ * `fragment` is not carried: on an issue it names the fragment a call is
+ * against, where a finding's means a failure inside the body.
+ */
+export const staticFinding = ({
+  path,
+  code,
+  message,
+  operator,
+  parameter,
+}: Issue): CoverageFinding => ({
+  path: [...path],
+  code,
+  message,
+  certainty: 'always',
+  ...(operator !== undefined ? { operator } : {}),
+  ...(parameter !== undefined ? { parameter } : {}),
+})
 
 const byOrder = (a: number[], b: number[]): number => {
   for (let i = 0; i < Math.min(a.length, b.length); i++) if (a[i] !== b[i]) return a[i] - b[i]

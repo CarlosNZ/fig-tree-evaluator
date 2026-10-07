@@ -12,8 +12,9 @@
 import { FigTree, viewHandle } from '../FigTree'
 import { FigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
+import { limitIssues } from '../validation'
 import type { FallbackCoverage, FallbackCoverageOptions } from '../authoringTypes'
-import { coveredFinding, isDemand, report, uncoveredFinding } from './findings'
+import { coveredFinding, isDemand, report, staticFinding, uncoveredFinding } from './findings'
 import type { Caught, Failure } from './findings'
 import { Analysis } from './walk'
 
@@ -31,6 +32,12 @@ import { Analysis } from './walk'
  * and shielding is all or nothing (see "Timeouts" in the spec). The
  * expression compiles through `compile()`, so it shares the compile cache
  * with `evaluate()`.
+ *
+ * An expression with a static error never runs: `evaluate()` refuses it
+ * before anything starts, so no fallback can catch one. Its report is
+ * every static error, uncovered, in the order `evaluate()` reads them to
+ * choose the one it throws, and nothing is walked ("Static errors" in the
+ * spec).
  */
 export const fallbackCoverage = async (
   fig: unknown,
@@ -47,8 +54,16 @@ export const fallbackCoverage = async (
     })
   // A handle from this copy is always readable
   const { artifact, options: effective } = viewHandle(fig.compile(expression))!
+
+  // The static gate, as `evaluate()` applies it
+  const errors = [
+    ...limitIssues(artifact, effective),
+    ...artifact.issues.map((s) => s.issue),
+  ].filter((issue) => issue.severity === 'error')
+  if (errors.length > 0) return { uncovered: errors.map(staticFinding), covered: [] }
+
   const evaluation = effective as unknown as Record<string, unknown>
-  const analysis = new Analysis({ strictNumbers, evaluation }, artifact.issues)
+  const analysis = new Analysis({ strictNumbers, evaluation })
 
   const caught: Caught[] = []
   const { escapes, waits } = await analysis.root(artifact.root, caught)

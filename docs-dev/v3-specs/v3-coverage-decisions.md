@@ -144,6 +144,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** Two levels were all eight steps ever needed, and a boolean reads as `strictDataPaths` does; a level called "bounded" would have clashed with value ranges' bounds. The field holds what static analysis may assume of an operator, its failures, its output and that it is pure, so naming it after one analysis would mislead the next to read it; `failureCoverage` fitted only two of its three parts. The `timeout` option stood in for a per-call `evaluate()` option, but since step 8 only whether a timeout is in force matters, never its value, and a host that passes one per call can analyse with an instance that carries it; without it, the options are the analysis's own, which settles where they sit. `Math.floor` and `Math.ceil` of a finite number are integers, a non-finite result never passes the result boundary, and nothing read the narrower type until #217. Without exactness as a check, a change that made the analysis less precise but still sound passed CI, only a logged count falling.
 
+## Static errors: reported, never walked (Carl, 2026-10-07, at #232)
+
+**Decision.** An expression with a static error reports its static errors alone: every one `uncovered`, `always`, in the order `evaluate()` reads them (the instance's limits first, then tree order), with nothing `covered` and nothing walked. The walk keeps no handling of its own for what only a static error produces (an invalid node, an unresolved reference, a call to an unknown fragment): reaching one is an internal error.
+
+**Why.** `evaluate()` refuses such an expression before anything runs, so no fallback is ever reached ([#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)). The walk had re-derived a few static errors, where an enclosing fallback then covered them, ran `if`'s body over a missing `then`, and never saw the rest, `unrecognized-identifier` among them. Walking on with broken nodes treated as opaque was considered and rejected: its runtime findings describe an expression that does not exist yet, and `validate()` already shows the errors while the author fixes them.
+
 ## Open
 
 All carried to the issues above.

@@ -8,13 +8,14 @@ import type { ExpectedType } from './typeCheck'
 
 /**
  * What `fallbackCoverage` reports ("What it returns" in
- * docs-dev/v3-specs/v3-fallback-coverage.md). Meaningful for a valid
- * expression only.
+ * docs-dev/v3-specs/v3-fallback-coverage.md). For an expression with a
+ * static error, its static errors alone: `evaluate()` refuses it before
+ * anything runs.
  */
 export interface FallbackCoverage {
   /**
    * Failures nothing catches: each can reject evaluate(). Empty when none
-   * can
+   * can. Every static error is one, and beside one there is nothing else
    */
   uncovered: CoverageFinding[]
   /** Failures a fallback catches */
