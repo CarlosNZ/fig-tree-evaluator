@@ -52,6 +52,17 @@ test('every hole root needs a constant fallback, and each that lacks one is list
   expect(await underTimeout(partial)).toEqual([['b']])
 })
 
+test('a nested literal that keeps its vars is listed hole by hole', async () => {
+  const sectioned = {
+    section: {
+      vars: { x: '$data.x' },
+      a: { $http: 'https://x.test', fallback: [] },
+      b: { $plus: ['$vars.x', 1] },
+    },
+  }
+  expect(await underTimeout(sectioned)).toEqual([['section', 'b']])
+})
+
 test('a node root is covered by its own constant fallback', async () => {
   expect(await underTimeout({ $http: 'https://x.test', fallback: null })).toEqual([])
   expect(await underTimeout({ $http: 'https://x.test' })).toEqual([[]])

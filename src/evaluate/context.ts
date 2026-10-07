@@ -92,11 +92,12 @@ export interface EvaluationContext {
    */
   params?: ParamsFrame
   /**
-   * Wrapped around each of the artifact ROOT's holes, where a shielded
-   * timeout asked for one (./run.ts builds it). Consumed exactly once, by
-   * the root skeleton, which clears it for everything below: shielded
-   * assembly is defined on the hole — the maximal evaluable node — and a
-   * nested skeleton's holes are already inside one.
+   * Wrapped around each of the ARTIFACT's holes, where a shielded timeout
+   * asked for one (./run.ts builds it). Handed down by the root skeleton
+   * through any nested skeleton a `vars` block kept, and consumed by each
+   * hole, which clears it for everything below: shielded assembly is
+   * defined on the hole — the maximal evaluable node — and a skeleton
+   * inside one is already inside it.
    */
   rootBoundary?: HoleBoundary
   /**

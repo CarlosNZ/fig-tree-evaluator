@@ -92,8 +92,8 @@
  *     holes at all collapses the container to one constant — the raw value
  *     by identity where nothing changed.
  * 14. The outermost evaluable nodes become the artifact's holes: the root
- *     itself where it is one, or each hole of a root skeleton, a `vars`
- *     block on it included. A constant root has none.
+ *     itself where it is one, or each hole of a root skeleton, through any
+ *     nested skeleton a `vars` block kept. A constant root has none.
  * 15. Each hole takes its shielding precompute — a constant `fallback`,
  *     authored or from `operatorDefaults`. Every hole shielded makes the
  *     artifact `timeoutShielded`.
@@ -1874,25 +1874,22 @@ const assembleContainer = (
 
 // ── Artifact-level holes and shielding ──────────────────────────────
 
-const rootHoles = (root: CompiledNode): ArtifactHole[] => {
-  if (root.kind === 'constant') return []
-  // A plain-literal root shields per hole, each embedded expression
-  // declaring its own static fallback (fallback rule 3). A `vars` block on
-  // that root does not change the accounting: on a timeout no hole is
-  // demanded, so no var is ever evaluated, and the constant skeleton
-  // splices around the holes exactly as it would without one. The scope
-  // itself stays on the root node, which is where evaluation reads it.
-  if (root.kind === 'skeleton')
-    return root.holes.map((hole) => ({
-      node: hole.node,
-      ...withTimeoutFallback(hole.node),
-    }))
-  return [{ node: root, ...withTimeoutFallback(root) }]
-}
-
-const withTimeoutFallback = (node: CompiledNode): { timeoutFallback?: { value: unknown } } => {
-  const fallback = timeoutFallbackFor(node)
-  return fallback === undefined ? {} : { timeoutFallback: fallback }
+const rootHoles = (root: CompiledNode, into: ArtifactHole[] = []): ArtifactHole[] => {
+  // A plain literal is structure, not a value: it shields per hole, each
+  // embedded expression declaring its own static fallback (fallback rule
+  // 3), and that holds through nesting — a literal that keeps its own
+  // `vars` block stays a skeleton of its parent's, and its holes are the
+  // artifact's exactly as a flattened one's are. A `vars` block does not
+  // change the accounting either way: on a timeout no hole is demanded,
+  // so no var is ever evaluated, and the constant skeleton splices around
+  // the holes exactly as it would without one. The scope itself stays on
+  // the skeleton node, which is where evaluation reads it
+  if (root.kind === 'skeleton') for (const hole of root.holes) rootHoles(hole.node, into)
+  else if (root.kind !== 'constant') {
+    const fallback = timeoutFallbackFor(root)
+    into.push(fallback === undefined ? { node: root } : { node: root, timeoutFallback: fallback })
+  }
+  return into
 }
 
 /**

@@ -262,10 +262,11 @@ describe('canonicalForm', () => {
 // ── timeoutFallback and timeoutShielded ─────────────────────────────
 
 describe('timeoutFallback', () => {
-  test('from each of its three sources, on the top-level holes only', () => {
+  test("from each of its three sources, on the artifact's holes only", () => {
     const { canonicalForm, timeoutShielded } = report(
       {
         authored: { $plus: [1, '$data.x'], fallback: 0 },
+        scoped: { vars: { x: '$data.x' }, value: { $plus: [1, '$vars.x'], fallback: 0 } },
         defaulted: { $firstOf: ['$data.y'] },
         lifted: { $greet: { name: '$data.n' } },
         nested: { $plus: [{ $divide: [1, '$data.z'], fallback: 0 }, 1] },
@@ -283,7 +284,12 @@ describe('timeoutFallback', () => {
     expect(hole('defaulted')).not.toHaveProperty('fallback')
     expect(hole('lifted')).toMatchObject({ timeoutFallback: 'Hello!' })
     expect(hole('lifted')).not.toHaveProperty('fallback')
-    // A constant fallback below the top level catches failures, not timeouts
+    // A literal that keeps its vars is structure, so the holes are inside it
+    const scoped = hole('scoped')
+    if (scoped?.kind !== 'skeleton') throw new Error('unreachable')
+    expect(scoped).not.toHaveProperty('timeoutFallback')
+    expect(scoped.holes[0].node).toMatchObject({ timeoutFallback: 0 })
+    // A constant fallback below a hole catches failures, not timeouts
     expect(hole('nested')).not.toHaveProperty('timeoutFallback')
     const divide = byKind(canonicalForm, 'operator').find(
       (node) => node.kind === 'operator' && node.operator === 'divide'

@@ -107,20 +107,24 @@ const dispatch = (node: CompiledNode, ctx: EvaluationContext): MaybePromise<unkn
 }
 
 const evaluateSkeleton = async (node: SkeletonNode, ctx: EvaluationContext): Promise<unknown> => {
-  // The hole boundary belongs to the ARTIFACT root's holes alone, and this
-  // is the first skeleton an evaluation reaches — so take it, and clear it
-  // for everything below: a nested skeleton's holes sit inside a hole
-  // already, where shielded assembly is not defined
+  // The hole boundary belongs to the ARTIFACT's holes alone: the leaves
+  // reached through plain-literal nesting. So a hole that is itself a
+  // skeleton (a literal that kept its `vars`) inherits it, and every other
+  // hole consumes it — cleared for everything below, where a nested
+  // skeleton's holes sit inside a hole already, and shielded assembly is
+  // not defined
   const boundary = ctx.rootBoundary
   const inner = boundary === undefined ? ctx : { ...ctx, rootBoundary: undefined }
   // `vars` is functional and consumed on a plain object literal, scoping
   // the whole subtree — and the compiler has already stripped the key, so
   // the scope is all that is left to apply
   const scoped = pushVars(inner, node.vars)
-  const outcomes = node.holes.map((hole) =>
+  const outcomes = node.holes.map(({ node: hole }) =>
     boundary === undefined
-      ? evaluateNode(hole.node, scoped)
-      : boundary(() => evaluateNode(hole.node, scoped), hole.node)
+      ? evaluateNode(hole, scoped)
+      : hole.kind === 'skeleton'
+        ? evaluateNode(hole, { ...scoped, rootBoundary: boundary })
+        : boundary(() => evaluateNode(hole, scoped), hole)
   )
   // A skeleton whose holes all answered at once — data reads into a
   // config — needs no `Promise.all`

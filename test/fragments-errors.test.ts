@@ -177,6 +177,28 @@ describe('timeout shielding through a call', () => {
     })
   })
 
+  test('the lift reaches through a nested literal that keeps its vars', async () => {
+    const sleep = slow()
+    const fig = build(
+      {
+        card: {
+          expression: {
+            header: {
+              vars: { t: 'x' },
+              title: { $sleep: [300], fallback: 'untitled' },
+            },
+            body: { $sleep: [300], fallback: '' },
+          },
+        },
+      },
+      [sleep.definition]
+    )
+    expect(await uncoveredUnderTimeout(fig, { a: { $card: {} } })).toEqual([])
+    expect(await fig.evaluate({ a: { $card: {} } }, { timeout: 30 })).toEqual({
+      a: { header: { title: 'untitled' }, body: '' },
+    })
+  })
+
   test('one unshielded hole leaves the whole skeleton body unlifted', async () => {
     const sleep = slow()
     const fig = build(
