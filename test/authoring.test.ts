@@ -219,8 +219,8 @@ describe('an operatorDefaults fallback', () => {
       uncovered: [],
       covered: [{ path: ['a'], code: external, by: ['a'] }],
     })
-    // Returned as it is, so even a reference-shaped string cannot throw
-    const literal = withRisky({ operatorDefaults: { risky: { fallback: '$data.x' } } })
+    // Returned as it is, so even a `$`-shaped string cannot throw
+    const literal = withRisky({ operatorDefaults: { risky: { fallback: '$USD' } } })
     expect(await uncovered({ a: node }, literal)).toEqual([])
     // Another operator's default covers nothing here
     const other = withRisky({ operatorDefaults: { plus: { fallback: 0 } } })

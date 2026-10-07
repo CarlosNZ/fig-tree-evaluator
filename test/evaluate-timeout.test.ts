@@ -128,11 +128,13 @@ describe('timeout shielding', () => {
     expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe('offline')
   })
 
-  it('whatever its shape: it is returned as written, never evaluated', async () => {
-    for (const fallback of [{ $USD: 0 }, { operator: 'plus', values: [1, 2] }]) {
-      const { fig } = setup([], { operatorDefaults: { sleep: { fallback } } })
-      expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe(fallback)
-    }
+  it('as written: a constant, which registration holds it to', async () => {
+    const fallback = { offline: true, tokens: ['$USD'] }
+    const { fig } = setup([], { operatorDefaults: { sleep: { fallback } } })
+    expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe(fallback)
+    expect(() => setup([], { operatorDefaults: { sleep: { fallback: { $USD: 0 } } } })).toThrow(
+      /must be a constant value/
+    )
   })
 
   it('a literal root assembles: finished holes real, unfinished ones their static fallbacks', async () => {

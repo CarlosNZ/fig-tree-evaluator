@@ -1907,8 +1907,8 @@ const timeoutFallbackFor = (node: CompiledNode): { value: unknown } | undefined 
     return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
   if (node.kind === 'operator') {
     const defaults = node.entry.hostDefaults
-    // An operatorDefaults fallback is constant by construction: the runtime
-    // returns it as written, never evaluated (src/evaluate/operator.ts)
+    // An operatorDefaults fallback is constant: registration refuses any
+    // other (src/registry.ts), and the runtime returns it as written
     if (defaults !== undefined && Object.hasOwn(defaults, 'fallback'))
       return { value: defaults.fallback }
     return undefined

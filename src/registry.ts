@@ -28,6 +28,7 @@ import { isPlainObject } from './utils'
 import { checkConstraints, checkType } from './typeCheck'
 import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
 import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
+import { probeConstant } from './compile/probe'
 
 type Path = (string | number)[]
 
@@ -228,9 +229,20 @@ const validateOperatorDefaults = (
     for (const [key, value] of Object.entries(defaults)) {
       const keyPath: Path = [...path, key]
       if (MODIFIER_KEYS.includes(key)) {
-        // fallback: any constant (constancy classification is a Phase-3
-        // compiler concern); noCache: the literal true, on an operator that
-        // caches at all — it only ever turns caching off
+        // fallback: a constant, since the runtime returns it as written
+        // and never evaluates it (src/evaluate/operator.ts), so a value the
+        // compiler would evaluate could only mislead; noCache: the literal
+        // true, on an operator that caches at all — it only ever turns
+        // caching off
+        if (key === 'fallback' && !probeConstant(value).constant) {
+          addIssue(
+            ErrorCodes.invalidOptions,
+            `the default fallback for '${operatorName}' must be a constant value — it is returned as written, never evaluated`,
+            keyPath,
+            operatorName
+          )
+          valid = false
+        }
         if (key === 'noCache') {
           if (value !== true) {
             addIssue(

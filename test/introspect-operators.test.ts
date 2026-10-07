@@ -168,6 +168,35 @@ describe('operatorDefaults — reported beside, never merged over', () => {
   test('noCache on an operator that never caches is refused at construction', () => {
     expect(() => build({ operatorDefaults: { round: { noCache: true } } })).toThrow(/never caches/)
   })
+
+  test('a fallback the compiler would evaluate is refused at construction', () => {
+    // The runtime returns a default fallback as written, so a value that
+    // looks like an expression could only mislead: an unrecognized `$` key
+    // is an error anywhere in an expression, and these would be calls
+    for (const fallback of [{ $USD: 0 }, { operator: 'plus', values: [1, 2] }, '$data.x']) {
+      let error: unknown
+      try {
+        build({ operatorDefaults: { round: { fallback } } })
+      } catch (caught) {
+        error = caught
+      }
+      expect(error).toMatchObject({
+        code: 'invalid-options',
+        issues: [
+          {
+            code: 'invalid-options',
+            path: ['operatorDefaults', 'round', 'fallback'],
+            operator: 'round',
+            message: expect.stringMatching(/must be a constant value/),
+          },
+        ],
+      })
+    }
+    // Any constant is accepted, `$`-shaped strings the compiler reads as
+    // text included
+    for (const fallback of [null, 0, 'offline', '$USD', { fallback: 1 }, [1, { a: '$' }]])
+      expect(() => build({ operatorDefaults: { round: { fallback } } })).not.toThrow()
+  })
 })
 
 describe('copy posture', () => {
