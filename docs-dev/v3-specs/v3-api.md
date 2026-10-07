@@ -60,7 +60,7 @@ interface FigTreeOptions {
   // ── Resource limits ────────────────────────────────────
   maxDepth?: number  // structural, enforced at compile/validate
   maxNodes?: number  // structural, enforced at compile/validate — counts EVALUABLE nodes (ruled Sept 2026, provisional)
-  timeout?: number   // ms, whole evaluation — strict: deadline includes fallback evaluation; only timeout shielding (static root-level fallbacks) can shape a timed-out result (see Node grammar); the clock starts when evaluation begins, after the static gate
+  timeout?: number   // ms, whole evaluation — strict: deadline includes fallback evaluation; only timeout shielding (static root-level fallbacks) can shape a timed-out result (see Node grammar); the clock starts when evaluation begins, after the static gate. No default (#221, ruled Oct 2026): an unbounded evaluation waits as long as its I/O clients do, and a host bounds it here, on the client it passes in, or both
   signal?: AbortSignal // threaded through to HTTP/SQL clients; instance-level = default for all evaluations
 
   // ── Caching ────────────────────────────────────────────

@@ -96,6 +96,10 @@ export interface FigTreeOptions {
   /**
    * ms, whole evaluation — a strict deadline that includes fallback time.
    * Only static shielding (src/evaluate/run.ts) can shape a timed-out result.
+   * No default: unset, an evaluation waits as long as its I/O clients do,
+   * and a client left on its own defaults may wait forever (Axios and
+   * node-postgres set no request timeout). A host that runs network-bound
+   * expressions bounds them here, on the client it passes in, or both.
    */
   timeout?: number
   signal?: AbortSignal
