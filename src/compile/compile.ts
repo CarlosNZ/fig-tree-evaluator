@@ -108,13 +108,7 @@ import { isPlainDataObject, nearestName } from '../utils'
 import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
-import {
-  canonicalSegments,
-  isPathSegment,
-  parsePath,
-  WILDCARD,
-  type PathSegment,
-} from '../primitives'
+import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
 import { scanTemplate, type TemplateSegment } from '../templateTokens'
 import {
   bareNamespace,
@@ -773,103 +767,72 @@ const finalizeParams = (
  * path's first key names. The artifact only ever holds the drilled form,
  * `{ path: 'code', from: '$vars.country' }`, which evaluation, `default`,
  * `strictDataPaths` and the static resolution of the name all handle
- * already, so this rewrite is the whole feature. It runs over the pending
- * entries, before the walk would read the bare string and refuse it.
+ * already, so this rewrite is the whole feature. It respells the pending
+ * entries before the walk reads them, and the walk builds the nodes: the
+ * source is rendered from the parsed first segment, losslessly, so a key
+ * the dot grammar cannot carry (`['a.b', 'c']`) still names its var.
  *
  * `$data` is dropped: an absent `from` IS the evaluation data, and the
- * dependency record then lists the path instead of going dynamic. `$vars`
- * and `$params` move the path's first key into the source. A path that
- * cannot name a var — computed, empty, or opening with an index or `[*]` —
- * is an error beside `$vars`, which has no whole-scope value to fall back
- * on; beside `$params` the node stands as authored, since a bare `$params`
- * is a value in its own right (every argument resolved) and the read is
- * then an ordinary drill into it. `$element`, `$index` and `as` bindings
- * are values already and are never touched.
+ * dependency record then lists the path instead of going dynamic. A path
+ * that cannot name a var — computed, or not opening with a key — is an
+ * error beside `$vars`, which has no whole-scope value to fall back on;
+ * beside `$params` the node stands as authored, since a bare `$params` is
+ * a value in its own right (every argument resolved) and the read is then
+ * an ordinary drill into it. `$element`, `$index` and `as` bindings are
+ * values already and are never touched.
  */
 const rewriteGetSource = (state: WalkState, node: OperatorNode, pending: PendingParam[]) => {
   const at = pending.findIndex((entry) => entry.name === 'from')
   const from = pending[at]
   if (from?.kind !== 'value' || typeof from.value !== 'string') return
   const namespace = bareNamespace(from.value)
-  if (namespace === 'data') {
-    pending.splice(at, 1)
-    return
-  }
+  if (namespace === 'data') pending.splice(at, 1)
   if (namespace !== 'vars' && namespace !== 'params') return
-
   const pathEntry = pending.find((entry) => entry.name === 'path')
-  const read = readLiteralPath(state, pathEntry)
-  if (typeof read === 'string') {
-    if (namespace === 'params') return
+  const segments = pathEntry?.kind === 'value' ? keyedPath(state, pathEntry.value) : null
+  if (segments === null || pathEntry?.kind !== 'value') {
+    if (namespace !== 'vars') return
+    // The placeholder keeps the walk from adding the generic bare-vars
+    // message on top; whatever else is wrong with the path, its own check
+    // reports
     const order = state.order++
-    state.nodeCount++
     emit(
       state,
       'error',
       ErrorCodes.bareVars,
-      `'${from.value}': with 'from: ${from.value}' the path's first key names the var, so the path must be written out and start with a key — this path ${read}`,
+      `'${from.value}': with 'from: ${from.value}' the path's first key names the var, so the path must be written out and start with a key`,
       from.path,
       order,
       { operator: 'get', parameter: 'from' }
     )
+    pending.splice(at, 1)
     node.params.from = invalid(from.value, from.path, order)
-  } else {
-    // The source is built from the parsed first segment, never by joining
-    // text, so a key the dot grammar cannot carry (`['a.b', 'c']`) still
-    // names its var; `raw` is the lossless render, for messages. The
-    // remainder keeps the authored face: a string renders losslessly
-    // (`[*]` and quoted keys included), an array stays segments
-    const [first, ...rest] = read.segments
-    state.nodeCount++
-    node.params.from = {
-      kind: 'reference',
-      namespace,
-      segments: [first],
-      raw: renderReference(namespace, [first]),
-      path: from.path,
-      order: state.order++,
-    }
-    ;(pathEntry as Extract<PendingParam, { kind: 'value' }>).value = read.array
-      ? rest
-      : renderSegments(rest)
+    return
   }
-  pending.splice(at, 1)
+  const [first, ...rest] = segments
+  from.value = renderReference(namespace, [first])
+  pathEntry.value = Array.isArray(pathEntry.value) ? rest : renderSegments(rest)
 }
 
 /**
- * A `get` path the rewrite can take a var name from: a literal string in
- * the path grammar or a literal segments array, whose first segment is a
- * key. Anything else comes back as the reason it cannot, for the message.
+ * A literal `get` path whose first segment is a key, as segments; `null`
+ * for anything else. A string element counts as a key only when the walk
+ * would not read it as a reference, which would make the path computed.
  */
-const readLiteralPath = (
-  state: WalkState,
-  entry: PendingParam | undefined
-): { segments: PathSegment[]; array: boolean } | string => {
-  if (entry === undefined) return 'is missing'
-  if (entry.kind !== 'value') return 'is computed'
-  const { value } = entry
-  // A string element is a key only when the walk would not read it as a
-  // reference, which would make the path computed
+const keyedPath = (state: WalkState, value: unknown): PathSegment[] | null => {
   const isLiteral = (segment: unknown) => {
     if (typeof segment !== 'string') return isPathSegment(segment)
     const { kind } = recognizeReference(segment, state.scope)
     return kind === 'plain' || kind === 'unrecognized'
   }
-  const array = Array.isArray(value)
-  let segments: PathSegment[] = []
-  if (array || typeof value === 'string') {
-    if (!(array ? value.every(isLiteral) : isLiteral(value))) return 'is computed'
-    try {
-      segments = array ? value : parsePath(value)
-    } catch {
-      return 'does not parse'
-    }
-  } else if (value !== null) return 'is computed'
-  const first = segments[0]
-  if (first === undefined) return 'is empty'
-  if (first === WILDCARD) return 'starts with [*]'
-  if (typeof first !== 'string') return 'starts with an index'
-  return { segments, array }
+  try {
+    const segments = Array.isArray(value)
+      ? value.every(isLiteral) && value
+      : typeof value === 'string' && isLiteral(value) && parsePath(value)
+    return segments && typeof segments[0] === 'string' ? segments : null
+  } catch {
+    return null
+  }
 }
 
 // ── buildString: the template scan ──────────────────────────────────

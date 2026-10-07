@@ -94,6 +94,14 @@ describe('unresolved references', () => {
     expect(bare).toMatchObject({ severity: 'error', parameter: 'from', path: ['$get', 'from'] })
   })
 
+  test('the walk builds the rewritten source, so its issue keeps its written place', () => {
+    // `default` is written before `from`, so its issue comes first
+    expect(errorCodes({ $get: { default: '$index', path: 'typo.x', from: '$vars' } })).toEqual([
+      'unresolved-binding',
+      'unresolved-var',
+    ])
+  })
+
   test('$element/$index resolve only inside an iterator each subtree', () => {
     expect(errorCodes({ $map: ['$data.users', '$element.name'] })).toHaveLength(0)
     expect(errorCodes({ $not: '$element' })).toContain('unresolved-binding')

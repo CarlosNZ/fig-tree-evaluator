@@ -207,26 +207,28 @@ describe('a bare namespace as get’s from', () => {
   })
 
   test('$vars needs a path it can take a name from', () => {
-    const cases: [unknown, string][] = [
-      ['$data.which', 'is computed'],
-      [{ $get: 'k' }, 'is computed'],
-      [['a', '$data.k'], 'is computed'],
-      [5, 'is computed'],
-      ['', 'is empty'],
-      [[], 'is empty'],
-      [null, 'is empty'],
-      ['[0].x', 'starts with an index'],
-      [[0, 'x'], 'starts with an index'],
-      ['[*].x', 'starts with [*]'],
+    // Computed, empty, or opening with an index or a projection: one
+    // error, on `from`, saying what the path has to be. Whatever else is
+    // wrong with the path (missing, unparseable, the wrong type), its own
+    // check reports beside it
+    const paths = [
+      '$data.which',
+      { $get: 'k' },
+      ['a', '$data.k'],
+      5,
+      '',
+      [],
+      null,
+      '[0].x',
+      [0, 'x'],
+      '[*].x',
     ]
-    for (const [path, reason] of cases) {
+    for (const path of paths) {
       const errors = errorsOf({ path, from: '$vars' })
       expect(errors.map((issue) => issue.code)).toEqual(['bare-vars'])
       expect(errors[0].message).toContain('the path must be written out and start with a key')
-      expect(errors[0].message).toContain(`this path ${reason}`)
-      expect(errors[0].parameter).toBe('from')
+      expect(errors[0]).toMatchObject({ operator: 'get', parameter: 'from' })
     }
-    // Beside the problem the other layers already report
     expect(errorsOf({ from: '$vars' }).map((issue) => issue.code)).toContain('bare-vars')
     expect(errorsOf({ path: 'a[', from: '$vars' }).map((issue) => issue.code)).toContain(
       'bare-vars'
