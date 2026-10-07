@@ -111,9 +111,11 @@ import { checkNameLegality } from '../names'
 import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
 import { scanTemplate, type TemplateSegment } from '../templateTokens'
 import {
+  bareNamespace,
   bindingNamespace,
   indexBinding,
   recognizeReference,
+  renderReference,
   renderSegments,
   rendersAsWritten,
   splitSigilToken,
@@ -721,6 +723,7 @@ const finalizeParams = (
 ) => {
   const definition = node.entry.definition
   const iterates = definition.resolution.perElement.length > 0
+  if (node.name === 'get') rewriteGetSource(state, node, pending)
 
   let binding: string | undefined
   if (iterates) {
@@ -754,6 +757,82 @@ const finalizeParams = (
 
   recordGetDependency(state, node)
   compileTemplate(state, node)
+}
+
+// ── get: a bare namespace as the source ─────────────────────────────
+
+/**
+ * In `get`, `from` may be a bare namespace, and `path` is read from it
+ * (#237): `{ path: 'country.code', from: '$vars' }` reads the var the
+ * path's first key names. The artifact only ever holds the drilled form,
+ * `{ path: 'code', from: '$vars.country' }`, which evaluation, `default`,
+ * `strictDataPaths` and the static resolution of the name all handle
+ * already, so this rewrite is the whole feature. It respells the pending
+ * entries before the walk reads them, and the walk builds the nodes: the
+ * source is rendered from the parsed first segment, losslessly, so a key
+ * the dot grammar cannot carry (`['a.b', 'c']`) still names its var.
+ *
+ * `$data` is dropped: an absent `from` IS the evaluation data, and the
+ * dependency record then lists the path instead of going dynamic. A path
+ * that cannot name a var — computed, or not opening with a key — is an
+ * error beside `$vars`, which has no whole-scope value to fall back on;
+ * beside `$params` the node stands as authored, since a bare `$params` is
+ * a value in its own right (every argument resolved) and the read is then
+ * an ordinary drill into it. `$element`, `$index` and `as` bindings are
+ * values already and are never touched.
+ */
+const rewriteGetSource = (state: WalkState, node: OperatorNode, pending: PendingParam[]) => {
+  const at = pending.findIndex((entry) => entry.name === 'from')
+  const from = pending[at]
+  if (from?.kind !== 'value' || typeof from.value !== 'string') return
+  const namespace = bareNamespace(from.value)
+  if (namespace === 'data') pending.splice(at, 1)
+  if (namespace !== 'vars' && namespace !== 'params') return
+  const pathEntry = pending.find((entry) => entry.name === 'path')
+  const segments = pathEntry?.kind === 'value' ? keyedPath(state, pathEntry.value) : null
+  if (segments === null || pathEntry?.kind !== 'value') {
+    if (namespace !== 'vars') return
+    // The placeholder keeps the walk from adding the generic bare-vars
+    // message on top; whatever else is wrong with the path, its own check
+    // reports
+    const order = state.order++
+    emit(
+      state,
+      'error',
+      ErrorCodes.bareVars,
+      `'${from.value}': with 'from: ${from.value}' the path's first key names the var, so the path must be written out and start with a key`,
+      from.path,
+      order,
+      { operator: 'get', parameter: 'from' }
+    )
+    pending.splice(at, 1)
+    node.params.from = invalid(from.value, from.path, order)
+    return
+  }
+  const [first, ...rest] = segments
+  from.value = renderReference(namespace, [first])
+  pathEntry.value = Array.isArray(pathEntry.value) ? rest : renderSegments(rest)
+}
+
+/**
+ * A literal `get` path whose first segment is a key, as segments; `null`
+ * for anything else. A string element counts as a key only when the walk
+ * would not read it as a reference, which would make the path computed.
+ */
+const keyedPath = (state: WalkState, value: unknown): PathSegment[] | null => {
+  const isLiteral = (segment: unknown) => {
+    if (typeof segment !== 'string') return isPathSegment(segment)
+    const { kind } = recognizeReference(segment, state.scope)
+    return kind === 'plain' || kind === 'unrecognized'
+  }
+  try {
+    const segments = Array.isArray(value)
+      ? value.every(isLiteral) && value
+      : typeof value === 'string' && isLiteral(value) && parsePath(value)
+    return segments && typeof segments[0] === 'string' ? segments : null
+  } catch {
+    return null
+  }
 }
 
 // ── buildString: the template scan ──────────────────────────────────
@@ -1036,7 +1115,9 @@ const recordDataPath = (
  * operator: `{ $get: 'a.b' }` ≡ `"$data.a.b"`. A literal path joins the
  * list as written, projections included; a computed one makes the
  * read-set unenumerable, which is what `dynamic` is for. A supplied
- * `from` contributes neither — the read is not against `$data` at all.
+ * `from` contributes neither — the read is not against `$data` at all
+ * (a bare `$data` has been dropped by `rewriteGetSource` by now, so it
+ * records as the omitted form).
  */
 const recordGetDependency = (state: WalkState, node: OperatorNode) => {
   if (node.name !== 'get' || node.params.from !== undefined) return

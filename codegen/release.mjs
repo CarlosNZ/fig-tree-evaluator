@@ -19,14 +19,16 @@
  *  7. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
  *     the upload: npm prompts for a 2FA code itself, and applies no branch
  *     check of its own, so a pre-release can go out from a non-main branch.
+ *  8. Opens the package's versions page on npm in the default browser.
  *
  * Nothing is pushed; the last line printed is the push command.
  *
  * `--dry-run` runs every step against the real version bump, but makes no
- * commit or tag, publishes with `npm publish --dry-run`, and puts
- * package.json and src/version.ts back as they were, even on failure. It
- * only warns about uncommitted changes, where a real release refuses, and
- * about a missing npm login, which `npm publish --dry-run` doesn't need.
+ * commit or tag, publishes with `npm publish --dry-run`, opens no browser,
+ * and puts package.json and src/version.ts back as they were, even on
+ * failure. It only warns about uncommitted changes, where a real release
+ * refuses, and about a missing npm login, which `npm publish --dry-run`
+ * doesn't need.
  *
  * The v2 line is released from its own maintenance branch, which does not
  * carry this script.
@@ -42,6 +44,8 @@ const CHANGELOG = 'CHANGELOG.md'
 
 /** The checks CI runs, in its order (.github/workflows/ci.yml). */
 const CHECKS = ['lint', 'format:check', 'typecheck', 'test', 'build', 'check:package']
+
+const VERSIONS_PAGE = 'https://www.npmjs.com/package/fig-tree-evaluator?activeTab=versions'
 
 // ── Versions ───────────────────────────────────────────────────────────────
 
@@ -138,6 +142,18 @@ const tagExists = (tag) =>
   spawnSync('git', ['rev-parse', '--quiet', '--verify', `refs/tags/${tag}`]).status === 0
 
 const step = (text) => console.log(`\n▸ ${text}`)
+
+/** Best effort: a browser that fails to open doesn't fail the release. */
+const openInBrowser = (url) => {
+  const [command, ...args] =
+    process.platform === 'darwin'
+      ? ['open']
+      : process.platform === 'win32'
+        ? ['cmd', '/c', 'start', '']
+        : ['xdg-open']
+  const result = spawnSync(command, [...args, url], { stdio: 'ignore' })
+  if (result.status !== 0) console.log(`\nCouldn't open a browser; the versions page is ${url}`)
+}
 
 /**
  * The version whose CHANGELOG.md entry covers `v`, or null. A beta may have
@@ -275,10 +291,12 @@ const main = async () => {
 
   if (DRY_RUN)
     console.log(`\nDry run of ${version} complete; package.json and ${VERSION_FILE} restored.`)
-  else
+  else {
+    openInBrowser(VERSIONS_PAGE)
     console.log(
       `\nPublished ${version} under "${distTag(next)}". Push with:\n  git push && git push origin ${tag}`
     )
+  }
 }
 
 main().catch((error) => {

@@ -184,6 +184,16 @@ describe('body compilation', () => {
     expect(codes(error)).toEqual([ErrorCodes.unresolvedParam])
   })
 
+  test('so does a bare $params as get’s from, whose path names the parameter', () => {
+    const error = rejects({
+      frag: {
+        expression: { $get: { path: 'nmae.first', from: '$params', default: null } },
+        parameters: { name: { type: 'object' } },
+      },
+    })
+    expect(codes(error)).toEqual([ErrorCodes.unresolvedParam])
+  })
+
   test('$params resolves against the declarations', () => {
     expect(
       new FigTree({

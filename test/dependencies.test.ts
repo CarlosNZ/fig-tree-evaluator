@@ -41,6 +41,15 @@ describe('what counts as a data read', () => {
     expect(paths({ $get: { path: 'name', from: { $plus: [1, 2] } } })).toEqual([])
   })
 
+  test('a bare $data as `from` is the omitted form, so the read is known', () => {
+    expect(fig.getDependencies({ $get: { path: 'a.b', from: '$data' } })).toEqual({
+      data: { paths: ['a.b'], dynamic: false },
+      operators: ['get'],
+      fragments: [],
+    })
+    expect(paths({ vars: { a: 1 }, x: { $get: { path: 'a.b', from: '$vars' } } })).toEqual([])
+  })
+
   test('internal namespaces name nothing outside the expression', () => {
     const expression = {
       vars: { n: 3 },

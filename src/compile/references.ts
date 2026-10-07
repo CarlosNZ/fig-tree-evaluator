@@ -57,6 +57,17 @@ export const splitSigilToken = (value: string): { token: string; rest: string } 
   return { token, rest: value.slice(1 + token.length) }
 }
 
+/**
+ * The namespace `value` names when it is exactly a bare token (`$vars`,
+ * `$v`, `$data`…), else null. An `as` binding is not a namespace, so
+ * `$item` is null here however the scope stands.
+ */
+export const bareNamespace = (value: string): ReferenceNamespace | null => {
+  const split = splitSigilToken(value)
+  if (split === null || split.rest !== '') return null
+  return NAMESPACE_TOKENS[split.token] ?? null
+}
+
 /** Parse a drill remainder (`.a[0]`, `[2].b`, or empty) into segments. */
 export const parseDrill = (rest: string): PathSegment[] => {
   if (rest === '') return []
