@@ -86,7 +86,7 @@ test('a vars-only object evaluates to {}', () => {
   expect(value).toEqual({})
 })
 
-test('a vars-carrying plain literal with holes stays its own evaluable unit', () => {
+test("a vars-carrying plain literal with holes stays its own skeleton, its holes the artifact's", () => {
   const artifact = compile({
     outer: {
       vars: { x: '$data.a' },

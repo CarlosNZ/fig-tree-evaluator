@@ -1842,7 +1842,9 @@ const assembleContainer = (
     }
     changed = true
     // Nested plain literals flatten into the enclosing skeleton — unless
-    // they carry a vars block, which makes them their own evaluable unit
+    // they carry a vars block, which keeps them a skeleton of their own,
+    // where their scope applies. Still structure, not a unit: their holes
+    // are the artifact's (`rootHoles`)
     if (node.kind === 'skeleton' && node.vars === undefined) {
       setOwn(skeleton, key, node.skeleton)
       holes.push(...node.holes.map((hole) => ({ ...hole, at: [key, ...hole.at] })))

@@ -208,4 +208,26 @@ describe('only an evaluation that can wait can be cut off', () => {
         .map((finding) => [finding.path, finding.coveredBy])
     ).toEqual([[['a'], ['a']]])
   })
+
+  test('a shielded value inside a nested literal that keeps its vars is covered at its own path', async () => {
+    const sectioned = {
+      section: {
+        vars: { u: 'x' },
+        a: { $io: 1, fallback: 0 },
+        b: { $upper: '$vars.u', fallback: '' },
+      },
+    }
+    const { uncovered, covered } = await fallbackCoverage(timed(waiting), sectioned)
+    expect(timeouts(uncovered)).toEqual([])
+    expect(
+      covered
+        .filter((finding) => finding.code === 'timeout')
+        .map((finding) => [finding.path, finding.coveredBy])
+    ).toEqual([
+      [
+        ['section', 'a'],
+        ['section', 'a'],
+      ],
+    ])
+  })
 })

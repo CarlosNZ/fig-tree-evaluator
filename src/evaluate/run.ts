@@ -19,8 +19,9 @@
  * or not the root is shielded.
  *
  * What this module adds is the **hole boundary** of a shielded `timeout`:
- * one function wrapped around each of the artifact's root holes, built here
- * and applied by the root skeleton (./evaluate.ts) — or, for a node root
+ * one function wrapped around each of the artifact's holes, built here and
+ * applied by the root skeleton (./evaluate.ts), which hands it down
+ * through any nested skeleton a `vars` block kept — or, for a node root
  * whose single hole IS the root, applied here around the whole call. It
  * races the hole against the root's expiry, handing back the hole's
  * precomputed static fallback where the expiry wins, so the answer is
@@ -93,8 +94,8 @@ export const runEvaluation = async (
       : undefined
   const base = createEvaluationContext(options, cache, root, recorder)
   const boundary = shielded ? holeBoundary(artifact, armed.expiry, timeout, recorder) : undefined
-  // A skeleton root hands each of its holes to the boundary; any other
-  // root IS its single hole, so the boundary wraps the whole call
+  // A skeleton root hands each of the artifact's holes to the boundary;
+  // any other root IS its single hole, so the boundary wraps the whole call
   const atRoot = boundary !== undefined && artifact.root.kind !== 'skeleton'
   const ctx: EvaluationContext =
     boundary !== undefined && !atRoot ? { ...base, rootBoundary: boundary } : base

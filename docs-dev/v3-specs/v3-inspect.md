@@ -136,7 +136,7 @@ A dynamic `fallback` (`fallback: '$data.x'`) never counts, since it could start 
 
 Having a `timeoutFallback` is not the same as being shielded. The expression is `timeoutShielded` only when every top-level hole has one, and shielding is all-or-nothing: a shielded expression assembles on a timeout (finished holes keep their real values, unfinished ones take their timeout fallbacks), while an unshielded one rejects outright and uses none of them. The example has three of six, so a timeout rejects it and its three timeout fallbacks go unused.
 
-Which nodes are top-level holes follows from the tree: each hole of a root skeleton, whether or not it has `vars`; otherwise the root itself, if it is evaluable; none for a constant root. An unshielded top-level hole looks like any other node — the rule identifies it, not a marker.
+Which nodes are top-level holes follows from the tree: each hole of a root skeleton, whether or not the root has `vars`, and through any nested skeleton a `vars` block kept — a literal is structure at any depth, so such a skeleton is never a top-level hole itself, and its holes are ([#216](https://github.com/CarlosNZ/fig-tree-evaluator/issues/216)); otherwise the root itself, if it is evaluable; none for a constant root. An unshielded top-level hole looks like any other node — the rule identifies it, not a marker.
 
 ### `issues`
 
