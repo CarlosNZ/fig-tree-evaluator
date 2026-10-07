@@ -210,6 +210,66 @@ describe('get — from', () => {
   test('from is named-face only — the second positional slot is `default`', async () => {
     expect(await ev({ $get: ['nope', 'the default'] }, data)).toBe('the default')
   })
+
+  // `from` may be a bare namespace, and `path` is read from it (#237). The
+  // compiler rewrites the node to the drilled form, so every behaviour
+  // below is the drilled form's: `default`, strictDataPaths and the
+  // null-source rule all apply inside the var exactly as they do beside
+  // `from: '$vars.country'`
+  describe('a bare namespace', () => {
+    const vars = { country: { code: 'NZ', name: 'New Zealand' }, list: [{ n: 1 }, { n: 2 }] }
+
+    test('$vars reads the var the path’s first key names', async () => {
+      expect(await ev({ vars, x: { $get: { path: 'country.code', from: '$vars' } } })).toEqual({
+        x: 'NZ',
+      })
+      expect(await ev({ vars, x: { $get: { path: 'country.code', from: '$v' } } })).toEqual({
+        x: 'NZ',
+      })
+    })
+
+    test('a one-key path reads the whole var', async () => {
+      expect(await ev({ vars, x: { $get: { path: 'country', from: '$vars' } } })).toEqual({
+        x: vars.country,
+      })
+    })
+
+    test('an array path takes its segments verbatim', async () => {
+      expect(await ev({ vars, x: { $get: { path: ['country', 'code'], from: '$vars' } } })).toEqual(
+        { x: 'NZ' }
+      )
+    })
+
+    test('a projection in the remainder survives', async () => {
+      expect(await ev({ vars, x: { $get: { path: 'list[*].n', from: '$vars' } } })).toEqual({
+        x: [1, 2],
+      })
+    })
+
+    test('default fires on a miss inside the var', async () => {
+      expect(
+        await ev({ vars, x: { $get: { path: 'country.capital', from: '$vars', default: '?' } } })
+      ).toEqual({ x: '?' })
+    })
+
+    test('strictDataPaths reaches inside the var, and default opts out', async () => {
+      const strict = new FigTree({ strictDataPaths: true })
+      const error = await rejection<FigTreeError>(
+        strict.evaluate({ vars, x: { $get: { path: 'country.capital', from: '$vars' } } })
+      )
+      expect(error.code).toBe('missing-data-path')
+      expect(
+        await strict.evaluate({
+          vars,
+          x: { $get: { path: 'country.capital', from: '$vars', default: null } },
+        })
+      ).toEqual({ x: null })
+    })
+
+    test('$data is the omitted form', async () => {
+      expect(await ev({ $get: { path: 'user.firstName', from: '$data' } }, data)).toBe('Steve')
+    })
+  })
 })
 
 // ── buildObject ─────────────────────────────────────────────────────

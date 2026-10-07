@@ -316,6 +316,18 @@ describe('strictDataPaths', () => {
     ])
   })
 
+  test('a bare $vars as get’s from is analysed as the drilled form it compiles to', async () => {
+    const vars = { user: '$data.user' }
+    const bare = { vars, a: { $get: { path: 'user.name', from: '$vars' } } }
+    const drilled = { vars, a: { $get: { path: 'name', from: '$vars.user' } } }
+    expect(await coverage(bare, strict)).toEqual(await coverage(drilled, strict))
+    // The var's own read of `$data.user` may miss too; `default` covers
+    // the get alone, as it does beside a drilled `from`
+    expect(await uncovered(bare, strict)).toEqual([['vars', 'user'], ['a']])
+    const defaulted = { vars, a: { $get: { ...bare.a.$get, default: null } } }
+    expect(await uncovered(defaulted, strict)).toEqual([['vars', 'user']])
+  })
+
   test('$element drills into what an element can be, $index never drills', async () => {
     const each = ['$element.x', '$index']
     expect(

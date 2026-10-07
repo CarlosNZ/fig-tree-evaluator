@@ -159,6 +159,98 @@ test('bare $params is recognized, and refused only for being outside a body', ()
   expect(errorCodes(compile({ $not: '$params' }))).toEqual([])
 })
 
+// In `get`, `from` may be a bare namespace, and `path` is read from it
+// (#237): the walk rewrites the node to the drilled form before the bare
+// string is ever read, so the artifact only ever holds `$vars.name`
+describe('a bare namespace as get’s from', () => {
+  const getNode = (payload: unknown): OperatorNode => rootOp({ $get: payload })
+  const errorsOf = (payload: unknown) =>
+    compile({ $get: payload })
+      .issues.filter((s) => s.issue.severity === 'error')
+      .map((s) => s.issue)
+
+  test('$vars moves the path’s first key into the source', () => {
+    for (const from of ['$vars', '$v']) {
+      const node = getNode({ path: 'country.code', from })
+      expect(node.params.from).toMatchObject({
+        kind: 'reference',
+        namespace: 'vars',
+        segments: ['country'],
+        raw: '$vars.country',
+      })
+      expect(node.params.path).toMatchObject({ kind: 'constant', value: 'code' })
+    }
+    expect(errorsOf({ path: 'country.code', from: '$vars' })).toEqual([])
+  })
+
+  test('the remainder keeps the authored face, projections and all', () => {
+    expect(getNode({ path: 'country', from: '$vars' }).params.path).toMatchObject({ value: '' })
+    expect(getNode({ path: 'list[*].n', from: '$vars' }).params.path).toMatchObject({
+      value: '[*].n',
+    })
+    const array = getNode({ path: ['country', 'code'], from: '$vars' })
+    expect(array.params.from).toMatchObject({ segments: ['country'] })
+    expect(array.params.path).toMatchObject({ value: ['code'] })
+  })
+
+  test('the source is built from the first segment, never by splitting text', () => {
+    const node = getNode({ path: ['a.b', 'c'], from: '$vars' })
+    expect(node.params.from).toMatchObject({ segments: ['a.b'], raw: '$vars["a.b"]' })
+  })
+
+  test('$params does the same, and $data is dropped', () => {
+    const params = getNode({ path: 'a.b', from: '$p' })
+    expect(params.params.from).toMatchObject({ namespace: 'params', segments: ['a'] })
+    expect(params.params.path).toMatchObject({ value: 'b' })
+    expect(getNode({ path: 'a.b', from: '$data' }).params.from).toBeUndefined()
+    expect(getNode({ path: 'a.b', from: '$d' }).params.from).toBeUndefined()
+  })
+
+  test('$vars needs a path it can take a name from', () => {
+    // Computed, empty, or opening with an index or a projection: one
+    // error, on `from`, saying what the path has to be. Whatever else is
+    // wrong with the path (missing, unparseable, the wrong type), its own
+    // check reports beside it
+    const paths = [
+      '$data.which',
+      { $get: 'k' },
+      ['a', '$data.k'],
+      5,
+      '',
+      [],
+      null,
+      '[0].x',
+      [0, 'x'],
+      '[*].x',
+    ]
+    for (const path of paths) {
+      const errors = errorsOf({ path, from: '$vars' })
+      expect(errors.map((issue) => issue.code)).toEqual(['bare-vars'])
+      expect(errors[0].message).toContain('the path must be written out and start with a key')
+      expect(errors[0]).toMatchObject({ operator: 'get', parameter: 'from' })
+    }
+    expect(errorsOf({ from: '$vars' }).map((issue) => issue.code)).toContain('bare-vars')
+    expect(errorsOf({ path: 'a[', from: '$vars' }).map((issue) => issue.code)).toContain(
+      'bare-vars'
+    )
+  })
+
+  test('$params with such a path stands as authored — a bare $params is a value', () => {
+    const node = getNode({ path: '$data.which', from: '$params' })
+    expect(node.params.from).toMatchObject({ namespace: 'params', segments: [] })
+    expect(node.params.path).toMatchObject({ kind: 'reference' })
+    expect(errorsOf({ path: '', from: '$params' })).toEqual([])
+  })
+
+  test('a bare value namespace is untouched', () => {
+    const map = rootOp({ $map: { input: [], each: { $get: { path: 'x', from: '$element' } } } })
+    expect((map.params.each as OperatorNode).params.from).toMatchObject({
+      namespace: 'element',
+      segments: [],
+    })
+  })
+})
+
 // ── Reserved-key values ─────────────────────────────────────────────
 
 describe('noCache takes only the literal true, on all four faces', () => {

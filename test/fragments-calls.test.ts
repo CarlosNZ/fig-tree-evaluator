@@ -314,6 +314,44 @@ describe('bare $params', () => {
     expect(issues[0].code).toBe(ErrorCodes.bareVars)
     expect(issues[0].message).toContain('must name a var')
   })
+
+  // As get's `from`, a bare `$params` names the argument the path's first
+  // key picks (#237): the compiler rewrites the node to `$params.a`, so
+  // the read is as lazy as the reference
+  test('as get’s from names one argument, so the others stay unread', async () => {
+    const unread = source('unread', 'evaluated')
+    const fig = build(
+      {
+        frag: {
+          expression: { $get: { path: 'a.b', from: '$params' } },
+          parameters: { a: {}, b: {} },
+        },
+      },
+      [unread.definition]
+    )
+    expect(await fig.evaluate({ $frag: { a: { b: 'deep' }, b: { $unread: {} } } })).toBe('deep')
+    expect(unread.calls).toHaveLength(0)
+  })
+
+  test('as get’s from with a computed path is the parameters resolved, then drilled', async () => {
+    const read = source('read', 'evaluated')
+    const fig = build(
+      {
+        frag: {
+          expression: { $get: { path: '$data.which', from: '$params' } },
+          parameters: { a: {}, b: {} },
+        },
+      },
+      [read.definition]
+    )
+    expect(
+      await fig.evaluate(
+        { $frag: { a: { b: 'deep' }, b: { $read: {} } } },
+        { data: { which: 'a.b' } }
+      )
+    ).toBe('deep')
+    expect(read.calls).toHaveLength(1)
+  })
 })
 
 // ── Composition, fallback and caching ───────────────────────────────
