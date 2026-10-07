@@ -256,15 +256,12 @@ describe('batch semantics', () => {
     expect(codes(error)).toEqual([ErrorCodes.unknownFragment])
   })
 
-  // The shorthand face cannot be an unknown-name error without making every
-  // `$`-keyed data object one — the ruling the I/O operators forced at Phase
-  // 9. So an unregistered name in shorthand position registers, warns, and
-  // passes through as data; the canonical face above is the loud one.
-  test('an unregistered name in shorthand position warns instead', () => {
-    const built = registry({ outer: { expression: { $inner: {} } } })
-    expect(built.fragments.get('outer')!.warnings.map((w) => w.code)).toEqual([
-      ErrorCodes.unrecognizedIdentifier,
-    ])
+  // Every `$` key in an authored expression invokes, so the shorthand face
+  // is as loud as the canonical one above, under its own code: the author
+  // may have meant an operator as well as a fragment
+  test('an unregistered name in shorthand position is refused too', () => {
+    const error = rejects({ outer: { expression: { $inner: {} } } })
+    expect(codes(error)).toEqual([ErrorCodes.unrecognizedIdentifier])
   })
 
   test('replacing a fragment re-validates its dependents', () => {
@@ -282,13 +279,13 @@ describe('batch semantics', () => {
     const fig = new FigTree({ fragments: { ...pair, other: { expression: 'kept' } } })
     fig.updateOptions({ fragments: { outer: null } })
     expect(fig.getFragments().map((fragment) => fragment.name)).toEqual(['inner', 'other'])
-    // Unregistered, its key is inert data again
-    expect(await fig.evaluate({ $outer: {} })).toEqual({ $outer: {} })
+    // Unregistered, its key is an error
+    await expect(fig.evaluate({ $outer: {} })).rejects.toMatchObject({
+      code: ErrorCodes.unrecognizedIdentifier,
+    })
     expect(await fig.evaluate({ $other: {} })).toBe('kept')
   })
 
-  // The shorthand face would otherwise degrade the surviving call to data,
-  // with only a warning, and `{ $inner: {} }` would quietly return itself
   test('removing a fragment a surviving body calls is refused', () => {
     const fig = new FigTree({ fragments: pair })
     let error: unknown
@@ -299,8 +296,10 @@ describe('batch semantics', () => {
     }
     expect(isFigTreeError(error)).toBe(true)
     const { issues } = error as FigTreeError
-    expect(issues?.map((issue) => issue.code)).toEqual([ErrorCodes.unknownFragment])
-    expect(issues?.[0].message).toBe("fragment 'outer' calls 'inner', which this update removes")
+    expect(issues?.map((issue) => issue.code)).toEqual([ErrorCodes.unrecognizedIdentifier])
+    expect(issues?.[0].message).toMatch(
+      /^fragment 'outer': '\$inner' is not a registered operator or fragment/
+    )
     expect(issues?.[0].path).toEqual(['fragments', 'outer', 'expression', '$inner'])
     // And the instance is as it was
     expect(fig.getFragments().map((fragment) => fragment.name)).toEqual(['outer', 'inner'])

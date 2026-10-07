@@ -77,16 +77,17 @@ describe('a clientless instance', () => {
     expect(error.code).toBe('unknown-operator')
   })
 
-  it('warns on the shorthand face, which stays data', async () => {
-    // The `$name` face cannot be an error without making every `$`-keyed
-    // data object one, so the grammar warns and the object passes through
-    // untouched. Loud enough for an editor, silent enough for real data
+  it('refuses the shorthand face too, as an unrecognized $ key', async () => {
+    // Every `$` key in an authored expression invokes, so the call fails
+    // as the canonical face does, under a fallback or not
     const report = bare.validate({ $http: 'https://api.test/x' })
-    expect(report.valid).toBe(true)
+    expect(report.valid).toBe(false)
     expect(report.issues[0].code).toBe('unrecognized-identifier')
-    expect(await bare.evaluate({ $http: 'https://api.test/x' })).toEqual({
-      $http: 'https://api.test/x',
-    })
+
+    const error = await rejection<FigTreeError>(
+      bare.evaluate({ $http: 'https://api.test/x', fallback: null })
+    )
+    expect(error.code).toBe('unrecognized-identifier')
   })
 
   it('is what omitting `operators` means — core only, no I/O', () => {

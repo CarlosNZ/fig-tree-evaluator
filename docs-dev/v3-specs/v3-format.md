@@ -117,7 +117,7 @@ These shapes throw, each with the code the compiler reports for it:
 - a named payload holding a reserved node key other than `//`, such as `{ $plus: { values: [1], fallback: 0 } }` (`unknown-node-key`). Spread onto a canonical node, it would turn an error into a working modifier;
 - nesting beyond the compiler's depth ceiling (`depth-ceiling`).
 
-An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values. An unknown parameter key on an operator node is carried: it forces the named form, where the compiler reports it as on the canonical node. A `//` value is never walked, whatever it contains, and `noCache` is copied as it is.
+An unrecognised `$typo` key makes a plain object, as in the compiler, so the walk still recurses into its values (the compiler reports the key as an error, but the conversion has no reason to refuse it). An unknown parameter key on an operator node is carried: it forces the named form, where the compiler reports it as on the canonical node. A `//` value is never walked, whatever it contains, and `noCache` is copied as it is.
 
 ## `toCanonical`
 

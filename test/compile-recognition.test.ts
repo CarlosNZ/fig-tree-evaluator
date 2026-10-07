@@ -97,11 +97,24 @@ test('unknown key on a node is a hard error (no hoisting — the thn: typo)', ()
 
 // ── The $typo contrast and the sibling-key rule ─────────────────────
 
-test('an unrecognized $name key is inert data with a warning, not an error', () => {
-  const artifact = compile({ $flibble: [1, 2], fallback: 2 })
-  expect(issueCodes(artifact, 'error')).toHaveLength(0)
-  expect(issueCodes(artifact, 'warning')).toContain('unrecognized-identifier')
-  expect(artifact.root.kind).toBe('constant')
+test('an unrecognized $name key is an error, a fallback sibling or not', () => {
+  for (const expression of [{ $flibble: [1, 2], fallback: 2 }, { $flibble: [1, 2] }]) {
+    const artifact = compile(expression)
+    expect(issueCodes(artifact, 'error')).toEqual(['unrecognized-identifier'])
+    expect(artifact.root.kind).toBe('constant')
+  }
+})
+
+test('nested, it is an error at its key', () => {
+  const artifact = compile({ a: [1, { b: { $flibble: 1 } }] })
+  const [issue] = artifact.issues.map((sequenced) => sequenced.issue)
+  expect(issue).toMatchObject({ severity: 'error', code: 'unrecognized-identifier' })
+  expect(issue.path).toEqual(['a', 1, 'b', '$flibble'])
+})
+
+test('inside literal it is data, with no issue', () => {
+  const artifact = compile({ $literal: { $flibble: [1, 2], fallback: 2 } })
+  expect(artifact.issues).toHaveLength(0)
 })
 
 test('plain-literal contents under an unrecognized key still traverse', () => {

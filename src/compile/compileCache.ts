@@ -56,7 +56,7 @@ export type CacheEntry =
 export interface CompileCacheDeps {
   /** The walk plus the static checks, bound to one registry. */
   compile: (expression: unknown) => CompileArtifact
-  /** The allocation-free constancy probe, bound to the same registry. */
+  /** The allocation-free constancy probe, which needs no registry. */
   probe: (expression: unknown) => ProbeResult
 }
 

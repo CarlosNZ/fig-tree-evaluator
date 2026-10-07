@@ -141,12 +141,6 @@ const buildState = (previous: InstanceState | null, update: OptionsUpdate): Inst
       ? { operatorDefaults: options.operatorDefaults }
       : {}),
     ...(options.fragments !== undefined ? { fragments: options.fragments } : {}),
-    // The `$name` keys this update strands: registered fragments it removes
-    removedFragments: new Set(
-      Object.entries(update.fragments ?? {}).flatMap(([name, definition]) =>
-        definition === null && previous?.registry.fragments.has(name) ? [`$${name}`] : []
-      )
-    ),
   })
   return {
     options,
@@ -154,7 +148,7 @@ const buildState = (previous: InstanceState | null, update: OptionsUpdate): Inst
     registry,
     compileCache: new CompileCache({
       compile: (expression) => compileWithRegistry(expression, registry),
-      probe: (expression) => probeConstant(expression, registry),
+      probe: probeConstant,
     }),
   }
 }
@@ -350,13 +344,13 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    *
    * Two halves, as the spec names them: a hole, or a static error. A
    * malformed node usually IS a hole — the compiler classifies it as
-   * evaluable-never-constant, so a sibling-key violation counts and an
-   * unrecognized `$` key (inert data with a warning) does not — but an
-   * error raised from a structural key (`vars: 'high'`) folds its
-   * container to a constant with no hole at all, and only the issue stream
-   * knows the expression engaged the grammar. Pass 1 suffices: the static
-   * checks find issues only on operator nodes and fragment calls, which
-   * are holes already, so a second walk could never change the answer.
+   * evaluable-never-constant, so a sibling-key violation counts — but an
+   * error raised from a structural key (`vars: 'high'`) or an unrecognized
+   * `$` key folds its container to a constant with no hole at all, and only
+   * the issue stream knows the expression engaged the grammar. Pass 1
+   * suffices: the static checks find issues only on operator nodes and
+   * fragment calls, which are holes already, so a second walk could never
+   * change the answer.
    */
   isEvaluable(expression: unknown): boolean {
     const artifact = compileExpression(expression, this.state.registry)
@@ -539,7 +533,7 @@ export const viewHandle: ReadHandle = (value, call) => readHandle?.(value, call)
  * expression with an artifact, and an inert constant with only the probe's
  * verdict. The inert flavour compiles lazily, once, on the first read of
  * `issues`, `hasErrors` or `getDependencies()` — the probe calls
- * `{ $flibble: 1 }` constant where a full compile emits the unrecognized-`$`
+ * `'$flibble'` constant where a full compile emits the unrecognized-`$`
  * warning, so the stream cannot simply be empty — and writes nothing to the
  * cache.
  *

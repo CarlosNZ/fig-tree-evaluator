@@ -148,7 +148,7 @@ type InspectIssue = Issue & { order?: number }
 
 - **The list is `validate()`'s, computed on the handle.** `validate()` adds two option-dependent checks to the compile stream: the limit checks (`max-nodes`, `max-depth`) against `maxNodes` / `maxDepth`, and the sample-data check (`missing-data-path`) against `data`. Both read only the artifact and the effective options, which the handle holds, so they move out of `validate()` into one function both call, and the two agree by construction. `inspect()` does not call `fig.validate()`: the handle holds no instance (deliberately — it keeps only what it reads), the instance's current registry and options may no longer be the handle's snapshot, and `validate()` compiles afresh.
 - **`order` is present exactly on the entries from the compile stream**, grammar and static checks alike. The report does not tell those two apart: the artifact records no layer, and `code` does not identify one (`unresolved-binding`, `unreferenced-var` and `unknown-node-key` are emitted by both). A computed entry has no `order`: the limit checks concern the whole expression, which is also why their `path` is `[]`, and a `missing-data-path` warning, though it sits at its reading node, is not the compile stream's.
-- **A top-level list, not issues on nodes.** An issue's `order` can name a value with no node: the `$colour` warning is #36, but `extras` is inert data folded into the root's shape. `order` links an issue to its node where there is one; `path` always locates it.
+- **A top-level list, not issues on nodes.** An issue's `order` can name a value with no node: the `$colour` error is #36, but `extras` is a constant folded into the root's shape. `order` links an issue to its node where there is one; `path` always locates it.
 - **`path` stays `[]` for a whole-expression issue, not `null`** (considered): `[]` keeps the entries identical to `validate()`'s, keeps the promise that a path always resolves in the input ("Fragments" in [v3-evaluator-methods.md](v3-evaluator-methods.md)), and is accurate — `[]` is the whole expression.
 - **`missing-data-path` sits at the node that reads the path**, one warning per reading node ([#179](https://github.com/CarlosNZ/fig-tree-evaluator/issues/179), [#200](https://github.com/CarlosNZ/fig-tree-evaluator/issues/200)): the reference, the `get` node or the template string, or the fragment call whose body reads it ("The sample-data check" in [v3-evaluator-methods.md](v3-evaluator-methods.md)). The report follows through the shared function, so only the two limit checks sit at `[]`.
 - **The text is whatever `Issue` carries**, so the report follows any change there — the message catalogue ([#149](https://github.com/CarlosNZ/fig-tree-evaluator/issues/149)) included.
@@ -404,9 +404,9 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     },
     {
       "order": 36,
-      "severity": "warning",
+      "severity": "error",
       "code": "unrecognized-identifier",
-      "message": "'$colour' is not a registered operator or fragment and will pass through as data",
+      "message": "'$colour' is not a registered operator or fragment — data with a '$' key goes inside 'literal'",
       "path": ["extras", "$colour"]
     },
     {

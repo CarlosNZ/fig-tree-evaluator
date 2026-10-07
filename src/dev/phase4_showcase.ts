@@ -303,7 +303,7 @@ const main = async () => {
   )
   await show('OperatorFailure carries code and errorData through', { $greet: 'nobody' }, {}, custom)
   await show(
-    'the registry is exhaustive: with no plus registered, $plus is inert data',
+    'the registry is exhaustive: with no plus registered, $plus is an error',
     { $plus: [1, 2] },
     {},
     custom

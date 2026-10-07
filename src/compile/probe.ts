@@ -6,17 +6,19 @@
  * compiler would evaluate OR normalize, because either makes the compile result
  * differ from the input:
  *
- * - evaluable: an `operator` / `fragment` key, a recognized `$name`
- *   shorthand key (`literal` included), a reference string, an illegal use
+ * - evaluable: an `operator` / `fragment` key, any `$name` key (a
+ *   recognized one is a call, `literal` included, and an unrecognized one
+ *   an error the compile must report), a reference string, an illegal use
  *   of a reference namespace (bare `$vars`), a `vars` block;
  * - normalized away: a `//` comment key, an `undefined` value (dropped from
  *   objects, `null` in arrays).
  *
  * Plain strings, unrecognized `$strings`, primitives and opaque values are
- * constant and pass through by identity. The probe is the single shared
- * implementation of this question (the compiler consumes it too), and the
- * property test in test/probe.test.ts pins it to the compiler:
- * `probeConstant(x).constant === (compile(x).root is a constant holding x)`.
+ * constant and pass through by identity. No answer depends on what is
+ * registered, so the probe never reads the registry. The property test in
+ * test/probe.test.ts pins it to the compiler: `probeConstant(x).constant`
+ * holds exactly when the compile is error-free and its root a constant
+ * holding x.
  *
  * `evaluate()` runs it before parsing and returns the input untouched when
  * it says constant. It recurses, so it carries the same depth ceiling as
@@ -36,14 +38,13 @@ export interface ProbeResult {
   depth: number
 }
 
-export const probeConstant = (value: unknown, registry: OperatorRegistry): ProbeResult => {
-  const state: ProbeState = { registry, maxDepth: 0 }
+export const probeConstant = (value: unknown): ProbeResult => {
+  const state: ProbeState = { maxDepth: 0 }
   const constant = scan(state, value, 0)
   return { constant, depth: state.maxDepth }
 }
 
 interface ProbeState {
-  registry: OperatorRegistry
   maxDepth: number
 }
 
@@ -65,7 +66,7 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
   if (isPlainDataObject(value)) {
     for (const key in value) {
       if (key === 'operator' || key === 'fragment' || key === 'vars' || key === '//') return false
-      if (key.startsWith('$') && isRecognizedShorthand(state.registry, key.slice(1))) return false
+      if (key.startsWith('$')) return false
     }
     for (const key in value) {
       if (!scan(state, value[key], depth + 1)) return false
@@ -79,7 +80,7 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
 
 /**
  * Does a `$name` key invoke something registered, or `literal`? The one
- * answer to the recognition question, for the probe and the walk alike.
+ * answer to the recognition question, for the walk and its classifiers.
  */
 export const isRecognizedShorthand = (registry: OperatorRegistry, name: string): boolean =>
   name === 'literal' ||

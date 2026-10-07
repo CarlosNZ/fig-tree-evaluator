@@ -98,6 +98,8 @@ The one case that always needs the host, because the function _bodies_ were neve
 1. **It rewrites each call to the nearest v3 call on the function's name**, since the arguments are v2 expressions that need converting regardless. Positional `args` become a shorthand call (`{ $X: […] }`), and a call with an `input` names it (`{ operator: 'X', input: …, args: […] }`) ("Batch 5: custom functions" in [v3-converter.md](v3-converter.md)).
 2. **It puts a `non-convertible` issue on every call site**, not one per function name, saying the call must be checked against the operator the host registers. Where the name holds a `.` or is a core operator's, the issue also says to register it under another name and rename the call.
 
+Until the host registers the operator, a converted call is a static error in either form (`unknown-operator`, or `unrecognized-identifier` for the shorthand call), so `validate()` reports it and `evaluate()` refuses the expression, whatever `fallback` surrounds it ([#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)).
+
 The wrapper recipe below is the suggested registration.
 
 ## Ruling: v1 (`children`) support is dropped from v3

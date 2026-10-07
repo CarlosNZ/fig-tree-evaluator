@@ -221,7 +221,8 @@ export const CATALOGUE = {
       `A call on the v2 custom function \`${name}\`. Register a v3 operator of that name, as "Custom functions" in the migration guide suggests, and check this call against its parameters.` +
       (rename === undefined
         ? ''
-        : ` ${rename}, so register it under another name and rename the call.`),
+        : ` ${rename}, so register it under another name and rename the call.`) +
+      ' Until then, v3 refuses the expression.',
   },
   'computed-function-name': {
     tag: 'non-convertible',

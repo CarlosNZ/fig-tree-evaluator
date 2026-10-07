@@ -19,7 +19,8 @@ describe('isEvaluable — does the compile find anything to evaluate?', () => {
     ['an expression buried in a constant shell', { a: { b: { $plus: [1, 2] } } }, true],
     ['a plain container', { a: 1, b: [2, 3] }, false],
     ['a scalar', 'just text', false],
-    ['an unrecognized $ key — inert data with a warning', { $flibble: 'inert' }, false],
+    ['an unrecognized $ string — inert data with a warning', { a: '$flibble' }, false],
+    ['an unrecognized $ key — a static error', { $flibble: 'inert' }, true],
     // Normalization is not evaluation: these three evaluate to something
     // other than their input, and none of them holds an expression
     ['a comment key alone', { '//': 'note', a: 1 }, false],

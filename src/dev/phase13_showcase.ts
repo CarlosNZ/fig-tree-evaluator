@@ -63,9 +63,9 @@ const fig = new FigTree({
       },
       description: 'A titled banner in the configured colour',
     },
-    // A body whose `$` key resolves to nothing: inert data plus a warning
-    // that registration has no other channel for
-    legacy: { expression: { $flibble: 'inert' } },
+    // A body whose `$` string resolves to nothing: inert data plus a
+    // warning that registration has no other channel for
+    legacy: { expression: { greeting: '$flibble' } },
   },
 })
 
@@ -237,7 +237,8 @@ const main = async () => {
     ['an expression buried in a constant shell', { a: { b: { $clamp: [5, 0, 3] } } }],
     ['a fragment call', { $themeColour: {} }],
     ['a plain config object', { title: 'Report', tags: ['a', 'b'] }],
-    ['a stray $ key — inert data, with a warning', { $flibble: 'inert' }],
+    ['a stray $ string — inert data, with a warning', { a: '$flibble' }],
+    ['a stray $ key — a static error', { $flibble: 'inert' }],
     ['a malformed node — broken, but an expression', { operator: 'plus', fragment: 'banner' }],
   ]
   for (const [label, expression] of candidates)
@@ -310,7 +311,7 @@ const main = async () => {
   const order = {
     heading: { $banner: { title: '$data.title' } },
     total: { $round: '$data.total' },
-    badge: { $colour: 'red' },
+    badge: '$colour.red',
   }
   const report = inspect(fig.compile(order), { data: { title: 'Q3' } })
   console.log(`  const report = inspect(fig.compile(order), { data })\n      ${block(order)}\n`)

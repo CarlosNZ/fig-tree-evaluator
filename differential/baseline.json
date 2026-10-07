@@ -2,8 +2,8 @@
   "v2": "2.23.2",
   "totals": {
     "cases": 447,
-    "✓": 335,
-    "⚠": 87,
+    "✓": 337,
+    "⚠": 85,
     "✗": 25
   },
   "cases": {
@@ -281,8 +281,8 @@
     "272": "✓ custom-function-call",
     "273": "✓ custom-function-call",
     "274": "✓ custom-function-call",
-    "275": "⚠ custom-function-call",
-    "276": "⚠ custom-function-call",
+    "275": "✓ custom-function-call",
+    "276": "✓ custom-function-call",
     "277": "✓ custom-function-call",
     "278": "✓ custom-function-call",
     "279": "✓ custom-function-call",

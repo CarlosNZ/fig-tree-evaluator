@@ -4,15 +4,15 @@
  * early-bailing scan `evaluate()` runs before parsing. It is a second
  * answer to "would evaluation be identity?", so its shipping condition is
  * the property test at the bottom: the probe says constant exactly when the
- * compiler would compile the input to a constant node holding the input
- * itself — no normalization (`//`, `vars`, `undefined`), no holes.
+ * compiler would compile the input, error-free, to a constant node holding
+ * the input itself — no normalization (`//`, `vars`, `undefined`), no holes.
  */
 import { compileExpression } from '../src/compile'
 import { probeConstant } from '../src/compile/probe'
 import { makeCompileRegistry } from './fixtures/compileRegistry'
 
 const registry = makeCompileRegistry()
-const probe = (value: unknown) => probeConstant(value, registry)
+const probe = (value: unknown) => probeConstant(value)
 const compile = (input: unknown) => compileExpression(input, registry)
 
 describe('constant inputs', () => {
@@ -22,7 +22,6 @@ describe('constant inputs', () => {
     ['boolean', false],
     ['plain string', 'hello'],
     ['unrecognized $string', '$flibble.x'],
-    ['inert $ key', { $flibble: 1 }],
     ['reserved modifier keys on plain data', { fallback: 1, noCache: true }],
     ['nested plain data', { a: [1, { b: 'c', d: [null, true] }] }],
     ['opaque value', new Date(0)],
@@ -39,6 +38,7 @@ describe('bail conditions — anything the compiler would evaluate or normalize'
     ['fragment key', { fragment: 'f' }],
     ['recognized shorthand key', { $plus: [1, 2] }],
     ['recognized alias key', { '$+': [1, 2] }],
+    ['unrecognized $ key (an error)', { $flibble: 1 }],
     ['literal shorthand', { $literal: { anything: 1 } }],
     ['reference string', '$data.x'],
     ['bare $data', '$data'],
@@ -162,10 +162,10 @@ const randomValue = (rand: () => number, depth: number): unknown => {
 
 const isIdentityConstant = (input: unknown) => {
   const artifact = compile(input)
-  return artifact.root.kind === 'constant' && artifact.root.value === input
+  return !artifact.hasErrors && artifact.root.kind === 'constant' && artifact.root.value === input
 }
 
-test('property: probeConstant(x).constant === (compile(x) is a constant node holding x)', () => {
+test('property: probeConstant(x).constant === (compile(x) is an error-free constant holding x)', () => {
   const rand = makeRandom(20260918)
   const samples = [...corpus, ...Array.from({ length: 600 }, () => randomValue(rand, 0))]
   const disagreements = samples.filter(

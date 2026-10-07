@@ -21,6 +21,7 @@ import { checkType, isExpectedType, type ExpectedType } from '../src/typeCheck'
 import { RESERVED_NAMES, RESERVED_NODE_KEYS, V3_TYPES, fitsType } from '../src/migrate/v3Values'
 import { MockHttpClient } from './helpers'
 import {
+  asOperator,
   clone,
   deepFreeze,
   v2Outcome,
@@ -1280,7 +1281,11 @@ describe("a call's `useCache`", () => {
   const options: V2Options = { fragments: FRAGMENTS, functions: ['record'] }
   const converted = convertFragments(options)
   const fig = new FigTree({
-    operators: [coreOperators, httpOperators(new MockHttpClient())],
+    operators: [
+      coreOperators,
+      httpOperators(new MockHttpClient()),
+      asOperator('record', (...args: unknown[]) => args),
+    ],
     fragments: converted.fragments,
   })
 

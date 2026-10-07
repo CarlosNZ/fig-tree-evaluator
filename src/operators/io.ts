@@ -11,11 +11,9 @@
  * Registration is therefore structural, and so is absence: on a clientless
  * instance these operators do not exist. `{ operator: 'http', … }` is an
  * unknown-operator error at `validate()`, and the shorthand `{ $http: … }`
- * is an unrecognized-identifier warning with the object passing through
- * as data, since a `$`-keyed object cannot be an error without making
- * every such data object one. Either way v2's evaluation-time 'No HTTP
- * client provided' moves from the end user's runtime to the author's
- * toolchain.
+ * an unrecognized-identifier error, as every `$` key naming nothing is.
+ * Either way v2's evaluation-time 'No HTTP client provided' moves from the
+ * end user's runtime to the author's toolchain.
  *
  * **The read contract.** v3 treats every I/O node as an idempotent read:
  * the machinery the rest of the engine grants — parallel children, early

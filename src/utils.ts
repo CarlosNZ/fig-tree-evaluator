@@ -52,7 +52,7 @@ export const isPlainDataObject = (value: unknown): value is Record<string, unkno
  * bound, since distances only grow down the table. Candidates whose
  * lengths differ by more than `max` are rejected before the table starts.
  * Compile raises a did-you-mean on every unrecognized `$` key it meets, so
- * this runs on hosts whose data carries such keys (#215).
+ * this runs once per such key, however many an expression holds (#215).
  */
 export const editDistanceWithin = (a: string, b: string, max: number): number => {
   if (a === b) return 0

@@ -146,14 +146,14 @@ describe("a fragment body's warnings", () => {
     const fig = build({
       fragments: {
         ...FRAGMENTS,
-        noisy: { expression: [{ $typo: 1 }, { $upper: 'x', noCache: true }, { $typo2: 2 }] },
+        noisy: { expression: ['$typo', { $upper: 'x', noCache: true }, '$typo2'] },
       },
     })
     const warnings = fig.getFragments().find((info) => info.name === 'noisy')?.warnings ?? []
     expect(warnings.map((issue: Issue) => [issue.code, issue.path])).toEqual([
-      ['unrecognized-identifier', ['expression', 0, '$typo']],
+      ['unrecognized-identifier', ['expression', 0]],
       ['useless-modifier', ['expression', 1, 'noCache']],
-      ['unrecognized-identifier', ['expression', 2, '$typo2']],
+      ['unrecognized-identifier', ['expression', 2]],
     ])
   })
 })

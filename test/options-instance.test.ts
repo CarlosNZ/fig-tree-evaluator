@@ -119,7 +119,9 @@ describe('null removes, at either level of the merge', () => {
   it('removes operators back to the core set', async () => {
     const fig = new FigTree({ operators: [namedOp('alpha')] })
     fig.updateOptions({ operators: null })
-    expect(await fig.evaluate({ $alpha: {} })).toEqual({ $alpha: {} })
+    await expect(fig.evaluate({ $alpha: {} })).rejects.toMatchObject({
+      code: 'unrecognized-identifier',
+    })
     expect(await fig.evaluate({ $plus: [1, 2] })).toBe(3)
   })
 
@@ -171,8 +173,10 @@ describe('the registry is rebuilt and re-validated', () => {
     expect(await fig.evaluate({ $alpha: {} })).toBe('alpha')
     fig.updateOptions({ operators: [namedOp('beta')] })
     expect(await fig.evaluate({ $beta: {} })).toBe('beta')
-    // `alpha` is no longer registered, so its key is inert data
-    expect(await fig.evaluate({ $alpha: {} })).toEqual({ $alpha: {} })
+    // `alpha` is no longer registered, so its key is an error
+    await expect(fig.evaluate({ $alpha: {} })).rejects.toMatchObject({
+      code: 'unrecognized-identifier',
+    })
   })
 
   it('catches a combination neither call alone was invalid for', () => {

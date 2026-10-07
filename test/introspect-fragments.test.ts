@@ -24,9 +24,9 @@ const fragments: Record<string, FragmentDefinition> = {
     description: 'A greeting',
     metadata: bag,
   },
-  // A body whose `$` key resolves to nothing: inert data plus a warning,
-  // and registration has no other way to report it
-  sloppy: { expression: { $flibble: 'inert' } },
+  // A body whose `$` string resolves to nothing: inert data plus a
+  // warning, and registration has no other way to report it
+  sloppy: { expression: { greeting: '$flibble' } },
   inner: { expression: { $get: 'settings.theme' } },
   outer: { expression: { $plus: [{ fragment: 'inner' }, '$data.count'] } },
 }

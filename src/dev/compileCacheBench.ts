@@ -14,7 +14,7 @@
  * it from three directions.
  *
  * Only registered operators appear in the shapes. An unregistered `$name`
- * earns a did-you-mean warning, with an edit-distance scan over every
+ * is an error with a did-you-mean, from an edit-distance scan over every
  * registered name — that would measure the suggestion machinery, not the
  * compiler.
  */
@@ -153,7 +153,7 @@ const wholeShapes = () => {
     for (let i = 0; i < CONTENT_LAYER_SIZE - 1; i++) map.set(`${key}#filler${i}`, artifact)
     map.set(key, artifact)
 
-    const probe = time(iterations, () => probeConstant(input, registry).constant)
+    const probe = time(iterations, () => probeConstant(input).constant)
     const serialize = time(iterations, () => serializeInput(input))
     const hit = time(iterations, () => map.get(serializeInput(input) as string))
     const compileNs = time(iterations, () => compile(input))

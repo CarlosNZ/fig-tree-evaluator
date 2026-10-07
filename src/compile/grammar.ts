@@ -53,7 +53,8 @@ const malformed = (message: string): ObjectClass => ({ kind: 'malformed', messag
  * on one object are ambiguous, so they are malformed before either is read.
  * `recognizes` answers whether a `$name` key invokes something the caller
  * knows (`literal`, a registered operator or alias, or a fragment); an
- * unrecognized `$name` is data, so it leaves the object plain.
+ * unrecognized `$name` invokes nothing, so it leaves the object plain, and
+ * the compile reports the key.
  */
 export const classifyObject = (
   raw: Record<string, unknown>,

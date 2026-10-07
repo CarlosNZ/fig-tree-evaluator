@@ -85,7 +85,7 @@ export const formatCorpus: [string, unknown][] = [
   // ── References and data ──────────────────────────────────────────────
   ['references in each namespace', ['$data.a', '$d[0].b', '$data', 'plain', '$typo.x']],
   ['a reference string alone', '$d.user.name'],
-  ['an unrecognized $key', { $typo: 1, b: { $plus: [1] } }],
+  ['an unrecognized $key, a branch label', { $match: ['b', { $typo: 1, b: { $plus: [1] } }] }],
   ['plain data', { a: 1, b: [true, null, 'x'], c: { d: 2 } }],
   [
     'a template string',

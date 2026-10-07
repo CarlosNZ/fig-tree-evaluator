@@ -138,6 +138,24 @@ describe('match', () => {
   test('a dynamic map that is not an object is a type error', async () => {
     expect((await failure({ $match: ['a', '$data.nope'] })).code).toBe('type-check')
   })
+
+  test('an unrecognized $ branch key is a label, warned, where elsewhere it is an error', async () => {
+    // Branch keys are compared against runtime values, and `$`-prefixed
+    // values are common enough that a label must be able to carry one
+    const expression = { $match: ['$data.code', { $USD: 'dollars', EUR: 'euros' }] }
+    expect(fig.validate(expression).issues).toMatchObject([
+      { severity: 'warning', code: 'unrecognized-identifier', path: ['$match', 1, '$USD'] },
+    ])
+    expect(await ev(expression, { code: '$USD' })).toBe('dollars')
+  })
+
+  test("only the map's own keys are labels: one inside a branch value is an error", async () => {
+    const expression = { $match: ['a', { a: { $USD: 1 } }] }
+    expect(fig.validate(expression).issues).toMatchObject([
+      { severity: 'error', code: 'unrecognized-identifier', path: ['$match', 1, 'a', '$USD'] },
+    ])
+    expect((await failure(expression)).code).toBe('unrecognized-identifier')
+  })
 })
 
 // ── firstOf ─────────────────────────────────────────────────────────

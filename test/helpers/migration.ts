@@ -4,7 +4,25 @@
  * oracle beside v3.
  */
 import { FigTreeEvaluator, type EvaluatorNode, type FigTreeOptions } from 'fig-tree-evaluator-v2'
-import type { FigTree } from '../../src'
+import { defineOperator, type FigTree } from '../../src'
+
+/** A v2 function as a v3 operator, the recipe's way, with `input` as well */
+export const asOperator = (name: string, fn: (...args: never[]) => unknown) =>
+  defineOperator({
+    name,
+    category: 'other',
+    description: `The v2 function ${name}`,
+    parameters: {
+      input: { type: 'any', required: false },
+      args: { type: 'array', default: [] },
+    },
+    positionalParams: ['...args'],
+    evaluate: ({ input, args }) =>
+      (fn as (...args: unknown[]) => unknown)(
+        ...(input === undefined ? [] : [input]),
+        ...(args as unknown[])
+      ),
+  })
 
 /** What an engine made of an expression: its value, or that it failed */
 export type Outcome = { value: unknown } | { error: true }

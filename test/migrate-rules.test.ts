@@ -11,7 +11,7 @@
  * engine sent is compared as well as the result. Custom functions are
  * registered as v3 operators the way the migration guide suggests.
  */
-import { FigTree, coreOperators, defineOperator, httpOperators, sqlOperators } from '../src'
+import { FigTree, coreOperators, httpOperators, sqlOperators } from '../src'
 import type { V2Options } from '../src/migrationTypes'
 import { convertV2 } from '../src/migrate/convert'
 import type { IssueCode, Path } from '../src/migrate/issues'
@@ -21,6 +21,7 @@ import { parsePath } from '../src/primitives'
 import { V2_PARAMETERS, type V2Operator } from '../src/migrate/v2/operators.generated'
 import { MockHttpClient, MockSqlConnection } from './helpers'
 import {
+  asOperator,
   clone,
   deepFreeze,
   sentRequest,
@@ -1867,24 +1868,6 @@ const FUNCTIONS = {
   record: (...args: unknown[]) => args,
 }
 
-/** A v2 function as a v3 operator, the recipe's way, with `input` as well */
-const asOperator = (name: string, fn: (...args: never[]) => unknown) =>
-  defineOperator({
-    name,
-    category: 'other',
-    description: `The v2 function ${name}`,
-    parameters: {
-      input: { type: 'any', required: false },
-      args: { type: 'array', default: [] },
-    },
-    positionalParams: ['...args'],
-    evaluate: ({ input, args }) =>
-      (fn as (...args: unknown[]) => unknown)(
-        ...(input === undefined ? [] : [input]),
-        ...(args as unknown[])
-      ),
-  })
-
 const v3Functions = new FigTree({
   operators: [
     coreOperators,
@@ -1892,8 +1875,10 @@ const v3Functions = new FigTree({
   ],
 })
 
-const callNote = (name: string) =>
-  `${NOTE}A call on the v2 custom function \`${name}\`. Register a v3 operator of that name, as "Custom functions" in the migration guide suggests, and check this call against its parameters.`
+const callText = (name: string) =>
+  `A call on the v2 custom function \`${name}\`. Register a v3 operator of that name, as "Custom functions" in the migration guide suggests, and check this call against its parameters.`
+const UNTIL_REGISTERED = ' Until then, v3 refuses the expression.'
+const callNote = (name: string) => `${NOTE}${callText(name)}${UNTIL_REGISTERED}`
 const CALL: Raised = { code: 'custom-function-call', path: [] }
 
 const BATCH_5: Example[] = [
@@ -2067,7 +2052,7 @@ describe('batch 5', () => {
     })
     expect(expression).toEqual({ '//': issues[0].message.replace(/^/, NOTE), [`$${name}`]: [1] })
     expect(issues[0].message).toBe(
-      `${callNote(name).slice(NOTE.length)} ${reason}, so register it under another name and rename the call.`
+      `${callText(name)} ${reason}, so register it under another name and rename the call.${UNTIL_REGISTERED}`
     )
   })
 })

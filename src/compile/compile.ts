@@ -85,7 +85,8 @@
  *     or reference the dynamic form. Each resolved call is recorded with
  *     its depth, so the counts and dependencies can compose through it.
  * 13. Containers assemble: `//` keys and `undefined` values drop out, a
- *     `vars` block is consumed, stray `$keys` warn as inert, constant
+ *     `vars` block is consumed, stray `$keys` are errors (warnings, as
+ *     plain labels, on a `lazyEntries` map), constant
  *     children fold into the skeleton and evaluable ones become holes (a
  *     nested skeleton flattens in unless it carries its own vars). No
  *     holes at all collapses the container to one constant — the raw value
@@ -117,7 +118,7 @@ import {
   rendersAsWritten,
   splitSigilToken,
 } from './references'
-import { isRecognizedShorthand, probeConstant } from './probe'
+import { isRecognizedShorthand } from './probe'
 import {
   DEPTH_CEILING,
   SHORTHAND_SIBLINGS,
@@ -241,7 +242,7 @@ export const compileExpression = (
   const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
   const root = walk(state, input, basePath, 0)
   upgradeOutOfScopeBindings(state)
-  const holes = rootHoles(state, root)
+  const holes = rootHoles(root)
   sortIssues(state.issues)
   const hasErrors = hasError(state.issues)
   const own = {
@@ -1200,7 +1201,9 @@ const walkElementsParam = (
  * `operator` the loud malformed-node error the passes record, and a
  * single-`$name` map a shorthand node. Key handling is shared with every
  * other plain object: `//` stripped, `undefined` values dropped, a `vars`
- * block consumed and carried, stray `$name` keys warned.
+ * block consumed and carried — except stray `$name` keys, which are labels
+ * here and only warned: they are compared against runtime values, the case
+ * that keeps an unrecognized `$` string a warning.
  */
 const walkEntriesParam = (
   state: WalkState,
@@ -1217,7 +1220,8 @@ const walkEntriesParam = (
     raw,
     entry.path,
     containerDepth,
-    order
+    order,
+    true
   )
 
   if (entries.every((child) => child.node.kind === 'constant'))
@@ -1740,16 +1744,18 @@ const walkPlainObject = (
 
 /**
  * The plain-object walk, short of assembly: consumed keys stripped, stray
- * `$name` keys warned, every remaining value compiled. Shared with the
- * `lazyEntries` parameter path, so a branch map's keys obey exactly the
- * rules every other plain object's keys obey.
+ * `$name` keys reported, every remaining value compiled. Shared with the
+ * `lazyEntries` parameter path, so a branch map's keys obey the rules every
+ * other plain object's keys obey, but for one: with `labels`, a stray
+ * `$name` key is a label, warned, where elsewhere it is an error.
  */
 const collectPlainObject = (
   state: WalkState,
   raw: Record<string, unknown>,
   path: LinkedPath,
   depth: number,
-  order: number
+  order: number,
+  labels = false
 ): { entries: ContainerEntry[]; vars?: Record<string, CompiledNode>; changed: boolean } => {
   let vars: Record<string, CompiledNode> | undefined
   let changed = false
@@ -1772,17 +1778,23 @@ const collectPlainObject = (
       continue
     }
     if (key.startsWith('$')) {
-      // No recognized keys here (walkObject dispatched those) — inert +
-      // warn, at the key, so a rename fix knows which key to replace. The
-      // order stays the containing object's: that is what passes through
-      // as data. The suggestion replaces the key as written, sigil and all
+      // No recognized keys here (walkObject dispatched those). Every `$`
+      // key in an authored expression invokes, so an unknown one is an
+      // error, and `$`-keyed data is written inside `literal`. Reported at
+      // the key, so a rename fix knows which key to replace; the order is
+      // the containing object's. The suggestion replaces the key as
+      // written, sigil and all
       const suggestion = nearestName(key.slice(1), allInvocationNames(state))
       emit(
         state,
-        'warning',
+        labels ? 'warning' : 'error',
         ErrorCodes.unrecognizedIdentifier,
-        `'${key}' is not a registered operator or fragment and will pass through as data${
-          suggestion ? ` — did you mean '$${suggestion}'?` : ''
+        `'${key}' is not a registered operator or fragment${
+          suggestion
+            ? ` — did you mean '$${suggestion}'?`
+            : labels
+              ? ', so it is a plain key'
+              : " — data with a '$' key goes inside 'literal'"
         }`,
         extendPath(path, key),
         order,
@@ -1862,7 +1874,7 @@ const assembleContainer = (
 
 // ── Artifact-level holes and shielding ──────────────────────────────
 
-const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
+const rootHoles = (root: CompiledNode): ArtifactHole[] => {
   if (root.kind === 'constant') return []
   // A plain-literal root shields per hole, each embedded expression
   // declaring its own static fallback (fallback rule 3). A `vars` block on
@@ -1873,16 +1885,13 @@ const rootHoles = (state: WalkState, root: CompiledNode): ArtifactHole[] => {
   if (root.kind === 'skeleton')
     return root.holes.map((hole) => ({
       node: hole.node,
-      ...withTimeoutFallback(state, hole.node),
+      ...withTimeoutFallback(hole.node),
     }))
-  return [{ node: root, ...withTimeoutFallback(state, root) }]
+  return [{ node: root, ...withTimeoutFallback(root) }]
 }
 
-const withTimeoutFallback = (
-  state: WalkState,
-  node: CompiledNode
-): { timeoutFallback?: { value: unknown } } => {
-  const fallback = timeoutFallbackFor(state, node)
+const withTimeoutFallback = (node: CompiledNode): { timeoutFallback?: { value: unknown } } => {
+  const fallback = timeoutFallbackFor(node)
   return fallback === undefined ? {} : { timeoutFallback: fallback }
 }
 
@@ -1892,22 +1901,15 @@ const withTimeoutFallback = (
  * fallback counts — which is exactly why `operatorDefaults` invalidates the
  * compile cache — and so does the body-root fallback a fragment call lifts.
  */
-const timeoutFallbackFor = (
-  state: WalkState,
-  node: CompiledNode
-): { value: unknown } | undefined => {
+const timeoutFallbackFor = (node: CompiledNode): { value: unknown } | undefined => {
   if (node.kind !== 'operator' && node.kind !== 'fragmentCall') return undefined
   if (node.fallback !== undefined)
     return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
   if (node.kind === 'operator') {
     const defaults = node.entry.hostDefaults
-    // The registry stores operatorDefaults fallbacks unclassified — the
-    // shared probe answers constancy for them (src/compile/probe.ts)
-    if (
-      defaults !== undefined &&
-      Object.hasOwn(defaults, 'fallback') &&
-      probeConstant(defaults.fallback, state.registry).constant
-    )
+    // An operatorDefaults fallback is constant by construction: the runtime
+    // returns it as written, never evaluated (src/evaluate/operator.ts)
+    if (defaults !== undefined && Object.hasOwn(defaults, 'fallback'))
       return { value: defaults.fallback }
     return undefined
   }

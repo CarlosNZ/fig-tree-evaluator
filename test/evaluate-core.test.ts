@@ -6,7 +6,7 @@
  * fast path and the per-call limits.
  */
 import { FigTree, FigTreeError, type CallOptions } from '../src'
-import { boomOp, echoOp } from './fixtures/evalOperators'
+import { boomOp, echoOp, spyOp } from './fixtures/evalOperators'
 
 const fig = new FigTree({ operators: [echoOp(), boomOp()] })
 
@@ -229,10 +229,31 @@ describe('the static-error gate', () => {
   })
 
   test('warnings never block evaluation', async () => {
-    expect(await fig.evaluate({ $flibble: 'inert', x: { $echo: 2 } })).toEqual({
-      $flibble: 'inert',
+    expect(await fig.evaluate({ greeting: '$flibble', x: { $echo: 2 } })).toEqual({
+      greeting: '$flibble',
       x: 2,
     })
+  })
+
+  test('an unrecognized $ key is refused before anything runs, its fallback too', async () => {
+    // The probe would call the object constant were it not stopped by the
+    // `$` key, and then return it untouched
+    const post = spyOp('post', {})
+    const withPost = new FigTree({ operators: [echoOp(), post.definition] })
+    for (const expression of [
+      { $flibble: [1, 2] },
+      { $flibble: [1, 2], fallback: 'fb' },
+      [{ $post: {} }, { a: { $flibble: 1 } }],
+    ]) {
+      const error = await rejection(withPost.evaluate(expression))
+      expect(error.code).toBe('unrecognized-identifier')
+    }
+    expect(post.calls).toHaveLength(0)
+  })
+
+  test('inside literal, the same object is data', async () => {
+    const quoted = { $flibble: [1, 2], fallback: 'fb' }
+    expect(await fig.evaluate({ $literal: quoted })).toBe(quoted)
   })
 
   test('static errors are never caught by fallback (rule 2)', async () => {

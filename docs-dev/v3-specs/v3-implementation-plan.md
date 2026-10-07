@@ -352,6 +352,38 @@ A checklist rather than a build phase (Carl, September 2026, at the Phase-14 rev
     // An optional object: a null source has every path missing, so the default answers
     { $get: { path: 'theme', from: '$data.settings', default: 'light' } }
     ```
+
+  - **Show how `match` takes a branch key that collides with a registered name** (Carl, scoping [#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)). A literal `branches` map is first read as a possible node, so a `$plus` key makes the map a call to `plus` (or a malformed node beside other keys), never a branch label. The value matched is runtime data and is never compiled, so only the key needs care. Prefixing both sides is the way to recommend, since branches stay lazy; `literal` returns its branch values as data, unevaluated, and `buildObject` evaluates every branch before one is chosen. Each of these runs as written, with `data: { code: '$plus' }`:
+
+    ```js
+    // Prefix the value and the keys: no key starts with `$`, and branches stay lazy → 3
+    {
+      $match: [
+        { $buildString: ['key:%1', '$data.code'] },
+        { 'key:$plus': { $plus: [1, 2] }, 'key:other': 'no' },
+      ]
+    }
+    // Constant branch values only: a computed map is data, so this returns 'yes'…
+    {
+      $match: ['$data.code', { $literal: { $plus: 'yes', other: 'no' } }]
+    }
+    // …and this returns the object { $plus: [1, 2] }, not 3
+    {
+      $match: ['$data.code', { $literal: { $plus: { $plus: [1, 2] } } }]
+    }
+    // Keys as entry data: → 3, but every value is evaluated before match picks one
+    {
+      $match: [
+        '$data.code',
+        {
+          $buildObject: [
+            { key: '$plus', value: { $plus: [1, 2] } },
+            { key: 'other', value: 'no' },
+          ],
+        },
+      ]
+    }
+    ```
 - [ ] **Point each operator's `docUrl` at its README section**, the TO-DO in [src/editor-hints/index.ts](../../src/editor-hints/index.ts); every one is the repository root until then.
 - [ ] **Write the migration guide** ([v3-migration.md](v3-migration.md); its open Q1 settles where it lives).
 - [ ] **Write the 3.0.0 CHANGELOG entry**, which `pnpm release` requires. Phase 17a's claims ledger and #170 supply its performance story.

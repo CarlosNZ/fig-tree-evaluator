@@ -28,7 +28,7 @@ export const ErrorCodes = {
   aborted: 'aborted', // the caller's AbortSignal fired
   unknownNodeKey: 'unknown-node-key', // { $plus: {...}, colour: 'red' } — 'colour' isn't a declared property
   unresolvedVar: 'unresolved-var', // '$vars.foo' referenced but 'foo' isn't defined in scope
-  unrecognizedIdentifier: 'unrecognized-identifier', // { $flibble: 1 } — the name after the sigil matches no operator/fragment/namespace (warning)
+  unrecognizedIdentifier: 'unrecognized-identifier', // { $flibble: 1 } — the name after the sigil matches no operator/fragment/namespace (an error on a key, a warning on a string or a branch label)
 
   // Phase 4 — evaluation
   depthCeiling: 'depth-ceiling', // input nests deeper than the engine's built-in walk ceiling (option-independent)

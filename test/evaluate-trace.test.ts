@@ -446,7 +446,7 @@ describe('events', () => {
 
 describe('the root echoes the compile warnings', () => {
   it('carries the unrecognized-$ warning a trace consumer would otherwise miss', async () => {
-    const trace = await traceOf(setup(), { a: { $flibble: 1 } })
+    const trace = await traceOf(setup(), { a: '$flibble' })
     expect(trace.warnings?.map((issue) => issue.code)).toContain(ErrorCodes.unrecognizedIdentifier)
   })
 

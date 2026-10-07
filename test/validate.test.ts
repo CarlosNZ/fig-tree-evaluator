@@ -38,7 +38,7 @@ test('validate throws on a per-call configuration option — method misuse', () 
 })
 
 test('valid means no error-severity issues — warnings do not block', () => {
-  const result = fig.validate({ $flibble: 'inert' })
+  const result = fig.validate({ greeting: '$flibble' })
   expect(result.valid).toBe(true)
   expect(result.issues.some((issue) => issue.severity === 'warning')).toBe(true)
 })
@@ -64,7 +64,7 @@ test("a rest slice's own issue leads the issues from its elements", () => {
   expect(element).toBeGreaterThan(parent)
 })
 
-test('the evaluator-methods worked example: typo key, unresolved var, inert operator', () => {
+test('the evaluator-methods worked example: typo key, unresolved var, unknown operator', () => {
   const result = fig.validate({
     operator: 'if',
     condition: { $graeterThan: ['$data.age', 18] },
@@ -84,10 +84,10 @@ test('the evaluator-methods worked example: typo key, unresolved var, inert oper
   expect(unresolved?.severity).toBe('error')
   expect(unresolved?.path).toEqual(['else'])
 
-  const inert = result.issues.find((issue) => issue.code === 'unrecognized-identifier')
-  expect(inert?.severity).toBe('warning')
-  expect(inert?.path).toEqual(['condition', '$graeterThan'])
-  expect(inert?.suggestion).toBe('$greaterThan')
+  const typo = result.issues.find((issue) => issue.code === 'unrecognized-identifier')
+  expect(typo?.severity).toBe('error')
+  expect(typo?.path).toEqual(['condition', '$graeterThan'])
+  expect(typo?.suggestion).toBe('$greaterThan')
 })
 
 test('did-you-mean suggestions ride the messages where cheap', () => {
@@ -136,7 +136,7 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
 
   test('an unrecognized shorthand key: at the key, the suggestion keeping its sigil', () => {
     expect(issue({ a: { $plsu: [1, 2] } }, 'unrecognized-identifier')).toMatchObject({
-      severity: 'warning',
+      severity: 'error',
       path: ['a', '$plsu'],
       suggestion: '$plus',
     })
