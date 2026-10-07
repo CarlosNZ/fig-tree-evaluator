@@ -1,6 +1,6 @@
 # v3 public docs: planning
 
-_Status: **Draft**, from a discussion between Carl and Claude, October 2026. Nothing here is ruled yet. The open questions are listed at the end._
+_Status: **Draft**, from a discussion between Carl and Claude, October 2026. Agreed so far: a docs site plus a short README, Starlight as the tooling, and JSON5 for the widget's text pane. Everything else is a proposal, and the open questions are listed at the end._
 
 ## Direction
 
@@ -110,7 +110,7 @@ Code that runs in the host goes in ordinary code blocks with Expressive Code tit
 
 ### The two-pane widget
 
-- **Left:** a CodeMirror JSON editor. JSON is how users store expressions.
+- **Left:** a CodeMirror JSON5 editor. JSON5 lets examples carry comments and unquoted keys, and since it's a superset of JSON, any stored expression pastes straight in.
 - **Right:** `<FigTreeEditor expression={expr} setExpression={setExpr} />`. The editor is already a controlled component.
 - **Below:** the evaluated result.
 
@@ -118,11 +118,12 @@ Both panes read and write the same React state.
 
 #### Keeping the panes in sync
 
-The only tricky part is the text pane, because half-typed JSON doesn't parse.
+The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 
 - The left pane keeps its own text. On each edit, if the text parses, it updates the shared state. If it doesn't, the pane shows the parse error and leaves the state alone.
 - When the state changes from the right, the left pane re-renders its text only if its current text doesn't already parse to the same value. That avoids update loops, and avoids resetting the cursor while someone is typing on the left.
 - Evaluation runs on the shared state, debounced.
+- Comments live only in the text. When the left pane re-renders from the shared state (after an edit on the right, or a form toggle), the text is regenerated from the value and its comments are lost. Comments are mainly for the examples as authored, so this is acceptable, but the widget could warn before an action that would drop them.
 
 #### Extras
 
@@ -133,16 +134,20 @@ The only tricky part is the text pane, because half-typed JSON doesn't parse.
 
 ## Dependencies
 
-- **The v3 editor.** `fig-tree-editor-react`'s `main` branch depends on `fig-tree-evaluator ^2.23.2`. Its `v3.0-dev` branch has to be usable before the widget can be finished. A prototype can use it through a local link (a pnpm workspace or `link:`) in the meantime.
+- **The v3 editor.** `fig-tree-editor-react`'s `main` branch, and its only published release (1.0.1), depend on `fig-tree-evaluator ^2.23.2`. Its `v3.0-dev` branch tracks the v3 previews (`^3.0.0-preview.9`), but has no published release, so the docs site uses it through a local link (`link:` to a local clone, `~/GitHub/fig-tree-editor-react` on Carl's machine) until a v3 editor preview is on npm.
 
 ## Open questions
 
 1. **Where the site lives.** Options: a `site/` folder (or `docs/`, which today holds only `img/`) set up as a pnpm workspace package, so its dependencies stay out of the library's `devDependencies`. Or a separate repo. In-repo keeps docs changes in the same PRs as the code they describe.
 2. **Hosting and URL.** GitHub Pages through a GitHub Action is the default. The v2 README's playground link points to `carlosnz.github.io/fig-tree-evaluator`, so check what is served there and whether anything else still links to it.
-3. **The left pane's format.** Plain JSON, or JSON5 so examples can carry comments?
-4. **Checking host-code examples.** Expression examples are covered by build-time evaluation. Host-code blocks could be type-checked (or run) in CI too, so they can't drift either.
-5. **Repo docs to update when this lands:** `CLAUDE.md` calls the README "the authoritative reference for every operator", and `package.json`'s `homepage` points to the README.
+3. **Type-checking host-code examples: leaning yes, pending a trial.** Expression examples are checked by build-time evaluation. Host-code snippets are plain text and go stale silently when an option is renamed, a return shape changes or an export moves. Renames such as `missingPathDefault` → `default` (#195) and `useCache` → `noCache` (#204) are this kind of change.
+   - **Proposed mechanism:** twoslash, through Expressive Code's community twoslash plugin. The build compiles each TS snippet against the library's real types and fails on errors. Setup that a snippet needs but shouldn't display (imports, a sample `expression`) goes above a `// ---cut---` marker.
+   - **Bonus:** hover types in the rendered docs.
+   - **Scope:** type-check rather than run. Much host code depends on HTTP clients, a database or the user's data, which the build doesn't have. A few self-contained snippets could also be run.
+   - **Cost:** every snippet must compile, so writing one takes slightly more care.
+   - **Before deciding:** try it on a small sample of snippets to see how it behaves with Starlight, what the build-time cost is, how much authoring friction the cut markers add, and how readable the errors are.
+4. **Repo docs to update when this lands:** `CLAUDE.md` calls the README "the authoritative reference for every operator", and `package.json`'s `homepage` points to the README.
 
 ## Next step
 
-A prototype: a bare Starlight skeleton with one page holding the two-pane widget, linked to the editor's `v3.0-dev` branch, and one reference page rendered from `coreDefinitions`.
+A prototype: a bare Starlight skeleton with one page holding the two-pane widget, linked to the editor's `v3.0-dev` branch, and one reference page rendered from `coreDefinitions`. The same prototype can host the twoslash trial (open question 3), on a small sample of host-code snippets.
