@@ -32,7 +32,7 @@ export const get = declareOperator({
       nullPolicy: 'value',
       default: EvaluationData,
       description:
-        'The object searched instead of the evaluation data — replace, never merge; a null source is one where every path is missing',
+        'The source the path reads: a value, or a bare namespace ($data, $vars, $params, $element) whose var or parameter name opens the path — replace, never merge; a null source misses every path',
     },
     default: {
       type: 'any',

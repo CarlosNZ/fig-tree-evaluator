@@ -20,11 +20,14 @@ describe('toGet', () => {
     ['$data[0].x', { operator: 'get', path: '[0].x' }],
     ['$data.user["first name"]', { operator: 'get', path: 'user["first name"]' }],
     ['$data.orders[*].total', { operator: 'get', path: 'orders[*].total' }],
-    ['$vars.row.a', { operator: 'get', path: 'a', from: '$vars.row' }],
-    ['$v.row.a[1]', { operator: 'get', path: 'a[1]', from: '$v.row' }],
-    ['$vars.row[0]', { operator: 'get', path: '[0]', from: '$vars.row' }],
-    ['$vars["row"].a', { operator: 'get', path: 'a', from: '$vars["row"]' }],
-    ['$params.p.a', { operator: 'get', path: 'a', from: '$params.p' }],
+    // One shape for every namespace: the bare namespace in `from`, the
+    // whole drill in `path`. The compiler moves the var or parameter name
+    // the path opens with into the source (#237)
+    ['$vars.row.a', { operator: 'get', path: 'row.a', from: '$vars' }],
+    ['$v.row.a[1]', { operator: 'get', path: 'row.a[1]', from: '$v' }],
+    ['$vars.row[0]', { operator: 'get', path: 'row[0]', from: '$vars' }],
+    ['$vars["row"].a', { operator: 'get', path: '["row"].a', from: '$vars' }],
+    ['$params.p.a', { operator: 'get', path: 'p.a', from: '$params' }],
     ['$e.name', { operator: 'get', path: 'name', from: '$e' }],
     ['$element[2]', { operator: 'get', path: '[2]', from: '$element' }],
     // Nothing left to drill: the whole source, as an empty path reads it
@@ -32,8 +35,8 @@ describe('toGet', () => {
     ['$d', { operator: 'get', path: '' }],
     ['$data.', { operator: 'get', path: '' }],
     ['$e', { operator: 'get', path: '', from: '$e' }],
-    ['$vars.row', { operator: 'get', path: '', from: '$vars.row' }],
-    ['$p.p', { operator: 'get', path: '', from: '$p.p' }],
+    ['$vars.row', { operator: 'get', path: 'row', from: '$vars' }],
+    ['$p.p', { operator: 'get', path: 'p', from: '$p' }],
     ['$params', { operator: 'get', path: '', from: '$params' }],
   ])('%s', (reference, node) => {
     expect(toGet(reference)).toEqual(node)
@@ -45,6 +48,7 @@ describe('toGet', () => {
     ['a drilled $index (invalid)', '$i.x'],
     ['a bare $vars (invalid)', '$vars'],
     ['a var named by an index', '$vars[0].a'],
+    ['a parameter named by a projection', '$params[*].a'],
     ['an unterminated bracket', '$data.items['],
     ['an unrecognized namespace', '$order.x'],
     ['plain text', 'hello'],
@@ -62,10 +66,10 @@ describe('toGet', () => {
 
   describe('the spelling of `from`', () => {
     test.each([
-      ['preserve', '$v.row.a', '$v.row'],
-      ['preserve', '$vars.row.a', '$vars.row'],
-      ['canonical', '$v.row.a', '$vars.row'],
-      ['alias', '$vars.row.a', '$v.row'],
+      ['preserve', '$v.row.a', '$v'],
+      ['preserve', '$vars.row.a', '$vars'],
+      ['canonical', '$v.row.a', '$vars'],
+      ['alias', '$vars.row.a', '$v'],
       ['alias', '$element.x', '$e'],
       ['canonical', '$e.x', '$element'],
     ] as const)('%s: %s', (referenceNames, reference, from) => {
@@ -97,6 +101,16 @@ describe('toReference', () => {
     ['from a var', { operator: 'get', path: 'a.b', from: '$vars.row' }, '$vars.row.a.b'],
     ['from an alias var', { $get: { path: 'a', from: '$v.row' } }, '$v.row.a'],
     ['from a parameter', { operator: 'get', path: 'a', from: '$params.p' }, '$params.p.a'],
+    // The bare forms the compiler accepts (#237): the path names the var
+    ['from a bare $vars', { operator: 'get', path: 'a.b', from: '$vars' }, '$vars.a.b'],
+    ['from a bare alias $vars', { $get: { path: 'row[0]', from: '$v' } }, '$v.row[0]'],
+    ['from a bare $params', { operator: 'get', path: 'p.a', from: '$params' }, '$params.p.a'],
+    [
+      'a quoted key naming the var',
+      { operator: 'get', path: ['q.r'], from: '$vars' },
+      '$vars["q.r"]',
+    ],
+    ['a bare $params read whole', { operator: 'get', path: '', from: '$params' }, '$params'],
     ['from the element', { operator: 'get', path: 'name', from: '$e' }, '$e.name'],
     ['from a bare $data', { operator: 'get', path: 'x', from: '$data' }, '$data.x'],
     ['from a drilled $data', { operator: 'get', path: 'x', from: '$data.a' }, '$data.a.x'],
@@ -144,7 +158,10 @@ describe('toReference', () => {
     ['an $index source', { operator: 'get', path: 'a', from: '$index' }],
     ['a path read from a projection', { operator: 'get', path: 'x', from: '$d.items[*]' }],
     ['an index read from a projection', { operator: 'get', path: [0], from: '$d.grid[*].row' }],
-    ['a bare $vars source (invalid)', { operator: 'get', path: 'a', from: '$vars' }],
+    ['a bare $vars read whole (invalid)', { operator: 'get', path: '', from: '$vars' }],
+    ['a var named by an index', { operator: 'get', path: '[0].a', from: '$vars' }],
+    ['a var named by a projection', { operator: 'get', path: '[*].a', from: '$v' }],
+    ['a parameter named by an index', { operator: 'get', path: [0, 'a'], from: '$params' }],
     ['an unrecognized source', { operator: 'get', path: 'a', from: '$order' }],
     ['a plain-string source', { operator: 'get', path: 'a', from: 'data' }],
     ['an unknown key', { operator: 'get', path: 'a', typo: 1 }],
@@ -171,6 +188,9 @@ describe('toReference', () => {
       ['preserve', { $get: { path: 'x', from: '$vars.r' } }, '$vars.r.x'],
       ['alias', { $get: { path: 'x', from: '$vars.r' } }, '$v.r.x'],
       ['canonical', { $get: { path: 'x', from: '$v.r' } }, '$vars.r.x'],
+      ['preserve', { $get: { path: 'r.x', from: '$v' } }, '$v.r.x'],
+      ['alias', { $get: { path: 'r.x', from: '$vars' } }, '$v.r.x'],
+      ['canonical', { $get: { path: 'r.x', from: '$v' } }, '$vars.r.x'],
       ['canonical', { $get: { path: 'x', from: '$d' } }, '$data.x'],
     ] as const)('%s: %p', (referenceNames, node, reference) => {
       expect(toReference(node, { referenceNames })).toBe(reference)
@@ -183,11 +203,14 @@ describe('toReference', () => {
     for (const reference of [
       '$d.a.b',
       '$vars.row.a',
+      '$vars.row.a.b',
       '$params.p[0]',
+      '$p.x',
       '$element.x',
       '$v.r["q.r"]',
       '$d',
       '$vars.row',
+      '$params',
       '$e',
     ])
       expect(toReference(toGet(reference))).toBe(reference)

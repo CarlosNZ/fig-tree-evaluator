@@ -198,6 +198,13 @@ describe('with the core operators', () => {
       expectForm(shorthand(input, { arguments: 'named' }), output)
     })
 
+    test('a get from a bare $vars becomes the reference it compiles to', () => {
+      expect(shorthand({ operator: 'get', path: 'row.a', from: '$vars' })).toBe('$vars.row.a')
+      expect(shorthand({ operator: 'get', path: '[0].a', from: '$vars' })).toEqual({
+        $get: { path: '[0].a', from: '$vars' },
+      })
+    })
+
     test('getAsReference: false keeps the node', () => {
       expect(shorthand({ operator: 'get', path: 'a' }, { getAsReference: false })).toEqual({
         $get: 'a',

@@ -8,7 +8,12 @@
  * Every function here answers `null` for "no such form" and never throws,
  * so the editor can ask before it offers a conversion.
  */
-import { recognizeReference, renderSegments, splitSigilToken } from '../compile/references'
+import {
+  bareNamespace,
+  recognizeReference,
+  renderSegments,
+  splitSigilToken,
+} from '../compile/references'
 import { singlePositionalTarget } from '../compile/grammar'
 import { GET_POSITIONAL } from '../operators/getShape'
 import { parsePath, WILDCARD } from '../primitives/path'
@@ -57,36 +62,18 @@ export const respell = (value: string, spelling: Spelling): string => {
   return `$${spellToken(token, recognition.namespace, spelling)}${rest}`
 }
 
-/**
- * Where the first segment of a drill ends, when that segment is a string key
- * (`.row`, `["row"]`); `null` for an index, a projection or an empty key,
- * none of which can name a var or a parameter.
- */
-const firstKeyEnd = (drill: string): number | null => {
-  if (drill.startsWith('.')) {
-    let end = 1
-    while (end < drill.length && drill[end] !== '.' && drill[end] !== '[') end++
-    return end > 1 ? end : null
-  }
-  const quote = drill[1]
-  if (drill[0] !== '[' || (quote !== '"' && quote !== "'")) return null
-  for (let i = 2; i < drill.length; i++) {
-    if (drill[i] === '\\') i++
-    else if (drill[i] === quote) return drill[i + 1] === ']' ? i + 2 : null
-  }
-  return null
-}
-
 /** A drill's path text: as written, without its leading `.`. */
 const pathText = (drill: string): string => (drill.startsWith('.') ? drill.slice(1) : drill)
 
 /**
- * A reference string as a canonical `get` node. `$data` reads need no
- * `from`. The first segment of a `$vars` or `$params` reference picks the
- * var or parameter, so it stays in `from`, and the rest becomes the path.
- * A reference with nothing left to drill reads its whole source, as a get
- * with an empty path does. `$index` has no get form: it is a number, not a
- * source a path can read into.
+ * A reference string as a canonical `get` node: `from` is the bare
+ * namespace and `path` the whole drill, one shape for every namespace. A
+ * `$data` read needs no `from`. For `$vars` and `$params` the path's first
+ * key names the var or parameter, which the compiler moves into the source
+ * (#237), so a drill opening with an index or a projection has no get
+ * form. A reference with nothing left to drill reads its whole source, as
+ * a get with an empty path does. `$index` has no get form: it is a number,
+ * not a source a path can read into.
  */
 export const referenceToGet = (
   value: unknown,
@@ -95,29 +82,13 @@ export const referenceToGet = (
   if (typeof value !== 'string') return null
   const recognition = recognizeReference(value)
   if (recognition.kind !== 'reference') return null
-  const { namespace } = recognition
+  const { namespace, segments } = recognition
+  if (namespace === 'index') return null
   const { token, rest } = splitSigilToken(value)!
-  const source = `$${spellToken(token, namespace, spelling)}`
-
-  switch (namespace) {
-    case 'data':
-      return { operator: 'get', path: pathText(rest) }
-    case 'element':
-      return { operator: 'get', path: pathText(rest), from: source }
-    case 'vars':
-    case 'params': {
-      if (recognition.segments.length === 0) return { operator: 'get', path: '', from: source }
-      const end = firstKeyEnd(rest)
-      if (end === null) return null
-      return {
-        operator: 'get',
-        path: pathText(rest.slice(end)),
-        from: `${source}${rest.slice(0, end)}`,
-      }
-    }
-    default:
-      return null
-  }
+  const path = pathText(rest)
+  if (namespace === 'data') return { operator: 'get', path }
+  if (namespace !== 'element' && segments.length > 0 && typeof segments[0] !== 'string') return null
+  return { operator: 'get', path, from: `$${spellToken(token, namespace, spelling)}` }
 }
 
 /**
@@ -149,7 +120,9 @@ const literalSegments = (path: unknown): (string | number)[] | null => {
  * A get node's parameters as a reference, or `null` when they have none,
  * which includes a path read from a projection in `from`. With no `from`,
  * the read is of `$data`, which has no spelling of its own to keep:
- * `preserve` writes the alias, as short is the point.
+ * `preserve` writes the alias, as short is the point. A bare `$vars` or
+ * `$params` in `from` names the var or parameter by the path's first key
+ * (#237), so the path has to open with one.
  */
 export const paramsToReference = (params: GetParams, spelling: Spelling): string | null => {
   if (params.has('default')) return null
@@ -162,14 +135,21 @@ export const paramsToReference = (params: GetParams, spelling: Spelling): string
   if (from === undefined) base = spelling === 'canonical' ? '$data' : '$d'
   else {
     if (typeof from !== 'string') return null
-    const recognition = recognizeReference(from)
-    if (recognition.kind !== 'reference' || recognition.namespace === 'index') return null
-    // A get applies its path to the array a projection in `from` gives,
-    // where a reference applies what follows the `[*]` to each element
-    if (rendered !== '' && recognition.segments.includes(WILDCARD)) return null
-    // A trailing `.` reads as nothing (`$data.` is `$data`), and would
-    // double up against the path's own
-    base = respell(from, spelling).replace(/\.$/, '')
+    const bare = bareNamespace(from)
+    if (bare === 'vars' || bare === 'params') {
+      // A bare `$params` is a value, a bare `$vars` is not
+      if (segments.length === 0 ? bare === 'vars' : typeof segments[0] !== 'string') return null
+      base = `$${spellToken(splitSigilToken(from)!.token, bare, spelling)}`
+    } else {
+      const recognition = recognizeReference(from)
+      if (recognition.kind !== 'reference' || recognition.namespace === 'index') return null
+      // A get applies its path to the array a projection in `from` gives,
+      // where a reference applies what follows the `[*]` to each element
+      if (rendered !== '' && recognition.segments.includes(WILDCARD)) return null
+      // A trailing `.` reads as nothing (`$data.` is `$data`), and would
+      // double up against the path's own
+      base = respell(from, spelling).replace(/\.$/, '')
+    }
   }
 
   if (rendered === '') return base

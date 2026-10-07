@@ -23,6 +23,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
 import { coreOperators } from '../src/operators/index'
+import { EvaluationData } from '../src/operatorDefinition'
 import { httpOperators, sqlOperators } from '../src/operators/io'
 import { categoryHints } from '../src/editor-hints'
 import type {
@@ -146,7 +147,14 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
       r: p.required,
       // A `default` key is what separates "has a runtime default" from
       // "presence-sensitive", so its absence has to survive into the page
-      ...('default' in p ? { def: JSON.stringify(p.default) ?? String(p.default) } : {}),
+      ...('default' in p
+        ? {
+            def:
+              p.default === EvaluationData
+                ? '$data'
+                : (JSON.stringify(p.default) ?? String(p.default)),
+          }
+        : {}),
       ev: p.evaluation && p.evaluation !== 'eager' ? p.evaluation : null,
       tr: p.truthiness === true,
       d: p.description ?? null,

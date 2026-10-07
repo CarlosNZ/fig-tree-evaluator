@@ -161,7 +161,7 @@ describe('referencesAsGet', () => {
       operator: 'plus',
       values: [
         { operator: 'get', path: 'a' },
-        { x: { operator: 'get', path: 'b', from: '$vars.row' } },
+        { x: { operator: 'get', path: 'row.b', from: '$vars' } },
       ],
       fallback: { operator: 'get', path: 'c' },
     })
