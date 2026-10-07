@@ -75,7 +75,7 @@ export type InspectNode = { order: number; path: Path } & (
 
 /**
  * Render the artifact's root. A `timeoutFallback` is the artifact's per-hole
- * shielding precompute, so it rides only the top-level holes' nodes — the
+ * shielding precompute, so it rides only the artifact's holes' nodes — the
  * one place a timeout can splice a constant without running anything.
  */
 export const renderTree = (artifact: CompileArtifact): InspectNode => {

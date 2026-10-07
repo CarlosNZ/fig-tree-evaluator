@@ -556,10 +556,11 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
  * value through a boundary that has already returned a single one.
  *
  * A node root is one hole, and it is the root, so its constant is the
- * call's. A skeleton root splices its holes' constants into its shape —
- * the same assembly `evaluateShielded` performs, and relying on the same
- * by-construction ordering: the artifact's holes ARE the root skeleton's,
- * in order (`rootHoles` in src/compile/compile.ts).
+ * call's. A skeleton root splices its holes' constants into its shape,
+ * inside out through any nested skeleton a `vars` block kept — the same
+ * assembly a shielded evaluation performs, and relying on the same
+ * by-construction ordering: the artifact's holes ARE the skeletons' leaf
+ * holes, in walk order (`rootHoles` in src/compile/compile.ts).
  */
 const liftedFallback = (
   artifact: CompileArtifact,
@@ -574,8 +575,16 @@ const liftedFallback = (
     if (fallback === undefined) return undefined
     values.push(fallback.value)
   }
-  if (root.kind === 'skeleton') return { value: splice(root.skeleton, root.holes, values) }
-  return { value: values[0] }
+  let next = 0
+  const assemble = (node: CompiledNode): unknown =>
+    node.kind === 'skeleton'
+      ? splice(
+          node.skeleton,
+          node.holes,
+          node.holes.map((hole) => assemble(hole.node))
+        )
+      : values[next++]
+  return { value: assemble(root) }
 }
 
 /**

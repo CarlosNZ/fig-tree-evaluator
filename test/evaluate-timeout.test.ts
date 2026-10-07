@@ -173,6 +173,65 @@ describe('timeout shielding', () => {
     ).toEqual({ fast: 3, slow: 'pending' })
   })
 
+  // A literal is structure at any depth, so one that keeps its own `vars`
+  // block shields hole by hole exactly as the root does: the block is
+  // scoping, not evaluation, and the scope applies where it was declared
+  it('a nested literal that keeps its vars assembles hole by hole, as the root does', async () => {
+    const { fig } = setup()
+    expect(
+      await fig.evaluate(
+        {
+          section: {
+            vars: { n: 2 },
+            fast: { $plus: ['$vars.n', 1], fallback: 0 },
+            slow: { operator: 'sleep', ms: 300, fallback: 'pending' },
+            deeper: {
+              vars: { m: '$vars.n' },
+              fast: { $plus: ['$vars.m', 2], fallback: 0 },
+              slow: { operator: 'sleep', ms: 300, fallback: 'pending' },
+            },
+          },
+        },
+        { timeout: 30 }
+      )
+    ).toEqual({
+      section: { fast: 3, slow: 'pending', deeper: { fast: 4, slow: 'pending' } },
+    })
+  })
+
+  it('a var that is itself a literal evaluates under its scope, outside the boundary', async () => {
+    const { fig } = setup()
+    expect(
+      await fig.evaluate(
+        {
+          section: {
+            vars: { x: { n: { $plus: [1, 1] } } },
+            fast: { $plus: ['$vars.x.n', 1], fallback: 0 },
+            slow: { operator: 'sleep', ms: 300, fallback: 'pending' },
+          },
+        },
+        { timeout: 30 }
+      )
+    ).toEqual({ section: { fast: 3, slow: 'pending' } })
+  })
+
+  it('one unshielded hole inside a nested literal leaves the whole evaluation unshielded', async () => {
+    const { fig } = setup()
+    const error = await rejection<FigTreeError>(
+      fig.evaluate(
+        {
+          section: {
+            vars: { n: 2 },
+            fast: { $plus: ['$vars.n', 1], fallback: 0 },
+            slow: { operator: 'sleep', ms: 300 },
+          },
+        },
+        { timeout: 30 }
+      )
+    )
+    expect(error.code).toBe('timeout')
+  })
+
   it('cancels the in-flight work through the threaded signal', async () => {
     const latency = latencyOp()
     const { fig } = setup([latency.definition])

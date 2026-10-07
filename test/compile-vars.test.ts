@@ -86,15 +86,22 @@ test('a vars-only object evaluates to {}', () => {
   expect(value).toEqual({})
 })
 
-test('a vars-carrying plain literal with holes stays its own evaluable unit', () => {
+test("a vars-carrying plain literal with holes stays its own skeleton, its holes the artifact's", () => {
   const artifact = compile({
     outer: {
       vars: { x: '$data.a' },
       inner: { $plus: ['$vars.x', 1] },
     },
   })
-  // The vars-carrying literal is the maximal evaluable node, not its hole
+  // The vars-carrying literal is a skeleton of its parent's, not flattened
+  // into it: its scope is applied where it was declared
+  const root = artifact.root as SkeletonNode
+  expect(root.holes).toHaveLength(1)
+  expect(root.holes[0].node.kind).toBe('skeleton')
+  expect(toNodePath(root.holes[0].node.path)).toEqual(['outer'])
+  // The artifact's holes are the leaves through it: a literal is structure
+  // at any depth, and timeout shielding is per embedded expression
   expect(artifact.holes).toHaveLength(1)
-  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['outer'])
-  expect(artifact.holes[0].node.kind).toBe('skeleton')
+  expect(artifact.holes[0].node.kind).toBe('operator')
+  expect(toNodePath(artifact.holes[0].node.path)).toEqual(['outer', 'inner'])
 })

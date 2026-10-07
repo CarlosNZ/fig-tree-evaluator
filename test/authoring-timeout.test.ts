@@ -52,6 +52,17 @@ test('every hole root needs a constant fallback, and each that lacks one is list
   expect(await underTimeout(partial)).toEqual([['b']])
 })
 
+test('a nested literal that keeps its vars is listed hole by hole', async () => {
+  const sectioned = {
+    section: {
+      vars: { x: '$data.x' },
+      a: { $http: 'https://x.test', fallback: [] },
+      b: { $plus: ['$vars.x', 1] },
+    },
+  }
+  expect(await underTimeout(sectioned)).toEqual([['section', 'b']])
+})
+
 test('a node root is covered by its own constant fallback', async () => {
   expect(await underTimeout({ $http: 'https://x.test', fallback: null })).toEqual([])
   expect(await underTimeout({ $http: 'https://x.test' })).toEqual([[]])
@@ -196,5 +207,27 @@ describe('only an evaluation that can wait can be cut off', () => {
         .filter((finding) => finding.code === 'timeout')
         .map((finding) => [finding.path, finding.coveredBy])
     ).toEqual([[['a'], ['a']]])
+  })
+
+  test('a shielded value inside a nested literal that keeps its vars is covered at its own path', async () => {
+    const sectioned = {
+      section: {
+        vars: { u: 'x' },
+        a: { $io: 1, fallback: 0 },
+        b: { $upper: '$vars.u', fallback: '' },
+      },
+    }
+    const { uncovered, covered } = await fallbackCoverage(timed(waiting), sectioned)
+    expect(timeouts(uncovered)).toEqual([])
+    expect(
+      covered
+        .filter((finding) => finding.code === 'timeout')
+        .map((finding) => [finding.path, finding.coveredBy])
+    ).toEqual([
+      [
+        ['section', 'a'],
+        ['section', 'a'],
+      ],
+    ])
   })
 })

@@ -281,6 +281,27 @@ describe('a hole the shielded deadline cut off is traced as a caught failure', (
     expect(at(trace, ['greeting', 'fallback'])?.status).toBe('skipped')
   })
 
+  it('inside a nested literal that keeps its vars, which settles with the assembly', async () => {
+    const fig = shieldedSetup()
+    const trace = await traceOf(fig, {
+      section: {
+        vars: { n: 2 },
+        fast: { $plus: ['$vars.n', 1], fallback: 0 },
+        slow: { operator: 'sleep', ms: 200, fallback: 'late' },
+      },
+    })
+    expect(trace.value).toEqual({ section: { fast: 3, slow: 'late' } })
+    expect(at(trace, ['section'])).toMatchObject({
+      status: 'value',
+      value: { fast: 3, slow: 'late' },
+    })
+    const slow = at(trace, ['section', 'slow'])
+    expect(slow).toMatchObject(answeredBy('late'))
+    expect(slow?.error?.path).toEqual(['section', 'slow'])
+    expect(at(trace, ['section', 'fast'])?.status).toBe('value')
+    expect(at(trace, ['section', 'fast'])?.events).toBeUndefined()
+  })
+
   it('leaves what the deadline cut off beneath the hole cancelled', async () => {
     const fig = shieldedSetup()
     const trace = await traceOf(fig, {
