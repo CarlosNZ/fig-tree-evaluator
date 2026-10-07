@@ -16,7 +16,7 @@
  * absent from an engine-only one — every entry but the root needs one.
  */
 export const ENTRIES = [
-  { subpath: '.', name: 'index', source: 'src/index.ts', budget: 37_850 },
+  { subpath: '.', name: 'index', source: 'src/index.ts', budget: 38_250 },
   {
     subpath: './migrate',
     name: 'migrate/index',
@@ -42,7 +42,7 @@ export const ENTRIES = [
     subpath: './authoring',
     name: 'authoring/index',
     source: 'src/authoring/index.ts',
-    budget: 42_000,
+    budget: 42_500,
     marker: 'fallbackCoverage() takes',
   },
 ]

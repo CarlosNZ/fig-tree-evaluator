@@ -167,6 +167,21 @@ test('a get with `from` reads no $data path at all', () => {
   expect(artifact.dependencies.dynamic).toBe(false)
 })
 
+test('a bare $data as `from` is the omitted form, so its path is a known read', () => {
+  const artifact = compile({
+    a: { $get: { path: 'user.name', from: '$data' } },
+    b: { $get: { path: 'orders[0]', from: '$d' } },
+  })
+  expect(paths(artifact).sort()).toEqual(['orders[0]', 'user.name'])
+  expect(artifact.dependencies.dynamic).toBe(false)
+})
+
+test('a bare $vars as `from` reads no $data path', () => {
+  const artifact = compile({ vars: { user: 1 }, a: { $get: { path: 'user.name', from: '$vars' } } })
+  expect(paths(artifact)).toEqual([])
+  expect(artifact.dependencies.dynamic).toBe(false)
+})
+
 test('a malformed literal get path records nothing and does not throw', () => {
   const artifact = compile({ a: { $get: 'a[' } })
   expect(paths(artifact)).toEqual([])

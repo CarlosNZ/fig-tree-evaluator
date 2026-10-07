@@ -80,6 +80,20 @@ describe('unresolved references', () => {
     expect(errorCodes({ $format: ['%1', '$params.x'] })).toContain('unresolved-param')
   })
 
+  test('a bare $vars as get’s from resolves the path’s first key as the var', () => {
+    expect(
+      errorCodes({ vars: { a: { b: 1 } }, x: { $get: { path: 'a.b', from: '$vars' } } })
+    ).toEqual([])
+    // An undeclared name is a compile error, not a miss `default` covers
+    expect(
+      errorCodes({ vars: { a: 1 }, x: { $get: { path: 'typo.b', from: '$vars', default: null } } })
+    ).toContain('unresolved-var')
+    const bare = issuesOf({ $get: { path: '$data.which', from: '$vars' } }).find(
+      (issue) => issue.code === 'bare-vars'
+    )
+    expect(bare).toMatchObject({ severity: 'error', parameter: 'from', path: ['$get', 'from'] })
+  })
+
   test('$element/$index resolve only inside an iterator each subtree', () => {
     expect(errorCodes({ $map: ['$data.users', '$element.name'] })).toHaveLength(0)
     expect(errorCodes({ $not: '$element' })).toContain('unresolved-binding')

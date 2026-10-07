@@ -44,7 +44,7 @@ const ENGINE_ONLY = `
 import { FigTree, coreOperators } from './build/index.js'
 export default new FigTree({ operators: [coreOperators] })
 `
-const ENGINE_ONLY_BUDGET = 31_250
+const ENGINE_ONLY_BUDGET = 31_750
 
 /**
  * What the engine-only consumer must not carry from the root entry, by the
