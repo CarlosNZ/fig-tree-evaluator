@@ -336,6 +336,22 @@ A checklist rather than a build phase (Carl, September 2026, at the Phase-14 rev
 - [ ] **Cut `v2.x` from `main`** before `v3.0-dev` merges into it (Carl). v2 patch releases are cut from that branch by hand; it does not carry `pnpm release`.
 - [ ] **Merge `v3.0-dev` into `main`.**
 - [ ] **Rewrite the README for v3.** It is still entirely v2. Includes the generated operator reference ("Build & CI mechanics" in [v3-packaging.md](v3-packaging.md)), a section on writing custom operators with `defineOperator()`, which has no user-facing guide yet, and removing the stale `demo/` and `yarn` references.
+  - **Show what `get`'s `from` can do** (Carl, at closing [#186](https://github.com/CarlosNZ/fig-tree-evaluator/issues/186)). It is more useful than a reference with a different root, and v2's `additionalData` merge is one of its patterns rather than a missing feature. Each of these runs as written:
+
+    ```js
+    // Data and extra values through one computed path; the later object wins
+    { $get: { path: '$data.field', from: { $plus: ['$data', { region: 'AU' }] } } }
+    // The same, with the extras as defaults the data overrides
+    { $get: { path: '$data.field', from: { $plus: [{ region: 'AU' }, '$data'] } } }
+    // A lookup table, with a default for a key it doesn't have
+    { $get: { path: '$data.status', from: { active: 'Active', paused: 'On hold' }, default: 'Unknown' } }
+    // Drill into a node's result
+    { $get: { path: 'name', from: { $find: ['$data.users', { $equal: ['$element.id', '$data.id'] }] } } }
+    // Choose the source object at evaluation time
+    { $get: { path: 'user.name', from: { $if: ['$data.isAdmin', '$data.admin', '$data.guest'] } } }
+    // An optional object: a null source has every path missing, so the default answers
+    { $get: { path: 'theme', from: '$data.settings', default: 'light' } }
+    ```
 - [ ] **Point each operator's `docUrl` at its README section**, the TO-DO in [src/editor-hints/index.ts](../../src/editor-hints/index.ts); every one is the repository root until then.
 - [ ] **Write the migration guide** ([v3-migration.md](v3-migration.md); its open Q1 settles where it lives).
 - [ ] **Write the 3.0.0 CHANGELOG entry**, which `pnpm release` requires. Phase 17a's claims ledger and #170 supply its performance story.
