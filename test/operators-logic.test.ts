@@ -144,9 +144,25 @@ describe('match', () => {
     // values are common enough that a label must be able to carry one
     const expression = { $match: ['$data.code', { $USD: 'dollars', EUR: 'euros' }] }
     expect(fig.validate(expression).issues).toMatchObject([
-      { severity: 'warning', code: 'unrecognized-identifier', path: ['$match', 1, '$USD'] },
+      {
+        severity: 'warning',
+        code: 'unrecognized-identifier',
+        path: ['$match', 1, '$USD'],
+        message: "'$USD' is not a registered operator or fragment, so it is a plain key",
+      },
     ])
     expect(await ev(expression, { code: '$USD' })).toBe('dollars')
+  })
+
+  test('a label near a registered name says it is a label before suggesting the name', async () => {
+    expect(fig.validate({ $match: ['a', { $plsu: 'x' }] }).issues).toMatchObject([
+      {
+        severity: 'warning',
+        message:
+          "'$plsu' is not a registered operator or fragment, so it is a plain key — did you mean '$plus'?",
+        suggestion: '$plus',
+      },
+    ])
   })
 
   test("only the map's own keys are labels: one inside a branch value is an error", async () => {

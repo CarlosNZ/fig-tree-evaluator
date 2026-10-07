@@ -1785,17 +1785,17 @@ const collectPlainObject = (
       // the containing object's. The suggestion replaces the key as
       // written, sigil and all
       const suggestion = nearestName(key.slice(1), allInvocationNames(state))
+      const hint =
+        suggestion !== undefined
+          ? ` — did you mean '$${suggestion}'?`
+          : labels
+            ? ''
+            : " — data with a '$' key goes inside 'literal'"
       emit(
         state,
         labels ? 'warning' : 'error',
         ErrorCodes.unrecognizedIdentifier,
-        `'${key}' is not a registered operator or fragment${
-          suggestion
-            ? ` — did you mean '$${suggestion}'?`
-            : labels
-              ? ', so it is a plain key'
-              : " — data with a '$' key goes inside 'literal'"
-        }`,
+        `'${key}' is not a registered operator or fragment${labels ? ', so it is a plain key' : ''}${hint}`,
         extendPath(path, key),
         order,
         { suggestion: suggestion === undefined ? undefined : `$${suggestion}` }
