@@ -66,7 +66,7 @@ import {
 } from './introspect'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import { depthIssue, limitIssues, validationIssues } from './validation'
+import { depthIssue, staticGate, validationIssues } from './validation'
 import { coreOperators } from './operators'
 import { version } from './version'
 
@@ -483,14 +483,11 @@ const evaluateEntry = async (
   const { artifact } = entry
   // The static gate. On the common call it is one flag the compile set
   // and two option reads; the stream is assembled only when there is
-  // something to say, or a limit to compare against
-  if (artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined) {
-    const issues = [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
-    // The first error in tree order is thrown, carrying the whole stream
-    // as `issues`
-    const first = issues.find((issue) => issue.severity === 'error')
-    if (first !== undefined) throw staticError(first, issues)
-  }
+  // something to say, or a limit to compare against. The first error in
+  // tree order is thrown, carrying the whole stream as `issues`
+  const issues = staticGate(artifact, options)
+  const first = issues.find((issue) => issue.severity === 'error')
+  if (first !== undefined) throw staticError(first, issues)
 
   const outcome = await runEvaluation(artifact, options, results)
   return options.trace === true ? outcome : outcome.result

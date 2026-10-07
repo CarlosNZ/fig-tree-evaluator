@@ -39,6 +39,19 @@ export const limitIssues = (artifact: CompileArtifact, options: EvaluationOption
   return issues
 }
 
+/**
+ * What the static gate reads: the limit checks then the compile stream, in
+ * `validate()`'s order, so the first error is the one `evaluate()` throws
+ * and the whole list is what the thrown error carries. Empty, without
+ * assembling anything, when it could hold no error: the compile set no
+ * error flag and no limit is in force. `evaluate()` and `fallbackCoverage`
+ * both read it, so they refuse the same expressions by construction.
+ */
+export const staticGate = (artifact: CompileArtifact, options: EvaluationOptions): Issue[] =>
+  artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined
+    ? [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
+    : []
+
 export const depthIssue = (measured: number, limit: number): Issue => ({
   severity: 'error',
   code: ErrorCodes.maxDepthExceeded,
