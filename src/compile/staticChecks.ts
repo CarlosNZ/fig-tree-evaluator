@@ -11,6 +11,7 @@
  * against the artifact's stored counts and dependency list.
  */
 import { ErrorCodes } from '../errorCodes'
+import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
@@ -478,22 +479,21 @@ const sampleMismatch = (
   return
 }
 
-/** A value of each type an `$error` read is known to have. */
-const SAMPLES = { object: {}, array: [], string: '' }
+/** A value of each type an `$error` read can be known to have. */
+const SAMPLES = { object: {}, array: [], string: '', number: 0, boolean: false }
 
 /**
- * The type an `$error` read is known to have (`FallbackError`): a bare
- * `$error` is always an object, `code` and `message` are always strings, and
- * `path` is always an array. Anything else is unknown. An optional field
- * may be absent, so read as null, which an optional parameter may take as
- * unset.
+ * The type an `$error` read is known to have: a bare `$error` is always an
+ * object, and a field is its type in `FallbackError`'s shape where that is
+ * one type. Anything else is unknown. An optional field may be absent, so
+ * read as null, which an optional parameter may take as unset.
  */
 const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefined => {
   const [field, ...rest] = segments
   if (field === undefined) return 'object'
-  if (rest.length > 0) return undefined
-  if (field === 'code' || field === 'message') return 'string'
-  return field === 'path' ? 'array' : undefined
+  if (rest.length > 0 || !Object.hasOwn(FALLBACK_ERROR_FIELDS, field)) return undefined
+  const type = FALLBACK_ERROR_FIELDS[field as keyof typeof FALLBACK_ERROR_FIELDS]
+  return typeof type === 'string' ? type : undefined
 }
 
 /**

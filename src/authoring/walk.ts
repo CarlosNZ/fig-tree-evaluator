@@ -12,6 +12,7 @@
  * cache's provisional entry.
  */
 import { bindsReference, renamedBinding, splice } from '../compile/artifact'
+import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type {
   CompiledNode,
   ElementsNode,
@@ -42,6 +43,7 @@ import {
   exactly,
   keyOf,
   objectOf,
+  ofType,
   union,
   unionOf,
 } from './known'
@@ -129,20 +131,11 @@ const OBJECT: Known = [{ type: 'object' }]
  * What `$error` is drilled into: `FallbackError`'s guaranteed shape, with
  * an optional field null, as a read of it gives where it is absent
  */
-const FALLBACK_ERROR: Known = [
-  {
-    type: 'object',
-    keys: {
-      code: [{ type: 'string' }],
-      message: [{ type: 'string' }],
-      path: [{ type: 'array' }],
-      operator: [{ type: 'string' }, { type: 'null' }],
-      fragment: [{ type: 'string' }, { type: 'null' }],
-      fragmentPath: [{ type: 'array' }, { type: 'null' }],
-      errorData: [{ type: 'object' }, { type: 'null' }],
-    },
-  },
-]
+const FALLBACK_ERROR: Known = objectOf(
+  Object.fromEntries(
+    Object.entries(FALLBACK_ERROR_FIELDS).map(([key, type]) => [key, ofType(type)])
+  )
+)
 /** What a read of `$error` holds: a miss is null, never a failure */
 const errorRead = (segments: PathSegment[]): Known => {
   if (segments.length === 0) return OBJECT

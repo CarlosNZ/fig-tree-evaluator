@@ -20,6 +20,7 @@
 import type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 import type { Issue } from './issues'
 import type { TraceNode } from './trace'
+import type { ExpectedType } from './typeCheck'
 
 export type { TraceNode } from './trace'
 
@@ -44,6 +45,23 @@ export interface FallbackError {
   /** As the operator supplied it. */
   errorData?: Record<string, unknown>
 }
+
+/**
+ * `FallbackError`'s guaranteed shape, which the static check and
+ * `fallbackCoverage` read `$error` by: each field's type, in the
+ * parameters' type vocabulary. An optional field's type names `null`, since
+ * a read of it gives `null` where it is absent. Held to the interface's
+ * fields by `satisfies`.
+ */
+export const FALLBACK_ERROR_FIELDS = {
+  code: 'string',
+  message: 'string',
+  path: 'array',
+  operator: ['string', 'null'],
+  fragment: ['string', 'null'],
+  fragmentPath: ['array', 'null'],
+  errorData: ['object', 'null'],
+} as const satisfies Record<keyof FallbackError, ExpectedType>
 
 export interface FigTreeErrorInit {
   code: FigTreeErrorCode
