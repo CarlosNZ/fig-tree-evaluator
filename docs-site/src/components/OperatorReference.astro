@@ -1,0 +1,130 @@
+---
+/**
+ * Operator reference entries, rendered at build time from the registry's own
+ * snapshot (`getOperators()`), so every name, alias, type and null policy
+ * shown is the one the code has. Section labels and colours come from
+ * `./editor-hints`, as they do in the editor.
+ */
+import { EvaluationData, type ExpectedType, type ParameterInfo } from 'fig-tree-evaluator'
+import { categoryHints, operatorHints } from 'fig-tree-evaluator/editor-hints'
+import { figTree } from '../lib/figTree'
+import { toJson5 } from '../lib/json5'
+
+interface Props {
+  /** Canonical operator names, in the order to show them. */
+  names: string[]
+}
+
+const all = figTree.getOperators()
+const operators = Astro.props.names.map((name) => {
+  const op = all.find((op) => op.name === name)
+  if (!op) throw new Error(`<OperatorReference>: '${name}' is not a registered operator`)
+  return op
+})
+
+/** Metadata type → the reference's notation; literal unions keep quotes. */
+const formatType = (type: ExpectedType): string => {
+  if (Array.isArray(type)) return type.map(formatType).join(' | ')
+  if (typeof type === 'object' && type !== null && 'literal' in type)
+    return type.literal.map((m) => (typeof m === 'string' ? `'${m}'` : String(m))).join(' | ')
+  return String(type)
+}
+
+const paramType = (p: ParameterInfo): string => {
+  const type = formatType(p.type)
+  const homogeneous = p.constraints?.homogeneous
+  return homogeneous?.length && type === 'array'
+    ? `array[${homogeneous.map(formatType).join(' | ')}]`
+    : type
+}
+
+const presence = (p: ParameterInfo): string => {
+  if (p.required) return 'required'
+  if (!('default' in p)) return 'optional'
+  return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
+}
+
+const nullPolicy = (p: ParameterInfo): string =>
+  typeof p.nullPolicy === 'string'
+    ? p.nullPolicy
+    : `by ${p.nullPolicy.selector}: ` +
+      p.nullPolicy.table.map((row) => `${toJson5(row.value)} → ${row.policy}`).join(', ')
+
+/** The shorthand call shape, e.g. `{ $plus: [values…] }`. */
+const signature = (name: string, positional: string[] | undefined, rest: string | null) => {
+  if (!positional?.length) return `{ $${name}: { … } }`
+  const args = positional.map((p) => (p === rest ? `...${p}` : p))
+  return `{ $${name}: [${args.join(', ')}] }`
+}
+---
+
+<div class="fds-reference not-content">
+  {
+    operators.map((op) => {
+      const category = categoryHints[op.category]
+      const hint = operatorHints[op.name]
+      return (
+        <section class="fds-op" id={`op-${op.name}`}>
+          <header class="fds-op-header">
+            <h3>
+              <code>{op.name}</code>
+            </h3>
+            {op.alias && (
+              <code class="fds-op-alias" title="Alias">
+                {op.alias}
+              </code>
+            )}
+            <span
+              class="fds-op-category"
+              style={`background:${category.backgroundColor};color:${category.textColor}`}
+            >
+              {category.displayName}
+            </span>
+          </header>
+          <p class="fds-op-description">{op.description}</p>
+          <p class="fds-op-meta">
+            <code>{signature(op.name, op.positionalParams, op.restParam)}</code>
+            <span>
+              returns <code>{formatType(op.returns)}</code>
+            </span>
+          </p>
+          <div class="fds-op-params-scroll">
+            <table class="fds-op-params">
+              <thead>
+                <tr>
+                  <th>Parameter</th>
+                  <th>Type</th>
+                  <th>Presence</th>
+                  <th>Null</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(op.parameters).map(([name, p]) => (
+                  <tr>
+                    <td>
+                      <code>{name}</code>
+                      {p.evaluation && p.evaluation !== 'eager' && (
+                        <span class="fds-op-flag">{p.evaluation}</span>
+                      )}
+                    </td>
+                    <td>
+                      <code>{paramType(p)}</code>
+                    </td>
+                    <td>{presence(p)}</td>
+                    <td>{nullPolicy(p)}</td>
+                    <td>{p.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {hint?.displayName && <p class="fds-op-hint">Shown in the editor as “{hint.displayName}”</p>}
+        </section>
+      )
+    })
+  }
+  <p class="fds-reference-note">
+    Generated from fig-tree-evaluator {figTree.version}'s operator definitions.
+  </p>
+</div>

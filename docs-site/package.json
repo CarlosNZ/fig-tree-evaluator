@@ -1,0 +1,52 @@
+{
+  "name": "fig-tree-docs-site",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "description": "The FigTree v3 docs site (Starlight)",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "packageManager": "pnpm@10.8.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^7.0.1",
+    "@astrojs/starlight": "^0.42.5",
+    "@codemirror/language": "^6.11.0",
+    "@codemirror/lint": "^6.9.7",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.14",
+    "@lezer/common": "^1.2.0",
+    "@lezer/highlight": "^1.2.0",
+    "astro": "^7.3.6",
+    "codemirror": "^6.0.2",
+    "codemirror-json5": "^1.0.3",
+    "fig-tree-editor-react": "link:../../fig-tree-editor-react",
+    "fig-tree-evaluator": "link:..",
+    "json-edit-react": "^2.0.4",
+    "json5": "^2.2.3",
+    "lezer-json5": "^2.0.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "expressive-code-twoslash": "^0.6.1",
+    "typescript": "^5.9.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp"
+    ]
+  }
+}

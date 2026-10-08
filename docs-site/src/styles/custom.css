@@ -1,0 +1,345 @@
+/*
+ * The site's own classes and tokens use the `fds-` prefix. The FigTree
+ * editor's stylesheet uses `ft-`, so the two never collide.
+ */
+
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+
+:root {
+  /* Starlight's default theme is dark; light overrides it below */
+  --fds-code-key: #79c0ff;
+  --fds-code-string: #7ee787;
+  --fds-code-literal: #d2a8ff;
+  --fds-code-comment: #8b949e;
+  --fds-code-punct: #a5aeb8;
+  --fds-active-line: rgba(255, 255, 255, 0.04);
+  --fds-selection: rgba(56, 139, 253, 0.3);
+  --fds-error-bg: #3b1219;
+  --fds-error-text: #ffb3b8;
+  --fds-notice-bg: #3a2e05;
+  --fds-notice-text: #f5d77a;
+}
+
+:root[data-theme='light'] {
+  --fds-code-key: #0550ae;
+  --fds-code-string: #0a6b3d;
+  --fds-code-literal: #8a3ffc;
+  --fds-code-comment: #6e7781;
+  --fds-code-punct: #57606a;
+  --fds-active-line: rgba(0, 0, 0, 0.035);
+  --fds-selection: rgba(9, 105, 218, 0.18);
+  --fds-error-bg: #fff1f0;
+  --fds-error-text: #a40e26;
+  --fds-notice-bg: #fff8e1;
+  --fds-notice-text: #6b4e00;
+}
+
+/*
+ * A page without the contents column gives its widgets that width. Prose and
+ * code keep a reading measure; the widgets and the reference use the whole
+ * column. (An Astro island wraps each widget, hence :has.)
+ */
+:root:not([data-has-toc]) {
+  --sl-content-width: 72rem;
+}
+
+:root:not([data-has-toc]) .sl-markdown-content > :not(:has(> .fds-playground), .fds-reference) {
+  max-width: 48rem;
+}
+
+/* ── Static expression blocks ───────────────────────────────────────────── */
+
+.fds-expression {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fds-expression figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-expression figcaption a {
+  color: var(--sl-color-text-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.fds-expression-error,
+.fds-widget-error {
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.25rem;
+  background: var(--fds-error-bg);
+  color: var(--fds-error-text);
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  overflow-wrap: anywhere;
+}
+
+.fds-expression-error-code {
+  font-weight: 700;
+  margin-right: 0.6em;
+}
+
+/* ── Operator reference ─────────────────────────────────────────────────── */
+
+.fds-reference {
+  margin-top: 1.5rem;
+}
+
+.fds-op {
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.fds-op-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.fds-op-header h3 {
+  margin: 0;
+  font-size: var(--sl-text-h4);
+}
+
+.fds-op-alias {
+  font-size: var(--sl-text-sm);
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg-inline-code);
+}
+
+.fds-op-category {
+  margin-left: auto;
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+}
+
+.fds-op-description {
+  margin: 0.6rem 0;
+}
+
+.fds-op-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+  margin: 0 0 0.75rem;
+}
+
+.fds-op-params-scroll {
+  overflow-x: auto;
+}
+
+.fds-op-params {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-op-params th,
+.fds-op-params td {
+  text-align: left;
+  vertical-align: top;
+  padding: 0.35rem 0.6rem;
+  border-bottom: 1px solid var(--sl-color-hairline);
+}
+
+.fds-op-params th {
+  font-weight: 600;
+  color: var(--sl-color-gray-2);
+  white-space: nowrap;
+}
+
+.fds-op-flag {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: var(--sl-text-xs);
+  padding: 0 0.35rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--sl-color-hairline);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-op-hint,
+.fds-reference-note {
+  margin: 0.6rem 0 0;
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+/* ── The two-pane widget ────────────────────────────────────────────────── */
+
+.fds-playground {
+  margin-top: 1.5rem;
+  scroll-margin-top: calc(var(--sl-nav-height) + 1rem);
+}
+
+.fds-playground-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 28rem;
+  border: 1px dashed var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  color: var(--sl-color-gray-3);
+}
+
+.fds-widget {
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  overflow: hidden;
+}
+
+.fds-widget-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg-nav);
+}
+
+.fds-widget-hint {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-segmented {
+  display: inline-flex;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.375rem;
+  overflow: hidden;
+}
+
+.fds-segmented button {
+  font: inherit;
+  font-size: var(--sl-text-sm);
+  padding: 0.2rem 0.75rem;
+  border: none;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  cursor: pointer;
+}
+
+.fds-segmented button + button {
+  border-left: 1px solid var(--sl-color-hairline);
+}
+
+.fds-segmented button[aria-pressed='true'],
+.fds-segmented button[aria-selected='true'] {
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+  font-weight: 600;
+}
+
+.fds-segmented button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.fds-widget-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.fds-widget--narrow .fds-widget-panes {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.fds-widget-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 20rem;
+  max-height: 32rem;
+  overflow: auto;
+}
+
+.fds-widget-pane + .fds-widget-pane {
+  border-left: 1px solid var(--sl-color-hairline);
+}
+
+.fds-widget-pane--tree {
+  padding: 0 0.5rem 0.5rem;
+}
+
+.fds-widget-pane-label {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sl-color-gray-3);
+  padding: 0.4rem 0.75rem 0.2rem;
+}
+
+.fds-widget-pane--tree .fds-widget-pane-label {
+  padding-inline: 0.25rem;
+}
+
+.fds-cm {
+  flex: 1;
+  min-height: 0;
+}
+
+.fds-widget-notice {
+  padding: 0.5rem 0.75rem;
+  font-size: var(--sl-text-sm);
+  background: var(--fds-notice-bg);
+  color: var(--fds-notice-text);
+  border-top: 1px solid var(--sl-color-hairline);
+}
+
+.fds-widget-below {
+  border-top: 1px solid var(--sl-color-hairline);
+  padding: 0.6rem 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fds-widget-below .fds-segmented {
+  align-self: flex-start;
+}
+
+.fds-widget-result {
+  margin: 0;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg-inline-code);
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 18rem;
+  overflow: auto;
+}
+
+.fds-widget-result--pending {
+  color: var(--sl-color-gray-3);
+}
+
+.fds-widget-result--failed {
+  background: var(--fds-error-bg);
+  color: var(--fds-error-text);
+}
+
+.fds-widget-data {
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.25rem;
+  max-height: 18rem;
+  overflow: auto;
+}

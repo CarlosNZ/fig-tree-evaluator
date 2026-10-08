@@ -1,0 +1,79 @@
+---
+/**
+ * A static expression example (tier 1): the expression, its data if any, and
+ * the result FigTree gives for them, computed when the site is built. The
+ * result is never typed by hand, so it can't be wrong.
+ *
+ * An example that evaluates without error is the normal case. One meant to
+ * show a failure sets `throws`, and then shows the error instead; the build
+ * fails if an example's outcome doesn't match what it says, either way.
+ */
+import { Code } from '@astrojs/starlight/components'
+import JSON5 from 'json5'
+import { isFigTreeError } from 'fig-tree-evaluator'
+import { figTree } from '../lib/figTree'
+import { dedent } from '../lib/dedent'
+import { toJson5 } from '../lib/json5'
+import { playgroundHref } from '../lib/playgroundLink'
+
+interface Props {
+  /** The expression, as JSON5 source. Comments are kept in the display. */
+  code: string
+  /** The evaluation data, as JSON5 source. */
+  data?: string
+  /** A label for the expression's code block. */
+  title?: string
+  /** The example demonstrates an error rather than a result. */
+  throws?: boolean
+  /** The id of the widget the "open in editor" link loads the example into. */
+  editor?: string
+}
+
+const { title = 'Expression', throws = false, editor = 'playground' } = Astro.props
+const code = dedent(Astro.props.code)
+const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
+
+const where = `<Expression> in ${Astro.url.pathname}:\n${code}`
+const parse = (source: string, what: string) => {
+  try {
+    return JSON5.parse(source)
+  } catch (error) {
+    throw new Error(`${where}\n\nIts ${what} isn't valid JSON5: ${(error as Error).message}`)
+  }
+}
+const expression = parse(code, 'expression')
+const data = dataSource === undefined ? undefined : parse(dataSource, 'data')
+
+let outcome: { ok: true; result: unknown } | { ok: false; code: string; message: string }
+try {
+  outcome = { ok: true, result: await figTree.evaluate(expression, data ? { data } : undefined) }
+} catch (error) {
+  if (!isFigTreeError(error)) throw error
+  outcome = { ok: false, code: error.code, message: error.message }
+}
+if (outcome.ok && throws)
+  throw new Error(`${where}\n\nThis example says it throws, but it evaluated to:\n${toJson5(outcome.result)}`)
+if (!outcome.ok && !throws)
+  throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
+
+const href = playgroundHref({ expression: code, data: dataSource }, editor)
+---
+
+<figure class="fds-expression not-content">
+  <Code code={code} lang="json5" title={title} />
+  {dataSource !== undefined && <Code code={dataSource} lang="json5" title="Data" />}
+  {
+    outcome.ok ? (
+      <Code code={toJson5(outcome.result)} lang="json5" title="Result" />
+    ) : (
+      <div class="fds-expression-error" role="note">
+        <span class="fds-expression-error-code">{outcome.code}</span>
+        <span>{outcome.message}</span>
+      </div>
+    )
+  }
+  <figcaption>
+    <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
+    <a href={href}>Open in editor ↓</a>
+  </figcaption>
+</figure>

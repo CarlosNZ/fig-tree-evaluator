@@ -1,0 +1,234 @@
+---
+title: FigTree
+description: Evaluate JSON-structured expression trees — dynamic logic stored as data.
+# No contents column, so the two-pane widgets get the width (custom.css)
+tableOfContents: false
+banner:
+  content: |
+    Prototype — one page showing each kind of element proposed in
+    <code>docs-dev/doc-planning.md</code>. Content is illustrative.
+---
+
+import { Code, Tabs, TabItem, Aside } from '@astrojs/starlight/components'
+import Expression from '../../components/Expression.astro'
+import OperatorReference from '../../components/OperatorReference.astro'
+import Playground from '../../components/playground/Playground.tsx'
+
+**FigTree** evaluates expressions written as plain JSON. An expression is any JSON value; wherever it holds an operator node — `{ $plus: [1, 2] }`, `{ $if: … }` — that node is evaluated in place, and everything else passes through untouched. It is a sandboxed way to keep dynamic logic in configuration, a database row or a form definition, without ever executing code.
+
+<Expression
+  title="A whole config is an expression"
+  code={`
+    {
+      // Plain values pass through
+      card: 'profile',
+      // $-prefixed keys invoke operators; '$data.…' strings read the data
+      greeting: { $buildString: 'Hello {{$data.user.firstName}}' },
+      isAdult: { '$>=': ['$data.user.age', 18] },
+    }
+  `}
+  data={`
+    { user: { firstName: 'Mohini', age: 34 } }
+  `}
+/>
+
+The result above wasn't typed: the page ran the expression through FigTree when it was built. Every expression example on this site works that way.
+
+## Install
+
+<Tabs syncKey="pkg">
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```sh
+    npm install fig-tree-evaluator
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add fig-tree-evaluator
+    ```
+  </TabItem>
+</Tabs>
+
+## Using it from your code
+
+Code that runs in your application — the host — is shown in ordinary code blocks. Titles, line highlighting and inserted/deleted lines come from Expressive Code.
+
+```ts title="evaluate.ts" {3,6}
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({ timeout: 5000 })
+
+const expression = { $buildString: 'Hello {{$data.user.name}}' }
+const greeting = await fig.evaluate(expression, { data: { user: { name: 'Ana' } } })
+// → 'Hello Ana'
+```
+
+```ts title="Upgrading from v2" del={1,3} ins={2,4}
+import { FigTreeEvaluator } from 'fig-tree-evaluator'
+import { FigTree } from 'fig-tree-evaluator'
+const fig = new FigTreeEvaluator({ objects: { user } })
+const fig = new FigTree()
+```
+
+<Aside type="tip" title="Element: host code blocks">
+  Plain Expressive Code, as proposed under "Host code: code blocks". Nothing checks these, so a
+  renamed option or a moved export goes stale silently. The [type-checked
+  blocks](#host-code-type-checked) at the end of the page are the proposed fix.
+</Aside>
+
+## Expressions, evaluated at build time
+
+The default way to show an expression: highlighted source, the data it reads, and the result the library gives — computed when the site builds. If the library's behaviour changes, the page changes with it; if an example stops evaluating, the build fails.
+
+<Expression
+  title="Decide something"
+  code={`
+    {
+      '$?': [
+        '$data.patron.isParentAttending',
+        { '$>=': ['$data.patron.age', 13] },
+        { '$>=': ['$data.patron.age', '$data.film.minAgeRating'] },
+      ],
+    }
+  `}
+  data={`
+    {
+      film: { title: 'Deadpool & Wolverine', minAgeRating: 17 },
+      patron: { age: 12, isParentAttending: true },
+    }
+  `}
+/>
+
+<Expression
+  title="When the data isn't there"
+  code={`
+    {
+      displayName: { $firstOf: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
+      contact: { $buildString: 'Phone: {{$data.user.phone}}' },
+      timezone: { $get: ['user.prefs.timezone', 'Pacific/Auckland'] },
+      ratio: { $divide: [1, 0], fallback: 'n/a' },
+    }
+  `}
+  data={`
+    { user: { name: 'Mohini', phone: null, prefs: { locale: 'en-NZ' } } }
+  `}
+/>
+
+An example can also document a failure. It declares that it throws, and shows the error the library actually raises:
+
+<Expression throws title="No coercion" code={`{ $plus: [1, 'two'] }`} />
+
+<Aside type="tip" title="Element: static expression block (tier 1)">
+  `<Expression>` takes JSON5 source, so examples keep their comments. "Open in editor" loads the
+  example, comments and all, into the widget below — the same link could later target a
+  standalone playground page, as Biome's do.
+</Aside>
+
+## Try it
+
+Where interaction teaches something, an example becomes a widget: JSON5 text on the left, the FigTree editor on the right, and the result below. Both panes edit the same expression. Try the **Shorthand / Full** switch, edit a value in either pane, or change the data.
+
+<Playground
+  client:visible
+  id="playground"
+  readFromUrl
+  expression={`
+    {
+      // Each branch is lazy: only one of them runs
+      $if: {
+        condition: { '$>=': ['$data.order.total', 100] },
+        then: { $buildString: 'Free shipping for {{$data.order.customer}}' },
+        else: {
+          $buildString: [
+            'Spend %1 more for free shipping',
+            { $subtract: [100, '$data.order.total'] },
+          ],
+        },
+      },
+    }
+  `}
+  data={`
+    { order: { customer: 'Ana', total: 72 } }
+  `}
+/>
+
+<Aside type="tip" title="Element: the two-pane widget (tier 2)">
+  A React island mounted with `client:visible`: the editor and CodeMirror load only when the widget
+  scrolls into view. The text pane keeps its own text, so half-typed JSON5 shows a parse error
+  instead of breaking the tree; editing the tree regenerates the text (and says so if that drops
+  comments). Below 760px wide the panes become tabs.
+</Aside>
+
+A page can hold several widgets; each loads when it's reached. This one is about fallbacks: make the division fail and the fallback takes over.
+
+<Playground
+  client:visible
+  id="playground-fallbacks"
+  expression={`
+    {
+      // Set the count to 0 in Data: the node fails, and its fallback stands in
+      $divide: ['$data.total', '$data.count'],
+      fallback: 'No orders yet',
+    }
+  `}
+  data={`
+    { total: 300, count: 4 }
+  `}
+/>
+
+## Operator reference
+
+Reference entries are rendered from the operators' own definitions when the site builds, so names, aliases, types, defaults and null policies can't drift from the code. A sample of four:
+
+<OperatorReference names={['plus', 'if', 'get', 'buildString']} />
+
+<Aside type="tip" title="Element: generated operator reference">
+  Built from `figTree.getOperators()` and `./editor-hints`'s categories — the same data `pnpm
+  generate:operators` renders for the published operators page. The full site would give each
+  category its own page.
+</Aside>
+
+## Host code, type-checked
+
+Code blocks marked `twoslash` are compiled against fig-tree-evaluator's real type declarations when the site builds. Hover over an identifier to see its type. A snippet that no longer compiles — a renamed option, a moved export — fails the build.
+
+```ts twoslash title="evaluate.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree()
+const total = await fig.evaluate({ $plus: [1, 2, 3] })
+//    ^?
+```
+
+Setup a snippet needs but shouldn't show goes above a `// ---cut---` line. The return type follows the options, so asking for a trace changes it:
+
+```ts twoslash title="trace.ts"
+import { FigTree } from 'fig-tree-evaluator'
+const fig = new FigTree()
+const expression = { $buildString: 'Hello {{$data.name}}' }
+// ---cut---
+const { result, trace } = await fig.evaluate(expression, {
+  data: { name: 'Ana' },
+  trace: true,
+})
+```
+
+An error a snippet means to show is declared, and then rendered rather than failing the build:
+
+```ts twoslash title="options.ts"
+// @errors: 2353
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({ missingPathDefault: null })
+```
+
+<Aside type="tip" title="Element: twoslash trial">
+  Open question 3 in the planning doc. Uses `expressive-code-twoslash`, which declares support for
+  an older Expressive Code (0.41) than Starlight bundles (0.44), so this is also a compatibility
+  test.
+</Aside>

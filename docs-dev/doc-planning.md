@@ -138,7 +138,7 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 
 ## Open questions
 
-1. **Where the site lives.** Options: a `site/` folder (or `docs/`, which today holds only `img/`) set up as a pnpm workspace package, so its dependencies stay out of the library's `devDependencies`. Or a separate repo. In-repo keeps docs changes in the same PRs as the code they describe.
+1. **Where the site lives: resolved.** In [docs-site/](../docs-site/), as a self-contained package with its own `package.json` and lockfile. It is not a pnpm workspace, so its dependencies stay out of the library's install and CI. In-repo keeps docs changes in the same PRs as the code they describe.
 2. **Hosting and URL.** GitHub Pages through a GitHub Action is the default. The v2 README's playground link points to `carlosnz.github.io/fig-tree-evaluator`, so check what is served there and whether anything else still links to it.
 3. **Type-checking host-code examples: leaning yes, pending a trial.** Expression examples are checked by build-time evaluation. Host-code snippets are plain text and go stale silently when an option is renamed, a return shape changes or an export moves. Renames such as `missingPathDefault` → `default` (#195) and `useCache` → `noCache` (#204) are this kind of change.
    - **Proposed mechanism:** twoslash, through Expressive Code's community twoslash plugin. The build compiles each TS snippet against the library's real types and fails on errors. Setup that a snippet needs but shouldn't display (imports, a sample `expression`) goes above a `// ---cut---` marker.
@@ -151,3 +151,5 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 ## Next step
 
 A prototype: a bare Starlight skeleton with one page holding the two-pane widget, linked to the editor's `v3.0-dev` branch, and one reference page rendered from `coreDefinitions`. The same prototype can host the twoslash trial (open question 3), on a small sample of host-code snippets.
+
+**Built, October 2026:** [docs-site/](../docs-site/) ([README](../docs-site/README.md)). It is one page with an overview and an example of each element: host code blocks, build-time expression blocks with "open in editor" links, two widgets, a sample of reference entries rendered from `getOperators()`, and three twoslash snippets.
