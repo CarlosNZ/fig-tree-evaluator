@@ -13,10 +13,7 @@ import type { FragmentDefinition } from '../src/fragments'
 import type { V2Options } from '../src/migrationTypes'
 import { convertV2, convertV2Fragments } from '../src/migrate/convert'
 import type { IssueCode, Path } from '../src/migrate/issues'
-import {
-  RESERVED_NODE_KEYS as V3_NODE_KEYS,
-  RESERVED_REGISTRATION_NAMES as V3_REGISTRATION_NAMES,
-} from '../src/names'
+import { RESERVED_NODE_KEYS as V3_NODE_KEYS, isReservedRegistrationName } from '../src/names'
 import { checkType, isExpectedType, type ExpectedType } from '../src/typeCheck'
 import { NAMESPACE_TOKENS } from '../src/compile/references'
 import {
@@ -1377,7 +1374,13 @@ describe("a call's `useCache`", () => {
 describe('the v3 grammar the converter restates', () => {
   test('the reserved names are the engine’s', () => {
     expect([...RESERVED_NODE_KEYS].sort()).toEqual([...V3_NODE_KEYS].sort())
-    expect([...RESERVED_NAMES].sort()).toEqual([...V3_REGISTRATION_NAMES].sort())
+    // The engine reserves its node keys, its namespace tokens and `literal`
+    // (`vars` is both of the first two)
+    const engineReserved = [
+      ...new Set([...V3_NODE_KEYS, ...Object.keys(NAMESPACE_TOKENS), 'literal']),
+    ]
+    expect([...RESERVED_NAMES].sort()).toEqual(engineReserved.sort())
+    expect(engineReserved.every(isReservedRegistrationName)).toBe(true)
   })
 
   test('the reference token rule names the engine’s namespace tokens', () => {

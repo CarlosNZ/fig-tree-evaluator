@@ -18,7 +18,7 @@ import {
 import { singlePositionalTarget } from '../compile/grammar'
 import { GET_POSITIONAL } from '../operators/getShape'
 import { parsePath, WILDCARD } from '../primitives/path'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import { positionalToNamed } from './read'
 import type { ReferenceNamespace } from '../compile/artifact'
 import type { Spelling } from '../formatTypes'

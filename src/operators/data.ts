@@ -47,8 +47,8 @@ export const get = declareOperator({
   validate: ({ path }) => pathFindings(path, 'path'),
   evaluate: ({ path, from, default: missingValue }, context) => {
     const result = resolvePath(from, toSegments(path))
-    // A stored `undefined` is not a value — JSON semantics at the boundary
-    if (result.found) return result.value === undefined ? null : result.value
+    // A stored `undefined` is not a value: the result boundary makes it null
+    if (result.found) return result.value
 
     // Absence, in the layered order: the per-site answer first, because
     // supplying one IS the strictness opt-out ("default: null" reads "give

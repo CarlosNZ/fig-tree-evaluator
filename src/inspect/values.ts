@@ -8,7 +8,7 @@
  * aid, and accepts that rare collision.
  */
 import { DEPTH_CEILING } from '../compile'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 
 export type Json = null | boolean | number | string | Json[] | { [key: string]: Json }
 

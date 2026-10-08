@@ -154,7 +154,6 @@ export const find = declareOperator({
     each: predicateEach,
     noMatchDefault: {
       type: 'any',
-      required: false,
       default: null,
       evaluation: 'lazy',
       description: 'The answer when nothing matches; a found null passes through unchanged',

@@ -23,7 +23,7 @@ import { FigTree } from '../FigTree'
 import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
 import { buildRegistry } from '../registry'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import {
   compileExpression,
   renderReference,

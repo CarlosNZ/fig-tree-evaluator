@@ -92,7 +92,7 @@ const ENGINE_MARKERS = [
     part: 'the engine',
     markers: [
       "'cache.maxSize' must be a positive integer",
-      'a shielded artifact has a hole with no static fallback',
+      'the static gate should have refused it',
     ],
   },
   {

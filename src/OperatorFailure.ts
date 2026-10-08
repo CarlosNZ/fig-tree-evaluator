@@ -21,8 +21,10 @@ export interface OperatorFailureInit {
 }
 
 export class OperatorFailure extends Error {
-  code?: FallbackErrorCode
-  errorData?: Record<string, unknown>
+  // Declared, not defined: the constructor sets each only where the init
+  // supplies it, so an unset one is absent, not undefined
+  declare code?: FallbackErrorCode
+  declare errorData?: Record<string, unknown>
 
   constructor(message: string, init: OperatorFailureInit = {}) {
     super(message)

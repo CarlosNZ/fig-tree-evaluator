@@ -233,7 +233,6 @@ export const sqlDefinition = (connection: SqlConnection) =>
       },
       noRowDefault: {
         type: 'any',
-        required: false,
         default: null,
         nullPolicy: 'value',
         evaluation: 'lazy',

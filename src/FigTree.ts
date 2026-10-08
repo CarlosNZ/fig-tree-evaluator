@@ -688,18 +688,16 @@ export interface HandleView {
 /**
  * The request-scoped options — the whole of what a call may supply
  * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
- * A `Set` of the keys of `CallOptions`, spelled out because a type has no
- * runtime form. The `satisfies` holds the two in step in both directions:
- * a `Record` over the type's keys must name every one of them, and an
- * excess key is refused, so a key added to `CallOptions` and not here (or
- * the reverse) fails the build. Evaluated once, at module load.
+ * The keys of `CallOptions`, spelled out because a type has no runtime
+ * form. The `satisfies` holds the two in step in both directions: a
+ * `Record` over the type's keys must name every one of them, and an excess
+ * key is refused, so a key added to `CallOptions` and not here (or the
+ * reverse) fails the build.
  */
-const CALL_OPTION_KEYS: ReadonlySet<string> = new Set(
-  Object.keys({ data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
-    keyof CallOptions,
-    unknown
-  >)
-)
+const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
+  keyof CallOptions,
+  unknown
+>
 
 /**
  * The instance's prepared options with a call's laid over them: a flat
@@ -720,7 +718,7 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
     // Tested before the key is, so `{ maxDepth: config.maxDepth }` with
     // nothing configured is "not supplied" rather than misuse
     if (value === undefined) continue
-    if (!CALL_OPTION_KEYS.has(key)) throw notPerCallError(key)
+    if (!Object.hasOwn(CALL_OPTION_KEYS, key)) throw notPerCallError(key)
     merged ??= { ...instance }
     merged[key] = value
   }

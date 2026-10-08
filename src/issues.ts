@@ -5,6 +5,7 @@
  * populate `issues` land in Phase 3.
  */
 import type { FigTreeErrorCode } from './errorCodes'
+import { FigTreeError } from './FigTreeError'
 
 /**
  * `error` blocks evaluation (it would throw); `warning` never
@@ -48,4 +49,25 @@ export interface ValidationResult {
   valid: boolean
   /** All findings, in tree order; empty when clean. */
   issues: Issue[]
+}
+
+/**
+ * One error for the issues a check collected together: the first one's
+ * path, and its message with a count of the rest.
+ */
+export const issuesError = (
+  code: FigTreeErrorCode,
+  issues: Issue[],
+  operator?: string
+): FigTreeError => {
+  const [first] = issues
+  const more = issues.length - 1
+  return new FigTreeError({
+    code,
+    message:
+      more > 0 ? `${first.message} (+ ${more} more issue${more === 1 ? '' : 's'})` : first.message,
+    path: first.path,
+    operator,
+    issues,
+  })
 }
