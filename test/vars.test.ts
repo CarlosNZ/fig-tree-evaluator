@@ -192,7 +192,8 @@ describe('rule 5 — a fallback evaluates in its node’s own scope', () => {
   test('a fallback referencing the failed var re-receives its rejection', async () => {
     const { fig } = build()
     // The recorded corner: the memoized rejection is what the fallback
-    // gets, so the fallback fails too and rule 4 takes over
+    // gets, so the fallback fails too and rule 4 takes over. It fails with
+    // the very error it caught, which is not made its own cause
     const error = await rejection(
       fig.evaluate({
         operator: 'echo',
@@ -202,7 +203,8 @@ describe('rule 5 — a fallback evaluates in its node’s own scope', () => {
       })
     )
     expect(error).toBeInstanceOf(FigTreeError)
-    expect(error.cause).toBeInstanceOf(FigTreeError)
+    expect(error.path).toEqual(['vars', 'risky'])
+    expect(error.cause).toBeUndefined()
   })
 
   test('the error names the var’s own path, the node that failed', async () => {

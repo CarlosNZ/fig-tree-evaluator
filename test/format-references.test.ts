@@ -45,6 +45,11 @@ describe('toGet', () => {
   test.each([
     ['$index, a number rather than a source', '$index'],
     ['$index by its alias', '$i'],
+    // A miss inside `$error` is null whatever `strictDataPaths` says, and
+    // a get follows it
+    ['$error', '$error'],
+    ['a drilled $error', '$error.message'],
+    ['$error by its alias', '$err.code'],
     ['a drilled $index (invalid)', '$i.x'],
     ['a bare $vars (invalid)', '$vars'],
     ['a var named by an index', '$vars[0].a'],
@@ -156,6 +161,9 @@ describe('toReference', () => {
     ['a literal object source', { operator: 'get', path: 'a', from: { a: 1 } }],
     ['a node source', { operator: 'get', path: 'a', from: { $get: 'x' } }],
     ['an $index source', { operator: 'get', path: 'a', from: '$index' }],
+    // A get follows `strictDataPaths`, where a miss inside `$error` is null
+    ['an $error source', { operator: 'get', path: 'message', from: '$error' }],
+    ['a drilled $error source', { operator: 'get', path: 'status', from: '$err.errorData' }],
     ['a path read from a projection', { operator: 'get', path: 'x', from: '$d.items[*]' }],
     ['an index read from a projection', { operator: 'get', path: [0], from: '$d.grid[*].row' }],
     ['a bare $vars read whole (invalid)', { operator: 'get', path: '', from: '$vars' }],

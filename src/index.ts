@@ -40,7 +40,7 @@ export type {
 
 // ── Errors and diagnostics ───────────────────────────────────────────────
 export { FigTreeError, isFigTreeError } from './FigTreeError'
-export type { FigTreeErrorInit } from './FigTreeError'
+export type { FallbackError, FigTreeErrorInit } from './FigTreeError'
 export { ErrorCodes } from './errorCodes'
 export type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'

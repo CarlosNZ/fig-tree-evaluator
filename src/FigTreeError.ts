@@ -17,11 +17,33 @@
  * throwing class (contract Q6) is deferred until Phase 4/9 needs it;
  * `errorData` is first-class now so it can just construct one.
  */
-import type { FigTreeErrorCode } from './errorCodes'
+import type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 import type { Issue } from './issues'
 import type { TraceNode } from './trace'
 
 export type { TraceNode } from './trace'
+
+/**
+ * What `$error` holds inside a fallback: the failure that fallback caught,
+ * as a plain object ("`FallbackError`" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md). It describes that failure
+ * only, so it has none of the class's `cause`, `related`, `issues`, `trace`
+ * or stack. Located as the host would see the failure had it escaped: inside
+ * a fragment body, `path` is the call node and `fragmentPath` the position
+ * in the body.
+ */
+export interface FallbackError {
+  code: FallbackErrorCode
+  /** For developers, and not stable between versions: branch on `code`. */
+  message: string
+  path: (string | number)[]
+  /** Absent when the failure came from a reference. */
+  operator?: string
+  fragment?: string
+  fragmentPath?: (string | number)[]
+  /** As the operator supplied it. */
+  errorData?: Record<string, unknown>
+}
 
 export interface FigTreeErrorInit {
   code: FigTreeErrorCode

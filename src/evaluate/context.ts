@@ -21,6 +21,7 @@
  */
 import type { EvaluationOptions, FigTreeOptions, OptionsUpdate } from '../options'
 import type { CompiledNode, LinkedPath } from '../compile'
+import type { FigTreeError } from '../FigTreeError'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ResultStore } from '../resultCache'
 import type { OperatorContext, TraceEvent } from '../runtimeInterface'
@@ -91,6 +92,15 @@ export interface EvaluationContext {
    * and the recursion ban means a body can never be its own ancestor.
    */
   params?: ParamsFrame
+  /**
+   * The failure the innermost enclosing fallback caught, which `$error`
+   * reads (./reference); absent outside any fallback. A frame, not a chain,
+   * like `params`: a nested fallback replaces it, and an outer one stays
+   * reachable only through a var declared inside it, whose thunk keeps the
+   * context it was declared in. Set on the context the fallback evaluates
+   * in, never on its node's vars scope, which covers the attempt as well.
+   */
+  caught?: FigTreeError
   /**
    * Wrapped around each of the ARTIFACT's holes, where a shielded timeout
    * asked for one (./run.ts builds it). Handed down by the root skeleton

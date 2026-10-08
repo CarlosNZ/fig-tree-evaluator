@@ -81,21 +81,34 @@ const caughtCodes = (entry: TraceNode): string[] => [
   ...(entry.children ?? []).flatMap(caughtCodes),
 ]
 
+const instance = (options: FigTreeOptions | undefined) => {
+  const sleep = sleepOp()
+  cleanups.push(sleep.cleanup)
+  return new FigTree({
+    operators: [coreOperators, sleep.definition, leaky],
+    fragments,
+    ...options,
+  })
+}
+
 describe('every listed code reaches a fallback', () => {
   test.each(Object.entries(REACHES))('%s', async (code, { expression, data, options }) => {
-    const sleep = sleepOp()
-    cleanups.push(sleep.cleanup)
-    const fig = new FigTree({
-      operators: [coreOperators, sleep.definition, leaky],
-      fragments,
-      ...options,
-    })
-    const { result, trace } = (await fig.evaluate(expression, {
+    const { result, trace } = (await instance(options).evaluate(expression, {
       data,
       trace: true,
     })) as EvaluationResult
     expect(result).toBe(0)
     expect(caughtCodes(trace)).toEqual([code])
+  })
+})
+
+describe('and is what `$error.code` reads there', () => {
+  // TO-DO: include `timeout` once a fallback reading `$error` can shield
+  // (#239, chunk 4)
+  const reading = Object.entries(REACHES).filter(([code]) => code !== 'timeout')
+  test.each(reading)('%s', async (code, { expression, data, options }) => {
+    const reads = { ...(expression as object), fallback: '$error.code' }
+    expect(await instance(options).evaluate(reads, { data })).toBe(code)
   })
 })
 

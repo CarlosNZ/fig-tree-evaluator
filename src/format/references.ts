@@ -10,6 +10,7 @@
  */
 import {
   bareNamespace,
+  NAMESPACE_TOKENS,
   recognizeReference,
   renderSegments,
   splitSigilToken,
@@ -30,22 +31,17 @@ const GET_SHAPE = { positionalParams: GET_POSITIONAL, restParam: null }
 /** The keys a get node may carry and still have a reference form. */
 const GET_KEYS = new Set(['path', 'from', 'default'])
 
-/**
- * Each namespace's single-character alias token: the inverse of
- * `NAMESPACE_TOKENS` in src/compile/references.ts.
- */
-const NAMESPACE_ALIASES: Record<ReferenceNamespace, string> = {
-  data: 'd',
-  vars: 'v',
-  params: 'p',
-  element: 'e',
-  index: 'i',
+/** A namespace's alias token: its other entry in `NAMESPACE_TOKENS`. */
+const aliasOf = (namespace: ReferenceNamespace): string => {
+  for (const [token, named] of Object.entries(NAMESPACE_TOKENS))
+    if (named === namespace && token !== namespace) return token
+  return namespace
 }
 
 /** A namespace token in the requested spelling; `preserve` keeps `token`. */
 const spellToken = (token: string, namespace: ReferenceNamespace, spelling: Spelling): string => {
   if (spelling === 'canonical') return namespace
-  if (spelling === 'alias') return NAMESPACE_ALIASES[namespace]
+  if (spelling === 'alias') return aliasOf(namespace)
   return token
 }
 
@@ -62,6 +58,15 @@ export const respell = (value: string, spelling: Spelling): string => {
   return `$${spellToken(token, recognition.namespace, spelling)}${rest}`
 }
 
+/**
+ * Whether a namespace's reads convert to and from `get`. `$index` is a
+ * number, not a source a path can read into. `$error`'s misses are null
+ * whatever `strictDataPaths` says, while `get` follows it, so converting
+ * either way would change what an expression does.
+ */
+const hasGetForm = (namespace: ReferenceNamespace): boolean =>
+  namespace !== 'index' && namespace !== 'error'
+
 /** A drill's path text: as written, without its leading `.`. */
 const pathText = (drill: string): string => (drill.startsWith('.') ? drill.slice(1) : drill)
 
@@ -72,8 +77,8 @@ const pathText = (drill: string): string => (drill.startsWith('.') ? drill.slice
  * key names the var or parameter, which the compiler moves into the source
  * (#237), so a drill opening with an index or a projection has no get
  * form. A reference with nothing left to drill reads its whole source, as
- * a get with an empty path does. `$index` has no get form: it is a number,
- * not a source a path can read into.
+ * a get with an empty path does. `$index` and `$error` have no get form
+ * (`hasGetForm`).
  */
 export const referenceToGet = (
   value: unknown,
@@ -83,7 +88,7 @@ export const referenceToGet = (
   const recognition = recognizeReference(value)
   if (recognition.kind !== 'reference') return null
   const { namespace, segments } = recognition
-  if (namespace === 'index') return null
+  if (!hasGetForm(namespace)) return null
   const { token, rest } = splitSigilToken(value)!
   const path = pathText(rest)
   if (namespace === 'data') return { operator: 'get', path }
@@ -118,7 +123,8 @@ const literalSegments = (path: unknown): (string | number)[] | null => {
 
 /**
  * A get node's parameters as a reference, or `null` when they have none,
- * which includes a path read from a projection in `from`. With no `from`,
+ * which includes a path read from a projection in `from`, and any read
+ * from `$index` or `$error` (`hasGetForm`). With no `from`,
  * the read is of `$data`, which has no spelling of its own to keep:
  * `preserve` writes the alias, as short is the point. A bare `$vars` or
  * `$params` in `from` names the var or parameter by the path's first key
@@ -142,7 +148,7 @@ export const paramsToReference = (params: GetParams, spelling: Spelling): string
       base = `$${spellToken(splitSigilToken(from)!.token, bare, spelling)}`
     } else {
       const recognition = recognizeReference(from)
-      if (recognition.kind !== 'reference' || recognition.namespace === 'index') return null
+      if (recognition.kind !== 'reference' || !hasGetForm(recognition.namespace)) return null
       // A get applies its path to the array a projection in `from` gives,
       // where a reference applies what follows the `[*]` to each element
       if (rendered !== '' && recognition.segments.includes(WILDCARD)) return null

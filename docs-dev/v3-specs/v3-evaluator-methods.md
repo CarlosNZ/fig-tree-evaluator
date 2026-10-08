@@ -191,9 +191,30 @@ Both are open, `known codes | (string & {})`: a host operator throws codes of it
 
 Never a fallback's: `aborted`, since the caller's signal cuts through every fallback and shielding answers only the deadline; static errors, since `evaluate()` refuses the expression before anything runs; static warnings and the registration codes. Engine bugs and cancellations carry no code at all: they are not `FigTreeError`s. The I/O codes #239 adds (`http-status`, `sql-error`, …) join the list where the I/O operators raise them.
 
-src/errorCodes.ts keeps the list as the closed type `KnownFallbackErrorCode`, which test/error-codes.test.ts holds in step with the engine both ways: every listed code reaches a fallback, and every code the core operators' failure rules and the #217 coverage corpus show the engine throwing is listed.
+src/errorCodes.ts keeps the list as the closed type `KnownFallbackErrorCode`, which test/error-codes.test.ts holds in step with the engine both ways: every listed code reaches a fallback, where `$error.code` reads it, and every code the core operators' failure rules and the #217 coverage corpus show the engine throwing is listed.
 
 **Ruling: one vocabulary, no `StaticErrorCode` (Carl, October 2026, #239).** #239 proposed splitting `ErrorCodes` into two objects, fallback codes and static codes, with `FigTreeErrorCode` their union. Rejected: fifteen codes are neither (the warnings, the registration codes, `aborted`), several are both, and the split would break a root export. A `StaticErrorCode` type was dropped as well, since nothing in the API would be typed by it: `Issue.code` also carries warnings and registration codes, and a host tells a static error apart at runtime by `error.issues`, which a type cannot do. Either can be added later without breaking anything.
+
+### `FallbackError` — what `$error` holds
+
+Inside a `fallback`, `$error` is the failure that fallback caught ("`$error`" in the References area of [v3-api.md](v3-api.md); [#239](https://github.com/CarlosNZ/fig-tree-evaluator/issues/239), Carl, October 2026). It is a plain object built from the `FigTreeError`, never the instance, and a root type export:
+
+```ts
+interface FallbackError {
+  code: FallbackErrorCode
+  message: string // for developers; not stable between versions
+  path: (string | number)[]
+  operator?: string // absent when the failure came from a reference
+  fragment?: string
+  fragmentPath?: (string | number)[]
+  errorData?: Record<string, unknown> // as the operator supplied it
+}
+```
+
+- **Only the failure this fallback caught.** None of the class's `cause`, `related`, `issues`, `trace` or stack. A fallback that reads `$error` cannot receive another such fallback's failure as a `cause` (#239's null-on-failure rule), and `related`'s shape is parked with the contract's open questions.
+- **Branch on `code` and `errorData`, never on `message`.** `message` is always present and may be displayed, but its wording can change between versions, and it is written for developers: it names the operator, and for I/O the URL. The text to show an end user is usually the server's own, in `errorData.response`.
+- **Located as the host would see it.** Inside a fragment body, `path` is the call node in the input and `fragment` + `fragmentPath` the position in the body, even where a fallback inside the body catches the failure before the call boundary anchors it. A failure that already crossed a boundary (an argument's, read in the body through `$params`) keeps the location it was anchored with.
+- **Built on each read, from the caught error, which it never touches.** A fallback that never reads `$error` builds nothing, and two reads give equal objects rather than the same one. `path`, `fragmentPath` and `errorData` are shared with the error, under the read-only results contract.
 
 ---
 

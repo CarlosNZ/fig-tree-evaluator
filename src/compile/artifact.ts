@@ -15,6 +15,9 @@ import type { RegistryEntry } from '../registry'
 import type { FragmentEntry } from '../fragments'
 import type { PathSegment } from '../primitives'
 import type { Issue } from '../issues'
+import type { ReferenceNamespace } from './references'
+
+export type { ReferenceNamespace }
 
 /** A location in the input as authored — object keys and array indices. */
 export type NodePath = (string | number)[]
@@ -64,8 +67,6 @@ export interface ConstantNode extends CompiledBase {
   kind: 'constant'
   value: unknown
 }
-
-export type ReferenceNamespace = 'data' | 'vars' | 'params' | 'element' | 'index'
 
 /**
  * A recognized reference string (References area). Namespace aliases are

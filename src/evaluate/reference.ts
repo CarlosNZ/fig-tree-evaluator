@@ -19,6 +19,12 @@
  * protection the other namespaces can have, which is a reason to extend it
  * to them rather than withhold it. One strict-path rule, four namespaces.
  *
+ * `$error` is the exception: a miss inside it is `null` whatever
+ * `strictDataPaths` says. Its shape varies by error code, and a fallback
+ * inspecting it must not fail on a field the code it caught does not carry.
+ * It is built from the failure the innermost enclosing fallback caught on
+ * each read, so a fallback that never reads it builds nothing.
+ *
  * `$element` / `$index`: the innermost enclosing binding frame, found by
  * the same match rule the static checker used, so an `as`-renamed frame
  * does not answer to the default names. `$element` drills like the rest;
@@ -39,6 +45,7 @@ import { resolvePath, type PathSegment } from '../primitives'
 import { toNodePath, type ReferenceNode } from '../compile'
 import type { EvaluationContext } from './context'
 import { lookupBinding } from './bindings'
+import { fallbackError } from './fragment'
 import { internalError } from './internal'
 import { lookupVar } from './scope'
 
@@ -59,6 +66,8 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
     case 'element':
     case 'index':
       return resolveBinding(node, ctx)
+    case 'error':
+      return resolveError(node, ctx)
   }
 }
 
@@ -138,6 +147,17 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
     ctx,
     `is absent from '${node.raw.split('.')[0]}'`
   )
+}
+
+const resolveError = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
+  if (ctx.caught === undefined)
+    throw internalError(
+      `'${node.raw}': no enclosing fallback caught a failure — the static gate should have refused it`
+    )
+  const error = fallbackError(ctx.caught, ctx.frame)
+  if (node.segments.length === 0) return error
+  const result = resolvePath(error, node.segments)
+  return result.found ? normalize(result.value) : null
 }
 
 /**

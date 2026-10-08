@@ -62,7 +62,7 @@ export const evaluateOperator = async (
     // the author's, so a `fallback` has no standing to answer it
     if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
     const failure = wrapFailure(error, node)
-    const fallback = fallbackOf(node, scoped)
+    const fallback = fallbackOf(node, scoped, failure)
     if (fallback === undefined) throw failure
     try {
       const answered = await fallback()
@@ -83,7 +83,9 @@ export const evaluateOperator = async (
       )
         throw fallbackError
       const wrapped = wrapFailure(fallbackError, node)
-      if (wrapped.cause === undefined) wrapped.cause = failure
+      // A fallback that reads the var that failed re-receives the very same
+      // error (rule 5), which must not become its own cause
+      if (wrapped !== failure && wrapped.cause === undefined) wrapped.cause = failure
       throw wrapped
     }
   }
@@ -194,10 +196,19 @@ const classifyBodyFailure = (
   return error
 }
 
-/** The node's own fallback, else the operator's instance-wide default. */
-const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {
+/**
+ * The node's own fallback, else the operator's instance-wide default. The
+ * node's own runs with `$error` bound to `failure`, in the node's vars
+ * scope (rule 5) — on a context of its own, so the vars, whose thunks keep
+ * `ctx`, never see it.
+ */
+const fallbackOf = (
+  node: OperatorNode,
+  ctx: EvaluationContext,
+  failure: FigTreeError
+): (() => unknown) | undefined => {
   const own = node.fallback
-  if (own !== undefined) return () => evaluateNode(own, ctx)
+  if (own !== undefined) return () => evaluateNode(own, { ...ctx, caught: failure })
   const defaults = node.entry.hostDefaults
   if (defaults !== undefined && Object.hasOwn(defaults, 'fallback')) return () => defaults.fallback
   return undefined

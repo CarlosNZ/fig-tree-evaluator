@@ -182,7 +182,7 @@ describe('as renaming', () => {
   })
 
   test('as may not collide with reserved namespaces, long or short form', () => {
-    for (const as of ['data', 'e', 'index', 'v']) {
+    for (const as of ['data', 'e', 'index', 'v', 'error', 'err']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
     }
   })

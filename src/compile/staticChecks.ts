@@ -67,11 +67,18 @@ interface IteratorFrame {
   referenced: boolean
 }
 
+/** A fallback's subtree, where `$error` is the failure it caught. */
+interface FallbackFrame {
+  /** Set when an `$error` reference inside resolved against this frame. */
+  referenced: boolean
+}
+
 interface CheckState {
   artifact: CompileArtifact
   context: StaticCheckContext
   varsFrames: VarsFrame[]
   iteratorFrames: IteratorFrame[]
+  fallbackFrames: FallbackFrame[]
 }
 
 /**
@@ -79,7 +86,13 @@ interface CheckState {
  * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
 export const runStaticChecks = (artifact: CompileArtifact, context: StaticCheckContext = {}) => {
-  const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
+  const state: CheckState = {
+    artifact,
+    context,
+    varsFrames: [],
+    iteratorFrames: [],
+    fallbackFrames: [],
+  }
   visit(state, artifact.root)
   sortIssues(artifact.issues)
   artifact.hasErrors = hasError(artifact.issues)
@@ -142,6 +155,19 @@ const visit = (state: CheckState, node: CompiledNode) => {
   return node satisfies never
 }
 
+/**
+ * A node's fallback, under a frame of its own: `$error` inside resolves to
+ * the innermost one, so a fallback inside a fallback rebinds it. Its node
+ * pushed its vars first, and their definitions were visited then, outside
+ * this frame — they feed the node's parameters too, which run before
+ * anything has failed.
+ */
+const visitFallback = (state: CheckState, fallback: CompiledNode) => {
+  state.fallbackFrames.push({ referenced: false })
+  visit(state, fallback)
+  state.fallbackFrames.pop()
+}
+
 const isCompiledNode = (value: object): value is CompiledNode =>
   'kind' in value && typeof (value as { kind: unknown }).kind === 'string'
 
@@ -149,7 +175,7 @@ const isCompiledNode = (value: object): value is CompiledNode =>
 
 const visitOperator = (state: CheckState, node: OperatorNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node.fallback)
 
   const definition = node.entry.definition
   const owner = operatorOwner(node)
@@ -362,8 +388,9 @@ const checkInstanceFallback = (
 /**
  * Why a value-producing node can never satisfy a receiving declaration, or
  * undefined when it can, or when nothing is known before it runs (a
- * reference, a call to an unknown fragment). It serves the node supplied at
- * a position and each fallback standing in for it there alike.
+ * reference other than a bare `$error`, a call to an unknown fragment). It
+ * serves the node supplied at a position and each fallback standing in for
+ * it there alike.
  */
 const findMismatch = (
   declared: ReceivingDeclaration,
@@ -390,18 +417,31 @@ const findMismatch = (
     // A container holding something computed is still an array or an
     // object, so it is checked as a literal one would be, with the same
     // message
-    case 'skeleton': {
-      const typed = checkType(Array.isArray(node.skeleton) ? [] : {}, declared.type)
-      if (!typed.ok)
-        return {
-          code: ErrorCodes.typeCheck,
-          reason: `expected ${typed.expected}, received ${typed.actual}`,
-        }
+    case 'skeleton':
+      return containerMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
+    // A bare `$error` is always an object; what is drilled from it is not
+    // known
+    case 'reference':
+      if (node.namespace === 'error' && node.segments.length === 0)
+        return containerMismatch(declared, {})
       return
-    }
     default:
       return
   }
+}
+
+/** Why a container of this kind can never satisfy the declaration. */
+const containerMismatch = (
+  declared: ReceivingDeclaration,
+  empty: unknown[] | Record<string, never>
+): { code: string; reason: string } | undefined => {
+  const typed = checkType(empty, declared.type)
+  if (!typed.ok)
+    return {
+      code: ErrorCodes.typeCheck,
+      reason: `expected ${typed.expected}, received ${typed.actual}`,
+    }
+  return
 }
 
 /**
@@ -460,7 +500,7 @@ const operatorOwner = (node: OperatorNode) => ({
  */
 const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node.fallback)
 
   const declarations = node.entry?.parameters
   const supplied =
@@ -561,7 +601,8 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 // ── References: scope resolution ────────────────────────────────────
 
 const visitReference = (state: CheckState, node: ReferenceNode) => {
-  switch (node.namespace) {
+  const { namespace } = node
+  switch (namespace) {
     case 'data':
       return
     case 'vars':
@@ -572,9 +613,15 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node, node.namespace)
+      resolveBinding(state, node, namespace)
+      return
+    case 'error':
+      resolveError(state, node)
       return
   }
+  // Exhaustive by construction: a namespace missing here would skip its
+  // scope check silently
+  return namespace satisfies never
 }
 
 const resolveVar = (state: CheckState, node: ReferenceNode) => {
@@ -653,6 +700,23 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
     'error',
     ErrorCodes.unresolvedBinding,
     `'${node.raw}' resolves against no enclosing iterator here`,
+    node.path,
+    node.order
+  )
+}
+
+/** `$error` resolves to the innermost enclosing fallback's catch. */
+const resolveError = (state: CheckState, node: ReferenceNode) => {
+  const frame = state.fallbackFrames.at(-1)
+  if (frame !== undefined) {
+    frame.referenced = true
+    return
+  }
+  emit(
+    state,
+    'error',
+    ErrorCodes.unresolvedBinding,
+    `'${node.raw}' is only available inside a fallback`,
     node.path,
     node.order
   )

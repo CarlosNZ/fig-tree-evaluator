@@ -114,6 +114,7 @@ import {
   bareNamespace,
   bindingNamespace,
   indexBinding,
+  namespaceOf,
   recognizeReference,
   renderReference,
   renderSegments,
@@ -149,20 +150,6 @@ import type {
 } from './artifact'
 import { extendPath, hasError, setOwn, sortIssues, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
-
-/** The reference-namespace words `as` names may not collide with. */
-const NAMESPACE_WORDS = new Set([
-  'data',
-  'vars',
-  'params',
-  'element',
-  'index',
-  'd',
-  'v',
-  'p',
-  'e',
-  'i',
-])
 
 interface WalkState {
   registry: OperatorRegistry
@@ -1319,7 +1306,7 @@ const walkEntriesParam = (
  * Validate an `as` value and return it as the binding name. `as` is
  * structural — a compile-time literal identifier; a dynamic value is a
  * grammar error. Names are checked against the shared legality rule, the
- * reserved namespace words (long and short forms) and every enclosing `as`
+ * reserved namespace words (canonical and alias) and every enclosing `as`
  * name, derived `…Index` forms included ("$element / $index and as" in
  * docs-dev/v3-specs/v3-api.md).
  */
@@ -1341,7 +1328,7 @@ const readAsBinding = (
 
   const names = [value, indexBinding(value)]
   for (const name of names) {
-    if (NAMESPACE_WORDS.has(name))
+    if (namespaceOf(name) !== undefined)
       return asError(`'${value}' collides with the reserved namespace word '${name}'`)
     if (bindingNamespace(name, state.scope.bindings) !== null)
       return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)

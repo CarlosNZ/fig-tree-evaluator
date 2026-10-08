@@ -58,8 +58,9 @@ describe('the reservation sets', () => {
     for (const key of RESERVED_NODE_KEYS) {
       expect(RESERVED_REGISTRATION_NAMES.has(key)).toBe(true)
     }
-    // Reference namespaces and their single-character alias forms
-    for (const word of ['data', 'vars', 'params', 'element', 'index', 'd', 'v', 'p', 'e', 'i']) {
+    // Reference namespaces and their aliases
+    const words = ['data', 'vars', 'params', 'element', 'index', 'error']
+    for (const word of [...words, 'd', 'v', 'p', 'e', 'i', 'err']) {
       expect(RESERVED_REGISTRATION_NAMES.has(word)).toBe(true)
     }
     expect(RESERVED_REGISTRATION_NAMES.has('literal')).toBe(true)

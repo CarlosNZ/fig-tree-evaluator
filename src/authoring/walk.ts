@@ -505,7 +505,8 @@ export class Analysis {
    * A var passes on whatever its definition can fail on and return, and a
    * parameter leaves a demand for its argument. A missing path is null,
    * or under `strictDataPaths` a failure, where the reference drills past
-   * what it names; `$index` never drills.
+   * what it names; `$index` never drills. A read of `$error` never fails:
+   * its misses are null whatever `strictDataPaths` says.
    */
   private async reference(node: ReferenceNode, ctx: Context): Promise<NodeResult> {
     const { segments, namespace } = node
@@ -540,6 +541,8 @@ export class Analysis {
         const known = typeof name === 'string' ? (params[name] ?? ANY) : ANY
         return this.drilled(node, known, rest, [], [{ demand: String(name) }])
       }
+      case 'error':
+        return { ...SAFE, output: ANY }
     }
     return namespace satisfies never
   }
