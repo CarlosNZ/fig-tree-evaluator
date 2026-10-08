@@ -104,12 +104,12 @@
 import { ErrorCodes } from '../errorCodes'
 import type { Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
-import { isPlainDataObject, listing, nearestName } from '../utils'
+import { didYouMean, isPlainDataObject, listing, nearestName } from '../utils'
 import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
 import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
-import { scanTemplate, type TemplateSegment } from '../templateTokens'
+import { templateTokens, type TemplateSegment } from '../templateTokens'
 import {
   bareNamespace,
   bindingNamespace,
@@ -617,10 +617,6 @@ const nonLiteralName = (
   return invalid(raw, path, order)
 }
 
-/** The message tail offering a suggestion, or nothing. */
-const didYouMean = (suggestion: string | undefined) =>
-  suggestion ? ` — did you mean '${suggestion}'?` : ''
-
 /** Fresh operator node; records the dependency-list entry. */
 const startOperatorNode = (
   state: WalkState,
@@ -934,8 +930,7 @@ const compileTemplate = (state: WalkState, node: OperatorNode) => {
   const template = node.params.template
   if (template?.kind !== 'constant' || typeof template.value !== 'string') return
 
-  const segments = scanTemplate(template.value)
-  const tokens = segments.filter((segment) => segment.kind !== 'text')
+  const tokens = templateTokens(template.value)
   if (tokens.length === 0) return
 
   const supplied = node.params.substitutions
