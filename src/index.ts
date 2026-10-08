@@ -42,7 +42,7 @@ export type {
 export { FigTreeError, isFigTreeError } from './FigTreeError'
 export type { FigTreeErrorInit } from './FigTreeError'
 export { ErrorCodes } from './errorCodes'
-export type { FigTreeErrorCode } from './errorCodes'
+export type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'
 export type {
   TraceNode,

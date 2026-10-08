@@ -143,12 +143,8 @@ Every error the engine throws is an instance of one class (the contract's open q
 
 ```ts
 class FigTreeError extends Error {
-  code: string // stable, machine-readable: 'unknown-operator', 'type-check',
-  // 'operator-failure', 'timeout', 'aborted', … (vocabulary fixed at
-  // implementation — the implemented set lives in src/errorCodes.ts,
-  // growing additively per phase; Phase 3 added the grammar/static set,
-  // Phase 4 the evaluation set: 'depth-ceiling', 'non-finite-result',
-  // 'escaped-handle', 'empty-aggregate')
+  code: FigTreeErrorCode // stable, machine-readable: 'type-check', 'operator-failure',
+  // 'timeout', … — "The code vocabulary" below
   path: (string | number)[] // the failing node, in the input as authored
   operator?: string // canonical name, where applicable
   fragment?: string // set when the failure is inside a fragment body…
@@ -167,6 +163,37 @@ The two-level path story (call-site `path` + `fragmentPath`) is forced by fragme
 **`related`.** A failing `and` / `or`, or a deciding iterator, is one failing node and raises one error: the lowest-index parked failure, with the other parked failures attached as `related: FigTreeError[]`. Parked failures that lose the race — where an operand decided — never appear at all. **Agreed** (close-off, July 2026; shape finality with the contract's `OperatorFailure` question) — this discharges the implementation-notes question of what becomes of sibling parked failures.
 
 **Registration-error shape** (recorded at Phase-2 implementation, July 2026): errors thrown by `defineOperator()` and `new FigTree()` reuse this class with a path convention of their own — there is no expression, so `path` points into the **authored literal** (`['parameters', 'value', 'nullPolicy']` into a definition; `['operators', 1]` / `['operatorDefaults', 'equal', 'caseInsensitive']` into the options object). The throw-level `code` is a predictable umbrella (`'invalid-definition'` from `defineOperator`, `'invalid-options'` from construction); specificity lives in `issues[*].code` (`'invalid-name'`, `'reserved-name'`, `'invalid-null-policy'`, `'duplicate-operator'`, `'type-check'`, `'unknown-operator'`), with all violations collected into one throw — `message` is the first issue plus a `(+ N more issues)` tail.
+
+### The code vocabulary
+
+`ErrorCodes` (src/errorCodes.ts, a root export) is the whole known vocabulary, shared by `FigTreeError.code`, `Issue.code` and `OperatorFailure.code`, so a static check and its runtime counterpart classify the same way. It is grouped by when a code can occur: evaluation failures, the kill switch, static errors, static warnings, and registration and options. Some codes occur in more than one group: `type-check` is a static error on a literal, a runtime failure on a computed value and a registration issue; `missing-data-path` is both the sample-data warning and the `strictDataPaths` miss; `missing-required` is a static error, and a runtime one for a dynamic-mode fragment call.
+
+Two types name codes, both exported from the root:
+
+- **`FigTreeErrorCode`**: any code a `FigTreeError` or an `Issue` carries.
+- **`FallbackErrorCode`**: a code a fallback can receive. It types `OperatorFailure.code` and the `FailureRule.code` an operator's `analysis` declares ([v3-fallback-coverage.md](v3-fallback-coverage.md)), since what a body throws is by definition what a fallback catches.
+
+Both are open, `known codes | (string & {})`: a host operator throws codes of its own, and they reach a fallback unchanged. The `string & {}` member accepts any string without absorbing the known codes, so editors still offer those; it narrows nothing. `ErrorCodes` is the only list of codes that exists at runtime.
+
+**The fallback codes.** What the engine and the package's own operators can hand a fallback:
+
+| Code                | Raised by                                                                                                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type-check`        | a computed value failing a parameter's declared type or constraints; an operator's own operand check (`plus`'s mixed modes); an I/O operator's input checks; a fragment call's argument checks |
+| `operator-failure`  | a body throwing without a code: `convert`, `regex`, the I/O clients, or any plain `Error`                                                                                                      |
+| `request-timeout`   | a node's own `timeout` parameter expiring                                                                                                                                                      |
+| `non-finite-result` | a number result that is `NaN` or infinite                                                                                                                                                      |
+| `escaped-handle`    | a body returning a lazy handle instead of demanding it: a host operator's bug, but an ordinary failure                                                                                         |
+| `empty-aggregate`   | an aggregate of nothing that has no identity (`min` of `[]`)                                                                                                                                   |
+| `missing-data-path` | a `strictDataPaths` miss, in a reference or in `get`                                                                                                                                           |
+| `missing-required`  | a dynamic-mode fragment call missing a required argument                                                                                                                                       |
+| `timeout`           | the whole-evaluation deadline. No fallback catches it, but a shielded one answers it (rule 3 of "`fallback` semantics" in [v3-api.md](v3-api.md)), so it is a fallback code too                |
+
+Never a fallback's: `aborted`, since the caller's signal cuts through every fallback and shielding answers only the deadline; static errors, since `evaluate()` refuses the expression before anything runs; static warnings and the registration codes. Engine bugs and cancellations carry no code at all: they are not `FigTreeError`s. The I/O codes #239 adds (`http-status`, `sql-error`, …) join the list where the I/O operators raise them.
+
+src/errorCodes.ts keeps the list as the closed type `KnownFallbackErrorCode`, which test/error-codes.test.ts holds in step with the engine both ways: every listed code reaches a fallback, and every code the core operators' failure rules and the #217 coverage corpus show the engine throwing is listed.
+
+**Ruling: one vocabulary, no `StaticErrorCode` (Carl, October 2026, #239).** #239 proposed splitting `ErrorCodes` into two objects, fallback codes and static codes, with `FigTreeErrorCode` their union. Rejected: fifteen codes are neither (the warnings, the registration codes, `aborted`), several are both, and the split would break a root export. A `StaticErrorCode` type was dropped as well, since nothing in the API would be typed by it: `Issue.code` also carries warnings and registration codes, and a host tells a static error apart at runtime by `error.issues`, which a type cannot do. Either can be added later without breaking anything.
 
 ---
 

@@ -175,7 +175,7 @@ A rule names the error a failure carries and the conditions under which it happe
 
 ```ts
 interface FailureRule {
-  code: FigTreeErrorCode
+  code: FallbackErrorCode
   /** The parameter the failure is about, which its finding names */
   parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */

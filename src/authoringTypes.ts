@@ -3,7 +3,7 @@
  * root so the subpath stays an analysis over the engine, like the other
  * subpaths' types ("Types" in docs-dev/v3-specs/v3-packaging.md).
  */
-import type { FigTreeErrorCode } from './errorCodes'
+import type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 import type { ExpectedType } from './typeCheck'
 
 /**
@@ -90,7 +90,7 @@ export interface OperatorAnalysis {
  * conditions on what its parameters receive under which it does.
  */
 export interface FailureRule {
-  code: FigTreeErrorCode
+  code: FallbackErrorCode
   /** The parameter the failure is about, which its finding names */
   parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */
