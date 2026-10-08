@@ -240,7 +240,7 @@ http, graphQL, sql: external
 
 `power`'s second rule is `may` although a negative base with a fractional exponent is always NaN: an infinite operand also passes its tests, and `(-2)^-Infinity` is 0. `match` and `get` need only the unknown case: with a known value, or a known path and `from`, rule 4 runs them instead. `round`'s first rule, found by the rule checker, is a judgment like `power`'s: `10^decimals` is infinite from 309, and below 300 it takes an extreme value to overflow.
 
-`external` means never run, and may fail whatever the parameters: only a fallback covers an I/O node. An external node gets one finding, `operator-failure`, may, which stands for whatever code its own code throws: an I/O operator refuses a relative URL or a GET with a body with `type-check`, its own `timeout` with `request-timeout`, and a client or a host's body can throw anything. Its code is the one exception to a finding carrying the runtime error's code.
+`external` means never run, and may fail whatever the parameters: only a fallback covers an I/O node. An external node gets one finding, `operator-failure`, may, which stands for whatever code its own code throws: an I/O operator refuses a relative URL or a GET with a body with `type-check`, its own `timeout` with `request-timeout`, and a client's failure with one of the I/O codes (`http-status`, `sql-error`, `request-failure`, …), while a host's body can throw anything. Its code is the one exception to a finding carrying the runtime error's code.
 
 ### Output declarations
 

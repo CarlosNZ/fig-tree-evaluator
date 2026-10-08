@@ -17,7 +17,7 @@
  */
 import { OperatorFailure } from '../OperatorFailure'
 import type { HttpClient, HttpRequest } from '../types'
-import { httpFailure, truncate } from './failures'
+import { httpFailure, invalidResponse, truncate } from './failures'
 
 /** The fetch surface this wrapper uses, and nothing more. */
 export type FetchLike = (
@@ -110,7 +110,7 @@ export class FetchClient implements HttpClient {
         status: response.status,
         statusText: response.statusText,
         url: response.url || req.url,
-        payload: parseOrRaw(text),
+        response: parseOrRaw(text),
       })
     return parseBody(text, response.url || req.url, response.status)
   }
@@ -145,12 +145,12 @@ export class AxiosClient implements HttpClient {
           // carries the request headers, which is exactly the leak the
           // never-echo rule exists to prevent
           url: error.config?.url ?? req.url,
-          payload: error.response.data,
+          response: error.response.data,
         })
-      // A transport error passes through untouched, where v2 wrapped it in
-      // `new Error('Network error: …')`. The engine classifies an
-      // AbortError as cancellation or a deadline, and the wrap destroyed
-      // the name it classifies on
+      // A transport error is the operator's to classify: it becomes
+      // `request-failure`, keeping only its message, since an axios error
+      // carries its config, headers included. An abort is classified from
+      // the engine's own signals, whatever is thrown
       throw error
     }
   }
@@ -162,9 +162,7 @@ const parseBody = (text: string, url: string, status: number): unknown => {
   try {
     return JSON.parse(text)
   } catch {
-    throw new OperatorFailure(`response was not JSON (${status}): ${url}`, {
-      errorData: { status, url, response: truncate(text) },
-    })
+    throw invalidResponse(`response was not JSON (${status}): ${url}`, url, truncate(text))
   }
 }
 

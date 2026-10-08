@@ -27,6 +27,7 @@
  * the connection.
  */
 import { buildOperator, declareOperator } from '../buildOperator'
+import { fromClient } from '../clients/failures'
 import { FetchClient } from '../clients/http'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure } from '../OperatorFailure'
@@ -130,7 +131,7 @@ export const httpDefinition = (client: HttpClient) =>
       }
       const response = await context.cache.memo(requestKey(request), () => {
         noteRequest(context, request)
-        return client.request({ ...request, signal: context.signal })
+        return fromClient(() => client.request({ ...request, signal: context.signal }), 'http')
       })
       // Post-cache, and so outside the key: two nodes drilling one
       // response differently share the single fetch
@@ -196,7 +197,11 @@ export const graphQLDefinition = (client: HttpClient) =>
       // check ran outside and every later evaluation re-derived it
       const data = await context.cache.memo(requestKey(request), async () => {
         noteRequest(context, request)
-        return graphQLData(await client.request({ ...request, signal: context.signal }))
+        const response = await fromClient(
+          () => client.request({ ...request, signal: context.signal }),
+          'http'
+        )
+        return graphQLData(response, request.url)
       })
       return drill(data, returnPath)
     },
@@ -248,7 +253,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
         // which is the same reason pg's `detail` / `hint` stay out of
         // `errorData` (src/clients/failures.ts)
         context.trace.note({ type: 'query', text: request.text })
-        return connection.query({ ...request, signal: context.signal })
+        return fromClient(() => connection.query({ ...request, signal: context.signal }), 'sql')
       })
       return reshape(rows as Record<string, unknown>[], shape as SqlShape, noRowDefault)
     },

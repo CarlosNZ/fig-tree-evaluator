@@ -128,8 +128,11 @@ export type { PathSegment, Wildcard, ResolveResult } from './primitives'
 // factories' output is put in the `operators` array.
 export { httpOperators, sqlOperators } from './operators/io'
 export { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from './clients'
+// How a custom client throws the failures its operator passes through
+export { httpFailure, sqlFailure } from './clients'
 export type { HttpClient, HttpRequest, SqlConnection, SqlRequest } from './types'
 export type {
+  HttpFailureInfo,
   FetchLike,
   FetchResponseLike,
   AxiosLike,

@@ -14,6 +14,7 @@
  * outside it.** So `returnPath`, `shape` and `noRowDefault` are outside,
  * and graphQL's `errors` check is inside.
  */
+import { invalidResponse } from '../clients/failures'
 import { OperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import { renderText, resolvePath } from '../primitives'
@@ -187,21 +188,23 @@ export const drill = (value: unknown, returnPath: string | unknown[] | undefined
  * Apollo's default `errorPolicy: 'none'`, adopted (register row 30): a
  * non-empty `errors` array fails the node, partial `data` included, with
  * the errors in `errorData`. v2 read `response.data` and silently dropped
- * the field.
+ * the field. A response of any other shape is `invalid-response`, carrying
+ * the body as it came.
  */
-export const graphQLData = (response: unknown): unknown => {
-  if (!isPlainObject(response)) throw new OperatorFailure('the GraphQL response was not an object')
+export const graphQLData = (response: unknown, url: string): unknown => {
+  if (!isPlainObject(response))
+    throw invalidResponse('the GraphQL response was not an object', url, response)
   const errors = (response as Record<string, unknown>).errors
   if (Array.isArray(errors) && errors.length > 0) {
     const first = (errors[0] as { message?: unknown } | null)?.message
     throw new OperatorFailure(
       `the GraphQL response carried ${errors.length} error${errors.length === 1 ? '' : 's'}` +
         (typeof first === 'string' ? `: ${first}` : ''),
-      { errorData: { errors } }
+      { code: ErrorCodes.graphQLErrors, errorData: { errors } }
     )
   }
   if (!('data' in (response as Record<string, unknown>)))
-    throw new OperatorFailure('the GraphQL response carried neither data nor errors')
+    throw invalidResponse('the GraphQL response carried neither data nor errors', url, response)
   return (response as Record<string, unknown>).data ?? null
 }
 

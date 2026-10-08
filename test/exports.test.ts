@@ -20,6 +20,8 @@ const SPEC_VALUE_EXPORTS = [
   'AxiosClient',
   'PostgresConnection',
   'SQLiteConnection',
+  'httpFailure',
+  'sqlFailure',
   'FigTreeError',
   'isFigTreeError',
   'ErrorCodes',

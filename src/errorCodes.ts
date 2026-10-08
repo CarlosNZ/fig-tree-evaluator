@@ -25,6 +25,13 @@ export const ErrorCodes = {
   // from `timeout`, which is the whole-evaluation kill switch: this one
   // is an ORDINARY failure the node's `fallback` catches
   requestTimeout: 'request-timeout',
+  // The I/O operators' failures, each promising its `errorData`
+  // (src/clients/failures.ts)
+  httpStatus: 'http-status', // an $http request answered 404
+  invalidResponse: 'invalid-response', // a 200 whose body is not JSON, or a GraphQL body with neither data nor errors
+  graphQLErrors: 'graphql-errors', // a GraphQL response carrying a non-empty `errors` array
+  sqlError: 'sql-error', // a SQL driver or connection refused the query
+  requestFailure: 'request-failure', // anything else an I/O client throws: a network error, a non-compliant client
   nonFiniteResult: 'non-finite-result', // { $divide: [1, 0] } — a body produced NaN / ±Infinity
   escapedHandle: 'escaped-handle', // a body returned a LazyValue / PerElement handle instead of demanding it — a host operator's bug, but an ordinary failure
   emptyAggregate: 'empty-aggregate', // { $plus: [] } with no mode pinned, { $min: [] } — no identity to return
@@ -98,6 +105,11 @@ export type KnownFallbackErrorCode = (typeof ErrorCodes)[
   | 'typeCheck'
   | 'operatorFailure'
   | 'requestTimeout'
+  | 'httpStatus'
+  | 'invalidResponse'
+  | 'graphQLErrors'
+  | 'sqlError'
+  | 'requestFailure'
   | 'nonFiniteResult'
   | 'escapedHandle'
   | 'emptyAggregate'

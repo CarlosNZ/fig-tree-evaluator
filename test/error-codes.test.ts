@@ -18,8 +18,25 @@
  * The type assertions run under `pnpm typecheck`, not Jest: ts-jest only
  * transpiles.
  */
-import { ErrorCodes, FigTree, OperatorFailure, coreOperators, defineOperator } from '../src'
-import type { EvaluationResult, FigTreeOptions, FragmentDefinition, TraceNode } from '../src'
+import {
+  ErrorCodes,
+  FigTree,
+  OperatorFailure,
+  coreOperators,
+  defineOperator,
+  httpFailure,
+  httpOperators,
+  sqlFailure,
+  sqlOperators,
+} from '../src'
+import type {
+  EvaluationResult,
+  FigTreeOptions,
+  FragmentDefinition,
+  HttpClient,
+  SqlConnection,
+  TraceNode,
+} from '../src'
 import type { FallbackErrorCode, FigTreeErrorCode, KnownFallbackErrorCode } from '../src/errorCodes'
 import { CORE_RULES } from '../src/authoring/rules'
 import { sections } from './coverage-cases'
@@ -40,6 +57,23 @@ const leaky = defineOperator({
   evaluate: ({ branch }) => branch as never,
 })
 
+/** Answers each I/O case by its URL. */
+const client: HttpClient = {
+  request: async ({ url }) => {
+    if (url.endsWith('/missing'))
+      throw httpFailure({ status: 404, statusText: 'Not Found', url, response: null })
+    if (url.endsWith('/down')) throw new Error('socket hang up')
+    if (url.endsWith('/errors')) return { errors: [{ message: 'Cannot query field "b"' }] }
+    return 'OK'
+  },
+}
+
+const connection: SqlConnection = {
+  query: async () => {
+    throw sqlFailure('mock', Object.assign(new Error('no such table'), { code: 'SQLITE_ERROR' }))
+  },
+}
+
 const fragments: Record<string, FragmentDefinition> = {
   needsA: { expression: '$params.a', parameters: { a: { type: 'number', required: true } } },
 }
@@ -57,6 +91,16 @@ const REACHES: Record<KnownFallbackErrorCode, Case> = {
     data: { x: { a: 1 } },
   },
   'request-timeout': { expression: { operator: 'sleep', ms: 200, timeout: 20, fallback: 0 } },
+  'http-status': { expression: { $http: 'https://x.test/missing', fallback: 0 } },
+  // A body of the wrong shape for GraphQL
+  'invalid-response': {
+    expression: { operator: 'graphQL', query: '{ a }', url: 'https://x.test/text', fallback: 0 },
+  },
+  'graphql-errors': {
+    expression: { operator: 'graphQL', query: '{ b }', url: 'https://x.test/errors', fallback: 0 },
+  },
+  'sql-error': { expression: { $sql: 'SELECT * FROM nope', fallback: 0 } },
+  'request-failure': { expression: { $http: 'https://x.test/down', fallback: 0 } },
   'non-finite-result': { expression: { $divide: [1, '$data.by'], fallback: 0 }, data: { by: 0 } },
   'escaped-handle': { expression: { $leaky: 1, fallback: 0 } },
   'empty-aggregate': { expression: { $min: '$data.list', fallback: 0 }, data: { list: [] } },
@@ -85,7 +129,13 @@ const instance = (options: FigTreeOptions | undefined) => {
   const sleep = sleepOp()
   cleanups.push(sleep.cleanup)
   return new FigTree({
-    operators: [coreOperators, sleep.definition, leaky],
+    operators: [
+      coreOperators,
+      httpOperators(client),
+      sqlOperators(connection),
+      sleep.definition,
+      leaky,
+    ],
     fragments,
     ...options,
   })

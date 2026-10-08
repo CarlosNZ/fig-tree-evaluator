@@ -185,7 +185,7 @@ describe('the Postgres stand-in', () => {
     expect(second).not.toBe(first)
     await expect(
       new PostgresConnection(standIn).query({ text: missing.text })
-    ).rejects.toMatchObject({ errorData: { driver: 'postgres', code: '42P01' } })
+    ).rejects.toMatchObject({ errorData: { driver: 'postgres', driverCode: '42P01' } })
   })
 
   it('reports a query it has no recording for', async () => {
