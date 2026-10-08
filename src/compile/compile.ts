@@ -1746,7 +1746,7 @@ const compileFragmentParameters = (
   if (value === undefined) return // zero-argument call
   if (
     classifiesAsNode(value, state.recognizes) ||
-    (typeof value === 'string' && recognizeReference(value).kind === 'reference')
+    (typeof value === 'string' && recognizeReference(value, state.scope).kind === 'reference')
   ) {
     node.argumentsMode = 'dynamic'
     node.parameters = walk(state, value, path, depth + 1)

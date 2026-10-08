@@ -211,10 +211,14 @@ export class ResultCache {
    * the current one only when it is a different object, so entries survive
    * a change that could not have affected them — the merge rule's
    * `cache: { maxSize }` row promises exactly that. The built-in store is
-   * resized in place for the same reason.
+   * resized in place for the same reason, and is created afresh when a
+   * removed host store hands the cache back to it.
    */
   configure(config: ResolvedCacheConfig): void {
-    if (config.store !== undefined && config.store !== this.store) {
+    if (config.store === undefined) {
+      this.own ??= new Lru<string, unknown>(config.maxSize)
+      this.store = this.own
+    } else if (config.store !== this.store) {
       this.store = config.store
       this.own = undefined
     }
