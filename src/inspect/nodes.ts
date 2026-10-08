@@ -46,7 +46,10 @@ export type InspectNode = { order: number; path: Path } & (
       operator: string
       params: NodeMap
       fallback?: InspectNode
-      /** The constant a top-level hole's timeout assembly splices in. */
+      /**
+       * The static fallback a top-level hole's timeout assembly splices in,
+       * as written: each `$error` read in it is its own string.
+       */
       timeoutFallback?: Json
       noCache?: true
       hostDefaults?: string[]

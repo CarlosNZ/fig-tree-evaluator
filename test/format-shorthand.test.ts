@@ -205,6 +205,20 @@ describe('with the core operators', () => {
       })
     })
 
+    // The reference would make a dynamic fallback static, and would read
+    // a miss as null whatever `strictDataPaths` says
+    test('a get from $error keeps its node, in a fallback too', () => {
+      expectForm(
+        shorthand({
+          operator: 'divide',
+          value: '$d.n',
+          by: 0,
+          fallback: { operator: 'get', path: 'code', from: '$err' },
+        }),
+        { $divide: ['$d.n', 0], fallback: { $get: { path: 'code', from: '$err' } } }
+      )
+    })
+
     test('getAsReference: false keeps the node', () => {
       expect(shorthand({ operator: 'get', path: 'a' }, { getAsReference: false })).toEqual({
         $get: 'a',

@@ -184,6 +184,23 @@ describe('referencesAsGet', () => {
     ])
   })
 
+  // A get node would make a static fallback dynamic, and a get follows
+  // `strictDataPaths` where a miss inside `$error` is null
+  test('$error has no get form, so a static fallback stays as written', () => {
+    expectForm(
+      canonical(
+        { $divide: ['$d.n', 0], fallback: { why: '$err.message', code: '$error.code' } },
+        { referencesAsGet: true }
+      ),
+      {
+        operator: 'divide',
+        value: { operator: 'get', path: 'n' },
+        by: 0,
+        fallback: { why: '$err.message', code: '$error.code' },
+      }
+    )
+  })
+
   test('the selected reference itself, which is how the editor uses it', () => {
     expect(canonical('$d.user.name', { referencesAsGet: true })).toEqual({
       operator: 'get',

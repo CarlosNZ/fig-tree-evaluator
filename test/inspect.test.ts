@@ -320,6 +320,32 @@ describe('timeoutFallback', () => {
     expect(canonicalForm).toHaveProperty('timeoutFallback', null)
   })
 
+  test('a static fallback shows its $error reads as written, from each source', () => {
+    const guarded = {
+      expression: { $join: ['Hello, ', '$params.name'], fallback: { why: '$err.message' } },
+      parameters: { name: { type: 'string' } },
+    } as const
+    const { canonicalForm, timeoutShielded } = report(
+      {
+        authored: { $plus: [1, '$data.x'], fallback: { failed: true, code: '$error.code' } },
+        defaulted: { $firstOf: ['$data.y'] },
+        lifted: { $guarded: { name: '$data.n' } },
+      },
+      {
+        fragments: { greet, guarded },
+        operatorDefaults: { firstOf: { fallback: '$err.message' } },
+      }
+    )
+    if (canonicalForm.kind !== 'skeleton') throw new Error('unreachable')
+    const hole = (key: string) => canonicalForm.holes.find((entry) => entry.at[0] === key)?.node
+    expect(hole('authored')).toMatchObject({
+      timeoutFallback: { failed: true, code: '$error.code' },
+    })
+    expect(hole('defaulted')).toMatchObject({ timeoutFallback: '$err.message' })
+    expect(hole('lifted')).toMatchObject({ timeoutFallback: { why: '$err.message' } })
+    expect(timeoutShielded).toBe(true)
+  })
+
   test('timeoutShielded needs every top-level hole, and holds vacuously for a constant', () => {
     expect(
       report({ a: { $plus: [1, '$data.x'], fallback: 0 }, b: { $greet: {} } }).timeoutShielded
