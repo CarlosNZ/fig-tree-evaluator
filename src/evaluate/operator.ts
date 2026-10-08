@@ -5,15 +5,14 @@
  * normalize the result at the boundary, and catch failures with the node's
  * `fallback` (authored, else the operator's `operatorDefaults` modifier).
  *
- * Fallback rules 1, 2, 4 and 6 live here. Rule 1 comes free of promise
+ * Fallback rules 1, 2 and 6 live here. Rule 1 comes free of promise
  * rejection: a failure anywhere in the parameter subtrees rejects this
  * node's attempt, and the nearest enclosing wrapper with a fallback is the
  * first to catch it. Rule 2 needs nothing — static errors never reach
- * evaluation. Rule 4 attaches the original failure as `cause` when the
- * fallback itself fails, except for a fallback that reads its own `$error`,
- * which never fails: its node gives `null` (#239). Rule 6 holds by
- * construction: a node instance is attempted once, so its fallback runs at
- * most once.
+ * evaluation. Rule 6 holds by construction: a node instance is attempted
+ * once, so its fallback runs at most once. What happens once the fallback
+ * runs, rule 4 and its exception for a fallback that reads its own
+ * `$error`, is ./fallback.ts's, shared with the fragment-call wrapper.
  */
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
@@ -23,7 +22,8 @@ import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, pushNoCache, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
-import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
+import { runFallback } from './fallback'
+import { abortedOutcome, cutsThrough, isCancellation, isInternalError } from './internal'
 import { resolveParams } from './params'
 import { fillFallback } from './reference'
 import { pushVars } from './scope'
@@ -58,47 +58,19 @@ export const evaluateOperator = async (
       scope?.settle()
     }
   } catch (error) {
-    // Neither an engine bug, a cancellation, nor the caller's kill switch
-    // is an expression failure: all three cut through the fallback process
-    // untouched, rather than being served back to the caller as the
-    // author's placeholder. The kill switch is the caller's decision, not
-    // the author's, so a `fallback` has no standing to answer it
-    if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
+    // The kill switch is the caller's decision, not the author's, so a
+    // `fallback` has no standing to answer it
+    if (cutsThrough(error)) throw error
     const failure = wrapFailure(error, node)
     const fallback = fallbackOf(node, scoped, failure)
     if (fallback === undefined) throw failure
-    let answered: unknown
-    try {
-      answered = await fallback()
-    } catch (fallbackError) {
-      // The same three bail-outs as above: a kill switch or a cancellation
-      // landing at the fallback's own node boundary passes through untouched
-      // rather than being wrapped, or having `cause` attached
-      if (
-        isInternalError(fallbackError) ||
-        isCancellation(fallbackError) ||
-        isKillSwitch(fallbackError)
-      )
-        throw fallbackError
-      if (!node.fallbackReadsError) {
-        // Rule 4: the node fails with the fallback's error
-        const wrapped = wrapFailure(fallbackError, node)
-        // A fallback that reads the var that failed re-receives the very
-        // same error (rule 5), which must not become its own cause
-        if (wrapped !== failure && wrapped.cause === undefined) wrapped.cause = failure
-        throw wrapped
-      }
-      // A fallback that reads its own `$error` exists to report the failure,
-      // and never fails itself: the node gives `null`. Its own trace entry
-      // records what it failed with
-      answered = null
-    }
-    // A fallback firing is the author's designed degradation, so it is a
-    // SUCCESS — which makes trace the only record that it happened, and of
-    // what it caught
-    if (ctx.trace !== undefined && ctx.traceParent !== undefined)
-      ctx.trace.markFallback(ctx.traceParent, failure)
-    return answered
+    return runFallback(
+      fallback,
+      failure,
+      node.fallbackReadsError,
+      (fallbackError) => wrapFailure(fallbackError, node),
+      ctx
+    )
   }
 }
 

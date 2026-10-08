@@ -57,14 +57,8 @@ import {
   type ParamsFrame,
 } from './context'
 import { evaluateNode } from './evaluate'
-import {
-  brand,
-  hasBrand,
-  internalError,
-  isCancellation,
-  isInternalError,
-  isKillSwitch,
-} from './internal'
+import { runFallback } from './fallback'
+import { brand, cutsThrough, hasBrand, internalError } from './internal'
 import { pushVars } from './scope'
 
 export const evaluateFragment = async (
@@ -106,41 +100,24 @@ export const evaluateFragment = async (
       scope.settle()
     }
   } catch (error) {
-    if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
+    if (cutsThrough(error)) throw error
     const failure = anchor(error, frame)
     const { fallback } = node
     if (fallback === undefined) throw failure
     // The fallback runs outside the abort scope, which has settled by the
     // time this branch runs — it is not part of the attempt, and must not
     // be refused by the abort that ended it. `$error` is bound to a
-    // FigTreeError only, which every failure reaching here is
+    // FigTreeError only, which every failure reaching here is. The
+    // fallback's own failure is located in the caller's frame, where the
+    // fallback sits
     const caught = isFigTreeError(failure) ? { ...scoped, caught: failure } : scoped
-    let answered: unknown
-    try {
-      answered = await evaluateNode(fallback, caught)
-    } catch (fallbackError) {
-      if (
-        isInternalError(fallbackError) ||
-        isCancellation(fallbackError) ||
-        isKillSwitch(fallbackError)
-      )
-        throw fallbackError
-      if (!node.fallbackReadsError) {
-        const wrapped = anchor(fallbackError, ctx.frame)
-        // Never its own cause, as in the operator wrapper
-        if (isFigTreeError(wrapped) && wrapped !== failure && wrapped.cause === undefined)
-          wrapped.cause = failure
-        throw wrapped
-      }
-      // Never fails where it reads its own `$error`, as in the operator
-      // wrapper: the call gives `null`
-      answered = null
-    }
-    // A success, as an operator node's fallback is, so the call's own trace
-    // entry is the only record that it fired and of what it caught
-    if (ctx.trace !== undefined && ctx.traceParent !== undefined && isFigTreeError(failure))
-      ctx.trace.markFallback(ctx.traceParent, failure)
-    return answered
+    return runFallback(
+      () => evaluateNode(fallback, caught),
+      failure,
+      node.fallbackReadsError,
+      (fallbackError) => anchor(fallbackError, ctx.frame),
+      ctx
+    )
   }
 }
 
