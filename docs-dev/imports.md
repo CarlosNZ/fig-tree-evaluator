@@ -4,7 +4,7 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 
 **Keep it current.** Update this page whenever an export is added, removed or moved, an entry point is added, or a change moves one of the sizes noticeably. Entries marked PLANNED are specified but not built yet. The tree in "What shares what" is generated: `pnpm size:imports --write` re-measures it and rewrites it in place. The figures in the import list are written by hand, and `pnpm size:imports` prints the tree's figures to check them against.
 
-**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. `pnpm size:imports` measures the same way. Every figure re-measured October 2026, at the close of the precise `fallbackCoverage` (#217).
+**How the sizes are measured.** After `pnpm build`, each import is bundled alone from the built files (`import { X } from '<repo>/build/index.js'; console.log(X)`), using esbuild with `bundle`, `minify` and `format: 'esm'`. The figure is the brotli size of that output. That is roughly what a consumer's bundler ships for that import alone. esbuild is used rather than rollup because, like webpack, it relies on `/*#__PURE__*/` annotations, whereas rollup's own purity analysis flatters the result. `pnpm size:imports` measures the same way. Re-measured October 2026, for #239's I/O codes: every figure the tree also prints, the entries' totals, and the imports #239 added or moved. The smallest values (`version`, `OperatorFailure`, `EvaluationData`, the helpers one by one, `toReference`, the reading primitives, `./editor-hints`' three) were last measured at the close of the precise `fallbackCoverage` (#217).
 
 <!-- prettier-ignore -->
 ```ts
@@ -13,36 +13,40 @@ Every import the package offers, grouped by the bundle it comes from, with what 
 // ./authoring, and the small modules it shares with ./format (both below).
 // A consumer's bundler has to shake them, which works because nothing at
 // their top level has a side effect a bundler cannot rule out (#193;
-// `pnpm check:package` guards it). Everything imported (37.5 kB) is the
+// `pnpm check:package` guards it). Everything imported (39.2 kB) is the
 // ceiling.
 
-// ── The engine tree: 30.8 kB ─────────────────────────────────────────────
+// ── The engine tree: 32.3 kB ─────────────────────────────────────────────
 import { FigTree } from 'fig-tree-evaluator'
 // The whole runtime: registry, compiler, validate(), evaluator, caches,
 // fragments and trace. coreOperators is part of it, since FigTree
 // registers the core set itself, so FigTree + coreOperators is also
-// 30.8 kB.
+// 32.3 kB.
 import { coreOperators } from 'fig-tree-evaluator'
 
 // ── Add-ons on top of the engine ─────────────────────────────────────────
 import { defineOperator } from 'fig-tree-evaluator'
-// +2.8 kB: the definition checks, for hosts registering custom operators
+// +2.7 kB: the definition checks, for hosts registering custom operators
 import { inspect } from 'fig-tree-evaluator'
-// +1.1 kB: the compiled-expression inspector
+// +1.0 kB: the compiled-expression inspector
 import { httpOperators, sqlOperators } from 'fig-tree-evaluator'
-// +1.9 kB for HTTP with FetchClient; +0.85 kB for SQL with PostgresConnection
+// +2.0 kB for HTTP with FetchClient; +0.98 kB for SQL with PostgresConnection
 import { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from 'fig-tree-evaluator'
 // +0.15 to 0.4 kB each: thin adapters; axios / pg / sqlite are the host's
 // Without the engine, as a tool that only reads definitions would import
-// them: coreOperators 9.8 kB, defineOperator 6.3 kB, httpOperators 5.3 kB,
-// sqlOperators 3.2 kB. inspect alone is 3.4 kB, but it reads a handle, and
+// them: coreOperators 10.0 kB, defineOperator 6.4 kB, httpOperators 5.8 kB,
+// sqlOperators 3.9 kB. inspect alone is 3.5 kB, but it reads a handle, and
 // only FigTree makes one.
 
 // ── Small values ─────────────────────────────────────────────────────────
 import { version } from 'fig-tree-evaluator' // 0.18 kB
-import { FigTreeError, isFigTreeError, ErrorCodes } from 'fig-tree-evaluator' // 1.0 kB
+import { FigTreeError, isFigTreeError, ErrorCodes } from 'fig-tree-evaluator' // 1.1 kB
 // ErrorCodes alone is 0.7 kB
 import { OperatorFailure, isOperatorFailure } from 'fig-tree-evaluator' // 0.3 kB
+import { httpFailure, sqlFailure } from 'fig-tree-evaluator' // 0.99 kB
+// The failures a custom client throws, so its operator passes their codes
+// through. Mostly ErrorCodes, which they read the codes from: beside the
+// engine the two add 0.13 kB
 import { EvaluationData, OPERATOR_CATEGORIES } from 'fig-tree-evaluator' // 0.2 kB
 import {
   // The engine-parity helpers, so custom operators match core behaviour:
@@ -61,7 +65,8 @@ import type {
   Dependencies, FragmentInfo, OperatorInfo, ParameterInfo,
   FragmentDefinition, FragmentParameter, FragmentParameterDeclaration,
   // Errors, diagnostics and trace
-  FigTreeErrorInit, FigTreeErrorCode, Issue, ValidationResult, Severity,
+  FigTreeErrorInit, FigTreeErrorCode, FallbackError, FallbackErrorCode, Issue, ValidationResult,
+  Severity,
   TraceNode, TraceKind, TraceStatus, KnownTraceEvent, CacheTraceEvent, RequestTraceEvent,
   QueryTraceEvent, RenderTraceEvent, KeyOverwriteTraceEvent, ShieldedFallbackTraceEvent,
   // Authoring operators
@@ -73,7 +78,7 @@ import type {
   SettlementStream, TraceEvent, ResolvedParams, ParamValue, TypeOf,
   PathSegment, Wildcard, ResolveResult,
   // I/O
-  HttpClient, HttpRequest, SqlConnection, SqlRequest,
+  HttpClient, HttpRequest, SqlConnection, SqlRequest, HttpFailureInfo,
   FetchLike, FetchResponseLike, AxiosLike, AxiosErrorLike, PgClientLike, SqliteDatabaseLike,
   // The inspector
   InspectDependencies, InspectIssue, InspectNode, InspectReport,
@@ -86,11 +91,11 @@ import type {
   OperatorAnalysis, FailureRule, FailureTest, DeclaredOutput,
 } from 'fig-tree-evaluator'
 
-// ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.5 kB ══════
+// ═══ 'fig-tree-evaluator/migrate' → build/migrate/index.js: 19.6 kB ══════
 // Separate from the engine: it shares no runtime code with the root and
 // imports only types from it. Neither function pulls in FigTree.
-import { migrateV2Expression } from 'fig-tree-evaluator/migrate' // 19.8 kB
-import { migrateV2Fragments } from 'fig-tree-evaluator/migrate' // 19.9 kB, mostly shared with the above
+import { migrateV2Expression } from 'fig-tree-evaluator/migrate' // 19.7 kB
+import { migrateV2Fragments } from 'fig-tree-evaluator/migrate' // 20.0 kB, mostly shared with the above
 
 // ═══ 'fig-tree-evaluator/editor-hints' → build/editor-hints/index.js: 1.7 kB
 // Data only; no engine code at all.
@@ -98,7 +103,7 @@ import { operatorHints } from 'fig-tree-evaluator/editor-hints' // 1.46 kB
 import { categoryHints } from 'fig-tree-evaluator/editor-hints' // 0.23 kB
 import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 
-// ═══ 'fig-tree-evaluator/format' → build/format/index.js: 6.6 kB ════════
+// ═══ 'fig-tree-evaluator/format' → build/format/index.js: 6.7 kB ════════
 // Takes a FigTree, or its snapshots, as an argument and never imports the
 // class. It reads expressions exactly as the compiler does, so it shares a
 // few small root modules with the engine: the reference grammar, the shared
@@ -108,8 +113,8 @@ import { typeSeeds } from 'fig-tree-evaluator/editor-hints' // 0.10 kB
 // (figures below include it).
 
 // ── The conversions ──────────────────────────────────────────────────────
-import { toCanonical } from 'fig-tree-evaluator/format' // 4.6 kB
-import { toShorthand } from 'fig-tree-evaluator/format' // 5.0 kB
+import { toCanonical } from 'fig-tree-evaluator/format' // 4.5 kB
+import { toShorthand } from 'fig-tree-evaluator/format' // 5.1 kB
 import { toCanonical, toShorthand } from 'fig-tree-evaluator/format' // 5.4 kB
 import { toGet } from 'fig-tree-evaluator/format' // 1.8 kB
 import { toReference } from 'fig-tree-evaluator/format' // 2.4 kB
@@ -118,7 +123,7 @@ import { toReference } from 'fig-tree-evaluator/format' // 2.4 kB
 import { classifyObject } from 'fig-tree-evaluator/format' // 0.38 kB
 import { positionalLayout } from 'fig-tree-evaluator/format' // 0.23 kB
 import { singlePositionalTarget } from 'fig-tree-evaluator/format' // 0.19 kB
-import { recognizeReference } from 'fig-tree-evaluator/format' // 1.5 kB
+import { recognizeReference } from 'fig-tree-evaluator/format' // 1.6 kB
 import { typesIntersect } from 'fig-tree-evaluator/format' // 0.38 kB
 // All five together: 2.1 kB
 // Its types come from the root, listed there under "The subpaths' shapes":
@@ -127,13 +132,13 @@ import { typesIntersect } from 'fig-tree-evaluator/format' // 0.38 kB
 // ReferenceRecognition, ReferenceNamespace, ReferenceScope, for the
 // primitives.
 
-// ═══ 'fig-tree-evaluator/authoring' → build/authoring/index.js: 42.2 kB ══
+// ═══ 'fig-tree-evaluator/authoring' → build/authoring/index.js: 43.1 kB ══
 // Analyses the compiled tree, so it shares the engine with the root: the
 // build emits it once, in build/chunks/engine.js, which the root imports
 // too (figures below include it). A caller passes it a FigTree, so the
-// engine is in the bundle already, and beside FigTree it costs 11.3 kB:
+// engine is in the bundle already, and beside FigTree it costs 11.6 kB:
 // the analysis itself.
-import { fallbackCoverage } from 'fig-tree-evaluator/authoring' // 42.1 kB alone; +11.3 kB beside FigTree
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring' // 43.9 kB alone; +11.6 kB beside FigTree
 // Its types come from the root, listed there under "The subpaths' shapes":
 // FallbackCoverage, FallbackCoverageOptions, CoverageFinding and
 // CoveredFinding for what it takes and returns; OperatorAnalysis,
@@ -156,37 +161,39 @@ A set of imports from different branches costs roughly the union of their paths:
 
 <!-- IMPORT_TREE:START -->
 
-Generated by `pnpm size:imports --write` at c31d97f, with uncommitted changes to src/. Sizes in kB, brotli.
+Generated by `pnpm size:imports --write` at 0de06bc, with uncommitted changes to src/. Sizes in kB, brotli.
 
 ```text
                                                               adds  total  alone   mostly from
-coreOperators                                                  9.9    9.9    9.9   operators/string 17%, operators/math 15%, buildOperator 11%
-└─ FigTree                                                    21.7   31.6   31.5   compile/compile 24%, compile/staticChecks 10%, fragments 7%
-   ├─ inspect                                                 0.95   32.5    3.4   inspect/nodes 41%, inspect/index 34%, inspect/values 25%
-   ├─ defineOperator                                           2.7   34.3    6.3   defineOperator 74%, analysisCheck 25%
-   ├─ httpOperators, FetchClient                               1.8   33.4    5.3   operators/io 54%, operators/ioHelpers 28%, clients/http 14%
-   ├─ sqlOperators, PostgresConnection                        0.77   32.4    3.5   operators/io 52%, operators/ioHelpers 21%, clients/sql 19%
-   ├─ toCanonical, toShorthand (./format)                      2.4   34.0    5.4   format/read 43%, format/shorthand 18%, format/walk 15%
-   └─ fallbackCoverage (./authoring)                          11.3   42.9   42.9   authoring/walk 24%, authoring/known 24%, authoring/run 16%
+coreOperators                                                 10.0   10.0   10.0   operators/string 17%, operators/math 14%, buildOperator 11%
+└─ FigTree                                                    22.3   32.3   32.3   compile/compile 24%, compile/staticChecks 11%, fragments 7%
+   ├─ inspect                                                  1.0   33.3    3.5   inspect/nodes 41%, inspect/index 34%, inspect/values 25%
+   ├─ defineOperator                                           2.7   35.0    6.4   defineOperator 74%, analysisCheck 25%
+   ├─ httpOperators, FetchClient                               2.0   34.3    5.8   operators/io 50%, operators/ioHelpers 26%, clients/http 12%
+   ├─ sqlOperators, PostgresConnection                        0.98   33.3    3.9   operators/io 43%, clients/failures 24%, operators/ioHelpers 17%
+   ├─ toCanonical, toShorthand (./format)                      2.5   34.7    5.4   format/read 43%, format/shorthand 18%, format/walk 15%
+   └─ fallbackCoverage (./authoring)                          11.6   43.8   43.9   authoring/walk 26%, authoring/known 23%, authoring/run 15%
 
-defineOperator                                                 6.3    6.3    6.3   defineOperator 40%, buildOperator 17%, analysisCheck 14%
+defineOperator                                                 6.4    6.4    6.4   defineOperator 40%, buildOperator 17%, analysisCheck 14%
 
-httpOperators, FetchClient                                     5.3    5.3    5.3   buildOperator 25%, operators/io 22%, operators/ioHelpers 11%
-└─ sqlOperators, PostgresConnection                           0.71    6.0    3.5   operators/io 51%, clients/sql 20%, operators/ioHelpers 20%
+httpOperators, FetchClient                                     5.8    5.8    5.8   buildOperator 23%, operators/io 20%, operators/ioHelpers 11%
+└─ sqlOperators, PostgresConnection                           0.73    6.5    3.9   operators/io 50%, clients/sql 20%, operators/ioHelpers 20%
 
-FigTreeError, isFigTreeError, ErrorCodes                       1.0    1.0    1.0   errorCodes 55%, FigTreeError 36%, names 6%
+FigTreeError, isFigTreeError, ErrorCodes                       1.1    1.1    1.1   errorCodes 55%, FigTreeError 33%, compile/references 5%
 
-isTruthy, compareValues, renderText, deepEqual, resolvePath    1.4    1.4    1.4   primitives/path 48%, primitives/deepEqual 30%, primitives/ordering 9%
+httpFailure, sqlFailure                                       0.99   0.99   0.99   errorCodes 62%, clients/failures 16%, OperatorFailure 7%
 
-toCanonical (./format)                                         4.4    4.4    4.4   format/read 32%, format/walk 11%, errorCodes 11%
-└─ toShorthand (./format)                                     0.91    5.4    5.1   format/shorthand 62%, format/references 27%, compile/references 9%
+isTruthy, compareValues, renderText, deepEqual, resolvePath    1.4    1.4    1.4   primitives/path 46%, primitives/deepEqual 29%, primitives/ordering 9%
 
-recognizeReference (./format)                                  1.5    1.5    1.5   errorCodes 36%, compile/references 34%, primitives/path 25%
+toCanonical (./format)                                         4.5    4.5    4.5   format/read 32%, errorCodes 11%, format/walk 11%
+└─ toShorthand (./format)                                     0.89    5.4    5.1   format/shorthand 63%, format/references 27%, compile/references 9%
 
-toGet (./format)                                               1.7    1.7    1.7   errorCodes 32%, compile/references 30%, primitives/path 22%
+recognizeReference (./format)                                  1.6    1.6    1.6   errorCodes 38%, compile/references 34%, primitives/path 24%
+
+toGet (./format)                                               1.8    1.8    1.8   errorCodes 34%, compile/references 30%, primitives/path 21%
 
 migrateV2Expression (./migrate)                               19.7   19.7   19.7   migrate/convert 27%, migrate/issues 16%, migrate/normalize 16%
-└─ migrateV2Fragments (./migrate)                             0.45   20.2   19.9   migrate/fragments 51%, migrate/convert 31%, migrate/v3Values 18%
+└─ migrateV2Fragments (./migrate)                             0.43   20.2   20.0   migrate/fragments 51%, migrate/convert 31%, migrate/v3Values 18%
 
 operatorHints, categoryHints, typeSeeds (./editor-hints)       1.7    1.7    1.7   editor-hints/index 100%
 ```

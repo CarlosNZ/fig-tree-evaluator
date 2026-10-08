@@ -18,7 +18,14 @@ import {
   RESERVED_REGISTRATION_NAMES as V3_REGISTRATION_NAMES,
 } from '../src/names'
 import { checkType, isExpectedType, type ExpectedType } from '../src/typeCheck'
-import { RESERVED_NAMES, RESERVED_NODE_KEYS, V3_TYPES, fitsType } from '../src/migrate/v3Values'
+import { NAMESPACE_TOKENS } from '../src/compile/references'
+import {
+  RESERVED_NAMES,
+  RESERVED_NODE_KEYS,
+  V3_REFERENCE,
+  V3_TYPES,
+  fitsType,
+} from '../src/migrate/v3Values'
 import { MockHttpClient } from './helpers'
 import {
   asOperator,
@@ -1371,6 +1378,16 @@ describe('the v3 grammar the converter restates', () => {
   test('the reserved names are the engine’s', () => {
     expect([...RESERVED_NODE_KEYS].sort()).toEqual([...V3_NODE_KEYS].sort())
     expect([...RESERVED_NAMES].sort()).toEqual([...V3_REGISTRATION_NAMES].sort())
+  })
+
+  test('the reference token rule names the engine’s namespace tokens', () => {
+    const alternatives = /\(\?:([^)]*)\)/.exec(V3_REFERENCE.source)![1].split('|')
+    expect(alternatives.sort()).toEqual(Object.keys(NAMESPACE_TOKENS).sort())
+    for (const token of alternatives) {
+      expect(V3_REFERENCE.test(`$${token}`)).toBe(true)
+      expect(V3_REFERENCE.test(`$${token}.x`)).toBe(true)
+      expect(V3_REFERENCE.test(`$${token}x`)).toBe(false)
+    }
   })
 
   test('the types are the engine’s, and a value fits one as the engine checks it', () => {

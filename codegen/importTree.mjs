@@ -68,6 +68,7 @@ const TREE = [
   row('defineOperator'),
   row('httpOperators, FetchClient', row('sqlOperators, PostgresConnection')),
   row('FigTreeError, isFigTreeError, ErrorCodes'),
+  row('httpFailure, sqlFailure'),
   row('isTruthy, compareValues, renderText, deepEqual, resolvePath'),
   row('toCanonical', row('toShorthand')),
   row('recognizeReference'),

@@ -19,6 +19,12 @@
  * protection the other namespaces can have, which is a reason to extend it
  * to them rather than withhold it. One strict-path rule, four namespaces.
  *
+ * `$error` is the exception: a miss inside it is `null` whatever
+ * `strictDataPaths` says. Its shape varies by error code, and a fallback
+ * inspecting it must not fail on a field the code it caught does not carry.
+ * It is built from the failure the innermost enclosing fallback caught on
+ * each read, so a fallback that never reads it builds nothing.
+ *
  * `$element` / `$index`: the innermost enclosing binding frame, found by
  * the same match rule the static checker used, so an `as`-renamed frame
  * does not answer to the default names. `$element` drills like the rest;
@@ -33,12 +39,13 @@
  * `$params` is legal and materializes the declared set, which is why it
  * demands every argument.
  */
-import { FigTreeError } from '../FigTreeError'
+import { FigTreeError, type FallbackError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { resolvePath, type PathSegment } from '../primitives'
-import { toNodePath, type ReferenceNode } from '../compile'
-import type { EvaluationContext } from './context'
+import { splice, toNodePath, type ReferenceNode, type StaticFallback } from '../compile'
+import type { EvaluationContext, FragmentFrame } from './context'
 import { lookupBinding } from './bindings'
+import { fallbackError } from './fragment'
 import { internalError } from './internal'
 import { lookupVar } from './scope'
 
@@ -59,6 +66,8 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
     case 'element':
     case 'index':
       return resolveBinding(node, ctx)
+    case 'error':
+      return resolveError(node, ctx)
   }
 }
 
@@ -138,6 +147,44 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
     ctx,
     `is absent from '${node.raw.split('.')[0]}'`
   )
+}
+
+const resolveError = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
+  if (ctx.caught === undefined)
+    throw internalError(
+      `'${node.raw}': no enclosing fallback caught a failure — the static gate should have refused it`
+    )
+  return readError(fallbackError(ctx.caught, ctx.frame), node.segments)
+}
+
+/** A read of `$error`, where a miss is null whatever `strictDataPaths` says. */
+const readError = (error: FallbackError, segments: PathSegment[]): unknown => {
+  if (segments.length === 0) return error
+  const result = resolvePath(error, segments)
+  return result.found ? normalize(result.value) : null
+}
+
+/**
+ * A static fallback's answer to the failure it caught (fallback rule 3):
+ * its value, each `$error` read in it filled in from `caught`, which is
+ * located by `frame` as a read of `$error` is. Nothing is evaluated, so it
+ * can run where nothing may: past the deadline, for a shielded hole. A read
+ * a fragment call lifted from its body is located where in the body the
+ * timeout would have met it.
+ */
+export const fillFallback = (
+  fallback: StaticFallback,
+  caught: FigTreeError,
+  frame: FragmentFrame | undefined
+): unknown => {
+  const { value, reads } = fallback
+  if (reads === undefined) return value
+  const error = fallbackError(caught, frame)
+  const values = reads.map(({ segments, within }) =>
+    readError(within === undefined ? error : { ...error, ...within }, segments)
+  )
+  // A read at the root is the whole fallback
+  return reads[0].at.length === 0 ? values[0] : splice(value, reads, values)
 }
 
 /**

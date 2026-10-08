@@ -422,6 +422,17 @@ describe('the `literal` wrap', () => {
       data: { x: '$data.x' },
     },
     {
+      name: 'text that v3 reads as an $error reference',
+      input: { operator: '=', values: ['$error', '$err.message'] },
+      expected: {
+        operator: 'equal',
+        values: [
+          { operator: 'literal', value: '$error' },
+          { operator: 'literal', value: '$err.message' },
+        ],
+      },
+    },
+    {
       name: 'a reference inside a plain object quotes the object',
       input: { operator: '=', values: [{ a: ['$vars.x'] }, 1] },
       expected: {

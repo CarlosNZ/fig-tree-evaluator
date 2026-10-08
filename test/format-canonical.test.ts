@@ -135,14 +135,23 @@ describe('spellings', () => {
     ['preserve', ['$d.a', '$data.b'], ['$d.a', '$data.b']],
     ['canonical', ['$d.a', '$v.x.y', '$e'], ['$data.a', '$vars.x.y', '$element']],
     ['alias', ['$data.a', '$params.p', '$index'], ['$d.a', '$p.p', '$i']],
+    ['canonical', ['$err.message', '$error'], ['$error.message', '$error']],
+    ['alias', ['$error.message', '$err'], ['$err.message', '$err']],
   ] as const)('reference names: %s', (referenceNames, input, output) => {
     expect(canonical(input, { referenceNames })).toEqual(output)
   })
 
   test('respelling leaves what isn’t a whole reference alone', () => {
-    const input = ['$typo.x', 'Hi $data.name', '$vars', { $buildString: ['$d.name is %1', 'x'] }]
+    const input = [
+      '$typo.x',
+      '$constructor.x',
+      'Hi $data.name',
+      '$vars',
+      { $buildString: ['$d.name is %1', 'x'] },
+    ]
     expect(canonical(input, { referenceNames: 'canonical' })).toEqual([
       '$typo.x',
+      '$constructor.x',
       'Hi $data.name',
       '$vars',
       { operator: 'buildString', template: '$data.name is %1', substitutions: ['x'] },
@@ -173,6 +182,23 @@ describe('referencesAsGet', () => {
       '$index',
       { operator: 'get', path: '', from: '$e' },
     ])
+  })
+
+  // A get node would make a static fallback dynamic, and a get follows
+  // `strictDataPaths` where a miss inside `$error` is null
+  test('$error has no get form, so a static fallback stays as written', () => {
+    expectForm(
+      canonical(
+        { $divide: ['$d.n', 0], fallback: { why: '$err.message', code: '$error.code' } },
+        { referencesAsGet: true }
+      ),
+      {
+        operator: 'divide',
+        value: { operator: 'get', path: 'n' },
+        by: 0,
+        fallback: { why: '$err.message', code: '$error.code' },
+      }
+    )
   })
 
   test('the selected reference itself, which is how the editor uses it', () => {

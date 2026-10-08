@@ -20,11 +20,12 @@
  * branch — the case ./scope.ts records for vars, unchanged by the fact
  * that a fragment sits in between.
  *
- * **The body is sealed.** It runs under a context with `scope` and
- * `bindings` dropped, so a body cannot reach a caller's var or a caller's
- * iterator binding — structurally, because both lookups walk a chain that
- * now starts empty. The static half of the same rule is already enforced
- * at registration, where a body compiles in isolation.
+ * **The body is sealed.** It runs under a context with `scope`, `bindings`
+ * and `caught` dropped, so a body cannot reach a caller's var, a caller's
+ * iterator binding or the error a caller's fallback caught — structurally,
+ * because each lookup starts from nothing. The static half of the same
+ * rule is already enforced at registration, where a body compiles in
+ * isolation.
  *
  * **A failure carries two locations.** A body node's path resolves inside
  * the registered definition, not inside the input, so it cannot be the
@@ -42,7 +43,7 @@
  * `noCache` on the call turns that off for its arguments and its whole
  * body, nested calls included.
  */
-import { FigTreeError, isFigTreeError } from '../FigTreeError'
+import { FigTreeError, isFigTreeError, type FallbackError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
@@ -56,14 +57,8 @@ import {
   type ParamsFrame,
 } from './context'
 import { evaluateNode } from './evaluate'
-import {
-  brand,
-  hasBrand,
-  internalError,
-  isCancellation,
-  isInternalError,
-  isKillSwitch,
-} from './internal'
+import { runFallback } from './fallback'
+import { brand, cutsThrough, hasBrand, internalError } from './internal'
 import { pushVars } from './scope'
 
 export const evaluateFragment = async (
@@ -105,31 +100,24 @@ export const evaluateFragment = async (
       scope.settle()
     }
   } catch (error) {
-    if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
+    if (cutsThrough(error)) throw error
     const failure = anchor(error, frame)
     const { fallback } = node
     if (fallback === undefined) throw failure
     // The fallback runs outside the abort scope, which has settled by the
     // time this branch runs — it is not part of the attempt, and must not
-    // be refused by the abort that ended it
-    try {
-      const answered = await evaluateNode(fallback, scoped)
-      // A success, as an operator node's fallback is, so the call's own
-      // trace entry is the only record that it fired and of what it caught
-      if (ctx.trace !== undefined && ctx.traceParent !== undefined && isFigTreeError(failure))
-        ctx.trace.markFallback(ctx.traceParent, failure)
-      return answered
-    } catch (fallbackError) {
-      if (
-        isInternalError(fallbackError) ||
-        isCancellation(fallbackError) ||
-        isKillSwitch(fallbackError)
-      )
-        throw fallbackError
-      const wrapped = anchor(fallbackError, ctx.frame)
-      if (isFigTreeError(wrapped) && wrapped.cause === undefined) wrapped.cause = failure
-      throw wrapped
-    }
+    // be refused by the abort that ended it. `$error` is bound to a
+    // FigTreeError only, which every failure reaching here is. The
+    // fallback's own failure is located in the caller's frame, where the
+    // fallback sits
+    const caught = isFigTreeError(failure) ? { ...scoped, caught: failure } : scoped
+    return runFallback(
+      () => evaluateNode(fallback, caught),
+      failure,
+      node.fallbackReadsError,
+      (fallbackError) => anchor(fallbackError, ctx.frame),
+      ctx
+    )
   }
 }
 
@@ -152,6 +140,7 @@ const runBody = async (
   const sealed: EvaluationContext = { ...bodyScope, params, frame }
   delete sealed.scope
   delete sealed.bindings
+  delete sealed.caught
   const result = await evaluateNode(entry.body, sealed)
   // The body root already passed its own result boundary; all that is
   // left is the domain rule that there is no `undefined` in a result
@@ -352,8 +341,38 @@ export const anchor = (error: unknown, frame: FragmentFrame | undefined): unknow
   if (!isFigTreeError(error) || hasBrand(error, ANCHORED)) return error
   brand(error, ANCHORED)
   if (frame === undefined) return error
-  error.fragment = frame.fragment
-  error.fragmentPath = error.path
-  error.path = toNodePath(frame.callPath)
-  return error
+  return Object.assign(error, anchoredTo(error, frame))
+}
+
+/** Where a failure created in `frame`'s body is located, once anchored. */
+const anchoredTo = (error: FigTreeError, frame: FragmentFrame) => ({
+  fragment: frame.fragment,
+  fragmentPath: error.path,
+  path: toNodePath(frame.callPath),
+})
+
+/**
+ * The `$error` value: `error` as a plain object, located as anchoring
+ * locates it, so a fallback inside a body sees the `path`, `fragment` and
+ * `fragmentPath` the host would have seen had the failure escaped. `frame`
+ * is the catching fallback's.
+ *
+ * An anchored error is read as it is. Failures move between frames only
+ * through `anchor`, so an unanchored one was created in the catching
+ * fallback's frame, while an anchored one may not have been: an argument's
+ * failure, read in a body through `$params`, was anchored in the caller's.
+ * The error itself is never touched, since other readers may share it.
+ */
+export const fallbackError = (
+  error: FigTreeError,
+  frame: FragmentFrame | undefined
+): FallbackError => {
+  const located =
+    frame === undefined || hasBrand(error, ANCHORED) ? error : anchoredTo(error, frame)
+  const view: FallbackError = { code: error.code, message: error.message, path: located.path }
+  if (error.operator !== undefined) view.operator = error.operator
+  if (located.fragment !== undefined) view.fragment = located.fragment
+  if (located.fragmentPath !== undefined) view.fragmentPath = located.fragmentPath
+  if (error.errorData !== undefined) view.errorData = error.errorData
+  return view
 }

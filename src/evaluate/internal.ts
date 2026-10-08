@@ -113,6 +113,14 @@ export const killSwitchError = (
 export const isKillSwitch = (error: unknown): boolean =>
   isFigTreeError(error) && (error.code === ErrorCodes.aborted || error.code === ErrorCodes.timeout)
 
+/**
+ * An engine bug, a cancellation or the caller's kill switch. None is an
+ * expression failure, so each cuts through the fallback process untouched,
+ * rather than being served back to the caller as the author's placeholder.
+ */
+export const cutsThrough = (error: unknown): boolean =>
+  isInternalError(error) || isCancellation(error) || isKillSwitch(error)
+
 // ── The brand mechanism ─────────────────────────────────────────────
 
 type Branded = Record<PropertyKey, unknown>

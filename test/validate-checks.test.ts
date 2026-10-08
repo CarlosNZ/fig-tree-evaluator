@@ -182,7 +182,7 @@ describe('as renaming', () => {
   })
 
   test('as may not collide with reserved namespaces, long or short form', () => {
-    for (const as of ['data', 'e', 'index', 'v']) {
+    for (const as of ['data', 'e', 'index', 'v', 'error', 'err']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
     }
   })
@@ -211,6 +211,31 @@ describe('as renaming', () => {
       $format: ['%1 %2', { operator: 'map', input: [1], as: 'row', each: '$row' }, '$row'],
     }
     expect(errorCodes(expression)).toContain('unresolved-binding')
+  })
+
+  test('beneath a $ key that names nothing, a binding has no scope error of its own', () => {
+    // `$mapp` was meant as the iterator that binds `$element`, so a scope
+    // error would only repeat the unrecognized key
+    expect(errorCodes({ $mapp: { input: [1, 2], each: '$element' } })).toEqual([
+      'unrecognized-identifier',
+    ])
+    // Nor is an `as` name another iterator declares raised to one
+    expect(
+      errorCodes({
+        a: { operator: 'map', input: [1], as: 'item', each: '$item' },
+        b: { $mapp: { input: [1], as: 'item', each: '$item.x' } },
+      })
+    ).toEqual(['unrecognized-identifier'])
+    // Everything else beneath it is still checked
+    expect(errorCodes({ $mapp: { input: '$vars.nope', each: '$element' } })).toEqual([
+      'unrecognized-identifier',
+      'unresolved-var',
+    ])
+    // A `$` label in a branch map is a label, not a node that failed to
+    // resolve, so a binding inside is checked as anywhere else
+    expect(errorCodes({ operator: 'match', value: 'a', branches: { $a: '$element' } })).toEqual([
+      'unresolved-binding',
+    ])
   })
 
   test('an unrelated $-string is still inert data with a warning', () => {

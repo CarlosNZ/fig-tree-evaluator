@@ -86,7 +86,7 @@ describe('registration names', () => {
     expect(codes(rejects({ [name]: { expression: 1 } }))).toEqual([ErrorCodes.invalidName])
   })
 
-  test.each(['data', 'literal', 'fallback', 'v'])('%s is reserved', (name) => {
+  test.each(['data', 'literal', 'fallback', 'v', 'error', 'err'])('%s is reserved', (name) => {
     expect(codes(rejects({ [name]: { expression: 1 } }))).toEqual([ErrorCodes.reservedName])
   })
 

@@ -778,6 +778,16 @@ const BATCH_3: Example[] = [
     expected: { operator: 'buildString', template: 'Hi %1', substitutions: [' Ann '], trim: true },
   },
   {
+    name: 'a template v3 would read as an $error reference is quoted',
+    input: { operator: 'stringSubstitution', string: '$err.message', substitutions: ['x'] },
+    expected: {
+      operator: 'buildString',
+      template: { operator: 'literal', value: '$err.message' },
+      substitutions: ['x'],
+      trim: true,
+    },
+  },
+  {
     name: '`trimWhiteSpace: false` is v3’s default',
     input: {
       operator: 'stringSubstitution',

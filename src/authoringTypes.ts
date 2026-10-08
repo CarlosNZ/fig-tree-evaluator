@@ -3,7 +3,7 @@
  * root so the subpath stays an analysis over the engine, like the other
  * subpaths' types ("Types" in docs-dev/v3-specs/v3-packaging.md).
  */
-import type { FigTreeErrorCode } from './errorCodes'
+import type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 import type { ExpectedType } from './typeCheck'
 
 /**
@@ -49,6 +49,12 @@ export interface CoveredFinding extends CoverageFinding {
   /** The node whose fallback catches it (the call, for a fallback in a body) */
   coveredBy: (string | number)[]
   coveredByFragmentPath?: (string | number)[]
+  /**
+   * Set where the failure is in a fallback that reads its own `$error`,
+   * which never fails: the node `coveredBy` names gives `null` for it,
+   * rather than its fallback's value
+   */
+  givesNull?: true
 }
 
 /**
@@ -90,7 +96,7 @@ export interface OperatorAnalysis {
  * conditions on what its parameters receive under which it does.
  */
 export interface FailureRule {
-  code: FigTreeErrorCode
+  code: FallbackErrorCode
   /** The parameter the failure is about, which its finding names */
   parameter?: string
   /** Tests on parameters, by name; every one must hold. Absent: always holds */

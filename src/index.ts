@@ -40,9 +40,9 @@ export type {
 
 // ── Errors and diagnostics ───────────────────────────────────────────────
 export { FigTreeError, isFigTreeError } from './FigTreeError'
-export type { FigTreeErrorInit } from './FigTreeError'
+export type { FallbackError, FigTreeErrorInit } from './FigTreeError'
 export { ErrorCodes } from './errorCodes'
-export type { FigTreeErrorCode } from './errorCodes'
+export type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'
 export type {
   TraceNode,
@@ -128,8 +128,11 @@ export type { PathSegment, Wildcard, ResolveResult } from './primitives'
 // factories' output is put in the `operators` array.
 export { httpOperators, sqlOperators } from './operators/io'
 export { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from './clients'
+// How a custom client throws the failures its operator passes through
+export { httpFailure, sqlFailure } from './clients'
 export type { HttpClient, HttpRequest, SqlConnection, SqlRequest } from './types'
 export type {
+  HttpFailureInfo,
   FetchLike,
   FetchResponseLike,
   AxiosLike,

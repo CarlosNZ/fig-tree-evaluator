@@ -11,6 +11,7 @@
  * against the artifact's stored counts and dependency list.
  */
 import { ErrorCodes } from '../errorCodes'
+import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Issue, Severity } from '../issues'
 import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
@@ -34,7 +35,9 @@ import type {
   OperatorNode,
   CompileArtifact,
   ReferenceNode,
+  StaticFallback,
 } from './artifact'
+import type { PathSegment } from '../primitives'
 
 /**
  * Phase-11 hook: inside a fragment body, `$params` resolves against the
@@ -67,11 +70,18 @@ interface IteratorFrame {
   referenced: boolean
 }
 
+/** A fallback's subtree, where `$error` is the failure it caught. */
+interface FallbackFrame {
+  /** Set when an `$error` reference inside resolved against this frame. */
+  referenced: boolean
+}
+
 interface CheckState {
   artifact: CompileArtifact
   context: StaticCheckContext
   varsFrames: VarsFrame[]
   iteratorFrames: IteratorFrame[]
+  fallbackFrames: FallbackFrame[]
 }
 
 /**
@@ -79,7 +89,13 @@ interface CheckState {
  * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
 export const runStaticChecks = (artifact: CompileArtifact, context: StaticCheckContext = {}) => {
-  const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
+  const state: CheckState = {
+    artifact,
+    context,
+    varsFrames: [],
+    iteratorFrames: [],
+    fallbackFrames: [],
+  }
   visit(state, artifact.root)
   sortIssues(artifact.issues)
   artifact.hasErrors = hasError(artifact.issues)
@@ -142,6 +158,29 @@ const visit = (state: CheckState, node: CompiledNode) => {
   return node satisfies never
 }
 
+/**
+ * A node's fallback, under a frame of its own: `$error` inside resolves to
+ * the innermost one, so a fallback inside a fallback rebinds it. Its node
+ * pushed its vars first, and their definitions were visited then, outside
+ * this frame — they feed the node's parameters too, which run before
+ * anything has failed.
+ *
+ * A fallback that reads its own `$error` is marked on its node, which the
+ * runtime reads: such a fallback never fails, its node giving `null`
+ * instead.
+ */
+const visitFallback = (
+  state: CheckState,
+  owner: OperatorNode | FragmentCallNode,
+  fallback: CompiledNode
+) => {
+  const frame: FallbackFrame = { referenced: false }
+  state.fallbackFrames.push(frame)
+  visit(state, fallback)
+  state.fallbackFrames.pop()
+  if (frame.referenced) owner.fallbackReadsError = true
+}
+
 const isCompiledNode = (value: object): value is CompiledNode =>
   'kind' in value && typeof (value as { kind: unknown }).kind === 'string'
 
@@ -149,7 +188,7 @@ const isCompiledNode = (value: object): value is CompiledNode =>
 
 const visitOperator = (state: CheckState, node: OperatorNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const definition = node.entry.definition
   const owner = operatorOwner(node)
@@ -332,9 +371,9 @@ const checkSuppliedParam = (
 
 /**
  * An operator node with no fallback of its own falls back to its operator's
- * instance-wide one from `operatorDefaults`, which the runtime returns as
- * it is, never evaluated (src/evaluate/operator.ts). It has no place in the
- * expression, so a mismatch is reported on the node.
+ * instance-wide one from `operatorDefaults`, which is static: the runtime
+ * fills it in, never evaluating it (src/evaluate/operator.ts). It has no
+ * place in the expression, so a mismatch is reported on the node.
  */
 const checkInstanceFallback = (
   state: CheckState,
@@ -344,9 +383,9 @@ const checkInstanceFallback = (
   node: OperatorNode,
   nullReplaced: boolean
 ) => {
-  const defaults = node.entry.hostDefaults
-  if (defaults === undefined || !Object.hasOwn(defaults, 'fallback')) return
-  const unfit = valueMismatch(declared, defaults.fallback, nullReplaced)
+  const fallback = node.entry.defaultFallback
+  if (fallback === undefined) return
+  const unfit = staticMismatch(declared, fallback, nullReplaced)
   if (unfit !== undefined)
     emit(
       state,
@@ -362,8 +401,9 @@ const checkInstanceFallback = (
 /**
  * Why a value-producing node can never satisfy a receiving declaration, or
  * undefined when it can, or when nothing is known before it runs (a
- * reference, a call to an unknown fragment). It serves the node supplied at
- * a position and each fallback standing in for it there alike.
+ * reference, but for what `$error` is known to hold, or a call to an
+ * unknown fragment). It serves the node supplied at a position and each
+ * fallback standing in for it there alike.
  */
 const findMismatch = (
   declared: ReceivingDeclaration,
@@ -390,18 +430,70 @@ const findMismatch = (
     // A container holding something computed is still an array or an
     // object, so it is checked as a literal one would be, with the same
     // message
-    case 'skeleton': {
-      const typed = checkType(Array.isArray(node.skeleton) ? [] : {}, declared.type)
-      if (!typed.ok)
-        return {
-          code: ErrorCodes.typeCheck,
-          reason: `expected ${typed.expected}, received ${typed.actual}`,
-        }
-      return
-    }
+    case 'skeleton':
+      return sampleMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
+    case 'reference':
+      return node.namespace === 'error' ? readMismatch(declared, node.segments) : undefined
     default:
       return
   }
+}
+
+/**
+ * Why a static fallback can never satisfy a receiving declaration, checked
+ * as `findMismatch` checks the compiled form it stands for: a constant by
+ * its value, a read of `$error` by what that holds, and plain data around
+ * reads by whether it is an array or an object.
+ */
+const staticMismatch = (
+  declared: ReceivingDeclaration,
+  { value, reads }: StaticFallback,
+  nullReplaced: boolean
+): { code: string; reason: string } | undefined => {
+  if (reads === undefined) return valueMismatch(declared, value, nullReplaced)
+  if (reads[0].at.length === 0) return readMismatch(declared, reads[0].segments)
+  return sampleMismatch(declared, Array.isArray(value) ? [] : {})
+}
+
+/** Why what a read of `$error` holds can never satisfy the declaration. */
+const readMismatch = (
+  declared: ReceivingDeclaration,
+  segments: PathSegment[]
+): { code: string; reason: string } | undefined => {
+  const type = errorReadType(segments)
+  if (type === undefined || typesIntersect(type, declared.type)) return
+  return sampleMismatch(declared, SAMPLES[type])
+}
+
+/** Why a value of this one's type can never satisfy the declaration. */
+const sampleMismatch = (
+  declared: ReceivingDeclaration,
+  sample: unknown
+): { code: string; reason: string } | undefined => {
+  const typed = checkType(sample, declared.type)
+  if (!typed.ok)
+    return {
+      code: ErrorCodes.typeCheck,
+      reason: `expected ${typed.expected}, received ${typed.actual}`,
+    }
+  return
+}
+
+/** A value of each type an `$error` read can be known to have. */
+const SAMPLES = { object: {}, array: [], string: '', number: 0, boolean: false }
+
+/**
+ * The type an `$error` read is known to have: a bare `$error` is always an
+ * object, and a field is its type in `FallbackError`'s shape where that is
+ * one type. Anything else is unknown. An optional field may be absent, so
+ * read as null, which an optional parameter may take as unset.
+ */
+const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefined => {
+  const [field, ...rest] = segments
+  if (field === undefined) return 'object'
+  if (rest.length > 0 || !Object.hasOwn(FALLBACK_ERROR_FIELDS, field)) return undefined
+  const type = FALLBACK_ERROR_FIELDS[field as keyof typeof FALLBACK_ERROR_FIELDS]
+  return typeof type === 'string' ? type : undefined
 }
 
 /**
@@ -460,7 +552,7 @@ const operatorOwner = (node: OperatorNode) => ({
  */
 const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const declarations = node.entry?.parameters
   const supplied =
@@ -561,7 +653,8 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 // ── References: scope resolution ────────────────────────────────────
 
 const visitReference = (state: CheckState, node: ReferenceNode) => {
-  switch (node.namespace) {
+  const { namespace } = node
+  switch (namespace) {
     case 'data':
       return
     case 'vars':
@@ -572,9 +665,15 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node, node.namespace)
+      resolveBinding(state, node, namespace)
+      return
+    case 'error':
+      resolveError(state, node)
       return
   }
+  // Exhaustive by construction: a namespace missing here would skip its
+  // scope check silently
+  return namespace satisfies never
 }
 
 const resolveVar = (state: CheckState, node: ReferenceNode) => {
@@ -648,11 +747,30 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
       return
     }
   }
+  if (node.scopeUnknown) return
   emit(
     state,
     'error',
     ErrorCodes.unresolvedBinding,
     `'${node.raw}' resolves against no enclosing iterator here`,
+    node.path,
+    node.order
+  )
+}
+
+/** `$error` resolves to the innermost enclosing fallback's catch. */
+const resolveError = (state: CheckState, node: ReferenceNode) => {
+  const frame = state.fallbackFrames.at(-1)
+  if (frame !== undefined) {
+    frame.referenced = true
+    return
+  }
+  if (node.scopeUnknown) return
+  emit(
+    state,
+    'error',
+    ErrorCodes.unresolvedBinding,
+    `'${node.raw}' is only available inside the fallback of an operator node or fragment call`,
     node.path,
     node.order
   )

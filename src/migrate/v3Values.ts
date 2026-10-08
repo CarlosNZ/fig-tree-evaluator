@@ -12,7 +12,9 @@ export const isPlainObject = (value: unknown): value is PlainObject =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 // v3's reference token rule: a namespace, whole or followed by `.` or `[`
-export const V3_REFERENCE = /^\$(?:data|d|vars|v|params|p|element|e|index|i)(?:$|[.[])/
+// (`NAMESPACE_TOKENS` in src/compile/references.ts, which a test holds the
+// alternatives to)
+export const V3_REFERENCE = /^\$(?:data|d|vars|v|params|p|element|e|index|i|error|err)(?:$|[.[])/
 
 // The references that can be drilled further: all but `$index`
 export const DRILLABLE = /^\$(?:data|d|vars|v|params|p|element|e)(?:$|[.[])/
@@ -185,11 +187,13 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'params',
   'element',
   'index',
+  'error',
   'd',
   'v',
   'p',
   'e',
   'i',
+  'err',
   'literal',
 ])
 

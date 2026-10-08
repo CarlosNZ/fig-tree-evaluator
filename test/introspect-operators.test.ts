@@ -170,9 +170,10 @@ describe('operatorDefaults — reported beside, never merged over', () => {
   })
 
   test('a fallback the compiler would evaluate is refused at construction', () => {
-    // The runtime returns a default fallback as written, so a value that
-    // looks like an expression could only mislead: an unrecognized `$` key
-    // is an error anywhere in an expression, and these would be calls
+    // The runtime fills a default fallback in and never evaluates it, so a
+    // value that looks like an expression could only mislead: an
+    // unrecognized `$` key is an error anywhere in an expression, and these
+    // would be calls
     for (const fallback of [{ $USD: 0 }, { operator: 'plus', values: [1, 2] }, '$data.x']) {
       let error: unknown
       try {
@@ -187,7 +188,7 @@ describe('operatorDefaults — reported beside, never merged over', () => {
             code: 'invalid-options',
             path: ['operatorDefaults', 'round', 'fallback'],
             operator: 'round',
-            message: expect.stringMatching(/must be a constant value/),
+            message: expect.stringMatching(/must be static/),
           },
         ],
       })

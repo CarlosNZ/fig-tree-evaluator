@@ -46,6 +46,8 @@ export const isDemand = (pending: Pending): pending is Demand => 'demand' in pen
 export interface Catcher {
   path: LinkedPath
   fragmentPath?: NodePath
+  /** The failure is the fallback's own, and the node gives null for it */
+  givesNull?: true
 }
 
 export interface Caught {
@@ -66,7 +68,7 @@ export const liftFailure = (failure: Failure, call: FragmentCallNode): Failure =
 /** A fallback inside a body, as the call reports it. */
 export const liftCatcher = (by: Catcher, call: FragmentCallNode): Catcher =>
   by.fragmentPath === undefined
-    ? { path: call.path, fragmentPath: toNodePath(by.path) }
+    ? { ...by, path: call.path, fragmentPath: toNodePath(by.path) }
     : { ...by, path: call.path }
 
 const toFinding = (failure: Failure): CoverageFinding => {
@@ -139,5 +141,6 @@ export const coveredFinding = (failure: Failure, by: Catcher) => ({
     ...toFinding(failure),
     coveredBy: toNodePath(by.path),
     ...(by.fragmentPath !== undefined ? { coveredByFragmentPath: by.fragmentPath } : {}),
+    ...(by.givesNull ? { givesNull: by.givesNull } : {}),
   } satisfies CoveredFinding,
 })

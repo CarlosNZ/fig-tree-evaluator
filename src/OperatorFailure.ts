@@ -7,15 +7,21 @@
  * and `errorData` through. A plain `Error` remains legal for the simple
  * cases and becomes code `operator-failure`.
  */
+import type { FallbackErrorCode } from './errorCodes'
+
 export interface OperatorFailureInit {
-  /** A stable classifier from the shared vocabulary (src/errorCodes.ts). */
-  code?: string
+  /**
+   * A stable classifier from the shared vocabulary (src/errorCodes.ts), or
+   * the operator's own: it reaches the fallback that catches the failure
+   * unchanged.
+   */
+  code?: FallbackErrorCode
   /** Structured payload — I/O status, url, response; header names only. */
   errorData?: Record<string, unknown>
 }
 
 export class OperatorFailure extends Error {
-  code?: string
+  code?: FallbackErrorCode
   errorData?: Record<string, unknown>
 
   constructor(message: string, init: OperatorFailureInit = {}) {

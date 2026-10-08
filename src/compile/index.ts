@@ -6,7 +6,7 @@
  * pipeline itself ("Rulings on the surface" in
  * docs-dev/v3-specs/v3-evaluator-methods.md).
  */
-export { composeRollups, compileExpression } from './compile'
+export { composeRollups, compileExpression, staticFallbackOf } from './compile'
 export type { CompileOptions } from './compile'
 export { runStaticChecks } from './staticChecks'
 export { checkNoCache } from './cacheChecks'
@@ -28,6 +28,7 @@ export type {
   DataRead,
   ElementsNode,
   EntriesNode,
+  ErrorRead,
   FragmentCall,
   FragmentCallNode,
   InvalidNode,
@@ -41,9 +42,10 @@ export type {
   SequencedIssue,
   SkeletonHole,
   SkeletonNode,
+  StaticFallback,
 } from './artifact'
 export { bindsReference, renamedBinding, splice, toNodePath } from './artifact'
-export { probeConstant } from './probe'
+export { probeConstant, probeStaticFallback } from './probe'
 export { staticType } from './staticType'
 export { DEPTH_CEILING } from './grammar'
 export { CompileCache, CONTENT_LAYER_SIZE } from './compileCache'

@@ -114,6 +114,7 @@ import {
   bareNamespace,
   bindingNamespace,
   indexBinding,
+  namespaceOf,
   recognizeReference,
   renderReference,
   renderSegments,
@@ -136,33 +137,23 @@ import type {
   DataRead,
   ElementsNode,
   EntriesNode,
+  ErrorRead,
   FragmentCall,
   FragmentCallNode,
   LinkedPath,
   NodePath,
   OperatorNode,
   CompileArtifact,
+  ReferenceNamespace,
+  ReferenceNode,
   Rollups,
   SequencedIssue,
   SkeletonHole,
   SkeletonNode,
+  StaticFallback,
 } from './artifact'
-import { extendPath, hasError, setOwn, sortIssues, toNodePath } from './artifact'
+import { extendPath, hasError, setOwn, sortIssues, splice, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
-
-/** The reference-namespace words `as` names may not collide with. */
-const NAMESPACE_WORDS = new Set([
-  'data',
-  'vars',
-  'params',
-  'element',
-  'index',
-  'd',
-  'v',
-  'p',
-  'e',
-  'i',
-])
 
 interface WalkState {
   registry: OperatorRegistry
@@ -200,6 +191,13 @@ interface WalkState {
    * walk meets an iterator's `input` before its `as`.
    */
   unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
+  /**
+   * How many objects with a `$` key that names nothing enclose the walk
+   * here. Each was meant as a node, so a reference beneath it to a binding
+   * an enclosing node makes may have been in that node's scope
+   * (`ReferenceNode.scopeUnknown`).
+   */
+  unknownNodes: number
   /** Set by the first `noCache` compiled (`CompileArtifact.hasNoCache`). */
   hasNoCache: boolean
 }
@@ -239,6 +237,7 @@ export const compileExpression = (
     scope: { bindings: [] },
     asNames: new Set(),
     unrecognized: [],
+    unknownNodes: 0,
     hasNoCache: false,
   }
   const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
@@ -462,8 +461,11 @@ const walkString = (
         path,
         order
       )
+      // Not a candidate for the out-of-scope upgrade beneath an unknown
+      // node, which may have been the iterator binding it
       const sigil = splitSigilToken(raw)
-      if (sigil !== null) state.unrecognized.push({ token: sigil.token, issue, raw })
+      if (sigil !== null && state.unknownNodes === 0)
+        state.unrecognized.push({ token: sigil.token, issue, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
@@ -478,17 +480,25 @@ const walkString = (
       return invalid(raw, path, order)
     case 'reference': {
       const { namespace, segments, drill, binding } = recognition
-      if (binding !== undefined)
-        return { kind: 'reference', namespace, segments, raw, binding, path, order }
-      if (namespace === 'data') {
+      const node: ReferenceNode = { kind: 'reference', namespace, segments, raw, path, order }
+      if (binding !== undefined) node.binding = binding
+      else if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
         else
           recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined, path)
       }
-      return { kind: 'reference', namespace, segments, raw, path, order }
+      if (state.unknownNodes > 0 && boundByNode(namespace)) node.scopeUnknown = true
+      return node
     }
   }
 }
+
+/**
+ * The namespaces an enclosing node binds: an iterator's `$element` and
+ * `$index`, under their `as` names too, and a fallback's `$error`.
+ */
+const boundByNode = (namespace: ReferenceNamespace): boolean =>
+  namespace === 'element' || namespace === 'index' || namespace === 'error'
 
 // ── Arrays ──────────────────────────────────────────────────────────
 
@@ -1319,7 +1329,7 @@ const walkEntriesParam = (
  * Validate an `as` value and return it as the binding name. `as` is
  * structural — a compile-time literal identifier; a dynamic value is a
  * grammar error. Names are checked against the shared legality rule, the
- * reserved namespace words (long and short forms) and every enclosing `as`
+ * reserved namespace words (canonical and alias) and every enclosing `as`
  * name, derived `…Index` forms included ("$element / $index and as" in
  * docs-dev/v3-specs/v3-api.md).
  */
@@ -1341,7 +1351,7 @@ const readAsBinding = (
 
   const names = [value, indexBinding(value)]
   for (const name of names) {
-    if (NAMESPACE_WORDS.has(name))
+    if (namespaceOf(name) !== undefined)
       return asError(`'${value}' collides with the reserved namespace word '${name}'`)
     if (bindingNamespace(name, state.scope.bindings) !== null)
       return asError(`'${value}' collides with an enclosing 'as' binding ('${name}')`)
@@ -1841,6 +1851,11 @@ const collectPlainObject = (
   let vars: Record<string, CompiledNode> | undefined
   let changed = false
   const entries: ContainerEntry[] = []
+  // A stray `$name` key outside `labels` is an error below, and the object
+  // was meant as a node — an iterator, say, or the owner of the `fallback`
+  // beside it — so scope errors beneath it would only repeat that error
+  const unknownNode = !labels && hasStrayInvocation(raw)
+  if (unknownNode) state.unknownNodes++
 
   for (const key in raw) {
     const value = raw[key]
@@ -1888,7 +1903,18 @@ const collectPlainObject = (
       node: walk(state, value, extendPath(path, key), depth + 1),
     })
   }
+  if (unknownNode) state.unknownNodes--
   return { entries, vars, changed }
+}
+
+/**
+ * Whether a plain object carries a `$name` key, which here names nothing:
+ * the walk dispatched every recognized one. A key whose value is
+ * `undefined` is dropped, so it counts for nothing.
+ */
+const hasStrayInvocation = (raw: Record<string, unknown>): boolean => {
+  for (const key in raw) if (key.startsWith('$') && raw[key] !== undefined) return true
+  return false
 }
 
 // ── Container assembly: constancy, skeleton, holes ──────────────────
@@ -1977,28 +2003,57 @@ const rootHoles = (root: CompiledNode, into: ArtifactHole[] = []): ArtifactHole[
 
 /**
  * The shielding precompute (obligation B2): present iff the hole root's
- * fallback subtree is classified constant. An operatorDefaults modifier
- * fallback counts — which is exactly why `operatorDefaults` invalidates the
- * compile cache — and so does the body-root fallback a fragment call lifts.
+ * fallback is static. An operatorDefaults modifier fallback counts — which
+ * is exactly why `operatorDefaults` invalidates the compile cache — and so
+ * does the body-root fallback a fragment call lifts.
  */
-const timeoutFallbackFor = (node: CompiledNode): { value: unknown } | undefined => {
+const timeoutFallbackFor = (node: CompiledNode): StaticFallback | undefined => {
   if (node.kind !== 'operator' && node.kind !== 'fragmentCall') return undefined
-  if (node.fallback !== undefined)
-    return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
-  if (node.kind === 'operator') {
-    const defaults = node.entry.hostDefaults
-    // An operatorDefaults fallback is constant: registration refuses any
-    // other (src/registry.ts), and the runtime returns it as written
-    if (defaults !== undefined && Object.hasOwn(defaults, 'fallback'))
-      return { value: defaults.fallback }
-    return undefined
-  }
-  // A call with no fallback of its own lifts the constant its target
-  // shields with (`liftedFallback` in src/fragments.ts). The call's value
-  // IS the body's value, so what the author declared there is exactly what
+  if (node.fallback !== undefined) return staticFallbackOf(node.fallback)
+  // An operatorDefaults fallback is static: registration refuses any other
+  // (src/registry.ts)
+  if (node.kind === 'operator') return node.entry.defaultFallback
+  // A call with no fallback of its own lifts the one its target shields
+  // with (`liftedFallback` in src/fragments.ts). The call's value IS the
+  // body's value, so what the author declared there is exactly what
   // assembly would splice — and without the lift, factoring an expression
   // into a fragment silently unshields it
   return node.entry?.timeoutFallback
+}
+
+/**
+ * The static fallback a compiled fallback is, if it is one (fallback rule
+ * 3): a constant, an `$error` read, or plain data holding only those. Its
+ * value is the fallback as written, each read's own string in its place.
+ * A skeleton's own vars block plays no part: only `$vars` reads it, and
+ * that is not an `$error` read.
+ */
+export const staticFallbackOf = (node: CompiledNode): StaticFallback | undefined => {
+  if (node.kind === 'constant') return { value: node.value }
+  const reads: ErrorRead[] = []
+  const value = asWritten(node, [], reads)
+  return value === undefined ? undefined : { value, reads }
+}
+
+/**
+ * The value of a fallback made of `$error` reads and plain data around
+ * them, as written, each read recorded where it sits. Undefined if it holds
+ * anything else.
+ */
+const asWritten = (node: CompiledNode, at: NodePath, reads: ErrorRead[]): unknown => {
+  if (node.kind === 'reference') {
+    if (node.namespace !== 'error') return undefined
+    reads.push({ at, segments: node.segments })
+    return node.raw
+  }
+  if (node.kind !== 'skeleton') return undefined
+  const values: unknown[] = []
+  for (const hole of node.holes) {
+    const value = asWritten(hole.node, [...at, ...hole.at], reads)
+    if (value === undefined) return undefined
+    values.push(value)
+  }
+  return splice(node.skeleton, node.holes, values)
 }
 
 /**
