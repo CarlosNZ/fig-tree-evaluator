@@ -17,7 +17,7 @@
  */
 import { OperatorFailure } from '../OperatorFailure'
 import type { HttpClient, HttpRequest } from '../types'
-import { httpFailure, invalidResponse, truncate } from './failures'
+import { httpFailure, invalidResponse } from './failures'
 
 /** The fetch surface this wrapper uses, and nothing more. */
 export type FetchLike = (
@@ -162,7 +162,7 @@ const parseBody = (text: string, url: string, status: number): unknown => {
   try {
     return JSON.parse(text)
   } catch {
-    throw invalidResponse(`response was not JSON (${status}): ${url}`, url, truncate(text))
+    throw invalidResponse(`response was not JSON (${status}): ${url}`, url, text)
   }
 }
 
@@ -172,6 +172,6 @@ const parseOrRaw = (text: string): unknown => {
   try {
     return JSON.parse(text)
   } catch {
-    return truncate(text)
+    return text
   }
 }

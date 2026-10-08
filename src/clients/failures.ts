@@ -21,7 +21,8 @@ export interface HttpFailureInfo {
 }
 
 /**
- * A non-2xx response.
+ * A non-2xx response. A `response` that is text is cut to its first 500
+ * characters (`asDiagnostic`).
  *
  * Note what this function cannot do: it takes no headers argument, and
  * copies only the four fields it names. The batch-8 rule — header values
@@ -36,13 +37,16 @@ export const httpFailure = (info: HttpFailureInfo): OperatorFailure =>
       status: info.status,
       statusText: info.statusText,
       url: info.url,
-      response: info.response,
+      response: asDiagnostic(info.response),
     },
   })
 
-/** A response that is not what the protocol promises. */
+/** A response that is not what the protocol promises; text is cut as above. */
 export const invalidResponse = (message: string, url: string, response: unknown): OperatorFailure =>
-  new OperatorFailure(message, { code: ErrorCodes.invalidResponse, errorData: { url, response } })
+  new OperatorFailure(message, {
+    code: ErrorCodes.invalidResponse,
+    errorData: { url, response: asDiagnostic(response) },
+  })
 
 /**
  * A driver error, named by driver so the message says which database
@@ -122,9 +126,14 @@ export const fromClient = async <T>(call: () => Promise<T>, kind: ClientKind): P
 }
 
 /**
- * A long non-JSON body is a diagnostic, not a payload: enough to see what
- * came back instead of JSON, not enough to paste a whole error page into
- * an error object.
+ * A response as a failure carries it. A long text body is a diagnostic,
+ * not a payload: enough to see what came back instead of JSON, not enough
+ * to paste a whole error page into an error a host may log. Cut here, in
+ * the builders, so it holds for every client: axios hands a non-JSON body
+ * back as text, as a host's client may. Parsed JSON is data, and stays
+ * whole.
  */
-export const truncate = (text: string, limit = 500): string =>
-  text.length <= limit ? text : `${text.slice(0, limit)}… (${text.length} characters)`
+const asDiagnostic = (response: unknown, limit = 500): unknown =>
+  typeof response !== 'string' || response.length <= limit
+    ? response
+    : `${response.slice(0, limit)}… (${response.length} characters)`

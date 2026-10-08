@@ -475,3 +475,78 @@ describe('timeouts and cancellation, whatever the client throws', () => {
     )
   })
 })
+
+describe('a text response is cut to its first 500 characters', () => {
+  const PAGE = `<html>${'x'.repeat(2000)}</html>`
+  const CUT = `${PAGE.slice(0, 500)}… (${PAGE.length} characters)`
+
+  /** An axios answering every request with `status` and `data`. */
+  const axiosAnswering = (status: number, data: unknown): AxiosLike => {
+    const axios = (async (config: { url: string }) => {
+      if (status < 300) return { data, status, statusText: 'OK' }
+      throw Object.assign(new Error(`Request failed with status code ${status}`), {
+        isAxiosError: true,
+        config: { url: config.url },
+        response: { status, statusText: 'Bad Gateway', data },
+      })
+    }) as unknown as AxiosLike
+    ;(axios as { isAxiosError: unknown }).isAxiosError = (error: unknown) =>
+      (error as { isAxiosError?: boolean } | null)?.isAxiosError === true
+    return axios
+  }
+
+  /** A fetch answering every request with `status` and the raw `body`. */
+  const fetchAnswering =
+    (status: number, body: string): FetchLike =>
+    async (url) => ({
+      ok: status < 300,
+      status,
+      statusText: status < 300 ? 'OK' : 'Bad Gateway',
+      url,
+      text: async () => body,
+    })
+
+  const over = (client: HttpClient) =>
+    new FigTree({ operators: [coreOperators, httpOperators(client)] })
+
+  // axios hands a non-JSON body back as text, so the cut has to happen
+  // where the failure is built, not in each client
+  test.each([
+    ['AxiosClient', () => new AxiosClient(axiosAnswering(502, PAGE))],
+    ['FetchClient', () => new FetchClient(fetchAnswering(502, PAGE))],
+  ])('%s: an HTML error page, in http-status', async (_name, build) => {
+    expect(await caught(over(build()), OPERATORS[0].expression)).toMatchObject({
+      code: 'http-status',
+      errorData: { status: 502, response: CUT },
+    })
+  })
+
+  test('FetchClient: a 200 that is not JSON, in invalid-response', async () => {
+    const fig = over(new FetchClient(fetchAnswering(200, PAGE)))
+    expect(await caught(fig, OPERATORS[0].expression)).toMatchObject({
+      code: 'invalid-response',
+      errorData: { url: URL, response: CUT },
+    })
+  })
+
+  test('graphQL over AxiosClient: an HTML page answering 200, in invalid-response', async () => {
+    const fig = over(new AxiosClient(axiosAnswering(200, PAGE)))
+    expect(await caught(fig, OPERATORS[1].expression)).toMatchObject({
+      code: 'invalid-response',
+      errorData: { url: URL, response: CUT },
+    })
+  })
+
+  test('a short text body is left as it is', async () => {
+    const fig = over(new AxiosClient(axiosAnswering(502, '<html>down</html>')))
+    expect(await caught(fig, OPERATORS[0].expression)).toMatchObject({
+      errorData: { response: '<html>down</html>' },
+    })
+  })
+
+  test('parsed JSON is data, and stays whole', async () => {
+    const body = { detail: 'y'.repeat(2000) }
+    const fig = over(new AxiosClient(axiosAnswering(502, body)))
+    expect((await caught(fig, OPERATORS[0].expression)).errorData?.response).toEqual(body)
+  })
+})
