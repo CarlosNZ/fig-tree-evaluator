@@ -59,6 +59,9 @@ export default tseslint.config(
       'src/dev/playground.ts',
       'src/dev/playground_example.ts',
       'bench/browser/dist',
+      // A separate package (Astro + React), with its own checks: `pnpm check`
+      // in docs-site/
+      'docs-site',
     ],
   },
   js.configs.recommended,
