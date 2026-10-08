@@ -35,7 +35,7 @@
  * object are a deliberate miss, not something to canonicalize.
  */
 import { LAZY_HANDLE } from '../runtimeInterface'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import { DEPTH_CEILING } from './grammar'
 
 /**

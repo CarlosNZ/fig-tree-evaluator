@@ -21,9 +21,8 @@
  *
  * Internal machinery behind `new FigTree()` — not barrel surface.
  */
-import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import type { Issue } from './issues'
+import { issuesError, type Issue } from './issues'
 import { isPlainObject } from './utils'
 import { checkDeclaredConstraints, checkType } from './typeCheck'
 import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
@@ -80,20 +79,6 @@ export interface RegistryInput {
 
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
 const MODIFIER_KEYS = ['fallback', 'noCache']
-
-const throwOptionsError = (issues: Issue[]): never => {
-  const [first] = issues
-  const more = issues.length - 1
-  const message =
-    more > 0 ? `${first.message} (+ ${more} more issue${more === 1 ? '' : 's'})` : first.message
-  throw new FigTreeError({
-    code: ErrorCodes.invalidOptions,
-    message,
-    path: first.path,
-    ...(first.operator !== undefined ? { operator: first.operator } : {}),
-    issues,
-  })
-}
 
 export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
   const issues: Issue[] = []
@@ -189,7 +174,7 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
   // its shielding precompute reads the resolved `operatorDefaults`
   registerFragments(input.fragments, registry, (name, path) => claim(name, path, name), addIssue)
 
-  if (issues.length > 0) throwOptionsError(issues)
+  if (issues.length > 0) throw issuesError(ErrorCodes.invalidOptions, issues, issues[0].operator)
   return registry
 }
 

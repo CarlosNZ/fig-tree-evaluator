@@ -180,8 +180,7 @@ export const isNonEmpty = (container: unknown): boolean => {
 export const drill = (value: unknown, returnPath: string | unknown[] | undefined): unknown => {
   if (returnPath === undefined) return value
   const found = resolvePath(value, toSegments(returnPath))
-  if (!found.found) return null
-  return found.value === undefined ? null : found.value
+  return found.found ? found.value : null
 }
 
 /**

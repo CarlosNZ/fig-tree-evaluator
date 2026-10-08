@@ -40,7 +40,7 @@
  */
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
-import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
+import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from './names'
 import {
   checkNoCache,
   composeRollups,
@@ -276,7 +276,7 @@ const validateDefinition = (
     )
     return undefined
   }
-  if (RESERVED_REGISTRATION_NAMES.has(name)) {
+  if (isReservedRegistrationName(name)) {
     addIssue(
       ErrorCodes.reservedName,
       `'${name}' is a reserved name and may not name a fragment`,

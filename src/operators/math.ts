@@ -10,7 +10,6 @@
 import { declareOperator } from '../buildOperator'
 import { compareValues, roundDecimal } from '../primitives'
 import { describeType } from '../typeCheck'
-import { isPlainObject } from '../utils'
 import {
   emptyAggregateError,
   emptyAggregateFailure,
@@ -25,15 +24,6 @@ const PLUS_IDENTITY: Record<PlusMode, () => unknown> = {
   string: () => '',
   array: () => [],
   object: () => ({}),
-}
-
-/** The operand kind `plus` dispatches on; anything else is out of domain. */
-const plusKind = (value: unknown): PlusMode | undefined => {
-  if (typeof value === 'number') return 'number'
-  if (typeof value === 'string') return 'string'
-  if (Array.isArray(value)) return 'array'
-  if (isPlainObject(value)) return 'object'
-  return undefined
 }
 
 export const plus = declareOperator({
@@ -73,12 +63,12 @@ export const plus = declareOperator({
         throw emptyAggregateFailure('the sum', "pin the mode with 'expect' to get its identity")
       return PLUS_IDENTITY[expect]()
     }
-    // The declared `homogeneous` constraint has made the operands one of the
-    // four kinds; `expect` pins which, and the constraint knows nothing of it
-    const mode = expect ?? (plusKind(values[0]) as PlusMode)
-    const offender = values.find((value) => plusKind(value) !== mode)
-    if (offender !== undefined)
-      throw operandTypeFailure(`all operands must be ${mode}s — received ${describeType(offender)}`)
+    // The declared `homogeneous` constraint, checked after any null
+    // replacement, has made the operands all one of the four kinds; `expect`
+    // pins which, and the constraint knows nothing of it
+    const mode = describeType(values[0]) as PlusMode
+    if (expect !== undefined && mode !== expect)
+      throw operandTypeFailure(`all operands must be ${expect}s — received ${mode}`)
     switch (mode) {
       case 'number':
         return (values as number[]).reduce((sum, value) => sum + value, 0)

@@ -29,7 +29,8 @@ import { ErrorCodes } from './errorCodes'
 import { FigTreeError } from './FigTreeError'
 import { Lru } from './lru'
 import type { CacheStore } from './types'
-import { isPlainDataObject, noop } from './utils'
+import { noop } from './utils'
+import { isPlainDataObject } from './plainData'
 
 /** v2's defaults, kept: fifty entries, thirty minutes. */
 export const DEFAULT_MAX_SIZE = 50

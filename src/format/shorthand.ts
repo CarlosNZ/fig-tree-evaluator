@@ -5,7 +5,7 @@
  * its parameters, so the result depends only on what the node means, which
  * is what makes the conversion idempotent.
  */
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import type { ShorthandOptions } from '../formatTypes'
 import { classifiesAsNode } from '../compile/grammar'
 import type { Lookup, OperatorRead, OperatorShape } from './read'

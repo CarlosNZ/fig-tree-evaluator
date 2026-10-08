@@ -93,14 +93,16 @@ export interface FigTreeErrorInit {
 export class FigTreeError extends Error {
   code: FigTreeErrorCode
   path: (string | number)[]
-  operator?: string
-  fragment?: string
-  fragmentPath?: (string | number)[]
-  errorData?: Record<string, unknown>
-  related?: FigTreeError[]
-  cause?: unknown
-  issues?: Issue[]
-  trace?: TraceNode
+  // Declared, not defined: the constructor sets an optional field only
+  // where the init supplies it, so an unset one is absent, not undefined
+  declare operator?: string
+  declare fragment?: string
+  declare fragmentPath?: (string | number)[]
+  declare errorData?: Record<string, unknown>
+  declare related?: FigTreeError[]
+  declare cause?: unknown
+  declare issues?: Issue[]
+  declare trace?: TraceNode
 
   constructor(init: FigTreeErrorInit) {
     super(init.message)

@@ -289,7 +289,7 @@ export const join = declareOperator({
  */
 const ADMITTED_FLAGS = 'imsu'
 
-export const checkFlags = (flags: string): string | undefined => {
+const checkFlags = (flags: string): string | undefined => {
   const seen = new Set<string>()
   const unknown: string[] = []
   for (const flag of flags) {
@@ -323,7 +323,6 @@ export const regex = declareOperator({
     // A string, as a match is, so `returns` holds for every mode
     noMatchDefault: {
       type: ['string', 'null'],
-      required: false,
       default: null,
       nullPolicy: 'value',
       evaluation: 'lazy',

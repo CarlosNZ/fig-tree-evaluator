@@ -3,7 +3,7 @@
  * name style" and "The reserved-key set" in docs-dev/v3-specs/v3-api.md).
  * White-box: `names.ts` is internal vocabulary, not barrel surface.
  */
-import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from '../src/names'
+import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from '../src/names'
 
 describe('checkNameLegality — the one rule', () => {
   it('accepts any non-empty string without . [ ] or a leading $', () => {
@@ -53,26 +53,26 @@ describe('the reservation sets', () => {
     )
   })
 
-  it('RESERVED_REGISTRATION_NAMES covers node keys, namespaces, short forms and literal', () => {
+  it('isReservedRegistrationName covers node keys, namespaces, short forms and literal', () => {
     // The seven node keys are barred as registration names too
     for (const key of RESERVED_NODE_KEYS) {
-      expect(RESERVED_REGISTRATION_NAMES.has(key)).toBe(true)
+      expect(isReservedRegistrationName(key)).toBe(true)
     }
     // Reference namespaces and their aliases
     const words = ['data', 'vars', 'params', 'element', 'index', 'error']
     for (const word of [...words, 'd', 'v', 'p', 'e', 'i', 'err']) {
-      expect(RESERVED_REGISTRATION_NAMES.has(word)).toBe(true)
+      expect(isReservedRegistrationName(word)).toBe(true)
     }
-    expect(RESERVED_REGISTRATION_NAMES.has('literal')).toBe(true)
+    expect(isReservedRegistrationName('literal')).toBe(true)
   })
 
   it('reservation is case-sensitive — only the exact words are reserved', () => {
-    expect(RESERVED_REGISTRATION_NAMES.has('Data')).toBe(false)
+    expect(isReservedRegistrationName('Data')).toBe(false)
     expect(RESERVED_NODE_KEYS.has('Fallback')).toBe(false)
   })
 
   it('ordinary operator names are not reserved', () => {
-    expect(RESERVED_REGISTRATION_NAMES.has('plus')).toBe(false)
-    expect(RESERVED_REGISTRATION_NAMES.has('if')).toBe(false)
+    expect(isReservedRegistrationName('plus')).toBe(false)
+    expect(isReservedRegistrationName('if')).toBe(false)
   })
 })

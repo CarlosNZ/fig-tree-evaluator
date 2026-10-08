@@ -14,7 +14,7 @@
 import { DEPTH_CEILING, classifiesAsNode } from '../compile/grammar'
 import { ErrorCodes } from '../errorCodes'
 import { FigTreeError } from '../FigTreeError'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import {
   readNode,
   type FragmentRead,

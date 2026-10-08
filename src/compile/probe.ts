@@ -31,7 +31,7 @@
  * recording where each sits. The same property test pins it to the
  * compiler's `staticFallbackOf`.
  */
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import { resolveOperator, type OperatorRegistry } from '../registry'
 import { recognizeReference } from './references'
 import { DEPTH_CEILING } from './grammar'
