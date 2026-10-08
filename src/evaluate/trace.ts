@@ -37,7 +37,7 @@
  */
 import type { Issue } from '../issues'
 import type { FigTreeError } from '../FigTreeError'
-import { toNodePath, type CompiledNode } from '../compile'
+import { childrenOf, toNodePath, type CompiledNode } from '../compile'
 import type { TraceEvent } from '../runtimeInterface'
 import type { TraceKind, TraceNode, TraceStatus } from '../trace'
 import type { FragmentFrame } from './context'
@@ -229,52 +229,20 @@ const skippedChildren = (holder: Open): Placed[] =>
  *
  * Container parameters are flattened rather than counted as one child:
  * an `elements` or `entries` node is consumed by parameter resolution and
- * never reaches the dispatch, so its members' instances attach directly
- * to the operator, and their absences must line up with that.
+ * never reaches the dispatch, so its members' instances, and its vars',
+ * attach directly to the operator, and their absences must line up with
+ * that.
  */
 const staticChildren = (node: CompiledNode): CompiledNode[] => {
-  switch (node.kind) {
-    case 'operator':
-      return [
-        ...Object.values(node.params).flatMap(flatten),
-        ...(node.fallback !== undefined ? [node.fallback] : []),
-        ...Object.values(node.vars ?? {}),
-      ]
-    case 'fragmentCall':
-      return [
-        ...argumentNodes(node.parameters),
-        ...(node.fallback !== undefined ? [node.fallback] : []),
-        ...Object.values(node.vars ?? {}),
-        // The body is reached through the call, so it is a child like any
-        // other — and a call that never ran its body is worth seeing
-        ...(node.entry !== undefined ? [node.entry.body] : []),
-      ]
-    case 'skeleton':
-      return [...node.holes.map((hole) => hole.node), ...Object.values(node.vars ?? {})]
-    case 'elements':
-      return node.nodes
-    case 'entries':
-      return Object.values(node.entries)
-    default:
-      return []
-  }
+  const children = childrenOf(node).flatMap(flatten)
+  // The body is reached through the call, so it is a child like any
+  // other — and a call that never ran its body is worth seeing
+  if (node.kind === 'fragmentCall' && node.entry !== undefined) children.push(node.entry.body)
+  return children
 }
 
 const flatten = (node: CompiledNode): CompiledNode[] =>
   node.kind === 'elements' || node.kind === 'entries' ? staticChildren(node) : [node]
-
-const argumentNodes = (
-  parameters: Record<string, CompiledNode> | CompiledNode | undefined
-): CompiledNode[] => {
-  if (parameters === undefined) return []
-  // Dynamic mode supplies one node for the whole argument map, where
-  // static mode supplies a map of them
-  return isCompiledNode(parameters) ? [parameters] : Object.values(parameters)
-}
-
-const isCompiledNode = (
-  value: Record<string, CompiledNode> | CompiledNode
-): value is CompiledNode => typeof (value as CompiledNode).kind === 'string'
 
 const kindOf = (node: CompiledNode): TraceKind => {
   switch (node.kind) {

@@ -44,7 +44,7 @@ export type {
   SkeletonNode,
   StaticFallback,
 } from './artifact'
-export { bindsReference, renamedBinding, splice, toNodePath } from './artifact'
+export { bindsReference, childrenOf, renamedBinding, splice, toNodePath } from './artifact'
 export { probeConstant, probeStaticFallback } from './probe'
 export { staticType } from './staticType'
 export { DEPTH_CEILING } from './grammar'
