@@ -597,7 +597,7 @@ All raised at compile/`validate()` time, all new guarantees vs v2:
 - An unknown key on any node — see No hoisting, below.
 - A recognized `$name` key with a non-reserved sibling key.
 
-The `$typo` case: node recognition is driven by _recognized_ keys only, so `{ $typo: 1, fallback: 2 }` is not a node, and its `fallback` is not a modifier. It is still an error, as an unrecognized `$` key ([#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)), and the `fallback` beside it catches nothing: static errors never reach evaluation.
+The `$typo` case: node recognition is driven by _recognized_ keys only, so `{ $typo: 1, fallback: 2 }` is not a node, and its `fallback` is not a modifier. It is still an error, as an unrecognized `$` key ([#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)), and the `fallback` beside it catches nothing: static errors never reach evaluation. Its contents are still checked, with one exception (Carl, October 2026, #239): a reference to a binding an enclosing node makes (`$element`, `$index`, an `as` name, `$error`) gets no scope error beneath such an object. The object was meant as a node, perhaps the very iterator or fallback owner the reference belongs to, so the error would only repeat the unrecognized key: `{ $mapp: { input: […], each: '$element' } }` and `{ $refuze: 404, fallback: '$error.message' }` each report one error. A `$` label in a `lazyEntries` map is a label, not a failed node, and is unaffected.
 
 ### No hoisting
 

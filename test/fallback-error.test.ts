@@ -135,6 +135,26 @@ describe('scope', () => {
     expect(issuesAt('unresolved-binding', expression)).toEqual([path])
   })
 
+  test('a plain object’s `fallback` key is data, and the error says whose fallback it needs', () => {
+    expect(fig.validate({ label: 'Regions', fallback: '$err.message' }).issues).toEqual([
+      expect.objectContaining({
+        code: 'unresolved-binding',
+        path: ['fallback'],
+        message:
+          "'$err.message' is only available inside the fallback of an operator node or fragment call",
+      }),
+    ])
+  })
+
+  test('beneath a $ key that names nothing, only that error is reported', () => {
+    // The object was meant as a node, and its `fallback` as that node's:
+    // a scope error would only repeat the unrecognized key
+    const { issues } = fig.validate({ lookup: { $refuze: 404, fallback: { code: '$err.code' } } })
+    expect(issues.map(({ code, path }) => ({ code, path }))).toEqual([
+      { code: 'unrecognized-identifier', path: ['lookup', '$refuze'] },
+    ])
+  })
+
   test('a fragment body reads it only inside its own fallbacks', () => {
     // A body compiles in isolation, so a call inside a fallback lends it
     // nothing

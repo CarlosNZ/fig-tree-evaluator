@@ -143,6 +143,8 @@ import type {
   NodePath,
   OperatorNode,
   CompileArtifact,
+  ReferenceNamespace,
+  ReferenceNode,
   Rollups,
   SequencedIssue,
   SkeletonHole,
@@ -187,6 +189,13 @@ interface WalkState {
    * walk meets an iterator's `input` before its `as`.
    */
   unrecognized: { token: string; issue: SequencedIssue; raw: string }[]
+  /**
+   * How many objects with a `$` key that names nothing enclose the walk
+   * here. Each was meant as a node, so a reference beneath it to a binding
+   * an enclosing node makes may have been in that node's scope
+   * (`ReferenceNode.scopeUnknown`).
+   */
+  unknownNodes: number
   /** Set by the first `noCache` compiled (`CompileArtifact.hasNoCache`). */
   hasNoCache: boolean
 }
@@ -226,6 +235,7 @@ export const compileExpression = (
     scope: { bindings: [] },
     asNames: new Set(),
     unrecognized: [],
+    unknownNodes: 0,
     hasNoCache: false,
   }
   const basePath = (options.basePath ?? []).reduce<LinkedPath>(extendPath, null)
@@ -449,8 +459,11 @@ const walkString = (
         path,
         order
       )
+      // Not a candidate for the out-of-scope upgrade beneath an unknown
+      // node, which may have been the iterator binding it
       const sigil = splitSigilToken(raw)
-      if (sigil !== null) state.unrecognized.push({ token: sigil.token, issue, raw })
+      if (sigil !== null && state.unknownNodes === 0)
+        state.unrecognized.push({ token: sigil.token, issue, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
@@ -465,17 +478,25 @@ const walkString = (
       return invalid(raw, path, order)
     case 'reference': {
       const { namespace, segments, drill, binding } = recognition
-      if (binding !== undefined)
-        return { kind: 'reference', namespace, segments, raw, binding, path, order }
-      if (namespace === 'data') {
+      const node: ReferenceNode = { kind: 'reference', namespace, segments, raw, path, order }
+      if (binding !== undefined) node.binding = binding
+      else if (namespace === 'data') {
         if (segments.length === 0) state.dynamic = true
         else
           recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined, path)
       }
-      return { kind: 'reference', namespace, segments, raw, path, order }
+      if (state.unknownNodes > 0 && boundByNode(namespace)) node.scopeUnknown = true
+      return node
     }
   }
 }
+
+/**
+ * The namespaces an enclosing node binds: an iterator's `$element` and
+ * `$index`, under their `as` names too, and a fallback's `$error`.
+ */
+const boundByNode = (namespace: ReferenceNamespace): boolean =>
+  namespace === 'element' || namespace === 'index' || namespace === 'error'
 
 // ── Arrays ──────────────────────────────────────────────────────────
 
@@ -1828,6 +1849,11 @@ const collectPlainObject = (
   let vars: Record<string, CompiledNode> | undefined
   let changed = false
   const entries: ContainerEntry[] = []
+  // A stray `$name` key outside `labels` is an error below, and the object
+  // was meant as a node — an iterator, say, or the owner of the `fallback`
+  // beside it — so scope errors beneath it would only repeat that error
+  const unknownNode = !labels && hasStrayInvocation(raw)
+  if (unknownNode) state.unknownNodes++
 
   for (const key in raw) {
     const value = raw[key]
@@ -1875,7 +1901,18 @@ const collectPlainObject = (
       node: walk(state, value, extendPath(path, key), depth + 1),
     })
   }
+  if (unknownNode) state.unknownNodes--
   return { entries, vars, changed }
+}
+
+/**
+ * Whether a plain object carries a `$name` key, which here names nothing:
+ * the walk dispatched every recognized one. A key whose value is
+ * `undefined` is dropped, so it counts for nothing.
+ */
+const hasStrayInvocation = (raw: Record<string, unknown>): boolean => {
+  for (const key in raw) if (key.startsWith('$') && raw[key] !== undefined) return true
+  return false
 }
 
 // ── Container assembly: constancy, skeleton, holes ──────────────────

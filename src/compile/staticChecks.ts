@@ -695,6 +695,7 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
       return
     }
   }
+  if (node.scopeUnknown) return
   emit(
     state,
     'error',
@@ -712,11 +713,12 @@ const resolveError = (state: CheckState, node: ReferenceNode) => {
     frame.referenced = true
     return
   }
+  if (node.scopeUnknown) return
   emit(
     state,
     'error',
     ErrorCodes.unresolvedBinding,
-    `'${node.raw}' is only available inside a fallback`,
+    `'${node.raw}' is only available inside the fallback of an operator node or fragment call`,
     node.path,
     node.order
   )

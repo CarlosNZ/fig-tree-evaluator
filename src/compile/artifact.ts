@@ -87,6 +87,15 @@ export interface ReferenceNode extends CompiledBase {
   segments: PathSegment[]
   raw: string
   binding?: string
+  /**
+   * Set on a reference to a binding an enclosing node makes (`$element`,
+   * `$index`, an `as` name, `$error`) when it sits beneath an object with a
+   * `$` key that names nothing. That object, already an error, was meant as
+   * a node, perhaps the very iterator or fallback owner the reference
+   * belongs to, so the static checker leaves out a scope error that would
+   * only repeat it.
+   */
+  scopeUnknown?: true
 }
 
 /**
