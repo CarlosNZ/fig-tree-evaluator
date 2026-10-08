@@ -122,6 +122,26 @@ const NONE: Analysed = { result: SAFE, covered: [] }
 /** What `$index` can be */
 const INDEX: Known = [{ type: 'integer', min: 0 }]
 const NULL = exactly(null)
+/** What a bare `$error` is: a plain object, its keys not all known */
+const OBJECT: Known = [{ type: 'object' }]
+/**
+ * What `$error` is drilled into: `FallbackError`'s guaranteed shape, with
+ * an optional field null, as a read of it gives where it is absent
+ */
+const FALLBACK_ERROR: Known = [
+  {
+    type: 'object',
+    keys: {
+      code: [{ type: 'string' }],
+      message: [{ type: 'string' }],
+      path: [{ type: 'array' }],
+      operator: [{ type: 'string' }, { type: 'null' }],
+      fragment: [{ type: 'string' }, { type: 'null' }],
+      fragmentPath: [{ type: 'array' }, { type: 'null' }],
+      errorData: [{ type: 'object' }, { type: 'null' }],
+    },
+  },
+]
 /**
  * The most times one node is walked for the `each` walks it sits in: as
  * many values as the walk keeps exactly
@@ -473,7 +493,9 @@ export class Analysis {
    * A fallback catches everything that escapes its node's attempt, and what
    * escapes the node is then the fallback's own. An `operatorDefaults`
    * fallback is returned as it is, never evaluated, so nothing escapes it.
-   * A node that cannot fail never runs its fallback.
+   * A node that cannot fail never runs its fallback. A fallback that reads
+   * its own `$error` never fails: what escapes it is caught by its node,
+   * which gives null for it.
    */
   private async withFallback(
     node: OperatorNode | FragmentCallNode,
@@ -490,6 +512,15 @@ export class Analysis {
     if (node.fallback === undefined)
       return { ...SAFE, output: union(attempt.output, exactly(defaults!.fallback)), waits }
     const answer = await this.walk(node.fallback, ctx)
+    if (node.fallbackReadsError && answer.verdict !== 'no') {
+      const givesNull = { path: node.path, givesNull: true as const }
+      for (const pending of answer.escapes) ctx.sink.push({ pending, by: givesNull })
+      return {
+        ...SAFE,
+        output: union(attempt.output, answer.output, NULL),
+        waits: waits || answer.waits,
+      }
+    }
     // The fallback runs only when the attempt fails
     const verdict =
       attempt.verdict === 'always' || answer.verdict !== 'always' ? answer.verdict : 'may'
@@ -506,7 +537,8 @@ export class Analysis {
    * parameter leaves a demand for its argument. A missing path is null,
    * or under `strictDataPaths` a failure, where the reference drills past
    * what it names; `$index` never drills. A read of `$error` never fails:
-   * its misses are null whatever `strictDataPaths` says.
+   * a miss is null whatever `strictDataPaths` says, and what it finds has
+   * `FallbackError`'s guaranteed shape.
    */
   private async reference(node: ReferenceNode, ctx: Context): Promise<NodeResult> {
     const { segments, namespace } = node
@@ -541,8 +573,11 @@ export class Analysis {
         const known = typeof name === 'string' ? (params[name] ?? ANY) : ANY
         return this.drilled(node, known, rest, [], [{ demand: String(name) }])
       }
-      case 'error':
-        return { ...SAFE, output: ANY }
+      case 'error': {
+        if (segments.length === 0) return { ...SAFE, output: OBJECT }
+        const { value, found } = drill(FALLBACK_ERROR, segments)
+        return { ...SAFE, output: found === 'yes' ? value : union(value, NULL) }
+      }
     }
     return namespace satisfies never
   }

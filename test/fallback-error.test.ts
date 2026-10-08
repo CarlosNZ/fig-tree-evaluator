@@ -7,9 +7,16 @@
  * that read it.
  */
 import { FigTree, OperatorFailure, coreOperators, defineOperator, isFigTreeError } from '../src'
-import type { FallbackError, FigTreeError, FragmentDefinition } from '../src'
+import type {
+  CoveredFinding,
+  EvaluationResult,
+  FallbackError,
+  FigTreeError,
+  FragmentDefinition,
+  TraceNode,
+} from '../src'
 import { fallbackCoverage } from '../src/authoring'
-import { boomOp, echoOp } from './fixtures/evalOperators'
+import { boomOp, echoOp, sleepOp } from './fixtures/evalOperators'
 import { rejection } from './helpers/rejection'
 
 /** Every `errorData` `refuse` built, so a test can check what it received. */
@@ -45,11 +52,27 @@ const fragments: Record<string, FragmentDefinition> = {
     expression: { $buildString: 'Said: {{$params.message}}' },
     parameters: { message: { type: 'string' } },
   },
+  givesNull: {
+    expression: {
+      $boom: 'in body',
+      fallback: { operator: 'plus', values: ['$error.message', { a: 1 }] },
+    },
+  },
 }
 
 const operators = [coreOperators, echoOp(), boomOp(), refuse]
 const fig = new FigTree({ operators, fragments })
 const strict = new FigTree({ operators, fragments, strictDataPaths: true })
+
+/** The trace entry for the node at `path`. */
+const entryAt = (entry: TraceNode, path: (string | number)[]): TraceNode | undefined => {
+  if (JSON.stringify(entry.path) === JSON.stringify(path)) return entry
+  for (const child of entry.children ?? []) {
+    const found = entryAt(child, path)
+    if (found !== undefined) return found
+  }
+  return undefined
+}
 
 /** The paths of the issues `validate()` reports under `code`. */
 const issuesAt = (code: string, expression: unknown) =>
@@ -310,11 +333,16 @@ describe('strictDataPaths', () => {
     ).toEqual({ a: null, b: null, c: null, d: null, e: '[]' })
   })
 
-  test('a $data miss beside it still fails', async () => {
-    const error = await rejection<FigTreeError>(
-      strict.evaluate({ $boom: 1, fallback: { a: '$error.nope', b: '$data.nope' } })
-    )
-    expect(error.code).toBe('missing-data-path')
+  test('a $data miss beside it still fails, and the fallback gives null for it', async () => {
+    const { result, trace } = (await strict.evaluate(
+      { $boom: 1, fallback: { a: '$error.nope', b: '$data.nope' } },
+      { trace: true }
+    )) as EvaluationResult
+    expect(result).toBeNull()
+    expect(entryAt(trace, ['fallback', 'b'])).toMatchObject({
+      status: 'failed',
+      error: { code: 'missing-data-path' },
+    })
   })
 
   test('fallbackCoverage reports nothing escaping a drill into it', async () => {
@@ -362,5 +390,232 @@ describe('static checks', () => {
     expect(
       () => new FigTree({ operators, operatorDefaults: { boom: { fallback: '$error' } } })
     ).toThrow(/must be a constant value/)
+  })
+})
+
+/**
+ * A fallback that reads its own `$error`, and always fails: `plus` of a
+ * string and an object.
+ */
+const FAILS = { operator: 'plus', values: ['$error.message', { a: 1 }] }
+
+describe('a fallback that reads its own $error never fails', () => {
+  const cleanups: (() => void)[] = []
+  afterEach(() => {
+    cleanups.splice(0).forEach((clear) => clear())
+  })
+  const sleeping = () => {
+    const sleep = sleepOp()
+    cleanups.push(sleep.cleanup)
+    return new FigTree({ operators: [...operators, sleep.definition] })
+  }
+
+  test('where it fails, its node gives null', async () => {
+    expect(await fig.evaluate({ result: { $boom: 1, fallback: FAILS } })).toEqual({ result: null })
+  })
+
+  test('so does a fragment call’s', async () => {
+    expect(await fig.evaluate({ result: { fragment: 'breaks', fallback: FAILS } })).toEqual({
+      result: null,
+    })
+  })
+
+  test('a node inside it with its own fallback still catches first', async () => {
+    expect(
+      await fig.evaluate({ $boom: 1, fallback: { ...FAILS, fallback: 'Lookup failed' } })
+    ).toBe('Lookup failed')
+    // And inside that fallback, `$error` is the inner failure
+    expect(await fig.evaluate({ $boom: 1, fallback: { ...FAILS, fallback: '$error.code' } })).toBe(
+      'type-check'
+    )
+  })
+
+  test('a fallback without $error fails its node, as rule 4 says', async () => {
+    const error = await rejection<FigTreeError>(
+      fig.evaluate({ $boom: 'primary', fallback: { $boom: 'backup' } })
+    )
+    expect(error.message).toBe('boom – boom backup')
+    expect(error.cause).toMatchObject({ message: 'boom – boom primary' })
+  })
+
+  test('so does one whose only $error belongs to a fallback nested inside it', async () => {
+    const error = await rejection<FigTreeError>(
+      fig.evaluate({
+        $boom: 'primary',
+        fallback: {
+          regions: { $boom: 'regions', fallback: '$error.message' },
+          countries: { $boom: 'countries' },
+        },
+      })
+    )
+    expect(error.message).toBe('boom – boom countries')
+  })
+
+  test('a var inside it that captures $error counts', async () => {
+    expect(
+      await fig.evaluate({
+        $boom: 'primary',
+        fallback: { operator: 'boom', vars: { first: '$error' }, value: '$vars.first.message' },
+      })
+    ).toBeNull()
+  })
+
+  test('it is decided by what is written, so an $error in a branch not taken counts', async () => {
+    const expression = {
+      $boom: 'primary',
+      fallback: { operator: 'if', condition: '$data.backup', then: { $boom: 'b' }, else: '$err' },
+    }
+    expect(await fig.evaluate(expression, { data: { backup: true } })).toBeNull()
+  })
+
+  test('inside another fallback, the null is an ordinary value', async () => {
+    expect(
+      await fig.evaluate({
+        $boom: 'outer',
+        fallback: { inner: { $boom: 'inner', fallback: FAILS }, outer: '$error.message' },
+      })
+    ).toEqual({ inner: null, outer: 'boom – boom outer' })
+  })
+
+  test('re-reading the var that failed gives null, not rule 5’s failure', async () => {
+    expect(
+      await fig.evaluate({
+        operator: 'echo',
+        vars: { risky: { $boom: 'in the var' } },
+        value: '$vars.risky',
+        fallback: { $buildString: '{{$vars.risky}}: {{$error.message}}' },
+      })
+    ).toBeNull()
+  })
+
+  test('the whole-evaluation timeout still cuts through it', async () => {
+    const expression = {
+      $boom: 1,
+      fallback: { message: '$error.message', slow: { operator: 'sleep', ms: 200 } },
+    }
+    const error = await rejection<FigTreeError>(sleeping().evaluate(expression, { timeout: 20 }))
+    expect(error.code).toBe('timeout')
+  })
+
+  test('so does the caller’s signal', async () => {
+    const controller = new AbortController()
+    setTimeout(() => controller.abort(), 20)
+    const expression = {
+      $boom: 1,
+      fallback: { message: '$error.message', slow: { operator: 'sleep', ms: 200 } },
+    }
+    const error = await rejection<FigTreeError>(
+      sleeping().evaluate(expression, { signal: controller.signal })
+    )
+    expect(error.code).toBe('aborted')
+  })
+
+  test('trace shows the node answered by its fallback, and the fallback failed', async () => {
+    const { result, trace } = (await fig.evaluate(
+      { $boom: 'primary', fallback: FAILS },
+      { trace: true }
+    )) as EvaluationResult
+    expect(result).toBeNull()
+    expect(trace).toMatchObject({
+      status: 'fallback',
+      value: null,
+      error: { message: 'boom – boom primary' },
+    })
+    expect(entryAt(trace, ['fallback'])).toMatchObject({
+      status: 'failed',
+      error: { code: 'type-check' },
+    })
+  })
+})
+
+describe('fallbackCoverage', () => {
+  const brief = ({ path, code, certainty, coveredBy, givesNull }: CoveredFinding) => ({
+    path,
+    code,
+    certainty,
+    coveredBy,
+    ...(givesNull ? { givesNull } : {}),
+  })
+
+  test('a failure in a fallback that reads its own $error is covered, and gives null', async () => {
+    const { uncovered, covered } = await fallbackCoverage(fig, { $boom: 1, fallback: FAILS })
+    expect(uncovered).toEqual([])
+    expect(covered.map(brief)).toEqual([
+      { path: [], code: 'operator-failure', certainty: 'may', coveredBy: [] },
+      {
+        path: ['fallback'],
+        code: 'type-check',
+        certainty: 'may',
+        coveredBy: [],
+        givesNull: true,
+      },
+    ])
+  })
+
+  test('inside a fragment body, as the call reports it', async () => {
+    const { uncovered, covered } = await fallbackCoverage(fig, { fragment: 'givesNull' })
+    expect(uncovered).toEqual([])
+    expect(covered.find(({ givesNull }) => givesNull)).toMatchObject({
+      path: [],
+      fragment: 'givesNull',
+      fragmentPath: ['expression', 'fallback'],
+      coveredBy: [],
+      coveredByFragmentPath: ['expression'],
+      givesNull: true,
+    })
+  })
+
+  test('a failure in any other fallback still escapes', async () => {
+    const { uncovered } = await fallbackCoverage(fig, {
+      $boom: 1,
+      fallback: { operator: 'plus', values: ['$data.x', { a: 1 }] },
+    })
+    expect(uncovered.map(({ path, code }) => ({ path, code }))).toEqual([
+      { path: ['fallback'], code: 'type-check' },
+    ])
+  })
+
+  test('it knows the fields $error always has', async () => {
+    // `code` is a string, so nothing can fail
+    const { covered } = await fallbackCoverage(fig, {
+      $boom: 1,
+      fallback: { operator: 'split', value: '$error.code', delimiter: '-' },
+    })
+    expect(covered.map(brief)).toEqual([
+      { path: [], code: 'operator-failure', certainty: 'may', coveredBy: [] },
+    ])
+  })
+})
+
+describe('the static check knows the fields $error always has', () => {
+  const typeErrors = (fallback: unknown) =>
+    fig
+      .validate({ $boom: 1, fallback })
+      .issues.filter((issue) => issue.code === 'type-check')
+      .map(({ path, message }) => ({ path, message }))
+
+  test('code and message are strings, path an array', () => {
+    expect(typeErrors({ operator: 'round', value: '$error.message' })).toEqual([
+      {
+        path: ['fallback', 'value'],
+        message: "'round.value': expected number | null, received string",
+      },
+    ])
+    expect(typeErrors({ operator: 'regex', value: '$err.path', pattern: 'x' })).toEqual([
+      {
+        path: ['fallback', 'value'],
+        message: "'regex.value': expected string | null, received array",
+      },
+    ])
+  })
+
+  test('a string may be one a literal type lists', () => {
+    expect(
+      typeErrors({ operator: 'regex', value: 'x', pattern: 'x', mode: '$error.code' })
+    ).toEqual([])
+  })
+
+  test('an optional field is not checked: absent, it is null, which may mean unset', () => {
+    expect(typeErrors({ operator: 'round', value: '$error.operator' })).toEqual([])
   })
 })

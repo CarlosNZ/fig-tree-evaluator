@@ -161,11 +161,21 @@ const visit = (state: CheckState, node: CompiledNode) => {
  * pushed its vars first, and their definitions were visited then, outside
  * this frame — they feed the node's parameters too, which run before
  * anything has failed.
+ *
+ * A fallback that reads its own `$error` is marked on its node, which the
+ * runtime reads: such a fallback never fails, its node giving `null`
+ * instead.
  */
-const visitFallback = (state: CheckState, fallback: CompiledNode) => {
-  state.fallbackFrames.push({ referenced: false })
+const visitFallback = (
+  state: CheckState,
+  owner: OperatorNode | FragmentCallNode,
+  fallback: CompiledNode
+) => {
+  const frame: FallbackFrame = { referenced: false }
+  state.fallbackFrames.push(frame)
   visit(state, fallback)
   state.fallbackFrames.pop()
+  if (frame.referenced) owner.fallbackReadsError = true
 }
 
 const isCompiledNode = (value: object): value is CompiledNode =>
@@ -175,7 +185,7 @@ const isCompiledNode = (value: object): value is CompiledNode =>
 
 const visitOperator = (state: CheckState, node: OperatorNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visitFallback(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const definition = node.entry.definition
   const owner = operatorOwner(node)
@@ -388,9 +398,9 @@ const checkInstanceFallback = (
 /**
  * Why a value-producing node can never satisfy a receiving declaration, or
  * undefined when it can, or when nothing is known before it runs (a
- * reference other than a bare `$error`, a call to an unknown fragment). It
- * serves the node supplied at a position and each fallback standing in for
- * it there alike.
+ * reference, but for what `$error` is known to hold, or a call to an
+ * unknown fragment). It serves the node supplied at a position and each
+ * fallback standing in for it there alike.
  */
 const findMismatch = (
   declared: ReceivingDeclaration,
@@ -418,30 +428,48 @@ const findMismatch = (
     // object, so it is checked as a literal one would be, with the same
     // message
     case 'skeleton':
-      return containerMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
-    // A bare `$error` is always an object; what is drilled from it is not
-    // known
-    case 'reference':
-      if (node.namespace === 'error' && node.segments.length === 0)
-        return containerMismatch(declared, {})
-      return
+      return sampleMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
+    case 'reference': {
+      const type = errorReadType(node)
+      if (type === undefined || typesIntersect(type, declared.type)) return
+      return sampleMismatch(declared, SAMPLES[type])
+    }
     default:
       return
   }
 }
 
-/** Why a container of this kind can never satisfy the declaration. */
-const containerMismatch = (
+/** Why a value of this one's type can never satisfy the declaration. */
+const sampleMismatch = (
   declared: ReceivingDeclaration,
-  empty: unknown[] | Record<string, never>
+  sample: unknown
 ): { code: string; reason: string } | undefined => {
-  const typed = checkType(empty, declared.type)
+  const typed = checkType(sample, declared.type)
   if (!typed.ok)
     return {
       code: ErrorCodes.typeCheck,
       reason: `expected ${typed.expected}, received ${typed.actual}`,
     }
   return
+}
+
+/** A value of each type an `$error` read is known to have. */
+const SAMPLES = { object: {}, array: [], string: '' }
+
+/**
+ * The type an `$error` read is known to have (`FallbackError`): a bare
+ * `$error` is always an object, `code` and `message` are always strings, and
+ * `path` is always an array. Anything else is unknown. An optional field
+ * may be absent, so read as null, which an optional parameter may take as
+ * unset.
+ */
+const errorReadType = (node: ReferenceNode): keyof typeof SAMPLES | undefined => {
+  if (node.namespace !== 'error') return undefined
+  const [field, ...rest] = node.segments
+  if (field === undefined) return 'object'
+  if (rest.length > 0) return undefined
+  if (field === 'code' || field === 'message') return 'string'
+  return field === 'path' ? 'array' : undefined
 }
 
 /**
@@ -500,7 +528,7 @@ const operatorOwner = (node: OperatorNode) => ({
  */
 const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visitFallback(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const declarations = node.entry?.parameters
   const supplied =

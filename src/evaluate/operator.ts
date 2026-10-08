@@ -10,8 +10,10 @@
  * node's attempt, and the nearest enclosing wrapper with a fallback is the
  * first to catch it. Rule 2 needs nothing — static errors never reach
  * evaluation. Rule 4 attaches the original failure as `cause` when the
- * fallback itself fails. Rule 6 holds by construction: a node instance is
- * attempted once, so its fallback runs at most once.
+ * fallback itself fails, except for a fallback that reads its own `$error`,
+ * which never fails: its node gives `null` (#239). Rule 6 holds by
+ * construction: a node instance is attempted once, so its fallback runs at
+ * most once.
  */
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
@@ -64,14 +66,9 @@ export const evaluateOperator = async (
     const failure = wrapFailure(error, node)
     const fallback = fallbackOf(node, scoped, failure)
     if (fallback === undefined) throw failure
+    let answered: unknown
     try {
-      const answered = await fallback()
-      // A fallback firing is the author's designed degradation, so it is
-      // a SUCCESS — which makes trace the only record that it happened,
-      // and of what it caught
-      if (ctx.trace !== undefined && ctx.traceParent !== undefined)
-        ctx.trace.markFallback(ctx.traceParent, failure)
-      return answered
+      answered = await fallback()
     } catch (fallbackError) {
       // The same three bail-outs as above: a kill switch or a cancellation
       // landing at the fallback's own node boundary passes through untouched
@@ -82,12 +79,25 @@ export const evaluateOperator = async (
         isKillSwitch(fallbackError)
       )
         throw fallbackError
-      const wrapped = wrapFailure(fallbackError, node)
-      // A fallback that reads the var that failed re-receives the very same
-      // error (rule 5), which must not become its own cause
-      if (wrapped !== failure && wrapped.cause === undefined) wrapped.cause = failure
-      throw wrapped
+      if (!node.fallbackReadsError) {
+        // Rule 4: the node fails with the fallback's error
+        const wrapped = wrapFailure(fallbackError, node)
+        // A fallback that reads the var that failed re-receives the very
+        // same error (rule 5), which must not become its own cause
+        if (wrapped !== failure && wrapped.cause === undefined) wrapped.cause = failure
+        throw wrapped
+      }
+      // A fallback that reads its own `$error` exists to report the failure,
+      // and never fails itself: the node gives `null`. Its own trace entry
+      // records what it failed with
+      answered = null
     }
+    // A fallback firing is the author's designed degradation, so it is a
+    // SUCCESS — which makes trace the only record that it happened, and of
+    // what it caught
+    if (ctx.trace !== undefined && ctx.traceParent !== undefined)
+      ctx.trace.markFallback(ctx.traceParent, failure)
+    return answered
   }
 }
 

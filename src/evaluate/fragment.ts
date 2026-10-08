@@ -115,13 +115,9 @@ export const evaluateFragment = async (
     // be refused by the abort that ended it. `$error` is bound to a
     // FigTreeError only, which every failure reaching here is
     const caught = isFigTreeError(failure) ? { ...scoped, caught: failure } : scoped
+    let answered: unknown
     try {
-      const answered = await evaluateNode(fallback, caught)
-      // A success, as an operator node's fallback is, so the call's own
-      // trace entry is the only record that it fired and of what it caught
-      if (ctx.trace !== undefined && ctx.traceParent !== undefined && isFigTreeError(failure))
-        ctx.trace.markFallback(ctx.traceParent, failure)
-      return answered
+      answered = await evaluateNode(fallback, caught)
     } catch (fallbackError) {
       if (
         isInternalError(fallbackError) ||
@@ -129,12 +125,22 @@ export const evaluateFragment = async (
         isKillSwitch(fallbackError)
       )
         throw fallbackError
-      const wrapped = anchor(fallbackError, ctx.frame)
-      // Never its own cause, as in the operator wrapper
-      if (isFigTreeError(wrapped) && wrapped !== failure && wrapped.cause === undefined)
-        wrapped.cause = failure
-      throw wrapped
+      if (!node.fallbackReadsError) {
+        const wrapped = anchor(fallbackError, ctx.frame)
+        // Never its own cause, as in the operator wrapper
+        if (isFigTreeError(wrapped) && wrapped !== failure && wrapped.cause === undefined)
+          wrapped.cause = failure
+        throw wrapped
+      }
+      // Never fails where it reads its own `$error`, as in the operator
+      // wrapper: the call gives `null`
+      answered = null
     }
+    // A success, as an operator node's fallback is, so the call's own trace
+    // entry is the only record that it fired and of what it caught
+    if (ctx.trace !== undefined && ctx.traceParent !== undefined && isFigTreeError(failure))
+      ctx.trace.markFallback(ctx.traceParent, failure)
+    return answered
   }
 }
 

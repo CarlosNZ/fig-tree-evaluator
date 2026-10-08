@@ -39,6 +39,8 @@ interface CoveredFinding extends CoverageFinding {
   /** The node whose fallback catches it (the call, for a fallback in a body) */
   coveredBy: NodePath
   coveredByFragmentPath?: NodePath
+  /** The failure is in a fallback that reads its own `$error`: the node gives `null` for it */
+  givesNull?: true
 }
 ```
 
@@ -108,7 +110,7 @@ These apply to every operator node. None of them names an operator: each reads t
 3. **Children's failures.** A child that can throw makes the node able to throw if the node uses that parameter. An `eager` parameter is always used. Any other delivery mode is used when the operator asks for it, which the walk assumes it does unless rule 4 shows otherwise.
 4. **Running the node.** When enough is known, the walk runs the node's own body (pure operators only; see "Running a node").
 5. **Declared rules.** If the node was not run, its operator's failure rules are tested against the inputs (see "Operator rules"). An operator with none adds nothing. An `external` operator may always fail.
-6. **Fallback.** If the node has a fallback (its own, or its operator's `operatorDefaults` one), everything that can fail in or under it is covered there. The node's verdict becomes the fallback's, and its output gains the fallback's output.
+6. **Fallback.** If the node has a fallback (its own, or its operator's `operatorDefaults` one), everything that can fail in or under it is covered there. The node's verdict becomes the fallback's, and its output gains the fallback's output. A fallback that reads its own `$error` never fails (rule 4's exception in "`fallback` semantics", [v3-api.md](v3-api.md)): what can fail inside it is covered by the node too, as findings with `givesNull: true`, the node's verdict is that it cannot fail, and its output gains `null` as well. A read of `$error` never fails either, and has `FallbackError`'s guaranteed shape: `code` and `message` strings, `path` an array, `operator` and `fragment` a string or null, `fragmentPath` an array or null, `errorData` an object or null, and anything inside `errorData` unknown.
 7. **Output.** What a run returned, if the node was run. Otherwise the operator's output declaration if it has one, else its declared `returns`. Plus null where rule 1 found propagation.
 
 The rules fill in three separate parts of the result, so they are not a decision list where the first match wins: findings (rules 2, 3 and 4 or 5), output (rules 1, 4, 6, 7), and verdict (the findings, then rule 6). A fallback comes late because the node's own findings still matter: they are reported as covered, and its parent needs its output.

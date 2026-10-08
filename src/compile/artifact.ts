@@ -112,6 +112,8 @@ export interface OperatorNode extends CompiledBase {
   params: Record<string, CompiledNode>
   /** Compiled lazily-evaluated failure catch; absent when not authored. */
   fallback?: CompiledNode
+  /** See `FragmentCallNode.fallbackReadsError`. */
+  fallbackReadsError?: true
   /**
    * Authored literal `true` only (grammar rule): nothing evaluated in this
    * node's subtree reads or writes the result cache. Absent when unauthored.
@@ -152,6 +154,13 @@ export interface FragmentCallNode extends CompiledBase {
   argumentsMode: 'static' | 'dynamic'
   parameters?: Record<string, CompiledNode> | CompiledNode
   fallback?: CompiledNode
+  /**
+   * Set by the static checker where an `$error` reference belongs to this
+   * node's fallback, a var declared inside it included. Such a fallback
+   * never fails: where it would, the node gives `null` (#239). One whose
+   * only `$error`s belong to fallbacks nested inside it is not marked.
+   */
+  fallbackReadsError?: true
   /**
    * Authored literal `true` only: nothing the call evaluates — its
    * arguments, its body and every call inside — reads or writes the

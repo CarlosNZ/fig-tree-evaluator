@@ -49,6 +49,12 @@ export interface CoveredFinding extends CoverageFinding {
   /** The node whose fallback catches it (the call, for a fallback in a body) */
   coveredBy: (string | number)[]
   coveredByFragmentPath?: (string | number)[]
+  /**
+   * Set where the failure is in a fallback that reads its own `$error`,
+   * which never fails: the node `coveredBy` names gives `null` for it,
+   * rather than its fallback's value
+   */
+  givesNull?: true
 }
 
 /**
