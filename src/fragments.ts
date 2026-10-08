@@ -48,11 +48,14 @@ import {
   runStaticChecks,
   splice,
   staticType,
+  toNodePath,
   type ArtifactDependencies,
   type ArtifactHole,
   type CompiledNode,
+  type ErrorRead,
   type NodePath,
   type CompileArtifact,
+  type StaticFallback,
 } from './compile'
 import type { OperatorRegistry } from './registry'
 import {
@@ -153,11 +156,11 @@ export interface FragmentEntry {
    */
   caches: boolean
   /**
-   * The body root's constant fallback, where it has one. A call node with
-   * no `fallback` of its own lifts this for timeout shielding — without the
-   * lift, factoring an expression into a fragment silently unshields it.
+   * The body's static fallback, where every hole in it has one. A call node
+   * with no `fallback` of its own lifts this for timeout shielding — without
+   * the lift, factoring an expression into a fragment silently unshields it.
    */
-  timeoutFallback?: { value: unknown }
+  timeoutFallback?: StaticFallback
 }
 
 /** The declaration fields a fragment parameter may carry. */
@@ -515,7 +518,7 @@ const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue)
 /**
  * Fold each body's own measurements together with its targets', run its
  * `noCache` checks, which read the targets' `caches`, and lift the
- * constant its call sites shield with — all in reverse topological order,
+ * fallback its call sites shield with — all in reverse topological order,
  * so a target is always complete before a caller reads it.
  * `composeRollups` holds the composition rules themselves, shared with the
  * walk, so a call site in an expression and a call site in a body compose
@@ -537,16 +540,16 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
     entry.dependencies = rolled.dependencies
     entry.identityOnly = rolled.identityOnly
     entry.caches = checkNoCache(artifact)
-    entry.timeoutFallback = liftedFallback(artifact, registry.fragments)
+    entry.timeoutFallback = liftedFallback(name, artifact, registry.fragments)
   }
 
   for (const name of compiled.keys()) fold(name)
 }
 
 /**
- * The constant a call site lifts from this body (obligation B2): what
- * shielded assembly would splice for the whole call, or `undefined` where
- * the body is not shielded and a call therefore is not either.
+ * The static fallback a call site lifts from this body (obligation B2):
+ * what shielded assembly would splice for the whole call, or `undefined`
+ * where the body is not shielded and a call therefore is not either.
  *
  * Every hole must answer, because a call is ONE hole at its call site: it
  * contributes all of its fallbacks or none of them, where the same
@@ -555,40 +558,59 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
  * direction — a partially-finished body cannot contribute a half-real
  * value through a boundary that has already returned a single one.
  *
- * A node root is one hole, and it is the root, so its constant is the
- * call's. A skeleton root splices its holes' constants into its shape,
+ * A node root is one hole, and it is the root, so its fallback is the
+ * call's. A skeleton root splices its holes' fallbacks into its shape,
  * inside out through any nested skeleton a `vars` block kept — the same
  * assembly a shielded evaluation performs, and relying on the same
  * by-construction ordering: the artifact's holes ARE the skeletons' leaf
  * holes, in walk order (`rootHoles` in src/compile/compile.ts).
+ *
+ * Each `$error` read comes along, moved to where its hole sits, and
+ * located at that hole: the timeout meets the call, but a read written in
+ * the body sees it where it would have met the hole inline, as anchoring
+ * locates any failure in a body. A read lifted from a nested call is
+ * already located, in the innermost body, which owns it as anchoring's
+ * first frame does.
  */
 const liftedFallback = (
+  name: string,
   artifact: CompileArtifact,
   fragments: ReadonlyMap<string, FragmentEntry>
-): { value: unknown } | undefined => {
+): StaticFallback | undefined => {
   const { root, holes } = artifact
   // A constant body has no hole to lift, and nothing in it can time out
   if (holes.length === 0) return undefined
-  const values: unknown[] = []
+  const fallbacks: StaticFallback[] = []
   for (const hole of holes) {
     const fallback = holeFallback(hole, fragments)
     if (fallback === undefined) return undefined
-    values.push(fallback.value)
+    fallbacks.push(fallback)
   }
+  const reads: ErrorRead[] = []
   let next = 0
-  const assemble = (node: CompiledNode): unknown =>
-    node.kind === 'skeleton'
-      ? splice(
-          node.skeleton,
-          node.holes,
-          node.holes.map((hole) => assemble(hole.node))
-        )
-      : values[next++]
-  return { value: assemble(root) }
+  const assemble = (node: CompiledNode, at: NodePath): unknown => {
+    if (node.kind === 'skeleton')
+      return splice(
+        node.skeleton,
+        node.holes,
+        node.holes.map((hole) => assemble(hole.node, [...at, ...hole.at]))
+      )
+    const { value, reads: own = [] } = fallbacks[next++]
+    const within = {
+      ...(node.kind === 'operator' ? { operator: node.name } : {}),
+      fragment: name,
+      fragmentPath: toNodePath(node.path),
+    }
+    for (const read of own)
+      reads.push({ ...read, at: [...at, ...read.at], within: read.within ?? within })
+    return value
+  }
+  const value = assemble(root, [])
+  return reads.length === 0 ? { value } : { value, reads }
 }
 
 /**
- * A hole's own precomputed constant, or the one its target lifts where the
+ * A hole's own precomputed fallback, or the one its target lifts where the
  * hole is itself a call.
  *
  * The second case cannot come from the artifact: the walk read
@@ -601,10 +623,10 @@ const liftedFallback = (
 const holeFallback = (
   hole: ArtifactHole,
   fragments: ReadonlyMap<string, FragmentEntry>
-): { value: unknown } | undefined => {
+): StaticFallback | undefined => {
   if (hole.timeoutFallback !== undefined) return hole.timeoutFallback
   const { node } = hole
-  // An authored call-site fallback always wins, and a non-constant one
+  // An authored call-site fallback always wins, and a dynamic one
   // disqualifies the hole rather than falling through to the target's
   if (node.kind !== 'fragmentCall' || node.fallback !== undefined) return undefined
   return fragments.get(node.name)?.timeoutFallback

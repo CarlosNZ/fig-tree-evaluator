@@ -103,10 +103,9 @@ describe('every listed code reaches a fallback', () => {
 })
 
 describe('and is what `$error.code` reads there', () => {
-  // TO-DO: include `timeout` once a fallback reading `$error` can shield
-  // (#239, chunk 4)
-  const reading = Object.entries(REACHES).filter(([code]) => code !== 'timeout')
-  test.each(reading)('%s', async (code, { expression, data, options }) => {
+  // `timeout` included: a fallback built only from `$error` reads is
+  // static, so it shields
+  test.each(Object.entries(REACHES))('%s', async (code, { expression, data, options }) => {
     const reads = { ...(expression as object), fallback: '$error.code' }
     expect(await instance(options).evaluate(reads, { data })).toBe(code)
   })

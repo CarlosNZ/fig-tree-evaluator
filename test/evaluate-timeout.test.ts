@@ -128,12 +128,12 @@ describe('timeout shielding', () => {
     expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe('offline')
   })
 
-  it('as written: a constant, which registration holds it to', async () => {
+  it('as written: static, which registration holds it to', async () => {
     const fallback = { offline: true, tokens: ['$USD'] }
     const { fig } = setup([], { operatorDefaults: { sleep: { fallback } } })
     expect(await fig.evaluate({ $sleep: [300] }, { timeout: 30 })).toBe(fallback)
     expect(() => setup([], { operatorDefaults: { sleep: { fallback: { $USD: 0 } } } })).toThrow(
-      /must be a constant value/
+      /must be static/
     )
   })
 

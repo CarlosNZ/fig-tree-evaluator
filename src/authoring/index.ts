@@ -27,7 +27,7 @@ import { Analysis } from './walk'
  *
  * It answers as the instance would evaluate the expression, under the
  * instance's own options: under its `timeout`, nothing runs after the
- * deadline, so a top-level value is shielded only by a constant fallback.
+ * deadline, so a top-level value is shielded only by a static fallback.
  * Only an evaluation that waits on something outside it can be cut off,
  * and shielding is all or nothing (see "Timeouts" in the spec). The
  * expression compiles through `compile()`, so it shares the compile cache
@@ -70,7 +70,7 @@ export const fallbackCoverage = async (
     .map(uncoveredFinding)
 
   // The runtime's shielding: on a timeout, every hole is spliced with its
-  // constant fallback (`timeoutFallback`) if every hole has one, and the
+  // static fallback (`timeoutFallback`) if every hole has one, and the
   // evaluation is rejected otherwise. An evaluation that never waits
   // finishes before the deadline's timer can fire
   if (effective.timeout !== undefined && waits)
@@ -87,14 +87,14 @@ export const fallbackCoverage = async (
             uncoveredFinding({
               ...at,
               message:
-                'the timeout may reject the evaluation: something in it can wait, and this value has no constant fallback to shield it',
+                'the timeout may reject the evaluation: something in it can wait, and this value has no static fallback to shield it',
             })
           )
       } else if (analysis.waiting.has(node))
         caught.push({
           pending: {
             ...at,
-            message: 'may be cut off by the timeout, which puts its constant fallback in its place',
+            message: 'may be cut off by the timeout, which puts its static fallback in its place',
           },
           by: { path: node.path },
         })

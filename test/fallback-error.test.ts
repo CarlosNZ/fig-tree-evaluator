@@ -6,7 +6,14 @@
  * read, nesting, fragments, the strict-path exemption, and the static checks
  * that read it.
  */
-import { FigTree, OperatorFailure, coreOperators, defineOperator, isFigTreeError } from '../src'
+import {
+  FigTree,
+  OperatorFailure,
+  coreOperators,
+  defineOperator,
+  inspect,
+  isFigTreeError,
+} from '../src'
 import type {
   CoveredFinding,
   EvaluationResult,
@@ -384,13 +391,6 @@ describe('static checks', () => {
       },
     ])
   })
-
-  test('an operatorDefaults fallback may not read it', () => {
-    // TO-DO: allow one built only from literals and `$error` (#239, chunk 4)
-    expect(
-      () => new FigTree({ operators, operatorDefaults: { boom: { fallback: '$error' } } })
-    ).toThrow(/must be a constant value/)
-  })
 })
 
 /**
@@ -617,5 +617,281 @@ describe('the static check knows the fields $error always has', () => {
 
   test('an optional field is not checked: absent, it is null, which may mean unset', () => {
     expect(typeErrors({ operator: 'round', value: '$error.operator' })).toEqual([])
+  })
+})
+
+// ── Static fallbacks: built only from literals and `$error` ─────────────
+
+/** The `$error` a shielded hole's fallback reads, at `path`. */
+const timedOut = (path: (string | number)[], more: object = {}) => ({
+  code: 'timeout',
+  message: 'evaluation exceeded its 20ms timeout',
+  path,
+  ...more,
+})
+
+describe('a fallback built only from literals and $error is static', () => {
+  const cleanups: (() => void)[] = []
+  afterEach(() => {
+    cleanups.splice(0).forEach((clear) => clear())
+  })
+  const sleeping = (options: object = {}) => {
+    const sleep = sleepOp()
+    cleanups.push(sleep.cleanup)
+    return new FigTree({
+      operators: [...operators, sleep.definition],
+      fragments: {
+        slow: { expression: { $sleep: [300], fallback: '$error' } },
+        slowPair: {
+          expression: {
+            a: { $sleep: [300], fallback: { at: '$error.fragmentPath', by: '$err.operator' } },
+            b: { $sleep: [300], fallback: '$error.message' },
+          },
+        },
+        wraps: { expression: { inner: { fragment: 'slow' } } },
+        slowByDefault: { expression: { $sleep: [300] } },
+      },
+      timeout: 20,
+      ...options,
+    })
+  }
+
+  describe('so it shields a timeout', () => {
+    test('$error is the timeout the hole met', async () => {
+      // Strict: no `errorData`, and no fragment keys outside a body
+      expect(await sleeping().evaluate({ $sleep: [300], fallback: '$error' })).toStrictEqual(
+        timedOut([], { operator: 'sleep' })
+      )
+    })
+
+    test('plain data around the reads is filled in, and what was written is left alone', async () => {
+      const fallback = { status: 'late', why: '$error.message', at: ['$error.path', '$err.nope'] }
+      const written = JSON.parse(JSON.stringify(fallback))
+      const fig = sleeping()
+      const first = await fig.evaluate({ report: { $sleep: [300], fallback } })
+      expect(first).toEqual({
+        report: {
+          status: 'late',
+          why: 'evaluation exceeded its 20ms timeout',
+          at: [['report'], null],
+        },
+      })
+      expect(await fig.evaluate({ report: { $sleep: [300], fallback } })).not.toBe(first)
+      expect(fallback).toEqual(written)
+    })
+
+    test('each hole of a plain root reads its own, beside one that finished', async () => {
+      expect(
+        await sleeping().evaluate({
+          a: { $sleep: [300], fallback: '$error.path' },
+          b: { $sleep: [300, 250], fallback: { late: '$err.path' } },
+          c: { $plus: [1, 2], fallback: '$error.code' },
+        })
+      ).toEqual({ a: ['a'], b: { late: ['b'] }, c: 3 })
+    })
+
+    test('one that reads $error through an operator, or reads anything else, does not', async () => {
+      const fig = sleeping()
+      for (const fallback of [
+        { $buildString: ['late: {{$error.message}}'] },
+        { why: '$error.message', also: '$data.x' },
+      ]) {
+        const error = await rejection<FigTreeError>(fig.evaluate({ $sleep: [300], fallback }))
+        expect(error.code).toBe('timeout')
+      }
+    })
+
+    test('trace records the timeout, and the value filled in from it', async () => {
+      const { result, trace } = (await sleeping().evaluate(
+        { $sleep: [300], fallback: { why: '$error.code' } },
+        { trace: true }
+      )) as EvaluationResult
+      expect(result).toEqual({ why: 'timeout' })
+      expect(trace).toMatchObject({
+        status: 'fallback',
+        value: { why: 'timeout' },
+        error: { code: 'timeout', path: [] },
+      })
+      expect(entryAt(trace, ['fallback'])).toMatchObject({
+        status: 'value',
+        value: { why: 'timeout' },
+      })
+    })
+
+    test('inspect() shows it as written', () => {
+      const { canonicalForm } = inspect(
+        sleeping().compile({ $sleep: [300], fallback: { why: '$err.message' } })
+      )
+      expect(canonicalForm).toMatchObject({ timeoutFallback: { why: '$err.message' } })
+    })
+
+    test('fallbackCoverage counts it as shielding', async () => {
+      const fig = sleeping()
+      const { uncovered, covered } = await fallbackCoverage(fig, {
+        $sleep: [300],
+        fallback: '$error.message',
+      })
+      expect(uncovered).toEqual([])
+      expect(covered).toContainEqual(expect.objectContaining({ path: [], code: 'timeout' }))
+      expect(
+        (await fallbackCoverage(fig, { $sleep: [300], fallback: { $upper: '$error.message' } }))
+          .uncovered
+      ).toContainEqual(expect.objectContaining({ path: [], code: 'timeout' }))
+    })
+  })
+
+  describe('and a fragment call lifts it from the body', () => {
+    test('where in the body the timeout would have met it', async () => {
+      expect(await sleeping().evaluate({ r: { fragment: 'slow' } })).toStrictEqual({
+        r: timedOut(['r'], { operator: 'sleep', fragment: 'slow', fragmentPath: ['expression'] }),
+      })
+    })
+
+    test('each hole of the body reads its own', async () => {
+      expect(await sleeping().evaluate({ r: { fragment: 'slowPair' } })).toEqual({
+        r: {
+          a: { at: ['expression', 'a'], by: 'sleep' },
+          b: 'evaluation exceeded its 20ms timeout',
+        },
+      })
+    })
+
+    test('through nested calls: the innermost body, and the outermost call', async () => {
+      expect(await sleeping().evaluate({ r: { fragment: 'wraps' } })).toEqual({
+        r: {
+          inner: timedOut(['r'], {
+            operator: 'sleep',
+            fragment: 'slow',
+            fragmentPath: ['expression'],
+          }),
+        },
+      })
+    })
+
+    test('a call with a fallback of its own met the timeout itself', async () => {
+      expect(
+        await sleeping().evaluate({ r: { fragment: 'slow', fallback: '$error' } })
+      ).toStrictEqual({ r: timedOut(['r']) })
+    })
+
+    test('a body hole answered by its operatorDefaults fallback lifts too', async () => {
+      const fig = sleeping({
+        operatorDefaults: { sleep: { fallback: { why: '$error.fragment' } } },
+      })
+      expect(await fig.evaluate({ r: { fragment: 'slowByDefault' } })).toEqual({
+        r: { why: 'slowByDefault' },
+      })
+    })
+  })
+
+  describe('so operatorDefaults may hold one', () => {
+    const defaulting = (fallback: unknown, options: object = {}) =>
+      new FigTree({ operators, fragments, operatorDefaults: { refuse: { fallback } }, ...options })
+
+    test('$error is the failure its node caught', async () => {
+      const { regions } = (await defaulting('$error').evaluate({ regions: { $refuse: 400 } })) as {
+        regions: FallbackError
+      }
+      expect(regions).toStrictEqual({
+        code: 'http-status',
+        message: 'refuse – request failed (400)',
+        path: ['regions'],
+        operator: 'refuse',
+        errorData: { status: 400, response: { message: 'Invalid country' } },
+      })
+      expect(regions.errorData).toBe(supplied.at(-1))
+    })
+
+    test('plain data around the reads is filled in, and the host’s value is left alone', async () => {
+      const fallback = { status: '$err.errorData.status', tags: ['$error.code', 'x'] }
+      const written = JSON.parse(JSON.stringify(fallback))
+      const result = (await defaulting(fallback).evaluate({ $refuse: 404 })) as typeof fallback
+      expect(result).toEqual({ status: 404, tags: ['http-status', 'x'] })
+      expect(result.tags).not.toBe(fallback.tags)
+      expect(fallback).toEqual(written)
+    })
+
+    test('a miss inside it is null, whatever strictDataPaths says', async () => {
+      const fig = defaulting({ missing: '$error.errorData.nope' }, { strictDataPaths: true })
+      expect(await fig.evaluate({ $refuse: 404 })).toEqual({ missing: null })
+    })
+
+    test('inside a fragment body, it is located as any read of $error there is', async () => {
+      const fig = new FigTree({
+        operators,
+        fragments,
+        operatorDefaults: { boom: { fallback: '$error' } },
+      })
+      expect(await fig.evaluate({ result: { fragment: 'breaks' } })).toEqual({
+        result: {
+          msg: {
+            code: 'operator-failure',
+            message: 'boom – boom in body',
+            path: ['result'],
+            operator: 'boom',
+            fragment: 'breaks',
+            fragmentPath: ['expression', 'msg'],
+          },
+        },
+      })
+    })
+
+    test('a node’s own fallback still wins', async () => {
+      expect(await defaulting('$error').evaluate({ $refuse: 404, fallback: 'own' })).toBe('own')
+    })
+
+    test('it shields a timeout', async () => {
+      const fig = sleeping({ operatorDefaults: { sleep: { fallback: '$error.code' } } })
+      expect(await fig.evaluate({ $sleep: [300] })).toBe('timeout')
+    })
+
+    test('one that reads $error through an operator, or reads anything else, is refused', () => {
+      for (const fallback of [
+        { $buildString: ['{{$error.message}}'] },
+        { why: '$error.message', also: '$data.x' },
+        '$error.path[',
+      ])
+        expect(() => defaulting(fallback)).toThrow(
+          expect.objectContaining({
+            code: 'invalid-options',
+            message: expect.stringMatching(/must be static/),
+          })
+        )
+    })
+
+    test('getOperators() reports it as written', () => {
+      const info = defaulting({ why: '$error.message' })
+        .getOperators()
+        .find(({ name }) => name === 'refuse')
+      expect(info?.hostFallback).toEqual({ why: '$error.message' })
+    })
+
+    test('fallback-mismatch reads what each $error read holds', () => {
+      const warned = (fallback: unknown) =>
+        defaulting(fallback)
+          .validate({ $round: { $refuse: 404 } })
+          .issues.some(({ code }) => code === 'fallback-mismatch')
+      expect(warned('$error')).toBe(true)
+      expect(warned('$error.message')).toBe(true)
+      expect(warned({ status: '$error.errorData.status' })).toBe(true)
+      // Unknown, so it may fit: read as the string it is written as, it
+      // would warn
+      expect(warned('$error.errorData.status')).toBe(false)
+      expect(warned(0)).toBe(false)
+    })
+
+    test('fallbackCoverage reads what it gives', async () => {
+      // `upper` gives a string, so only its fallback can give `length`
+      // something else
+      const typeChecks = async (fallback: unknown) => {
+        const fig = new FigTree({ operators, operatorDefaults: { upper: { fallback } } })
+        const { uncovered } = await fallbackCoverage(fig, { $length: { $upper: '$data.x' } })
+        return uncovered.filter(({ code }) => code === 'type-check').map(({ path }) => path)
+      }
+      // A bare `$error` is an object, which `length` cannot take
+      expect(await typeChecks('$error')).toEqual([[]])
+      expect(await typeChecks('$error.message')).toEqual([])
+      expect(await typeChecks(['$error.code'])).toEqual([])
+    })
   })
 })

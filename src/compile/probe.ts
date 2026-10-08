@@ -26,11 +26,16 @@
  * compile gets to report the error. `depth` is the measured nesting (a
  * constant input's `maxDepth`), so the user's `maxDepth` still applies to
  * inert input.
+ *
+ * Its one variant, `probeStaticFallback`, also accepts `$error` reads,
+ * recording where each sits. The same property test pins it to the
+ * compiler's `staticFallbackOf`.
  */
 import { isPlainDataObject } from '../utils'
 import { resolveOperator, type OperatorRegistry } from '../registry'
 import { recognizeReference } from './references'
 import { DEPTH_CEILING } from './grammar'
+import type { ErrorRead, NodePath, StaticFallback } from './artifact'
 
 export interface ProbeResult {
   constant: boolean
@@ -44,22 +49,42 @@ export const probeConstant = (value: unknown): ProbeResult => {
   return { constant, depth: state.maxDepth }
 }
 
-interface ProbeState {
-  maxDepth: number
+/**
+ * `value` as a static fallback (src/compile/artifact.ts), where the
+ * compiler would compile it to one whose value is `value` as written:
+ * constant apart from `$error` reads, with nothing to normalize. Undefined
+ * for anything else. Registration builds an `operatorDefaults` fallback
+ * with it, since a default is never compiled.
+ */
+export const probeStaticFallback = (value: unknown): StaticFallback | undefined => {
+  const state: ProbeState = { maxDepth: 0 }
+  if (!scan(state, value, 0, [])) return undefined
+  return state.reads === undefined ? { value } : { value, reads: state.reads }
 }
 
-const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
+interface ProbeState {
+  maxDepth: number
+  /** The variant's: each `$error` read, where it sits */
+  reads?: ErrorRead[]
+}
+
+/** `at` is where `value` sits, passed by the variant only. */
+const scan = (state: ProbeState, value: unknown, depth: number, at?: NodePath): boolean => {
   if (depth > DEPTH_CEILING) return false
   if (depth > state.maxDepth) state.maxDepth = depth
 
   if (value === undefined) return false
   if (typeof value === 'string') {
-    const kind = recognizeReference(value).kind
-    return kind === 'plain' || kind === 'unrecognized'
+    const recognized = recognizeReference(value)
+    if (recognized.kind === 'reference' && recognized.namespace === 'error' && at !== undefined) {
+      ;(state.reads ??= []).push({ at, segments: recognized.segments })
+      return true
+    }
+    return recognized.kind === 'plain' || recognized.kind === 'unrecognized'
   }
   if (Array.isArray(value)) {
     for (let i = 0; i < value.length; i++) {
-      if (!scan(state, value[i], depth + 1)) return false
+      if (!scan(state, value[i], depth + 1, at && [...at, i])) return false
     }
     return true
   }
@@ -69,7 +94,7 @@ const scan = (state: ProbeState, value: unknown, depth: number): boolean => {
       if (key.startsWith('$')) return false
     }
     for (const key in value) {
-      if (!scan(state, value[key], depth + 1)) return false
+      if (!scan(state, value[key], depth + 1, at && [...at, key])) return false
     }
     return true
   }

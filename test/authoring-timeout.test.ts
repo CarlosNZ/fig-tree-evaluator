@@ -130,7 +130,7 @@ test('a timeout finding sits beside the findings without one', async () => {
     {
       path: ['b'],
       code: 'timeout',
-      message: expect.stringContaining('constant fallback'),
+      message: expect.stringContaining('static fallback'),
       certainty: 'may',
     },
   ])

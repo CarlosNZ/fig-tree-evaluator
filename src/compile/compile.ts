@@ -137,6 +137,7 @@ import type {
   DataRead,
   ElementsNode,
   EntriesNode,
+  ErrorRead,
   FragmentCall,
   FragmentCallNode,
   LinkedPath,
@@ -149,8 +150,9 @@ import type {
   SequencedIssue,
   SkeletonHole,
   SkeletonNode,
+  StaticFallback,
 } from './artifact'
-import { extendPath, hasError, setOwn, sortIssues, toNodePath } from './artifact'
+import { extendPath, hasError, setOwn, sortIssues, splice, toNodePath } from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 interface WalkState {
@@ -2001,28 +2003,57 @@ const rootHoles = (root: CompiledNode, into: ArtifactHole[] = []): ArtifactHole[
 
 /**
  * The shielding precompute (obligation B2): present iff the hole root's
- * fallback subtree is classified constant. An operatorDefaults modifier
- * fallback counts — which is exactly why `operatorDefaults` invalidates the
- * compile cache — and so does the body-root fallback a fragment call lifts.
+ * fallback is static. An operatorDefaults modifier fallback counts — which
+ * is exactly why `operatorDefaults` invalidates the compile cache — and so
+ * does the body-root fallback a fragment call lifts.
  */
-const timeoutFallbackFor = (node: CompiledNode): { value: unknown } | undefined => {
+const timeoutFallbackFor = (node: CompiledNode): StaticFallback | undefined => {
   if (node.kind !== 'operator' && node.kind !== 'fragmentCall') return undefined
-  if (node.fallback !== undefined)
-    return node.fallback.kind === 'constant' ? { value: node.fallback.value } : undefined
-  if (node.kind === 'operator') {
-    const defaults = node.entry.hostDefaults
-    // An operatorDefaults fallback is constant: registration refuses any
-    // other (src/registry.ts), and the runtime returns it as written
-    if (defaults !== undefined && Object.hasOwn(defaults, 'fallback'))
-      return { value: defaults.fallback }
-    return undefined
-  }
-  // A call with no fallback of its own lifts the constant its target
-  // shields with (`liftedFallback` in src/fragments.ts). The call's value
-  // IS the body's value, so what the author declared there is exactly what
+  if (node.fallback !== undefined) return staticFallbackOf(node.fallback)
+  // An operatorDefaults fallback is static: registration refuses any other
+  // (src/registry.ts)
+  if (node.kind === 'operator') return node.entry.defaultFallback
+  // A call with no fallback of its own lifts the one its target shields
+  // with (`liftedFallback` in src/fragments.ts). The call's value IS the
+  // body's value, so what the author declared there is exactly what
   // assembly would splice — and without the lift, factoring an expression
   // into a fragment silently unshields it
   return node.entry?.timeoutFallback
+}
+
+/**
+ * The static fallback a compiled fallback is, if it is one (fallback rule
+ * 3): a constant, an `$error` read, or plain data holding only those. Its
+ * value is the fallback as written, each read's own string in its place.
+ * A skeleton's own vars block plays no part: only `$vars` reads it, and
+ * that is not an `$error` read.
+ */
+export const staticFallbackOf = (node: CompiledNode): StaticFallback | undefined => {
+  if (node.kind === 'constant') return { value: node.value }
+  const reads: ErrorRead[] = []
+  const value = asWritten(node, [], reads)
+  return value === undefined ? undefined : { value, reads }
+}
+
+/**
+ * The value of a fallback made of `$error` reads and plain data around
+ * them, as written, each read recorded where it sits. Undefined if it holds
+ * anything else.
+ */
+const asWritten = (node: CompiledNode, at: NodePath, reads: ErrorRead[]): unknown => {
+  if (node.kind === 'reference') {
+    if (node.namespace !== 'error') return undefined
+    reads.push({ at, segments: node.segments })
+    return node.raw
+  }
+  if (node.kind !== 'skeleton') return undefined
+  const values: unknown[] = []
+  for (const hole of node.holes) {
+    const value = asWritten(hole.node, [...at, ...hole.at], reads)
+    if (value === undefined) return undefined
+    values.push(value)
+  }
+  return splice(node.skeleton, node.holes, values)
 }
 
 /**

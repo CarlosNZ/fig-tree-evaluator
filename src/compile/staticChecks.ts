@@ -34,7 +34,9 @@ import type {
   OperatorNode,
   CompileArtifact,
   ReferenceNode,
+  StaticFallback,
 } from './artifact'
+import type { PathSegment } from '../primitives'
 
 /**
  * Phase-11 hook: inside a fragment body, `$params` resolves against the
@@ -368,9 +370,9 @@ const checkSuppliedParam = (
 
 /**
  * An operator node with no fallback of its own falls back to its operator's
- * instance-wide one from `operatorDefaults`, which the runtime returns as
- * it is, never evaluated (src/evaluate/operator.ts). It has no place in the
- * expression, so a mismatch is reported on the node.
+ * instance-wide one from `operatorDefaults`, which is static: the runtime
+ * fills it in, never evaluating it (src/evaluate/operator.ts). It has no
+ * place in the expression, so a mismatch is reported on the node.
  */
 const checkInstanceFallback = (
   state: CheckState,
@@ -380,9 +382,9 @@ const checkInstanceFallback = (
   node: OperatorNode,
   nullReplaced: boolean
 ) => {
-  const defaults = node.entry.hostDefaults
-  if (defaults === undefined || !Object.hasOwn(defaults, 'fallback')) return
-  const unfit = valueMismatch(declared, defaults.fallback, nullReplaced)
+  const fallback = node.entry.defaultFallback
+  if (fallback === undefined) return
+  const unfit = staticMismatch(declared, fallback, nullReplaced)
   if (unfit !== undefined)
     emit(
       state,
@@ -429,14 +431,37 @@ const findMismatch = (
     // message
     case 'skeleton':
       return sampleMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
-    case 'reference': {
-      const type = errorReadType(node)
-      if (type === undefined || typesIntersect(type, declared.type)) return
-      return sampleMismatch(declared, SAMPLES[type])
-    }
+    case 'reference':
+      return node.namespace === 'error' ? readMismatch(declared, node.segments) : undefined
     default:
       return
   }
+}
+
+/**
+ * Why a static fallback can never satisfy a receiving declaration, checked
+ * as `findMismatch` checks the compiled form it stands for: a constant by
+ * its value, a read of `$error` by what that holds, and plain data around
+ * reads by whether it is an array or an object.
+ */
+const staticMismatch = (
+  declared: ReceivingDeclaration,
+  { value, reads }: StaticFallback,
+  nullReplaced: boolean
+): { code: string; reason: string } | undefined => {
+  if (reads === undefined) return valueMismatch(declared, value, nullReplaced)
+  if (reads[0].at.length === 0) return readMismatch(declared, reads[0].segments)
+  return sampleMismatch(declared, Array.isArray(value) ? [] : {})
+}
+
+/** Why what a read of `$error` holds can never satisfy the declaration. */
+const readMismatch = (
+  declared: ReceivingDeclaration,
+  segments: PathSegment[]
+): { code: string; reason: string } | undefined => {
+  const type = errorReadType(segments)
+  if (type === undefined || typesIntersect(type, declared.type)) return
+  return sampleMismatch(declared, SAMPLES[type])
 }
 
 /** Why a value of this one's type can never satisfy the declaration. */
@@ -463,9 +488,8 @@ const SAMPLES = { object: {}, array: [], string: '' }
  * may be absent, so read as null, which an optional parameter may take as
  * unset.
  */
-const errorReadType = (node: ReferenceNode): keyof typeof SAMPLES | undefined => {
-  if (node.namespace !== 'error') return undefined
-  const [field, ...rest] = node.segments
+const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefined => {
+  const [field, ...rest] = segments
   if (field === undefined) return 'object'
   if (rest.length > 0) return undefined
   if (field === 'code' || field === 'message') return 'string'

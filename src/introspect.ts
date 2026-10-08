@@ -147,9 +147,9 @@ export interface OperatorInfo extends Omit<
    */
   hostNoCache?: true
   /**
-   * What `operatorDefaults` set as this operator's fallback. No
-   * definition-level counterpart exists — `fallback` is a node grammar
-   * key, not a declaration.
+   * What `operatorDefaults` set as this operator's fallback, as written,
+   * any `$error` read in it included. No definition-level counterpart
+   * exists — `fallback` is a node grammar key, not a declaration.
    */
   hostFallback?: unknown
 }

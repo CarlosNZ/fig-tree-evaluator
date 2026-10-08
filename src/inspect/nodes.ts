@@ -76,7 +76,8 @@ export type InspectNode = { order: number; path: Path } & (
 /**
  * Render the artifact's root. A `timeoutFallback` is the artifact's per-hole
  * shielding precompute, so it rides only the artifact's holes' nodes — the
- * one place a timeout can splice a constant without running anything.
+ * one place a timeout can splice a fallback without running anything. It
+ * reads as written: an `$error` read in it is its own string.
  */
 export const renderTree = (artifact: CompileArtifact): InspectNode => {
   const fallbacks = new Map<CompiledNode, { value: unknown }>()

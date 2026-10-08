@@ -20,6 +20,7 @@ import type {
   OperatorNode,
   ReferenceNode,
   SkeletonNode,
+  StaticFallback,
 } from '../compile/artifact'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import type { PathSegment } from '../primitives/path'
@@ -142,6 +143,32 @@ const FALLBACK_ERROR: Known = [
     },
   },
 ]
+/** What a read of `$error` holds: a miss is null, never a failure */
+const errorRead = (segments: PathSegment[]): Known => {
+  if (segments.length === 0) return OBJECT
+  const { value, found } = drill(FALLBACK_ERROR, segments)
+  return found === 'yes' ? value : union(value, NULL)
+}
+
+/**
+ * What a static fallback gives: its value, with what each `$error` read in
+ * it holds in the read's place. `depth` is how far into the reads' `at`
+ * the value sits.
+ */
+const staticOutput = ({ value, reads = [] }: StaticFallback, depth = 0): Known => {
+  if (reads.length === 0) return exactly(value)
+  const here = reads.find(({ at }) => at.length === depth)
+  if (here !== undefined) return errorRead(here.segments)
+  const container = value as Record<string | number, unknown>
+  const child = (key: string | number): Known =>
+    staticOutput(
+      { value: container[key], reads: reads.filter(({ at }) => at[depth] === key) },
+      depth + 1
+    )
+  if (Array.isArray(value)) return tupleOf(value.map((_, index) => child(index)))
+  return objectOf(Object.fromEntries(Object.keys(container).map((key) => [key, child(key)])))
+}
+
 /**
  * The most times one node is walked for the `each` walks it sits in: as
  * many values as the walk keeps exactly
@@ -492,10 +519,10 @@ export class Analysis {
   /**
    * A fallback catches everything that escapes its node's attempt, and what
    * escapes the node is then the fallback's own. An `operatorDefaults`
-   * fallback is returned as it is, never evaluated, so nothing escapes it.
-   * A node that cannot fail never runs its fallback. A fallback that reads
-   * its own `$error` never fails: what escapes it is caught by its node,
-   * which gives null for it.
+   * fallback is static, filled in and never evaluated, so nothing escapes
+   * it. A node that cannot fail never runs its fallback. A fallback that
+   * reads its own `$error` never fails: what escapes it is caught by its
+   * node, which gives null for it.
    */
   private async withFallback(
     node: OperatorNode | FragmentCallNode,
@@ -503,14 +530,13 @@ export class Analysis {
     ctx: Context
   ): Promise<NodeResult> {
     if (attempt.verdict === 'no') return attempt
-    const defaults = node.kind === 'operator' ? node.entry.hostDefaults : undefined
-    const fromDefaults = defaults !== undefined && Object.hasOwn(defaults, 'fallback')
-    if (node.fallback === undefined && !fromDefaults) return attempt
+    const instance = node.kind === 'operator' ? node.entry.defaultFallback : undefined
+    if (node.fallback === undefined && instance === undefined) return attempt
     const by = { path: node.path }
     for (const pending of attempt.escapes) ctx.sink.push({ pending, by })
     const { waits } = attempt
     if (node.fallback === undefined)
-      return { ...SAFE, output: union(attempt.output, exactly(defaults!.fallback)), waits }
+      return { ...SAFE, output: union(attempt.output, staticOutput(instance!)), waits }
     const answer = await this.walk(node.fallback, ctx)
     if (node.fallbackReadsError && answer.verdict !== 'no') {
       const givesNull = { path: node.path, givesNull: true as const }
@@ -573,11 +599,8 @@ export class Analysis {
         const known = typeof name === 'string' ? (params[name] ?? ANY) : ANY
         return this.drilled(node, known, rest, [], [{ demand: String(name) }])
       }
-      case 'error': {
-        if (segments.length === 0) return { ...SAFE, output: OBJECT }
-        const { value, found } = drill(FALLBACK_ERROR, segments)
-        return { ...SAFE, output: found === 'yes' ? value : union(value, NULL) }
-      }
+      case 'error':
+        return { ...SAFE, output: errorRead(segments) }
     }
     return namespace satisfies never
   }

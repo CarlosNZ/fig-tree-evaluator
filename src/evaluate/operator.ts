@@ -25,6 +25,7 @@ import { createOperatorContext, noteChannel, pushNoCache, type EvaluationContext
 import { evaluateNode } from './evaluate'
 import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
 import { resolveParams } from './params'
+import { fillFallback } from './reference'
 import { pushVars } from './scope'
 import { operatorCaches } from '../registry'
 import { noop } from '../utils'
@@ -210,7 +211,8 @@ const classifyBodyFailure = (
  * The node's own fallback, else the operator's instance-wide default. The
  * node's own runs with `$error` bound to `failure`, in the node's vars
  * scope (rule 5) — on a context of its own, so the vars, whose thunks keep
- * `ctx`, never see it.
+ * `ctx`, never see it. The default is static, so it is filled in from
+ * `failure`, never evaluated.
  */
 const fallbackOf = (
   node: OperatorNode,
@@ -219,8 +221,8 @@ const fallbackOf = (
 ): (() => unknown) | undefined => {
   const own = node.fallback
   if (own !== undefined) return () => evaluateNode(own, { ...ctx, caught: failure })
-  const defaults = node.entry.hostDefaults
-  if (defaults !== undefined && Object.hasOwn(defaults, 'fallback')) return () => defaults.fallback
+  const instance = node.entry.defaultFallback
+  if (instance !== undefined) return () => fillFallback(instance, failure, ctx.frame)
   return undefined
 }
 

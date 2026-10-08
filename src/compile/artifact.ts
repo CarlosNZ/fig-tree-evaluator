@@ -264,15 +264,42 @@ export type CompiledNode =
   | InvalidNode
 
 /**
+ * A fallback the engine can give without evaluating anything (fallback
+ * rule 3): a constant, or a value that is constant apart from the `$error`
+ * reads in it. `value` is the fallback as written, each read's own string
+ * in its place; filling it puts what each read finds in the caught failure
+ * there instead. With no `reads`, `value` is the answer as it is. It is
+ * what a shielded hole splices, what an `operatorDefaults` fallback is, and
+ * what a fragment call lifts from its body.
+ */
+export interface StaticFallback {
+  value: unknown
+  /** Absent where there are none */
+  reads?: ErrorRead[]
+}
+
+/**
+ * One `$error` read in a static fallback: where its value goes in the
+ * fallback's (`at`, empty when the read is the whole fallback), and the
+ * drill into `FallbackError` (`segments`). `within` is set on a read a
+ * fragment call lifts from its body: the body's hole the timeout would have
+ * met, which locates the error as anchoring would have.
+ */
+export interface ErrorRead {
+  at: NodePath
+  segments: PathSegment[]
+  within?: { operator?: string; fragment: string; fragmentPath: NodePath }
+}
+
+/**
  * A top-level hole: a maximal evaluable node (A2). `timeoutFallback` is the
- * shielding precompute (B2) — present iff the hole root's fallback subtree
- * (or its operator's `hostDefaults.fallback`) is classified constant;
- * the wrapper object distinguishes an absent fallback from a constant
- * `null` one.
+ * shielding precompute (B2) — present iff the hole root's fallback (or its
+ * operator's `operatorDefaults` one) is static; the wrapper object
+ * distinguishes an absent fallback from a constant `null` one.
  */
 export interface ArtifactHole {
   node: CompiledNode
-  timeoutFallback?: { value: unknown }
+  timeoutFallback?: StaticFallback
 }
 
 /**
@@ -493,11 +520,15 @@ export const setOwn = (target: object, key: string | number, value: unknown): vo
  * Three callers, one rule: evaluation splices its holes' results, the
  * shielded assembly splices static fallbacks where holes did not finish,
  * and fragment registration splices a skeleton-rooted body's fallbacks
- * into the constant a call site lifts. The module that defines the
- * skeleton shape is what owns filling it, so none of them depends on
- * another.
+ * into the one a call site lifts. Filling a static fallback splices its
+ * `$error` reads the same way. The module that defines the skeleton shape
+ * is what owns filling it, so none of them depends on another.
  */
-export const splice = (skeleton: unknown, holes: SkeletonHole[], values: unknown[]): unknown => {
+export const splice = (
+  skeleton: unknown,
+  holes: readonly { at: NodePath }[],
+  values: unknown[]
+): unknown => {
   const copied = new Set<object>()
   let result = skeleton
   holes.forEach((hole, i) => {
