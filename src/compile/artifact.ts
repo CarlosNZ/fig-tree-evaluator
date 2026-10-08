@@ -264,6 +264,43 @@ export type CompiledNode =
   | InvalidNode
 
 /**
+ * A node's children in the compiled tree, whether or not an evaluation
+ * demands them: its parameters or arguments, then its fallback, then its
+ * vars. A container parameter is one child, holding its members, and a
+ * fragment call's body is none: it belongs to the registry, not the tree.
+ */
+export const childrenOf = (node: CompiledNode): CompiledNode[] => {
+  switch (node.kind) {
+    case 'constant':
+    case 'reference':
+    case 'invalid':
+      return []
+    case 'skeleton':
+      return [...node.holes.map((hole) => hole.node), ...Object.values(node.vars ?? {})]
+    case 'elements':
+      return node.nodes
+    case 'entries':
+      return [...Object.values(node.entries), ...Object.values(node.vars ?? {})]
+    case 'operator':
+    case 'fragmentCall': {
+      const children =
+        node.kind === 'operator'
+          ? Object.values(node.params)
+          : node.parameters === undefined
+            ? []
+            : node.argumentsMode === 'dynamic'
+              ? [node.parameters as CompiledNode]
+              : Object.values(node.parameters as Record<string, CompiledNode>)
+      if (node.fallback !== undefined) children.push(node.fallback)
+      return [...children, ...Object.values(node.vars ?? {})]
+    }
+  }
+  // Exhaustive by construction: a new node kind must say what its children
+  // are, or every pass over them would see part of its subtree
+  return node satisfies never
+}
+
+/**
  * A fallback the engine can give without evaluating anything (fallback
  * rule 3): a constant, or a value that is constant apart from the `$error`
  * reads in it. `value` is the fallback as written, each read's own string
