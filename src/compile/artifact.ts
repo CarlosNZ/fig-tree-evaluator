@@ -407,6 +407,33 @@ export const sortIssues = (issues: SequencedIssue[]): void => {
   issues.sort((a, b) => a.order - b.order)
 }
 
+export interface IssueExtra {
+  operator?: string
+  fragment?: string
+  parameter?: string
+  suggestion?: string
+}
+
+/** Append one issue, tagged with its node's `order`, to a stream. */
+export const pushIssue = (
+  issues: SequencedIssue[],
+  severity: Issue['severity'],
+  code: string,
+  message: string,
+  path: LinkedPath,
+  order: number,
+  extra: IssueExtra = {}
+): SequencedIssue => {
+  const issue: Issue = { severity, code, message, path: toNodePath(path) }
+  if (extra.operator !== undefined) issue.operator = extra.operator
+  if (extra.fragment !== undefined) issue.fragment = extra.fragment
+  if (extra.parameter !== undefined) issue.parameter = extra.parameter
+  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
+  const sequenced: SequencedIssue = { issue, order }
+  issues.push(sequenced)
+  return sequenced
+}
+
 /** Whether an issue stream holds an error-severity entry. */
 export const hasError = (issues: SequencedIssue[]): boolean =>
   issues.some(({ issue }) => issue.severity === 'error')

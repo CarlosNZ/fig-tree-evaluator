@@ -20,13 +20,13 @@
  * the host's, and the warning calls it redundant and names them.
  */
 import { ErrorCodes } from '../errorCodes'
-import type { Issue } from '../issues'
 import { operatorCaches } from '../registry'
+import { listing } from '../utils'
 import {
   childrenOf,
   extendPath,
+  pushIssue,
   sortIssues,
-  toNodePath,
   type CompileArtifact,
   type CompiledNode,
   type FragmentCallNode,
@@ -118,12 +118,7 @@ const disabledName = (node: OperatorNode | FragmentCallNode) =>
     : undefined
 
 /** `'http'`, `'http' and 'sql'`: each name once, in tree order. */
-const nameList = (names: string[]) => {
-  const quoted = [...new Set(names)].map((name) => `'${name}'`)
-  return quoted.length < 2
-    ? quoted.join('')
-    : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
-}
+const nameList = (names: string[]) => listing([...new Set(names)].map((name) => `'${name}'`))
 
 const all = (artifact: CompileArtifact, nodes: CompiledNode[], shadowed: boolean): Reach => {
   const reach: Reach = { capable: false, effective: false, disabled: [] }
@@ -143,13 +138,13 @@ const warn = (
   node: OperatorNode | FragmentCallNode,
   message: string
 ) => {
-  const issue: Issue = {
-    severity: 'warning',
-    code: ErrorCodes.uselessModifier,
+  pushIssue(
+    artifact.issues,
+    'warning',
+    ErrorCodes.uselessModifier,
     message,
-    path: toNodePath(extendPath(node.path, 'noCache')),
-  }
-  if (node.kind === 'operator') issue.operator = node.name
-  else issue.fragment = node.name
-  artifact.issues.push({ issue, order: node.order })
+    extendPath(node.path, 'noCache'),
+    node.order,
+    node.kind === 'operator' ? { operator: node.name } : { fragment: node.name }
+  )
 }
