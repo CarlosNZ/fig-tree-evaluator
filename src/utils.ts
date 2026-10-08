@@ -100,6 +100,12 @@ export const nearestName = (name: string, candidates: Iterable<string>): string 
   return best
 }
 
+/** `a`, `a and b`, `a, b and c`: items as a message lists them. */
+export const listing = (items: string[]): string =>
+  items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+
 /**
  * FNV-1a over a string's UTF-16 code units, as eight hex characters. A
  * content fingerprint, not a security hash: 32 bits is ample where a

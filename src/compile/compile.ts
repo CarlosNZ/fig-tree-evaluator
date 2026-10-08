@@ -102,9 +102,9 @@
  *     lists ride out with the tree.
  */
 import { ErrorCodes } from '../errorCodes'
-import type { Issue, Severity } from '../issues'
+import type { Severity } from '../issues'
 import type { EvaluationMode } from '../operatorDefinition'
-import { isPlainDataObject, nearestName } from '../utils'
+import { isPlainDataObject, listing, nearestName } from '../utils'
 import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
@@ -152,7 +152,15 @@ import type {
   SkeletonNode,
   StaticFallback,
 } from './artifact'
-import { extendPath, hasError, setOwn, sortIssues, splice, toNodePath } from './artifact'
+import {
+  extendPath,
+  hasError,
+  pushIssue,
+  setOwn,
+  sortIssues,
+  splice,
+  type IssueExtra,
+} from './artifact'
 import type { FragmentEntry } from '../fragments'
 
 interface WalkState {
@@ -359,16 +367,8 @@ const emit = (
   message: string,
   path: LinkedPath,
   order: number,
-  extra: { operator?: string; parameter?: string; suggestion?: string } = {}
-): SequencedIssue => {
-  const issue: Issue = { severity, code, message, path: toNodePath(path) }
-  if (extra.operator !== undefined) issue.operator = extra.operator
-  if (extra.parameter !== undefined) issue.parameter = extra.parameter
-  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
-  const sequenced: SequencedIssue = { issue, order }
-  state.issues.push(sequenced)
-  return sequenced
-}
+  extra?: IssueExtra
+): SequencedIssue => pushIssue(state.issues, severity, code, message, path, order, extra)
 
 // ── The walk ────────────────────────────────────────────────────────
 
@@ -513,11 +513,7 @@ const walkArray = (
   // which only a host building expressions in JavaScript can produce)
   // reads as undefined and normalizes to null like an assigned one; map
   // would skip the slot and leave a gap in the entries
-  const entries = Array.from(raw, (element, i) => ({
-    key: i as string | number,
-    rawChild: element,
-    node: walk(state, element, extendPath(path, i), depth + 1),
-  }))
+  const entries = sliceChildren(state, raw, path, 0, depth)
   return assembleContainer(state, raw, entries, true, false, undefined, path, order)
 }
 
@@ -565,17 +561,7 @@ const walkOperatorCanonical = (
   order: number
 ): CompiledNode => {
   const opValue = raw.operator
-  if (typeof opValue !== 'string') {
-    emit(
-      state,
-      'error',
-      ErrorCodes.malformedNode,
-      "the 'operator' value must be a literal string",
-      path,
-      order
-    )
-    return invalid(raw, path, order)
-  }
+  if (typeof opValue !== 'string') return nonLiteralName(state, raw, 'operator', path, order)
   if (opValue === 'literal') return walkLiteral(state, raw, raw.value, 'value' in raw, path, order)
 
   const entry = resolveOperator(state.registry, opValue)
@@ -585,7 +571,7 @@ const walkOperatorCanonical = (
       state,
       'error',
       ErrorCodes.unknownOperator,
-      `'${opValue}' names no registered operator${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+      `'${opValue}' names no registered operator${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }
@@ -595,11 +581,8 @@ const walkOperatorCanonical = (
 
   const node = startOperatorNode(state, entry, path, order)
   const pending: PendingParam[] = []
-  for (const key in raw) {
-    const value = raw[key]
-    if (key === 'operator' || key === '//' || value === undefined) continue
-    if (applyOperatorModifier(state, node, key, value, path, depth, order)) continue
-    if (key === 'parameters') {
+  walkModifiers(state, node, raw, 'operator', depth, (key, value) => {
+    if (key === 'parameters')
       emit(
         state,
         'error',
@@ -609,13 +592,34 @@ const walkOperatorCanonical = (
         order,
         { operator: node.name }
       )
-      continue
-    }
-    collectNamedParam(state, node, pending, key, value, extendPath(path, key), order)
-  }
+    else collectNamedParam(state, node, pending, key, value, extendPath(path, key), order)
+  })
   finalizeParams(state, node, pending, depth, order)
   return node
 }
+
+/** An `operator` or `fragment` key whose value is not a literal name. */
+const nonLiteralName = (
+  state: WalkState,
+  raw: Record<string, unknown>,
+  key: 'operator' | 'fragment',
+  path: LinkedPath,
+  order: number
+): CompiledNode => {
+  emit(
+    state,
+    'error',
+    ErrorCodes.malformedNode,
+    `the '${key}' value must be a literal string`,
+    path,
+    order
+  )
+  return invalid(raw, path, order)
+}
+
+/** The message tail offering a suggestion, or nothing. */
+const didYouMean = (suggestion: string | undefined) =>
+  suggestion ? ` — did you mean '${suggestion}'?` : ''
 
 /** Fresh operator node; records the dependency-list entry. */
 const startOperatorNode = (
@@ -636,32 +640,28 @@ const startOperatorNode = (
 }
 
 /**
- * Handle a reserved modifier key on an operator node (canonical or
- * shorthand face). Returns true when the key was a modifier. Modifiers are
- * outside any perElement binding scope, so they walk immediately.
+ * The keys of an operator node or a fragment call, on either face: the
+ * reserved modifiers compile here, and every other key but the invocation
+ * key goes to `other`. Modifiers are outside any perElement binding scope,
+ * so they walk immediately.
  */
-const applyOperatorModifier = (
+const walkModifiers = (
   state: WalkState,
-  node: OperatorNode,
-  key: string,
-  value: unknown,
-  path: LinkedPath,
+  node: OperatorNode | FragmentCallNode,
+  raw: Record<string, unknown>,
+  invocationKey: string,
   depth: number,
-  order: number
-): boolean => {
-  if (key === 'fallback') {
-    node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
-    return true
+  other?: (key: string, value: unknown) => void
+) => {
+  const { path, order } = node
+  for (const key in raw) {
+    const value = raw[key]
+    if (key === invocationKey || key === '//' || value === undefined) continue
+    if (key === 'fallback') node.fallback = walk(state, value, extendPath(path, key), depth + 1)
+    else if (key === 'noCache') compileNoCache(state, node, value, path, order)
+    else if (key === 'vars') node.vars = compileVars(state, value, path, depth, order)
+    else other?.(key, value)
   }
-  if (key === 'noCache') {
-    compileNoCache(state, node, value, path, order)
-    return true
-  }
-  if (key === 'vars') {
-    node.vars = compileVars(state, value, path, depth, order)
-    return true
-  }
-  return false
 }
 
 /**
@@ -708,7 +708,7 @@ const collectNamedParam = (
       state,
       'error',
       ErrorCodes.unknownNodeKey,
-      `'${key}' is not a parameter of '${node.name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+      `'${key}' is not a parameter of '${node.name}'${didYouMean(suggestion)}`,
       path,
       order,
       { operator: node.name, parameter: key, suggestion }
@@ -736,14 +736,9 @@ const finalizeParams = (
   if (node.name === 'get') rewriteGetSource(state, node, pending)
 
   let binding: string | undefined
-  if (iterates) {
-    const asPending = pending.find(
-      (entry) =>
-        entry.name === 'as' &&
-        definition.parameters.as?.evaluation === 'structural' &&
-        entry.kind === 'value'
-    )
-    if (asPending !== undefined && asPending.kind === 'value')
+  if (iterates && definition.parameters.as?.evaluation === 'structural') {
+    const asPending = pending.find((entry) => entry.name === 'as')
+    if (asPending?.kind === 'value')
       binding = readAsBinding(state, node, asPending.value, asPending.path, order)
   }
 
@@ -865,13 +860,11 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
   if (supplied.kind === 'skeleton') {
     const { skeleton, holes } = supplied
     if (Array.isArray(skeleton)) return { mode: 'array', length: skeleton.length }
-    if (isPlainDataObject(skeleton)) {
-      // A hole's key is absent from the skeleton — the two halves together
-      // are the authored key set
-      const keys = new Set(Object.keys(skeleton))
-      for (const hole of holes) keys.add(String(hole.at[0]))
-      return { mode: 'object', keys }
-    }
+    // A hole's key is absent from the skeleton — the two halves together
+    // are the authored key set
+    const keys = new Set(Object.keys(skeleton as object))
+    for (const hole of holes) keys.add(String(hole.at[0]))
+    return { mode: 'object', keys }
   }
   return { mode: 'dynamic' }
 }
@@ -975,19 +968,19 @@ const growSubstitutions = (
   supplied: CompiledNode | undefined,
   injected: SkeletonHole[]
 ): SkeletonNode => {
-  const base: SkeletonNode =
-    supplied?.kind === 'skeleton'
-      ? { ...supplied, skeleton: { ...(supplied.skeleton as object) }, holes: [...supplied.holes] }
-      : {
-          kind: 'skeleton',
-          // The authored object is copied, never mutated (obligation C4)
-          skeleton: supplied?.kind === 'constant' ? { ...(supplied.value as object) } : {},
-          holes: [],
-          path: supplied?.path ?? extendPath(node.path, 'substitutions'),
-          order: supplied?.order ?? state.order++,
-        }
-  base.holes.push(...injected)
-  return base
+  // The walk built the skeleton node this compile, and splicing copies
+  // before it writes, so neither half needs a copy here
+  if (supplied?.kind === 'skeleton') {
+    supplied.holes.push(...injected)
+    return supplied
+  }
+  return {
+    kind: 'skeleton',
+    skeleton: supplied?.kind === 'constant' ? supplied.value : {},
+    holes: injected,
+    path: supplied?.path ?? extendPath(node.path, 'substitutions'),
+    order: supplied?.order ?? state.order++,
+  }
 }
 
 /**
@@ -1085,8 +1078,7 @@ const reportTemplateFace = (
 const spareClause = (spare: string[]) => {
   if (spare.length === 0) return ''
   if (spare.length === 1) return `, and substitution ${spare[0]} is unused`
-  const last = spare[spare.length - 1]
-  return `, and substitutions ${spare.slice(0, -1).join(', ')} and ${last} are unused`
+  return `, and substitutions ${listing(spare)} are unused`
 }
 
 /**
@@ -1174,55 +1166,29 @@ const walkPending = (
 ): CompiledNode => {
   // The element- and entry-addressable modes keep a literal payload out of
   // the enclosing skeleton, whose maximal holes cannot express "one
-  // demandable unit per element". Both return null when the supplied value
-  // is not the literal shape, leaving the ordinary walk to compile it and
-  // the runtime degeneration rule to hand the body pre-resolved handles.
-  if (evaluation === 'lazyElements' || evaluation === 'race') {
-    const elements = walkElementsParam(state, entry, depth)
-    if (elements !== null) return elements
-  }
+  // demandable unit per element". A supplied value of any other shape goes
+  // to the ordinary walk, and the runtime degeneration rule hands the body
+  // pre-resolved handles.
+  const addressable = evaluation === 'lazyElements' || evaluation === 'race'
+  if (entry.kind === 'slice')
+    return walkSynthetic(state, entry.elements, entry.basePath, entry.offset, depth, addressable)
+  if (addressable && Array.isArray(entry.value))
+    return walkSynthetic(state, entry.value, entry.path, 0, depth, true)
   if (evaluation === 'lazyEntries') {
     const entries = walkEntriesParam(state, entry, depth)
     if (entries !== null) return entries
   }
-  if (entry.kind === 'value') return walk(state, entry.value, entry.path, depth + 1)
-  return walkSlice(state, entry, depth)
+  return walk(state, entry.value, entry.path, depth + 1)
 }
 
 /**
- * A rest-slice payload as an ordinary container. The synthetic container
+ * Take a synthetic container's preorder position and its depth level. It
  * takes its `order` before its elements walk — it is their parent, and
  * `order` is a preorder position (obligation A3), the sort key the issue
  * stream relies on — and occupies a depth level of its own, so an
  * expression measures the same `maxDepth` through its shorthand face as
  * through its canonical one.
  */
-const walkSlice = (
-  state: WalkState,
-  entry: Extract<PendingParam, { kind: 'slice' }>,
-  depth: number
-): CompiledNode => {
-  const { order, containerDepth } = openSynthetic(state, depth)
-  const children = sliceChildren(
-    state,
-    entry.elements,
-    entry.basePath,
-    entry.offset,
-    containerDepth
-  )
-  return assembleContainer(
-    state,
-    entry.elements,
-    children,
-    true,
-    false,
-    undefined,
-    entry.basePath,
-    order
-  )
-}
-
-/** Take a synthetic container's preorder position and its depth level. */
 const openSynthetic = (
   state: WalkState,
   depth: number
@@ -1248,40 +1214,40 @@ const sliceChildren = (
   }))
 
 /**
- * A `lazyElements` / `race` parameter supplied as a literal array: one
- * compiled node per element, indexed by position in `nodes` (the
- * parameter-relative index the body's ordering obligations are about —
- * never the authored path's tail, which a leading positional shifts).
+ * A parameter's array that the walk opens itself: a rest-slice payload, or
+ * a literal array supplied to an element-addressable (`lazyElements` /
+ * `race`) parameter. An ordinary container, except that an addressable one
+ * holding a non-constant element compiles to one node per element, indexed
+ * by position in `nodes` (the parameter-relative index the body's ordering
+ * obligations are about — never the authored path's tail, which a leading
+ * positional shifts).
  *
- * An all-constant array falls through to ordinary assembly, yielding a
- * ConstantNode: the runtime degeneration rule turns it back into handles,
- * and it stays visible to `validate` hooks, which see constant parameters
- * only — that is what keeps the dead-expression warnings on `{ $and: [] }`
- * and `{ $firstOf: [] }` working.
+ * An all-constant array stays ordinary assembly, yielding a ConstantNode:
+ * the runtime degeneration rule turns it back into handles, and it stays
+ * visible to `validate` hooks, which see constant parameters only — that
+ * is what keeps the dead-expression warnings on `{ $and: [] }` and
+ * `{ $firstOf: [] }` working.
  */
-const walkElementsParam = (
+const walkSynthetic = (
   state: WalkState,
-  entry: PendingParam,
-  depth: number
-): CompiledNode | null => {
-  const raw = entry.kind === 'slice' ? entry.elements : entry.value
-  if (!Array.isArray(raw)) return null
-  const basePath = entry.kind === 'slice' ? entry.basePath : entry.path
-  const offset = entry.kind === 'slice' ? entry.offset : 0
-
+  raw: unknown[],
+  basePath: LinkedPath,
+  offset: number,
+  depth: number,
+  addressable: boolean
+): CompiledNode => {
   const { order, containerDepth } = openSynthetic(state, depth)
   const children = sliceChildren(state, raw, basePath, offset, containerDepth)
-
-  if (children.every((child) => child.node.kind === 'constant')) {
-    return assembleContainer(state, raw, children, true, false, undefined, basePath, order)
+  if (addressable && !children.every((child) => child.node.kind === 'constant')) {
+    const node: ElementsNode = {
+      kind: 'elements',
+      nodes: children.map((child) => child.node),
+      path: basePath,
+      order,
+    }
+    return node
   }
-  const node: ElementsNode = {
-    kind: 'elements',
-    nodes: children.map((child) => child.node),
-    path: basePath,
-    order,
-  }
-  return node
+  return assembleContainer(state, raw, children, true, false, undefined, basePath, order)
 }
 
 /**
@@ -1298,10 +1264,9 @@ const walkElementsParam = (
  */
 const walkEntriesParam = (
   state: WalkState,
-  entry: PendingParam,
+  entry: Extract<PendingParam, { kind: 'value' }>,
   depth: number
 ): CompiledNode | null => {
-  if (entry.kind !== 'value') return null
   const raw = entry.value
   if (!isPlainDataObject(raw) || classifiesAsNode(raw, state.recognizes)) return null
 
@@ -1393,31 +1358,13 @@ const walkShorthand = (
   const payload = raw[shorthandKey]
   const payloadPath = extendPath(path, shorthandKey)
 
-  if (isLiteral) {
-    // Dead modifiers: legal, warned, never compiled (nothing can run)
-    for (const key of ['fallback', 'vars', 'noCache']) {
-      if (key in raw)
-        emit(
-          state,
-          'warning',
-          ErrorCodes.uselessModifier,
-          `'${key}' on 'literal' is dead — contents are never evaluated`,
-          extendPath(path, key),
-          order
-        )
-    }
-    return walkLiteral(state, raw, payload, true, path, order)
-  }
+  if (isLiteral) return walkLiteral(state, raw, payload, true, path, order)
 
   if (isFragment) return walkFragmentShorthand(state, raw, name, payload, path, depth, order)
 
   const entry = resolveOperator(state.registry, name)!
   const node = startOperatorNode(state, entry, path, order)
-  for (const key in raw) {
-    const value = raw[key]
-    if (key === shorthandKey || key === '//' || value === undefined) continue
-    applyOperatorModifier(state, node, key, value, path, depth, order)
-  }
+  walkModifiers(state, node, raw, shorthandKey, depth)
   const pending: PendingParam[] = []
   collectShorthandPayload(state, node, pending, payload, payloadPath, order)
   finalizeParams(state, node, pending, depth, order)
@@ -1560,21 +1507,21 @@ const walkLiteral = (
   path: LinkedPath,
   order: number
 ): CompiledNode => {
-  // Canonical face: check keys (dead modifiers warn, unknown keys error)
-  if ('operator' in raw) {
-    for (const key in raw) {
-      if (key === 'operator' || key === 'value' || key === '//') continue
-      if (key === 'fallback' || key === 'vars' || key === 'noCache') {
-        emit(
-          state,
-          'warning',
-          ErrorCodes.uselessModifier,
-          `'${key}' on 'literal' is dead — contents are never evaluated`,
-          extendPath(path, key),
-          order
-        )
-        continue
-      }
+  // Dead modifiers warn, legal but never compiled, since nothing can run.
+  // Any other key errors, which only the canonical face can reach: on the
+  // shorthand face the sibling rule has refused it already
+  for (const key in raw) {
+    if (key === 'operator' || key === 'value' || key === '//' || key === '$literal') continue
+    if (key === 'fallback' || key === 'vars' || key === 'noCache')
+      emit(
+        state,
+        'warning',
+        ErrorCodes.uselessModifier,
+        `'${key}' on 'literal' is dead — contents are never evaluated`,
+        extendPath(path, key),
+        order
+      )
+    else
       emit(
         state,
         'error',
@@ -1584,19 +1531,18 @@ const walkLiteral = (
         order,
         { operator: 'literal' }
       )
-    }
-    if (!hasContent) {
-      emit(
-        state,
-        'error',
-        ErrorCodes.malformedNode,
-        "'literal' requires its content in 'value'",
-        path,
-        order,
-        { operator: 'literal' }
-      )
-      return invalid(raw, path, order)
-    }
+  }
+  if (!hasContent) {
+    emit(
+      state,
+      'error',
+      ErrorCodes.malformedNode,
+      "'literal' requires its content in 'value'",
+      path,
+      order,
+      { operator: 'literal' }
+    )
+    return invalid(raw, path, order)
   }
   // Contents are constant by fiat: never walked, validated or counted
   return constant(content, path, order)
@@ -1612,53 +1558,21 @@ const walkFragmentCanonical = (
   order: number
 ): CompiledNode => {
   const fragValue = raw.fragment
-  if (typeof fragValue !== 'string') {
-    emit(
-      state,
-      'error',
-      ErrorCodes.malformedNode,
-      "the 'fragment' value must be a literal string",
-      path,
-      order
-    )
-    return invalid(raw, path, order)
-  }
-  const node: FragmentCallNode = {
-    kind: 'fragmentCall',
-    name: fragValue,
-    argumentsMode: 'static',
-    path,
-    order,
-  }
-  resolveFragment(state, node, depth)
-  for (const key in raw) {
-    const value = raw[key]
-    if (key === 'fragment' || key === '//' || value === undefined) continue
-    if (key === 'parameters') {
-      compileFragmentParameters(state, node, value, extendPath(path, 'parameters'), depth, order)
-      continue
-    }
-    if (key === 'fallback') {
-      node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
-      continue
-    }
-    if (key === 'vars') {
-      node.vars = compileVars(state, value, path, depth, order)
-      continue
-    }
-    if (key === 'noCache') {
-      compileNoCache(state, node, value, path, order)
-      continue
-    }
-    emit(
-      state,
-      'error',
-      ErrorCodes.unknownNodeKey,
-      `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`,
-      extendPath(path, key),
-      order
-    )
-  }
+  if (typeof fragValue !== 'string') return nonLiteralName(state, raw, 'fragment', path, order)
+  const node = startFragmentCall(state, fragValue, path, depth, order)
+  walkModifiers(state, node, raw, 'fragment', depth, (key, value) => {
+    if (key === 'parameters')
+      compileFragmentParameters(state, node, value, extendPath(path, key), depth, order)
+    else
+      emit(
+        state,
+        'error',
+        ErrorCodes.unknownNodeKey,
+        `'${key}' is not a key of a fragment call — arguments live only in 'parameters'`,
+        extendPath(path, key),
+        order
+      )
+  })
   return node
 }
 
@@ -1671,22 +1585,8 @@ const walkFragmentShorthand = (
   depth: number,
   order: number
 ): CompiledNode => {
-  const node: FragmentCallNode = {
-    kind: 'fragmentCall',
-    name,
-    argumentsMode: 'static',
-    path,
-    order,
-  }
-  resolveFragment(state, node, depth)
-  for (const key in raw) {
-    const value = raw[key]
-    if (key === `$${name}` || key === '//' || value === undefined) continue
-    if (key === 'fallback')
-      node.fallback = walk(state, value, extendPath(path, 'fallback'), depth + 1)
-    if (key === 'noCache') compileNoCache(state, node, value, path, order)
-    if (key === 'vars') node.vars = compileVars(state, value, path, depth, order)
-  }
+  const node = startFragmentCall(state, name, path, depth, order)
+  walkModifiers(state, node, raw, `$${name}`, depth)
   if (isPlainDataObject(payload)) {
     compileFragmentParameters(state, node, payload, extendPath(path, `$${name}`), depth, order)
   } else {
@@ -1707,8 +1607,20 @@ const walkFragmentShorthand = (
  * site for the rollup composition. An unknown name is a hard error — the
  * registry is stable by construction, so this is statically knowable.
  */
-const resolveFragment = (state: WalkState, node: FragmentCallNode, depth: number) => {
-  const { name, path, order } = node
+const startFragmentCall = (
+  state: WalkState,
+  name: string,
+  path: LinkedPath,
+  depth: number,
+  order: number
+): FragmentCallNode => {
+  const node: FragmentCallNode = {
+    kind: 'fragmentCall',
+    name,
+    argumentsMode: 'static',
+    path,
+    order,
+  }
   state.fragmentNames.add(name)
   const entry = state.registry.fragments.get(name)
   if (entry === undefined) {
@@ -1717,16 +1629,17 @@ const resolveFragment = (state: WalkState, node: FragmentCallNode, depth: number
       state,
       'error',
       ErrorCodes.unknownFragment,
-      `'${name}' names no registered fragment${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+      `'${name}' names no registered fragment${didYouMean(suggestion)}`,
       path,
       order,
       { suggestion }
     )
-    return
+    return node
   }
   node.entry = entry
   state.fragmentCalls.push({ name, depth })
   state.dataReads.push({ kind: 'call', fragment: entry, path })
+  return node
 }
 
 /**
@@ -1743,7 +1656,6 @@ const compileFragmentParameters = (
   depth: number,
   order: number
 ) => {
-  if (value === undefined) return // zero-argument call
   if (
     classifiesAsNode(value, state.recognizes) ||
     (typeof value === 'string' && recognizeReference(value, state.scope).kind === 'reference')
@@ -1883,7 +1795,7 @@ const collectPlainObject = (
       const suggestion = nearestName(key.slice(1), allInvocationNames(state))
       const hint =
         suggestion !== undefined
-          ? ` — did you mean '$${suggestion}'?`
+          ? didYouMean(`$${suggestion}`)
           : labels
             ? ''
             : " — data with a '$' key goes inside 'literal'"

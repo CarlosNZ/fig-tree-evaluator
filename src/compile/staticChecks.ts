@@ -12,21 +12,21 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
-import type { Issue, Severity } from '../issues'
+import type { Severity } from '../issues'
 import { checkDeclared, checkType, typeNamesNull } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
-import { nearestName } from '../utils'
+import { listing, nearestName } from '../utils'
 import { validateHelpers } from './helpers'
 import {
   bindsReference,
   extendPath,
   hasError,
+  pushIssue,
   renamedBinding,
   sortIssues,
-  toNodePath,
 } from './artifact'
 import type {
   CompiledNode,
@@ -36,6 +36,7 @@ import type {
   CompileArtifact,
   ReferenceNode,
   StaticFallback,
+  IssueExtra,
 } from './artifact'
 import type { PathSegment } from '../primitives'
 
@@ -108,14 +109,9 @@ const emit = (
   message: string,
   path: LinkedPath,
   order: number,
-  extra: { operator?: string; fragment?: string; parameter?: string; suggestion?: string } = {}
+  extra?: IssueExtra
 ) => {
-  const issue: Issue = { severity, code, message, path: toNodePath(path) }
-  if (extra.operator !== undefined) issue.operator = extra.operator
-  if (extra.fragment !== undefined) issue.fragment = extra.fragment
-  if (extra.parameter !== undefined) issue.parameter = extra.parameter
-  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
-  state.artifact.issues.push({ issue, order })
+  pushIssue(state.artifact.issues, severity, code, message, path, order, extra)
 }
 
 // ── The visit ───────────────────────────────────────────────────────
@@ -847,7 +843,7 @@ const detectCycles = (state: CheckState, frame: VarsFrame) => {
     const message =
       quoted.length === 1
         ? `${quoted[0]} depends on itself`
-        : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]} form a vars cycle — a var may not depend on itself`
+        : `${listing(quoted)} form a vars cycle — a var may not depend on itself`
     const entry = frame.names.get(ordered[0])!
     emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
   }
