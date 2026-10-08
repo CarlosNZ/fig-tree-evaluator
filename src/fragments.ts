@@ -59,7 +59,7 @@ import {
 } from './compile'
 import type { OperatorRegistry } from './registry'
 import {
-  checkConstraints,
+  checkDeclaredConstraints,
   checkType,
   isExpectedType,
   validateConstraintsShape,
@@ -432,16 +432,14 @@ const validateDeclaration = (
       )
       return undefined
     }
-    if (constraints !== undefined) {
-      const constrained = checkConstraints(declared.default, constraints)
-      if (!constrained.ok) {
-        addIssue(
-          ErrorCodes.typeCheck,
-          `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
-          [...path, 'default']
-        )
-        return undefined
-      }
+    const constrained = checkDeclaredConstraints(declared.default, { constraints })
+    if (!constrained.ok) {
+      addIssue(
+        ErrorCodes.typeCheck,
+        `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+        [...path, 'default']
+      )
+      return undefined
     }
   }
 

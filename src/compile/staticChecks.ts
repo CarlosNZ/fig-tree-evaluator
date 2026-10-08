@@ -13,7 +13,7 @@
 import { ErrorCodes } from '../errorCodes'
 import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Issue, Severity } from '../issues'
-import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
+import { checkDeclared, checkType, typeNamesNull } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
@@ -501,9 +501,8 @@ const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefine
  * moment of the one type table. Null policy runs BEFORE the type check,
  * mirroring the runtime layers: a null that a holder replaces, or a null at
  * an optional parameter whose type excludes null (unset, so the default
- * applies), never reaches the type check; and null elements under a
- * declared elementNullPolicy are the policy's business, not the
- * constraints'.
+ * applies), never reaches the type check. Past it, the constraints follow
+ * the rule every other check of a value follows (`checkDeclared`).
  */
 const valueMismatch = (
   declared: ReceivingDeclaration,
@@ -512,22 +511,11 @@ const valueMismatch = (
 ): { code: string; reason: string } | undefined => {
   if (value === null && (nullReplaced || (!declared.required && !typeNamesNull(declared.type))))
     return
-  const typed = checkType(value, declared.type)
-  if (!typed.ok)
+  const checked = checkDeclared(value, declared)
+  if (!checked.ok)
     return {
       code: ErrorCodes.typeCheck,
-      reason: `expected ${typed.expected}, received ${typed.actual}`,
-    }
-  if (declared.constraints === undefined) return
-  const constrained = checkConstraintsUnderPolicy(
-    value,
-    declared.constraints,
-    declared.elementNullPolicy !== undefined
-  )
-  if (!constrained.ok)
-    return {
-      code: ErrorCodes.typeCheck,
-      reason: `expected ${constrained.expected}, received ${constrained.actual}`,
+      reason: `expected ${checked.expected}, received ${checked.actual}`,
     }
   return
 }
