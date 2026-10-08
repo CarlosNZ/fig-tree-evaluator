@@ -17,13 +17,19 @@
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
-import { toNodePath, type OperatorNode } from '../compile'
+import type { OperatorNode } from '../compile'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, pushNoCache, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
 import { runFallback } from './fallback'
-import { abortedOutcome, cutsThrough, isCancellation, isInternalError } from './internal'
+import {
+  abortedOutcome,
+  cutsThrough,
+  isCancellation,
+  isInternalError,
+  nodeFailure,
+} from './internal'
 import { resolveParams } from './params'
 import { fillFallback } from './reference'
 import { pushVars } from './scope'
@@ -97,7 +103,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const bodyCtx =
     deadline === undefined
       ? ctx
-      : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope) }
+      : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope.clock) }
   const note = noteChannel(ctx)
   const context = createOperatorContext(bodyCtx, definition, caching, note)
 
@@ -206,19 +212,17 @@ const fallbackOf = (
 const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
   if (result === undefined) return null
   if (typeof result === 'number' && !Number.isFinite(result))
-    throw new FigTreeError({
-      code: ErrorCodes.nonFiniteResult,
-      message: `${node.name} – produced a non-finite number (${String(result)})`,
-      path: toNodePath(node.path),
-      operator: node.name,
-    })
+    throw nodeFailure(
+      node,
+      ErrorCodes.nonFiniteResult,
+      `produced a non-finite number (${String(result)})`
+    )
   if (isEngineHandle(result))
-    throw new FigTreeError({
-      code: ErrorCodes.escapedHandle,
-      message: `${node.name} – returned a lazy handle instead of evaluating it`,
-      path: toNodePath(node.path),
-      operator: node.name,
-    })
+    throw nodeFailure(
+      node,
+      ErrorCodes.escapedHandle,
+      'returned a lazy handle instead of evaluating it'
+    )
   return result
 }
 
@@ -228,19 +232,11 @@ const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
  */
 const wrapFailure = (error: unknown, node: OperatorNode): FigTreeError => {
   if (isFigTreeError(error)) return error
-  if (isOperatorFailure(error))
-    return new FigTreeError({
-      code: error.code ?? ErrorCodes.operatorFailure,
-      message: `${node.name} – ${error.message}`,
-      path: toNodePath(node.path),
-      operator: node.name,
-      ...(error.errorData !== undefined ? { errorData: error.errorData } : {}),
-    })
-  const message = error instanceof Error ? error.message : String(error)
-  return new FigTreeError({
-    code: ErrorCodes.operatorFailure,
-    message: `${node.name} – ${message}`,
-    path: toNodePath(node.path),
-    operator: node.name,
-  })
+  const failure = isOperatorFailure(error) ? error : undefined
+  return nodeFailure(
+    node,
+    failure?.code ?? ErrorCodes.operatorFailure,
+    error instanceof Error ? error.message : String(error),
+    failure?.errorData
+  )
 }

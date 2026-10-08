@@ -46,7 +46,7 @@ import { splice, toNodePath, type ReferenceNode, type StaticFallback } from '../
 import type { EvaluationContext, FragmentFrame } from './context'
 import { lookupBinding } from './bindings'
 import { fallbackError } from './fragment'
-import { internalError } from './internal'
+import { unrefused } from './internal'
 import { lookupVar } from './scope'
 
 /**
@@ -81,10 +81,7 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
   // The var name is the first segment; the grammar admits nothing but an
   // identifier there, and an unresolvable one is a static error
   const thunk = typeof name === 'string' ? lookupVar(ctx.scope, name) : undefined
-  if (typeof name !== 'string' || thunk === undefined)
-    throw internalError(
-      `'${node.raw}': no var named '${String(name)}' is in scope — the static gate should have refused it`
-    )
+  if (typeof name !== 'string' || thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
   return drill(
@@ -98,10 +95,7 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
 
 const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
   const params = ctx.params
-  if (params === undefined)
-    throw internalError(
-      `'${node.raw}': $params outside a fragment body — the static gate should have refused it`
-    )
+  if (params === undefined) throw unrefused(`'${node.raw}'`)
   const [name, ...rest] = node.segments
   // Bare `$params`: the declared parameters with their resolved values.
   // Every one of them, so laziness is gone for this call — self-inflicted,
@@ -116,10 +110,7 @@ const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promis
     return resolved
   }
   const thunk = typeof name === 'string' ? params.get(name) : undefined
-  if (thunk === undefined)
-    throw internalError(
-      `'${node.raw}': the fragment declares no parameter '${String(name)}' — the static gate should have refused it`
-    )
+  if (thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
   return drill(
@@ -134,10 +125,7 @@ const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promis
 const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
   const namespace = node.namespace as 'element' | 'index'
   const frame = lookupBinding(ctx.bindings, namespace, node.binding)
-  if (frame === undefined)
-    throw internalError(
-      `'${node.raw}': no enclosing iterator binds it — the static gate should have refused it`
-    )
+  if (frame === undefined) throw unrefused(`'${node.raw}'`)
   if (namespace === 'index') return frame.index
   if (node.segments.length === 0) return normalize(frame.element)
   return drill(
@@ -150,10 +138,7 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
 }
 
 const resolveError = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
-  if (ctx.caught === undefined)
-    throw internalError(
-      `'${node.raw}': no enclosing fallback caught a failure — the static gate should have refused it`
-    )
+  if (ctx.caught === undefined) throw unrefused(`'${node.raw}'`)
   return readError(fallbackError(ctx.caught, ctx.frame), node.segments)
 }
 

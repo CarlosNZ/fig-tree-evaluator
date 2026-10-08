@@ -18,7 +18,7 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
-import { toNodePath, type LinkedPath } from '../compile'
+import { toNodePath, type LinkedPath, type OperatorNode } from '../compile'
 import { EVALUATION_TIMEOUT, SCOPE_SETTLED } from './abort'
 import type { EvaluationContext } from './context'
 
@@ -26,6 +26,28 @@ const INTERNAL: unique symbol = Symbol('fig-tree:internal-error')
 
 export const internalError = (message: string): Error =>
   branded(`[fig-tree internal] ${message}`, INTERNAL)
+
+/** An engine bug: something the static checks refuse reached evaluation. */
+export const unrefused = (what: string): Error =>
+  internalError(`${what} reached evaluation — the static gate should have refused it`)
+
+/**
+ * A failure of an operator node: tagged with its path and name, and its
+ * message led by the name.
+ */
+export const nodeFailure = (
+  node: OperatorNode,
+  code: string,
+  message: string,
+  errorData?: Record<string, unknown>
+): FigTreeError =>
+  new FigTreeError({
+    code,
+    message: `${node.name} – ${message}`,
+    path: toNodePath(node.path),
+    operator: node.name,
+    errorData,
+  })
 
 /** True for an engine-bug error: never caught, never wrapped, never shaped. */
 export const isInternalError = (error: unknown): boolean => hasBrand(error, INTERNAL)

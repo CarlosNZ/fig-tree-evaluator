@@ -47,7 +47,7 @@ import { FigTreeError, isFigTreeError, type FallbackError } from '../FigTreeErro
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
-import { checkDeclared, typeNamesNull } from '../typeCheck'
+import { checkDeclared, describeType, nullMeansUnset } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import {
@@ -58,7 +58,7 @@ import {
 } from './context'
 import { evaluateNode } from './evaluate'
 import { runFallback } from './fallback'
-import { brand, cutsThrough, hasBrand, internalError } from './internal'
+import { brand, cutsThrough, hasBrand, unrefused } from './internal'
 import { pushVars } from './scope'
 
 export const evaluateFragment = async (
@@ -66,10 +66,7 @@ export const evaluateFragment = async (
   ctx: EvaluationContext
 ): Promise<unknown> => {
   const { entry } = node
-  if (entry === undefined)
-    throw internalError(
-      `fragment call '${node.name}' resolved to nothing — the static gate should have refused it`
-    )
+  if (entry === undefined) throw unrefused(`fragment call '${node.name}'`)
 
   // One scope over the arguments and the fallback alike, exactly as the
   // operator wrapper spans its attempt and its fallback (rule 5). These
@@ -217,7 +214,7 @@ const dynamicFrame = async (
       callFailure(
         node,
         ErrorCodes.typeCheck,
-        `'parameters' must evaluate to an object, received ${describe(supplied)}`,
+        `'parameters' must evaluate to an object, received ${describeType(supplied)}`,
         source.path
       ),
       ctx.frame
@@ -272,11 +269,7 @@ const resolveArgument = (
   ctx: EvaluationContext
 ): unknown => {
   const normalized = value === undefined ? null : value
-  // Null-means-unset: a null at an optional parameter whose type does not
-  // name null behaves as if nothing had been passed. The opt-out is the
-  // declaration itself — `type: ['string', 'null']` receives it as a value
-  if (normalized === null && !declared.required && !typeNamesNull(declared.type))
-    return declared.default ?? null
+  if (normalized === null && nullMeansUnset(declared)) return declared.default ?? null
 
   const checked = checkDeclared(normalized, declared)
   if (!checked.ok)
@@ -308,9 +301,6 @@ const callFailure = (
     message: `fragment '${node.name}' – ${message}`,
     path: toNodePath(path),
   })
-
-const describe = (value: unknown): string =>
-  value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
 
 // ── Anchoring: the two-level pointer ────────────────────────────────
 

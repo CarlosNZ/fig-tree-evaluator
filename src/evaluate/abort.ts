@@ -182,27 +182,23 @@ export const signalScope = (signal: AbortSignal, settle: () => void): AbortScope
     },
     { once: true }
   )
-  return {
-    get aborted() {
-      return signal.aborted
-    },
-    get reason() {
-      return signal.reason
-    },
-    signal,
-    clock,
-    settle,
-  }
+  return signalView(signal, clock, settle)
 }
 
 /**
- * A body's view of its own per-request deadline, in place of the node's
- * scope. Nothing is built under it — the node's children and lazy handles
- * run under the node's scope, not the body's — so it has no memory to
- * invalidate and registers no listener; it shares the node's clock only
- * to be a scope. The deadline settles itself, so `settle` is nothing.
+ * A scope over an existing signal, reading through to it. `signalScope`
+ * builds one with a clock of its own; a body's view of its per-request
+ * deadline, in place of the node's scope, is one too. Nothing is built
+ * under that view — the node's children and lazy handles run under the
+ * node's scope, not the body's — so it has no memory to invalidate and
+ * registers no listener; it shares the node's clock only to be a scope.
+ * The deadline settles itself, so its `settle` is nothing.
  */
-export const signalView = (signal: AbortSignal, node: AbortScope): AbortScope => ({
+export const signalView = (
+  signal: AbortSignal,
+  clock: AbortClock,
+  settle: () => void = noop
+): AbortScope => ({
   get aborted() {
     return signal.aborted
   },
@@ -210,54 +206,9 @@ export const signalView = (signal: AbortSignal, node: AbortScope): AbortScope =>
     return signal.reason
   },
   signal,
-  clock: node.clock,
-  settle: noop,
+  clock,
+  settle,
 })
-
-/** An eager, controller-backed scope: its signal and two verbs. */
-interface ControllerScope {
-  signal: AbortSignal
-  /** Aborts this scope alone, with the given reason; any parent is untouched */
-  abort: (reason: unknown) => void
-  /** Ends the scope: detaches from any parent, aborts with `SCOPE_SETTLED` */
-  settle: () => void
-}
-
-/**
- * An eager scope with nothing above it: one controller, no listener, no
- * timer. The base a `deadline()` with no parent is built on.
- */
-const rootScope = (): ControllerScope => {
-  const controller = new AbortController()
-  return {
-    signal: controller.signal,
-    abort: (reason) => controller.abort(reason),
-    settle: () => controller.abort(SCOPE_SETTLED),
-  }
-}
-
-/**
- * An eager scope chained to an enclosing signal: aborted when the parent
- * is, with the parent's reason, and independently abortable without
- * touching the parent. The deadlines are built on one of these; a node's
- * scope is a `DeferredScope`, which builds exactly this on first demand.
- * The listener is removed on settle, so a long-lived caller signal does
- * not accumulate one per scope.
- */
-const childScope = (parent: AbortSignal): ControllerScope => {
-  const controller = new AbortController()
-  if (parent.aborted) controller.abort(parent.reason)
-  const forward = () => controller.abort(parent.reason)
-  parent.addEventListener('abort', forward, { once: true })
-  return {
-    signal: controller.signal,
-    abort: (reason) => controller.abort(reason),
-    settle: () => {
-      parent.removeEventListener('abort', forward)
-      controller.abort(SCOPE_SETTLED)
-    },
-  }
-}
 
 export interface Deadline {
   /**
@@ -299,19 +250,22 @@ const TIMER_CEILING = 2 ** 31 - 1
  *
  * Either half may be absent: no parent makes this the root of a chain, no
  * `ms` arms no timer. Not both, though: with neither there is nothing for
- * `expiry` to wait on, and the caller wants a plain `rootScope()` — one
- * controller and no listeners, where this builds a promise and two
- * listeners that could never fire.
+ * `expiry` to wait on, and the caller wants a plain AbortController,
+ * where this builds a promise and two listeners that could never fire.
  */
 export const deadline = (
   parent: AbortSignal | undefined,
   ms: number | undefined,
   reason: string
 ): Deadline => {
-  // No parent makes this the root of a chain, so there is nothing to
-  // listen to
-  const scope = parent === undefined ? rootScope() : childScope(parent)
-  const { signal } = scope
+  // Aborted when the parent is, with the parent's reason, and abortable
+  // without touching the parent. No parent makes this the root of a
+  // chain, with nothing to listen to
+  const controller = new AbortController()
+  const { signal } = controller
+  const forward = () => controller.abort(parent?.reason)
+  if (parent?.aborted) forward()
+  else parent?.addEventListener('abort', forward, { once: true })
   let expire!: (reason: unknown) => void
   const expiry = new Promise<never>((_resolve, reject) => {
     expire = reject
@@ -328,16 +282,19 @@ export const deadline = (
   const timer =
     ms === undefined
       ? undefined
-      : setTimeout(() => scope.abort(reason), Math.min(ms, TIMER_CEILING))
+      : setTimeout(() => controller.abort(reason), Math.min(ms, TIMER_CEILING))
   return {
     signal,
     expiry,
     settle: () => {
       if (timer !== undefined) clearTimeout(timer)
       // Settling is not expiring: detach first, so the abort below never
-      // rejects `expiry` and nobody builds an error for a wait that ended
+      // rejects `expiry` and nobody builds an error for a wait that ended.
+      // The parent's listener goes too, so a long-lived caller signal does
+      // not accumulate one per deadline
       signal.removeEventListener('abort', onAbort)
-      scope.settle()
+      parent?.removeEventListener('abort', forward)
+      controller.abort(SCOPE_SETTLED)
     },
   }
 }

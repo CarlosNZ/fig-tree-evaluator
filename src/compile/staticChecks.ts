@@ -13,7 +13,7 @@
 import { ErrorCodes } from '../errorCodes'
 import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
 import type { Severity } from '../issues'
-import { checkDeclared, checkType, typeNamesNull } from '../typeCheck'
+import { checkDeclared, checkType, nullMeansUnset } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
@@ -503,8 +503,7 @@ const valueMismatch = (
   value: unknown,
   nullReplaced: boolean
 ): { code: string; reason: string } | undefined => {
-  if (value === null && (nullReplaced || (!declared.required && !typeNamesNull(declared.type))))
-    return
+  if (value === null && (nullReplaced || nullMeansUnset(declared))) return
   const checked = checkDeclared(value, declared)
   if (!checked.ok)
     return {

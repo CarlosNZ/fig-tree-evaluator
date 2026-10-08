@@ -106,6 +106,15 @@ export const typeNamesNull = (type: ExpectedType): boolean => {
   return false
 }
 
+/**
+ * Null-means-unset: a null at an optional parameter whose type does not
+ * name null behaves as if nothing had been passed, so its default applies.
+ * The opt-out is the declaration itself — `type: ['string', 'null']`
+ * receives a null as a value.
+ */
+export const nullMeansUnset = (declared: { required: boolean; type: ExpectedType }): boolean =>
+  !declared.required && !typeNamesNull(declared.type)
+
 const BASIC_TYPES: ReadonlySet<string> = new Set([
   'any',
   'string',
