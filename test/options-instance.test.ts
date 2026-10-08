@@ -10,8 +10,17 @@
  * the same rule as per-call options. Two of that file's `excludeOperators`
  * cases were really registry-replacement tests and re-express here.
  */
-import { FigTree, ErrorCodes, isFigTreeError, type CallOptions, type FigTreeError } from '../src'
+import {
+  FigTree,
+  ErrorCodes,
+  coreOperators,
+  httpOperators,
+  isFigTreeError,
+  type CallOptions,
+  type FigTreeError,
+} from '../src'
 import { spyOp } from './fixtures/evalOperators'
+import { MockHttpClient, RecordingCacheStore } from './helpers'
 import { makeOp } from './fixtures/registryOptions'
 
 /** An operator that evaluates to its own name, so the registry is visible. */
@@ -126,10 +135,24 @@ describe('null removes, at either level of the merge', () => {
   })
 
   it('returns the cache to the built-in store', async () => {
-    const store = new Map<string, unknown>()
-    const fig = new FigTree({ cache: { store, maxTime: 60 } })
+    const store = new RecordingCacheStore()
+    const http = new MockHttpClient({ defaultResponse: { ok: true } })
+    const fig = new FigTree({
+      operators: [coreOperators, httpOperators(http)],
+      cache: { store, maxTime: 60 },
+    })
+    await fig.evaluate({ $http: 'https://api.test/x' })
+    expect(store.keysSet()).toHaveLength(1)
+    store.reset()
+
     fig.updateOptions({ cache: { store: null } })
     expect(fig.getOptions().cache).toEqual({ maxTime: 60 })
+    await fig.evaluate({ $http: 'https://api.test/x' })
+    await fig.evaluate({ $http: 'https://api.test/x' })
+    // The removed store is never touched again, and the built-in one serves
+    // the repeat
+    expect(store.log).toEqual([])
+    expect(http.callCount).toBe(2)
   })
 
   // `null` is a value wherever the merge does not reach: inside `data`,

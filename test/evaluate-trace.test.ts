@@ -158,6 +158,22 @@ describe('`skipped` — laziness made visible', () => {
     expect(at(trace, ['vars', 'unused'])?.status).toBe('skipped')
   })
 
+  it('marks an unread var on a parameter object as on a node', async () => {
+    // `branches` is an entries parameter: its vars belong to the object
+    const trace = await traceOf(setup(), {
+      $match: {
+        value: 'a',
+        branches: {
+          vars: { taken: { $plus: [1, 2] }, untaken: { $plus: [3, 4] } },
+          a: '$vars.taken',
+          b: '$vars.untaken',
+        },
+      },
+    })
+    expect(at(trace, ['$match', 'branches', 'vars', 'taken'])?.status).toBe('value')
+    expect(at(trace, ['$match', 'branches', 'vars', 'untaken'])?.status).toBe('skipped')
+  })
+
   it('marks a fallback that never fired', async () => {
     const trace = await traceOf(setup(), { operator: 'plus', values: [1, 2], fallback: 'unused' })
     expect(at(trace, ['fallback'])?.status).toBe('skipped')
