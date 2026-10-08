@@ -8,7 +8,7 @@
  * then the type check and constraints.
  */
 import { isTruthy } from '../primitives/truthiness'
-import { typeNamesNull } from '../typeCheck'
+import { nullMeansUnset, typeNamesNull } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
@@ -187,7 +187,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   for (const [name, declared] of whole) {
     if (delivered.has(name)) continue
     const value = pending[name] ?? { known: NOTHING, absent: true }
-    const nullUnset = !declared.required && !typeNamesNull(declared.type) && admitsNull(value.known)
+    const nullUnset = nullMeansUnset(declared) && admitsNull(value.known)
     if (!value.absent && !nullUnset) continue
     const chain = defaultOf(node, name, declared)
     const kept = nullUnset ? withoutNull(value.known) : value.known
@@ -301,7 +301,7 @@ export const argumentInput = (
   declared: FragmentParameter,
   known: Known
 ): { known: Known; answer: Answer } => {
-  const unset = !declared.required && !typeNamesNull(declared.type) && admitsNull(known)
+  const unset = nullMeansUnset(declared) && admitsNull(known)
   const rest = unset ? withoutNull(known) : known
   let answer = fits(rest, declared.type, declared.constraints)
   if (answer === 'yes' && declared.constraints !== undefined && admitsNull(rest)) answer = 'maybe'

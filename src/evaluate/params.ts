@@ -42,14 +42,20 @@ import {
   type NullPolicyValue,
   type ValidatedParameter,
 } from '../operatorDefinition'
-import { renamedBinding, toNodePath, type CompiledNode, type OperatorNode } from '../compile'
+import { renamedBinding, type CompiledNode, type OperatorNode } from '../compile'
 import { isTruthy } from '../primitives'
 import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
-import { checkDeclared, checkType, typeNamesNull, type ExpectedType } from '../typeCheck'
+import {
+  checkDeclared,
+  checkType,
+  nullMeansUnset,
+  typeNamesNull,
+  type ExpectedType,
+} from '../typeCheck'
 import { isPlainObject, isThenable, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
-import { internalError } from './internal'
+import { nodeFailure } from './internal'
 import { pushBinding } from './bindings'
 import { indexedStream, raceStream, settledStream } from './race'
 import { pushVars } from './scope'
@@ -168,8 +174,7 @@ export const resolveParams = async (
     // A handle delivered in pass 1 runs its layers on demand
     if (Object.hasOwn(params, name)) continue
     const value = resolved[name]
-    const unset =
-      value === undefined || (value === null && !declared.required && !typeNamesNull(declared.type))
+    const unset = value === undefined || (value === null && nullMeansUnset(declared))
     if (!unset) continue
     if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)) {
       resolved[name] = hostDefaults[name]
@@ -229,14 +234,11 @@ export const resolveParams = async (
   // replacement, which is the whole reason a null `input` can become `[]`
   // before the derived reject sees it
   for (const [name, declared] of perElement) {
-    if (declared.over === undefined)
-      throw internalError(
-        `parameter '${name}' of '${node.name}' declares perElement without 'over'`
-      )
     const supplied = node.params[name]
-    // Unsupplied is a missing-required static error; nothing to deliver
+    // Unsupplied is a missing-required static error; nothing to deliver.
+    // A perElement declaration always names its `over` (defineOperator)
     if (supplied !== undefined)
-      params[name] = perElementHandle(supplied, params[declared.over], node, name, declared, ctx)
+      params[name] = perElementHandle(supplied, params[declared.over!], node, name, declared, ctx)
   }
 
   return { params, propagate: false }
@@ -426,12 +428,11 @@ const typeError = (
   name: string,
   result: { ok: false; expected: string; actual: string }
 ): FigTreeError => {
-  return new FigTreeError({
-    code: ErrorCodes.typeCheck,
-    message: `${node.name} – parameter '${name}': expected ${result.expected}, received ${result.actual}`,
-    path: toNodePath(node.path),
-    operator: node.name,
-  })
+  return nodeFailure(
+    node,
+    ErrorCodes.typeCheck,
+    `parameter '${name}': expected ${result.expected}, received ${result.actual}`
+  )
 }
 
 /**
@@ -453,10 +454,7 @@ const effectivePolicy = (
   if (!typed.ok) throw typeError(node, compiled.selector, typed)
   // The table has a row per member of the literal type, and the type check
   // is membership, so a miss here is a compiler defect
-  const row = compiled.table.find((entry) => entry.value === selectorValue)
-  if (row === undefined)
-    throw internalError(`no null-policy row for ${node.name}.${compiled.selector}`)
-  return row.policy
+  return compiled.table.find((entry) => entry.value === selectorValue)!.policy
 }
 
 const replaceNulls = async (

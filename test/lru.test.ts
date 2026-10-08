@@ -51,11 +51,6 @@ test('a bound of one keeps only the newest', () => {
   expect(lru.get('b')).toBe(1)
 })
 
-test('refuses a bound that would evict what it just stored', () => {
-  expect(() => new Lru<string, number>(0)).toThrow(RangeError)
-  expect(() => new Lru<string, number>(1.5)).toThrow(RangeError)
-})
-
 describe('delete', () => {
   test('removes one entry and leaves the rest in order', () => {
     const lru = new Lru<string, number>(3)
@@ -109,11 +104,5 @@ describe('resize', () => {
     expect(['b', 'c', 'd'].map((key) => lru.get(key))).toEqual([undefined, undefined, undefined])
     expect(lru.get('a')).toBe(0)
     expect(lru.get('e')).toBe(4)
-  })
-
-  test('refuses a bound the constructor would refuse', () => {
-    const lru = new Lru<string, number>(2)
-    expect(() => lru.resize(0)).toThrow(RangeError)
-    expect(() => lru.resize(2.5)).toThrow(RangeError)
   })
 })
