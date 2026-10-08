@@ -67,7 +67,7 @@ import {
   type ExpectedType,
   type TypeDeclaration,
 } from './typeCheck'
-import { isPlainObject } from './utils'
+import { findCycles, isPlainObject } from './utils'
 
 /**
  * A fragment parameter declaration as authored. Extends the same
@@ -481,37 +481,17 @@ const inferReturns = (registry: OperatorRegistry) => {
  * registration error — guarded recursion included. Returns whether the
  * graph is acyclic, which is what makes the rollup fold well-founded.
  */
-const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue): boolean => {
-  const visiting: string[] = []
-  const settled = new Set<string>()
-  const reported = new Set<string>()
-
-  const walk = (name: string) => {
-    const cycleAt = visiting.indexOf(name)
-    if (cycleAt !== -1) {
-      const cycle = [...visiting.slice(cycleAt), name]
-      // One report per cycle, keyed on its member set: every entry point
-      // into the same loop would otherwise report it again
-      const key = [...cycle].sort().join('\u0000')
-      if (!reported.has(key))
-        addIssue(
-          ErrorCodes.fragmentCycle,
-          `fragment '${name}' reaches itself: ${cycle.join(' → ')} — recursion is not supported`,
-          ['fragments', name]
-        )
-      reported.add(key)
-      return
-    }
-    if (settled.has(name)) return
-    visiting.push(name)
-    for (const call of compiled.get(name)?.fragmentCalls ?? []) walk(call.name)
-    visiting.pop()
-    settled.add(name)
-  }
-
-  for (const name of compiled.keys()) walk(name)
-  return reported.size === 0
-}
+const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue): boolean =>
+  findCycles(
+    compiled.keys(),
+    (name) => compiled.get(name)?.fragmentCalls.map((call) => call.name),
+    ([name, ...rest]) =>
+      addIssue(
+        ErrorCodes.fragmentCycle,
+        `fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
+        ['fragments', name]
+      )
+  )
 
 /**
  * Fold each body's own measurements together with its targets', run its

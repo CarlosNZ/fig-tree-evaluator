@@ -18,7 +18,7 @@ import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
-import { listing, nearestName } from '../utils'
+import { didYouMean, findCycles, listing, nearestName } from '../utils'
 import { validateHelpers } from './helpers'
 import {
   bindsReference,
@@ -177,9 +177,6 @@ const visitFallback = (
   if (frame.referenced) owner.fallbackReadsError = true
 }
 
-const isCompiledNode = (value: object): value is CompiledNode =>
-  'kind' in value && typeof (value as { kind: unknown }).kind === 'string'
-
 // ── Operator nodes: the metadata checks ─────────────────────────────
 
 const visitOperator = (state: CheckState, node: OperatorNode) => {
@@ -290,6 +287,7 @@ const checkSuppliedParam = (
   supplied: CompiledNode,
   nullReplaced = false
 ) => {
+  const extra = { ...owner.extra, parameter: name }
   // An element-addressable parameter has no whole value — not here and not
   // at runtime, since the engine never assembles one. Its arity is known
   // statically all the same, so the `length` constraint is checked against
@@ -305,7 +303,7 @@ const checkSuppliedParam = (
         `'${owner.label}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
         supplied.path,
         supplied.order,
-        { ...owner.extra, parameter: name }
+        extra
       )
     return
   }
@@ -319,7 +317,7 @@ const checkSuppliedParam = (
       `'${owner.label}.${name}' is structural — it requires a literal value`,
       supplied.path,
       supplied.order,
-      { ...owner.extra, parameter: name }
+      extra
     )
     return
   }
@@ -335,7 +333,7 @@ const checkSuppliedParam = (
         : `${at}: ${mismatch.reason}`,
       supplied.path,
       supplied.order,
-      { ...owner.extra, parameter: name }
+      extra
     )
 
   // A fallback stands in for its node's value at the same position, so it
@@ -359,7 +357,7 @@ const checkSuppliedParam = (
         `this fallback can never satisfy ${at}: ${unfit.reason}`,
         fallback.path,
         fallback.order,
-        { ...owner.extra, parameter: name }
+        extra
       )
     node = fallback
   }
@@ -539,8 +537,11 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const declarations = node.entry?.parameters
+  // A dynamic call has one node, which computes the whole map at runtime
   const supplied =
-    node.parameters !== undefined && !isCompiledNode(node.parameters) ? node.parameters : undefined
+    node.argumentsMode === 'static'
+      ? (node.parameters as Record<string, CompiledNode> | undefined)
+      : undefined
 
   // An unregistered name already raised unknown-fragment; there is nothing
   // to check a call against
@@ -573,7 +574,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.unknownNodeKey,
-            `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+            `fragment '${node.name}' declares no parameter '${name}'${didYouMean(suggestion)}`,
             argument.path,
             argument.order,
             { parameter: name, suggestion }
@@ -582,10 +583,8 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       }
   }
 
-  if (node.parameters !== undefined) {
-    if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-    else for (const key in node.parameters) visit(state, node.parameters[key])
-  }
+  if (supplied !== undefined) for (const key in supplied) visit(state, supplied[key])
+  else if (node.parameters !== undefined) visit(state, node.parameters as CompiledNode)
   popVars(state, frame)
 }
 
@@ -626,10 +625,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
       finding.message,
       target?.path ?? node.path,
       node.order,
-      {
-        operator: node.name,
-        ...(finding.parameter !== undefined ? { parameter: finding.parameter } : {}),
-      }
+      { operator: node.name, parameter: finding.parameter }
     )
   }
 }
@@ -829,39 +825,18 @@ const detectCycles = (state: CheckState, frame: VarsFrame) => {
   // others. A var that only leads into a cycle is not a member and gets no
   // issue: the issue's path is where the dependency has to be broken.
   const declarationIndex = new Map([...frame.names.keys()].map((name, i) => [name, i]))
-  const stack: string[] = []
-  const visiting = new Set<string>()
-  const done = new Set<string>()
-  const reported = new Set<string>()
-
-  const report = (members: string[]) => {
-    const ordered = [...members].sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
-    const key = ordered.join('\0')
-    if (reported.has(key)) return
-    reported.add(key)
-    const quoted = ordered.map((name) => `'${name}'`)
-    const message =
-      quoted.length === 1
-        ? `${quoted[0]} depends on itself`
-        : `${listing(quoted)} form a vars cycle — a var may not depend on itself`
-    const entry = frame.names.get(ordered[0])!
-    emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
-  }
-
-  const dfs = (name: string) => {
-    if (done.has(name)) return
-    if (visiting.has(name)) {
-      // A back edge: the stack from this var onward is exactly the cycle
-      report(stack.slice(stack.indexOf(name)))
-      return
+  findCycles(
+    frame.names.keys(),
+    (name) => frame.edges.get(name),
+    (members) => {
+      const ordered = members.sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
+      const quoted = ordered.map((name) => `'${name}'`)
+      const message =
+        quoted.length === 1
+          ? `${quoted[0]} depends on itself`
+          : `${listing(quoted)} form a vars cycle — a var may not depend on itself`
+      const entry = frame.names.get(ordered[0])!
+      emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
     }
-    visiting.add(name)
-    stack.push(name)
-    for (const target of frame.edges.get(name) ?? []) dfs(target)
-    stack.pop()
-    visiting.delete(name)
-    done.add(name)
-  }
-
-  for (const name of frame.names.keys()) dfs(name)
+  )
 }

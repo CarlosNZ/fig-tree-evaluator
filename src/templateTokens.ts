@@ -103,8 +103,8 @@ export const scanTemplate = (template: string): TemplateSegment[] => {
 }
 
 /**
- * Every token site in a template, in order — the shared read for both
- * consumers.
+ * Every token site in a template, in order, its text left out: what the
+ * compiler's template checks read.
  */
 export const templateTokens = (template: string): Exclude<TemplateSegment, { kind: 'text' }>[] =>
   scanTemplate(template).filter((segment) => segment.kind !== 'text')
