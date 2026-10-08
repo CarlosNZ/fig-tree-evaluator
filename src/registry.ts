@@ -25,7 +25,7 @@ import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
 import { isPlainObject } from './utils'
-import { checkConstraints, checkType } from './typeCheck'
+import { checkDeclaredConstraints, checkType } from './typeCheck'
 import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
 import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
 import { probeStaticFallback } from './compile/probe'
@@ -310,17 +310,15 @@ const validateOperatorDefaults = (
         valid = false
         continue
       }
-      if (declaration.constraints !== undefined) {
-        const constrained = checkConstraints(value, declaration.constraints)
-        if (!constrained.ok) {
-          addIssue(
-            ErrorCodes.typeCheck,
-            `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
-            keyPath,
-            operatorName
-          )
-          valid = false
-        }
+      const constrained = checkDeclaredConstraints(value, declaration)
+      if (!constrained.ok) {
+        addIssue(
+          ErrorCodes.typeCheck,
+          `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+          keyPath,
+          operatorName
+        )
+        valid = false
       }
     }
     if (valid) {

@@ -45,12 +45,7 @@ import {
 import { renamedBinding, toNodePath, type CompiledNode, type OperatorNode } from '../compile'
 import { isTruthy } from '../primitives'
 import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterface'
-import {
-  checkConstraintsUnderPolicy,
-  checkType,
-  typeNamesNull,
-  type ExpectedType,
-} from '../typeCheck'
+import { checkDeclared, checkType, typeNamesNull, type ExpectedType } from '../typeCheck'
 import { isPlainObject, isThenable, noop, once } from '../utils'
 import type { EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
@@ -296,18 +291,8 @@ const vet = (
   name: string,
   declared: ValidatedParameter
 ): unknown => {
-  const typed = checkType(value, declared.type)
-  if (!typed.ok) throw typeError(node, name, typed)
-  // Constraints describe a container's shape; a null that the type admits
-  // has none to check
-  if (value !== null && declared.constraints !== undefined) {
-    const constrained = checkConstraintsUnderPolicy(
-      value,
-      declared.constraints,
-      declared.elementNullPolicy !== undefined
-    )
-    if (!constrained.ok) throw typeError(node, name, constrained)
-  }
+  const checked = checkDeclared(value, declared)
+  if (!checked.ok) throw typeError(node, name, checked)
   return declared.truthiness ? applyTruthiness(value, declared.type) : value
 }
 

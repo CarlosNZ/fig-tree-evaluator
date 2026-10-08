@@ -47,7 +47,7 @@ import { FigTreeError, isFigTreeError, type FallbackError } from '../FigTreeErro
 import { ErrorCodes } from '../errorCodes'
 import type { FragmentEntry, FragmentParameter } from '../fragments'
 import { toNodePath, type CompiledNode, type FragmentCallNode, type LinkedPath } from '../compile'
-import { checkConstraints, checkType, typeNamesNull } from '../typeCheck'
+import { checkDeclared, typeNamesNull } from '../typeCheck'
 import { isPlainObject, noop, once } from '../utils'
 import { DeferredScope } from './abort'
 import {
@@ -278,30 +278,17 @@ const resolveArgument = (
   if (normalized === null && !declared.required && !typeNamesNull(declared.type))
     return declared.default ?? null
 
-  const typed = checkType(normalized, declared.type)
-  if (!typed.ok)
+  const checked = checkDeclared(normalized, declared)
+  if (!checked.ok)
     throw anchor(
       callFailure(
         node,
         ErrorCodes.typeCheck,
-        `parameter '${name}': expected ${typed.expected}, received ${typed.actual}`,
+        `parameter '${name}': expected ${checked.expected}, received ${checked.actual}`,
         path
       ),
       ctx.frame
     )
-  if (declared.constraints !== undefined) {
-    const constrained = checkConstraints(normalized, declared.constraints)
-    if (!constrained.ok)
-      throw anchor(
-        callFailure(
-          node,
-          ErrorCodes.typeCheck,
-          `parameter '${name}': expected ${constrained.expected}, received ${constrained.actual}`,
-          path
-        ),
-        ctx.frame
-      )
-  }
   return normalized
 }
 

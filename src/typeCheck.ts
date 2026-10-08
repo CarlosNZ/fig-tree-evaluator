@@ -262,14 +262,8 @@ const checkElementShape = (
       if (required) return { ok: false, expected: `property "${key}"`, actual: 'missing' }
       continue
     }
-    if (declaration.type !== undefined) {
-      const typed = checkType(element[key], declaration.type)
-      if (!typed.ok) return typed
-    }
-    if (declaration.constraints !== undefined) {
-      const constrained = checkConstraints(element[key], declaration.constraints)
-      if (!constrained.ok) return constrained
-    }
+    const checked = checkDeclared(element[key], declaration)
+    if (!checked.ok) return checked
   }
 
   return OK
@@ -298,4 +292,39 @@ export const checkConstraintsUnderPolicy = (
     value.filter((element) => element !== null),
     elementWise
   )
+}
+
+/**
+ * What a value is checked against where it meets a declaration: a
+ * parameter's, a fragment parameter's, or an `elementShape` property's.
+ */
+interface Declared {
+  type?: ExpectedType
+  constraints?: Constraints
+  elementNullPolicy?: unknown
+}
+
+/**
+ * A declaration's constraints, applied to a value its type admits. They
+ * describe a container's shape, so a null has none to check, and the null
+ * elements of a container under a declared element null policy are that
+ * policy's business. One rule wherever a value meets a declaration: a
+ * default at registration, a literal before evaluation, a value during it.
+ */
+export const checkDeclaredConstraints = (value: unknown, declared: Declared): TypeCheckResult =>
+  value === null || declared.constraints === undefined
+    ? OK
+    : checkConstraintsUnderPolicy(
+        value,
+        declared.constraints,
+        declared.elementNullPolicy !== undefined
+      )
+
+/** The type check, then the constraints: a declaration's two layers. */
+export const checkDeclared = (value: unknown, declared: Declared): TypeCheckResult => {
+  if (declared.type !== undefined) {
+    const typed = checkType(value, declared.type)
+    if (!typed.ok) return typed
+  }
+  return checkDeclaredConstraints(value, declared)
 }

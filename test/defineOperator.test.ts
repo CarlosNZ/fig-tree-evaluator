@@ -242,6 +242,28 @@ describe('defineOperator — the EvaluationData sentinel', () => {
   })
 })
 
+describe('defineOperator — a default meets its constraints as a value does', () => {
+  const withValues = (values: Record<string, unknown>) =>
+    defineOperator({ ...validDefinition(), parameters: { values } } as never)
+
+  it('a null default the type admits has no shape to constrain', () => {
+    expect(() =>
+      withValues({ type: ['array', 'null'], constraints: { length: 2 }, default: null })
+    ).not.toThrow()
+  })
+
+  it('null elements under an element null policy are the policy’s', () => {
+    const values = {
+      type: 'array',
+      elementNullPolicy: 'value',
+      constraints: { length: 2, homogeneous: ['number'] },
+    }
+    expect(() => withValues({ ...values, default: [1, null] })).not.toThrow()
+    // A null still occupies its slot, so the length counts it
+    expect(() => withValues({ ...values, default: [null] })).toThrow()
+  })
+})
+
 describe('defineOperator — registration errors', () => {
   it.each(invalidDefinitions)('$id', ({ definition, expected }) => {
     const error = defineInvalid(definition)

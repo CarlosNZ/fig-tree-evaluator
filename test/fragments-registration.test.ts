@@ -144,6 +144,11 @@ describe('parameter declarations', () => {
     expect(built.fragments.get('frag')?.parameters.x.constraints).toEqual({ length: 2 })
   })
 
+  test('a null default the type admits skips the constraints, as a null argument does', () => {
+    const nullable = { type: ['array', 'null'], constraints: { length: 2 }, default: null }
+    expect(() => registry(frag({ x: nullable }) as never)).not.toThrow()
+  })
+
   test('a default implies optional; nothing implies required', () => {
     const built = registry(
       frag({

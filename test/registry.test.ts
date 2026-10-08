@@ -142,6 +142,18 @@ describe('buildRegistry — operatorDefaults validation', () => {
     expect(Object.isFrozen(entry?.hostDefaults)).toBe(true)
   })
 
+  it('skips the constraints for a null default the type admits, as for a value', () => {
+    const pair = defineOperator({
+      ...validDefinition(),
+      parameters: {
+        values: { type: ['array', 'null'], required: false, constraints: { length: 2 } },
+      },
+    } as never)
+    expect(() =>
+      buildRegistry({ operators: [pair], operatorDefaults: { testOp: { values: null } } })
+    ).not.toThrow()
+  })
+
   it('leaves entries without defaults bare', () => {
     const registry = buildRegistry({ operators: [equalLike()] })
     expect(resolveOperator(registry, 'equal')?.hostDefaults).toBeUndefined()

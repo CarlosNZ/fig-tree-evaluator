@@ -20,7 +20,7 @@ import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
 import { isPlainObject } from './utils'
 import {
-  checkConstraints,
+  checkDeclaredConstraints,
   checkType,
   isExpectedType,
   typeNamesNull,
@@ -351,8 +351,8 @@ export function defineOperator(
             at('default'),
             paramName
           )
-        else if (constraintsValid && d.constraints !== undefined) {
-          const constrained = checkConstraints(d.default, d.constraints)
+        else if (constraintsValid) {
+          const constrained = checkDeclaredConstraints(d.default, d)
           if (!constrained.ok)
             addIssue(
               ErrorCodes.typeCheck,

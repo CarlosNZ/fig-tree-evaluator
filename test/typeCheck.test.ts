@@ -142,6 +142,14 @@ describe('checkConstraints — elementShape', () => {
     expect(checkConstraints([{ key: 1, value: 1 }], constraints).ok).toBe(false) // 'key' not string
     expect(checkConstraints([42], constraints).ok).toBe(false) // element not an object
   })
+
+  it('skips a property’s constraints where its type admits null', () => {
+    const nested: Constraints = {
+      elementShape: { tags: { type: ['array', 'null'], constraints: { length: 2 } } },
+    }
+    expect(checkConstraints([{ tags: null }], nested).ok).toBe(true)
+    expect(checkConstraints([{ tags: ['a'] }], nested).ok).toBe(false)
+  })
 })
 
 describe('checkConstraints — empty constraints', () => {
