@@ -21,6 +21,11 @@ import type { BasicType } from './typeCheck'
  * and what its parameters start as. Every field is optional, so a plugin
  * gives only what it has; the package's own listings are complete
  * (test/catalog.test.ts). `getCatalog` fills the gaps.
+ *
+ * A listing can also override another: `getCatalog` merges each over the
+ * package's, field by field and, for `seeds` and `parameterDescriptions`,
+ * parameter by parameter, so `{ plus: { displayName: 'Add' } }` keeps the
+ * rest of `plus`'s. A field set to `undefined` changes nothing.
  */
 export interface OperatorListing {
   /** A label for listings and node headers — `'String builder'`. */
@@ -36,7 +41,8 @@ export interface OperatorListing {
   docUrl?: string
   /**
    * A CSS colour; `textColor` on it reaches 4.5:1 contrast (WCAG AA). The
-   * two are a pair: `getCatalog` takes both or neither.
+   * two are a pair: `getCatalog` takes both or neither, so a listing giving
+   * one changes neither.
    */
   backgroundColor?: string
   textColor?: string
@@ -69,6 +75,10 @@ export interface CategoryListing {
   textColor: string
 }
 
+/**
+ * Listings by operator name: a plugin's for its operators, or a host's
+ * overrides, which `getCatalog` merges over the package's in order.
+ */
 export type OperatorListingMap = { [operator: string]: OperatorListing }
 
 export type CategoryListingMap = { [category in OperatorCategory]: CategoryListing }

@@ -700,23 +700,43 @@ const seedOf = (listing: FragmentListing, parameter: string, type: ExpectedType)
   return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
 }
 
+/** `from`'s own entries written onto `onto`, except any set to `undefined`. */
+const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T } | undefined) => {
+  for (const [key, value] of Object.entries(from ?? {})) if (value !== undefined) onto[key] = value
+}
+
 /**
  * The instance's operators and fragments, each with its listing joined in,
- * and the categories they group under. An operator's listing is the last
- * of `listings` to have an entry for its name, else the package's own in
- * `operatorListings`; an entry is taken whole, never merged with another
- * map's. A fragment's listing is its definition's `metadata`.
+ * and the categories they group under.
+ *
+ * An operator's listing is the package's own entry in `operatorListings`,
+ * then each map in `listings` in order, each merged over the ones before it,
+ * so an override holds only what it changes. `displayName`, `description`
+ * and `docUrl` are replaced where a later entry gives them; `seeds` and
+ * `parameterDescriptions` are merged per parameter; colours are replaced
+ * only by an entry giving the pair. A field or parameter entry set to
+ * `undefined` is skipped, so it never erases what is beneath it, and only
+ * keys a map or entry holds itself are read. A fragment's listing is its
+ * definition's `metadata`.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
   ...listings: OperatorListingMap[]
 ): Catalog => {
   const listingOf = (name: string): OperatorListing => {
-    for (let i = listings.length - 1; i >= 0; i--) {
-      const listing = own(listings[i], name)
-      if (listing !== undefined) return listing
+    const listing: OperatorListing = { seeds: {}, parameterDescriptions: {} }
+    for (const map of [operatorListings, ...listings]) {
+      const layer = own(map, name)
+      if (layer === undefined) continue
+      for (const field of ['displayName', 'description', 'docUrl'] as const) {
+        const value = layer[field]
+        if (value !== undefined) listing[field] = value
+      }
+      Object.assign(listing, coloursOf(layer))
+      assignDefined(listing.seeds!, layer.seeds)
+      assignDefined(listing.parameterDescriptions!, layer.parameterDescriptions)
     }
-    return own(operatorListings, name) ?? {}
+    return listing
   }
 
   const categories = Object.entries(categoryListings)

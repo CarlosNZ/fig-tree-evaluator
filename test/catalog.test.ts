@@ -18,6 +18,7 @@ import {
   type CatalogOperator,
   type ExpectedType,
   type FragmentListing,
+  type OperatorListingMap,
 } from '../src'
 import { categoryListings, getCatalog, operatorListings, typeSeeds } from '../src/catalog'
 import { checkConstraints, checkType } from '../src/typeCheck'
@@ -288,44 +289,117 @@ describe('getCatalog', () => {
       expect(operator.parameters.values.seed).toEqual(typeSeeds.array)
     })
 
-    test('the last map with an entry wins, whole, over the package listing too', () => {
+    describe('listings merge over the package’s, field by field', () => {
       const instance = new FigTree({ operators: [coreOperators, tally] })
-      const { operators } = getCatalog(
-        instance,
-        { tally: { displayName: 'First', description: 'Dropped' }, plus: { displayName: 'Add' } },
-        { tally: { displayName: 'Second' } }
-      )
-      const find = (name: string) => operators.find((op) => op.name === name)!
-      expect(find('tally').displayName).toBe('Second')
-      expect(Object.hasOwn(find('tally'), 'description')).toBe(false)
-      // The host's entry for `plus` replaces the package's whole
-      expect(find('plus').displayName).toBe('Add')
-      expect(Object.hasOwn(find('plus'), 'description')).toBe(false)
-      expect(find('plus').backgroundColor).toBe(categoryListings.math.backgroundColor)
-      expect(find('subtract').displayName).toBe(operatorListings.subtract.displayName)
-    })
+      const operatorOf = (name: string, ...listings: OperatorListingMap[]) =>
+        getCatalog(instance, ...listings).operators.find((op) => op.name === name)!
+      const plus = operatorOf('plus')
 
-    test('a listing gives its colours as a pair, or the category’s are taken', () => {
-      const [operator] = getCatalog(new FigTree({ operators: [tally] }), {
-        tally: { backgroundColor: '#123456' },
-      }).operators
-      expect(operator.backgroundColor).toBe(categoryListings.math.backgroundColor)
-      expect(operator.textColor).toBe(categoryListings.math.textColor)
-    })
-
-    test('reads only keys a listing holds itself, never inherited ones', () => {
-      const constructed = defineOperator({
-        name: 'constructed',
-        category: 'other',
-        parameters: { constructor: { type: 'string' } },
-        evaluate: () => null,
+      test('an entry changing one field keeps every other', () => {
+        const renamed = operatorOf('plus', { plus: { displayName: 'Add' } })
+        expect(renamed.displayName).toBe('Add')
+        expect({ ...renamed, displayName: plus.displayName }).toStrictEqual(plus)
+        // Operators the map has no entry for keep their own
+        expect(operatorOf('subtract', { plus: { displayName: 'Add' } })).toStrictEqual(
+          operatorOf('subtract')
+        )
       })
-      const [operator] = getCatalog(new FigTree({ operators: [constructed] }), {
-        constructed: { parameterDescriptions: {}, seeds: {} },
-      }).operators
-      const parameter = operator.parameters['constructor' as string]
-      expect(Object.hasOwn(parameter, 'description')).toBe(false)
-      expect(parameter.seed).toBe(typeSeeds.string)
+
+      test('a later map wins over an earlier one, field by field', () => {
+        const operator = operatorOf(
+          'tally',
+          { tally: { displayName: 'First', description: 'Kept' } },
+          { tally: { displayName: 'Second' } },
+          { tally: { docUrl: 'https://example.com/tally' } }
+        )
+        expect(operator).toMatchObject({
+          displayName: 'Second',
+          description: 'Kept',
+          docUrl: 'https://example.com/tally',
+        })
+      })
+
+      test('seeds and parameter descriptions merge per parameter, across maps', () => {
+        const operator = operatorOf(
+          'tally',
+          {
+            tally: {
+              seeds: { mode: 'count', start: 5 },
+              parameterDescriptions: { values: 'What to tally', mode: 'How' },
+            },
+          },
+          { tally: { seeds: { start: 10 }, parameterDescriptions: { mode: 'Sum or count' } } }
+        )
+        const { values, mode, start } = operator.parameters
+        expect([values.seed, mode.seed, start.seed]).toEqual([typeSeeds.array, 'count', 10])
+        expect([values.description, mode.description]).toEqual(['What to tally', 'Sum or count'])
+        expect(Object.hasOwn(start, 'description')).toBe(false)
+
+        // Over the package's own: one seed changed, the others kept, and the
+        // package's listing untouched
+        const untouched = operatorOf('buildString')
+        const { parameters } = operatorOf('buildString', {
+          buildString: { seeds: { trim: true }, parameterDescriptions: { trim: 'Tidy up' } },
+        })
+        const listing = operatorListings.buildString
+        expect(parameters.trim).toMatchObject({ seed: true, description: 'Tidy up' })
+        expect(parameters.template).toMatchObject({
+          seed: listing.seeds!.template,
+          description: listing.parameterDescriptions!.template,
+        })
+        expect(operatorOf('buildString')).toStrictEqual(untouched)
+      })
+
+      test('a field or parameter entry set to undefined erases nothing', () => {
+        const operator = operatorOf('plus', {
+          plus: {
+            displayName: undefined,
+            description: undefined,
+            docUrl: undefined,
+            seeds: { values: undefined },
+            parameterDescriptions: { values: undefined } as unknown as Record<string, string>,
+          },
+        })
+        expect(operator).toStrictEqual(plus)
+      })
+
+      test('colours apply only as a pair, replacing the pair beneath', () => {
+        const half = operatorOf('plus', { plus: { backgroundColor: '#123456' } })
+        expect([half.backgroundColor, half.textColor]).toEqual([
+          plus.backgroundColor,
+          plus.textColor,
+        ])
+        const halfOverCategory = operatorOf('tally', { tally: { textColor: '#000000' } })
+        expect([halfOverCategory.backgroundColor, halfOverCategory.textColor]).toEqual([
+          categoryListings.math.backgroundColor,
+          categoryListings.math.textColor,
+        ])
+        // A pair replaces the package's, and a later half changes neither
+        const restyled = operatorOf(
+          'plus',
+          { plus: { backgroundColor: '#123456', textColor: '#ffffff' } },
+          { plus: { backgroundColor: '#abcdef' } }
+        )
+        expect([restyled.backgroundColor, restyled.textColor]).toEqual(['#123456', '#ffffff'])
+      })
+
+      test('reads only keys a map or entry holds itself, never inherited ones', () => {
+        const inherited = Object.create({ plus: { displayName: 'Inherited' } })
+        expect(operatorOf('plus', inherited).displayName).toBe(plus.displayName)
+
+        const constructed = defineOperator({
+          name: 'constructed',
+          category: 'other',
+          parameters: { constructor: { type: 'string' } },
+          evaluate: () => null,
+        })
+        const [operator] = getCatalog(new FigTree({ operators: [constructed] }), {
+          constructed: { parameterDescriptions: {}, seeds: {} },
+        }).operators
+        const parameter = operator.parameters['constructor' as string]
+        expect(Object.hasOwn(parameter, 'description')).toBe(false)
+        expect(parameter.seed).toBe(typeSeeds.string)
+      })
     })
   })
 
