@@ -30,7 +30,6 @@ import { fallbackCoverage } from '../src/authoring'
 const risky = defineOperator({
   name: 'risky',
   category: 'other',
-  description: 'Anything, returned as it is, by code nothing describes',
   parameters: { value: {} },
   positionalParams: ['value'],
   evaluate: ({ value }) => value,
@@ -657,7 +656,6 @@ describe('what a node returns', () => {
     const echo = defineOperator({
       name: 'echo',
       category: 'other',
-      description: 'Returns its value',
       parameters: { value: {} },
       positionalParams: ['value'],
       analysis: { failures: [], output: { param: 'value' } },
@@ -669,7 +667,6 @@ describe('what a node returns', () => {
       defineOperator({
         name: 'bad',
         category: 'other',
-        description: 'd',
         parameters: { value: {} },
         analysis: { output: { param: 'nope' } },
         evaluate: () => 1,
@@ -759,7 +756,6 @@ describe('value ranges', () => {
     const total = defineOperator({
       name: 'total',
       category: 'math',
-      description: 'The sum of some numbers',
       parameters: values,
       positionalParams: ['...values'],
       returns: 'number',
@@ -769,7 +765,6 @@ describe('value ranges', () => {
     const word = defineOperator({
       name: 'word',
       category: 'string',
-      description: 'Its value, or a placeholder for an empty one',
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
@@ -779,7 +774,6 @@ describe('value ranges', () => {
     const picky = defineOperator({
       name: 'picky',
       category: 'string',
-      description: 'Refuses an empty string',
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
@@ -816,7 +810,6 @@ describe('value ranges', () => {
         defineOperator({
           name: 'ranged',
           category: 'math',
-          description: 'd',
           parameters: { value: { type: 'number' }, values: { type: 'array' } },
           analysis: { output },
           evaluate: () => 1,
@@ -899,7 +892,6 @@ describe("an operator's own failures", () => {
   describe('host operators', () => {
     const base = {
       category: 'string' as const,
-      description: 'Refuses an empty string',
       parameters: { value: { type: 'string' as const } },
       positionalParams: ['value'],
       returns: 'string' as const,
@@ -1075,7 +1067,6 @@ describe('running a node', () => {
     const later = defineOperator({
       name: 'later',
       category: 'other',
-      description: 'Refuses a negative number, a tick later',
       parameters: { value: { type: 'number' } },
       positionalParams: ['value'],
       returns: 'number',
@@ -1102,7 +1093,6 @@ describe('running a node', () => {
     const waiting = defineOperator({
       name: 'waiting',
       category: 'other',
-      description: 'Waits on state the analysis never has',
       parameters: { value: { type: 'string' } },
       positionalParams: ['value'],
       returns: 'string',
@@ -1237,7 +1227,6 @@ describe('per-element walks', () => {
     const sixth = defineOperator({
       name: 'sixth',
       category: 'array',
-      description: 'What each gives for the sixth element',
       parameters: {
         input: { type: 'array' },
         each: { type: 'any', evaluation: 'perElement', over: 'input' },

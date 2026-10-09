@@ -21,7 +21,6 @@ const assertType = <T extends true>(): T | undefined => undefined
 const op = defineOperator({
   name: 'inferred',
   category: 'other',
-  description: 'types derived from declarations',
   parameters: {
     value: { type: ['number', 'null'] },
     kept: { type: ['number', 'null'], nullPolicy: 'value' },
@@ -87,7 +86,6 @@ const dynamic: Record<string, { type: 'string' }> = { a: { type: 'string' } }
 defineOperator({
   name: 'dynamic',
   category: 'other',
-  description: 'open record',
   parameters: dynamic,
   evaluate: (params) => {
     // Open, but not opaque: every declaration here says `string`, so the
@@ -111,7 +109,6 @@ assertType<Equal<ResolvedParams<Declared>, { a: number; b?: string }>>()
 const cachingOp = defineOperator({
   name: 'caching',
   category: 'other',
-  description: 'declares a caching operator',
   parameters: { key: { type: 'string' }, count: { type: 'integer', default: 1 } },
   cache: true,
   evaluate: (params) => {
@@ -139,7 +136,6 @@ test('a cache that is not true is refused at registration as well', () => {
     defineOperator({
       name: 'x',
       category: 'other',
-      description: 'x',
       parameters: {},
       cache: false,
       evaluate: () => 1,

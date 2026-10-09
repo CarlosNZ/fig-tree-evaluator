@@ -74,7 +74,7 @@ const TREE = [
   row('recognizeReference'),
   row('toGet'),
   row('migrateV2Expression', row('migrateV2Fragments')),
-  row('operatorHints, categoryHints, typeSeeds', row('withDescriptions')),
+  row('operatorListings, categoryListings, typeSeeds', row('getCatalog')),
 ]
 
 /**

@@ -203,7 +203,7 @@ The editor shows keys in the order they appear, so conversion keeps the author's
 
 ## What these functions don't do
 
-- **Fill in parameters.** The current editor's own validation step also changes the tree, for example by inserting every required parameter with its seed value. That step belongs to the editor. It stays separate from these functions, which only rewrite the form of what's already written. `validate()` can replace the editor's reporting half. The completion half already has its seeds: an operator's come from `./editor-hints`, and a fragment's from the `FragmentHints` a host puts in the fragment definition's `metadata` (reported by `getFragments()`), both falling back to the type-seed rule on `OperatorHints.seeds`. A shared helper for completion would be a separate design.
+- **Fill in parameters.** The current editor's own validation step also changes the tree, for example by inserting every required parameter with its seed value. That step belongs to the editor. It stays separate from these functions, which only rewrite the form of what's already written. `validate()` can replace the editor's reporting half. The completion half already has its seeds: `getCatalog` in `./catalog` gives every parameter of every operator and fragment its `seed`, an operator's from its listing and a fragment's from the `FragmentListing` a host makes its definition's `metadata`, both falling back to the type-seed rule on `OperatorListing.seeds`. A shared helper for completion would be a separate design.
 - **Report problems.** A malformed node is left as written, and the editor surfaces it through `validate()`.
 - **Know their context** (see "The setting").
 

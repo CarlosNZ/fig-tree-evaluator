@@ -140,7 +140,6 @@ describe('only an evaluation that can wait can be cut off', () => {
   const io = defineOperator({
     name: 'io',
     category: 'other',
-    description: 'Anything, fetched by code nothing describes',
     parameters: { value: {} },
     positionalParams: ['value'],
     evaluate: ({ value }) => value,
@@ -148,7 +147,6 @@ describe('only an evaluation that can wait can be cut off', () => {
   const nap = defineOperator({
     name: 'nap',
     category: 'other',
-    description: 'A number, handed back once a timer fires',
     parameters: { value: { type: 'number' } },
     positionalParams: ['value'],
     returns: 'number',

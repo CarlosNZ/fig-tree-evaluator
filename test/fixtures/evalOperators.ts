@@ -13,7 +13,6 @@ export const echoOp = () =>
   defineOperator({
     name: 'echo',
     category: 'other',
-    description: 'Return the value received',
     parameters: { value: { type: 'any', nullPolicy: 'value' } },
     positionalParams: ['value'],
     evaluate: ({ value }) => value,
@@ -24,7 +23,6 @@ export const boomOp = () =>
   defineOperator({
     name: 'boom',
     category: 'other',
-    description: 'Fail with a plain Error',
     parameters: { value: { type: 'any', nullPolicy: 'value', required: false } },
     positionalParams: ['value'],
     evaluate: ({ value }) => {
@@ -37,7 +35,6 @@ export const failOp = () =>
   defineOperator({
     name: 'fail',
     category: 'other',
-    description: 'Fail with an OperatorFailure',
     parameters: {
       message: { type: 'string' },
       code: { type: 'string', required: false },
@@ -57,7 +54,6 @@ export const rawOp = (name: string, produce: () => unknown) =>
   defineOperator({
     name,
     category: 'other',
-    description: 'Produce a raw result for boundary tests',
     parameters: {},
     evaluate: produce,
   })
@@ -83,7 +79,6 @@ export const spyOp = (
   const definition = defineOperator({
     name,
     category: 'other',
-    description: `spy ${name}`,
     parameters,
     ...(extra.positionalParams !== undefined ? { positionalParams: extra.positionalParams } : {}),
     evaluate: (params, context) => {
@@ -120,7 +115,6 @@ export const compileSpyOp = (name = 'counted'): CompileSpy => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: `compile counter ${name}`,
     parameters: { value: { type: 'any', required: false, default: null } },
     positionalParams: ['value'],
     validate: () => {
@@ -156,7 +150,6 @@ export const latencyOp = (name = 'slow'): LatencySpy => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: 'Answer after a scripted delay',
     parameters: {
       value: { type: 'any', nullPolicy: 'value' },
       ms: { type: 'integer', default: 0 },
@@ -214,7 +207,6 @@ export const sleepOp = (): Sleeper => {
   const definition = defineOperator({
     name: 'sleep',
     category: 'other',
-    description: 'Resolve after a delay, honouring the signal',
     parameters: {
       ms: { type: 'integer' },
       timeout: { type: 'integer', required: false },
@@ -258,7 +250,6 @@ export const signalProbeOp = (name = 'probe'): SignalProbe => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: 'Report the signal state on entry, then on abort',
     parameters: {},
     evaluate: (_params, context) =>
       new Promise((resolve) => {

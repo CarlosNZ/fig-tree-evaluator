@@ -38,24 +38,14 @@ export type Path = (string | number)[]
 export const REST_PREFIX = '...'
 
 /**
- * A definition of the package's own: as authored, less the `description`,
- * which the core and I/O operators keep in `./editor-hints` with the rest
- * of their display text, so that a host that never shows it never ships it.
- */
-export type PackageDefinition<P extends ParameterDeclarations = ParameterDeclarations> = Omit<
-  OperatorDefinition<P>,
-  'description'
->
-
-/**
  * Types a package definition literal exactly as `defineOperator()` does —
  * the body's `params` inferred from the declarations — and returns it
  * untouched, for `buildOperator` to build. The erased return type is what
  * lets definitions with different parameters share one array.
  */
 export const declareOperator = <const P extends ParameterDeclarations>(
-  definition: PackageDefinition<P>
-): PackageDefinition => definition as unknown as PackageDefinition
+  definition: OperatorDefinition<P>
+): OperatorDefinition => definition as unknown as OperatorDefinition
 
 /**
  * The trusted build: the package's own definitions, which
@@ -64,7 +54,7 @@ export const declareOperator = <const P extends ParameterDeclarations>(
  * conditional null policy compiles to its table over the definition's one
  * literal-union parameter, unchecked.
  */
-export const buildOperator = (definition: PackageDefinition): ValidatedOperatorDefinition => {
+export const buildOperator = (definition: OperatorDefinition): ValidatedOperatorDefinition => {
   const declarations = Object.entries(definition.parameters)
   const compiledPolicies = new Map<string, CompiledNullPolicy>()
   for (const [name, { nullPolicy }] of declarations) {
@@ -90,7 +80,7 @@ export const buildOperator = (definition: PackageDefinition): ValidatedOperatorD
  * reference and unfrozen (host-owned, opaque).
  */
 export const assembleOperator = (
-  def: PackageDefinition & { description?: string },
+  def: OperatorDefinition,
   compiledPolicies: Map<string, CompiledNullPolicy>
 ): ValidatedOperatorDefinition => {
   const validatedParameters: Record<string, ValidatedParameter> = {}
@@ -110,7 +100,6 @@ export const assembleOperator = (
       nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
     if ('default' in d) parameter.default = d.default
-    if (d.description !== undefined) parameter.description = d.description
     if (d.metadata !== undefined) parameter.metadata = d.metadata
     if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
     if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
@@ -142,7 +131,6 @@ export const assembleOperator = (
     evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
-  if (def.description !== undefined) validated.description = def.description
   if (def.alias !== undefined) validated.alias = def.alias
   if (def.metadata !== undefined) validated.metadata = def.metadata
   if (def.positionalParams !== undefined) validated.positionalParams = [...def.positionalParams]
@@ -158,11 +146,11 @@ export const assembleOperator = (
  * The definition's content fingerprint: the fields that decide what the
  * body computes, hashed. An allowlist rather than the whole object, so
  * that "the definition's content" is stated rather than implied:
- * `description` and `alias` cannot change a result, and hashing them would
- * invalidate a persisted store's entries on a docs-only edit; `metadata`
- * is a host-owned bag kept by reference that may hold anything, including
- * values `JSON.stringify` throws on. A parameter's own `description` and
- * `metadata` are left out for the same reasons. `deliversLazily` and
+ * `alias` cannot change a result, and hashing it would invalidate a
+ * persisted store's entries on a cosmetic edit; `metadata` is a host-owned
+ * bag kept by reference that may hold anything, including values
+ * `JSON.stringify` throws on. A parameter's own `metadata` is left out for
+ * the same reason. `deliversLazily` and
  * `resolution` are derived from the parameters already in. A field added
  * to the type later has to be admitted here deliberately. Functions,
  * symbols (the `EvaluationData` default) and regular expressions render as
@@ -192,10 +180,9 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
     )
   )
 
-/** A parameter less the two fields the fingerprint leaves out. */
+/** A parameter less the field the fingerprint leaves out. */
 const parameterContent = (parameter: ValidatedParameter): Record<string, unknown> => {
   const content: Record<string, unknown> = { ...parameter }
-  delete content.description
   delete content.metadata
   return content
 }

@@ -72,8 +72,9 @@ import { findCycles, isPlainObject } from './utils'
 /**
  * A fragment parameter declaration as authored. Extends the same
  * `TypeDeclaration` base an operator's `ParameterDeclaration` extends, so
- * the two stay byte-compatible: `type`, `required` and `constraints` are
- * inherited and mean exactly what they mean for an operator parameter.
+ * one, less its `description`, is a valid operator parameter declaration:
+ * `type`, `required` and `constraints` are inherited and mean exactly what
+ * they mean for an operator parameter.
  *
  * `default` is a constant value, never an expression — visible to tooling
  * verbatim, type-checked here, never evaluated. A computed default is

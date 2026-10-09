@@ -1,6 +1,6 @@
 /**
  * Phase 14 showcase — `pnpm dev phase14_showcase`. Packaging: what a host
- * imports, what it pays for, and what a tool gets from the editor-hints
+ * imports, what it pays for, and what a tool gets from the catalog
  * subpath. Every phase closes with one of these (implementation-plan
  * working rule 7).
  *
@@ -8,15 +8,15 @@
  * `pnpm check:package` exercise, so the last section runs those reports
  * when build/ exists. Before that are the parts a host or a tool author
  * meets: the root's export list, a host definition going through
- * `defineOperator()`'s checks, and editor-hints turned into starting nodes
- * that evaluate.
+ * `defineOperator()`'s checks, and the catalog's starting nodes, which
+ * evaluate.
  */
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import * as root from '../index'
 import { FigTree, coreOperators, defineOperator, isFigTreeError } from '../index'
-import type { ExpectedType, FragmentHints, OperatorInfo } from '../index'
-import { categoryHints, operatorHints, typeSeeds } from '../editor-hints'
+import type { CatalogOperator, FragmentListing } from '../index'
+import { getCatalog } from '../catalog'
 import { block, outcome, section } from './showcase'
 
 const fig = new FigTree({
@@ -26,32 +26,22 @@ const fig = new FigTree({
       expression: { $buildString: ['Hello, %1', '$params.name'] },
       parameters: { name: { type: 'string' } },
       description: 'A greeting',
-      // A fragment's display hints travel in its own metadata, in the
-      // operator hints' shape with `docUrl` optional
+      // A fragment's listing is its own metadata
       metadata: {
         displayName: 'Greeting',
         backgroundColor: '#477799',
         textColor: '#ffffff',
-      } satisfies FragmentHints,
+        seeds: { name: 'Ada' },
+      } satisfies FragmentListing,
     },
   },
 })
 
-/** A parameter's starting value, by the rule on `OperatorHints.seeds`. */
-const startingValue = (operator: string, parameter: string, type: ExpectedType): unknown => {
-  const seeds = operatorHints[operator]?.seeds ?? {}
-  if (parameter in seeds) return seeds[parameter]
-  if (typeof type === 'string') return typeSeeds[type]
-  if ('literal' in type) return type.literal[0]
-  return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
-}
-
 /** What an editor inserts for a new node: its required parameters, seeded. */
-const startingNode = (info: OperatorInfo, extra: string[] = []) => {
-  const node: Record<string, unknown> = { operator: info.name }
-  for (const [name, parameter] of Object.entries(info.parameters))
-    if (parameter.required || extra.includes(name))
-      node[name] = startingValue(info.name, name, parameter.type)
+const startingNode = (operator: CatalogOperator, extra: string[] = []) => {
+  const node: Record<string, unknown> = { operator: operator.name }
+  for (const [name, parameter] of Object.entries(operator.parameters))
+    if (parameter.required || extra.includes(name)) node[name] = parameter.seed
   return node
 }
 
@@ -87,7 +77,6 @@ const main = async () => {
   try {
     defineOperator({
       name: 'percent',
-      description: 'A value as a percentage of a total',
       // @ts-expect-error — a category from outside the closed vocabulary
       category: 'maths',
       parameters: {
@@ -107,7 +96,6 @@ const main = async () => {
 
   const percent = defineOperator({
     name: 'percent',
-    description: 'A value as a percentage of a total',
     category: 'math',
     parameters: { value: { type: 'number' }, total: { type: 'number' } },
     positionalParams: ['value', 'total'],
@@ -125,22 +113,21 @@ const main = async () => {
       '  the validator out of a bundle that never calls defineOperator().\n'
   )
 
-  section('editor-hints: an operator list, grouped and labelled')
+  section('getCatalog(): an operator list, grouped and labelled')
 
-  const operators = fig.getOperators()
-  const categories = Object.entries(categoryHints).sort(([, a], [, b]) => a.order - b.order)
-  for (const [category, hints] of categories) {
+  const { categories, operators, fragments } = getCatalog(fig)
+  for (const category of categories) {
     const names = operators
-      .filter((info) => info.category === category)
-      .map((info) => operatorHints[info.name]?.displayName ?? info.name)
-    if (names.length > 0) console.log(`  ${hints.displayName.padEnd(20)}${names.join(', ')}`)
+      .filter((operator) => operator.category === category.name)
+      .map((operator) => operator.displayName)
+    if (names.length > 0) console.log(`  ${category.displayName.padEnd(20)}${names.join(', ')}`)
   }
   console.log(
-    '\n  Labels and order from categoryHints, each operator from its definition\n' +
+    "\n  Categories in their order, each operator under its definition's category\n" +
       "  — the grouping is data the package ships, not the editor's own table.\n"
   )
 
-  section('editor-hints: new nodes, seeded, and what they evaluate to')
+  section('getCatalog(): new nodes, seeded, and what they evaluate to')
 
   const showcase: [string, string[]?][] = [
     ['plus'],
@@ -153,35 +140,35 @@ const main = async () => {
     ['split', ['delimiter']],
   ]
   for (const [name, extra] of showcase) {
-    const info = operators.find((entry) => entry.name === name)
-    if (info === undefined) continue
-    const node = startingNode(info, extra)
+    const operator = operators.find((entry) => entry.name === name)
+    if (operator === undefined) continue
+    const node = startingNode(operator, extra)
     const label = extra
-      ? `${operatorHints[name].displayName}, with ${extra.join(', ')} added`
-      : operatorHints[name].displayName
+      ? `${operator.displayName}, with ${extra.join(', ')} added`
+      : operator.displayName
     console.log(
       `  ${label}\n      ${block(node)}\n    ${await outcome(() => fig.evaluate(node))}\n`
     )
   }
   console.log(
-    '  Every seeded node validates — test/editor-hints.test.ts checks each\n' +
+    '  Every seeded node validates — test/catalog.test.ts checks each\n' +
       "  operator's starting node alone and with each optional parameter added.\n"
   )
 
-  section('A fragment describes itself in its own metadata')
+  section('A fragment lists itself in its own metadata')
 
-  for (const info of fig.getFragments()) {
-    const hints = info.metadata as FragmentHints | undefined
+  for (const fragment of fragments) {
+    const node = {
+      [`$${fragment.name}`]: Object.fromEntries(
+        Object.entries(fragment.parameters).map(([name, parameter]) => [name, parameter.seed])
+      ),
+    }
     console.log(
-      `  ${info.name}: shown as "${hints?.displayName ?? info.name}", ` +
-        `${hints?.backgroundColor ?? '(editor default)'} on ${hints?.textColor ?? '—'}, ` +
-        `docs ${hints?.docUrl ?? 'none (optional for fragments)'}`
+      `  ${fragment.name}: shown as "${fragment.displayName}", ` +
+        `${fragment.backgroundColor ?? '(editor default)'} on ${fragment.textColor ?? '—'}, ` +
+        `"${fragment.description}"`
     )
-    console.log(
-      `      ${block({ $greeting: { name: 'Carl' } })} ${await outcome(() =>
-        fig.evaluate({ $greeting: { name: 'Carl' } })
-      )}\n`
-    )
+    console.log(`      ${block(node)} ${await outcome(() => fig.evaluate(node))}\n`)
   }
 
   section('The package as built')

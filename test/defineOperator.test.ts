@@ -88,7 +88,6 @@ describe('defineOperator — the validated artifact', () => {
     const validated = defineOperator({
       name: 'bare',
       category: 'other',
-      description: 'An operator with one empty declaration',
       parameters: { value: {} },
       evaluate: ({ value }) => value,
     })
@@ -311,7 +310,6 @@ describe('the fingerprint sees source text, not closure state', () => {
     defineOperator({
       name: 'factory',
       category: 'other',
-      description: 'closes over its tag',
       parameters: {},
       evaluate: () => tag,
     })
@@ -320,16 +318,14 @@ describe('the fingerprint sees source text, not closure state', () => {
     expect(fromFactory('a').fingerprint).toBe(fromFactory('b').fingerprint)
   })
 
-  it('leaves out a parameter’s description and metadata, as the definition’s own', () => {
+  it('leaves out a parameter’s metadata, as the definition’s own', () => {
     const withParameter = (declaration: Record<string, unknown>) =>
       defineOperator({
         name: 'described',
         category: 'other',
-        description: 'one parameter',
         parameters: { a: declaration },
         evaluate: () => null,
       } as never).fingerprint
-    expect(withParameter({ description: 'one' })).toBe(withParameter({ description: 'two' }))
     // Host-owned, so it may hold what JSON cannot: a BigInt, a cycle
     const cycle: Record<string, unknown> = {}
     cycle.self = cycle

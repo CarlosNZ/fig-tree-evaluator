@@ -160,7 +160,6 @@ describe('a compiled expression is a snapshot', () => {
         (await import('../src')).defineOperator({
           name: 'ticker',
           category: 'other',
-          description: 'count runs',
           parameters: {},
           cache: true,
           evaluate: (_params, context) => context.cache.memo('tick', async () => (runs += 1)),
@@ -181,7 +180,6 @@ describe('a compiled expression is a snapshot', () => {
     const declaration = {
       name: 'tagged',
       category: 'other',
-      description: 'answer with a tag',
       parameters: { value: { type: 'any', required: false, default: null } },
       positionalParams: ['value'],
       cache: true,

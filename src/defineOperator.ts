@@ -125,10 +125,6 @@ export function defineOperator(
 
   if (typeof def.name !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'name' is required and must be a string", ['name'])
-  if (typeof def.description !== 'string' || def.description === '')
-    addIssue(ErrorCodes.invalidDefinition, "'description' is required and must be non-empty", [
-      'description',
-    ])
   if (!isPlainObject(def.parameters))
     addIssue(
       ErrorCodes.invalidDefinition,
@@ -291,13 +287,6 @@ export function defineOperator(
         ErrorCodes.invalidDefinition,
         `'required' must be a boolean`,
         at('required'),
-        paramName
-      )
-    if (d.description !== undefined && typeof d.description !== 'string')
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `'description' must be a string`,
-        at('description'),
         paramName
       )
     if (d.metadata !== undefined && !isPlainObject(d.metadata))

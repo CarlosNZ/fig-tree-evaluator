@@ -19,7 +19,6 @@ const fetcher = () => {
   const definition = defineOperator({
     name: 'fetch',
     category: 'other',
-    description: 'A caching operator that counts the units it ran',
     parameters: { key: { type: 'string' } },
     positionalParams: ['key'],
     returns: 'string',

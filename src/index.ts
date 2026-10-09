@@ -8,7 +8,7 @@
  * file to; the types follow that doc's "Types" list.
  *
  * The root never imports a subpath. The subpaths' types are exported here
- * instead, so editor-hints stays a data module and each of the others holds
+ * instead, so the catalog stays a data module and each of the others holds
  * only its own code.
  */
 export { version } from './version'
@@ -148,17 +148,24 @@ export type {
 export { inspect } from './inspect'
 export type { InspectDependencies, InspectIssue, InspectNode, InspectReport } from './inspect'
 
-// ── Editor hints ─────────────────────────────────────────────────────────
-// The shapes of the `./editor-hints` subpath's data, and the key convention
-// for plugin operators and for a fragment's `metadata`.
+// ── Catalog ──────────────────────────────────────────────────────────────
+// The shapes of the `./catalog` subpath's listings and of the catalog its
+// `getCatalog` builds, and the key convention for plugin operators and for
+// a fragment's `metadata`.
 export type {
-  CategoryHintMap,
-  CategoryHints,
-  FragmentHints,
-  OperatorHintMap,
-  OperatorHints,
+  Catalog,
+  CatalogCategory,
+  CatalogFragment,
+  CatalogFragmentParameter,
+  CatalogOperator,
+  CatalogParameter,
+  CategoryListing,
+  CategoryListingMap,
+  FragmentListing,
+  OperatorListing,
+  OperatorListingMap,
   TypeSeeds,
-} from './editorHintTypes'
+} from './catalogTypes'
 
 // ── Migration ────────────────────────────────────────────────────────────
 // The shapes the `./migrate` subpath's two functions take and return.

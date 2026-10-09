@@ -6,7 +6,7 @@
  * Everything the page says about a *registered* operator is read out of its
  * definition — aliases, parameter types, defaults, delivery modes, truthiness
  * positions, constraints and `returns` — and its descriptions out of
- * `./editor-hints`, where the package's operators keep their text. Operators
+ * `./catalog`, where the package's operators keep their text. Operators
  * whose definitions have not landed yet are carried in `PENDING` below, sourced
  * from the parameter passes, and each entry is **deleted** as its operator
  * arrives — the build fails if a pending entry names a registered operator, so
@@ -14,7 +14,7 @@
  * exists.
  *
  * The page follows the package's own data rather than restating it: the
- * sections and their labels are editor-hints' `categoryHints`, in their
+ * sections and their labels are the catalog's `categoryListings`, in their
  * `order`; each operator sits in its definition's `category`, in
  * registration order. A newly registered operator therefore appears without
  * anyone listing it. Only the one-line note under each section heading is
@@ -26,7 +26,7 @@ import { dirname, resolve } from 'node:path'
 import { coreOperators } from '../src/operators/index'
 import { EvaluationData } from '../src/operatorDefinition'
 import { httpOperators, sqlOperators } from '../src/operators/io'
-import { categoryHints, operatorHints } from '../src/editor-hints'
+import { categoryListings, operatorListings } from '../src/catalog'
 import type {
   OperatorCategory,
   ValidatedOperatorDefinition,
@@ -51,7 +51,7 @@ const NOTES: Record<OperatorCategory, string> = {
 }
 
 /** Section key, label and note, in listing order. */
-const GROUPS: [string, string, string][] = Object.entries(categoryHints)
+const GROUPS: [string, string, string][] = Object.entries(categoryListings)
   .sort(([, a], [, b]) => a.order - b.order)
   .map(([key, { displayName }]) => [key, displayName, NOTES[key as OperatorCategory]])
 
@@ -140,8 +140,8 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
   st: 'live',
   ret: formatType(op.returns),
   pos: op.positionalParams ?? [],
-  // The package's operators keep their text in ./editor-hints
-  d: operatorHints[op.name]?.description ?? '',
+  // The package's operators keep their text in ./catalog
+  d: operatorListings[op.name]?.description ?? '',
   p: Object.entries(op.parameters).map(([name, p]: [string, ValidatedParameter]) => {
     return {
       n: name,
@@ -159,7 +159,7 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
         : {}),
       ev: p.evaluation && p.evaluation !== 'eager' ? p.evaluation : null,
       tr: p.truthiness === true,
-      d: operatorHints[op.name]?.parameterDescriptions?.[name] ?? null,
+      d: operatorListings[op.name]?.parameterDescriptions?.[name] ?? null,
     }
   }),
 })

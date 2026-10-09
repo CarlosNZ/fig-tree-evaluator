@@ -19,7 +19,6 @@ const custom = defineOperator({
   name: 'custom',
   alias: '&',
   category: 'other',
-  description: 'A host operator, to show the snapshot is total',
   metadata: bag,
   parameters: {
     value: { type: 'any', required: false, default: seed },
@@ -57,7 +56,6 @@ describe('what the snapshot contains', () => {
       name: 'custom',
       alias: '&',
       category: 'other',
-      description: 'A host operator, to show the snapshot is total',
       positionalParams: ['value'],
       restParam: null,
       timeoutParam: 'ms',

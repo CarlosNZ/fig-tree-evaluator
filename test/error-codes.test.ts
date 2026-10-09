@@ -51,7 +51,6 @@ afterEach(() => {
 const leaky = defineOperator({
   name: 'leaky',
   category: 'other',
-  description: 'Hand the handle back',
   parameters: { branch: { type: 'any', evaluation: 'lazy' } },
   positionalParams: ['branch'],
   evaluate: ({ branch }) => branch as never,

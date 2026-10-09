@@ -218,7 +218,7 @@ describe('the registry is rebuilt and re-validated', () => {
   it('rejects an unbranded operator entry, as construction does', () => {
     const fig = new FigTree()
     const error = updateInvalid(fig, {
-      operators: [{ name: 'raw', description: 'x', parameters: {}, evaluate: () => 1 } as never],
+      operators: [{ name: 'raw', parameters: {}, evaluate: () => 1 } as never],
     })
     expect(error.code).toBe(ErrorCodes.invalidOptions)
   })

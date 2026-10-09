@@ -20,7 +20,6 @@ const noop = async () => null
 const clampOp = defineOperator({
   name: 'clamp',
   category: 'math',
-  description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },
     min: { type: 'number', default: 0 },

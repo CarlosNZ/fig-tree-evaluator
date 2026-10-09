@@ -98,7 +98,7 @@ const ENGINE_MARKERS = [
   {
     part: 'the core operators',
     // Operator names and the factories' own messages: the descriptions are
-    // ./editor-hints'. A short name is quoted, as the minified bundle prints
+    // ./catalog's. A short name is quoted, as the minified bundle prints
     // it, so that `Math.floor` or `.toUpperCase` cannot match it
     markers: [
       'buildObject', // declareOperator

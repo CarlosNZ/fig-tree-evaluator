@@ -25,10 +25,10 @@ export const ENTRIES = [
     marker: 'is not a v2 operator',
   },
   {
-    subpath: './editor-hints',
-    name: 'editor-hints/index',
-    source: 'src/editor-hints/index.ts',
-    budget: 4_900,
+    subpath: './catalog',
+    name: 'catalog/index',
+    source: 'src/catalog/index.ts',
+    budget: 5_200,
     marker: 'String builder',
   },
   {

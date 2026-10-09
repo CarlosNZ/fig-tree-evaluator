@@ -33,7 +33,6 @@ const supplied: Record<string, unknown>[] = []
 const refuse = defineOperator({
   name: 'refuse',
   category: 'other',
-  description: 'Fail with an OperatorFailure carrying errorData',
   parameters: { status: { type: 'number' } },
   positionalParams: ['status'],
   evaluate: ({ status }) => {

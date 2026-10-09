@@ -24,7 +24,6 @@ const readsSignal = (name = 'reads') => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: 'Read the signal during the body',
     parameters: {},
     evaluate: (_params, context) => {
       seen.push(context.signal)
@@ -178,7 +177,6 @@ describe('cancellation still reaches a listener through unmaterialised ancestors
     const escapes = defineOperator({
       name: 'escapes',
       category: 'other',
-      description: 'Start work after returning',
       parameters: { child: { type: 'any', evaluation: 'lazy' } },
       evaluate: ({ child }) => {
         late = new Promise((resolve) => setTimeout(resolve, 5)).then(() =>

@@ -21,9 +21,9 @@ const V2_PACKAGE_BAN = {
 // docs-dev/v3-specs/v3-packaging.md)
 const SUBPATH_BANS = [
   {
-    group: ['**/editor-hints', '**/editor-hints/**'],
+    group: ['**/catalog', '**/catalog/**'],
     message:
-      'The root entry never imports a subpath: editor-hints is tooling-side data, so importing it here would ship it to every host.',
+      'The root entry never imports a subpath: the catalog is tooling-side data, so importing it here would ship it to every host.',
   },
   {
     group: ['**/migrate', '**/migrate/**'],
@@ -106,7 +106,7 @@ export default tseslint.config(
     // playground, which may import anything
     files: ['src/**/*.ts'],
     ignores: [
-      'src/editor-hints/**',
+      'src/catalog/**',
       'src/migrate/**',
       'src/format/**',
       'src/authoring/**',
@@ -213,9 +213,9 @@ export default tseslint.config(
     },
   },
   {
-    // editor-hints imports types only: they erase at build, and any value
+    // The catalog imports types only: they erase at build, and any value
     // import would pull code into the subpath's bundle
-    files: ['src/editor-hints/**/*.ts'],
+    files: ['src/catalog/**/*.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -224,7 +224,7 @@ export default tseslint.config(
             {
               group: ['**'],
               allowTypeImports: true,
-              message: 'editor-hints imports types only (`import type`).',
+              message: 'The catalog imports types only (`import type`).',
             },
           ],
         },

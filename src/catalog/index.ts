@@ -1,25 +1,38 @@
 /**
- * `fig-tree-evaluator/editor-hints` — display data for the core and I/O
- * operators and `literal` ("`./editor-hints`" in
- * docs-dev/v3-specs/v3-packaging.md): a label and colours for every operator
- * and category, starting values for
- * parameters, and a starting value for each type. An editor reads it as its
- * fallback layer, under whatever a host or plugin supplies.
+ * `fig-tree-evaluator/catalog` — how the core and I/O operators, `literal`
+ * and the categories are presented ("`./catalog`" in
+ * docs-dev/v3-specs/v3-packaging.md): a label, text and colours for every
+ * operator and category, starting values for parameters, and a starting
+ * value for each type. `getCatalog` joins them, with any listings a host or
+ * plugin supplies, into what an instance's `getOperators()` and
+ * `getFragments()` report.
  *
- * Data, and one function joining it into `getOperators()`
- * (`withDescriptions`). No runtime import from the engine, which in turn
- * never imports this. The shapes, and the rule for picking a
- * parameter's starting value, are the root's (src/editorHintTypes.ts).
+ * Data, and that one function. No runtime import from the engine, which in
+ * turn never imports this. The shapes, and the rule for picking a
+ * parameter's starting value, are the root's (src/catalogTypes.ts).
  *
  * The palette gives each category a hue, shown at full strength in
- * `categoryHints`; its operators are light shades of that hue, varied a
+ * `categoryListings`; its operators are light shades of that hue, varied a
  * little in hue and lightness so that neighbours stay distinguishable. Every
- * text colour reaches 4.5:1 on its background (test/editor-hints.test.ts).
+ * text colour reaches 4.5:1 on its background (test/catalog.test.ts).
  */
-import type { CategoryHintMap, OperatorHintMap, TypeSeeds } from '../editorHintTypes'
-import type { OperatorInfo, ParameterInfo } from '../introspect'
+import type {
+  Catalog,
+  CatalogCategory,
+  CatalogFragment,
+  CatalogOperator,
+  CatalogParameter,
+  CategoryListingMap,
+  FragmentListing,
+  OperatorListing,
+  OperatorListingMap,
+  TypeSeeds,
+} from '../catalogTypes'
+import type { FigTree } from '../FigTree'
+import type { OperatorCategory } from '../operatorDefinition'
+import type { ExpectedType } from '../typeCheck'
 
-export const categoryHints: CategoryHintMap = {
+export const categoryListings: CategoryListingMap = {
   logic: {
     displayName: 'Logic & control',
     order: 0,
@@ -73,7 +86,7 @@ export const typeSeeds: TypeSeeds = {
 // that README has one per operator
 const DOCS = 'https://github.com/CarlosNZ/fig-tree-evaluator'
 
-export const operatorHints: OperatorHintMap = {
+export const operatorListings: OperatorListingMap = {
   // ── Logic & control ────────────────────────────────────────────────────
   and: {
     displayName: 'Logical AND',
@@ -668,26 +681,83 @@ export const operatorHints: OperatorHintMap = {
   },
 }
 
+/** The value under a key the map holds itself, not one it inherits. */
+const own = <T>(map: { [key: string]: T } | undefined, key: string): T | undefined =>
+  map !== undefined && Object.hasOwn(map, key) ? map[key] : undefined
+
+/** A listing's colours, where it gives the pair. */
+const coloursOf = (listing: FragmentListing) =>
+  listing.backgroundColor !== undefined && listing.textColor !== undefined
+    ? { backgroundColor: listing.backgroundColor, textColor: listing.textColor }
+    : undefined
+
+/** What a parameter starts as: its listing's seed, else its type's. */
+const seedOf = (listing: FragmentListing, parameter: string, type: ExpectedType): unknown => {
+  if (listing.seeds !== undefined && Object.hasOwn(listing.seeds, parameter))
+    return listing.seeds[parameter]
+  if (typeof type === 'string') return typeSeeds[type]
+  if ('literal' in type) return type.literal[0]
+  return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
+}
+
 /**
- * `getOperators()` with the core and I/O operators' descriptions joined in
- * from `operatorHints`: the snapshot as it reads with their text in their
- * definitions. Only an operator with no description of its own takes one,
- * since a host's operator always carries its own (`defineOperator()`
- * requires it), so a host operator that shares an I/O operator's name
- * never takes that operator's text.
+ * The instance's operators and fragments, each with its listing joined in,
+ * and the categories they group under. An operator's listing is the last
+ * of `listings` to have an entry for its name, else the package's own in
+ * `operatorListings`; an entry is taken whole, never merged with another
+ * map's. A fragment's listing is its definition's `metadata`.
  */
-export const withDescriptions = (operators: OperatorInfo[]): OperatorInfo[] =>
-  operators.map((operator) => {
-    const hints =
-      operator.description === undefined && Object.hasOwn(operatorHints, operator.name)
-        ? operatorHints[operator.name]
-        : undefined
-    if (hints?.description === undefined) return operator
-    const parameters: Record<string, ParameterInfo> = {}
-    for (const [name, parameter] of Object.entries(operator.parameters)) {
-      const description = hints.parameterDescriptions?.[name]
-      parameters[name] = description === undefined ? parameter : { ...parameter, description }
+export const getCatalog = (
+  fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
+  ...listings: OperatorListingMap[]
+): Catalog => {
+  const listingOf = (name: string): OperatorListing => {
+    for (let i = listings.length - 1; i >= 0; i--) {
+      const listing = own(listings[i], name)
+      if (listing !== undefined) return listing
     }
-    const { name, category, ...rest } = operator
-    return { name, category, description: hints.description, ...rest, parameters }
+    return own(operatorListings, name) ?? {}
+  }
+
+  const categories = Object.entries(categoryListings)
+    .map(([name, listing]): CatalogCategory => ({ name: name as OperatorCategory, ...listing }))
+    .sort((a, b) => a.order - b.order)
+
+  const operators = fig.getOperators().map(({ name, parameters, ...info }): CatalogOperator => {
+    const listing = listingOf(name)
+    const operator: CatalogOperator = {
+      name,
+      displayName: listing.displayName ?? name,
+      ...info,
+      ...(coloursOf(listing) ?? coloursOf(categoryListings[info.category])!),
+      parameters: {},
+    }
+    if (listing.description !== undefined) operator.description = listing.description
+    if (listing.docUrl !== undefined) operator.docUrl = listing.docUrl
+    for (const [key, parameter] of Object.entries(parameters)) {
+      const entry: CatalogParameter = { ...parameter, seed: seedOf(listing, key, parameter.type) }
+      const description = own(listing.parameterDescriptions, key)
+      if (description !== undefined) entry.description = description
+      operator.parameters[key] = entry
+    }
+    return operator
   })
+
+  const fragments = fig.getFragments().map(({ name, parameters, ...info }): CatalogFragment => {
+    // A convention only: the engine never reads `metadata`
+    const listing = (info.metadata ?? {}) as FragmentListing
+    const fragment: CatalogFragment = {
+      name,
+      displayName: listing.displayName ?? name,
+      ...info,
+      ...coloursOf(listing),
+      parameters: {},
+    }
+    if (listing.docUrl !== undefined) fragment.docUrl = listing.docUrl
+    for (const [key, parameter] of Object.entries(parameters))
+      fragment.parameters[key] = { ...parameter, seed: seedOf(listing, key, parameter.type) }
+    return fragment
+  })
+
+  return { categories, operators, fragments }
+}

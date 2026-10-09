@@ -7,8 +7,8 @@
  * `EvaluationData` sentinel.
  *
  * The parameter declaration extends `TypeDeclaration` (src/typeCheck.ts), so
- * a fragment declaration stays byte-compatible with an operator parameter
- * declaration, per the contract.
+ * a fragment declaration, less its `description`, is a valid operator
+ * parameter declaration, per the contract.
  */
 import type { Constraints, ExpectedType, TypeDeclaration } from './typeCheck'
 import type { Severity } from './issues'
@@ -30,7 +30,7 @@ export type EvaluationMode =
  * contract): a closed set of eight, required on every definition. The
  * engine never reads it — it is what a tool building an operator dropdown
  * with sections groups by, which is why it travels on the definition
- * rather than in a hints module keyed by this package's own names. The
+ * rather than in a listing keyed by this package's own names. The
  * tuple is the one source: the type derives from it, and so does
  * `defineOperator()`'s membership check.
  */
@@ -119,7 +119,6 @@ export interface ParameterDeclaration extends TypeDeclaration {
   // Inherited from TypeDeclaration: type?, required?, constraints?
   /** A constant or the `EvaluationData` sentinel. Presence implies optional. */
   default?: unknown
-  description?: string
   /** Opaque; engine never reads it. */
   metadata?: Record<string, unknown>
   /** How the engine delivers the value to the body. Default `'eager'`. */
@@ -156,7 +155,10 @@ export type ParameterDeclarations = Record<string, ParameterDeclaration>
 /**
  * A definition as authored, before it passes through `defineOperator()`.
  * Generic over its own `parameters` so the body's `params` is typed from
- * them (src/inference.ts).
+ * them (src/inference.ts). How the operator is presented, its description
+ * and its parameters' included, is an `OperatorListing`'s
+ * (src/catalogTypes.ts), so a host that never shows that text never ships
+ * it.
  */
 export interface OperatorDefinition<P extends ParameterDeclarations = ParameterDeclarations> {
   /** Shared legality rule + reservation set; collision-checked on registry. */
@@ -165,7 +167,6 @@ export interface OperatorDefinition<P extends ParameterDeclarations = ParameterD
   alias?: string
   /** Grouping for tooling, from the closed set; never read by the engine. */
   category: OperatorCategory
-  description: string
   /** Opaque; engine never reads it; returned verbatim by `getOperators()`. */
   metadata?: Record<string, unknown>
   /** Keyed by parameter name; ordering lives in `positionalParams`. */
@@ -219,7 +220,6 @@ export interface ValidatedParameter {
   required: boolean
   /** Present only when authored; may be the `EvaluationData` sentinel. */
   default?: unknown
-  description?: string
   metadata?: Record<string, unknown>
   evaluation: EvaluationMode
   truthiness: boolean
@@ -240,8 +240,6 @@ export interface ValidatedOperatorDefinition {
   name: string
   alias?: string
   category: OperatorCategory
-  /** Absent on the core and I/O operators, whose text is `./editor-hints`'. */
-  description?: string
   metadata?: Record<string, unknown>
   parameters: Record<string, ValidatedParameter>
   positionalParams?: string[]
