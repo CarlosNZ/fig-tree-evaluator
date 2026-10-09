@@ -7,13 +7,15 @@
  * deterministic own-property walk for any other object-typed instance.
  * Cross-type comparisons are `false`, never an error; `NaN` equals `NaN`.
  *
- * The scope is deliberate: the full build, not `dequal/lite`. `Date` and
- * `RegExp` are the opaques that actually arrive in data objects, and their
- * branches are blessed as defined behaviour. Every other non-plain value
- * (`Map`, `Set`, typed arrays, class instances) compares by dequal's rules,
- * which is deterministic but unspecified — equality stays total rather than
- * erroring, and the compiler's opaque-constant rule (what counts as a node)
- * is a different question from what `equal` answers over data.
+ * The scope is deliberate: the full build, not `dequal/lite`. Both carry
+ * the `Date` and `RegExp` branches, the opaques that actually arrive in data
+ * objects, which are blessed as defined behaviour. Only the full build
+ * compares a `Map`, a `Set` or a binary value (a node-postgres `bytea`
+ * `Buffer`) by content, where lite calls any two `Map`s equal. Those, and
+ * class instances, compare by dequal's rules, which are deterministic but
+ * unspecified — equality stays total rather than erroring, and the
+ * compiler's opaque-constant rule (what counts as a node) is a different
+ * question from what `equal` answers over data.
  *
  * Vendored from `dequal` 2.0.3 (https://github.com/lukeed/dequal) so the
  * package carries no runtime dependency — the semantics are that library's,
