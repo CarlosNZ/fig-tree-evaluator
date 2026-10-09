@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import * as root from '../index'
 import { FigTree, coreOperators, defineOperator, isFigTreeError } from '../index'
-import type { CatalogOperator, FragmentListing } from '../index'
+import type { CatalogOperator, FragmentMetadata } from '../index'
 import { getCatalog } from '../catalog'
 import { block, outcome, section } from './showcase'
 
@@ -26,13 +26,13 @@ const fig = new FigTree({
       expression: { $buildString: ['Hello, %1', '$params.name'] },
       parameters: { name: { type: 'string' } },
       description: 'A greeting',
-      // A fragment's listing is its own metadata
+      // A fragment is presented by its own metadata
       metadata: {
         displayName: 'Greeting',
         backgroundColor: '#477799',
         textColor: '#ffffff',
         seeds: { name: 'Ada' },
-      } satisfies FragmentListing,
+      } satisfies FragmentMetadata,
     },
   },
 })
@@ -155,7 +155,7 @@ const main = async () => {
       "  operator's starting node alone and with each optional parameter added.\n"
   )
 
-  section('A fragment lists itself in its own metadata')
+  section('A fragment is presented by its own metadata')
 
   for (const fragment of fragments) {
     const node = {

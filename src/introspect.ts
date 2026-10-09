@@ -20,6 +20,7 @@ import {
   type ValidatedParameter,
 } from './operatorDefinition'
 import type { OperatorRegistry } from './registry'
+import type { FragmentMetadata } from './catalogTypes'
 import type { FragmentParameter } from './fragments'
 import type { Issue } from './issues'
 import type { ExpectedType } from './typeCheck'
@@ -158,7 +159,8 @@ export interface OperatorInfo extends Omit<
 export interface FragmentInfo {
   name: string
   description?: string
-  metadata?: Record<string, unknown>
+  /** The definition's `metadata`, as written: its keys are never checked. */
+  metadata?: FragmentMetadata & Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /**
    * What the body is known to return, inferred at registration from its

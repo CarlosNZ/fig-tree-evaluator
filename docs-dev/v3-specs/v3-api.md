@@ -886,7 +886,8 @@ fragments: {
       fields: { type: 'string', default: 'name,capital' },  // optional via default
     },
     description: 'Fetch a country record from restcountries.com', // optional
-    metadata: { backgroundColor: '#B2E0FF', team: 'config-admins' }, // optional, opaque — see Tooling metadata
+    metadata: { backgroundColor: '#B2E0FF', team: 'config-admins' }, // optional, never read — see Tooling metadata
+    samples: { country: 'New Zealand' },                    // optional, never read — see Tooling metadata
   },
 }
 ```
@@ -972,7 +973,8 @@ Fragments are statically checkable at registration (the registry is stable by co
 ### Tooling metadata
 
 - `description` is the one universal top-level field — consumed by generated docs, editor labels and `validate()` messaging.
-- **`metadata?: Record<string, unknown>` is an opaque bag**: the engine never reads it; `getFragments()` returns it verbatim. v2's editor display hints (`textColor` / `backgroundColor` — [types.ts:100-101](../../v2-src/types.ts#L100-L101)) move here, becoming keys that [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) defines for itself; hosts can carry anything else the same way (organisational ownership, versioning, category tags). Constraint recorded for Extensibility: custom-operator definitions adopt the same `description` + opaque-`metadata` convention.
+- **`metadata?: FragmentMetadata & Record<string, unknown>` is a tooling bag**: the engine never reads it; `getFragments()` returns it verbatim, under the same type. Its `FragmentMetadata` keys are how the fragment is presented — display name, documentation link, colours as a pair, seeds — which `getCatalog` reads ("`./catalog`" in [v3-packaging.md](v3-packaging.md)) and [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react) edits; v2's editor display hints (`textColor` / `backgroundColor` — [types.ts:100-101](../../v2-src/types.ts#L100-L101)) are two of them. Any other key is the host's (organisational ownership, versioning, category tags). The type is typing only: registration checks that the bag is a plain object, not the values of its keys. Constraint recorded for Extensibility: custom-operator definitions adopt the same `description` + opaque-`metadata` convention.
+- **`samples?: { [parameter: string]: unknown }` holds example arguments**, keyed by parameter name, for authoring and testing the fragment: an editor runs the body with them. It sits on the wrapper rather than in `metadata` because it belongs to authoring and testing, not to how the fragment is presented. It is not `metadata.seeds` ("`./catalog`" in [v3-packaging.md](v3-packaging.md)): a seed is what a new call starts with, often an empty value, while a sample is a realistic value to test the body with. Registration checks only that it is a plain object; the engine never reads it, and neither `getFragments()` nor `getCatalog` reports it, since the tool that edits a definition already holds it. Whether registration should also check each sample against its declaration is open (in fig-tree-editor-react's fragment-editor design).
 - `getFragments()` content requirement (exact method shape → Evaluator methods): name, `description`, the parameter declarations with their _effective_ optionality and defaults, the `metadata` bag, any warnings the body raised when it was registered (above), and the body's inferred result type, `returns` ("`getFragments()`" in [v3-evaluator-methods.md](v3-evaluator-methods.md)).
 
 ### v2 → v3 disposition
@@ -980,7 +982,7 @@ Fragments are statically checkable at registration (the registry is stable by co
 | v2 mechanism                                                                                                     | Fate                                                                                                         |
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Bare `$name` placeholder strings, spread into the merged node ([evaluate.ts:115](../../v2-src/evaluate.ts#L115)) | **Deleted** → declared parameters + `$params.name` (References)                                              |
-| `metadata` key camouflaged inside the fragment expression ([types.ts:113-117](../../v2-src/types.ts#L113-L117))  | **Deleted** → sibling keys in the wrapper: `{ expression, parameters, description, metadata }`               |
+| `metadata` key camouflaged inside the fragment expression ([types.ts:113-117](../../v2-src/types.ts#L113-L117))  | **Deleted** → sibling keys in the wrapper: `{ expression, parameters, description, metadata, samples }`      |
 | Parameter metadata: array in types.ts, `$`-keyed object in README (drifted)                                      | **Unified** → object keyed by (unprefixed) name                                                              |
 | Root-level parameter hoisting on call nodes                                                                      | **Deleted** (Node grammar)                                                                                   |
 | Dynamic fragment _names_ — the name is itself evaluated ([evaluate.ts:96-99](../../v2-src/evaluate.ts#L96-L99))  | **Deleted** → literal strings only (Node grammar)                                                            |
@@ -989,7 +991,7 @@ Fragments are statically checkable at registration (the registry is stable by co
 | No recursion guard — self-reference loops forever (assessment §"no recursion guard")                             | **Fixed** → cycles are registration errors; recursion deliberately banned                                    |
 | Per-call `fragments` option                                                                                      | **Deleted** (Options — registry stability)                                                                   |
 | `Fragment` definition may be `null` ([types.ts:117](../../v2-src/types.ts#L117))                                 | **Deleted** → definitions are wrapper objects; the shape rule is loud                                        |
-| `textColor` / `backgroundColor` top-level fields                                                                 | **Moved** → opaque `metadata` bag                                                                            |
+| `textColor` / `backgroundColor` top-level fields                                                                 | **Moved** → `metadata` bag, as `FragmentMetadata` keys                                                       |
 
 ### Deferred
 

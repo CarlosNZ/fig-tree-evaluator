@@ -73,6 +73,32 @@ describe('the definition shape', () => {
     expect(entry?.description).toBe('A thing')
     expect(entry?.metadata).toEqual(metadata)
   })
+
+  test('samples register, and nothing downstream reports them', () => {
+    const fig = new FigTree({
+      operators: [coreOperators],
+      fragments: {
+        greet: {
+          expression: { $buildString: ['Hello, %1', '$params.name'] },
+          parameters: { name: { type: 'string' } },
+          samples: { name: 'Ada' },
+        },
+      },
+    })
+    expect(fig.validate({ $greet: { name: 'Grace' } }).valid).toBe(true)
+    expect(Object.hasOwn(fig.getFragments()[0], 'samples')).toBe(false)
+  })
+
+  test.each([
+    ['an array', [{ name: 'Ada' }]],
+    ['a string', 'Ada'],
+    ['null', null],
+  ])('samples as %s is reported at its path', (_label, samples) => {
+    const error = rejects({ frag: { expression: 1, samples } })
+    expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
+    expect(error.issues?.[0].message).toContain("'samples' must be a plain object")
+    expect(error.issues?.[0].path).toEqual(['fragments', 'frag', 'samples'])
+  })
 })
 
 // ── Names: legality, reservation, one namespace ─────────────────────

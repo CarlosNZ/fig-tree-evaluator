@@ -23,7 +23,7 @@ import type {
   CatalogOperator,
   CatalogParameter,
   CategoryListingMap,
-  FragmentListing,
+  FragmentMetadata,
   OperatorListing,
   OperatorListingMap,
   TypeSeeds,
@@ -685,16 +685,22 @@ export const operatorListings: OperatorListingMap = {
 const own = <T>(map: { [key: string]: T } | undefined, key: string): T | undefined =>
   map !== undefined && Object.hasOwn(map, key) ? map[key] : undefined
 
-/** A listing's colours, where it gives the pair. */
-const coloursOf = (listing: FragmentListing) =>
-  listing.backgroundColor !== undefined && listing.textColor !== undefined
-    ? { backgroundColor: listing.backgroundColor, textColor: listing.textColor }
+/**
+ * The colours an operator's listing or a fragment's metadata gives, where it
+ * gives the pair.
+ */
+const coloursOf = (display: FragmentMetadata) =>
+  display.backgroundColor !== undefined && display.textColor !== undefined
+    ? { backgroundColor: display.backgroundColor, textColor: display.textColor }
     : undefined
 
-/** What a parameter starts as: its listing's seed, else its type's. */
-const seedOf = (listing: FragmentListing, parameter: string, type: ExpectedType): unknown => {
-  if (listing.seeds !== undefined && Object.hasOwn(listing.seeds, parameter))
-    return listing.seeds[parameter]
+/**
+ * What a parameter starts as: the seed its operator's listing or its
+ * fragment's metadata gives, else its type's.
+ */
+const seedOf = (display: FragmentMetadata, parameter: string, type: ExpectedType): unknown => {
+  if (display.seeds !== undefined && Object.hasOwn(display.seeds, parameter))
+    return display.seeds[parameter]
   if (typeof type === 'string') return typeSeeds[type]
   if ('literal' in type) return type.literal[0]
   return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
@@ -706,8 +712,8 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
 }
 
 /**
- * The instance's operators and fragments, each with its listing joined in,
- * and the categories they group under.
+ * The instance's operators, each with its listing joined in, its fragments,
+ * each with its metadata joined in, and the categories they group under.
  *
  * An operator's listing is the package's own entry in `operatorListings`,
  * then each map in `listings` in order, each merged over the ones before it,
@@ -716,8 +722,8 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
  * `parameterDescriptions` are merged per parameter; colours are replaced
  * only by an entry giving the pair. A field or parameter entry set to
  * `undefined` is skipped, so it never erases what is beneath it, and only
- * keys a map or entry holds itself are read. A fragment's listing is its
- * definition's `metadata`.
+ * keys a map or entry holds itself are read. A fragment's metadata is its
+ * definition's `metadata`, with nothing merged over it.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
@@ -764,18 +770,17 @@ export const getCatalog = (
   })
 
   const fragments = fig.getFragments().map(({ name, parameters, ...info }): CatalogFragment => {
-    // A convention only: the engine never reads `metadata`
-    const listing = (info.metadata ?? {}) as FragmentListing
+    const metadata: FragmentMetadata = info.metadata ?? {}
     const fragment: CatalogFragment = {
       name,
-      displayName: listing.displayName ?? name,
+      displayName: metadata.displayName ?? name,
       ...info,
-      ...coloursOf(listing),
+      ...coloursOf(metadata),
       parameters: {},
     }
-    if (listing.docUrl !== undefined) fragment.docUrl = listing.docUrl
+    if (metadata.docUrl !== undefined) fragment.docUrl = metadata.docUrl
     for (const [key, parameter] of Object.entries(parameters))
-      fragment.parameters[key] = { ...parameter, seed: seedOf(listing, key, parameter.type) }
+      fragment.parameters[key] = { ...parameter, seed: seedOf(metadata, key, parameter.type) }
     return fragment
   })
 

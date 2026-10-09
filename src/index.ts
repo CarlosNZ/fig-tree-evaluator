@@ -161,7 +161,7 @@ export type {
   CatalogParameter,
   CategoryListing,
   CategoryListingMap,
-  FragmentListing,
+  FragmentMetadata,
   OperatorListing,
   OperatorListingMap,
   TypeSeeds,

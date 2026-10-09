@@ -38,6 +38,7 @@
  * with no special case. Nothing here is barrel surface except the two
  * authored types.
  */
+import type { FragmentMetadata } from './catalogTypes'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
 import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from './names'
@@ -99,8 +100,19 @@ export interface FragmentDefinition {
   /** Declarations, keyed by parameter name. */
   parameters?: Record<string, FragmentParameterDeclaration>
   description?: string
-  /** Opaque tooling bag; the engine never reads it. */
-  metadata?: Record<string, unknown>
+  /**
+   * How the fragment is presented, which `getCatalog` reads, and any other
+   * keys a host carries. The engine never reads it, and registration checks
+   * only that it is a plain object.
+   */
+  metadata?: FragmentMetadata & Record<string, unknown>
+  /**
+   * Example argument values, keyed by parameter name, for authoring and
+   * testing the fragment. Unlike a seed in `metadata`, which is what a new
+   * call starts with, a sample is a realistic value to run the body with.
+   * The engine never reads it.
+   */
+  samples?: { [parameter: string]: unknown }
 }
 
 /** A declaration after normalization — every documented default filled. */
@@ -123,7 +135,7 @@ export interface FragmentParameter {
 export interface FragmentEntry {
   name: string
   description?: string
-  metadata?: Record<string, unknown>
+  metadata?: FragmentMetadata & Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /** The compiled body. Assigned in pass 2; never reassigned after. */
   body: CompiledNode
@@ -175,7 +187,7 @@ const DECLARATION_KEYS = new Set([
 ])
 
 /** The wrapper fields a fragment definition may carry. */
-const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata'])
+const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata', 'samples'])
 
 type AddIssue = (code: string, message: string, path: NodePath) => void
 
@@ -288,7 +300,7 @@ const validateDefinition = (
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `fragment '${name}' must be a wrapper object: { expression, parameters?, description?, metadata? }`,
+      `fragment '${name}' must be a wrapper object: { expression, parameters?, description?, metadata?, samples? }`,
       at()
     )
     return undefined
@@ -328,6 +340,8 @@ const validateDefinition = (
       addIssue(ErrorCodes.invalidDefinition, `'metadata' must be a plain object`, at('metadata'))
     else entry.metadata = definition.metadata
   }
+  if (definition.samples !== undefined && !isPlainObject(definition.samples))
+    addIssue(ErrorCodes.invalidDefinition, `'samples' must be a plain object`, at('samples'))
   if (definition.parameters !== undefined) {
     if (!isPlainObject(definition.parameters))
       addIssue(

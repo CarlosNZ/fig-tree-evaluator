@@ -84,7 +84,7 @@ import type {
   // The inspector
   InspectDependencies, InspectIssue, InspectNode, InspectReport,
   // The subpaths' shapes, kept at the root so the subpaths stay small
-  CategoryListing, CategoryListingMap, FragmentListing, OperatorListing, OperatorListingMap,
+  CategoryListing, CategoryListingMap, FragmentMetadata, OperatorListing, OperatorListingMap,
   TypeSeeds, Catalog, CatalogCategory, CatalogOperator, CatalogParameter, CatalogFragment,
   CatalogFragmentParameter,
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
@@ -109,9 +109,10 @@ import { operatorListings } from 'fig-tree-evaluator/catalog' // 4.3 kB
 import { categoryListings } from 'fig-tree-evaluator/catalog' // 0.23 kB
 import { typeSeeds } from 'fig-tree-evaluator/catalog' // 0.10 kB
 import { getCatalog } from 'fig-tree-evaluator/catalog' // 5.0 kB
-// +0.52 kB beside the three: getCatalog(fig, ...listings) is the operators,
-// fragments and categories, each with its listing joined in and resolved,
-// a host's listings merged over the package's field by field
+// +0.52 kB beside the three: getCatalog(fig, ...listings) is the operators
+// with their listings joined in, the fragments with their metadata, and the
+// categories, all resolved, a host's listings merged over the package's
+// field by field
 
 // ═══ 'fig-tree-evaluator/format' → build/format/index.js: 6.4 kB ════════
 // Takes a FigTree, or its snapshots, as an argument and never imports the
