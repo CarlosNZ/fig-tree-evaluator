@@ -216,7 +216,7 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
     const info: OperatorInfo = {
       name: definition.name,
       category: definition.category,
-      description: definition.description,
+      ...(definition.description !== undefined ? { description: definition.description } : {}),
       parameters: parameterSnapshot(definition.parameters, hostDefaults),
       restParam: definition.restParam,
       timeoutParam: definition.timeoutParam,

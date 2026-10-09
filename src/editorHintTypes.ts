@@ -17,6 +17,13 @@ import type { BasicType } from './typeCheck'
 export interface OperatorHints {
   /** A label for listings and node headers — `'String builder'`. */
   displayName: string
+  /**
+   * What the operator does, in a line. The core and I/O operators carry
+   * theirs here rather than in their definitions, so a host that never
+   * shows them never ships them; `withDescriptions` joins them back into
+   * `getOperators()`.
+   */
+  description?: string
   /** The operator's documentation, which an editor links each node to. */
   docUrl: string
   /** A CSS colour; `textColor` on it reaches 4.5:1 contrast (WCAG AA). */
@@ -31,6 +38,8 @@ export interface OperatorHints {
    * change it from its default.
    */
   seeds?: { [parameter: string]: unknown }
+  /** Each parameter's description, by name, as `description` is its own. */
+  parameterDescriptions?: { [parameter: string]: string }
 }
 
 /**

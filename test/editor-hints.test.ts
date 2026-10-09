@@ -11,6 +11,7 @@
 import {
   FigTree,
   OPERATOR_CATEGORIES,
+  defineOperator,
   coreOperators,
   httpOperators,
   sqlOperators,
@@ -18,7 +19,10 @@ import {
   type FragmentHints,
   type ValidatedParameter,
 } from '../src'
-import { categoryHints, operatorHints, typeSeeds } from '../src/editor-hints'
+import { categoryHints, operatorHints, typeSeeds, withDescriptions } from '../src/editor-hints'
+import { operatorSnapshot } from '../src/introspect'
+import { buildRegistry } from '../src/registry'
+import { packageDefinitions, withHintText } from '../codegen/packageDefinitions'
 import { checkConstraints, checkType } from '../src/typeCheck'
 import { MockHttpClient, MockSqlConnection } from './helpers'
 
@@ -105,12 +109,12 @@ describe('operatorHints', () => {
   describe.each(packageOperators.map((op) => [op.name, op] as const))('%s', (name, op) => {
     const hints = operatorHints[name]
 
-    // An editor shows a parameter's description as its row's tooltip
-    test('every parameter has a description', () => {
-      const undescribed = Object.entries(op.parameters)
-        .filter(([, declared]) => (declared.description ?? '').trim() === '')
-        .map(([parameter]) => parameter)
-      expect(undescribed).toEqual([])
+    // An editor shows these as the node's and each parameter row's tooltip
+    test('describes the operator and every declared parameter, and no other', () => {
+      expect(hints.description?.trim()).toBeTruthy()
+      const described = hints.parameterDescriptions ?? {}
+      expect(Object.keys(described).sort()).toEqual(Object.keys(op.parameters).sort())
+      for (const text of Object.values(described)) expect(text.trim()).not.toBe('')
     })
 
     test('every seed names a declared parameter and fits its declaration', () => {
@@ -161,6 +165,35 @@ describe('operatorHints', () => {
           expect(errorsOf(renamed)).toEqual([])
         }
       )
+  })
+})
+
+describe('withDescriptions', () => {
+  const operatorDefaults = { join: { delimiter: ' | ' }, plus: { fallback: 0 } }
+
+  // What getOperators() reports with the text in the definitions: the
+  // package's operators registered with their editor-hints text put back
+  test('joins in the text the package operators leave out of the snapshot', () => {
+    const described = buildRegistry({
+      operators: packageDefinitions().map((definition) => defineOperator(withHintText(definition))),
+      operatorDefaults,
+    })
+    const instance = new FigTree({ operators: packageOperators, operatorDefaults })
+    expect(withDescriptions(instance.getOperators())).toStrictEqual(operatorSnapshot(described))
+  })
+
+  test('leaves an operator with its own description as it is, I/O names included', () => {
+    const http = defineOperator({
+      name: 'http',
+      category: 'io',
+      description: 'A host’s own http',
+      parameters: { url: { type: 'string' } },
+      evaluate: () => null,
+    })
+    const joined = withDescriptions(new FigTree({ operators: [http] }).getOperators())
+    const info = joined.find((op) => op.name === 'http')!
+    expect(info.description).toBe('A host’s own http')
+    expect(info.parameters.url.description).toBeUndefined()
   })
 })
 

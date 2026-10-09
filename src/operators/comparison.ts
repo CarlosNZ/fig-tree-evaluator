@@ -22,12 +22,10 @@ const equalityParameters = {
   values: {
     type: 'array',
     elementNullPolicy: 'value',
-    description: 'The values compared; null is comparable (null equals null)',
   },
   caseInsensitive: {
     type: 'boolean',
     default: false,
-    description: 'Fold string operands to one case before comparing (shallow)',
   },
 } as const
 
@@ -35,8 +33,6 @@ export const equal = declareOperator({
   name: 'equal',
   alias: '=',
   category: 'comparison',
-  description:
-    'Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false',
   parameters: equalityParameters,
   positionalParams: ['...values'],
   returns: 'boolean',
@@ -48,7 +44,6 @@ export const notEqual = declareOperator({
   name: 'notEqual',
   alias: '!=',
   category: 'comparison',
-  description: 'Are the values NOT all equal? The exact negation of equal (never "all distinct")',
   parameters: equalityParameters,
   positionalParams: ['...values'],
   returns: 'boolean',
@@ -56,30 +51,22 @@ export const notEqual = declareOperator({
   evaluate: ({ values, caseInsensitive }) => !allEqual(values, caseInsensitive),
 })
 
-const ordering = (
-  name: string,
-  alias: string,
-  description: string,
-  holds: (comparison: number) => boolean
-) =>
+const ordering = (name: string, alias: string, holds: (comparison: number) => boolean) =>
   declareOperator({
     name,
     alias,
     category: 'comparison',
-    description,
     parameters: {
       values: {
         type: 'array',
         elementNullPolicy: 'propagate',
         constraints: { length: 2, homogeneous: ['number', 'string'] },
-        description: 'Exactly two operands: both numbers, or both strings (codepoint order)',
       },
       nullValueDefault: {
         type: ['number', 'string'],
         required: false,
         evaluation: 'lazy',
         replacesNullAt: ['values'],
-        description: 'Replaces a null operand before comparing',
       },
     },
     positionalParams: ['...values'],
@@ -90,27 +77,11 @@ const ordering = (
     },
   })
 
-export const greaterThan = ordering(
-  'greaterThan',
-  '>',
-  'Is the first value strictly greater than the second?',
-  (comparison) => comparison > 0
-)
+export const greaterThan = ordering('greaterThan', '>', (comparison) => comparison > 0)
 export const greaterThanOrEqual = ordering(
   'greaterThanOrEqual',
   '>=',
-  'Is the first value greater than or equal to the second?',
   (comparison) => comparison >= 0
 )
-export const lessThan = ordering(
-  'lessThan',
-  '<',
-  'Is the first value strictly less than the second?',
-  (comparison) => comparison < 0
-)
-export const lessThanOrEqual = ordering(
-  'lessThanOrEqual',
-  '<=',
-  'Is the first value less than or equal to the second?',
-  (comparison) => comparison <= 0
-)
+export const lessThan = ordering('lessThan', '<', (comparison) => comparison < 0)
+export const lessThanOrEqual = ordering('lessThanOrEqual', '<=', (comparison) => comparison <= 0)

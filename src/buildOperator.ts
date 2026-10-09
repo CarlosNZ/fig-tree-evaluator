@@ -38,14 +38,24 @@ export type Path = (string | number)[]
 export const REST_PREFIX = '...'
 
 /**
+ * A definition of the package's own: as authored, less the `description`,
+ * which the core and I/O operators keep in `./editor-hints` with the rest
+ * of their display text, so that a host that never shows it never ships it.
+ */
+export type PackageDefinition<P extends ParameterDeclarations = ParameterDeclarations> = Omit<
+  OperatorDefinition<P>,
+  'description'
+>
+
+/**
  * Types a package definition literal exactly as `defineOperator()` does —
  * the body's `params` inferred from the declarations — and returns it
  * untouched, for `buildOperator` to build. The erased return type is what
  * lets definitions with different parameters share one array.
  */
 export const declareOperator = <const P extends ParameterDeclarations>(
-  definition: OperatorDefinition<P>
-): OperatorDefinition => definition as unknown as OperatorDefinition
+  definition: PackageDefinition<P>
+): PackageDefinition => definition as unknown as PackageDefinition
 
 /**
  * The trusted build: the package's own definitions, which
@@ -54,7 +64,7 @@ export const declareOperator = <const P extends ParameterDeclarations>(
  * conditional null policy compiles to its table over the definition's one
  * literal-union parameter, unchecked.
  */
-export const buildOperator = (definition: OperatorDefinition): ValidatedOperatorDefinition => {
+export const buildOperator = (definition: PackageDefinition): ValidatedOperatorDefinition => {
   const declarations = Object.entries(definition.parameters)
   const compiledPolicies = new Map<string, CompiledNullPolicy>()
   for (const [name, { nullPolicy }] of declarations) {
@@ -80,7 +90,7 @@ export const buildOperator = (definition: OperatorDefinition): ValidatedOperator
  * reference and unfrozen (host-owned, opaque).
  */
 export const assembleOperator = (
-  def: OperatorDefinition,
+  def: PackageDefinition & { description?: string },
   compiledPolicies: Map<string, CompiledNullPolicy>
 ): ValidatedOperatorDefinition => {
   const validatedParameters: Record<string, ValidatedParameter> = {}
@@ -119,7 +129,6 @@ export const assembleOperator = (
     [VALIDATED_OPERATOR]: true,
     name: def.name,
     category: def.category as OperatorCategory,
-    description: def.description,
     parameters: validatedParameters,
     resolution: planResolution(validatedParameters),
     restParam,
@@ -133,6 +142,7 @@ export const assembleOperator = (
     evaluate: def.evaluate as OperatorEvaluate,
     returns: def.returns !== undefined ? cloneTypeExpression(def.returns) : 'any',
   }
+  if (def.description !== undefined) validated.description = def.description
   if (def.alias !== undefined) validated.alias = def.alias
   if (def.metadata !== undefined) validated.metadata = def.metadata
   if (def.positionalParams !== undefined) validated.positionalParams = [...def.positionalParams]
@@ -151,18 +161,22 @@ export const assembleOperator = (
  * `description` and `alias` cannot change a result, and hashing them would
  * invalidate a persisted store's entries on a docs-only edit; `metadata`
  * is a host-owned bag kept by reference that may hold anything, including
- * values `JSON.stringify` throws on; `deliversLazily` and `resolution` are
- * derived from the parameters already in. A field added to the type later
- * has to be admitted here deliberately. Functions, symbols (the
- * `EvaluationData` default) and regular expressions render as their source
- * text, which `JSON.stringify` would otherwise drop.
+ * values `JSON.stringify` throws on. A parameter's own `description` and
+ * `metadata` are left out for the same reasons. `deliversLazily` and
+ * `resolution` are derived from the parameters already in. A field added
+ * to the type later has to be admitted here deliberately. Functions,
+ * symbols (the `EvaluationData` default) and regular expressions render as
+ * their source text, which `JSON.stringify` would otherwise drop.
  */
 const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
   fnv1a(
     JSON.stringify(
       [
         d.name,
-        d.parameters,
+        Object.entries(d.parameters).map(([name, parameter]) => [
+          name,
+          parameterContent(parameter),
+        ]),
         d.positionalParams,
         d.restParam,
         d.returns,
@@ -177,6 +191,14 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
           : value
     )
   )
+
+/** A parameter less the two fields the fingerprint leaves out. */
+const parameterContent = (parameter: ValidatedParameter): Record<string, unknown> => {
+  const content: Record<string, unknown> = { ...parameter }
+  delete content.description
+  delete content.metadata
+  return content
+}
 
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {

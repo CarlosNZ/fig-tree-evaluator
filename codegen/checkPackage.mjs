@@ -59,7 +59,7 @@ const ROOT_MARKERS = [
       'AxiosClient(axios): pass the axios import itself',
       'PostgresConnection(client): pass a connected',
       'SQLiteConnection(db): pass an open sqlite Database',
-      'One GraphQL query',
+      'supply url, or set the graphQL.endpoint option',
     ],
   },
   { part: 'the inspector', markers: ['inspect() takes a CompiledExpression'] },
@@ -97,12 +97,15 @@ const ENGINE_MARKERS = [
   },
   {
     part: 'the core operators',
+    // Operator names and the factories' own messages: the descriptions are
+    // ./editor-hints'. A short name is quoted, as the minified bundle prints
+    // it, so that `Math.floor` or `.toUpperCase` cannot match it
     markers: [
-      'Transform every element of an array', // declareOperator
-      'Is the first value strictly greater than the second?', // ordering
-      'Round down toward negative infinity', // unary
-      'The smallest of the values', // extremum
-      'Strip whitespace (the JS trim set) from both ends of a string', // normalizer
+      'buildObject', // declareOperator
+      'greaterThanOrEqual', // ordering
+      '"floor"', // unary
+      'the minimum', // extremum
+      '"upper"', // normalizer
       'array is a dead expression', // emptyArrayWarning
     ],
   },

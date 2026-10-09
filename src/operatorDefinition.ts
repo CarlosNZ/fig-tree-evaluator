@@ -240,7 +240,8 @@ export interface ValidatedOperatorDefinition {
   name: string
   alias?: string
   category: OperatorCategory
-  description: string
+  /** Absent on the core and I/O operators, whose text is `./editor-hints`'. */
+  description?: string
   metadata?: Record<string, unknown>
   parameters: Record<string, ValidatedParameter>
   positionalParams?: string[]

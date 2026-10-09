@@ -27,11 +27,9 @@ import { collectAll, decide, emptyInputWarning } from './shared'
 export const length = declareOperator({
   name: 'length',
   category: 'array',
-  description: "An array's element count, or a string's Unicode code-point count",
   parameters: {
     value: {
       type: ['string', 'array', 'null'],
-      description: 'The array or string measured',
     },
   },
   positionalParams: ['...value'],
@@ -59,14 +57,12 @@ export const length = declareOperator({
  */
 const inputParam = {
   type: 'array',
-  description: 'The collection iterated over; a null input is a type error',
 } as const
 
 const asParam = {
   type: 'string',
   required: false,
   evaluation: 'structural',
-  description: "Rename the bindings: as: 'row' binds $row and $rowIndex",
 } as const
 
 const nullInputDefaultParam = {
@@ -74,7 +70,6 @@ const nullInputDefaultParam = {
   required: false,
   evaluation: 'lazy',
   replacesNullAt: ['input'],
-  description: 'Used as the collection when input evaluates to null — typically []',
 } as const
 
 /** `map`'s `each` takes any value; the other four judge truthiness. */
@@ -82,21 +77,18 @@ const transformEach = {
   type: 'any',
   evaluation: 'perElement',
   over: 'input',
-  description: 'Evaluated per element, with $element and $index bound',
 } as const
 
 const predicateEach = {
   type: 'any',
   evaluation: 'perElement',
   over: 'input',
-  description: 'The predicate, per element — a truthiness position, so null is falsy',
   truthiness: true,
 } as const
 
 export const map = declareOperator({
   name: 'map',
   category: 'array',
-  description: 'Transform every element of an array',
   parameters: {
     input: inputParam,
     as: asParam,
@@ -112,7 +104,6 @@ export const map = declareOperator({
 export const filter = declareOperator({
   name: 'filter',
   category: 'array',
-  description: 'Keep the elements of an array whose predicate is truthy',
   parameters: {
     input: inputParam,
     as: asParam,
@@ -146,7 +137,6 @@ export const filter = declareOperator({
 export const find = declareOperator({
   name: 'find',
   category: 'array',
-  description: 'The first element of an array whose predicate is truthy',
   parameters: {
     input: inputParam,
     as: asParam,
@@ -156,7 +146,6 @@ export const find = declareOperator({
       type: 'any',
       default: null,
       evaluation: 'lazy',
-      description: 'The answer when nothing matches; a found null passes through unchanged',
     },
   },
   positionalParams: ['input', 'each'],
@@ -184,7 +173,6 @@ export const find = declareOperator({
 export const some = declareOperator({
   name: 'some',
   category: 'array',
-  description: 'True when any element satisfies the predicate',
   parameters: {
     input: inputParam,
     as: asParam,
@@ -200,7 +188,6 @@ export const some = declareOperator({
 export const every = declareOperator({
   name: 'every',
   category: 'array',
-  description: 'True when every element satisfies the predicate',
   parameters: {
     input: inputParam,
     as: asParam,
