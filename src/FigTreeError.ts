@@ -120,14 +120,26 @@ export class FigTreeError extends Error {
   }
 
   /**
-   * Human-facing rendering (kept from v2, now a method): a header of the code,
-   * the operator where known, and the authored path; then the message; then
-   * pretty-printed `errorData` (suppressed when empty).
+   * Human-facing rendering (kept from v2, as a method): a header of the code,
+   * the operator where known, and the location; then the message; then
+   * pretty-printed `errorData` (suppressed when empty). Inside a fragment
+   * body the location names both ends — the fragment and the position in its
+   * definition, then the call node in the input it was called from.
    */
   prettyPrint(): string {
     const operatorText = this.operator ? ` (operator: ${this.operator})` : ''
-    const pathText = this.path.length > 0 ? ` at ${formatPath(this.path)}` : ''
-    const header = `${this.code}${operatorText}${pathText}`
+    const pathText = formatPath(this.path)
+    const fragmentText =
+      this.fragment === undefined
+        ? ''
+        : ` in fragment '${this.fragment}' at ${formatPath(this.fragmentPath ?? [])}`
+    const callText =
+      pathText === ''
+        ? ''
+        : this.fragment === undefined
+          ? ` at ${pathText}`
+          : `, called from ${pathText}`
+    const header = `${this.code}${operatorText}${fragmentText}${callText}`
     const hasData = this.errorData && Object.keys(this.errorData).length > 0
     const dataText = hasData ? `\n${JSON.stringify(this.errorData, null, 2)}` : ''
     return `${header}\n${this.message}${dataText}`
