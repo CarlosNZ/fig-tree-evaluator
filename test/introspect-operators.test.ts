@@ -213,10 +213,10 @@ describe('copy posture', () => {
 
   test('reassigning a snapshot field cannot reach the registry', () => {
     const info = find(fig.getOperators(), 'plus')
-    info.description = 'clobbered'
+    info.category = 'other'
     info.parameters.values.required = false
     delete info.alias
-    expect(find(fig.getOperators(), 'plus').description).not.toBe('clobbered')
+    expect(find(fig.getOperators(), 'plus').category).toBe('math')
     expect(find(fig.getOperators(), 'plus').parameters.values.required).toBe(true)
     expect(find(fig.getOperators(), 'plus').alias).toBe('+')
   })

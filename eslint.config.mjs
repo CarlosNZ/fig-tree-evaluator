@@ -213,7 +213,7 @@ export default tseslint.config(
     },
   },
   {
-    // editor-hints is data only: type imports erase at build, any value
+    // editor-hints imports types only: they erase at build, and any value
     // import would pull code into the subpath's bundle
     files: ['src/editor-hints/**/*.ts'],
     rules: {
@@ -224,7 +224,7 @@ export default tseslint.config(
             {
               group: ['**'],
               allowTypeImports: true,
-              message: 'editor-hints is a data-only module: import types only (`import type`).',
+              message: 'editor-hints imports types only (`import type`).',
             },
           ],
         },

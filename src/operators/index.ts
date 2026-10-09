@@ -6,8 +6,8 @@
  * is grammar, not a definition (its name is reserved), so it never appears
  * here.
  */
-import { buildOperator } from '../buildOperator'
-import type { OperatorDefinition, ValidatedOperatorDefinition } from '../operatorDefinition'
+import { buildOperator, type PackageDefinition } from '../buildOperator'
+import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import {
   equal,
   notEqual,
@@ -42,7 +42,7 @@ import { and, or, not, ifOperator, match, firstOf } from './logic'
  * over instead: test/package-definitions.test.ts and
  * codegen/checkDefinitions.ts.
  */
-export const coreDefinitions: OperatorDefinition[] = [
+export const coreDefinitions: PackageDefinition[] = [
   // Logic & control
   and,
   or,

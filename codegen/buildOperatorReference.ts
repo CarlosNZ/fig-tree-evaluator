@@ -4,13 +4,14 @@
  * docs-dev/artifacts.md).
  *
  * Everything the page says about a *registered* operator is read out of its
- * definition: description, aliases, parameter types, defaults, delivery
- * modes, truthiness positions, constraints and `returns`. Operators whose
- * definitions have not landed yet are carried in `PENDING` below, sourced
+ * definition — aliases, parameter types, defaults, delivery modes, truthiness
+ * positions, constraints and `returns` — and its descriptions out of
+ * `./editor-hints`, where the package's operators keep their text. Operators
+ * whose definitions have not landed yet are carried in `PENDING` below, sourced
  * from the parameter passes, and each entry is **deleted** as its operator
- * arrives — the build fails if a pending entry names a registered operator,
- * so the page cannot quietly keep describing a spec where an
- * implementation now exists.
+ * arrives — the build fails if a pending entry names a registered operator, so
+ * the page cannot quietly keep describing a spec where an implementation now
+ * exists.
  *
  * The page follows the package's own data rather than restating it: the
  * sections and their labels are editor-hints' `categoryHints`, in their
@@ -25,7 +26,7 @@ import { dirname, resolve } from 'node:path'
 import { coreOperators } from '../src/operators/index'
 import { EvaluationData } from '../src/operatorDefinition'
 import { httpOperators, sqlOperators } from '../src/operators/io'
-import { categoryHints } from '../src/editor-hints'
+import { categoryHints, operatorHints } from '../src/editor-hints'
 import type {
   OperatorCategory,
   ValidatedOperatorDefinition,
@@ -139,7 +140,8 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
   st: 'live',
   ret: formatType(op.returns),
   pos: op.positionalParams ?? [],
-  d: op.description ?? '',
+  // The package's operators keep their text in ./editor-hints
+  d: operatorHints[op.name]?.description ?? '',
   p: Object.entries(op.parameters).map(([name, p]: [string, ValidatedParameter]) => {
     return {
       n: name,
@@ -157,7 +159,7 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
         : {}),
       ev: p.evaluation && p.evaluation !== 'eager' ? p.evaluation : null,
       tr: p.truthiness === true,
-      d: p.description ?? null,
+      d: operatorHints[op.name]?.parameterDescriptions?.[name] ?? null,
     }
   }),
 })

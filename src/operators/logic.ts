@@ -22,23 +22,19 @@ export const ifOperator = declareOperator({
   name: 'if',
   alias: '?',
   category: 'logic',
-  description: 'Choose between two branches — only the chosen branch evaluates',
   parameters: {
     condition: {
       type: 'any',
       truthiness: true,
-      description: 'Judged by FigTree truthiness; null is falsy',
     },
     then: {
       type: 'any',
       evaluation: 'lazy',
-      description: 'The value when the condition holds',
     },
     else: {
       type: 'any',
       evaluation: 'lazy',
       default: null,
-      description: 'The value when it does not; omitted means null',
     },
   },
   positionalParams: ['condition', 'then', 'else'],
@@ -49,23 +45,19 @@ export const ifOperator = declareOperator({
 export const match = declareOperator({
   name: 'match',
   category: 'logic',
-  description: 'Dispatch on a value — only the matching branch evaluates',
   parameters: {
     value: {
       type: ['string', 'number', 'boolean', 'null'],
       nullPolicy: 'value',
-      description: 'Matched against branch keys by its canonical string form',
     },
     branches: {
       type: 'object',
       evaluation: 'lazyEntries',
-      description: 'A literal map of branches, or an expression computing one',
     },
     default: {
       type: 'any',
       required: false,
       evaluation: 'lazy',
-      description: 'The branch taken when none matches; absent means failure',
     },
   },
   positionalParams: ['value', 'branches', 'default'],
@@ -87,13 +79,10 @@ export const match = declareOperator({
 export const firstOf = declareOperator({
   name: 'firstOf',
   category: 'logic',
-  description:
-    'The first candidate that is not null (SQL COALESCE) — later candidates never evaluate',
   parameters: {
     values: {
       type: 'array',
       evaluation: 'lazyElements',
-      description: 'Candidates, tried in order; only null is skipped',
     },
   },
   positionalParams: ['...values'],
@@ -114,13 +103,11 @@ export const firstOf = declareOperator({
 export const and = declareOperator({
   name: 'and',
   category: 'logic',
-  description: 'True when every value is truthy — operands run in parallel',
   parameters: {
     values: {
       type: 'array',
       truthiness: true,
       evaluation: 'race',
-      description: 'Operands, judged by FigTree truthiness; null is falsy',
     },
   },
   positionalParams: ['...values'],
@@ -132,13 +119,11 @@ export const and = declareOperator({
 export const or = declareOperator({
   name: 'or',
   category: 'logic',
-  description: 'True when any value is truthy — operands run in parallel',
   parameters: {
     values: {
       type: 'array',
       truthiness: true,
       evaluation: 'race',
-      description: 'Operands, judged by FigTree truthiness; null is falsy',
     },
   },
   positionalParams: ['...values'],
@@ -151,12 +136,10 @@ export const not = declareOperator({
   name: 'not',
   alias: '!',
   category: 'logic',
-  description: 'Negate the truthiness of a value',
   parameters: {
     value: {
       type: 'any',
       truthiness: true,
-      description: 'Judged by FigTree truthiness; null is falsy, so not(null) is true',
     },
   },
   positionalParams: ['value'],

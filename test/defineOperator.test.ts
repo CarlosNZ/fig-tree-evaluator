@@ -319,4 +319,21 @@ describe('the fingerprint sees source text, not closure state', () => {
   it('hashes two closures over the same source alike', () => {
     expect(fromFactory('a').fingerprint).toBe(fromFactory('b').fingerprint)
   })
+
+  it('leaves out a parameter’s description and metadata, as the definition’s own', () => {
+    const withParameter = (declaration: Record<string, unknown>) =>
+      defineOperator({
+        name: 'described',
+        category: 'other',
+        description: 'one parameter',
+        parameters: { a: declaration },
+        evaluate: () => null,
+      } as never).fingerprint
+    expect(withParameter({ description: 'one' })).toBe(withParameter({ description: 'two' }))
+    // Host-owned, so it may hold what JSON cannot: a BigInt, a cycle
+    const cycle: Record<string, unknown> = {}
+    cycle.self = cycle
+    expect(withParameter({ metadata: { big: BigInt(1) } })).toBe(withParameter({}))
+    expect(withParameter({ metadata: cycle })).toBe(withParameter({}))
+  })
 })

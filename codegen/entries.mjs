@@ -28,7 +28,7 @@ export const ENTRIES = [
     subpath: './editor-hints',
     name: 'editor-hints/index',
     source: 'src/editor-hints/index.ts',
-    budget: 2_000,
+    budget: 4_900,
     marker: 'String builder',
   },
   {

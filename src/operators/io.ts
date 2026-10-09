@@ -52,39 +52,30 @@ import { pathFindings } from './shared'
 const TIMEOUT = {
   type: 'integer',
   required: false,
-  description:
-    'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
 } as const
 
 /** `returnPath`, likewise — `get.path`'s grammar, applied to a response. */
 const RETURN_PATH = {
   type: ['string', 'array'],
   required: false,
-  description: 'Dot/bracket path or segments array applied to the response; a miss is null',
 } as const
 
 export const httpDefinition = (client: HttpClient) =>
   declareOperator({
     name: 'http',
     category: 'io',
-    description: 'One HTTP request — GET or POST — returning the parsed JSON response',
     parameters: {
       url: {
         type: 'string',
-        description:
-          'A full http(s) URL is used verbatim; anything else — including an empty string — joins http.baseEndpoint',
       },
       method: {
         type: { literal: ['get', 'post'] },
         default: 'get',
-        description:
-          'Lowercase; the mutating verbs are deliberately absent — an expression is a read',
       },
       query: {
         type: 'object',
         required: false,
         elementNullPolicy: 'value',
-        description: 'Query-string pairs; a null value omits its pair, a composite one is an error',
       },
       body: {
         // NOT `any`: register row 27 needs the type to EXCLUDE null, so a
@@ -93,15 +84,11 @@ export const httpDefinition = (client: HttpClient) =>
         // document — the opposite of the ruling
         type: ['string', 'number', 'boolean', 'array', 'object'],
         required: false,
-        description:
-          'The JSON payload; a whole-null body means NO body, while nulls inside one are JSON nulls',
       },
       headers: {
         type: 'object',
         required: false,
         elementNullPolicy: 'value',
-        description:
-          'Merged over the http.headers option per key; a null value removes an inherited pair',
       },
       returnPath: RETURN_PATH,
       timeout: TIMEOUT,
@@ -143,29 +130,23 @@ export const graphQLDefinition = (client: HttpClient) =>
   declareOperator({
     name: 'graphQL',
     category: 'io',
-    description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
     parameters: {
       query: {
         type: 'string',
-        description: 'The GraphQL document — the protocol’s own word, as sql.query is',
       },
       variables: {
         type: 'object',
         required: false,
         elementNullPolicy: 'value',
-        description:
-          'Query variables; a null value is CARRIED as JSON null, a nullable argument being meaningful GraphQL',
       },
       url: {
         type: 'string',
         required: false,
-        description: 'Per-node endpoint override; unset means the graphQL.endpoint option',
       },
       headers: {
         type: 'object',
         required: false,
         elementNullPolicy: 'value',
-        description: 'Merged over http.headers then graphQL.headers; a null value removes a pair',
       },
       returnPath: RETURN_PATH,
       timeout: TIMEOUT,
@@ -211,33 +192,24 @@ export const sqlDefinition = (connection: SqlConnection) =>
   declareOperator({
     name: 'sql',
     category: 'io',
-    description:
-      'One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side',
     parameters: {
       query: {
         type: 'string',
-        description: 'SQL text with the driver’s own placeholders — FigTree never parses SQL',
       },
       values: {
         type: ['array', 'object'],
         required: false,
         elementNullPolicy: 'value',
-        description:
-          'Bind values — positional as an array, named as an object; a null binds SQL NULL',
       },
       shape: {
         type: { literal: ['rows', 'firstRow', 'column', 'firstValue'] },
         default: 'rows',
-        description:
-          'rows: every row object; firstRow: the first; column: one column’s values; firstValue: one scalar',
       },
       noRowDefault: {
         type: 'any',
         default: null,
         nullPolicy: 'value',
         evaluation: 'lazy',
-        description:
-          'The answer when firstRow / firstValue find no row — never for rows / column, never on failure',
       },
       timeout: TIMEOUT,
     },
