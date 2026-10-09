@@ -33,7 +33,7 @@ One consequence for [v3-artifact-obligations.md](v3-artifact-obligations.md), wh
 | `hasErrors`             | Dropped — `issues` states it: any error-severity entry is what `validate()` calls invalid and `evaluate()` would refuse, and an error carrying an `order` is the compile stream's own                                                          |
 | `timeoutShielded`       | Agreed — the artifact's flag, renamed from `shielded` to match `validate()`'s badge (which left `validate()` with #209; the report keeps the flag)                                                                                             |
 | `nodeCount`, `maxDepth` | Agreed — the artifact's numbers as they are: composed through fragment calls, the values the limits compare against                                                                                                                            |
-| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders                                                                                                                         |
+| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders; `paramNames` and `paramsDynamic` added October 2026, with `getDependencies()`'s `params`                               |
 | `identityOnly`          | Dropped — a compile-cache eligibility flag, so machinery; the markers in `canonicalForm` show more, literal payloads included                                                                                                                  |
 | `own`                   | Agreed, provisionally (Carl may revisit) — the uncomposed `nodeCount`, `maxDepth` and `dependencies`                                                                                                                                           |
 | `fragmentCalls`         | Dropped — each call site is a `fragmentCall` node in `canonicalForm`; the per-call depth only feeds `maxDepth` composition                                                                                                                     |
@@ -182,8 +182,9 @@ The artifact's dependency record (obligation B6) as it is, rather than `getDepen
   Segment arrays were the first cut, for the same array shape as every `path` in the report. Dropped at the PR #180 review: a `path` is a location in the authored expression, where these are paths into data, which have a canonical spelling of their own — and writing the symbol as `"[*]"` made the two lines above read alike.
 
 - **`dynamic`** — true when the read-set is not statically enumerable: a computed `get` path, a bare `$data`, or a dynamic-arguments fragment call. The listed paths still hold beside it.
+- **`paramNames`, `paramsDynamic`** — the parameter names the expression's own `$params` references read, by each read's first key, in the order the compile found them, and whether the set is not statically known (a bare `$params`, which a computed `get` path from `$params` reads, or a projection over every parameter). `getDependencies()` reports the same as `params.names` and `params.dynamic`.
 - **`operators`, `fragments`** — canonical operator names and fragment names, in the order found.
-- **Composed through fragment calls**, like the counts: a body's `$data` reads and operators are included. In the example the composed and own records coincide — `greet`'s body reads only `$params`, and its `join` is already listed.
+- **Composed through fragment calls**, like the counts: a body's `$data` reads and operators are included. Its `$params` reads are not, being against its own declarations, so `paramNames` and `paramsDynamic` are always the same in `own`. In the example the composed and own records coincide — `greet`'s body reads only `$params`, and its `join` is already listed — and `paramNames` is empty, since `greet` reads `$params.name` and the expression reads none.
 
 ### `own`
 
@@ -444,6 +445,8 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "customer.phone"
     ],
     "dynamic": false,
+    "paramNames": [],
+    "paramsDynamic": false,
     "operators": ["plus", "map", "join", "match", "firstOf"],
     "fragments": ["greet"]
   },
@@ -461,6 +464,8 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
         "customer.phone"
       ],
       "dynamic": false,
+      "paramNames": [],
+      "paramsDynamic": false,
       "operators": ["plus", "map", "join", "match", "firstOf"],
       "fragments": ["greet"]
     }

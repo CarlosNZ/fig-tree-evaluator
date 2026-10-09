@@ -71,9 +71,14 @@ describe('what the snapshot contains', () => {
   test('the dependency rollup is the public shape, and transitive', () => {
     expect(find('outer').dependencies).toEqual({
       data: { paths: ['count', 'settings.theme'], dynamic: false },
+      params: { names: [], dynamic: false },
       operators: ['plus', 'get'],
       fragments: ['inner'],
     })
+  })
+
+  test('the rollup’s parameter reads are the body’s own, against its declarations', () => {
+    expect(find('greeting').dependencies.params).toEqual({ names: ['name'], dynamic: false })
   })
 })
 

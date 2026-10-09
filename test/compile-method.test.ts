@@ -64,6 +64,7 @@ describe('compile() shares the compile cache with evaluate()', () => {
     expect(handle.issues).toEqual([])
     expect(handle.getDependencies()).toEqual({
       data: { paths: ['user.name'], dynamic: false },
+      params: { names: [], dynamic: false },
       operators: [],
       fragments: [],
     })
@@ -103,6 +104,7 @@ describe('the inert flavour', () => {
     expect(handle.hasErrors).toBe(false)
     expect(handle.getDependencies()).toEqual({
       data: { paths: [], dynamic: false },
+      params: { names: [], dynamic: false },
       operators: [],
       fragments: [],
     })

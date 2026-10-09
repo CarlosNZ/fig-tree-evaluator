@@ -208,6 +208,9 @@ const printArtifactFacts = (artifact: CompileArtifact) => {
   console.log(
     `  dataPaths    ${list([...deps.dataPaths.keys()])}` + `   (dynamic read-set: ${deps.dynamic})`
   )
+  console.log(
+    `  params       ${list(deps.paramNames)}` + `   (dynamic read-set: ${deps.paramsDynamic})`
+  )
   console.log(`  fragments    ${list(deps.fragments)}`)
   if (artifact.holes.length === 0) {
     console.log('  holes        none — the input is fully constant')

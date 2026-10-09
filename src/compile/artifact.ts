@@ -382,6 +382,18 @@ export interface ArtifactDependencies {
    * path, a bare `$data`, or a dynamic-arguments fragment call.
    */
   dynamic: boolean
+  /**
+   * The parameter names $params references read, by the first key of each
+   * read's path, in discovery order. Never composed through a fragment
+   * call: a body's $params reads are against its own declarations.
+   */
+  paramNames: string[]
+  /**
+   * True when the parameters read are not statically known: a bare
+   * `$params`, which a computed `get` path from `$params` compiles to, or a
+   * projection over every parameter.
+   */
+  paramsDynamic: boolean
   /** Canonical operator names invoked. */
   operators: string[]
   /** Fragment names called. */

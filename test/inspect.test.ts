@@ -601,6 +601,8 @@ describe('dependencies', () => {
     expect(inspect(fig.compile(expression)).dependencies).toEqual({
       dataPaths: ['z', 'a.b'],
       dynamic: false,
+      paramNames: [],
+      paramsDynamic: false,
       operators: [],
       fragments: [],
     })
@@ -616,6 +618,28 @@ describe('dependencies', () => {
     expect(dependencies.dataPaths).toEqual(['items[*].id', 'items["[*]"].id'])
   })
 
+  test('the parameter names read, in the order the compile met them', () => {
+    const { dependencies } = report({
+      a: '$params.zone',
+      b: { $buildString: { template: '{{$p.city}}' } },
+      c: '$params',
+    })
+    expect(dependencies.paramNames).toEqual(['zone', 'city'])
+    expect(dependencies.paramsDynamic).toBe(true)
+  })
+
+  test('a body’s parameter reads stay its own, composed or not', () => {
+    const fig = new FigTree({
+      operators: [coreOperators],
+      fragments: {
+        greet: { expression: { $join: ['Hi ', '$params.name'] }, parameters: { name: {} } },
+      },
+    })
+    const result = inspect(fig.compile({ $greet: { name: '$params.who' } }))
+    expect(result.dependencies.paramNames).toEqual(['who'])
+    expect(result.own.dependencies.paramNames).toEqual(['who'])
+  })
+
   test('composed through fragment calls; own is the expression alone', () => {
     const fig = new FigTree({
       operators: [coreOperators],
@@ -628,13 +652,22 @@ describe('dependencies', () => {
     expect(result.dependencies).toEqual({
       dataPaths: ['x', 'first', 'last'],
       dynamic: false,
+      paramNames: [],
+      paramsDynamic: false,
       operators: ['join'],
       fragments: ['outer', 'inner'],
     })
     expect(result.own).toEqual({
       nodeCount: 2,
       maxDepth: 1,
-      dependencies: { dataPaths: ['x'], dynamic: false, operators: [], fragments: ['outer'] },
+      dependencies: {
+        dataPaths: ['x'],
+        dynamic: false,
+        paramNames: [],
+        paramsDynamic: false,
+        operators: [],
+        fragments: ['outer'],
+      },
     })
     expect(result.nodeCount).toBeGreaterThan(result.own.nodeCount)
   })

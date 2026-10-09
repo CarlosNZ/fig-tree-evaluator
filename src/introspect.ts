@@ -37,6 +37,21 @@ export interface Dependencies {
      */
     dynamic: boolean
   }
+  /**
+   * The `$params` references written in the expression itself, never those
+   * in a called fragment's body, which read that fragment's own
+   * declarations.
+   */
+  params: {
+    /** Parameter names read, deduplicated, in discovery order. */
+    names: string[]
+    /**
+     * True when the set isn't statically known: a bare `$params`, a
+     * computed `get` path from `$params`, or a projection over every
+     * parameter (`$params[*]`).
+     */
+    dynamic: boolean
+  }
   /** Canonical operator names invoked, in discovery order. */
   operators: string[]
   /** Fragments called, in discovery order. */
@@ -74,11 +89,11 @@ const segmentClass = (segment: PathSegment): number =>
 /**
  * The artifact's record as the public shape. `paths` sorts the record's
  * entries by their segments and reports their keys, which are already the
- * canonical renders — nothing is rendered here. `operators` and
- * `fragments` keep the order the compile walk collected them in, which is
- * what the recording sets give — the asymmetry is deliberate (a path set
- * is what a host diffs between runs, the other two are for display and the
- * capability probe).
+ * canonical renders — nothing is rendered here. Parameter names,
+ * `operators` and `fragments` keep the order the compile walk collected
+ * them in, which is what the recording sets give — the asymmetry is
+ * deliberate (a path set is what a host diffs between runs, the others are
+ * for display, declaration and the capability probe).
  */
 export const toDependencies = (dependencies: ArtifactDependencies): Dependencies => ({
   data: {
@@ -86,6 +101,10 @@ export const toDependencies = (dependencies: ArtifactDependencies): Dependencies
       .sort(([, a], [, b]) => compareSegmentPaths(a, b))
       .map(([key]) => key),
     dynamic: dependencies.dynamic,
+  },
+  params: {
+    names: [...dependencies.paramNames],
+    dynamic: dependencies.paramsDynamic,
   },
   operators: [...dependencies.operators],
   fragments: [...dependencies.fragments],

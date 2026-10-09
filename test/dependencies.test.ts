@@ -21,6 +21,7 @@ describe('what counts as a data read', () => {
   test('the shape is synchronous and total', () => {
     expect(fig.getDependencies({ $plus: ['$data.a', 1] })).toEqual({
       data: { paths: ['a'], dynamic: false },
+      params: { names: [], dynamic: false },
       operators: ['plus'],
       fragments: [],
     })
@@ -44,6 +45,7 @@ describe('what counts as a data read', () => {
   test('a bare $data as `from` is the omitted form, so the read is known', () => {
     expect(fig.getDependencies({ $get: { path: 'a.b', from: '$data' } })).toEqual({
       data: { paths: ['a.b'], dynamic: false },
+      params: { names: [], dynamic: false },
       operators: ['get'],
       fragments: [],
     })
@@ -141,6 +143,130 @@ describe('transitivity through fragments', () => {
     expect(
       fragged.getDependencies({ fragment: 'dyn', parameters: '$data.formValues' }).data.dynamic
     ).toBe(true)
+  })
+})
+
+describe('$params reads', () => {
+  const params = (expression: unknown, instance: FigTree = fig) =>
+    instance.getDependencies(expression).params
+
+  test('an expression reading no parameter says so', () => {
+    expect(params({ $plus: ['$data.a', 1] })).toEqual({ names: [], dynamic: false })
+  })
+
+  test('a plain reference, in either spelling', () => {
+    expect(params({ a: '$params.x', b: '$p.y' })).toEqual({ names: ['x', 'y'], dynamic: false })
+  })
+
+  test('a drill reads the parameter its first key names', () => {
+    expect(params('$params.country.code')).toEqual({ names: ['country'], dynamic: false })
+  })
+
+  test('the same parameter read several ways is one name', () => {
+    expect(
+      params({
+        a: '$params.country.code',
+        b: '$p.country',
+        c: { $buildString: { template: '{{$params.country.name}}' } },
+        d: { $get: { path: 'country', from: '$params' } },
+      }).names
+    ).toEqual(['country'])
+  })
+
+  test('template tokens, in either spelling', () => {
+    expect(params({ $buildString: { template: 'Hi {{$params.name}} from {{$p.town}}' } })).toEqual({
+      names: ['name', 'town'],
+      dynamic: false,
+    })
+  })
+
+  test('a template token beside positional substitutions is no reference, so no read', () => {
+    // The desugar needs a named face to grow, so here the token renders
+    // itself
+    const expression = {
+      $buildString: { template: 'Hi {{$params.name}} %1', substitutions: ['a'] },
+    }
+    expect(params(expression)).toEqual({ names: [], dynamic: false })
+  })
+
+  test('get from $params with a literal path reads the path’s first key', () => {
+    expect(params({ $get: { path: 'x.y', from: '$params' } })).toEqual({
+      names: ['x'],
+      dynamic: false,
+    })
+    expect(params({ $get: { path: ['x', 'y'], from: '$p' } }).names).toEqual(['x'])
+  })
+
+  test('get from $params with a computed path makes the set unknown', () => {
+    const result = fig.getDependencies({ $get: { path: '$data.key', from: '$params' } })
+    expect(result.params).toEqual({ names: [], dynamic: true })
+    // The path's own read is still a data read
+    expect(result.data).toEqual({ paths: ['key'], dynamic: false })
+  })
+
+  test('a bare $params, or a projection over every parameter, makes the set unknown', () => {
+    expect(params('$params')).toEqual({ names: [], dynamic: true })
+    expect(params('$p')).toEqual({ names: [], dynamic: true })
+    expect(params({ a: '$params.x', b: '$params[*].y' })).toEqual({ names: ['x'], dynamic: true })
+  })
+
+  test('vars definitions, fallbacks and every other position count', () => {
+    const expression = {
+      vars: { a: '$params.v' },
+      value: { $plus: ['$vars.a', '$params.w'], fallback: '$params.f' },
+      list: { $map: { input: '$params.items', each: { $plus: ['$element', '$params.step'] } } },
+    }
+    expect(params(expression).names.sort()).toEqual(['f', 'items', 'step', 'v', 'w'])
+  })
+
+  describe('through fragment calls', () => {
+    const fragged = build({
+      greet: {
+        expression: { $buildString: ['Hi %1, from %2', '$params.name', '$data.site'] },
+        parameters: { name: { type: 'string' } },
+      },
+    })
+
+    test('a call’s arguments count, and the called body’s reads do not', () => {
+      const result = fragged.getDependencies({
+        fragment: 'greet',
+        parameters: { name: '$params.who' },
+      })
+      expect(result.params).toEqual({ names: ['who'], dynamic: false })
+      // `data` still follows the call into the body
+      expect(result.data.paths).toEqual(['site'])
+    })
+
+    test('a call reading no parameter of its own reports none', () => {
+      expect(params({ fragment: 'greet', parameters: { name: 'Ada' } }, fragged)).toEqual({
+        names: [],
+        dynamic: false,
+      })
+    })
+
+    test('a dynamic-arguments call passing $params on makes the set unknown', () => {
+      expect(params({ fragment: 'greet', parameters: '$params' }, fragged)).toEqual({
+        names: [],
+        dynamic: true,
+      })
+    })
+  })
+
+  test('a fragment body not yet registered still reports its names', () => {
+    // What a fragment editor holds while the author types: outside a
+    // registered body every $params reference is unresolved, an error to
+    // validate(), which getDependencies() neither raises nor needs
+    const body = {
+      vars: { greeting: { $get: { path: 'salutation', from: '$params' } } },
+      text: { $buildString: { template: '{{$vars.greeting}}, {{$p.name}}' } },
+      town: '$params.address.town',
+    }
+    expect(fig.validate(body).issues.map((issue) => issue.code)).toEqual([
+      'unresolved-param',
+      'unresolved-param',
+      'unresolved-param',
+    ])
+    expect(params(body).names.sort()).toEqual(['address', 'name', 'salutation'])
   })
 })
 

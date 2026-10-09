@@ -109,7 +109,13 @@ import { isPlainDataObject } from '../plainData'
 import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { resolveOperator, type OperatorRegistry, type RegistryEntry } from '../registry'
 import { checkNameLegality } from '../names'
-import { canonicalSegments, isPathSegment, parsePath, type PathSegment } from '../primitives'
+import {
+  canonicalSegments,
+  isPathSegment,
+  parsePath,
+  WILDCARD,
+  type PathSegment,
+} from '../primitives'
 import { templateTokens, type TemplateSegment } from '../templateTokens'
 import {
   bareNamespace,
@@ -175,6 +181,8 @@ interface WalkState {
   /** Canonical render → the segments, which is the deduplication. */
   dataPaths: Map<string, PathSegment[]>
   dynamic: boolean
+  paramNames: Set<string>
+  paramsDynamic: boolean
   operators: Set<string>
   fragmentNames: Set<string>
   /** Resolved call sites, for the rollup composition at assembly. */
@@ -238,6 +246,8 @@ export const compileExpression = (
     maxDepth: 0,
     dataPaths: new Map(),
     dynamic: false,
+    paramNames: new Set(),
+    paramsDynamic: false,
     operators: new Set(),
     fragmentNames: new Set(),
     fragmentCalls: [],
@@ -261,6 +271,8 @@ export const compileExpression = (
     dependencies: {
       dataPaths: state.dataPaths,
       dynamic: state.dynamic,
+      paramNames: [...state.paramNames],
+      paramsDynamic: state.paramsDynamic,
       operators: [...state.operators],
       fragments: [...state.fragmentNames],
     },
@@ -289,7 +301,10 @@ export const compileExpression = (
  * rather than adds (a caller measuring 10 with a depth-3 call into a
  * depth-4 body is 10 deep, not 14). Dependencies and `identityOnly` are a
  * union and a disjunction, which is what makes "what does this expression
- * need" answerable through a call.
+ * need" answerable through a call. The `$params` reads are the exception
+ * and stay the expression's own: a body's are against its own declarations,
+ * and what the caller reads to supply them sits in the call's arguments,
+ * which are the caller's own already.
  *
  * Shared by the walk's assembly and by registration's reverse-topological
  * fold, so a call site in an expression and a call site in a body compose
@@ -324,6 +339,8 @@ export const composeRollups = (
     dependencies: {
       dataPaths,
       dynamic,
+      paramNames: own.dependencies.paramNames,
+      paramsDynamic: own.dependencies.paramsDynamic,
       operators: [...operators],
       fragments: [...fragmentNames],
     },
@@ -487,7 +504,7 @@ const walkString = (
         if (segments.length === 0) state.dynamic = true
         else
           recordDataPath(state, segments, drill.startsWith('.') ? drill.slice(1) : undefined, path)
-      }
+      } else if (namespace === 'params') recordParamRead(state, segments)
       if (state.unknownNodes > 0 && boundByNode(namespace)) node.scopeUnknown = true
       return node
     }
@@ -1105,6 +1122,22 @@ const recordDataPath = (
   }
   state.dataPaths.set(key, canonical)
   state.dataReads.push({ kind: 'path', key, segments: canonical, path })
+}
+
+/**
+ * Record one `$params` read by the parameter it names, the first key of its
+ * path: `$params.country.code` reads `country`. An index names the key it
+ * reads, as `resolvePath` reads one. A bare `$params` reads every argument,
+ * and so does a projection over them, so neither names a set.
+ *
+ * Every form reaches here as a reference: a template token is walked as
+ * one, and a `get` from `$params` is rewritten to the drilled reference, or
+ * left bare where its path is computed (see `rewriteGetSource`).
+ */
+const recordParamRead = (state: WalkState, segments: PathSegment[]) => {
+  const first = segments[0]
+  if (first === undefined || first === WILDCARD) state.paramsDynamic = true
+  else state.paramNames.add(String(first))
 }
 
 /**

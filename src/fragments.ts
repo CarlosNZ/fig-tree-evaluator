@@ -326,7 +326,14 @@ const validateDefinition = (
     warnings: [],
     nodeCount: 0,
     maxDepth: 0,
-    dependencies: { dataPaths: new Map(), dynamic: false, operators: [], fragments: [] },
+    dependencies: {
+      dataPaths: new Map(),
+      dynamic: false,
+      paramNames: [],
+      paramsDynamic: false,
+      operators: [],
+      fragments: [],
+    },
     identityOnly: false,
     caches: false,
   }
