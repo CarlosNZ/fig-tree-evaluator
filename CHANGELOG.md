@@ -14,6 +14,7 @@ A ground-up rewrite of the engine. v2 expressions convert to v3 automatically wi
 - …smaller, tree-shakeable bundle (figures)…
 - …validate() / compile()…
 - `getDependencies()` reports what an expression reads and invokes: its `$data` paths, the parameter names its own `$params` references read (what a fragment editor needs to declare them), and the operators and fragments it calls.
+- `fig.with(update)` returns a new, independent instance with an options update applied, leaving the original untouched — for evaluating a draft (a fragment, say) against a host's instance without changing it.
 
 ### Breaking changes
 

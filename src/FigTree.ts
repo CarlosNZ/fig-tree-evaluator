@@ -174,6 +174,14 @@ const compileWithRegistry = (expression: unknown, registry: OperatorRegistry): C
   return artifact
 }
 
+/**
+ * A ready-made state and result store for the next construction, set by
+ * `FigTree.fromState` for the length of one synchronous `new`. Handing
+ * them through the real constructor, rather than around it, keeps that
+ * the one place an instance's fields are set.
+ */
+let seed: { state: InstanceState; results: ResultCache } | undefined
+
 export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   private state: InstanceState
   private readonly results: ResultCache
@@ -186,8 +194,23 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   readonly version = version
 
   constructor(options: InstanceOpts = {} as InstanceOpts) {
-    this.state = buildState(null, options)
-    this.results = new ResultCache(readCacheConfig(this.state.options.cache))
+    const ready = seed
+    seed = undefined
+    this.state = ready?.state ?? buildState(null, options)
+    this.results = ready?.results ?? new ResultCache(readCacheConfig(this.state.options.cache))
+  }
+
+  /**
+   * An instance over a state and result store already built, for `with()`
+   * — which would otherwise construct a default registry only to discard
+   * it. Private, so a state record never crosses the public surface.
+   */
+  private static fromState<Opts extends FigTreeOptions>(
+    state: InstanceState,
+    results: ResultCache
+  ): FigTree<Opts> {
+    seed = { state, results }
+    return new FigTree<Opts>()
   }
 
   /**
@@ -230,6 +253,36 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     const cache = readCacheConfig(next.options.cache)
     this.state = next
     this.results.configure(cache)
+  }
+
+  /**
+   * A new, independent instance, built as if `updateOptions(update)` had
+   * been applied to a copy of this one ("with()" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md). This instance is
+   * untouched, and a later `updateOptions()` on either never reaches the
+   * other. It throws exactly as `updateOptions()` does, and before
+   * anything is created.
+   *
+   * What `updateOptions()` would carry across, the derived instance
+   * shares: the registry and the compile cache when the update names none
+   * of the registry-affecting options, safe because an update replaces
+   * both and never mutates them. The result store is its own, empty and
+   * built from the merged `cache` block as construction builds one, so
+   * neither instance's cached results, `clearCache()` or `cache` updates
+   * reach the other. Its generation starts from this instance's, so a
+   * host `store` the two have in common cannot serve the derived instance
+   * an entry this one has already cleared.
+   *
+   * The static return type of `evaluate()` follows the constructor's
+   * options and cannot follow the update: after `with({ trace })` the
+   * runtime shape changes and the type does not. A TypeScript host that
+   * flips `trace` should pass it per call, which types correctly, or
+   * construct a second instance.
+   */
+  with(update: OptionsUpdate = {}): FigTree<InstanceOpts> {
+    const next = buildState(this.state, update)
+    const cache = readCacheConfig(next.options.cache)
+    return FigTree.fromState(next, new ResultCache(cache, this.results.generation))
   }
 
   /**

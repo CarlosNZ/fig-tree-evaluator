@@ -136,9 +136,15 @@ export class ResultCache {
    */
   private own?: Lru<string, unknown>
   private maxTime: number
-  private current = 0
+  private current: number
 
-  constructor(config: ResolvedCacheConfig) {
+  /**
+   * `generation` seeds the counter for a cache derived from another's
+   * instance (`FigTree.with()`), so an envelope the other had invalidated
+   * stays invalid in a host store the two have in common.
+   */
+  constructor(config: ResolvedCacheConfig, generation = 0) {
+    this.current = generation
     if (config.store === undefined) {
       this.own = new Lru<string, unknown>(config.maxSize)
       this.store = this.own
