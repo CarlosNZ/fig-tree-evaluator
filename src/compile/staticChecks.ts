@@ -686,8 +686,15 @@ const resolveVar = (state: CheckState, node: ReferenceNode) => {
   )
 }
 
+/**
+ * An unresolved reference names the parameter it reads (its first key) as
+ * `parameter`, where it names one, and an undeclared one carries the
+ * nearest declared name as `suggestion`, as a call's unknown argument does.
+ */
 const resolveParam = (state: CheckState, node: ReferenceNode) => {
   const declared = state.context.fragmentParams
+  const first = node.segments[0]
+  const parameter = typeof first === 'string' ? first : undefined
   if (declared === undefined) {
     emit(
       state,
@@ -695,23 +702,25 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
       ErrorCodes.unresolvedParam,
       `'${node.raw}': $params is only available inside a fragment body`,
       node.path,
-      node.order
+      node.order,
+      { parameter }
     )
     return
   }
   // Bare `$params` is the declared parameters resolved — legal, because
   // the set it names is declared, finite and local
   if (node.segments.length === 0) return
-  const first = node.segments[0]
-  if (typeof first !== 'string' || !declared.has(first))
-    emit(
-      state,
-      'error',
-      ErrorCodes.unresolvedParam,
-      `'${node.raw}': the fragment declares no parameter '${String(first)}'`,
-      node.path,
-      node.order
-    )
+  if (parameter !== undefined && declared.has(parameter)) return
+  const suggestion = parameter === undefined ? undefined : nearestName(parameter, declared)
+  emit(
+    state,
+    'error',
+    ErrorCodes.unresolvedParam,
+    `'${node.raw}': the fragment declares no parameter '${String(first)}'${didYouMean(suggestion)}`,
+    node.path,
+    node.order,
+    { parameter, suggestion }
+  )
 }
 
 /**

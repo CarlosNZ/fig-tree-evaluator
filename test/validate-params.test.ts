@@ -46,7 +46,7 @@ describe('an undeclared name is an error with the in-body message', () => {
       expect.objectContaining({
         code: ErrorCodes.unresolvedParam,
         path: ['b'],
-        message: "'$params.z': the fragment declares no parameter 'z'",
+        message: "'$params.z': the fragment declares no parameter 'z' — did you mean 'x'?",
       }),
     ])
   })
@@ -61,6 +61,39 @@ describe('an undeclared name is an error with the in-body message', () => {
     }
   })
 
+  test('naming the parameter read, with the nearest declared name', () => {
+    const body = {
+      a: '$params.contry.code',
+      b: { $buildString: { template: '{{$params.nmae}} {{$p.zzz}}' } },
+      c: { $get: { path: 'contry', from: '$params' } },
+    }
+    const result = fig.validate(body, { params: ['country', 'name'] })
+    expect(errors(result)).toEqual([
+      {
+        severity: 'error',
+        code: ErrorCodes.unresolvedParam,
+        path: ['a'],
+        message:
+          "'$params.contry.code': the fragment declares no parameter 'contry' — did you mean 'country'?",
+        parameter: 'contry',
+        suggestion: 'country',
+      },
+      expect.objectContaining({
+        path: ['b', '$buildString', 'template'],
+        parameter: 'nmae',
+        suggestion: 'name',
+      }),
+      {
+        severity: 'error',
+        code: ErrorCodes.unresolvedParam,
+        path: ['b', '$buildString', 'template'],
+        message: "'$p.zzz': the fragment declares no parameter 'zzz'",
+        parameter: 'zzz',
+      },
+      expect.objectContaining({ parameter: 'contry', suggestion: 'country' }),
+    ])
+  })
+
   test('bare $params is clean even when nothing is declared', () => {
     expect(fig.validate('$params', { params: [] }).valid).toBe(true)
   })
@@ -73,6 +106,7 @@ test('without the option, every $params read is the outside-a-body error', () =>
       "'$params.x': $params is only available inside a fragment body",
       "'$params': $params is only available inside a fragment body",
     ])
+    expect(errors(result).map((issue) => issue.parameter)).toEqual(['x', undefined])
   }
 })
 
