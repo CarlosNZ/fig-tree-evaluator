@@ -28,6 +28,7 @@ export type {
   OnlyCallOptions,
   OptionsUpdate,
   ResultShape,
+  ValidateOptions,
 } from './options'
 export type { CacheStore } from './types'
 // What the introspection methods return. Assembly stays internal.

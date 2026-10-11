@@ -67,7 +67,7 @@ import type {
   FragmentDefinition, FragmentParameter, FragmentParameterDeclaration,
   // Errors, diagnostics and trace
   FigTreeErrorInit, FigTreeErrorCode, FallbackError, FallbackErrorCode, Issue, ValidationResult,
-  Severity,
+  ValidateOptions, Severity,
   TraceNode, TraceKind, TraceStatus, KnownTraceEvent, CacheTraceEvent, RequestTraceEvent,
   QueryTraceEvent, RenderTraceEvent, KeyOverwriteTraceEvent, ShieldedFallbackTraceEvent,
   // Authoring operators

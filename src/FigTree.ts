@@ -42,6 +42,7 @@ import type {
   OnlyCallOptions,
   OptionsUpdate,
   ResultShape,
+  ValidateOptions,
 } from './options'
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry } from './registry'
@@ -53,6 +54,7 @@ import {
   checkNoCache,
   type CacheEntry,
   type CompileArtifact,
+  type StaticCheckContext,
 } from './compile'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
@@ -165,11 +167,18 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
  * The one compile: the walk plus the metadata-driven static checks and the
  * `noCache` checks, against a registry. `validate()` calls it directly;
  * `evaluate()` and `compile()` reach it through the compile cache, which is
- * what makes the three report identically.
+ * what makes the three report identically. The static-check context is
+ * `validate()`'s `params` option and nothing else: only `validate()`'s own
+ * fresh compile may pass one, since an artifact compiled with it would
+ * answer an evaluation wrongly from the cache.
  */
-const compileWithRegistry = (expression: unknown, registry: OperatorRegistry): CompileArtifact => {
+const compileWithRegistry = (
+  expression: unknown,
+  registry: OperatorRegistry,
+  context?: StaticCheckContext
+): CompileArtifact => {
   const artifact = compileExpression(expression, registry)
-  runStaticChecks(artifact)
+  runStaticChecks(artifact, context)
   if (artifact.hasNoCache) checkNoCache(artifact)
   return artifact
 }
@@ -348,16 +357,24 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
    * on expression content — even hard grammar errors come back as
    * error-severity issues. Throws only on misuse of the method itself (a
-   * per-call option that is instance configuration). It takes the same
-   * per-call shape as `evaluate()`, of which only `data` — the sample data
-   * for the missing-path check — has any bearing on a static report.
+   * per-call option that is instance configuration, or a `params` that is
+   * not a list of names). It takes the same per-call shape as `evaluate()`,
+   * of which only `data` — the sample data for the missing-path check — has
+   * any bearing on a static report, plus `params` of its own: the declared
+   * parameter names of a fragment body, so the body checks as it would at
+   * registration.
    */
-  validate(expression: unknown, options?: CallOptions): ValidationResult {
+  validate(expression: unknown, options?: ValidateOptions): ValidationResult {
+    let call: CallOptions | undefined = options
+    let context: StaticCheckContext | undefined
+    if (options?.params !== undefined) {
+      const { params, ...rest } = options
+      call = rest
+      context = { fragmentParams: paramNames(params) }
+    }
     const effective =
-      options === undefined
-        ? this.state.evaluation
-        : withCallOptions(this.state.evaluation, options)
-    const artifact = compileWithRegistry(expression, this.state.registry)
+      call === undefined ? this.state.evaluation : withCallOptions(this.state.evaluation, call)
+    const artifact = compileWithRegistry(expression, this.state.registry, context)
     const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
@@ -780,6 +797,20 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
   // values are new
   checkKillSwitchOptions(call)
   return merged as EvaluationOptions
+}
+
+/**
+ * `validate()`'s `params` option as the static checks take it, refused
+ * unless it is an array of strings.
+ */
+const paramNames = (params: unknown): ReadonlySet<string> => {
+  if (!Array.isArray(params) || params.some((name) => typeof name !== 'string'))
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message: "'params' must be an array of parameter names (strings)",
+      path: [],
+    })
+  return new Set(params)
 }
 
 /**

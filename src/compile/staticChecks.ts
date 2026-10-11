@@ -41,9 +41,10 @@ import type {
 import type { PathSegment } from '../primitives'
 
 /**
- * Phase-11 hook: inside a fragment body, `$params` resolves against the
- * declared parameter names. Absent (every Phase-3 call), any `$params`
- * reference is an outside-a-body error.
+ * Inside a fragment body, `$params` resolves against the declared parameter
+ * names: registration passes a body's declarations, and `validate()` its
+ * `params` option. Absent, any `$params` reference is an outside-a-body
+ * error.
  */
 export interface StaticCheckContext {
   fragmentParams?: ReadonlySet<string>

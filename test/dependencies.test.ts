@@ -255,7 +255,8 @@ describe('$params reads', () => {
   test('a fragment body not yet registered still reports its names', () => {
     // What a fragment editor holds while the author types: outside a
     // registered body every $params reference is unresolved, an error to
-    // validate(), which getDependencies() neither raises nor needs
+    // validate() without its `params` option, which getDependencies()
+    // neither raises nor needs
     const body = {
       vars: { greeting: { $get: { path: 'salutation', from: '$params' } } },
       text: { $buildString: { template: '{{$vars.greeting}}, {{$p.name}}' } },
@@ -267,6 +268,8 @@ describe('$params reads', () => {
       'unresolved-param',
     ])
     expect(params(body).names.sort()).toEqual(['address', 'name', 'salutation'])
+    // The names it reports, declared, are what the body validates against
+    expect(fig.validate(body, { params: params(body).names }).valid).toBe(true)
   })
 })
 
