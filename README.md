@@ -10,8 +10,6 @@ FigTree evaluates expressions written as JSON. It lets you put real logic in pla
 
 <br clear="left">
 
-<img src="images/spacer.svg" width="1" height="24" alt="">
-
 > **Upgrading from v2?** v3 is a significant redesign, and there's a converter for your existing expressions. See [Migrating from v2](https://DOCS_URL/migrating/). The v2 docs are on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).
 
 ## Your config is already an expression
