@@ -116,11 +116,18 @@ describe.each(CLIENTS)('$name — the contract every client satisfies', ({ build
     expect(await client.request(request())).toBeNull()
   })
 
-  it('throws OperatorFailure carrying the status and the response payload', async () => {
+  it('throws http-status carrying the status and the response payload', async () => {
     const client = build({ status: 404, statusText: 'Not Found', body: '{"error":"nope"}' })
     const failure = await rejection<OperatorFailure>(client.request(request()))
     expect(failure).toBeInstanceOf(OperatorFailure)
-    expect(failure.errorData).toMatchObject({ status: 404, response: { error: 'nope' } })
+    expect(failure.code).toBe('http-status')
+    // Exactly the promised fields: nothing a reader might come to rely on
+    expect(failure.errorData).toEqual({
+      status: 404,
+      statusText: 'Not Found',
+      url: 'https://api.test/resource',
+      response: { error: 'nope' },
+    })
   })
 
   it('never echoes a header value, anywhere in the failure', async () => {
@@ -154,11 +161,12 @@ describe('FetchClient', () => {
     expect(failure.errorData).toMatchObject({ status: 502, response: '<html>down</html>' })
   })
 
-  it('fails a 200 that is not JSON', async () => {
+  it('fails a 200 that is not JSON, with invalid-response', async () => {
     const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: 'not json' }))
     const failure = await rejection<OperatorFailure>(client.request(request()))
-    expect(failure.message).toMatch(/not JSON/)
-    expect(failure.errorData).toMatchObject({ status: 200 })
+    expect(failure.message).toMatch(/not JSON \(200\)/)
+    expect(failure.code).toBe('invalid-response')
+    expect(failure.errorData).toEqual({ url: 'https://api.test/resource', response: 'not json' })
   })
 
   it('treats a whitespace-only success as empty', async () => {

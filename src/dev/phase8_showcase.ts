@@ -20,7 +20,6 @@ import { block, outcome, print, section } from './showcase'
 const peek = defineOperator({
   name: 'peek',
   category: 'other',
-  description: 'Return the option block named, as the body received it',
   parameters: { of: { type: 'string', default: 'http' } },
   positionalParams: ['of'],
   evaluate: ({ of }, context) => (context.options as Record<string, unknown>)[of] ?? null,
@@ -31,7 +30,6 @@ let compiles = 0
 const counted = defineOperator({
   name: 'counted',
   category: 'other',
-  description: 'Pass a value through, counting the compiles that saw it',
   parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
   positionalParams: ['value'],
   validate: () => {

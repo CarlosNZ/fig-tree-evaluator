@@ -29,22 +29,6 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
- * A plain *data* object: prototype is `Object.prototype` or `null`. Class
- * instances, `Date`s, `Map`s etc. fail this — the compiler treats them as
- * opaque constants ("Non-plain-object values" in docs-dev/v3-specs/v3-api.md).
- *
- * The compiler iterates what passes this with `for…in`, unguarded, which
- * visits only own keys provided `Object.prototype` carries no enumerable
- * property ("The engine assumes an unpolluted `Object.prototype`" in
- * docs-dev/v3-specs/v3-implementation-notes.md).
- */
-export const isPlainDataObject = (value: unknown): value is Record<string, unknown> => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
-  const proto: unknown = Object.getPrototypeOf(value)
-  return proto === Object.prototype || proto === null
-}
-
-/**
  * Levenshtein edit distance, bounded: the exact distance when it is at
  * most `max`, otherwise any value above `max`. Two rows of the usual
  * dynamic-programming table, swapped rather than reallocated, and the
@@ -100,6 +84,16 @@ export const nearestName = (name: string, candidates: Iterable<string>): string 
   return best
 }
 
+/** The message tail offering a `nearestName` suggestion, or nothing. */
+export const didYouMean = (suggestion: string | undefined): string =>
+  suggestion ? ` — did you mean '${suggestion}'?` : ''
+
+/** `a`, `a and b`, `a, b and c`: items as a message lists them. */
+export const listing = (items: string[]): string =>
+  items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`
+
 /**
  * FNV-1a over a string's UTF-16 code units, as eight hex characters. A
  * content fingerprint, not a security hash: 32 bits is ample where a
@@ -126,4 +120,40 @@ export const once = <T>(fn: () => Promise<T> | T): (() => Promise<T>) => {
     if (pending === undefined) pending = (async () => fn())()
     return pending
   }
+}
+
+/**
+ * Every cycle in a directed graph of names, found depth-first from each
+ * root in turn: a back edge to a name still on the stack closes the cycle
+ * of the names above it, which `report` receives in stack order. A cycle
+ * is reported once, keyed on its member set, though every entry point into
+ * it would find it again. Returns whether the graph is acyclic.
+ */
+export const findCycles = (
+  roots: Iterable<string>,
+  edges: (name: string) => Iterable<string> | undefined,
+  report: (members: string[]) => void
+): boolean => {
+  const stack: string[] = []
+  const done = new Set<string>()
+  const reported = new Set<string>()
+  const visit = (name: string) => {
+    const at = stack.indexOf(name)
+    if (at !== -1) {
+      const members = stack.slice(at)
+      const key = [...members].sort().join('\0')
+      if (!reported.has(key)) {
+        reported.add(key)
+        report(members)
+      }
+      return
+    }
+    if (done.has(name)) return
+    stack.push(name)
+    for (const target of edges(name) ?? []) visit(target)
+    stack.pop()
+    done.add(name)
+  }
+  for (const root of roots) visit(root)
+  return reported.size === 0
 }

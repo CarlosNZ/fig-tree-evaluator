@@ -257,6 +257,14 @@ test('v2 alias references are inert data with a warning', () => {
   expect(issueCodes(artifact, 'warning')).toContain('unrecognized-identifier')
 })
 
+test('a token naming an Object.prototype member is no namespace', () => {
+  for (const raw of ['$constructor', '$toString.x', '$hasOwnProperty', '$__proto__']) {
+    const artifact = compile(raw)
+    expect(artifact.root).toMatchObject({ kind: 'constant', value: raw })
+    expect(issueCodes(artifact, 'warning')).toEqual(['unrecognized-identifier'])
+  }
+})
+
 test('the v2 children key fails as an ordinary unknown key — no tombstone', () => {
   const artifact = compile({ operator: 'plus', children: [1, 2] })
   const codes = issueCodes(artifact, 'error')

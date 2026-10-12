@@ -130,7 +130,7 @@ const invalidPath = (path: string, detail: string): Error =>
   new Error(`Invalid path "${path}": ${detail}`)
 
 const normalizePath = (path: string | PathSegment[]): PathSegment[] =>
-  Array.isArray(path) ? path.slice() : parsePath(path)
+  Array.isArray(path) ? path : parsePath(path)
 
 /**
  * Resolve a path against a source value, reporting found-vs-missing

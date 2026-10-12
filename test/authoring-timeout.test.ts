@@ -130,7 +130,7 @@ test('a timeout finding sits beside the findings without one', async () => {
     {
       path: ['b'],
       code: 'timeout',
-      message: expect.stringContaining('constant fallback'),
+      message: expect.stringContaining('static fallback'),
       certainty: 'may',
     },
   ])
@@ -140,7 +140,6 @@ describe('only an evaluation that can wait can be cut off', () => {
   const io = defineOperator({
     name: 'io',
     category: 'other',
-    description: 'Anything, fetched by code nothing describes',
     parameters: { value: {} },
     positionalParams: ['value'],
     evaluate: ({ value }) => value,
@@ -148,7 +147,6 @@ describe('only an evaluation that can wait can be cut off', () => {
   const nap = defineOperator({
     name: 'nap',
     category: 'other',
-    description: 'A number, handed back once a timer fires',
     parameters: { value: { type: 'number' } },
     positionalParams: ['value'],
     returns: 'number',

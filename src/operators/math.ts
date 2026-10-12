@@ -10,7 +10,6 @@
 import { declareOperator } from '../buildOperator'
 import { compareValues, roundDecimal } from '../primitives'
 import { describeType } from '../typeCheck'
-import { isPlainObject } from '../utils'
 import {
   emptyAggregateError,
   emptyAggregateFailure,
@@ -27,40 +26,25 @@ const PLUS_IDENTITY: Record<PlusMode, () => unknown> = {
   object: () => ({}),
 }
 
-/** The operand kind `plus` dispatches on; anything else is out of domain. */
-const plusKind = (value: unknown): PlusMode | undefined => {
-  if (typeof value === 'number') return 'number'
-  if (typeof value === 'string') return 'string'
-  if (Array.isArray(value)) return 'array'
-  if (isPlainObject(value)) return 'object'
-  return undefined
-}
-
 export const plus = declareOperator({
   name: 'plus',
   alias: '+',
   category: 'math',
-  description:
-    'Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type',
   parameters: {
     values: {
       type: 'array',
       elementNullPolicy: 'propagate',
       constraints: { homogeneous: ['number', 'string', 'array', 'object'] },
-      description: 'The operands; homogeneous: all numbers, strings, arrays or objects',
     },
     expect: {
       type: { literal: ['number', 'string', 'array', 'object'] },
       required: false,
-      description:
-        'Pin the mode: every operand must be this type, and an empty input yields its identity',
     },
     nullValueDefault: {
       type: ['number', 'string', 'array', 'object'],
       required: false,
       evaluation: 'lazy',
       replacesNullAt: ['values'],
-      description: 'Replaces any null operand before the addition',
     },
   },
   positionalParams: ['...values'],
@@ -73,12 +57,12 @@ export const plus = declareOperator({
         throw emptyAggregateFailure('the sum', "pin the mode with 'expect' to get its identity")
       return PLUS_IDENTITY[expect]()
     }
-    // The declared `homogeneous` constraint has made the operands one of the
-    // four kinds; `expect` pins which, and the constraint knows nothing of it
-    const mode = expect ?? (plusKind(values[0]) as PlusMode)
-    const offender = values.find((value) => plusKind(value) !== mode)
-    if (offender !== undefined)
-      throw operandTypeFailure(`all operands must be ${mode}s — received ${describeType(offender)}`)
+    // The declared `homogeneous` constraint, checked after any null
+    // replacement, has made the operands all one of the four kinds; `expect`
+    // pins which, and the constraint knows nothing of it
+    const mode = describeType(values[0]) as PlusMode
+    if (expect !== undefined && mode !== expect)
+      throw operandTypeFailure(`all operands must be ${expect}s — received ${mode}`)
     switch (mode) {
       case 'number':
         return (values as number[]).reduce((sum, value) => sum + value, 0)
@@ -96,10 +80,9 @@ export const subtract = declareOperator({
   name: 'subtract',
   alias: '-',
   category: 'math',
-  description: 'Subtract one number from another',
   parameters: {
-    value: { type: ['number', 'null'], description: 'The main operand' },
-    minus: { type: ['number', 'null'], description: 'The amount subtracted from value' },
+    value: { type: ['number', 'null'] },
+    minus: { type: ['number', 'null'] },
   },
   positionalParams: ['value', 'minus'],
   returns: 'number',
@@ -110,10 +93,9 @@ export const divide = declareOperator({
   name: 'divide',
   alias: '/',
   category: 'math',
-  description: 'Divide one number by another — true division; zero divisors fail',
   parameters: {
-    value: { type: ['number', 'null'], description: 'The main operand' },
-    by: { type: ['number', 'null'], description: 'The divisor' },
+    value: { type: ['number', 'null'] },
+    by: { type: ['number', 'null'] },
   },
   positionalParams: ['value', 'by'],
   returns: 'number',
@@ -123,10 +105,9 @@ export const divide = declareOperator({
 export const modulo = declareOperator({
   name: 'modulo',
   category: 'math',
-  description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
   parameters: {
-    value: { type: ['number', 'null'], description: 'The main operand' },
-    mod: { type: ['number', 'null'], description: 'The modulus' },
+    value: { type: ['number', 'null'] },
+    mod: { type: ['number', 'null'] },
   },
   positionalParams: ['value', 'mod'],
   returns: 'number',
@@ -137,20 +118,17 @@ export const multiply = declareOperator({
   name: 'multiply',
   alias: '*',
   category: 'math',
-  description: 'Multiply numbers together — an empty input is 1, the empty product',
   parameters: {
     values: {
       type: 'array',
       elementNullPolicy: 'propagate',
       constraints: { homogeneous: ['number'] },
-      description: 'The factors',
     },
     nullValueDefault: {
       type: 'number',
       required: false,
       evaluation: 'lazy',
       replacesNullAt: ['values'],
-      description: 'Replaces any null factor before multiplying',
     },
   },
   positionalParams: ['...values'],
@@ -163,10 +141,9 @@ export const power = declareOperator({
   name: 'power',
   alias: '^',
   category: 'math',
-  description: 'Raise a base to an exponent — overflow and complex results fail',
   parameters: {
-    base: { type: ['number', 'null'], description: 'The number to raise' },
-    exponent: { type: ['number', 'null'], description: 'The power to raise it to' },
+    base: { type: ['number', 'null'] },
+    exponent: { type: ['number', 'null'] },
   },
   positionalParams: ['base', 'exponent'],
   returns: 'number',
@@ -176,14 +153,11 @@ export const power = declareOperator({
 export const round = declareOperator({
   name: 'round',
   category: 'math',
-  description:
-    'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
   parameters: {
-    value: { type: ['number', 'null'], description: 'The number to round' },
+    value: { type: ['number', 'null'] },
     decimals: {
       type: 'integer',
       default: 0,
-      description: 'Decimal places to keep; negative values round to powers of ten',
     },
   },
   positionalParams: ['value', 'decimals'],
@@ -193,16 +167,13 @@ export const round = declareOperator({
 
 const unary = (
   name: string,
-  description: string,
-  valueDescription: string,
   compute: (value: number) => number,
   returns: 'number' | 'integer' = 'number'
 ) =>
   declareOperator({
     name,
     category: 'math',
-    description,
-    parameters: { value: { type: ['number', 'null'], description: valueDescription } },
+    parameters: { value: { type: ['number', 'null'] } },
     positionalParams: ['value'],
     returns,
     evaluate: ({ value }) => compute(value),
@@ -210,45 +181,25 @@ const unary = (
 
 // A finite number rounds to an integer, and a non-finite one never passes
 // the result boundary
-export const floor = unary(
-  'floor',
-  'Round down toward negative infinity',
-  'The number to round down',
-  Math.floor,
-  'integer'
-)
-export const ceil = unary(
-  'ceil',
-  'Round up toward positive infinity',
-  'The number to round up',
-  Math.ceil,
-  'integer'
-)
-export const abs = unary('abs', 'The absolute value', 'The number', Math.abs)
+export const floor = unary('floor', Math.floor, 'integer')
+export const ceil = unary('ceil', Math.ceil, 'integer')
+export const abs = unary('abs', Math.abs)
 
-const extremum = (
-  name: string,
-  label: string,
-  description: string,
-  wins: (comparison: number) => boolean
-) =>
+const extremum = (name: string, label: string, wins: (comparison: number) => boolean) =>
   declareOperator({
     name,
     category: 'math',
-    description,
     parameters: {
       values: {
         type: 'array',
         elementNullPolicy: 'propagate',
         constraints: { homogeneous: ['number', 'string'] },
-        description: 'The candidates: all numbers, or all strings (codepoint order)',
       },
       nullValueDefault: {
         type: ['number', 'string'],
         required: false,
         evaluation: 'lazy',
         replacesNullAt: ['values'],
-        description: 'Replaces any null candidate before comparing',
       },
     },
     positionalParams: ['...values'],
@@ -261,15 +212,5 @@ const extremum = (
     },
   })
 
-export const min = extremum(
-  'min',
-  'the minimum',
-  'The smallest of the values — numbers numerically, strings in codepoint order',
-  (comparison) => comparison < 0
-)
-export const max = extremum(
-  'max',
-  'the maximum',
-  'The largest of the values — numbers numerically, strings in codepoint order',
-  (comparison) => comparison > 0
-)
+export const min = extremum('min', 'the minimum', (comparison) => comparison < 0)
+export const max = extremum('max', 'the maximum', (comparison) => comparison > 0)

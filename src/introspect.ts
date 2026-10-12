@@ -20,6 +20,7 @@ import {
   type ValidatedParameter,
 } from './operatorDefinition'
 import type { OperatorRegistry } from './registry'
+import type { FragmentMetadata } from './catalogTypes'
 import type { FragmentParameter } from './fragments'
 import type { Issue } from './issues'
 import type { ExpectedType } from './typeCheck'
@@ -33,6 +34,21 @@ export interface Dependencies {
      * True when the read-set is not statically enumerable: a computed
      * `get` path, a bare `$data`, or a dynamic-arguments fragment call.
      * Known paths are still listed beside it.
+     */
+    dynamic: boolean
+  }
+  /**
+   * The `$params` references written in the expression itself, never those
+   * in a called fragment's body, which read that fragment's own
+   * declarations.
+   */
+  params: {
+    /** Parameter names read, deduplicated, in discovery order. */
+    names: string[]
+    /**
+     * True when the set isn't statically known: a bare `$params`, a
+     * computed `get` path from `$params`, or a projection over every
+     * parameter (`$params[*]`).
      */
     dynamic: boolean
   }
@@ -73,11 +89,11 @@ const segmentClass = (segment: PathSegment): number =>
 /**
  * The artifact's record as the public shape. `paths` sorts the record's
  * entries by their segments and reports their keys, which are already the
- * canonical renders — nothing is rendered here. `operators` and
- * `fragments` keep the order the compile walk collected them in, which is
- * what the recording sets give — the asymmetry is deliberate (a path set
- * is what a host diffs between runs, the other two are for display and the
- * capability probe).
+ * canonical renders — nothing is rendered here. Parameter names,
+ * `operators` and `fragments` keep the order the compile walk collected
+ * them in, which is what the recording sets give — the asymmetry is
+ * deliberate (a path set is what a host diffs between runs, the others are
+ * for display, declaration and the capability probe).
  */
 export const toDependencies = (dependencies: ArtifactDependencies): Dependencies => ({
   data: {
@@ -85,6 +101,10 @@ export const toDependencies = (dependencies: ArtifactDependencies): Dependencies
       .sort(([, a], [, b]) => compareSegmentPaths(a, b))
       .map(([key]) => key),
     dynamic: dependencies.dynamic,
+  },
+  params: {
+    names: [...dependencies.paramNames],
+    dynamic: dependencies.paramsDynamic,
   },
   operators: [...dependencies.operators],
   fragments: [...dependencies.fragments],
@@ -147,9 +167,9 @@ export interface OperatorInfo extends Omit<
    */
   hostNoCache?: true
   /**
-   * What `operatorDefaults` set as this operator's fallback. No
-   * definition-level counterpart exists — `fallback` is a node grammar
-   * key, not a declaration.
+   * What `operatorDefaults` set as this operator's fallback, as written,
+   * any `$error` read in it included. No definition-level counterpart
+   * exists — `fallback` is a node grammar key, not a declaration.
    */
   hostFallback?: unknown
 }
@@ -158,7 +178,8 @@ export interface OperatorInfo extends Omit<
 export interface FragmentInfo {
   name: string
   description?: string
-  metadata?: Record<string, unknown>
+  /** The definition's `metadata`, as written: its keys are never checked. */
+  metadata?: FragmentMetadata & Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /**
    * What the body is known to return, inferred at registration from its
@@ -216,7 +237,6 @@ export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
     const info: OperatorInfo = {
       name: definition.name,
       category: definition.category,
-      description: definition.description,
       parameters: parameterSnapshot(definition.parameters, hostDefaults),
       restParam: definition.restParam,
       timeoutParam: definition.timeoutParam,

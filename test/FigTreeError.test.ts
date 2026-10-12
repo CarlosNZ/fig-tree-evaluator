@@ -65,6 +65,35 @@ describe('FigTreeError', () => {
       expect(out).toContain('expected number')
     })
 
+    // "The two-level path story" in docs-dev/v3-specs/v3-evaluator-methods.md
+    it('names the fragment, the position in its body and the call node', () => {
+      const err = new FigTreeError({
+        code: ErrorCodes.typeCheck,
+        message: 'expected string',
+        path: ['sections', 1, 'visible'],
+        operator: 'upper',
+        fragment: 'greeting',
+        fragmentPath: ['expression', '$join', 'values', 1],
+      })
+      expect(err.prettyPrint().split('\n')[0]).toBe(
+        "type-check (operator: upper) in fragment 'greeting' at expression.$join.values[1]," +
+          ' called from sections[1].visible'
+      )
+    })
+
+    it('leaves out the call node when the call is the root', () => {
+      const err = new FigTreeError({
+        code: ErrorCodes.typeCheck,
+        message: 'expected string',
+        path: [],
+        fragment: 'greeting',
+        fragmentPath: ['expression'],
+      })
+      expect(err.prettyPrint().split('\n')[0]).toBe(
+        "type-check in fragment 'greeting' at expression"
+      )
+    })
+
     it('renders errorData as JSON but suppresses it when empty', () => {
       const withData = new FigTreeError({
         code: ErrorCodes.operatorFailure,

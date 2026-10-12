@@ -47,6 +47,15 @@ export type OnlyCallOptions<CallOpts> = CallOpts & {
   [Key in Exclude<keyof CallOpts, keyof CallOptions>]: never
 }
 
+/**
+ * What `validate()` takes: the per-call options, plus `params`, the
+ * declared parameter names of a fragment body being validated, which its
+ * `$params` references resolve against as they do at registration.
+ * `validate()`'s alone — `evaluate()` and `compile()` refuse `params` as
+ * they refuse any key outside `CallOptions`.
+ */
+export type ValidateOptions = CallOptions & { params?: readonly string[] }
+
 export interface FigTreeOptions {
   // ── Evaluation environment ──────────────────────────────
   /**

@@ -33,7 +33,7 @@ One consequence for [v3-artifact-obligations.md](v3-artifact-obligations.md), wh
 | `hasErrors`             | Dropped — `issues` states it: any error-severity entry is what `validate()` calls invalid and `evaluate()` would refuse, and an error carrying an `order` is the compile stream's own                                                          |
 | `timeoutShielded`       | Agreed — the artifact's flag, renamed from `shielded` to match `validate()`'s badge (which left `validate()` with #209; the report keeps the flag)                                                                                             |
 | `nodeCount`, `maxDepth` | Agreed — the artifact's numbers as they are: composed through fragment calls, the values the limits compare against                                                                                                                            |
-| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders                                                                                                                         |
+| `dependencies`          | Agreed — the artifact's raw record, not `getDependencies()`'s reshaping; `dataPaths` as the record's canonical renders; `paramNames` and `paramsDynamic` added October 2026, with `getDependencies()`'s `params`                               |
 | `identityOnly`          | Dropped — a compile-cache eligibility flag, so machinery; the markers in `canonicalForm` show more, literal payloads included                                                                                                                  |
 | `own`                   | Agreed, provisionally (Carl may revisit) — the uncomposed `nodeCount`, `maxDepth` and `dependencies`                                                                                                                                           |
 | `fragmentCalls`         | Dropped — each call site is a `fragmentCall` node in `canonicalForm`; the per-call depth only feeds `maxDepth` composition                                                                                                                     |
@@ -73,7 +73,7 @@ type InspectNode = { order: number; path: Path } & (
       operator: string
       params: Record<string, InspectNode>
       fallback?: InspectNode
-      timeoutFallback?: Json // the constant a timeout splices in; present iff shielded
+      timeoutFallback?: Json // the static fallback a timeout splices in, as written; present iff shielded
       noCache?: true
       hostDefaults?: string[]
     }
@@ -108,7 +108,7 @@ type InspectNode = { order: number; path: Path } & (
 - **`reference`** — the canonical spelling: namespace aliases normalized (`$d.customer.name` → `$data.customer.name`), the drill path rendered by `renderSegments` (so a `[*]` projection survives), and an `as` binding under its bound name (`$item.name`, with `binding: "item"`). `authored` keeps the raw spelling.
 - **`operator`** — the canonical name only; the registry entry behind it is machinery. `hostDefaults` lists the keys `operatorDefaults` applied to the node; the values are in `options.operatorDefaults`.
 - **`fragmentCall`** — `resolved` is false only where the name resolved to nothing, which is already an error issue. The body is not in the report at all: the names of every fragment reachable are in `dependencies.fragments`, and the rest is `getFragments()`'s (see `fragments` in the table).
-- **`timeoutFallback`** — on an `operator` or `fragmentCall` node that is a top-level hole, where the hole has one: the constant itself, converted like any authored value. The key's presence is the fact, so a constant `null` fallback reads as `timeoutFallback: null`. See "Timeout shielding" below.
+- **`timeoutFallback`** — on an `operator` or `fragmentCall` node that is a top-level hole, where the hole has one: the static fallback as written, converted like any authored value, with each `$error` read as its own string (see "Timeout shielding"). The key's presence is the fact, so a constant `null` fallback reads as `timeoutFallback: null`. See "Timeout shielding" below.
 - **`skeleton`** — `shape` is the constant container with each hole's slot holding `"<hole>"`, and `holes` lists each hole's splice position `at` (relative to the shape) with its node. The `at` list is what identifies the holes, so an authored `"<hole>"` string cannot be mistaken for one. A hole's absolute path is its node's `path`. The shape is filled by the engine's own `splice()`, a placeholder standing in for each hole's value, so it is assembled exactly as evaluation assembles a result. In an object shape the hole keys therefore follow the constant ones rather than keeping their authored places — the artifact's skeleton holds a hole's key only as its `at` — and a `__proto__` key reads as the engine treats it, dropped beside a hole ([#182](https://github.com/CarlosNZ/fig-tree-evaluator/issues/182)).
 - **`elements`, `entries`** — one node per element or entry, for the reason below.
 - **Left out:** the artifact's `precomputed` slot — nothing sets it.
@@ -124,15 +124,17 @@ The rule: a constant is a node where it fills a slot that needs one — a parame
 
 #### Timeout shielding
 
-`timeoutFallback` is the artifact's shielding precompute (obligation B2): the constant a top-level hole contributes when the whole-evaluation `timeout` fires before it finishes (rule 3 of "`fallback` semantics" in [v3-api.md](v3-api.md)). Only a top-level hole has one, because a timeout is a kill switch — no expression work of any kind runs past the deadline — so the one thing that can happen after it is splicing constants into the root's constant skeleton. A top-level hole's value goes straight into that skeleton, so its constant can be spliced in with no evaluation at all. A deeper node's value feeds an operator body instead: in `{ $plus: [{ $divide: [1, '$data.x'], fallback: 0 }, 1] }`, turning the `divide`'s `0` into a result means running `plus` after the deadline, exactly what the bound forbids. The `divide`'s `fallback` still catches its ordinary failures before the deadline; it has no part in a timeout. Here the `plus` is the hole, it has no fallback, and the expression is unshielded.
+`timeoutFallback` is the artifact's shielding precompute (obligation B2): the static fallback a top-level hole contributes when the whole-evaluation `timeout` fires before it finishes, which is a constant or is built only from literals and `$error` reads (rule 3 of "`fallback` semantics" in [v3-api.md](v3-api.md)). Only a top-level hole has one, because a timeout is a kill switch — no expression work of any kind runs past the deadline — so the one thing that can happen after it is splicing constants into the root's constant skeleton. A top-level hole's value goes straight into that skeleton, so its static fallback can be spliced in with no evaluation at all. A deeper node's value feeds an operator body instead: in `{ $plus: [{ $divide: [1, '$data.x'], fallback: 0 }, 1] }`, turning the `divide`'s `0` into a result means running `plus` after the deadline, exactly what the bound forbids. The `divide`'s `fallback` still catches its ordinary failures before the deadline; it has no part in a timeout. Here the `plus` is the hole, it has no fallback, and the expression is unshielded.
 
 A top-level hole takes its `timeoutFallback` from one of three sources, and only the first is visible on the node without it:
 
-- its own constant `fallback` — `total`, `0`, beside its `fallback` node;
-- a constant `fallback` in `operatorDefaults` — `contact`, `"unknown"`, which the node otherwise shows only as `hostDefaults: ["fallback"]`;
+- its own static `fallback` — `total`, `0`, beside its `fallback` node;
+- a static `fallback` in `operatorDefaults` — `contact`, `"unknown"`, which the node otherwise shows only as `hostDefaults: ["fallback"]`;
 - for a fragment call with no `fallback` of its own, the timeout fallback of its target's body, lifted — `greeting`, `"Hello!"`, invisible at the call site.
 
-A dynamic `fallback` (`fallback: '$data.x'`) never counts, since it could start new work past the deadline.
+A dynamic `fallback` (`fallback: '$data.x'`) never counts, since it could start new work past the deadline. Nor does one that reads `$error` through an operator (`{ $buildString: 'Failed: {{$err.message}}' }`).
+
+A static fallback that reads `$error` ([#239](https://github.com/CarlosNZ/fig-tree-evaluator/issues/239)) shows as written, each read as its own string, `{ why: '$err.message' }`, since what a read finds exists only once the timeout has fired. The engine fills each read in from the timeout the hole met (rule 3 in [v3-api.md](v3-api.md)). So a string in `timeoutFallback` that is an `$error` reference is a read, with one exception the report does not mark: the same string inside a `$literal`, which is constant data and prints the same. On a hole's own fallback the `fallback` node beside it tells the two apart, and an `operatorDefaults` fallback cannot hold a `$literal`, so only a fallback lifted from a fragment body is ambiguous. Left unmarked (Carl, #239, October 2026), since nobody writes one.
 
 Having a `timeoutFallback` is not the same as being shielded. The expression is `timeoutShielded` only when every top-level hole has one, and shielding is all-or-nothing: a shielded expression assembles on a timeout (finished holes keep their real values, unfinished ones take their timeout fallbacks), while an unshielded one rejects outright and uses none of them. The example has three of six, so a timeout rejects it and its three timeout fallbacks go unused.
 
@@ -180,8 +182,9 @@ The artifact's dependency record (obligation B6) as it is, rather than `getDepen
   Segment arrays were the first cut, for the same array shape as every `path` in the report. Dropped at the PR #180 review: a `path` is a location in the authored expression, where these are paths into data, which have a canonical spelling of their own — and writing the symbol as `"[*]"` made the two lines above read alike.
 
 - **`dynamic`** — true when the read-set is not statically enumerable: a computed `get` path, a bare `$data`, or a dynamic-arguments fragment call. The listed paths still hold beside it.
+- **`paramNames`, `paramsDynamic`** — the parameter names the expression's own `$params` references read, by each read's first key, in the order the compile found them, and whether the set is not statically known (a bare `$params`, which a computed `get` path from `$params` reads, or a projection over every parameter). `getDependencies()` reports the same as `params.names` and `params.dynamic`.
 - **`operators`, `fragments`** — canonical operator names and fragment names, in the order found.
-- **Composed through fragment calls**, like the counts: a body's `$data` reads and operators are included. In the example the composed and own records coincide — `greet`'s body reads only `$params`, and its `join` is already listed.
+- **Composed through fragment calls**, like the counts: a body's `$data` reads and operators are included. Its `$params` reads are not, being against its own declarations, so `paramNames` and `paramsDynamic` are always the same in `own`. In the example the composed and own records coincide — `greet`'s body reads only `$params`, and its `join` is already listed — and `paramNames` is empty, since `greet` reads `$params.name` and the expression reads none.
 
 ### `own`
 
@@ -442,6 +445,8 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "customer.phone"
     ],
     "dynamic": false,
+    "paramNames": [],
+    "paramsDynamic": false,
     "operators": ["plus", "map", "join", "match", "firstOf"],
     "fragments": ["greet"]
   },
@@ -459,6 +464,8 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
         "customer.phone"
       ],
       "dynamic": false,
+      "paramNames": [],
+      "paramsDynamic": false,
       "operators": ["plus", "map", "join", "match", "firstOf"],
       "fragments": ["greet"]
     }

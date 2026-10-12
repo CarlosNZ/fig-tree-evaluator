@@ -11,7 +11,6 @@ export const asOperator = (name: string, fn: (...args: never[]) => unknown) =>
   defineOperator({
     name,
     category: 'other',
-    description: `The v2 function ${name}`,
     parameters: {
       input: { type: 'any', required: false },
       args: { type: 'array', default: [] },

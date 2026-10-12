@@ -15,7 +15,6 @@ import { EvaluationData, ErrorCodes, type LazyValue, type OperatorDefinition } f
 export const validDefinition = (): OperatorDefinition => ({
   name: 'testOp',
   category: 'other',
-  description: 'A minimal valid operator for tests',
   parameters: {
     value: { type: 'number' },
   },
@@ -28,7 +27,6 @@ export const validDefinition = (): OperatorDefinition => ({
 export const clampLike = (): OperatorDefinition => ({
   name: 'clamp',
   category: 'other',
-  description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },
     min: { type: 'number', default: 0 },
@@ -47,7 +45,6 @@ export const ifLike = (): OperatorDefinition => ({
   name: 'if',
   alias: '?',
   category: 'other',
-  description: 'Conditional branching',
   parameters: {
     condition: { type: 'any', truthiness: true },
     then: { type: 'any', evaluation: 'lazy' },
@@ -65,7 +62,6 @@ export const ifLike = (): OperatorDefinition => ({
 export const convertLike = (): OperatorDefinition => ({
   name: 'convert',
   category: 'other',
-  description: 'Convert a value to a target type',
   parameters: {
     value: {
       type: 'any',
@@ -92,7 +88,6 @@ export const convertLikeCompiledPolicy = {
 export const nullReplacerLike = (): OperatorDefinition => ({
   name: 'plusish',
   category: 'other',
-  description: 'Sum with an authored null replacement',
   parameters: {
     values: { type: 'array', elementNullPolicy: 'propagate' },
     nullValueDefault: {
@@ -110,7 +105,6 @@ export const nullReplacerLike = (): OperatorDefinition => ({
 export const httpLike = (): OperatorDefinition => ({
   name: 'http',
   category: 'other',
-  description: 'HTTP request',
   parameters: {
     url: { type: 'string' },
     requestTimeout: { type: 'integer', required: false },
@@ -130,7 +124,6 @@ export const httpLike = (): OperatorDefinition => ({
 export const getFromLike = (): OperatorDefinition => ({
   name: 'getish',
   category: 'other',
-  description: 'Drill a path into data or a supplied object',
   parameters: {
     path: { type: 'string' },
     from: { type: ['object', 'array'], default: EvaluationData },
@@ -195,16 +188,6 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'name-not-a-string',
     definition: withField('name', 5),
     expected: { code: ErrorCodes.invalidDefinition, pathTail: ['name'] },
-  },
-  {
-    id: 'description-missing',
-    definition: withoutField('description'),
-    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['description'] },
-  },
-  {
-    id: 'description-empty',
-    definition: withField('description', ''),
-    expected: { code: ErrorCodes.invalidDefinition, pathTail: ['description'] },
   },
   {
     id: 'parameters-missing',

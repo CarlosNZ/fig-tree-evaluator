@@ -13,7 +13,6 @@ import type { ValidateFinding } from '../operatorDefinition'
 import { parsePath, type PathSegment } from '../primitives'
 import type { Settlement, SettlementStream } from '../runtimeInterface'
 
-/** A literal empty `values` where the operator has no identity to return. */
 /**
  * A path arrives as the string grammar or as a segments array, where
  * strings are keys VERBATIM (never parsed, so no escaping question can
@@ -45,6 +44,7 @@ export const pathFindings = (path: unknown, parameter: string): ValidateFinding[
   }
 }
 
+/** A literal empty `values` where the operator has no identity to return. */
 export const emptyAggregateError = (literalParams: Record<string, unknown>): ValidateFinding[] =>
   Array.isArray(literalParams.values) && literalParams.values.length === 0
     ? [

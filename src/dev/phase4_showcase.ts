@@ -249,7 +249,6 @@ const main = async () => {
   const clamp = defineOperator({
     name: 'clamp',
     category: 'math',
-    description: 'Constrain a number to a range',
     parameters: {
       value: { type: ['number', 'null'] },
       min: { type: 'number', default: 0 },
@@ -264,7 +263,6 @@ const main = async () => {
   const greet = defineOperator({
     name: 'greet',
     category: 'string',
-    description: 'Greet someone, reading the options http block for a base URL',
     parameters: {
       name: { type: 'string' },
       shout: { type: 'any', truthiness: true, required: false },

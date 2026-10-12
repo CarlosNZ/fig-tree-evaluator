@@ -8,7 +8,7 @@
  * file to; the types follow that doc's "Types" list.
  *
  * The root never imports a subpath. The subpaths' types are exported here
- * instead, so editor-hints stays a data module and each of the others holds
+ * instead, so the catalog stays a data module and each of the others holds
  * only its own code.
  */
 export { version } from './version'
@@ -28,6 +28,7 @@ export type {
   OnlyCallOptions,
   OptionsUpdate,
   ResultShape,
+  ValidateOptions,
 } from './options'
 export type { CacheStore } from './types'
 // What the introspection methods return. Assembly stays internal.
@@ -40,9 +41,9 @@ export type {
 
 // ── Errors and diagnostics ───────────────────────────────────────────────
 export { FigTreeError, isFigTreeError } from './FigTreeError'
-export type { FigTreeErrorInit } from './FigTreeError'
+export type { FallbackError, FigTreeErrorInit } from './FigTreeError'
 export { ErrorCodes } from './errorCodes'
-export type { FigTreeErrorCode } from './errorCodes'
+export type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 export type { Issue, ValidationResult, Severity } from './issues'
 export type {
   TraceNode,
@@ -128,8 +129,11 @@ export type { PathSegment, Wildcard, ResolveResult } from './primitives'
 // factories' output is put in the `operators` array.
 export { httpOperators, sqlOperators } from './operators/io'
 export { FetchClient, AxiosClient, PostgresConnection, SQLiteConnection } from './clients'
+// How a custom client throws the failures its operator passes through
+export { httpFailure, sqlFailure } from './clients'
 export type { HttpClient, HttpRequest, SqlConnection, SqlRequest } from './types'
 export type {
+  HttpFailureInfo,
   FetchLike,
   FetchResponseLike,
   AxiosLike,
@@ -145,17 +149,24 @@ export type {
 export { inspect } from './inspect'
 export type { InspectDependencies, InspectIssue, InspectNode, InspectReport } from './inspect'
 
-// ── Editor hints ─────────────────────────────────────────────────────────
-// The shapes of the `./editor-hints` subpath's data, and the key convention
-// for plugin operators and for a fragment's `metadata`.
+// ── Catalog ──────────────────────────────────────────────────────────────
+// The shapes of the `./catalog` subpath's listings and of the catalog its
+// `getCatalog` builds, and the key convention for plugin operators and for
+// a fragment's `metadata`.
 export type {
-  CategoryHintMap,
-  CategoryHints,
-  FragmentHints,
-  OperatorHintMap,
-  OperatorHints,
+  Catalog,
+  CatalogCategory,
+  CatalogFragment,
+  CatalogFragmentParameter,
+  CatalogOperator,
+  CatalogParameter,
+  CategoryListing,
+  CategoryListingMap,
+  FragmentMetadata,
+  OperatorListing,
+  OperatorListingMap,
   TypeSeeds,
-} from './editorHintTypes'
+} from './catalogTypes'
 
 // ── Migration ────────────────────────────────────────────────────────────
 // The shapes the `./migrate` subpath's two functions take and return.

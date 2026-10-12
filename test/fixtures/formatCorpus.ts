@@ -3,9 +3,10 @@
  * tests ("Testing" in docs-dev/v3-specs/v3-format.md): each form, and the
  * things around a node that a conversion must carry — modifiers, `vars`,
  * iterator bindings, fragment calls, literals, references in every
- * namespace, comments. Every entry compiles without errors against the
- * registry here, so equivalence is tested on expressions that mean
- * something. Deliberately modest: the suite is collated at release prep.
+ * namespace, comments, `$error` in fallbacks. Every entry compiles without
+ * errors against the registry here, so equivalence is tested on expressions
+ * that mean something. Deliberately modest: the suite is collated at
+ * release prep.
  */
 import { FigTree, coreOperators, type FragmentDefinition } from '../../src'
 import { buildRegistry } from '../../src/registry'
@@ -16,6 +17,11 @@ export const corpusFragments: Record<string, FragmentDefinition> = {
     parameters: { name: { type: 'string' } },
   },
   stamp: { expression: 'stamped' },
+  // A body whose root has a static fallback, which a call lifts
+  guarded: {
+    expression: { $divide: ['$params.n', 0], fallback: { why: '$err.message' } },
+    parameters: { n: { type: 'number' } },
+  },
 }
 
 export const corpusFig = new FigTree({ fragments: corpusFragments })
@@ -81,6 +87,41 @@ export const formatCorpus: [string, unknown][] = [
   // ── Literals ─────────────────────────────────────────────────────────
   ['a canonical literal', { operator: 'literal', value: { operator: 'plus', values: [1] } }],
   ['a shorthand literal', { $literal: { $plus: [1], '//': 'data' } }],
+
+  // ── $error in fallbacks ──────────────────────────────────────────────
+  ['an $error read by its alias', { $divide: ['$d.n', 0], fallback: '$err.message' }],
+  [
+    'a static fallback around $error reads',
+    { $divide: ['$d.n', 0], fallback: { failed: true, why: '$error.message', code: '$err.code' } },
+  ],
+  [
+    'top-level holes shielded by $error reads',
+    {
+      a: { $divide: ['$d.n', 0], fallback: '$err.code' },
+      b: { $upper: '$d.s', fallback: { why: '$error.message' } },
+    },
+  ],
+  ['a literal $error in a fallback', { $divide: ['$d.n', 0], fallback: { $literal: '$error' } }],
+  [
+    '$error in a template',
+    { $divide: ['$d.n', 0], fallback: { $buildString: 'Failed: {{$err.message}}' } },
+  ],
+  [
+    'a get from $error',
+    { $divide: ['$d.n', 0], fallback: { $get: { path: 'code', from: '$err' } } },
+  ],
+  [
+    'an outer $error through a var',
+    {
+      $divide: ['$d.n', 0],
+      fallback: {
+        vars: { outer: '$err.message' },
+        $join: [['$vars.outer', { $divide: ['$d.m', 0], fallback: '$error.code' }], ' / '],
+      },
+    },
+  ],
+  ['a call with an $error fallback', { $greet: { name: '$d.name' }, fallback: '$error.fragment' }],
+  ['a call lifting an $error fallback', { $guarded: { n: '$d.n' } }],
 
   // ── References and data ──────────────────────────────────────────────
   ['references in each namespace', ['$data.a', '$d[0].b', '$data', 'plain', '$typo.x']],

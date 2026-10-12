@@ -19,6 +19,12 @@
  * protection the other namespaces can have, which is a reason to extend it
  * to them rather than withhold it. One strict-path rule, four namespaces.
  *
+ * `$error` is the exception: a miss inside it is `null` whatever
+ * `strictDataPaths` says. Its shape varies by error code, and a fallback
+ * inspecting it must not fail on a field the code it caught does not carry.
+ * It is built from the failure the innermost enclosing fallback caught on
+ * each read, so a fallback that never reads it builds nothing.
+ *
  * `$element` / `$index`: the innermost enclosing binding frame, found by
  * the same match rule the static checker used, so an `as`-renamed frame
  * does not answer to the default names. `$element` drills like the rest;
@@ -33,13 +39,14 @@
  * `$params` is legal and materializes the declared set, which is why it
  * demands every argument.
  */
-import { FigTreeError } from '../FigTreeError'
+import { FigTreeError, type FallbackError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { resolvePath, type PathSegment } from '../primitives'
-import { toNodePath, type ReferenceNode } from '../compile'
-import type { EvaluationContext } from './context'
+import { splice, toNodePath, type ReferenceNode, type StaticFallback } from '../compile'
+import type { EvaluationContext, FragmentFrame } from './context'
 import { lookupBinding } from './bindings'
-import { internalError } from './internal'
+import { fallbackError } from './fragment'
+import { unrefused } from './internal'
 import { lookupVar } from './scope'
 
 /**
@@ -59,6 +66,8 @@ export const resolveReference = (node: ReferenceNode, ctx: EvaluationContext): u
     case 'element':
     case 'index':
       return resolveBinding(node, ctx)
+    case 'error':
+      return resolveError(node, ctx)
   }
 }
 
@@ -72,10 +81,7 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
   // The var name is the first segment; the grammar admits nothing but an
   // identifier there, and an unresolvable one is a static error
   const thunk = typeof name === 'string' ? lookupVar(ctx.scope, name) : undefined
-  if (typeof name !== 'string' || thunk === undefined)
-    throw internalError(
-      `'${node.raw}': no var named '${String(name)}' is in scope — the static gate should have refused it`
-    )
+  if (typeof name !== 'string' || thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
   return drill(
@@ -89,10 +95,7 @@ const resolveVar = async (node: ReferenceNode, ctx: EvaluationContext): Promise<
 
 const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promise<unknown> => {
   const params = ctx.params
-  if (params === undefined)
-    throw internalError(
-      `'${node.raw}': $params outside a fragment body — the static gate should have refused it`
-    )
+  if (params === undefined) throw unrefused(`'${node.raw}'`)
   const [name, ...rest] = node.segments
   // Bare `$params`: the declared parameters with their resolved values.
   // Every one of them, so laziness is gone for this call — self-inflicted,
@@ -107,10 +110,7 @@ const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promis
     return resolved
   }
   const thunk = typeof name === 'string' ? params.get(name) : undefined
-  if (thunk === undefined)
-    throw internalError(
-      `'${node.raw}': the fragment declares no parameter '${String(name)}' — the static gate should have refused it`
-    )
+  if (thunk === undefined) throw unrefused(`'${node.raw}'`)
   const value = await thunk()
   if (rest.length === 0) return normalize(value)
   return drill(
@@ -125,10 +125,7 @@ const resolveParam = async (node: ReferenceNode, ctx: EvaluationContext): Promis
 const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
   const namespace = node.namespace as 'element' | 'index'
   const frame = lookupBinding(ctx.bindings, namespace, node.binding)
-  if (frame === undefined)
-    throw internalError(
-      `'${node.raw}': no enclosing iterator binds it — the static gate should have refused it`
-    )
+  if (frame === undefined) throw unrefused(`'${node.raw}'`)
   if (namespace === 'index') return frame.index
   if (node.segments.length === 0) return normalize(frame.element)
   return drill(
@@ -138,6 +135,41 @@ const resolveBinding = (node: ReferenceNode, ctx: EvaluationContext): unknown =>
     ctx,
     `is absent from '${node.raw.split('.')[0]}'`
   )
+}
+
+const resolveError = (node: ReferenceNode, ctx: EvaluationContext): unknown => {
+  if (ctx.caught === undefined) throw unrefused(`'${node.raw}'`)
+  return readError(fallbackError(ctx.caught, ctx.frame), node.segments)
+}
+
+/** A read of `$error`, where a miss is null whatever `strictDataPaths` says. */
+const readError = (error: FallbackError, segments: PathSegment[]): unknown => {
+  if (segments.length === 0) return error
+  const result = resolvePath(error, segments)
+  return result.found ? normalize(result.value) : null
+}
+
+/**
+ * A static fallback's answer to the failure it caught (fallback rule 3):
+ * its value, each `$error` read in it filled in from `caught`, which is
+ * located by `frame` as a read of `$error` is. Nothing is evaluated, so it
+ * can run where nothing may: past the deadline, for a shielded hole. A read
+ * a fragment call lifted from its body is located where in the body the
+ * timeout would have met it.
+ */
+export const fillFallback = (
+  fallback: StaticFallback,
+  caught: FigTreeError,
+  frame: FragmentFrame | undefined
+): unknown => {
+  const { value, reads } = fallback
+  if (reads === undefined) return value
+  const error = fallbackError(caught, frame)
+  const values = reads.map(({ segments, within }) =>
+    readError(within === undefined ? error : { ...error, ...within }, segments)
+  )
+  // A read at the root is the whole fallback
+  return reads[0].at.length === 0 ? values[0] : splice(value, reads, values)
 }
 
 /**

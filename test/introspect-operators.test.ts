@@ -19,7 +19,6 @@ const custom = defineOperator({
   name: 'custom',
   alias: '&',
   category: 'other',
-  description: 'A host operator, to show the snapshot is total',
   metadata: bag,
   parameters: {
     value: { type: 'any', required: false, default: seed },
@@ -57,7 +56,6 @@ describe('what the snapshot contains', () => {
       name: 'custom',
       alias: '&',
       category: 'other',
-      description: 'A host operator, to show the snapshot is total',
       positionalParams: ['value'],
       restParam: null,
       timeoutParam: 'ms',
@@ -170,9 +168,10 @@ describe('operatorDefaults — reported beside, never merged over', () => {
   })
 
   test('a fallback the compiler would evaluate is refused at construction', () => {
-    // The runtime returns a default fallback as written, so a value that
-    // looks like an expression could only mislead: an unrecognized `$` key
-    // is an error anywhere in an expression, and these would be calls
+    // The runtime fills a default fallback in and never evaluates it, so a
+    // value that looks like an expression could only mislead: an
+    // unrecognized `$` key is an error anywhere in an expression, and these
+    // would be calls
     for (const fallback of [{ $USD: 0 }, { operator: 'plus', values: [1, 2] }, '$data.x']) {
       let error: unknown
       try {
@@ -187,7 +186,7 @@ describe('operatorDefaults — reported beside, never merged over', () => {
             code: 'invalid-options',
             path: ['operatorDefaults', 'round', 'fallback'],
             operator: 'round',
-            message: expect.stringMatching(/must be a constant value/),
+            message: expect.stringMatching(/must be static/),
           },
         ],
       })
@@ -212,10 +211,10 @@ describe('copy posture', () => {
 
   test('reassigning a snapshot field cannot reach the registry', () => {
     const info = find(fig.getOperators(), 'plus')
-    info.description = 'clobbered'
+    info.category = 'other'
     info.parameters.values.required = false
     delete info.alias
-    expect(find(fig.getOperators(), 'plus').description).not.toBe('clobbered')
+    expect(find(fig.getOperators(), 'plus').category).toBe('math')
     expect(find(fig.getOperators(), 'plus').parameters.values.required).toBe(true)
     expect(find(fig.getOperators(), 'plus').alias).toBe('+')
   })

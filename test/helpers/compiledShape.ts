@@ -9,7 +9,12 @@
  * The projection is by node kind rather than a blanket strip of `path` and
  * `order` keys, which would also strip those keys from constant data.
  */
-import { compileExpression, type CompiledNode, type CompileArtifact } from '../../src/compile'
+import {
+  compileExpression,
+  runStaticChecks,
+  type CompiledNode,
+  type CompileArtifact,
+} from '../../src/compile'
 import type { OperatorRegistry } from '../../src/registry'
 
 export interface ShapeOptions {
@@ -44,6 +49,7 @@ const nodeShape = (node: CompiledNode, options: ShapeOptions): unknown => {
         name: node.name,
         params: mapValues(node.params, project),
         fallback: node.fallback && project(node.fallback),
+        fallbackReadsError: node.fallbackReadsError,
         noCache: node.noCache,
         vars: mapValues(node.vars, project),
         precomputed: node.precomputed,
@@ -66,6 +72,7 @@ const nodeShape = (node: CompiledNode, options: ShapeOptions): unknown => {
             ? mapValues(parameters as Record<string, CompiledNode>, project)
             : project(parameters as CompiledNode),
         fallback: node.fallback && project(node.fallback),
+        fallbackReadsError: node.fallbackReadsError,
         noCache: node.noCache,
         vars: mapValues(node.vars, project),
       }
@@ -99,11 +106,32 @@ export const artifactShape = (artifact: CompileArtifact, options: ShapeOptions =
     fragments: [...artifact.own.dependencies.fragments].sort(),
   },
   hasErrors: artifact.hasErrors,
+  timeoutShielded: artifact.timeoutShielded,
+  // Each top-level hole's static fallback, which the holes' nodes in `root`
+  // don't carry. Its value holds each `$error` read as written, so a run
+  // that respells references compares the reads alone
+  holes: artifact.holes.map(({ timeoutFallback }) =>
+    timeoutFallback === undefined
+      ? undefined
+      : {
+          value: options.ignoreSpelling ? undefined : timeoutFallback.value,
+          reads: timeoutFallback.reads,
+        }
+  ),
 })
 
-/** Compile, then project: the one call the equivalence tests make. */
+/**
+ * Compile as `FigTree` does, then project: the one call the equivalence
+ * tests make. The static checks are part of the compile, since they mark
+ * the fallbacks that read `$error` (`fallbackReadsError`) and can add
+ * errors.
+ */
 export const compiledShape = (
   expression: unknown,
   registry: OperatorRegistry,
   options?: ShapeOptions
-) => artifactShape(compileExpression(expression, registry), options)
+) => {
+  const artifact = compileExpression(expression, registry)
+  runStaticChecks(artifact)
+  return artifactShape(artifact, options)
+}

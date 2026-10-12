@@ -51,7 +51,6 @@ const stubFetch = async (url: string) => {
 const double = defineOperator({
   name: 'double',
   category: 'other',
-  description: 'The v2 function double',
   parameters: { args: { type: 'array', default: [] } },
   positionalParams: ['...args'],
   evaluate: ({ args }) => (args as number[])[0] * 2,

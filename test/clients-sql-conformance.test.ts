@@ -93,7 +93,10 @@ describe('PostgresConnection', () => {
     const failure = await rejection<OperatorFailure>(
       new PostgresConnection(pgStub(ROWS)).query({ text: 'SELECT :id', values: { id: 1 } })
     )
-    expect(failure.message).toMatch(/positional binds/)
+    // Refused before the driver, so the failure has no driverCode
+    expect(failure.message).toMatch(/^postgres: takes positional binds/)
+    expect(failure.code).toBe('sql-error')
+    expect(failure.errorData).toEqual({ driver: 'postgres' })
   })
 
   it('names the driver in the failure and carries its classifiers', async () => {
@@ -109,7 +112,8 @@ describe('PostgresConnection', () => {
       new PostgresConnection(angry).query({ text: 'SELECT * FROM nope' })
     )
     expect(failure.message).toBe('postgres: relation "nope" does not exist')
-    expect(failure.errorData).toEqual({ driver: 'postgres', code: '42P01', table: 'nope' })
+    expect(failure.code).toBe('sql-error')
+    expect(failure.errorData).toEqual({ driver: 'postgres', driverCode: '42P01', table: 'nope' })
   })
 
   it('carries no field that quotes row values', async () => {
@@ -153,17 +157,21 @@ describe('SQLiteConnection', () => {
     expect(named.values).toEqual({ ':id': 1 })
   })
 
-  it('names the driver in the failure', async () => {
+  it('names the driver in the failure, with its result code', async () => {
     const angry: SqliteDatabaseLike = {
       all: async () => {
-        throw new Error('SQLITE_ERROR: no such table: nope')
+        throw Object.assign(new Error('SQLITE_ERROR: no such table: nope'), {
+          code: 'SQLITE_ERROR',
+          errno: 1,
+        })
       },
     }
     const failure = await rejection<OperatorFailure>(
       new SQLiteConnection(angry).query({ text: 'SELECT * FROM nope' })
     )
     expect(failure.message).toBe('sqlite: SQLITE_ERROR: no such table: nope')
-    expect(failure.errorData).toEqual({ driver: 'sqlite' })
+    expect(failure.code).toBe('sql-error')
+    expect(failure.errorData).toEqual({ driver: 'sqlite', driverCode: 'SQLITE_ERROR' })
   })
 
   it('refuses anything that is not a database', () => {

@@ -17,11 +17,51 @@
  * throwing class (contract Q6) is deferred until Phase 4/9 needs it;
  * `errorData` is first-class now so it can just construct one.
  */
-import type { FigTreeErrorCode } from './errorCodes'
+import type { FallbackErrorCode, FigTreeErrorCode } from './errorCodes'
 import type { Issue } from './issues'
 import type { TraceNode } from './trace'
+import type { ExpectedType } from './typeCheck'
 
 export type { TraceNode } from './trace'
+
+/**
+ * What `$error` holds inside a fallback: the failure that fallback caught,
+ * as a plain object ("`FallbackError`" in
+ * docs-dev/v3-specs/v3-evaluator-methods.md). It describes that failure
+ * only, so it has none of the class's `cause`, `related`, `issues`, `trace`
+ * or stack. Located as the host would see the failure had it escaped: inside
+ * a fragment body, `path` is the call node and `fragmentPath` the position
+ * in the body.
+ */
+export interface FallbackError {
+  code: FallbackErrorCode
+  /** For developers, and not stable between versions: branch on `code`. */
+  message: string
+  path: (string | number)[]
+  /** Absent when the failure came from a reference. */
+  operator?: string
+  fragment?: string
+  fragmentPath?: (string | number)[]
+  /** As the operator supplied it. */
+  errorData?: Record<string, unknown>
+}
+
+/**
+ * `FallbackError`'s guaranteed shape, which the static check and
+ * `fallbackCoverage` read `$error` by: each field's type, in the
+ * parameters' type vocabulary. An optional field's type names `null`, since
+ * a read of it gives `null` where it is absent. Held to the interface's
+ * fields by `satisfies`.
+ */
+export const FALLBACK_ERROR_FIELDS = {
+  code: 'string',
+  message: 'string',
+  path: 'array',
+  operator: ['string', 'null'],
+  fragment: ['string', 'null'],
+  fragmentPath: ['array', 'null'],
+  errorData: ['object', 'null'],
+} as const satisfies Record<keyof FallbackError, ExpectedType>
 
 export interface FigTreeErrorInit {
   code: FigTreeErrorCode
@@ -53,14 +93,16 @@ export interface FigTreeErrorInit {
 export class FigTreeError extends Error {
   code: FigTreeErrorCode
   path: (string | number)[]
-  operator?: string
-  fragment?: string
-  fragmentPath?: (string | number)[]
-  errorData?: Record<string, unknown>
-  related?: FigTreeError[]
-  cause?: unknown
-  issues?: Issue[]
-  trace?: TraceNode
+  // Declared, not defined: the constructor sets an optional field only
+  // where the init supplies it, so an unset one is absent, not undefined
+  declare operator?: string
+  declare fragment?: string
+  declare fragmentPath?: (string | number)[]
+  declare errorData?: Record<string, unknown>
+  declare related?: FigTreeError[]
+  declare cause?: unknown
+  declare issues?: Issue[]
+  declare trace?: TraceNode
 
   constructor(init: FigTreeErrorInit) {
     super(init.message)
@@ -78,14 +120,26 @@ export class FigTreeError extends Error {
   }
 
   /**
-   * Human-facing rendering (kept from v2, now a method): a header of the code,
-   * the operator where known, and the authored path; then the message; then
-   * pretty-printed `errorData` (suppressed when empty).
+   * Human-facing rendering (kept from v2, as a method): a header of the code,
+   * the operator where known, and the location; then the message; then
+   * pretty-printed `errorData` (suppressed when empty). Inside a fragment
+   * body the location names both ends — the fragment and the position in its
+   * definition, then the call node in the input it was called from.
    */
   prettyPrint(): string {
     const operatorText = this.operator ? ` (operator: ${this.operator})` : ''
-    const pathText = this.path.length > 0 ? ` at ${formatPath(this.path)}` : ''
-    const header = `${this.code}${operatorText}${pathText}`
+    const pathText = formatPath(this.path)
+    const fragmentText =
+      this.fragment === undefined
+        ? ''
+        : ` in fragment '${this.fragment}' at ${formatPath(this.fragmentPath ?? [])}`
+    const callText =
+      pathText === ''
+        ? ''
+        : this.fragment === undefined
+          ? ` at ${pathText}`
+          : `, called from ${pathText}`
+    const header = `${this.code}${operatorText}${fragmentText}${callText}`
     const hasData = this.errorData && Object.keys(this.errorData).length > 0
     const dataText = hasData ? `\n${JSON.stringify(this.errorData, null, 2)}` : ''
     return `${header}\n${this.message}${dataText}`

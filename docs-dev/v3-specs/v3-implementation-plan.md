@@ -384,14 +384,71 @@ A checklist rather than a build phase (Carl, September 2026, at the Phase-14 rev
       ]
     }
     ```
-- [ ] **Point each operator's `docUrl` at its README section**, the TO-DO in [src/editor-hints/index.ts](../../src/editor-hints/index.ts); every one is the repository root until then.
+
+  - **Document `$error`** ([#239](https://github.com/CarlosNZ/fig-tree-evaluator/issues/239)). The README has nothing on it yet. What it needs:
+    - `$error` (alias `$err`) is the failure the enclosing fallback caught, as a plain object: `code`, `message` and `path` always, and `operator`, `fragment`, `fragmentPath` and `errorData` where present ("`FallbackError` — what `$error` holds" in [v3-evaluator-methods.md](v3-evaluator-methods.md); "`$error`" in [v3-api.md](v3-api.md)).
+    - It exists only inside a fallback, and a drill into it that misses is `null` whatever `strictDataPaths` says.
+    - A fallback that reads `$error` never fails: if it fails and nothing inside it catches first, its node gives `null`.
+    - A fallback built only from literals and `$error` reads is static, so it answers the evaluation timeout and is legal in `operatorDefaults`.
+    - Branch on `code` and `errorData`, never on `message`, whose wording is for developers and may change. A server's own text is in `errorData.response`.
+    - The fallback codes, each with its `errorData`: the table in "The code vocabulary" in v3-evaluator-methods.md and "Client failures: codes and the enforced shape" in [v3-operator-contract.md](v3-operator-contract.md).
+    - For custom clients: throw `httpFailure()` / `sqlFailure()`, since anything else reaches a fallback as `request-failure`. The v2 section on `errorData` (throw a plain error with `errorData` attached, with a link to `src/httpClients.ts`) goes.
+    - `buildString` substitutes `{{$error.code}}` in its string form only. In the array form, `['…{{$error.code}}']`, the rest parameter supplies `substitutions: []` and the token stays inert, as any reference token does beside array substitutions (`validate()` warns `inert-reference-token`).
+
+    Each of these ran as written, against a client failing `/regions` with a 400 and a message, `/missing` with a 404 and no body, and `/backup` with a network error:
+
+    ```js
+    // The whole error: { code: 'http-status', message, path, operator: 'http',
+    // errorData: { status: 400, statusText, url, response: { message } } }
+    { $http: 'https://api.example.com/regions', fallback: '$error' }
+    // The server's own message, or a fixed one when it sent none
+    {
+      $http: 'https://api.example.com/regions',
+      fallback: { $firstOf: ['$error.errorData.response.message', 'Could not load regions'] },
+    }
+    // Branch on the code and errorData: [] for a 404, the server's message for
+    // another status, a fixed message when the request never got an answer
+    {
+      $http: 'https://api.example.com/regions',
+      fallback: {
+        $if: [
+          { $equal: ['$error.code', 'http-status'] },
+          { $if: [{ $equal: ['$error.errorData.status', 404] }, [], '$error.errorData.response.message'] },
+          'Could not reach the server',
+        ],
+      },
+    }
+    // In a template, in buildString's string form → 'Lookup failed: http-status'
+    { $http: 'https://api.example.com/regions', fallback: { $buildString: 'Lookup failed: {{$error.code}}' } }
+    // A fallback that reads $error and fails gives null…
+    { $http: 'https://api.example.com/regions', fallback: { $plus: ['$error.message', { a: 1 }] } }
+    // …unless a fallback inside it catches first → 'Lookup failed'
+    {
+      $http: 'https://api.example.com/regions',
+      fallback: { $plus: ['$error.message', { a: 1 }], fallback: 'Lookup failed' },
+    }
+    // An inner fallback sees its own failure; a var reaches the outer one
+    // → 'http-status, then request-failure'
+    {
+      $http: 'https://api.example.com/regions',
+      fallback: {
+        vars: { outer: '$error' },
+        $http: 'https://api.example.com/backup',
+        fallback: { $buildString: ['%1, then %2', '$vars.outer.code', '$error.code'] },
+      },
+    }
+    // Instance-wide, as a static default: every http failure gives its code
+    new FigTree({ operators: [coreOperators, httpOperators()], operatorDefaults: { http: { fallback: '$error.code' } } })
+    ```
+
+- [ ] **Point each operator's `docUrl` at its README section**, the TO-DO in [src/catalog/index.ts](../../src/catalog/index.ts); every one is the repository root until then.
 - [ ] **Write the migration guide** ([v3-migration.md](v3-migration.md); its open Q1 settles where it lives).
 - [ ] **Write the 3.0.0 CHANGELOG entry**, which `pnpm release` requires. Phase 17a's claims ledger and #170 supply its performance story.
 - [ ] **Hand-migrate the complex expressions** from `test/v2-working/17_complexExpressions.test.ts` into a v3 suite (`test/complex-expressions.test.ts`), before the v2 assets go. Nothing in the v3 suite is on that scale: the largest hand-written expressions are the worked examples, and the massive nested query reaches v3 only through the converter, where the differential's #346 and #347 fail at their first `convert`. Write it in idiomatic v3 (`join` where v2 cast an array to text, `[*]` where it relied on the response collapse, its custom function as a registered operator) and assert v2's recorded result in both the full and shorthand forms. Being hand-written, it is also an independent check on the converter (working rule 1). The 20,000-node auto-generated query has no hand-written counterpart: it stays in the differential, and goes with the v2 assets.
 - [ ] **Retire the v2 assets**: `/v2-src`, `test/V2`, `test/v2-working`, `jest.v2.config.js` and the `test:v2` script, and the v2-only codegen (`queryBuilder`, `generateMassiveQuery`).
 - [ ] **Refresh CLAUDE.md** for the post-v3 repo; several sections still describe v2 (for example "Generated files").
 - [ ] **Decide whether deep evaluation keeps the input's key order.** Found at Phase-15 planning (September 2026): evaluating a whole object that holds nodes puts its constant keys first and its computed ones after, so `{ a: <node>, b: 1, c: <node>, d: 2 }` evaluates to `{ b, d, a, c }`. v2's `evaluateFullObject` kept the input's order. JSON promises no key order, but a host that renders an object's fields in key order, such as a form, would see them move. Either the skeleton assembly keeps the order, or "Deep evaluation" in [v3-api.md](v3-api.md) says it does not.
-- [ ] **Decide where a subpath's types export from.** "Types" in [v3-packaging.md](v3-packaging.md) exports every type from the root, including the shapes of `./migrate`, `./editor-hints` and `./format`, so each subpath exports only values. Carl asked at Phase-16 planning (September 2026) to re-address this before release: a consumer of a subpath might expect its types beside its functions.
+- [ ] **Decide where a subpath's types export from.** "Types" in [v3-packaging.md](v3-packaging.md) exports every type from the root, including the shapes of `./migrate`, `./catalog` and `./format`, so each subpath exports only values. Carl asked at Phase-16 planning (September 2026) to re-address this before release: a consumer of a subpath might expect its types beside its functions.
 - [ ] **Review the parked items** ("Parked until after 3.0" under Standing dependencies & flags, below) and open an issue for each one that stays parked.
 - [ ] **Publish 3.0.0** with `pnpm release`; `latest` moves to 3.x.
 - [ ] **Tag the last 2.x as `v2` on npm** (`npm dist-tag add fig-tree-evaluator@<last 2.x> v2`), so v2 users can still install it by name ("Publishing & versioning" in [v3-packaging.md](v3-packaging.md)).

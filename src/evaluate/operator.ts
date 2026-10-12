@@ -5,24 +5,33 @@
  * normalize the result at the boundary, and catch failures with the node's
  * `fallback` (authored, else the operator's `operatorDefaults` modifier).
  *
- * Fallback rules 1, 2, 4 and 6 live here. Rule 1 comes free of promise
+ * Fallback rules 1, 2 and 6 live here. Rule 1 comes free of promise
  * rejection: a failure anywhere in the parameter subtrees rejects this
  * node's attempt, and the nearest enclosing wrapper with a fallback is the
  * first to catch it. Rule 2 needs nothing — static errors never reach
- * evaluation. Rule 4 attaches the original failure as `cause` when the
- * fallback itself fails. Rule 6 holds by construction: a node instance is
- * attempted once, so its fallback runs at most once.
+ * evaluation. Rule 6 holds by construction: a node instance is attempted
+ * once, so its fallback runs at most once. What happens once the fallback
+ * runs, rule 4 and its exception for a fallback that reads its own
+ * `$error`, is ./fallback.ts's, shared with the fragment-call wrapper.
  */
 import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { ErrorCodes } from '../errorCodes'
 import { OperatorFailure, isOperatorFailure } from '../OperatorFailure'
-import { toNodePath, type OperatorNode } from '../compile'
+import type { OperatorNode } from '../compile'
 import { isEngineHandle, type OperatorContext } from '../runtimeInterface'
 import { DeferredScope, REQUEST_EXPIRED, requestDeadline, signalView, type Deadline } from './abort'
 import { createOperatorContext, noteChannel, pushNoCache, type EvaluationContext } from './context'
 import { evaluateNode } from './evaluate'
-import { abortedOutcome, isCancellation, isInternalError, isKillSwitch } from './internal'
+import { runFallback } from './fallback'
+import {
+  abortedOutcome,
+  cutsThrough,
+  isCancellation,
+  isInternalError,
+  nodeFailure,
+} from './internal'
 import { resolveParams } from './params'
+import { fillFallback } from './reference'
 import { pushVars } from './scope'
 import { operatorCaches } from '../registry'
 import { noop } from '../utils'
@@ -55,37 +64,19 @@ export const evaluateOperator = async (
       scope?.settle()
     }
   } catch (error) {
-    // Neither an engine bug, a cancellation, nor the caller's kill switch
-    // is an expression failure: all three cut through the fallback process
-    // untouched, rather than being served back to the caller as the
-    // author's placeholder. The kill switch is the caller's decision, not
-    // the author's, so a `fallback` has no standing to answer it
-    if (isInternalError(error) || isCancellation(error) || isKillSwitch(error)) throw error
+    // The kill switch is the caller's decision, not the author's, so a
+    // `fallback` has no standing to answer it
+    if (cutsThrough(error)) throw error
     const failure = wrapFailure(error, node)
-    const fallback = fallbackOf(node, scoped)
+    const fallback = fallbackOf(node, scoped, failure)
     if (fallback === undefined) throw failure
-    try {
-      const answered = await fallback()
-      // A fallback firing is the author's designed degradation, so it is
-      // a SUCCESS — which makes trace the only record that it happened,
-      // and of what it caught
-      if (ctx.trace !== undefined && ctx.traceParent !== undefined)
-        ctx.trace.markFallback(ctx.traceParent, failure)
-      return answered
-    } catch (fallbackError) {
-      // The same three bail-outs as above: a kill switch or a cancellation
-      // landing at the fallback's own node boundary passes through untouched
-      // rather than being wrapped, or having `cause` attached
-      if (
-        isInternalError(fallbackError) ||
-        isCancellation(fallbackError) ||
-        isKillSwitch(fallbackError)
-      )
-        throw fallbackError
-      const wrapped = wrapFailure(fallbackError, node)
-      if (wrapped.cause === undefined) wrapped.cause = failure
-      throw wrapped
-    }
+    return runFallback(
+      fallback,
+      failure,
+      node.fallbackReadsError,
+      (fallbackError) => wrapFailure(fallbackError, node),
+      ctx
+    )
   }
 }
 
@@ -112,7 +103,7 @@ const attempt = async (node: OperatorNode, ctx: EvaluationContext): Promise<unkn
   const bodyCtx =
     deadline === undefined
       ? ctx
-      : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope) }
+      : { ...ctx, abortScope: signalView(deadline.signal, ctx.abortScope.clock) }
   const note = noteChannel(ctx)
   const context = createOperatorContext(bodyCtx, definition, caching, note)
 
@@ -194,12 +185,22 @@ const classifyBodyFailure = (
   return error
 }
 
-/** The node's own fallback, else the operator's instance-wide default. */
-const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown) | undefined => {
+/**
+ * The node's own fallback, else the operator's instance-wide default. The
+ * node's own runs with `$error` bound to `failure`, in the node's vars
+ * scope (rule 5) — on a context of its own, so the vars, whose thunks keep
+ * `ctx`, never see it. The default is static, so it is filled in from
+ * `failure`, never evaluated.
+ */
+const fallbackOf = (
+  node: OperatorNode,
+  ctx: EvaluationContext,
+  failure: FigTreeError
+): (() => unknown) | undefined => {
   const own = node.fallback
-  if (own !== undefined) return () => evaluateNode(own, ctx)
-  const defaults = node.entry.hostDefaults
-  if (defaults !== undefined && Object.hasOwn(defaults, 'fallback')) return () => defaults.fallback
+  if (own !== undefined) return () => evaluateNode(own, { ...ctx, caught: failure })
+  const instance = node.entry.defaultFallback
+  if (instance !== undefined) return () => fillFallback(instance, failure, ctx.frame)
   return undefined
 }
 
@@ -211,19 +212,17 @@ const fallbackOf = (node: OperatorNode, ctx: EvaluationContext): (() => unknown)
 const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
   if (result === undefined) return null
   if (typeof result === 'number' && !Number.isFinite(result))
-    throw new FigTreeError({
-      code: ErrorCodes.nonFiniteResult,
-      message: `${node.name} – produced a non-finite number (${String(result)})`,
-      path: toNodePath(node.path),
-      operator: node.name,
-    })
+    throw nodeFailure(
+      node,
+      ErrorCodes.nonFiniteResult,
+      `produced a non-finite number (${String(result)})`
+    )
   if (isEngineHandle(result))
-    throw new FigTreeError({
-      code: ErrorCodes.escapedHandle,
-      message: `${node.name} – returned a lazy handle instead of evaluating it`,
-      path: toNodePath(node.path),
-      operator: node.name,
-    })
+    throw nodeFailure(
+      node,
+      ErrorCodes.escapedHandle,
+      'returned a lazy handle instead of evaluating it'
+    )
   return result
 }
 
@@ -233,19 +232,11 @@ const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
  */
 const wrapFailure = (error: unknown, node: OperatorNode): FigTreeError => {
   if (isFigTreeError(error)) return error
-  if (isOperatorFailure(error))
-    return new FigTreeError({
-      code: error.code ?? ErrorCodes.operatorFailure,
-      message: `${node.name} – ${error.message}`,
-      path: toNodePath(node.path),
-      operator: node.name,
-      ...(error.errorData !== undefined ? { errorData: error.errorData } : {}),
-    })
-  const message = error instanceof Error ? error.message : String(error)
-  return new FigTreeError({
-    code: ErrorCodes.operatorFailure,
-    message: `${node.name} – ${message}`,
-    path: toNodePath(node.path),
-    operator: node.name,
-  })
+  const failure = isOperatorFailure(error) ? error : undefined
+  return nodeFailure(
+    node,
+    failure?.code ?? ErrorCodes.operatorFailure,
+    error instanceof Error ? error.message : String(error),
+    failure?.errorData
+  )
 }

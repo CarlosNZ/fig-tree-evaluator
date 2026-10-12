@@ -160,6 +160,18 @@ describe('declarations govern what a body receives', () => {
     expect(result.nullable).toBeNull()
   })
 
+  test('a null the type admits skips the constraints, as at an operator', async () => {
+    const fig = build({
+      read: {
+        expression: '$params.pair',
+        parameters: { pair: { type: ['array', 'null'], constraints: { length: 2 } } },
+      },
+    })
+    expect(fig.validate({ $read: { pair: null } }).issues).toEqual([])
+    expect(await fig.evaluate({ $read: { pair: null } })).toBeNull()
+    expect(await fig.evaluate({ $read: { pair: '$data.missing' } })).toBeNull()
+  })
+
   test('an optional parameter with no default yields null', async () => {
     const result = (await fig().evaluate({ $frag: { required: 1 } })) as Record<string, unknown>
     expect(result.bare).toBeNull()
@@ -224,6 +236,24 @@ describe('dynamic arguments', () => {
         { data: { args: { a: 1, b: 'given' } } }
       )
     ).toEqual({ a: 1, b: 'given' })
+  })
+
+  test('the whole object may be an iterator binding, under any name', async () => {
+    const rows = [{ a: 1 }, { a: 2, b: 'given' }]
+    const expected = [
+      { a: 1, b: 'dflt' },
+      { a: 2, b: 'given' },
+    ]
+    expect(
+      await fig().evaluate({
+        $map: { input: rows, each: { fragment: 'frag', parameters: '$element' } },
+      })
+    ).toEqual(expected)
+    expect(
+      await fig().evaluate({
+        $map: { input: rows, as: 'row', each: { fragment: 'frag', parameters: '$row' } },
+      })
+    ).toEqual(expected)
   })
 
   test('extra keys are ignored — declarations define the read-set', async () => {

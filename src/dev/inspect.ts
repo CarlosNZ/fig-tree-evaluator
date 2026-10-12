@@ -23,7 +23,7 @@ import { FigTree } from '../FigTree'
 import type { FigTreeOptions } from '../options'
 import type { Issue } from '../issues'
 import { buildRegistry } from '../registry'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import {
   compileExpression,
   renderReference,
@@ -207,6 +207,9 @@ const printArtifactFacts = (artifact: CompileArtifact) => {
   console.log(`  operators    ${list(deps.operators)}`)
   console.log(
     `  dataPaths    ${list([...deps.dataPaths.keys()])}` + `   (dynamic read-set: ${deps.dynamic})`
+  )
+  console.log(
+    `  params       ${list(deps.paramNames)}` + `   (dynamic read-set: ${deps.paramsDynamic})`
   )
   console.log(`  fragments    ${list(deps.fragments)}`)
   if (artifact.holes.length === 0) {

@@ -88,7 +88,6 @@ describe('defineOperator — the validated artifact', () => {
     const validated = defineOperator({
       name: 'bare',
       category: 'other',
-      description: 'An operator with one empty declaration',
       parameters: { value: {} },
       evaluate: ({ value }) => value,
     })
@@ -242,6 +241,28 @@ describe('defineOperator — the EvaluationData sentinel', () => {
   })
 })
 
+describe('defineOperator — a default meets its constraints as a value does', () => {
+  const withValues = (values: Record<string, unknown>) =>
+    defineOperator({ ...validDefinition(), parameters: { values } } as never)
+
+  it('a null default the type admits has no shape to constrain', () => {
+    expect(() =>
+      withValues({ type: ['array', 'null'], constraints: { length: 2 }, default: null })
+    ).not.toThrow()
+  })
+
+  it('null elements under an element null policy are the policy’s', () => {
+    const values = {
+      type: 'array',
+      elementNullPolicy: 'value',
+      constraints: { length: 2, homogeneous: ['number'] },
+    }
+    expect(() => withValues({ ...values, default: [1, null] })).not.toThrow()
+    // A null still occupies its slot, so the length counts it
+    expect(() => withValues({ ...values, default: [null] })).toThrow()
+  })
+})
+
 describe('defineOperator — registration errors', () => {
   it.each(invalidDefinitions)('$id', ({ definition, expected }) => {
     const error = defineInvalid(definition)
@@ -289,12 +310,26 @@ describe('the fingerprint sees source text, not closure state', () => {
     defineOperator({
       name: 'factory',
       category: 'other',
-      description: 'closes over its tag',
       parameters: {},
       evaluate: () => tag,
     })
 
   it('hashes two closures over the same source alike', () => {
     expect(fromFactory('a').fingerprint).toBe(fromFactory('b').fingerprint)
+  })
+
+  it('leaves out a parameter’s metadata, as the definition’s own', () => {
+    const withParameter = (declaration: Record<string, unknown>) =>
+      defineOperator({
+        name: 'described',
+        category: 'other',
+        parameters: { a: declaration },
+        evaluate: () => null,
+      } as never).fingerprint
+    // Host-owned, so it may hold what JSON cannot: a BigInt, a cycle
+    const cycle: Record<string, unknown> = {}
+    cycle.self = cycle
+    expect(withParameter({ metadata: { big: BigInt(1) } })).toBe(withParameter({}))
+    expect(withParameter({ metadata: cycle })).toBe(withParameter({}))
   })
 })

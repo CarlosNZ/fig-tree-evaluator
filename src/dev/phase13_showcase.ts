@@ -21,7 +21,6 @@ const clamp = defineOperator({
   name: 'clamp',
   alias: '><',
   category: 'math',
-  description: 'Constrain a number to a range',
   parameters: {
     value: { type: ['number', 'null'] },
     min: { type: 'number', default: 0 },
@@ -81,7 +80,6 @@ let runs = 0
 const shout = defineOperator({
   name: 'shout',
   category: 'string',
-  description: 'Upper-case a string',
   parameters: { text: { type: 'string' } },
   positionalParams: ['text'],
   returns: 'string',
@@ -96,7 +94,6 @@ const shout = defineOperator({
 const shoutEmphatic = defineOperator({
   name: 'shout',
   category: 'string',
-  description: 'Upper-case a string, with emphasis',
   parameters: { text: { type: 'string' } },
   positionalParams: ['text'],
   returns: 'string',
@@ -137,7 +134,7 @@ const main = async () => {
   }
   for (const [category, names] of grouped)
     console.log(`  ${category.padEnd(12)}${names.join(', ')}`)
-  console.log(`\n  ${operators.length} operators, every one categorised and described.\n`)
+  console.log(`\n  ${operators.length} operators, every one categorised.\n`)
 
   section('…and a parameter form, from the same read')
 
@@ -151,7 +148,7 @@ const main = async () => {
       info.timeoutParam !== null ? `deadline: ${info.timeoutParam}` : null,
       info.hostNoCache === true ? 'caching turned off by operatorDefaults' : null,
     ].filter((flag) => flag !== null)
-    console.log(`  ${name} — ${info.description}`)
+    console.log(`  ${name}`)
     for (const parameter of Object.keys(info.parameters))
       console.log(parameterLine(parameter, info))
     if (flags.length > 0) console.log(`      ${flags.join(' · ')}`)

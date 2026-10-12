@@ -17,7 +17,6 @@ let runs: string[] = []
 const work = defineOperator({
   name: 'work',
   category: 'other',
-  description: 'Do a unit of (pretend) work, recording that it happened',
   parameters: {
     label: { type: 'string' },
     ms: { type: 'integer', default: 0 },

@@ -91,15 +91,10 @@ const dispatch = (node: CompiledNode, ctx: EvaluationContext): MaybePromise<unkn
         return evaluateOperator(node, ctx)
       case 'fragmentCall':
         return evaluateFragment(node, ctx)
-      case 'elements':
-      case 'entries':
-        throw internalError(
-          `a '${node.kind}' parameter value reached the node dispatch — parameter resolution consumes these, and nothing else may hold one`
-        )
-      case 'invalid':
-        throw internalError(
-          'an invalid node reached evaluation — the static gate should have refused it'
-        )
+      default:
+        // An invalid node never passes the static gate, and parameter
+        // resolution consumes every elements and entries node
+        throw internalError(`a '${node.kind}' node reached the node dispatch`)
     }
   } catch (error) {
     return Promise.reject(error)

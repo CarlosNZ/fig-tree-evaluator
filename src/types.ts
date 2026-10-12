@@ -42,8 +42,10 @@ export interface HttpRequest {
 export interface HttpClient {
   /**
    * Resolves to the parsed JSON body — `null` for an empty success (204).
-   * Throws `OperatorFailure` carrying `errorData` (status, url, response
-   * payload) on a non-2xx or non-JSON response. Header VALUES never appear
+   * Throws `httpFailure()` (code `http-status`) on a non-2xx response, and
+   * an `invalid-response` failure on a non-JSON one; anything else it
+   * throws reaches a fallback as `request-failure` ("Client failures" in
+   * docs-dev/v3-specs/v3-operator-contract.md). Header VALUES never appear
    * in that payload: headers are the secret-bearing channel, so error and
    * trace output render header names only, and a custom client must follow
    * suit.
@@ -67,7 +69,12 @@ export interface SqlRequest {
 }
 
 export interface SqlConnection {
-  /** Rows as objects, always; reshaping is the operator's job, not this. */
+  /**
+   * Rows as objects, always; reshaping is the operator's job, not this.
+   * Throws `sqlFailure()` (code `sql-error`) for what the driver or the
+   * connection refuses; anything else it throws reaches a fallback as
+   * `request-failure`.
+   */
   query(req: SqlRequest): Promise<Record<string, unknown>[]>
 }
 

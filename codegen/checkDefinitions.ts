@@ -11,20 +11,9 @@ test/package-definitions.test.ts, which also holds each built artifact equal
 to the checked one.
 */
 import { defineOperator } from '../src/defineOperator'
-import { coreDefinitions } from '../src/operators'
-import { graphQLDefinition, httpDefinition, sqlDefinition } from '../src/operators/io'
-import type { HttpClient, SqlConnection } from '../src/types'
+import { packageDefinitions } from './packageDefinitions'
 
-// The I/O definitions close over a client; the checks never call it
-const client: HttpClient = { request: async () => null }
-const connection: SqlConnection = { query: async () => [] }
-
-const definitions = [
-  ...coreDefinitions,
-  httpDefinition(client),
-  graphQLDefinition(client),
-  sqlDefinition(connection),
-]
+const definitions = packageDefinitions()
 
 for (const definition of definitions) defineOperator(definition)
 

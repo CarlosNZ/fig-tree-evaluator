@@ -29,7 +29,8 @@ import { ErrorCodes } from './errorCodes'
 import { FigTreeError } from './FigTreeError'
 import { Lru } from './lru'
 import type { CacheStore } from './types'
-import { isPlainDataObject, noop } from './utils'
+import { noop } from './utils'
+import { isPlainDataObject } from './plainData'
 
 /** v2's defaults, kept: fifty entries, thirty minutes. */
 export const DEFAULT_MAX_SIZE = 50
@@ -135,9 +136,15 @@ export class ResultCache {
    */
   private own?: Lru<string, unknown>
   private maxTime: number
-  private current = 0
+  private current: number
 
-  constructor(config: ResolvedCacheConfig) {
+  /**
+   * `generation` seeds the counter for a cache derived from another's
+   * instance (`FigTree.with()`), so an envelope the other had invalidated
+   * stays invalid in a host store the two have in common.
+   */
+  constructor(config: ResolvedCacheConfig, generation = 0) {
+    this.current = generation
     if (config.store === undefined) {
       this.own = new Lru<string, unknown>(config.maxSize)
       this.store = this.own
@@ -211,10 +218,14 @@ export class ResultCache {
    * the current one only when it is a different object, so entries survive
    * a change that could not have affected them — the merge rule's
    * `cache: { maxSize }` row promises exactly that. The built-in store is
-   * resized in place for the same reason.
+   * resized in place for the same reason, and is created afresh when a
+   * removed host store hands the cache back to it.
    */
   configure(config: ResolvedCacheConfig): void {
-    if (config.store !== undefined && config.store !== this.store) {
+    if (config.store === undefined) {
+      this.own ??= new Lru<string, unknown>(config.maxSize)
+      this.store = this.own
+    } else if (config.store !== this.store) {
       this.store = config.store
       this.own = undefined
     }

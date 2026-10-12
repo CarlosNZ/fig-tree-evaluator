@@ -22,54 +22,30 @@ import { COMPOSITE_RENDER_ERROR, isComposite } from '../primitives/renderText'
 import { scanTemplate } from '../templateTokens'
 import { emptyAggregateWarning } from './shared'
 
-const normalizer = (
-  name: string,
-  description: string,
-  valueDescription: string,
-  transform: (value: string) => string
-) =>
+const normalizer = (name: string, transform: (value: string) => string) =>
   declareOperator({
     name,
     category: 'string',
-    description,
-    parameters: { value: { type: ['string', 'null'], description: valueDescription } },
+    parameters: { value: { type: ['string', 'null'] } },
     positionalParams: ['value'],
     returns: 'string',
     evaluate: ({ value }) => transform(value),
   })
 
-export const lower = normalizer(
-  'lower',
-  'Lowercase a string — Unicode default case mapping, locale-independent',
-  'The string to lowercase',
-  (value) => value.toLowerCase()
-)
-export const upper = normalizer(
-  'upper',
-  'Uppercase a string — Unicode default case mapping, locale-independent',
-  'The string to uppercase',
-  (value) => value.toUpperCase()
-)
-export const trim = normalizer(
-  'trim',
-  'Strip whitespace (the JS trim set) from both ends of a string',
-  'The string to trim',
-  trimText
-)
+export const lower = normalizer('lower', (value) => value.toLowerCase())
+export const upper = normalizer('upper', (value) => value.toUpperCase())
+export const trim = normalizer('trim', trimText)
 
 export const split = declareOperator({
   name: 'split',
   category: 'string',
-  description:
-    'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
   parameters: {
-    value: { type: ['string', 'null'], description: 'The string to divide' },
+    value: { type: ['string', 'null'] },
     delimiter: {
       type: 'string',
       default: ' ',
-      description: 'Split on each occurrence; "" splits into code points',
     },
-    trim: { type: 'boolean', default: true, description: 'Trim whitespace from each piece' },
+    trim: { type: 'boolean', default: true },
   },
   positionalParams: ['value', 'delimiter'],
   returns: 'array',
@@ -149,36 +125,28 @@ const closeTheGaps = (parts: Part[]): string[] => {
 export const buildString = declareOperator({
   name: 'buildString',
   category: 'string',
-  description: 'Render a template, filling its tokens — the result is always a string',
   parameters: {
     template: {
       type: ['string', 'null'],
-      description:
-        'The text, with %N or {{name}} tokens; in a literal template, {{$data.x}} is that reference',
     },
     substitutions: {
       type: ['array', 'object'],
       default: [],
       elementNullPolicy: 'value',
-      description:
-        'An array pairs with %N tokens, an object with {{name}} tokens; the mode dispatches on which arrives',
     },
     trim: {
       type: 'boolean',
       default: false,
-      description: 'Trim whitespace from each rendered value, never from the template text',
     },
     closeGaps: {
       type: 'boolean',
       default: false,
-      description: 'A value that renders empty also takes one run of adjacent template whitespace',
     },
     nullValueDefault: {
       type: ['string', 'number', 'boolean'],
       required: false,
       evaluation: 'lazy',
       replacesNullAt: ['substitutions'],
-      description: 'Rendered in place of a null value, instead of ""',
     },
   },
   positionalParams: ['template', '...substitutions'],
@@ -234,25 +202,20 @@ export const buildString = declareOperator({
 export const join = declareOperator({
   name: 'join',
   category: 'string',
-  description: 'Render array elements to text and concatenate them with a delimiter',
   parameters: {
     values: {
       type: 'array',
       elementNullPolicy: 'value',
-      description:
-        'Elements of any type, rendered by the stringification table; a null renders "" and still occupies its slot',
     },
     delimiter: {
       type: 'string',
       default: ' ',
-      description: 'Placed between each adjacent pair — shares its contract with split',
     },
     nullValueDefault: {
       type: ['string', 'number', 'boolean'],
       required: false,
       evaluation: 'lazy',
       replacesNullAt: ['values'],
-      description: 'Rendered in place of a null element, instead of ""',
     },
   },
   positionalParams: ['...values'],
@@ -289,7 +252,7 @@ export const join = declareOperator({
  */
 const ADMITTED_FLAGS = 'imsu'
 
-export const checkFlags = (flags: string): string | undefined => {
+const checkFlags = (flags: string): string | undefined => {
   const seen = new Set<string>()
   const unknown: string[] = []
   for (const flag of flags) {
@@ -309,26 +272,20 @@ export const checkFlags = (flags: string): string | undefined => {
 export const regex = declareOperator({
   name: 'regex',
   category: 'string',
-  description: 'Test, extract or match a string against a regular expression',
   parameters: {
-    value: { type: ['string', 'null'], description: 'The subject string' },
-    pattern: { type: ['string', 'null'], description: 'The regular expression source' },
-    flags: { type: 'string', default: '', description: 'The admitted subset: i, m, s, u' },
+    value: { type: ['string', 'null'] },
+    pattern: { type: ['string', 'null'] },
+    flags: { type: 'string', default: '' },
     mode: {
       type: { literal: ['test', 'extract', 'match'] },
       default: 'test',
-      description:
-        'test gives a boolean, extract the first matching substring, match every one of them',
     },
     // A string, as a match is, so `returns` holds for every mode
     noMatchDefault: {
       type: ['string', 'null'],
-      required: false,
       default: null,
       nullPolicy: 'value',
       evaluation: 'lazy',
-      description:
-        'The extract answer when nothing matches — a matched empty string still passes through',
     },
   },
   positionalParams: ['value', 'pattern'],

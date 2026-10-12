@@ -38,9 +38,10 @@
  * with no special case. Nothing here is barrel surface except the two
  * authored types.
  */
+import type { FragmentMetadata } from './catalogTypes'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
-import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
+import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from './names'
 import {
   checkNoCache,
   composeRollups,
@@ -48,15 +49,18 @@ import {
   runStaticChecks,
   splice,
   staticType,
+  toNodePath,
   type ArtifactDependencies,
   type ArtifactHole,
   type CompiledNode,
+  type ErrorRead,
   type NodePath,
   type CompileArtifact,
+  type StaticFallback,
 } from './compile'
 import type { OperatorRegistry } from './registry'
 import {
-  checkConstraints,
+  checkDeclaredConstraints,
   checkType,
   isExpectedType,
   validateConstraintsShape,
@@ -64,13 +68,14 @@ import {
   type ExpectedType,
   type TypeDeclaration,
 } from './typeCheck'
-import { isPlainObject } from './utils'
+import { findCycles, isPlainObject } from './utils'
 
 /**
  * A fragment parameter declaration as authored. Extends the same
  * `TypeDeclaration` base an operator's `ParameterDeclaration` extends, so
- * the two stay byte-compatible: `type`, `required` and `constraints` are
- * inherited and mean exactly what they mean for an operator parameter.
+ * one, less its `description`, is a valid operator parameter declaration:
+ * `type`, `required` and `constraints` are inherited and mean exactly what
+ * they mean for an operator parameter.
  *
  * `default` is a constant value, never an expression — visible to tooling
  * verbatim, type-checked here, never evaluated. A computed default is
@@ -95,8 +100,19 @@ export interface FragmentDefinition {
   /** Declarations, keyed by parameter name. */
   parameters?: Record<string, FragmentParameterDeclaration>
   description?: string
-  /** Opaque tooling bag; the engine never reads it. */
-  metadata?: Record<string, unknown>
+  /**
+   * How the fragment is presented, which `getCatalog` reads, and any other
+   * keys a host carries. The engine never reads it, and registration checks
+   * only that it is a plain object.
+   */
+  metadata?: FragmentMetadata & Record<string, unknown>
+  /**
+   * Example argument values, keyed by parameter name, for authoring and
+   * testing the fragment. Unlike a seed in `metadata`, which is what a new
+   * call starts with, a sample is a realistic value to run the body with.
+   * The engine never reads it.
+   */
+  samples?: { [parameter: string]: unknown }
 }
 
 /** A declaration after normalization — every documented default filled. */
@@ -119,7 +135,7 @@ export interface FragmentParameter {
 export interface FragmentEntry {
   name: string
   description?: string
-  metadata?: Record<string, unknown>
+  metadata?: FragmentMetadata & Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /** The compiled body. Assigned in pass 2; never reassigned after. */
   body: CompiledNode
@@ -153,11 +169,11 @@ export interface FragmentEntry {
    */
   caches: boolean
   /**
-   * The body root's constant fallback, where it has one. A call node with
-   * no `fallback` of its own lifts this for timeout shielding — without the
-   * lift, factoring an expression into a fragment silently unshields it.
+   * The body's static fallback, where every hole in it has one. A call node
+   * with no `fallback` of its own lifts this for timeout shielding — without
+   * the lift, factoring an expression into a fragment silently unshields it.
    */
-  timeoutFallback?: { value: unknown }
+  timeoutFallback?: StaticFallback
 }
 
 /** The declaration fields a fragment parameter may carry. */
@@ -171,7 +187,7 @@ const DECLARATION_KEYS = new Set([
 ])
 
 /** The wrapper fields a fragment definition may carry. */
-const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata'])
+const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata', 'samples'])
 
 type AddIssue = (code: string, message: string, path: NodePath) => void
 
@@ -273,7 +289,7 @@ const validateDefinition = (
     )
     return undefined
   }
-  if (RESERVED_REGISTRATION_NAMES.has(name)) {
+  if (isReservedRegistrationName(name)) {
     addIssue(
       ErrorCodes.reservedName,
       `'${name}' is a reserved name and may not name a fragment`,
@@ -284,7 +300,7 @@ const validateDefinition = (
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `fragment '${name}' must be a wrapper object: { expression, parameters?, description?, metadata? }`,
+      `fragment '${name}' must be a wrapper object: { expression, parameters?, description?, metadata?, samples? }`,
       at()
     )
     return undefined
@@ -310,7 +326,14 @@ const validateDefinition = (
     warnings: [],
     nodeCount: 0,
     maxDepth: 0,
-    dependencies: { dataPaths: new Map(), dynamic: false, operators: [], fragments: [] },
+    dependencies: {
+      dataPaths: new Map(),
+      dynamic: false,
+      paramNames: [],
+      paramsDynamic: false,
+      operators: [],
+      fragments: [],
+    },
     identityOnly: false,
     caches: false,
   }
@@ -324,6 +347,8 @@ const validateDefinition = (
       addIssue(ErrorCodes.invalidDefinition, `'metadata' must be a plain object`, at('metadata'))
     else entry.metadata = definition.metadata
   }
+  if (definition.samples !== undefined && !isPlainObject(definition.samples))
+    addIssue(ErrorCodes.invalidDefinition, `'samples' must be a plain object`, at('samples'))
   if (definition.parameters !== undefined) {
     if (!isPlainObject(definition.parameters))
       addIssue(
@@ -429,16 +454,14 @@ const validateDeclaration = (
       )
       return undefined
     }
-    if (constraints !== undefined) {
-      const constrained = checkConstraints(declared.default, constraints)
-      if (!constrained.ok) {
-        addIssue(
-          ErrorCodes.typeCheck,
-          `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
-          [...path, 'default']
-        )
-        return undefined
-      }
+    const constrained = checkDeclaredConstraints(declared.default, { constraints })
+    if (!constrained.ok) {
+      addIssue(
+        ErrorCodes.typeCheck,
+        `the default for '${parameter}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+        [...path, 'default']
+      )
+      return undefined
     }
   }
 
@@ -480,42 +503,22 @@ const inferReturns = (registry: OperatorRegistry) => {
  * registration error — guarded recursion included. Returns whether the
  * graph is acyclic, which is what makes the rollup fold well-founded.
  */
-const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue): boolean => {
-  const visiting: string[] = []
-  const settled = new Set<string>()
-  const reported = new Set<string>()
-
-  const walk = (name: string) => {
-    const cycleAt = visiting.indexOf(name)
-    if (cycleAt !== -1) {
-      const cycle = [...visiting.slice(cycleAt), name]
-      // One report per cycle, keyed on its member set: every entry point
-      // into the same loop would otherwise report it again
-      const key = [...cycle].sort().join('\u0000')
-      if (!reported.has(key))
-        addIssue(
-          ErrorCodes.fragmentCycle,
-          `fragment '${name}' reaches itself: ${cycle.join(' → ')} — recursion is not supported`,
-          ['fragments', name]
-        )
-      reported.add(key)
-      return
-    }
-    if (settled.has(name)) return
-    visiting.push(name)
-    for (const call of compiled.get(name)?.fragmentCalls ?? []) walk(call.name)
-    visiting.pop()
-    settled.add(name)
-  }
-
-  for (const name of compiled.keys()) walk(name)
-  return reported.size === 0
-}
+const checkCycles = (compiled: Map<string, CompileArtifact>, addIssue: AddIssue): boolean =>
+  findCycles(
+    compiled.keys(),
+    (name) => compiled.get(name)?.fragmentCalls.map((call) => call.name),
+    ([name, ...rest]) =>
+      addIssue(
+        ErrorCodes.fragmentCycle,
+        `fragment '${name}' reaches itself: ${[name, ...rest, name].join(' → ')} — recursion is not supported`,
+        ['fragments', name]
+      )
+  )
 
 /**
  * Fold each body's own measurements together with its targets', run its
  * `noCache` checks, which read the targets' `caches`, and lift the
- * constant its call sites shield with — all in reverse topological order,
+ * fallback its call sites shield with — all in reverse topological order,
  * so a target is always complete before a caller reads it.
  * `composeRollups` holds the composition rules themselves, shared with the
  * walk, so a call site in an expression and a call site in a body compose
@@ -537,16 +540,16 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
     entry.dependencies = rolled.dependencies
     entry.identityOnly = rolled.identityOnly
     entry.caches = checkNoCache(artifact)
-    entry.timeoutFallback = liftedFallback(artifact, registry.fragments)
+    entry.timeoutFallback = liftedFallback(name, artifact, registry.fragments)
   }
 
   for (const name of compiled.keys()) fold(name)
 }
 
 /**
- * The constant a call site lifts from this body (obligation B2): what
- * shielded assembly would splice for the whole call, or `undefined` where
- * the body is not shielded and a call therefore is not either.
+ * The static fallback a call site lifts from this body (obligation B2):
+ * what shielded assembly would splice for the whole call, or `undefined`
+ * where the body is not shielded and a call therefore is not either.
  *
  * Every hole must answer, because a call is ONE hole at its call site: it
  * contributes all of its fallbacks or none of them, where the same
@@ -555,40 +558,59 @@ const foldRollups = (registry: OperatorRegistry, compiled: Map<string, CompileAr
  * direction — a partially-finished body cannot contribute a half-real
  * value through a boundary that has already returned a single one.
  *
- * A node root is one hole, and it is the root, so its constant is the
- * call's. A skeleton root splices its holes' constants into its shape,
+ * A node root is one hole, and it is the root, so its fallback is the
+ * call's. A skeleton root splices its holes' fallbacks into its shape,
  * inside out through any nested skeleton a `vars` block kept — the same
  * assembly a shielded evaluation performs, and relying on the same
  * by-construction ordering: the artifact's holes ARE the skeletons' leaf
  * holes, in walk order (`rootHoles` in src/compile/compile.ts).
+ *
+ * Each `$error` read comes along, moved to where its hole sits, and
+ * located at that hole: the timeout meets the call, but a read written in
+ * the body sees it where it would have met the hole inline, as anchoring
+ * locates any failure in a body. A read lifted from a nested call is
+ * already located, in the innermost body, which owns it as anchoring's
+ * first frame does.
  */
 const liftedFallback = (
+  name: string,
   artifact: CompileArtifact,
   fragments: ReadonlyMap<string, FragmentEntry>
-): { value: unknown } | undefined => {
+): StaticFallback | undefined => {
   const { root, holes } = artifact
   // A constant body has no hole to lift, and nothing in it can time out
   if (holes.length === 0) return undefined
-  const values: unknown[] = []
+  const fallbacks: StaticFallback[] = []
   for (const hole of holes) {
     const fallback = holeFallback(hole, fragments)
     if (fallback === undefined) return undefined
-    values.push(fallback.value)
+    fallbacks.push(fallback)
   }
+  const reads: ErrorRead[] = []
   let next = 0
-  const assemble = (node: CompiledNode): unknown =>
-    node.kind === 'skeleton'
-      ? splice(
-          node.skeleton,
-          node.holes,
-          node.holes.map((hole) => assemble(hole.node))
-        )
-      : values[next++]
-  return { value: assemble(root) }
+  const assemble = (node: CompiledNode, at: NodePath): unknown => {
+    if (node.kind === 'skeleton')
+      return splice(
+        node.skeleton,
+        node.holes,
+        node.holes.map((hole) => assemble(hole.node, [...at, ...hole.at]))
+      )
+    const { value, reads: own = [] } = fallbacks[next++]
+    const within = {
+      ...(node.kind === 'operator' ? { operator: node.name } : {}),
+      fragment: name,
+      fragmentPath: toNodePath(node.path),
+    }
+    for (const read of own)
+      reads.push({ ...read, at: [...at, ...read.at], within: read.within ?? within })
+    return value
+  }
+  const value = assemble(root, [])
+  return reads.length === 0 ? { value } : { value, reads }
 }
 
 /**
- * A hole's own precomputed constant, or the one its target lifts where the
+ * A hole's own precomputed fallback, or the one its target lifts where the
  * hole is itself a call.
  *
  * The second case cannot come from the artifact: the walk read
@@ -601,10 +623,10 @@ const liftedFallback = (
 const holeFallback = (
   hole: ArtifactHole,
   fragments: ReadonlyMap<string, FragmentEntry>
-): { value: unknown } | undefined => {
+): StaticFallback | undefined => {
   if (hole.timeoutFallback !== undefined) return hole.timeoutFallback
   const { node } = hole
-  // An authored call-site fallback always wins, and a non-constant one
+  // An authored call-site fallback always wins, and a dynamic one
   // disqualifies the hole rather than falling through to the target's
   if (node.kind !== 'fragmentCall' || node.fallback !== undefined) return undefined
   return fragments.get(node.name)?.timeoutFallback

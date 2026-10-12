@@ -11,7 +11,7 @@
  * mock from a real client, and the shared conformance suite runs over all
  * three (contract Q8's check).
  */
-import { OperatorFailure } from '../../src'
+import { OperatorFailure, httpFailure } from '../../src'
 import type { HttpClient, HttpRequest } from '../../src'
 
 export interface MockHttpRequest {
@@ -61,7 +61,10 @@ export interface MockHttpClientOptions {
   fail?: boolean
   /** Message for the thrown failure. */
   failMessage?: string
-  /** `errorData` payload attached to the thrown failure. */
+  /**
+   * `errorData` payload attached to the thrown failure. It has no code, so
+   * an operator passes on only its message, as `request-failure`.
+   */
   failData?: unknown
   /**
    * Fail like a real non-2xx response instead: sets the `errorData` a real
@@ -129,16 +132,13 @@ export class MockHttpClient implements HttpClient {
     return this.resolveResponse(req.url)
   }
 
-  /** The payload a real client builds for a non-2xx response. */
+  /** The failure a real client builds for a non-2xx response. */
   private statusFailure(url: string): OperatorFailure {
-    const status = this.failStatus as number
-    return new OperatorFailure(`request failed (${status}): ${url}`, {
-      errorData: {
-        status,
-        statusText: this.failMessage,
-        url,
-        response: this.failResponse ?? null,
-      },
+    return httpFailure({
+      status: this.failStatus as number,
+      statusText: this.failMessage,
+      url,
+      response: this.failResponse ?? null,
     })
   }
 

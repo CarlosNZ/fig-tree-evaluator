@@ -28,7 +28,6 @@ const countedOp = (name = 'cached') => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: 'Count the runs the cache did not save',
     parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
     positionalParams: ['value'],
     cache: true,
@@ -47,7 +46,6 @@ const manualOp = (name = 'manual') => {
   const definition = defineOperator({
     name,
     category: 'other',
-    description: 'Key its own unit of work',
     parameters: {
       key: { type: 'any', nullPolicy: 'value', default: null },
       shape: { type: 'string', default: '' },
@@ -82,7 +80,6 @@ describe('only a caching operator touches the store', () => {
     const pure = defineOperator({
       name: 'pure',
       category: 'other',
-      description: 'declares no cache',
       parameters: {},
       evaluate: () => 'ok',
     })
@@ -98,7 +95,6 @@ describe('only a caching operator touches the store', () => {
     const undeclared = defineOperator({
       name: 'undeclared',
       category: 'other',
-      description: 'calls memo, declares no cache',
       parameters: {},
       evaluate: (_params, context) =>
         context.cache.memo('k', async () => {
@@ -143,7 +139,6 @@ describe('failures are never cached', () => {
     return defineOperator({
       name: 'flaky',
       category: 'other',
-      description: 'fail once, then succeed',
       parameters: {},
       cache: true,
       evaluate: (_params, context) =>
@@ -181,7 +176,6 @@ describe('failures are never cached', () => {
     const nonFinite = defineOperator({
       name: 'nonFinite',
       category: 'other',
-      description: 'produce a non-finite number',
       parameters: {},
       cache: true,
       evaluate: (_params, context) =>
@@ -203,7 +197,6 @@ describe('failures are never cached', () => {
     const propagating = defineOperator({
       name: 'propagating',
       category: 'other',
-      description: 'propagate a null operand',
       parameters: { value: { type: ['string', 'null'] } },
       positionalParams: ['value'],
       cache: true,
@@ -264,7 +257,6 @@ describe("the body's own key", () => {
     const raced = defineOperator({
       name: 'raced',
       category: 'other',
-      description: 'key on a settlement stream',
       parameters: { values: { type: 'array', evaluation: 'race' } },
       positionalParams: ['...values'],
       cache: true,
@@ -432,7 +424,6 @@ describe('clearCache()', () => {
     const slow = defineOperator({
       name: 'slow',
       category: 'other',
-      description: 'settle when the test says so',
       parameters: {},
       cache: true,
       evaluate: (_params, context) =>
@@ -467,7 +458,6 @@ describe('the two invalidation stories are opposites', () => {
     const definition = defineOperator({
       name: 'counted',
       category: 'other',
-      description: 'count compiles and runs separately',
       parameters: { value: { type: 'any', required: false, default: 'a' } },
       positionalParams: ['value'],
       cache: true,
@@ -529,7 +519,6 @@ describe('the two invalidation stories are opposites', () => {
     const before = defineOperator({
       name: 'counted',
       category: 'other',
-      description: 'the first definition',
       parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
       positionalParams: ['value'],
       cache: true,
@@ -542,7 +531,6 @@ describe('the two invalidation stories are opposites', () => {
     const after = defineOperator({
       name: 'counted',
       category: 'other',
-      description: 'the second definition',
       parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
       positionalParams: ['value'],
       cache: true,

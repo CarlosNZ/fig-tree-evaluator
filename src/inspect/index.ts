@@ -43,6 +43,13 @@ export interface InspectDependencies {
   dataPaths: string[]
   /** True when the read-set is not statically enumerable. */
   dynamic: boolean
+  /**
+   * The parameter names the expression's own `$params` references read, in
+   * the order the compile met them — never composed through a call.
+   */
+  paramNames: string[]
+  /** True when the parameters read are not statically known. */
+  paramsDynamic: boolean
   operators: string[]
   fragments: string[]
 }
@@ -171,6 +178,8 @@ const renderBlock = (block: unknown, special: string, render: (value: unknown) =
 const renderDependencies = (dependencies: ArtifactDependencies): InspectDependencies => ({
   dataPaths: [...dependencies.dataPaths.keys()],
   dynamic: dependencies.dynamic,
+  paramNames: [...dependencies.paramNames],
+  paramsDynamic: dependencies.paramsDynamic,
   operators: [...dependencies.operators],
   fragments: [...dependencies.fragments],
 })

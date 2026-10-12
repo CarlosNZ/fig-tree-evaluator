@@ -42,6 +42,7 @@ import type {
   OnlyCallOptions,
   OptionsUpdate,
   ResultShape,
+  ValidateOptions,
 } from './options'
 import type { Issue, ValidationResult } from './issues'
 import { buildRegistry, type OperatorRegistry } from './registry'
@@ -53,6 +54,7 @@ import {
   checkNoCache,
   type CacheEntry,
   type CompileArtifact,
+  type StaticCheckContext,
 } from './compile'
 import { copyOptions, mergeOptions, runEvaluation } from './evaluate'
 import { readCacheConfig, ResultCache } from './resultCache'
@@ -165,14 +167,29 @@ const withoutRegistryKeys = (options: FigTreeOptions): EvaluationOptions => {
  * The one compile: the walk plus the metadata-driven static checks and the
  * `noCache` checks, against a registry. `validate()` calls it directly;
  * `evaluate()` and `compile()` reach it through the compile cache, which is
- * what makes the three report identically.
+ * what makes the three report identically. The static-check context is
+ * `validate()`'s `params` option and nothing else: only `validate()`'s own
+ * fresh compile may pass one, since an artifact compiled with it would
+ * answer an evaluation wrongly from the cache.
  */
-const compileWithRegistry = (expression: unknown, registry: OperatorRegistry): CompileArtifact => {
+const compileWithRegistry = (
+  expression: unknown,
+  registry: OperatorRegistry,
+  context?: StaticCheckContext
+): CompileArtifact => {
   const artifact = compileExpression(expression, registry)
-  runStaticChecks(artifact)
+  runStaticChecks(artifact, context)
   if (artifact.hasNoCache) checkNoCache(artifact)
   return artifact
 }
+
+/**
+ * A ready-made state and result store for the next construction, set by
+ * `FigTree.fromState` for the length of one synchronous `new`. Handing
+ * them through the real constructor, rather than around it, keeps that
+ * the one place an instance's fields are set.
+ */
+let seed: { state: InstanceState; results: ResultCache } | undefined
 
 export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   private state: InstanceState
@@ -186,8 +203,23 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
   readonly version = version
 
   constructor(options: InstanceOpts = {} as InstanceOpts) {
-    this.state = buildState(null, options)
-    this.results = new ResultCache(readCacheConfig(this.state.options.cache))
+    const ready = seed
+    seed = undefined
+    this.state = ready?.state ?? buildState(null, options)
+    this.results = ready?.results ?? new ResultCache(readCacheConfig(this.state.options.cache))
+  }
+
+  /**
+   * An instance over a state and result store already built, for `with()`
+   * — which would otherwise construct a default registry only to discard
+   * it. Private, so a state record never crosses the public surface.
+   */
+  private static fromState<Opts extends FigTreeOptions>(
+    state: InstanceState,
+    results: ResultCache
+  ): FigTree<Opts> {
+    seed = { state, results }
+    return new FigTree<Opts>()
   }
 
   /**
@@ -230,6 +262,36 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
     const cache = readCacheConfig(next.options.cache)
     this.state = next
     this.results.configure(cache)
+  }
+
+  /**
+   * A new, independent instance, built as if `updateOptions(update)` had
+   * been applied to a copy of this one ("with()" in
+   * docs-dev/v3-specs/v3-evaluator-methods.md). This instance is
+   * untouched, and a later `updateOptions()` on either never reaches the
+   * other. It throws exactly as `updateOptions()` does, and before
+   * anything is created.
+   *
+   * What `updateOptions()` would carry across, the derived instance
+   * shares: the registry and the compile cache when the update names none
+   * of the registry-affecting options, safe because an update replaces
+   * both and never mutates them. The result store is its own, empty and
+   * built from the merged `cache` block as construction builds one, so
+   * neither instance's cached results, `clearCache()` or `cache` updates
+   * reach the other. Its generation starts from this instance's, so a
+   * host `store` the two have in common cannot serve the derived instance
+   * an entry this one has already cleared.
+   *
+   * The static return type of `evaluate()` follows the constructor's
+   * options and cannot follow the update: after `with({ trace })` the
+   * runtime shape changes and the type does not. A TypeScript host that
+   * flips `trace` should pass it per call, which types correctly, or
+   * construct a second instance.
+   */
+  with(update: OptionsUpdate = {}): FigTree<InstanceOpts> {
+    const next = buildState(this.state, update)
+    const cache = readCacheConfig(next.options.cache)
+    return FigTree.fromState(next, new ResultCache(cache, this.results.generation))
   }
 
   /**
@@ -295,16 +357,24 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * docs-dev/v3-specs/v3-evaluator-methods.md): synchronous, never throws
    * on expression content — even hard grammar errors come back as
    * error-severity issues. Throws only on misuse of the method itself (a
-   * per-call option that is instance configuration). It takes the same
-   * per-call shape as `evaluate()`, of which only `data` — the sample data
-   * for the missing-path check — has any bearing on a static report.
+   * per-call option that is instance configuration, or a `params` that is
+   * not a list of names). It takes the same per-call shape as `evaluate()`,
+   * of which only `data` — the sample data for the missing-path check — has
+   * any bearing on a static report, plus `params` of its own: the declared
+   * parameter names of a fragment body, so the body checks as it would at
+   * registration.
    */
-  validate(expression: unknown, options?: CallOptions): ValidationResult {
+  validate(expression: unknown, options?: ValidateOptions): ValidationResult {
+    let call: CallOptions | undefined = options
+    let context: StaticCheckContext | undefined
+    if (options?.params !== undefined) {
+      const { params, ...rest } = options
+      call = rest
+      context = { fragmentParams: paramNames(params) }
+    }
     const effective =
-      options === undefined
-        ? this.state.evaluation
-        : withCallOptions(this.state.evaluation, options)
-    const artifact = compileWithRegistry(expression, this.state.registry)
+      call === undefined ? this.state.evaluation : withCallOptions(this.state.evaluation, call)
+    const artifact = compileWithRegistry(expression, this.state.registry, context)
     const issues = validationIssues(artifact, effective, (sequenced) => sequenced.issue)
     return {
       valid: !issues.some((issue) => issue.severity === 'error'),
@@ -688,18 +758,16 @@ export interface HandleView {
 /**
  * The request-scoped options — the whole of what a call may supply
  * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
- * A `Set` of the keys of `CallOptions`, spelled out because a type has no
- * runtime form. The `satisfies` holds the two in step in both directions:
- * a `Record` over the type's keys must name every one of them, and an
- * excess key is refused, so a key added to `CallOptions` and not here (or
- * the reverse) fails the build. Evaluated once, at module load.
+ * The keys of `CallOptions`, spelled out because a type has no runtime
+ * form. The `satisfies` holds the two in step in both directions: a
+ * `Record` over the type's keys must name every one of them, and an excess
+ * key is refused, so a key added to `CallOptions` and not here (or the
+ * reverse) fails the build.
  */
-const CALL_OPTION_KEYS: ReadonlySet<string> = new Set(
-  Object.keys({ data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
-    keyof CallOptions,
-    unknown
-  >)
-)
+const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
+  keyof CallOptions,
+  unknown
+>
 
 /**
  * The instance's prepared options with a call's laid over them: a flat
@@ -720,7 +788,7 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
     // Tested before the key is, so `{ maxDepth: config.maxDepth }` with
     // nothing configured is "not supplied" rather than misuse
     if (value === undefined) continue
-    if (!CALL_OPTION_KEYS.has(key)) throw notPerCallError(key)
+    if (!Object.hasOwn(CALL_OPTION_KEYS, key)) throw notPerCallError(key)
     merged ??= { ...instance }
     merged[key] = value
   }
@@ -729,6 +797,20 @@ const withCallOptions = (instance: EvaluationOptions, call: CallOptions): Evalua
   // values are new
   checkKillSwitchOptions(call)
   return merged as EvaluationOptions
+}
+
+/**
+ * `validate()`'s `params` option as the static checks take it, refused
+ * unless it is an array of strings.
+ */
+const paramNames = (params: unknown): ReadonlySet<string> => {
+  if (!Array.isArray(params) || params.some((name) => typeof name !== 'string'))
+    throw new FigTreeError({
+      code: ErrorCodes.invalidOptions,
+      message: "'params' must be an array of parameter names (strings)",
+      path: [],
+    })
+  return new Set(params)
 }
 
 /**

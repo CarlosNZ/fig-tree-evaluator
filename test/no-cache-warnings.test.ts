@@ -10,7 +10,6 @@ import type { Issue } from '../src'
 const fetch = defineOperator({
   name: 'fetch',
   category: 'other',
-  description: 'A caching operator',
   parameters: { key: { type: 'string' } },
   positionalParams: ['key'],
   returns: 'string',

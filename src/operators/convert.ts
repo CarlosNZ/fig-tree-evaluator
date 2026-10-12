@@ -17,17 +17,13 @@ const cannot = (value: unknown, to: string) =>
 export const convert = declareOperator({
   name: 'convert',
   category: 'other',
-  description:
-    'Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess',
   parameters: {
     value: {
       type: 'any',
       nullPolicy: (to) => (to === 'boolean' ? 'value' : 'propagate'),
-      description: 'The value to convert; null propagates except for boolean, where it is false',
     },
     to: {
       type: { literal: ['number', 'string', 'boolean', 'array'] },
-      description: 'The target type',
     },
   },
   positionalParams: ['value', 'to'],

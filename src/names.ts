@@ -12,13 +12,14 @@
  * Reservation is a separate, additional check with two scopes: parameter
  * names may not use a reserved *node key*; registration names (operators,
  * aliases, fragments) additionally may not use a reference namespace, its
- * single-character alias form, or `literal`. The reference-namespace words
- * are deliberately NOT barred as parameter names — references live in string
- * value position, parameters in key position; nothing mechanically collides.
+ * alias form, or `literal`. The reference-namespace words are deliberately
+ * NOT barred as parameter names — references live in string value position,
+ * parameters in key position; nothing mechanically collides.
  *
  * Internal vocabulary (not barrel surface), consumed by `defineOperator()`
  * now and by the compiler (vars, `as`) and fragment registration later.
  */
+import { NAMESPACE_TOKENS } from './compile/references'
 
 /**
  * The seven reserved node keys — case-sensitive, zero aliases. Reserved
@@ -36,23 +37,14 @@ export const RESERVED_NODE_KEYS: ReadonlySet<string> = new Set([
 ])
 
 /**
- * Names unusable for registration (operator/fragment names and aliases): the
- * node keys above, the reference namespaces with their single-character alias
- * forms, and `literal`.
+ * Whether a name is unusable for registration (operator/fragment names and
+ * aliases): the node keys above, every reference namespace token (canonical
+ * and alias), and `literal`. A predicate over the two tables rather than a
+ * set built by spreading them, since a consumer's bundler cannot drop a
+ * top-level statement that spreads (#193).
  */
-export const RESERVED_REGISTRATION_NAMES: ReadonlySet<string> = new Set([
-  ...RESERVED_NODE_KEYS,
-  'data',
-  'params',
-  'element',
-  'index',
-  'd',
-  'v',
-  'p',
-  'e',
-  'i',
-  'literal',
-])
+export const isReservedRegistrationName = (name: string): boolean =>
+  RESERVED_NODE_KEYS.has(name) || Object.hasOwn(NAMESPACE_TOKENS, name) || name === 'literal'
 
 export type NameLegalityResult = { ok: true } | { ok: false; reason: string }
 

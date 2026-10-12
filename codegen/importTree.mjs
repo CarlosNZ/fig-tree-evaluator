@@ -68,12 +68,13 @@ const TREE = [
   row('defineOperator'),
   row('httpOperators, FetchClient', row('sqlOperators, PostgresConnection')),
   row('FigTreeError, isFigTreeError, ErrorCodes'),
+  row('httpFailure, sqlFailure'),
   row('isTruthy, compareValues, renderText, deepEqual, resolvePath'),
   row('toCanonical', row('toShorthand')),
   row('recognizeReference'),
   row('toGet'),
   row('migrateV2Expression', row('migrateV2Fragments')),
-  row('operatorHints, categoryHints, typeSeeds'),
+  row('operatorListings, categoryListings, typeSeeds', row('getCatalog')),
 ]
 
 /**

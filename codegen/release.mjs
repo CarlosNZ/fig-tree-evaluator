@@ -19,16 +19,19 @@
  *  7. Publishes with `npm publish --tag <dist-tag>`. npm rather than pnpm for
  *     the upload: npm prompts for a 2FA code itself, and applies no branch
  *     check of its own, so a pre-release can go out from a non-main branch.
- *  8. Opens the package's versions page on npm in the default browser.
- *
- * Nothing is pushed; the last line printed is the push command.
+ *  8. Pushes the branch and the tag to origin in one atomic push, so neither
+ *     lands without the other. Naming the tag pushes only the release's,
+ *     where `--follow-tags` would also carry any other local annotated tag.
+ *     A failed push leaves the release published, and prints the command to
+ *     retry it.
+ *  9. Opens the package's versions page on npm in the default browser.
  *
  * `--dry-run` runs every step against the real version bump, but makes no
- * commit or tag, publishes with `npm publish --dry-run`, opens no browser,
- * and puts package.json and src/version.ts back as they were, even on
- * failure. It only warns about uncommitted changes, where a real release
- * refuses, and about a missing npm login, which `npm publish --dry-run`
- * doesn't need.
+ * commit or tag, publishes with `npm publish --dry-run`, pushes nothing,
+ * opens no browser, and puts package.json and src/version.ts back as they
+ * were, even on failure. It only warns about uncommitted changes, where a
+ * real release refuses, and about a missing npm login, which
+ * `npm publish --dry-run` doesn't need.
  *
  * The v2 line is released from its own maintenance branch, which does not
  * carry this script.
@@ -170,7 +173,7 @@ const changelogEntryFor = (v) => {
 
 // ── The release ────────────────────────────────────────────────────────────
 
-const chooseVersion = async (current) => {
+const chooseVersion = async (current, branch) => {
   const suggestions = suggestionsFor(current)
   console.log(`Current version: ${format(current)}\n`)
   suggestions.forEach((v, i) =>
@@ -210,7 +213,6 @@ const chooseVersion = async (current) => {
       console.log(`\nCHANGELOG entry: ## [${entry}]`)
     }
     const tag = distTag(picked)
-    const branch = run('git', ['branch', '--show-current'], { capture: true })
     const confirm = await ask(
       `\n${DRY_RUN ? 'Dry run: release' : 'Release'} ${format(picked)} under the npm dist-tag "${tag}", from branch ${branch}? [y/N] `
     )
@@ -243,7 +245,8 @@ const main = async () => {
   const current = parse(JSON.parse(originalPackage).version)
   if (!current) throw new ReleaseError(`package.json's version is not semver`)
 
-  const next = await chooseVersion(current)
+  const branch = run('git', ['branch', '--show-current'], { capture: true })
+  const next = await chooseVersion(current, branch)
   const version = format(next)
   const tag = `v${version}`
 
@@ -292,10 +295,18 @@ const main = async () => {
   if (DRY_RUN)
     console.log(`\nDry run of ${version} complete; package.json and ${VERSION_FILE} restored.`)
   else {
+    const push = ['push', '--atomic', 'origin', branch, tag]
+    step(`git ${push.join(' ')}`)
+    const pushed = spawnSync('git', push, { stdio: 'inherit' }).status === 0
     openInBrowser(VERSIONS_PAGE)
-    console.log(
-      `\nPublished ${version} under "${distTag(next)}". Push with:\n  git push && git push origin ${tag}`
-    )
+    if (pushed) console.log(`\nPublished ${version} under "${distTag(next)}", and pushed ${tag}.`)
+    else {
+      console.error(
+        `\n✖ Published ${version} under "${distTag(next)}", but the push failed. ` +
+          `Push with:\n  git ${push.join(' ')}`
+      )
+      process.exitCode = 1
+    }
   }
 }
 

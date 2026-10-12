@@ -286,6 +286,20 @@ describe('the runtime type check', () => {
     await figWith([spy]).evaluate({ $pair: { values: [1, '$data.missing'] } })
     expect(spy.calls).toEqual([{ values: [1, null] }])
   })
+
+  // Constraints describe a container's shape, so they have nothing to say
+  // about a null the type admits — written in the expression or computed,
+  // and before evaluation as at it
+  test('a null the type admits skips the constraints', async () => {
+    const spy = spyOp('pairOrNull', {
+      values: { type: ['array', 'null'], nullPolicy: 'value', constraints: { length: 2 } },
+    })
+    const fig = figWith([spy])
+    expect(fig.validate({ $pairOrNull: { values: null } }).issues).toEqual([])
+    await fig.evaluate({ $pairOrNull: { values: null } })
+    await fig.evaluate({ $pairOrNull: { values: '$data.missing' } })
+    expect(spy.calls).toEqual([{ values: null }, { values: null }])
+  })
 })
 
 describe('truthiness delivery (ledger #4)', () => {

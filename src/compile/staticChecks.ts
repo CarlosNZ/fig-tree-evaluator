@@ -11,21 +11,22 @@
  * against the artifact's stored counts and dependency list.
  */
 import { ErrorCodes } from '../errorCodes'
-import type { Issue, Severity } from '../issues'
-import { checkType, checkConstraintsUnderPolicy, typeNamesNull } from '../typeCheck'
+import { FALLBACK_ERROR_FIELDS } from '../FigTreeError'
+import type { Severity } from '../issues'
+import { checkDeclared, checkType, nullMeansUnset } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
 import type { EvaluationMode } from '../operatorDefinition'
-import { nearestName } from '../utils'
+import { didYouMean, findCycles, listing, nearestName } from '../utils'
 import { validateHelpers } from './helpers'
 import {
   bindsReference,
   extendPath,
   hasError,
+  pushIssue,
   renamedBinding,
   sortIssues,
-  toNodePath,
 } from './artifact'
 import type {
   CompiledNode,
@@ -34,12 +35,16 @@ import type {
   OperatorNode,
   CompileArtifact,
   ReferenceNode,
+  StaticFallback,
+  IssueExtra,
 } from './artifact'
+import type { PathSegment } from '../primitives'
 
 /**
- * Phase-11 hook: inside a fragment body, `$params` resolves against the
- * declared parameter names. Absent (every Phase-3 call), any `$params`
- * reference is an outside-a-body error.
+ * Inside a fragment body, `$params` resolves against the declared parameter
+ * names: registration passes a body's declarations, and `validate()` its
+ * `params` option. Absent, any `$params` reference is an outside-a-body
+ * error.
  */
 export interface StaticCheckContext {
   fragmentParams?: ReadonlySet<string>
@@ -67,11 +72,18 @@ interface IteratorFrame {
   referenced: boolean
 }
 
+/** A fallback's subtree, where `$error` is the failure it caught. */
+interface FallbackFrame {
+  /** Set when an `$error` reference inside resolved against this frame. */
+  referenced: boolean
+}
+
 interface CheckState {
   artifact: CompileArtifact
   context: StaticCheckContext
   varsFrames: VarsFrame[]
   iteratorFrames: IteratorFrame[]
+  fallbackFrames: FallbackFrame[]
 }
 
 /**
@@ -79,7 +91,13 @@ interface CheckState {
  * (sorted back into tree order and `hasErrors` refreshed before returning).
  */
 export const runStaticChecks = (artifact: CompileArtifact, context: StaticCheckContext = {}) => {
-  const state: CheckState = { artifact, context, varsFrames: [], iteratorFrames: [] }
+  const state: CheckState = {
+    artifact,
+    context,
+    varsFrames: [],
+    iteratorFrames: [],
+    fallbackFrames: [],
+  }
   visit(state, artifact.root)
   sortIssues(artifact.issues)
   artifact.hasErrors = hasError(artifact.issues)
@@ -92,14 +110,9 @@ const emit = (
   message: string,
   path: LinkedPath,
   order: number,
-  extra: { operator?: string; fragment?: string; parameter?: string; suggestion?: string } = {}
+  extra?: IssueExtra
 ) => {
-  const issue: Issue = { severity, code, message, path: toNodePath(path) }
-  if (extra.operator !== undefined) issue.operator = extra.operator
-  if (extra.fragment !== undefined) issue.fragment = extra.fragment
-  if (extra.parameter !== undefined) issue.parameter = extra.parameter
-  if (extra.suggestion !== undefined) issue.suggestion = extra.suggestion
-  state.artifact.issues.push({ issue, order })
+  pushIssue(state.artifact.issues, severity, code, message, path, order, extra)
 }
 
 // ── The visit ───────────────────────────────────────────────────────
@@ -142,14 +155,34 @@ const visit = (state: CheckState, node: CompiledNode) => {
   return node satisfies never
 }
 
-const isCompiledNode = (value: object): value is CompiledNode =>
-  'kind' in value && typeof (value as { kind: unknown }).kind === 'string'
+/**
+ * A node's fallback, under a frame of its own: `$error` inside resolves to
+ * the innermost one, so a fallback inside a fallback rebinds it. Its node
+ * pushed its vars first, and their definitions were visited then, outside
+ * this frame — they feed the node's parameters too, which run before
+ * anything has failed.
+ *
+ * A fallback that reads its own `$error` is marked on its node, which the
+ * runtime reads: such a fallback never fails, its node giving `null`
+ * instead.
+ */
+const visitFallback = (
+  state: CheckState,
+  owner: OperatorNode | FragmentCallNode,
+  fallback: CompiledNode
+) => {
+  const frame: FallbackFrame = { referenced: false }
+  state.fallbackFrames.push(frame)
+  visit(state, fallback)
+  state.fallbackFrames.pop()
+  if (frame.referenced) owner.fallbackReadsError = true
+}
 
 // ── Operator nodes: the metadata checks ─────────────────────────────
 
 const visitOperator = (state: CheckState, node: OperatorNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const definition = node.entry.definition
   const owner = operatorOwner(node)
@@ -255,6 +288,7 @@ const checkSuppliedParam = (
   supplied: CompiledNode,
   nullReplaced = false
 ) => {
+  const extra = { ...owner.extra, parameter: name }
   // An element-addressable parameter has no whole value — not here and not
   // at runtime, since the engine never assembles one. Its arity is known
   // statically all the same, so the `length` constraint is checked against
@@ -270,7 +304,7 @@ const checkSuppliedParam = (
         `'${owner.label}.${name}': expected ${length} element${length === 1 ? '' : 's'}, received ${supplied.nodes.length}`,
         supplied.path,
         supplied.order,
-        { ...owner.extra, parameter: name }
+        extra
       )
     return
   }
@@ -284,7 +318,7 @@ const checkSuppliedParam = (
       `'${owner.label}.${name}' is structural — it requires a literal value`,
       supplied.path,
       supplied.order,
-      { ...owner.extra, parameter: name }
+      extra
     )
     return
   }
@@ -300,7 +334,7 @@ const checkSuppliedParam = (
         : `${at}: ${mismatch.reason}`,
       supplied.path,
       supplied.order,
-      { ...owner.extra, parameter: name }
+      extra
     )
 
   // A fallback stands in for its node's value at the same position, so it
@@ -324,7 +358,7 @@ const checkSuppliedParam = (
         `this fallback can never satisfy ${at}: ${unfit.reason}`,
         fallback.path,
         fallback.order,
-        { ...owner.extra, parameter: name }
+        extra
       )
     node = fallback
   }
@@ -332,9 +366,9 @@ const checkSuppliedParam = (
 
 /**
  * An operator node with no fallback of its own falls back to its operator's
- * instance-wide one from `operatorDefaults`, which the runtime returns as
- * it is, never evaluated (src/evaluate/operator.ts). It has no place in the
- * expression, so a mismatch is reported on the node.
+ * instance-wide one from `operatorDefaults`, which is static: the runtime
+ * fills it in, never evaluating it (src/evaluate/operator.ts). It has no
+ * place in the expression, so a mismatch is reported on the node.
  */
 const checkInstanceFallback = (
   state: CheckState,
@@ -344,9 +378,9 @@ const checkInstanceFallback = (
   node: OperatorNode,
   nullReplaced: boolean
 ) => {
-  const defaults = node.entry.hostDefaults
-  if (defaults === undefined || !Object.hasOwn(defaults, 'fallback')) return
-  const unfit = valueMismatch(declared, defaults.fallback, nullReplaced)
+  const fallback = node.entry.defaultFallback
+  if (fallback === undefined) return
+  const unfit = staticMismatch(declared, fallback, nullReplaced)
   if (unfit !== undefined)
     emit(
       state,
@@ -362,8 +396,9 @@ const checkInstanceFallback = (
 /**
  * Why a value-producing node can never satisfy a receiving declaration, or
  * undefined when it can, or when nothing is known before it runs (a
- * reference, a call to an unknown fragment). It serves the node supplied at
- * a position and each fallback standing in for it there alike.
+ * reference, but for what `$error` is known to hold, or a call to an
+ * unknown fragment). It serves the node supplied at a position and each
+ * fallback standing in for it there alike.
  */
 const findMismatch = (
   declared: ReceivingDeclaration,
@@ -390,18 +425,70 @@ const findMismatch = (
     // A container holding something computed is still an array or an
     // object, so it is checked as a literal one would be, with the same
     // message
-    case 'skeleton': {
-      const typed = checkType(Array.isArray(node.skeleton) ? [] : {}, declared.type)
-      if (!typed.ok)
-        return {
-          code: ErrorCodes.typeCheck,
-          reason: `expected ${typed.expected}, received ${typed.actual}`,
-        }
-      return
-    }
+    case 'skeleton':
+      return sampleMismatch(declared, Array.isArray(node.skeleton) ? [] : {})
+    case 'reference':
+      return node.namespace === 'error' ? readMismatch(declared, node.segments) : undefined
     default:
       return
   }
+}
+
+/**
+ * Why a static fallback can never satisfy a receiving declaration, checked
+ * as `findMismatch` checks the compiled form it stands for: a constant by
+ * its value, a read of `$error` by what that holds, and plain data around
+ * reads by whether it is an array or an object.
+ */
+const staticMismatch = (
+  declared: ReceivingDeclaration,
+  { value, reads }: StaticFallback,
+  nullReplaced: boolean
+): { code: string; reason: string } | undefined => {
+  if (reads === undefined) return valueMismatch(declared, value, nullReplaced)
+  if (reads[0].at.length === 0) return readMismatch(declared, reads[0].segments)
+  return sampleMismatch(declared, Array.isArray(value) ? [] : {})
+}
+
+/** Why what a read of `$error` holds can never satisfy the declaration. */
+const readMismatch = (
+  declared: ReceivingDeclaration,
+  segments: PathSegment[]
+): { code: string; reason: string } | undefined => {
+  const type = errorReadType(segments)
+  if (type === undefined || typesIntersect(type, declared.type)) return
+  return sampleMismatch(declared, SAMPLES[type])
+}
+
+/** Why a value of this one's type can never satisfy the declaration. */
+const sampleMismatch = (
+  declared: ReceivingDeclaration,
+  sample: unknown
+): { code: string; reason: string } | undefined => {
+  const typed = checkType(sample, declared.type)
+  if (!typed.ok)
+    return {
+      code: ErrorCodes.typeCheck,
+      reason: `expected ${typed.expected}, received ${typed.actual}`,
+    }
+  return
+}
+
+/** A value of each type an `$error` read can be known to have. */
+const SAMPLES = { object: {}, array: [], string: '', number: 0, boolean: false }
+
+/**
+ * The type an `$error` read is known to have: a bare `$error` is always an
+ * object, and a field is its type in `FallbackError`'s shape where that is
+ * one type. Anything else is unknown. An optional field may be absent, so
+ * read as null, which an optional parameter may take as unset.
+ */
+const errorReadType = (segments: PathSegment[]): keyof typeof SAMPLES | undefined => {
+  const [field, ...rest] = segments
+  if (field === undefined) return 'object'
+  if (rest.length > 0 || !Object.hasOwn(FALLBACK_ERROR_FIELDS, field)) return undefined
+  const type = FALLBACK_ERROR_FIELDS[field as keyof typeof FALLBACK_ERROR_FIELDS]
+  return typeof type === 'string' ? type : undefined
 }
 
 /**
@@ -409,33 +496,20 @@ const findMismatch = (
  * moment of the one type table. Null policy runs BEFORE the type check,
  * mirroring the runtime layers: a null that a holder replaces, or a null at
  * an optional parameter whose type excludes null (unset, so the default
- * applies), never reaches the type check; and null elements under a
- * declared elementNullPolicy are the policy's business, not the
- * constraints'.
+ * applies), never reaches the type check. Past it, the constraints follow
+ * the rule every other check of a value follows (`checkDeclared`).
  */
 const valueMismatch = (
   declared: ReceivingDeclaration,
   value: unknown,
   nullReplaced: boolean
 ): { code: string; reason: string } | undefined => {
-  if (value === null && (nullReplaced || (!declared.required && !typeNamesNull(declared.type))))
-    return
-  const typed = checkType(value, declared.type)
-  if (!typed.ok)
+  if (value === null && (nullReplaced || nullMeansUnset(declared))) return
+  const checked = checkDeclared(value, declared)
+  if (!checked.ok)
     return {
       code: ErrorCodes.typeCheck,
-      reason: `expected ${typed.expected}, received ${typed.actual}`,
-    }
-  if (declared.constraints === undefined) return
-  const constrained = checkConstraintsUnderPolicy(
-    value,
-    declared.constraints,
-    declared.elementNullPolicy !== undefined
-  )
-  if (!constrained.ok)
-    return {
-      code: ErrorCodes.typeCheck,
-      reason: `expected ${constrained.expected}, received ${constrained.actual}`,
+      reason: `expected ${checked.expected}, received ${checked.actual}`,
     }
   return
 }
@@ -460,11 +534,14 @@ const operatorOwner = (node: OperatorNode) => ({
  */
 const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
   const frame = pushVars(state, node.vars, node.path)
-  if (node.fallback !== undefined) visit(state, node.fallback)
+  if (node.fallback !== undefined) visitFallback(state, node, node.fallback)
 
   const declarations = node.entry?.parameters
+  // A dynamic call has one node, which computes the whole map at runtime
   const supplied =
-    node.parameters !== undefined && !isCompiledNode(node.parameters) ? node.parameters : undefined
+    node.argumentsMode === 'static'
+      ? (node.parameters as Record<string, CompiledNode> | undefined)
+      : undefined
 
   // An unregistered name already raised unknown-fragment; there is nothing
   // to check a call against
@@ -497,7 +574,7 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
             state,
             'error',
             ErrorCodes.unknownNodeKey,
-            `fragment '${node.name}' declares no parameter '${name}'${suggestion ? ` — did you mean '${suggestion}'?` : ''}`,
+            `fragment '${node.name}' declares no parameter '${name}'${didYouMean(suggestion)}`,
             argument.path,
             argument.order,
             { parameter: name, suggestion }
@@ -506,10 +583,8 @@ const visitFragmentCall = (state: CheckState, node: FragmentCallNode) => {
       }
   }
 
-  if (node.parameters !== undefined) {
-    if (isCompiledNode(node.parameters)) visit(state, node.parameters)
-    else for (const key in node.parameters) visit(state, node.parameters[key])
-  }
+  if (supplied !== undefined) for (const key in supplied) visit(state, supplied[key])
+  else if (node.parameters !== undefined) visit(state, node.parameters as CompiledNode)
   popVars(state, frame)
 }
 
@@ -550,10 +625,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
       finding.message,
       target?.path ?? node.path,
       node.order,
-      {
-        operator: node.name,
-        ...(finding.parameter !== undefined ? { parameter: finding.parameter } : {}),
-      }
+      { operator: node.name, parameter: finding.parameter }
     )
   }
 }
@@ -561,7 +633,8 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 // ── References: scope resolution ────────────────────────────────────
 
 const visitReference = (state: CheckState, node: ReferenceNode) => {
-  switch (node.namespace) {
+  const { namespace } = node
+  switch (namespace) {
     case 'data':
       return
     case 'vars':
@@ -572,9 +645,15 @@ const visitReference = (state: CheckState, node: ReferenceNode) => {
       return
     case 'element':
     case 'index':
-      resolveBinding(state, node, node.namespace)
+      resolveBinding(state, node, namespace)
+      return
+    case 'error':
+      resolveError(state, node)
       return
   }
+  // Exhaustive by construction: a namespace missing here would skip its
+  // scope check silently
+  return namespace satisfies never
 }
 
 const resolveVar = (state: CheckState, node: ReferenceNode) => {
@@ -607,8 +686,15 @@ const resolveVar = (state: CheckState, node: ReferenceNode) => {
   )
 }
 
+/**
+ * An unresolved reference names the parameter it reads (its first key) as
+ * `parameter`, where it names one, and an undeclared one carries the
+ * nearest declared name as `suggestion`, as a call's unknown argument does.
+ */
 const resolveParam = (state: CheckState, node: ReferenceNode) => {
   const declared = state.context.fragmentParams
+  const first = node.segments[0]
+  const parameter = typeof first === 'string' ? first : undefined
   if (declared === undefined) {
     emit(
       state,
@@ -616,23 +702,25 @@ const resolveParam = (state: CheckState, node: ReferenceNode) => {
       ErrorCodes.unresolvedParam,
       `'${node.raw}': $params is only available inside a fragment body`,
       node.path,
-      node.order
+      node.order,
+      { parameter }
     )
     return
   }
   // Bare `$params` is the declared parameters resolved — legal, because
   // the set it names is declared, finite and local
   if (node.segments.length === 0) return
-  const first = node.segments[0]
-  if (typeof first !== 'string' || !declared.has(first))
-    emit(
-      state,
-      'error',
-      ErrorCodes.unresolvedParam,
-      `'${node.raw}': the fragment declares no parameter '${String(first)}'`,
-      node.path,
-      node.order
-    )
+  if (parameter !== undefined && declared.has(parameter)) return
+  const suggestion = parameter === undefined ? undefined : nearestName(parameter, declared)
+  emit(
+    state,
+    'error',
+    ErrorCodes.unresolvedParam,
+    `'${node.raw}': the fragment declares no parameter '${String(first)}'${didYouMean(suggestion)}`,
+    node.path,
+    node.order,
+    { parameter, suggestion }
+  )
 }
 
 /**
@@ -648,11 +736,30 @@ const resolveBinding = (state: CheckState, node: ReferenceNode, namespace: 'elem
       return
     }
   }
+  if (node.scopeUnknown) return
   emit(
     state,
     'error',
     ErrorCodes.unresolvedBinding,
     `'${node.raw}' resolves against no enclosing iterator here`,
+    node.path,
+    node.order
+  )
+}
+
+/** `$error` resolves to the innermost enclosing fallback's catch. */
+const resolveError = (state: CheckState, node: ReferenceNode) => {
+  const frame = state.fallbackFrames.at(-1)
+  if (frame !== undefined) {
+    frame.referenced = true
+    return
+  }
+  if (node.scopeUnknown) return
+  emit(
+    state,
+    'error',
+    ErrorCodes.unresolvedBinding,
+    `'${node.raw}' is only available inside the fallback of an operator node or fragment call`,
     node.path,
     node.order
   )
@@ -727,39 +834,18 @@ const detectCycles = (state: CheckState, frame: VarsFrame) => {
   // others. A var that only leads into a cycle is not a member and gets no
   // issue: the issue's path is where the dependency has to be broken.
   const declarationIndex = new Map([...frame.names.keys()].map((name, i) => [name, i]))
-  const stack: string[] = []
-  const visiting = new Set<string>()
-  const done = new Set<string>()
-  const reported = new Set<string>()
-
-  const report = (members: string[]) => {
-    const ordered = [...members].sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
-    const key = ordered.join('\0')
-    if (reported.has(key)) return
-    reported.add(key)
-    const quoted = ordered.map((name) => `'${name}'`)
-    const message =
-      quoted.length === 1
-        ? `${quoted[0]} depends on itself`
-        : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]} form a vars cycle — a var may not depend on itself`
-    const entry = frame.names.get(ordered[0])!
-    emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
-  }
-
-  const dfs = (name: string) => {
-    if (done.has(name)) return
-    if (visiting.has(name)) {
-      // A back edge: the stack from this var onward is exactly the cycle
-      report(stack.slice(stack.indexOf(name)))
-      return
+  findCycles(
+    frame.names.keys(),
+    (name) => frame.edges.get(name),
+    (members) => {
+      const ordered = members.sort((a, b) => declarationIndex.get(a)! - declarationIndex.get(b)!)
+      const quoted = ordered.map((name) => `'${name}'`)
+      const message =
+        quoted.length === 1
+          ? `${quoted[0]} depends on itself`
+          : `${listing(quoted)} form a vars cycle — a var may not depend on itself`
+      const entry = frame.names.get(ordered[0])!
+      emit(state, 'error', ErrorCodes.varCycle, message, entry.declaredAt, entry.order)
     }
-    visiting.add(name)
-    stack.push(name)
-    for (const target of frame.edges.get(name) ?? []) dfs(target)
-    stack.pop()
-    visiting.delete(name)
-    done.add(name)
-  }
-
-  for (const name of frame.names.keys()) dfs(name)
+  )
 }

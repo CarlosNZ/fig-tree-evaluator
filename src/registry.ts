@@ -21,14 +21,14 @@
  *
  * Internal machinery behind `new FigTree()` — not barrel surface.
  */
-import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import type { Issue } from './issues'
+import { issuesError, type Issue } from './issues'
 import { isPlainObject } from './utils'
-import { checkConstraints, checkType } from './typeCheck'
+import { checkDeclaredConstraints, checkType } from './typeCheck'
 import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
 import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
-import { probeConstant } from './compile/probe'
+import { probeStaticFallback } from './compile/probe'
+import type { StaticFallback } from './compile/artifact'
 
 type Path = (string | number)[]
 
@@ -40,6 +40,12 @@ export interface RegistryEntry {
    * Absent when `operatorDefaults` has no entry for it.
    */
   hostDefaults?: Readonly<Record<string, unknown>>
+  /**
+   * The `fallback` modifier default as the static fallback it is: what a
+   * node with none of its own fills and returns, never evaluating it, and
+   * what shielding splices. `hostDefaults.fallback` keeps it as authored.
+   */
+  defaultFallback?: StaticFallback
 }
 
 /**
@@ -73,20 +79,6 @@ export interface RegistryInput {
 
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
 const MODIFIER_KEYS = ['fallback', 'noCache']
-
-const throwOptionsError = (issues: Issue[]): never => {
-  const [first] = issues
-  const more = issues.length - 1
-  const message =
-    more > 0 ? `${first.message} (+ ${more} more issue${more === 1 ? '' : 's'})` : first.message
-  throw new FigTreeError({
-    code: ErrorCodes.invalidOptions,
-    message,
-    path: first.path,
-    ...(first.operator !== undefined ? { operator: first.operator } : {}),
-    issues,
-  })
-}
 
 export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
   const issues: Issue[] = []
@@ -182,7 +174,7 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
   // its shielding precompute reads the resolved `operatorDefaults`
   registerFragments(input.fragments, registry, (name, path) => claim(name, path, name), addIssue)
 
-  if (issues.length > 0) throwOptionsError(issues)
+  if (issues.length > 0) throw issuesError(ErrorCodes.invalidOptions, issues, issues[0].operator)
   return registry
 }
 
@@ -226,22 +218,26 @@ const validateOperatorDefaults = (
     }
 
     let valid = true
+    let fallback: StaticFallback | undefined
     for (const [key, value] of Object.entries(defaults)) {
       const keyPath: Path = [...path, key]
       if (MODIFIER_KEYS.includes(key)) {
-        // fallback: a constant, since the runtime returns it as written
+        // fallback: static, since the runtime fills in its `$error` reads
         // and never evaluates it (src/evaluate/operator.ts), so a value the
         // compiler would evaluate could only mislead; noCache: the literal
         // true, on an operator that caches at all — it only ever turns
         // caching off
-        if (key === 'fallback' && !probeConstant(value).constant) {
-          addIssue(
-            ErrorCodes.invalidOptions,
-            `the default fallback for '${operatorName}' must be a constant value — it is returned as written, never evaluated`,
-            keyPath,
-            operatorName
-          )
-          valid = false
+        if (key === 'fallback') {
+          fallback = probeStaticFallback(value)
+          if (fallback === undefined) {
+            addIssue(
+              ErrorCodes.invalidOptions,
+              `the default fallback for '${operatorName}' must be static, built only from literals and $error reads — it is never evaluated`,
+              keyPath,
+              operatorName
+            )
+            valid = false
+          }
         }
         if (key === 'noCache') {
           if (value !== true) {
@@ -299,20 +295,21 @@ const validateOperatorDefaults = (
         valid = false
         continue
       }
-      if (declaration.constraints !== undefined) {
-        const constrained = checkConstraints(value, declaration.constraints)
-        if (!constrained.ok) {
-          addIssue(
-            ErrorCodes.typeCheck,
-            `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
-            keyPath,
-            operatorName
-          )
-          valid = false
-        }
+      const constrained = checkDeclaredConstraints(value, declaration)
+      if (!constrained.ok) {
+        addIssue(
+          ErrorCodes.typeCheck,
+          `the default for '${operatorName}.${key}' violates its declared constraints: expected ${constrained.expected}, got ${constrained.actual}`,
+          keyPath,
+          operatorName
+        )
+        valid = false
       }
     }
-    if (valid) entry.hostDefaults = Object.freeze({ ...defaults })
+    if (valid) {
+      entry.hostDefaults = Object.freeze({ ...defaults })
+      if (fallback !== undefined) entry.defaultFallback = fallback
+    }
   }
 }
 

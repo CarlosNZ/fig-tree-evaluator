@@ -17,7 +17,6 @@ export const ifOp = () =>
     name: 'if',
     alias: '?',
     category: 'other',
-    description: 'Conditional branching',
     parameters: {
       condition: { type: 'any', truthiness: true },
       then: { type: 'any', evaluation: 'lazy' },
@@ -33,7 +32,6 @@ export const notOp = () =>
     name: 'not',
     alias: '!',
     category: 'other',
-    description: 'Boolean negation',
     parameters: { value: { type: 'any', truthiness: true } },
     positionalParams: ['value'],
     returns: 'boolean',
@@ -46,7 +44,6 @@ export const plusOp = () =>
     name: 'plus',
     alias: '+',
     category: 'other',
-    description: 'Add things together',
     parameters: {
       values: { type: 'array' },
       expect: { type: { literal: ['number', 'string', 'array'] }, required: false },
@@ -61,7 +58,6 @@ export const formatOp = () =>
   defineOperator({
     name: 'format',
     category: 'other',
-    description: 'Render a template with substitutions',
     parameters: {
       template: { type: 'string' },
       substitutions: { type: 'array', required: false },
@@ -76,7 +72,6 @@ export const clampOp = () =>
   defineOperator({
     name: 'clamp',
     category: 'other',
-    description: 'Constrain a number to a range',
     parameters: {
       value: { type: ['number', 'null'] },
       min: { type: 'number', default: 0 },
@@ -92,7 +87,6 @@ export const httpOp = () =>
   defineOperator({
     name: 'http',
     category: 'other',
-    description: 'HTTP request',
     parameters: {
       url: { type: 'string' },
       query: { type: 'object', required: false },
@@ -109,7 +103,6 @@ export const mapOp = () =>
   defineOperator({
     name: 'map',
     category: 'other',
-    description: 'Transform each element of an array',
     parameters: {
       input: { type: 'array' },
       each: { type: 'any', evaluation: 'perElement', over: 'input' },
@@ -129,7 +122,6 @@ export const greaterThanOp = () =>
     name: 'greaterThan',
     alias: '>',
     category: 'other',
-    description: 'Strict ordering comparison',
     parameters: {
       values: {
         type: 'array',
@@ -147,7 +139,6 @@ export const strictNumbersOp = () =>
   defineOperator({
     name: 'strictNumbers',
     category: 'other',
-    description: 'Homogeneous numbers, nulls not admitted per element',
     parameters: {
       values: { type: 'array', constraints: { homogeneous: ['number'] } },
     },
@@ -165,7 +156,6 @@ export const hookOp = () =>
   defineOperator({
     name: 'pattern',
     category: 'other',
-    description: 'Validate-hook holder',
     parameters: {
       pattern: { type: 'string' },
       flags: { type: 'string', required: false },
@@ -203,7 +193,6 @@ export const orOp = () =>
   defineOperator({
     name: 'or',
     category: 'other',
-    description: 'Boolean disjunction, resolved as operands settle',
     parameters: { values: { type: 'array', truthiness: true, evaluation: 'race' } },
     positionalParams: ['...values'],
     returns: 'boolean',
@@ -215,7 +204,6 @@ export const firstOfOp = () =>
   defineOperator({
     name: 'firstOf',
     category: 'other',
-    description: 'The first candidate that is not null',
     parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
     positionalParams: ['...values'],
     evaluate: noop,
@@ -226,7 +214,6 @@ export const pickOp = () =>
   defineOperator({
     name: 'pick',
     category: 'other',
-    description: 'A leading position ahead of an element-addressable rest slice',
     parameters: {
       label: { type: 'string' },
       values: { type: 'array', evaluation: 'lazyElements' },
@@ -240,7 +227,6 @@ export const matchOp = () =>
   defineOperator({
     name: 'match',
     category: 'other',
-    description: 'Dispatch on a value',
     parameters: {
       value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
       branches: { type: 'object', evaluation: 'lazyEntries' },
@@ -255,7 +241,6 @@ export const getOp = () =>
   defineOperator({
     name: 'get',
     category: 'other',
-    description: 'Read a path out of the evaluation data',
     parameters: {
       path: { type: ['string', 'array', 'null'] },
       from: { type: 'any', nullPolicy: 'value', default: EvaluationData },

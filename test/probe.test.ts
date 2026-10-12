@@ -7,8 +7,9 @@
  * compiler would compile the input, error-free, to a constant node holding
  * the input itself — no normalization (`//`, `vars`, `undefined`), no holes.
  */
-import { compileExpression } from '../src/compile'
-import { probeConstant } from '../src/compile/probe'
+import { isDeepStrictEqual } from 'node:util'
+import { compileExpression, staticFallbackOf } from '../src/compile'
+import { probeConstant, probeStaticFallback } from '../src/compile/probe'
 import { makeCompileRegistry } from './fixtures/compileRegistry'
 
 const registry = makeCompileRegistry()
@@ -77,6 +78,43 @@ describe('depth tracking and the ceiling', () => {
   })
 })
 
+describe('the static-fallback variant: constant apart from $error reads', () => {
+  test('a constant has no reads, and keeps its identity', () => {
+    const value = { a: [1, 'two'] }
+    expect(probeStaticFallback(value)).toEqual({ value })
+    expect(probeStaticFallback(value)!.value).toBe(value)
+  })
+
+  test('each read is recorded where it sits, through the alias', () => {
+    expect(probeStaticFallback('$error')).toEqual({
+      value: '$error',
+      reads: [{ at: [], segments: [] }],
+    })
+    const value = { why: '$err.message', at: [1, '$error.path[0]'] }
+    expect(probeStaticFallback(value)).toEqual({
+      value,
+      reads: [
+        { at: ['why'], segments: ['message'] },
+        { at: ['at', 1], segments: ['path', 0] },
+      ],
+    })
+  })
+
+  test.each([
+    ['another namespace', { why: '$error.message', also: '$data.x' }],
+    ['an invalid read', '$error.path['],
+    ['a node reading it', { $buildString: ['{{$error.message}}'] }],
+    ['a comment beside it', { '//': 'note', why: '$error' }],
+    ['a vars block', { vars: { a: 1 }, why: '$error' }],
+  ])('%s is not one', (_label, value) => {
+    expect(probeStaticFallback(value)).toBeUndefined()
+  })
+
+  test('the plain probe still bails at a read', () => {
+    expect(probe('$error').constant).toBe(false)
+  })
+})
+
 // ── The property: probe(x) ⇔ the compiler compiles x to a constant node whose
 // value IS x ──────────────────────────────────────────────────────────
 
@@ -126,7 +164,19 @@ const makeRandom = (seed: number) => {
   }
 }
 
-const STRINGS = ['hello', '$data.x', '$d.y[0]', '$flibble', '$vars', 'Hi $data.x', '', '$index']
+const STRINGS = [
+  'hello',
+  '$data.x',
+  '$d.y[0]',
+  '$flibble',
+  '$vars',
+  'Hi $data.x',
+  '',
+  '$index',
+  '$error',
+  '$err.message',
+  '$error.path[0]',
+]
 const KEYS = [
   'a',
   'b',
@@ -172,4 +222,24 @@ test('property: probeConstant(x).constant === (compile(x) is an error-free const
     (sample) => probe(sample).constant !== isIdentityConstant(sample)
   )
   expect(disagreements).toEqual([])
+})
+
+/** The static fallback the compiler makes of x, where its value is x. */
+const compiledStaticFallback = (input: unknown) => {
+  const artifact = compile(input)
+  if (artifact.hasErrors) return undefined
+  const fallback = staticFallbackOf(artifact.root)
+  return fallback !== undefined && isDeepStrictEqual(fallback.value, input) ? fallback : undefined
+}
+
+test('property: probeStaticFallback(x) === the static fallback compile(x) is, holding x', () => {
+  const rand = makeRandom(20261008)
+  const samples = [...corpus, ...Array.from({ length: 600 }, () => randomValue(rand, 0))]
+  const disagreements = samples.filter(
+    (sample) => !isDeepStrictEqual(probeStaticFallback(sample), compiledStaticFallback(sample))
+  )
+  expect(disagreements).toEqual([])
+  // The generator reaches reads, plain data around them included
+  const read = samples.filter((sample) => probeStaticFallback(sample)?.reads !== undefined)
+  expect(read.some((sample) => typeof sample === 'object')).toBe(true)
 })

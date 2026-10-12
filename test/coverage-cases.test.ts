@@ -65,7 +65,6 @@ const ioDefaults = {
 const twice = defineOperator({
   name: 'twice',
   category: 'math',
-  description: 'Double a number',
   parameters: { value: { type: 'number' } },
   positionalParams: ['value'],
   returns: 'number',
@@ -75,7 +74,6 @@ const twice = defineOperator({
 const shaky = defineOperator({
   name: 'shaky',
   category: 'string',
-  description: 'Fails on an empty string',
   parameters: { value: { type: 'string' } },
   positionalParams: ['value'],
   returns: 'string',
@@ -88,7 +86,6 @@ const shaky = defineOperator({
 const picky = defineOperator({
   name: 'picky',
   category: 'string',
-  description: 'Fails on an empty string, and says so',
   parameters: { value: { type: 'string' } },
   positionalParams: ['value'],
   returns: 'string',
@@ -102,7 +99,6 @@ const picky = defineOperator({
 const nap = defineOperator({
   name: 'nap',
   category: 'other',
-  description: 'Hands its value back after a short wait',
   parameters: { value: { type: 'number' } },
   positionalParams: ['value'],
   returns: 'number',

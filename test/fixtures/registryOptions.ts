@@ -17,7 +17,6 @@ export const makeOp = (name: string, alias?: string): ValidatedOperatorDefinitio
     name,
     ...(alias !== undefined ? { alias } : {}),
     category: 'other',
-    description: `Test operator ${name}`,
     parameters: {},
     evaluate: () => null,
   })
@@ -32,7 +31,6 @@ export const equalLike = (): ValidatedOperatorDefinition =>
     name: 'equal',
     alias: '=',
     category: 'other',
-    description: 'Equality comparison',
     parameters: {
       values: { type: 'array' },
       caseInsensitive: { type: 'boolean', default: false },
@@ -47,7 +45,6 @@ export const fetchLike = (): ValidatedOperatorDefinition =>
   defineOperator({
     name: 'fetch',
     category: 'other',
-    description: 'A caching operator',
     parameters: { url: { type: 'string' } },
     cache: true,
     evaluate: ({ url }) => url,

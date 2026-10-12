@@ -74,6 +74,7 @@ describe('the v2 → v3 method disposition, as a checklist', () => {
     'getDependencies',
     'isEvaluable',
     'updateOptions',
+    'with',
     'getOptions',
     'getOperators',
     'getFragments',

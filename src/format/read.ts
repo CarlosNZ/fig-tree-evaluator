@@ -20,7 +20,7 @@ import {
 import { recognizeReference } from '../compile/references'
 import { ErrorCodes } from '../errorCodes'
 import { RESERVED_NODE_KEYS } from '../names'
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 import type { Registry } from '../formatTypes'
 
 /** What the conversions know of an operator: its names and positions. */

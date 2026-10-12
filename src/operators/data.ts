@@ -19,27 +19,19 @@ import { GET_POSITIONAL } from './getShape'
 export const get = declareOperator({
   name: 'get',
   category: 'data',
-  description:
-    'Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference',
   parameters: {
     path: {
       type: ['string', 'array', 'null'],
-      description:
-        'Dot and bracket segments, quoted keys and the [*] projection — or an array of segments, taken verbatim',
     },
     from: {
       type: 'any',
       nullPolicy: 'value',
       default: EvaluationData,
-      description:
-        'The source the path reads: a value, or a bare namespace ($data, $vars, $params, $element) whose var or parameter name opens the path — replace, never merge; a null source misses every path',
     },
     default: {
       type: 'any',
       required: false,
       evaluation: 'lazy',
-      description:
-        'The answer when the path is missing — a stored null passes through unchanged (firstOf replaces one); supplying it also opts out of strictDataPaths',
     },
   },
   positionalParams: GET_POSITIONAL,
@@ -47,8 +39,8 @@ export const get = declareOperator({
   validate: ({ path }) => pathFindings(path, 'path'),
   evaluate: ({ path, from, default: missingValue }, context) => {
     const result = resolvePath(from, toSegments(path))
-    // A stored `undefined` is not a value — JSON semantics at the boundary
-    if (result.found) return result.value === undefined ? null : result.value
+    // A stored `undefined` is not a value: the result boundary makes it null
+    if (result.found) return result.value
 
     // Absence, in the layered order: the per-site answer first, because
     // supplying one IS the strictness opt-out ("default: null" reads "give
@@ -69,8 +61,6 @@ const renderPath = (path: string | unknown[]): string =>
 export const buildObject = declareOperator({
   name: 'buildObject',
   category: 'data',
-  description:
-    'Assemble an object from computed key/value entries — for keys known only at runtime',
   parameters: {
     entries: {
       type: 'array',
@@ -83,7 +73,6 @@ export const buildObject = declareOperator({
           value: { type: 'any' },
         },
       },
-      description: 'Objects with a "key" and a "value"; a null value keeps its key',
     },
   },
   positionalParams: ['...entries'],

@@ -15,35 +15,31 @@
  * from these checks, because the package's own definitions are built
  * without them: a bundle that never imports this module never carries them.
  */
-import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import type { Issue } from './issues'
+import { issuesError, type Issue } from './issues'
 import { isPlainObject } from './utils'
 import {
-  checkConstraints,
+  checkDeclaredConstraints,
   checkType,
   isExpectedType,
   typeNamesNull,
   validateConstraintsShape,
   type ExpectedType,
 } from './typeCheck'
-import { checkNameLegality, RESERVED_NODE_KEYS, RESERVED_REGISTRATION_NAMES } from './names'
+import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from './names'
 import {
   EvaluationData,
   OPERATOR_CATEGORIES,
   isValidatedOperator,
+  type CompiledNullPolicy,
+  type NullPolicyValue,
   type OperatorDefinition,
   type ParameterDeclaration,
   type ParameterDeclarations,
   type ValidatedOperatorDefinition,
 } from './operatorDefinition'
-import {
-  NULL_POLICY_VALUES,
-  REST_PREFIX,
-  assembleOperator,
-  compileNullPolicies,
-  type Path,
-} from './buildOperator'
+import { REST_PREFIX, assembleOperator, type Path } from './buildOperator'
+import { isLiteralType } from './typeIntersection'
 import { checkAnalysis } from './analysisCheck'
 
 /**
@@ -72,34 +68,16 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
  */
 const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
 
+const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
+
+type ReportIssue = (code: string, message: string, path: Path, parameter?: string) => void
+
 /** Does a declared type admit an array (the `over` target requirement)? */
-const typeAdmitsArray = (type: ExpectedType): boolean => {
-  if (type === 'array' || type === 'any') return true
-  if (Array.isArray(type)) return type.includes('array') || type.includes('any')
-  return false
-}
+const typeAdmitsArray = (type: ExpectedType): boolean => checkType([], type).ok
 
 /** Is a declared type a container (admits per-element/per-value policies)? */
-const typeIsContainer = (type: ExpectedType): boolean => {
-  if (type === 'array' || type === 'object' || type === 'any') return true
-  if (Array.isArray(type))
-    return type.includes('array') || type.includes('object') || type.includes('any')
-  return false
-}
-
-const throwDefinitionError = (issues: Issue[], operator?: string): never => {
-  const [first] = issues
-  const more = issues.length - 1
-  const message =
-    more > 0 ? `${first.message} (+ ${more} more issue${more === 1 ? '' : 's'})` : first.message
-  throw new FigTreeError({
-    code: ErrorCodes.invalidDefinition,
-    message,
-    path: first.path,
-    ...(operator !== undefined ? { operator } : {}),
-    issues,
-  })
-}
+const typeIsContainer = (type: ExpectedType): boolean =>
+  typeAdmitsArray(type) || checkType({}, type).ok
 
 /**
  * Overloads rather than one signature over a union, because a union
@@ -141,16 +119,12 @@ export function defineOperator(
   // ── Structural gate — without these, nothing else can be checked ──────
   if (!isPlainObject(definition)) {
     addIssue(ErrorCodes.invalidDefinition, 'a definition must be a plain object', [])
-    throwDefinitionError(issues)
+    throw issuesError(ErrorCodes.invalidDefinition, issues)
   }
   const def = definition as unknown as OperatorDefinition & Record<string, unknown>
 
   if (typeof def.name !== 'string')
     addIssue(ErrorCodes.invalidDefinition, "'name' is required and must be a string", ['name'])
-  if (typeof def.description !== 'string' || def.description === '')
-    addIssue(ErrorCodes.invalidDefinition, "'description' is required and must be non-empty", [
-      'description',
-    ])
   if (!isPlainObject(def.parameters))
     addIssue(
       ErrorCodes.invalidDefinition,
@@ -161,7 +135,7 @@ export function defineOperator(
     addIssue(ErrorCodes.invalidDefinition, "'evaluate' is required and must be a function", [
       'evaluate',
     ])
-  if (issues.length > 0) throwDefinitionError(issues, operator)
+  if (issues.length > 0) throw issuesError(ErrorCodes.invalidDefinition, issues, operator)
 
   // ── Definition-level fields — shape checks ────────────────────────────
   // `category` is required but is NOT in the gate above: nothing else
@@ -232,7 +206,7 @@ export function defineOperator(
       addIssue(ErrorCodes.invalidName, `'${value}': ${legality.reason}`, path)
       return
     }
-    if (RESERVED_REGISTRATION_NAMES.has(value))
+    if (isReservedRegistrationName(value))
       addIssue(ErrorCodes.reservedName, `'${value}' is a reserved name`, path)
   }
   if (typeof def.name === 'string') checkRegistrationName(def.name, ['name'])
@@ -315,13 +289,6 @@ export function defineOperator(
         at('required'),
         paramName
       )
-    if (d.description !== undefined && typeof d.description !== 'string')
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `'description' must be a string`,
-        at('description'),
-        paramName
-      )
     if (d.metadata !== undefined && !isPlainObject(d.metadata))
       addIssue(
         ErrorCodes.invalidDefinition,
@@ -351,8 +318,8 @@ export function defineOperator(
             at('default'),
             paramName
           )
-        else if (constraintsValid && d.constraints !== undefined) {
-          const constrained = checkConstraints(d.default, d.constraints)
+        else if (constraintsValid) {
+          const constrained = checkDeclaredConstraints(d.default, d)
           if (!constrained.ok)
             addIssue(
               ErrorCodes.typeCheck,
@@ -602,7 +569,72 @@ export function defineOperator(
       addIssue(code, message, path)
     )
 
-  if (issues.length > 0) throwDefinitionError(issues, operator)
+  if (issues.length > 0) throw issuesError(ErrorCodes.invalidDefinition, issues, operator)
 
   return assembleOperator(def, compiledPolicies)
+}
+
+/**
+ * Conditional null policies: exactly one literal-union selector in the
+ * definition, whose members each policy function is enumerated over into a
+ * total table. Called once per definition, so each function runs once per
+ * member; a failure goes to `report` and leaves that parameter uncompiled.
+ * `effectiveTypes` omits any parameter whose declared type is invalid.
+ */
+const compileNullPolicies = (
+  declarations: Record<string, ParameterDeclaration>,
+  effectiveTypes: Record<string, ExpectedType>,
+  report: ReportIssue
+): Map<string, CompiledNullPolicy> => {
+  const literalUnionParams = Object.entries(effectiveTypes)
+    .filter(([, type]) => isLiteralType(type))
+    .map(([name]) => name)
+  const compiledPolicies = new Map<string, CompiledNullPolicy>()
+
+  for (const [paramName, d] of Object.entries(declarations)) {
+    if (typeof d.nullPolicy !== 'function') continue
+    const path: Path = ['parameters', paramName, 'nullPolicy']
+    if (literalUnionParams.length !== 1) {
+      report(
+        ErrorCodes.invalidNullPolicy,
+        `a conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
+        path,
+        paramName
+      )
+      continue
+    }
+    const selector = literalUnionParams[0]
+    const selectorType = effectiveTypes[selector]
+    if (!isLiteralType(selectorType)) continue // unreachable; narrows the type
+    const table: CompiledNullPolicy['table'] = []
+    let compiled = true
+    for (const member of selectorType.literal) {
+      let policy: unknown
+      try {
+        policy = d.nullPolicy(member)
+      } catch (error) {
+        report(
+          ErrorCodes.invalidNullPolicy,
+          `the conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
+          path,
+          paramName
+        )
+        compiled = false
+        break
+      }
+      if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
+        report(
+          ErrorCodes.invalidNullPolicy,
+          `the conditional 'nullPolicy' must return 'propagate' or 'value' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
+          path,
+          paramName
+        )
+        compiled = false
+        break
+      }
+      table.push({ value: member, policy: policy as NullPolicyValue })
+    }
+    if (compiled) compiledPolicies.set(paramName, { selector, table })
+  }
+  return compiledPolicies
 }

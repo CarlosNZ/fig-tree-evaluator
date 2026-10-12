@@ -45,8 +45,9 @@ import type { ResultStore } from '../resultCache'
 import { DeferredScope, EVALUATION_TIMEOUT, deadline, signalScope, type Deadline } from './abort'
 import { createEvaluationContext, type EvaluationContext, type HoleBoundary } from './context'
 import { evaluateNode } from './evaluate'
-import { internalError, killSwitchError } from './internal'
+import { killSwitchError } from './internal'
 import type { TraceNode } from '../trace'
+import { fillFallback } from './reference'
 import { createTraceRecorder, type TraceRecorder } from './trace'
 import type { MaybePromise } from '../utils'
 
@@ -173,11 +174,8 @@ const holeBoundary = (
 ): HoleBoundary => {
   const holes = new Map(artifact.holes.map((hole) => [hole.node, hole]))
   return (run, node) => {
-    const hole = holes.get(node)
-    if (hole === undefined)
-      throw internalError(
-        `the hole boundary was handed the node at ${JSON.stringify(toNodePath(node.path))}, which is not one of the artifact's holes`
-      )
+    // Only the artifact's own holes are ever handed to the boundary
+    const hole = holes.get(node)!
     // `Promise.race` does not unsubscribe the loser, so the expiry
     // handler below runs for EVERY hole when the deadline fires — the
     // ones that already won included, whose returned fallback is simply
@@ -198,12 +196,15 @@ const holeBoundary = (
       expiry.catch((reason) => {
         if (reason !== EVALUATION_TIMEOUT) throw killSwitchError(reason, [])
         if (won) return undefined
-        const value = timeoutFallbackOf(hole)
+        // The timeout is what the fallback caught, which its `$error`
+        // reads, and which trace records
+        const caught = holeTimeout(hole, reason, ms)
+        const value = timeoutFallbackOf(hole, caught)
         // Which holes contributed a real value and which a static
         // fallback is timing-dependent and invisible in the result, so
         // trace is the only channel that can say. It says it as it would
-        // for any caught failure: the timeout is what the fallback caught
-        recorder?.markShielded(hole.node, holeTimeout(hole, reason, ms), value)
+        // for any caught failure
+        recorder?.markShielded(hole.node, caught, value)
         return value
       }),
     ])
@@ -217,8 +218,10 @@ const holeTimeout = (hole: ArtifactHole, reason: unknown, ms: number): FigTreeEr
   return killSwitchError(reason, toNodePath(node.path), { operator, ms })
 }
 
-const timeoutFallbackOf = (hole: ArtifactHole): unknown => {
-  if (hole.timeoutFallback === undefined)
-    throw internalError('a shielded artifact has a hole with no static fallback')
-  return hole.timeoutFallback.value
-}
+/**
+ * A hole is the artifact's own, so outside every fragment body. Only a
+ * shielded artifact times out this way, and each of its holes has a
+ * static fallback.
+ */
+const timeoutFallbackOf = (hole: ArtifactHole, caught: FigTreeError): unknown =>
+  fillFallback(hole.timeoutFallback!, caught, undefined)

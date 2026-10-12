@@ -11,7 +11,7 @@
  * Implements the real `SqlConnection` contract (src/types.ts), so the same
  * conformance suite runs over it and over the bundled wrappers.
  */
-import { OperatorFailure } from '../../src'
+import { sqlFailure } from '../../src'
 import type { SqlConnection, SqlRequest } from '../../src'
 
 export interface MockSqlQuery {
@@ -29,7 +29,7 @@ export interface MockSqlConnectionOptions {
   /** Returned when no key matches. Defaults to an empty result. */
   defaultRows?: Record<string, unknown>[]
   exactMatch?: boolean
-  /** When true, every query rejects — the failure switch. */
+  /** When true, every query rejects as a driver error — the failure switch. */
   fail?: boolean
   failMessage?: string
   /** Artificial latency (ms) before the rows come back — the latency switch. */
@@ -78,7 +78,7 @@ export class MockSqlConnection implements SqlConnection {
     // A real driver often cannot abort, but a mock that ignored the signal
     // entirely could never demonstrate the case where one can
     if (req.signal?.aborted) throw abortError()
-    if (this.fail) throw new OperatorFailure(this.failMessage, { errorData: { driver: 'mock' } })
+    if (this.fail) throw sqlFailure('mock', new Error(this.failMessage))
 
     return this.resolveRows(req.text)
   }

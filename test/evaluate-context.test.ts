@@ -29,7 +29,6 @@ test('without a caller signal there is still a live, unaborted signal', async ()
   const live = defineOperator({
     name: 'live',
     category: 'other',
-    description: 'Record whether the signal is live on entry',
     parameters: {},
     evaluate: (_params, context) => {
       seen.push(context.signal instanceof AbortSignal, context.signal.aborted)

@@ -18,7 +18,6 @@ const counter = () => {
   const definition = defineOperator({
     name: 'work',
     category: 'other',
-    description: 'Record that it ran, and answer',
     parameters: { label: { type: 'string' }, value: { type: 'any', default: null } },
     positionalParams: ['label', 'value'],
     evaluate: ({ label, value }) => {

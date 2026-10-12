@@ -75,6 +75,7 @@ describe('nested calls report the innermost body', () => {
     // The intermediate hop — the call to `inner`, sitting inside outer's
     // body — is not in the error; it is trace's job
     expect(error.path).toEqual(['top'])
+    expect(error.prettyPrint()).toContain("in fragment 'inner' at expression, called from top")
   })
 
   test('an argument written inside a body is attributed to that body', async () => {

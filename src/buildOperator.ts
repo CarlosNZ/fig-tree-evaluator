@@ -14,10 +14,8 @@
  * definition goes through `defineOperator()`, which runs the checks and then
  * this same assembly.
  */
-import { FigTreeError } from './FigTreeError'
-import { ErrorCodes } from './errorCodes'
 import { fnv1a, isPlainObject } from './utils'
-import { typeNamesNull, type ExpectedType } from './typeCheck'
+import { typeNamesNull, type ExpectedType, type LiteralType } from './typeCheck'
 import { isLiteralType } from './typeIntersection'
 import {
   VALIDATED_OPERATOR,
@@ -28,7 +26,6 @@ import {
   type OperatorCategory,
   type OperatorDefinition,
   type OperatorEvaluate,
-  type ParameterDeclaration,
   type ParameterDeclarations,
   type ResolutionPlan,
   type ValidatedOperatorDefinition,
@@ -37,12 +34,8 @@ import {
 
 export type Path = (string | number)[]
 
-export type ReportIssue = (code: string, message: string, path: Path, parameter?: string) => void
-
 /** The rest marker on a `positionalParams` entry (`'...values'`). */
 export const REST_PREFIX = '...'
-
-export const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
 
 /**
  * Types a package definition literal exactly as `defineOperator()` does —
@@ -55,86 +48,27 @@ export const declareOperator = <const P extends ParameterDeclarations>(
 ): OperatorDefinition => definition as unknown as OperatorDefinition
 
 /**
- * The trusted build. A conditional null policy that cannot be compiled
- * still throws, since no table built from it would be right.
+ * The trusted build: the package's own definitions, which
+ * `defineOperator()` checks in the test suite and at build instead
+ * (test/package-definitions.test.ts, codegen/checkDefinitions.ts). A
+ * conditional null policy compiles to its table over the definition's one
+ * literal-union parameter, unchecked.
  */
 export const buildOperator = (definition: OperatorDefinition): ValidatedOperatorDefinition => {
-  const effectiveTypes: Record<string, ExpectedType> = {}
-  for (const [name, declaration] of Object.entries(definition.parameters))
-    effectiveTypes[name] = declaration.type ?? 'any'
-  const compiledPolicies = compileNullPolicies(
-    definition.parameters,
-    effectiveTypes,
-    (code, message, path) => {
-      throw new FigTreeError({ code, message, path, operator: definition.name })
-    }
-  )
-  return assembleOperator(definition, compiledPolicies)
-}
-
-/**
- * Conditional null policies: exactly one literal-union selector in the
- * definition, whose members each policy function is enumerated over into a
- * total table. Called once per definition, so each function runs once per
- * member; a failure goes to `report` and leaves that parameter uncompiled.
- * `effectiveTypes` omits any parameter whose declared type is invalid.
- */
-export const compileNullPolicies = (
-  declarations: Record<string, ParameterDeclaration>,
-  effectiveTypes: Record<string, ExpectedType>,
-  report: ReportIssue
-): Map<string, CompiledNullPolicy> => {
-  const literalUnionParams = Object.entries(effectiveTypes)
-    .filter(([, type]) => isLiteralType(type))
-    .map(([name]) => name)
+  const declarations = Object.entries(definition.parameters)
   const compiledPolicies = new Map<string, CompiledNullPolicy>()
-
-  for (const [paramName, d] of Object.entries(declarations)) {
-    if (typeof d.nullPolicy !== 'function') continue
-    const path: Path = ['parameters', paramName, 'nullPolicy']
-    if (literalUnionParams.length !== 1) {
-      report(
-        ErrorCodes.invalidNullPolicy,
-        `a conditional 'nullPolicy' requires exactly one literal-union parameter in the definition — found ${literalUnionParams.length}`,
-        path,
-        paramName
-      )
-      continue
-    }
-    const selector = literalUnionParams[0]
-    const selectorType = effectiveTypes[selector]
-    if (!isLiteralType(selectorType)) continue // unreachable; narrows the type
-    const table: CompiledNullPolicy['table'] = []
-    let compiled = true
-    for (const member of selectorType.literal) {
-      let policy: unknown
-      try {
-        policy = d.nullPolicy(member)
-      } catch (error) {
-        report(
-          ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' threw during compilation for member ${JSON.stringify(member)}: ${String(error)}`,
-          path,
-          paramName
-        )
-        compiled = false
-        break
-      }
-      if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
-        report(
-          ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'value' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
-          path,
-          paramName
-        )
-        compiled = false
-        break
-      }
-      table.push({ value: member, policy: policy as NullPolicyValue })
-    }
-    if (compiled) compiledPolicies.set(paramName, { selector, table })
+  for (const [name, { nullPolicy }] of declarations) {
+    if (typeof nullPolicy !== 'function') continue
+    const [selector, { type }] = declarations.find(
+      ([, declaration]) => declaration.type !== undefined && isLiteralType(declaration.type)
+    )!
+    const { literal } = type as LiteralType
+    compiledPolicies.set(name, {
+      selector,
+      table: literal.map((value) => ({ value, policy: nullPolicy(value) as NullPolicyValue })),
+    })
   }
-  return compiledPolicies
+  return assembleOperator(definition, compiledPolicies)
 }
 
 /**
@@ -166,7 +100,6 @@ export const assembleOperator = (
       nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
     if ('default' in d) parameter.default = d.default
-    if (d.description !== undefined) parameter.description = d.description
     if (d.metadata !== undefined) parameter.metadata = d.metadata
     if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
     if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
@@ -185,7 +118,6 @@ export const assembleOperator = (
     [VALIDATED_OPERATOR]: true,
     name: def.name,
     category: def.category as OperatorCategory,
-    description: def.description,
     parameters: validatedParameters,
     resolution: planResolution(validatedParameters),
     restParam,
@@ -214,21 +146,25 @@ export const assembleOperator = (
  * The definition's content fingerprint: the fields that decide what the
  * body computes, hashed. An allowlist rather than the whole object, so
  * that "the definition's content" is stated rather than implied:
- * `description` and `alias` cannot change a result, and hashing them would
- * invalidate a persisted store's entries on a docs-only edit; `metadata`
- * is a host-owned bag kept by reference that may hold anything, including
- * values `JSON.stringify` throws on; `deliversLazily` and `resolution` are
- * derived from the parameters already in. A field added to the type later
- * has to be admitted here deliberately. Functions, symbols (the
- * `EvaluationData` default) and regular expressions render as their source
- * text, which `JSON.stringify` would otherwise drop.
+ * `alias` cannot change a result, and hashing it would invalidate a
+ * persisted store's entries on a cosmetic edit; `metadata` is a host-owned
+ * bag kept by reference that may hold anything, including values
+ * `JSON.stringify` throws on. A parameter's own `metadata` is left out for
+ * the same reason. `deliversLazily` and
+ * `resolution` are derived from the parameters already in. A field added
+ * to the type later has to be admitted here deliberately. Functions,
+ * symbols (the `EvaluationData` default) and regular expressions render as
+ * their source text, which `JSON.stringify` would otherwise drop.
  */
 const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
   fnv1a(
     JSON.stringify(
       [
         d.name,
-        d.parameters,
+        Object.entries(d.parameters).map(([name, parameter]) => [
+          name,
+          parameterContent(parameter),
+        ]),
         d.positionalParams,
         d.restParam,
         d.returns,
@@ -243,6 +179,13 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
           : value
     )
   )
+
+/** A parameter less the field the fingerprint leaves out. */
+const parameterContent = (parameter: ValidatedParameter): Record<string, unknown> => {
+  const content: Record<string, unknown> = { ...parameter }
+  delete content.metadata
+  return content
+}
 
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {

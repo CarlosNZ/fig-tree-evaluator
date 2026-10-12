@@ -17,7 +17,6 @@ import type { PerElement, ValidatedOperatorDefinition } from '../src'
 const mapish = defineOperator({
   name: 'mapish',
   category: 'other',
-  description: 'Transform each element',
   parameters: {
     input: { type: 'array' },
     each: { type: 'any', evaluation: 'perElement', over: 'input' },

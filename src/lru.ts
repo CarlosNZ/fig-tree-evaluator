@@ -11,13 +11,15 @@
  * simply the first key, and promoting an entry is a delete followed by a
  * set. That makes the whole structure a few lines over a built-in, with no
  * bookkeeping to keep in step — and every operation O(1) amortised.
+ *
+ * A bound below one would evict what it just stored. Keeping it a positive
+ * integer is the callers' part: the compile cache's is a constant, and the
+ * result cache validates its `maxSize` option.
  */
 export class Lru<K, V> {
   private readonly entries = new Map<K, V>()
 
-  constructor(private max: number) {
-    checkBound(max)
-  }
+  constructor(private max: number) {}
 
   get size(): number {
     return this.entries.size
@@ -49,7 +51,6 @@ export class Lru<K, V> {
 
   /** Changes the bound, evicting least-recently-used entries past a shrink. */
   resize(max: number): void {
-    checkBound(max)
     this.max = max
     while (this.entries.size > this.max) this.evictOldest()
   }
@@ -58,11 +59,4 @@ export class Lru<K, V> {
     const oldest = this.entries.keys().next()
     if (oldest.done !== true) this.entries.delete(oldest.value)
   }
-}
-
-// A bound below one would evict what it just stored, so every lookup would
-// miss and the layer would be pure overhead
-const checkBound = (max: number) => {
-  if (!Number.isInteger(max) || max < 1)
-    throw new RangeError('LRU bound must be a positive integer')
 }

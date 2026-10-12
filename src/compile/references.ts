@@ -8,10 +8,17 @@
  */
 import { ErrorCodes } from '../errorCodes'
 import { parsePath, WILDCARD, type PathSegment } from '../primitives'
-import type { ReferenceNamespace } from './artifact'
 
-/** Namespace tokens, canonical and single-character alias forms. */
-const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
+/**
+ * Every token that names a reference namespace: the canonical word and its
+ * alias, which is a single character except `err`, since `$e` is
+ * `$element`. The one list: `ReferenceNamespace`, the words an `as` name
+ * may not take, the reserved registration names and `./format`'s alias
+ * spellings all derive from it. The converter, which shares no runtime code
+ * with the engine, restates it in `V3_REFERENCE`
+ * (src/migrate/v3Values.ts), and a test holds the two together.
+ */
+export const NAMESPACE_TOKENS = {
   data: 'data',
   d: 'data',
   vars: 'vars',
@@ -22,7 +29,20 @@ const NAMESPACE_TOKENS: Record<string, ReferenceNamespace> = {
   e: 'element',
   index: 'index',
   i: 'index',
-}
+  error: 'error',
+  err: 'error',
+} as const
+
+export type ReferenceNamespace = (typeof NAMESPACE_TOKENS)[keyof typeof NAMESPACE_TOKENS]
+
+/**
+ * The namespace `token` names, if any. Own keys only, so `$constructor` or
+ * `$toString` names nothing rather than reaching `Object.prototype`.
+ */
+export const namespaceOf = (token: string): ReferenceNamespace | undefined =>
+  Object.hasOwn(NAMESPACE_TOKENS, token)
+    ? NAMESPACE_TOKENS[token as keyof typeof NAMESPACE_TOKENS]
+    : undefined
 
 export type ReferenceRecognition =
   /**
@@ -65,7 +85,7 @@ export const splitSigilToken = (value: string): { token: string; rest: string } 
 export const bareNamespace = (value: string): ReferenceNamespace | null => {
   const split = splitSigilToken(value)
   if (split === null || split.rest !== '') return null
-  return NAMESPACE_TOKENS[split.token] ?? null
+  return namespaceOf(split.token) ?? null
 }
 
 /** Parse a drill remainder (`.a[0]`, `[2].b`, or empty) into segments. */
@@ -110,19 +130,19 @@ export const recognizeReference = (value: string, scope?: ReferenceScope): Refer
   const split = splitSigilToken(value)
   if (split === null) return { kind: 'plain' }
   const { token, rest } = split
-  const namespace = NAMESPACE_TOKENS[token]
+  const namespace = namespaceOf(token)
   if (namespace === undefined) {
     const bound = scope?.bindings === undefined ? null : bindingNamespace(token, scope.bindings)
     return bound === null ? { kind: 'unrecognized' } : recognizeBinding(token, rest, bound)
   }
 
   if (rest === '') {
-    // The namespaces divide on whether they name a VALUE or a SET. $data
-    // and $element name a value, so the bare form is that value; $index is
-    // bare-only by grammar. $vars and $params name a set, and the bare form
-    // is legal only where that set has declared, finite, local membership:
-    // a call's declared parameters do, a scope chain does not — its
-    // membership is every var every enclosing node declared, shadowing
+    // The namespaces divide on whether they name a VALUE or a SET. $data,
+    // $element and $error name a value, so the bare form is that value;
+    // $index is bare-only by grammar. $vars and $params name a set, and the
+    // bare form is legal only where that set has declared, finite, local
+    // membership: a call's declared parameters do, a scope chain does not —
+    // its membership is every var every enclosing node declared, shadowing
     // included, and materializing it would force all of them to evaluate
     if (namespace === 'vars')
       return {

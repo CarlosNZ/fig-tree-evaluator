@@ -38,10 +38,12 @@ export class PostgresConnection implements SqlConnection {
   query = async (req: SqlRequest): Promise<Record<string, unknown>[]> => {
     // node-postgres has no named-bind form. Passing an object through
     // would bind nothing and run the query with empty placeholders —
-    // plausible output from the wrong query, so it is refused here
+    // plausible output from the wrong query, so it is refused here, before
+    // the driver, which leaves the failure no `driverCode`
     if (req.values !== undefined && !Array.isArray(req.values))
-      throw new OperatorFailure(
-        'postgres takes positional binds ($1, $2, …) — an object of named binds ' +
+      throw sqlFailure(
+        'postgres',
+        'takes positional binds ($1, $2, …) — an object of named binds ' +
           'needs a driver that supports them'
       )
     try {

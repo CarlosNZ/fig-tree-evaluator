@@ -20,12 +20,13 @@
  * the host's, and the warning calls it redundant and names them.
  */
 import { ErrorCodes } from '../errorCodes'
-import type { Issue } from '../issues'
 import { operatorCaches } from '../registry'
+import { listing } from '../utils'
 import {
+  childrenOf,
   extendPath,
+  pushIssue,
   sortIssues,
-  toNodePath,
   type CompileArtifact,
   type CompiledNode,
   type FragmentCallNode,
@@ -68,15 +69,9 @@ const visit = (artifact: CompileArtifact, node: CompiledNode, shadowed: boolean)
     case 'invalid':
       return UNKNOWN
     case 'skeleton':
-      return all(
-        artifact,
-        [...node.holes.map((hole) => hole.node), ...valuesOf(node.vars)],
-        shadowed
-      )
     case 'elements':
-      return all(artifact, node.nodes, shadowed)
     case 'entries':
-      return all(artifact, [...Object.values(node.entries), ...valuesOf(node.vars)], shadowed)
+      return all(artifact, childrenOf(node), shadowed)
     case 'operator':
       return visitInvocation(artifact, node, operatorCaches(node.entry), shadowed)
     case 'fragmentCall':
@@ -123,23 +118,7 @@ const disabledName = (node: OperatorNode | FragmentCallNode) =>
     : undefined
 
 /** `'http'`, `'http' and 'sql'`: each name once, in tree order. */
-const nameList = (names: string[]) => {
-  const quoted = [...new Set(names)].map((name) => `'${name}'`)
-  return quoted.length < 2
-    ? quoted.join('')
-    : `${quoted.slice(0, -1).join(', ')} and ${quoted[quoted.length - 1]}`
-}
-
-const childrenOf = (node: OperatorNode | FragmentCallNode): CompiledNode[] => {
-  const children: CompiledNode[] = []
-  if (node.kind === 'operator') children.push(...Object.values(node.params))
-  else if (node.parameters !== undefined)
-    if (node.argumentsMode === 'dynamic') children.push(node.parameters as CompiledNode)
-    else children.push(...Object.values(node.parameters as Record<string, CompiledNode>))
-  if (node.fallback !== undefined) children.push(node.fallback)
-  children.push(...valuesOf(node.vars))
-  return children
-}
+const nameList = (names: string[]) => listing([...new Set(names)].map((name) => `'${name}'`))
 
 const all = (artifact: CompileArtifact, nodes: CompiledNode[], shadowed: boolean): Reach => {
   const reach: Reach = { capable: false, effective: false, disabled: [] }
@@ -154,21 +133,18 @@ const all = (artifact: CompileArtifact, nodes: CompiledNode[], shadowed: boolean
   return reach
 }
 
-const valuesOf = (vars: Record<string, CompiledNode> | undefined): CompiledNode[] =>
-  vars === undefined ? [] : Object.values(vars)
-
 const warn = (
   artifact: CompileArtifact,
   node: OperatorNode | FragmentCallNode,
   message: string
 ) => {
-  const issue: Issue = {
-    severity: 'warning',
-    code: ErrorCodes.uselessModifier,
+  pushIssue(
+    artifact.issues,
+    'warning',
+    ErrorCodes.uselessModifier,
     message,
-    path: toNodePath(extendPath(node.path, 'noCache')),
-  }
-  if (node.kind === 'operator') issue.operator = node.name
-  else issue.fragment = node.name
-  artifact.issues.push({ issue, order: node.order })
+    extendPath(node.path, 'noCache'),
+    node.order,
+    node.kind === 'operator' ? { operator: node.name } : { fragment: node.name }
+  )
 }

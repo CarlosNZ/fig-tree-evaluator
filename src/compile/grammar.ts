@@ -10,7 +10,7 @@
  * Kept free of heavy imports on purpose: `./format` imports this module, so
  * everything it reaches lands in the chunk the subpath shares with the root.
  */
-import { isPlainDataObject } from '../utils'
+import { isPlainDataObject } from '../plainData'
 
 /** Reserved keys legal beside a `$name` shorthand key (the sibling rule). */
 export const SHORTHAND_SIBLINGS: ReadonlySet<string> = new Set([
