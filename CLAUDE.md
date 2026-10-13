@@ -37,6 +37,7 @@ pnpm differential --record-sql  # re-record differential/sqlRecordings.ts from a
 pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
+pnpm docs:dev             # the docs site's dev server (docs-site/, http://localhost:4321)
 ```
 
 There is no watch/dev-server — this is a library. Note pnpm does not run implicit pre/post hooks: `build` chains `getVersion` explicitly.

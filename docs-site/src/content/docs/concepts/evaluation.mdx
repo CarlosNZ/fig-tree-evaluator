@@ -1,0 +1,28 @@
+---
+title: How evaluation works
+description: The order nodes are evaluated in, and what the engine checks along the way.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Recursive and asynchronous
+
+Children are evaluated before their parent, and evaluation is always async.
+
+## Parameters an operator evaluates itself
+
+Branching operators such as `if` evaluate only the branch they take.
+
+## Types and nulls
+
+The engine checks each parameter's type before the operator runs, and applies the operator's null policy.
+
+## When evaluation fails
+
+Errors stop evaluation unless a fallback catches them. A short summary, linking to the fallbacks and errors guide.

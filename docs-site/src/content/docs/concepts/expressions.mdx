@@ -1,0 +1,28 @@
+---
+title: Expressions and nodes
+description: What an expression is, and the nodes it's built from.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## What an expression is
+
+Any JSON value. Operator nodes inside it are evaluated in place; everything else passes through untouched.
+
+## Nodes and operators
+
+A node is an operator plus its parameters. The `$`-prefixed key that invokes an operator, and what an operator is.
+
+## Parameters
+
+A parameter can be a plain value or another node, nested as deep as needed.
+
+## The tree
+
+Each node's result becomes a parameter of the node above it, and the result at the top is what's returned. The expression tree diagram goes here.

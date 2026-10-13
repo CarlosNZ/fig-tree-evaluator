@@ -1,0 +1,32 @@
+---
+title: Data references
+description: Reading values from the data passed in at evaluation time.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## The data object
+
+What's passed in with each evaluation, and how it differs from the instance's options.
+
+## `$data.` strings
+
+Referring to a value by its path, such as `'$data.user.age'`.
+
+## Paths
+
+The path syntax: nested properties and array indexes.
+
+## Missing values
+
+What a reference to a path that isn't there returns, and how to supply a default.
+
+## The `get` operator
+
+For paths that are built at evaluation time.

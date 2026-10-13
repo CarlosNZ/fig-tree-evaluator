@@ -19,6 +19,12 @@ export default defineConfig({
         baseUrl: 'https://github.com/CarlosNZ/fig-tree-evaluator/edit/v3.0-dev/docs-site/',
       },
       customCss: ['./src/styles/custom.css'],
+      // One group per site section, each listing its folder's pages in
+      // `sidebar.order`. Previous/next links follow this order.
+      sidebar: [
+        { label: 'Overview', link: '/' },
+        { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
+      ],
       // Expressive Code reads its plugins from ec.config.mjs, since the
       // twoslash plugin isn't serialisable into this file
     }),

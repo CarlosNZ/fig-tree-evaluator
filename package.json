@@ -86,6 +86,7 @@
     "check:package": "node codegen/checkPackage.mjs",
     "compile": "rimraf ./build && tsc",
     "dev": "node codegen/dev.mjs",
+    "docs:dev": "pnpm --dir docs-site dev",
     "bench": "node codegen/bench.mjs",
     "bench:browser": "node codegen/benchBrowser.mjs",
     "bench:serve": "node codegen/benchServe.mjs",
