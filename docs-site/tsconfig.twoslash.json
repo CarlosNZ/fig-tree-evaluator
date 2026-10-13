@@ -6,6 +6,9 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "strict": true,
+    // Every snippet is a module, so one with no imports can still use
+    // top-level await
+    "moduleDetection": "force",
     "skipLibCheck": true,
     "types": []
   }

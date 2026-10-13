@@ -54,7 +54,7 @@ The result above wasn't typed: the page ran the expression through FigTree when 
 
 ## Using it from your code
 
-Code that runs in your application — the host — is shown in ordinary code blocks. Titles, line highlighting and inserted/deleted lines come from Expressive Code.
+Code that runs in your application — the host — is shown in code blocks. Titles, line highlighting and inserted/deleted lines come from Expressive Code, and every TypeScript block is compiled against the library's types when the site builds ([below](#host-code-type-checked)).
 
 ```ts title="evaluate.ts" {3,6}
 import { FigTree } from 'fig-tree-evaluator'
@@ -66,7 +66,7 @@ const greeting = await fig.evaluate(expression, { data: { user: { name: 'Ana' } 
 // → 'Hello Ana'
 ```
 
-```ts title="Upgrading from v2" del={1,3} ins={2,4}
+```ts nocheck title="Upgrading from v2" del={1,3} ins={2,4}
 import { FigTreeEvaluator } from 'fig-tree-evaluator'
 import { FigTree } from 'fig-tree-evaluator'
 const fig = new FigTreeEvaluator({ objects: { user } })
@@ -74,9 +74,9 @@ const fig = new FigTree()
 ```
 
 <Aside type="tip" title="Element: host code blocks">
-  Plain Expressive Code, as proposed under "Host code: code blocks". Nothing checks these, so a
-  renamed option or a moved export goes stale silently. The [type-checked
-  blocks](#host-code-type-checked) at the end of the page are the proposed fix.
+  Expressive Code, as proposed under "Host code: code blocks", type-checked as below. A fragment
+  that can't compile, like the diff above with its old and new lines side by side, is marked
+  `nocheck`, and nothing checks it.
 </Aside>
 
 ## Expressions, evaluated at build time
@@ -196,9 +196,9 @@ Reference entries are rendered from the operators' own definitions when the site
 
 ## Host code, type-checked
 
-Code blocks marked `twoslash` are compiled against fig-tree-evaluator's real type declarations when the site builds. Hover over an identifier to see its type. A snippet that no longer compiles — a renamed option, a moved export — fails the build.
+Every `ts` and `tsx` block is compiled against fig-tree-evaluator's real type declarations when the site builds, unless it's marked `nocheck`. Hover over an identifier to see its type. A snippet that no longer compiles — a renamed option, a moved export — fails the build.
 
-```ts twoslash title="evaluate.ts"
+```ts title="evaluate.ts"
 import { FigTree } from 'fig-tree-evaluator'
 
 const fig = new FigTree()
@@ -206,11 +206,9 @@ const total = await fig.evaluate({ $plus: [1, 2, 3] })
 //    ^?
 ```
 
-Setup a snippet needs but shouldn't show goes above a `// ---cut---` line. The return type follows the options, so asking for a trace changes it:
+Setup a snippet needs but shouldn't show goes above a `// ---cut---` line, and `fig`, an instance with the default options, needs no setup at all (`twoslash/globals.d.ts`). The return type follows the options, so asking for a trace changes it:
 
-```ts twoslash title="trace.ts"
-import { FigTree } from 'fig-tree-evaluator'
-const fig = new FigTree()
+```ts title="trace.ts"
 const expression = { $buildString: 'Hello {{$data.name}}' }
 // ---cut---
 const { result, trace } = await fig.evaluate(expression, {
@@ -221,15 +219,15 @@ const { result, trace } = await fig.evaluate(expression, {
 
 An error a snippet means to show is declared, and then rendered rather than failing the build:
 
-```ts twoslash title="options.ts"
+```ts title="options.ts"
 // @errors: 2353
 import { FigTree } from 'fig-tree-evaluator'
 // ---cut---
 const fig = new FigTree({ missingPathDefault: null })
 ```
 
-<Aside type="tip" title="Element: twoslash trial">
-  Open question 3 in the planning doc. Uses `expressive-code-twoslash`, which declares support for
-  an older Expressive Code (0.41) than Starlight bundles (0.44), so this is also a compatibility
-  test.
+<Aside type="tip" title="Element: type-checked host code">
+  Open question 3 in the planning doc, settled: `expressive-code-twoslash` declares support for an
+  older Expressive Code (0.41) than Starlight bundles (0.44), and works with it. Its version is
+  pinned, so an update can't change that unnoticed.
 </Aside>

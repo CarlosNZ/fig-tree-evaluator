@@ -153,12 +153,14 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 
 1. **Where the site lives: resolved.** In [docs-site/](../docs-site/), as a self-contained package with its own `package.json` and lockfile. It is not a pnpm workspace, so its dependencies stay out of the library's install and CI. In-repo keeps docs changes in the same PRs as the code they describe.
 2. **Hosting and URL.** GitHub Pages through a GitHub Action is the default. The v2 README's playground link points to `carlosnz.github.io/fig-tree-evaluator`, so check what is served there and whether anything else still links to it.
-3. **Type-checking host-code examples: leaning yes, pending a trial.** Expression examples are checked by build-time evaluation. Host-code snippets are plain text and go stale silently when an option is renamed, a return shape changes or an export moves. Renames such as `missingPathDefault` → `default` (#195) and `useCache` → `noCache` (#204) are this kind of change.
+3. **Type-checking host-code examples: resolved, yes (October 2026).** Expression examples are checked by build-time evaluation. Host-code snippets are plain text and go stale silently when an option is renamed, a return shape changes or an export moves. Renames such as `missingPathDefault` → `default` (#195) and `useCache` → `noCache` (#204) are this kind of change.
    - **Proposed mechanism:** twoslash, through Expressive Code's community twoslash plugin. The build compiles each TS snippet against the library's real types and fails on errors. Setup that a snippet needs but shouldn't display (imports, a sample `expression`) goes above a `// ---cut---` marker.
    - **Bonus:** hover types in the rendered docs.
    - **Scope:** type-check rather than run. Much host code depends on HTTP clients, a database or the user's data, which the build doesn't have. A few self-contained snippets could also be run.
    - **Cost:** every snippet must compile, so writing one takes slightly more care.
-   - **Before deciding:** try it on a small sample of snippets to see how it behaves with Starlight, what the build-time cost is, how much authoring friction the cut markers add, and how readable the errors are.
+   - **The trial:** the plugin (`expressive-code-twoslash`) declares support for Expressive Code 0.41 and works with the 0.44 that Starlight bundles; its version is pinned so an update can't change that unnoticed. Snippets compile in well under a second of build time, and an error names the snippet, the line and TypeScript's own message.
+   - **How it's used:** every `ts` and `tsx` block is compiled, so a forgotten marker can't let one drift; a fragment that can't compile opts out with `nocheck`. Snippets can use `fig`, an instance with the default options, without setting it up (`docs-site/twoslash/globals.d.ts`), so the cut markers are rarely needed.
+   - **Run in CI** by `.github/workflows/docs.yml`, on any change to the library's source or the site, so a change that breaks a snippet fails in its own PR. A workflow of its own, so the library's CI and install stay free of the site's dependencies (question 1).
 4. **Repo docs to update when this lands:** `CLAUDE.md` calls the README "the authoritative reference for every operator", and `package.json`'s `homepage` points to the README.
 
 ## To-do

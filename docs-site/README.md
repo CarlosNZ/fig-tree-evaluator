@@ -49,7 +49,7 @@ Astro 7 runs `dev` and `preview` as background servers, so the command returns s
 
 - an expression example throws, when it doesn't say it should;
 - an example marked `throws` doesn't throw;
-- a twoslash snippet doesn't compile against the library's types;
+- a TypeScript snippet doesn't compile against the library's types;
 - an `<OperatorReference>` names an operator that isn't registered;
 - an operator note names an operator or parameter that doesn't exist, or its replacement no longer matches the text it was written against.
 
@@ -60,6 +60,7 @@ docs-site/
   astro.config.mjs          Starlight + React, and Vite's dedupe for the linked packages
   ec.config.mjs             Expressive Code plugins (twoslash)
   tsconfig.twoslash.json    compiler options twoslash checks snippets with
+  twoslash/globals.d.ts     globals every snippet can use without setting them up
   src/
     content.config.ts       the content collections: the pages, and the operator notes
     routeData.ts            Starlight route middleware: the operators page's contents list
@@ -123,9 +124,16 @@ Longer notes, shown below the description. `<Expression>` works here.
 
 A plain string adds; `replace` replaces, and `against` records the text it replaced (the build gives the value to use, and asks again when that text changes). Quote each text: YAML misreads an unquoted one that contains `: `.
 
-**Host code** goes in ordinary fenced blocks. Add `twoslash` to a `ts` block's meta to type-check it against the library at build time, and to show types on hover. Setup that shouldn't be displayed goes above a `// ---cut---` line. An error the snippet means to show is declared with `// @errors: <code>`.
+**Host code** goes in `ts` (or `tsx`) blocks, and every one is type-checked against the library at build time (twoslash), with its types shown on hover:
+
+- `fig`, an instance with the default options, needs no setup (`twoslash/globals.d.ts`). A snippet about setup (imports, constructor options) writes its own.
+- Other setup that shouldn't be displayed goes above a `// ---cut---` line.
+- An error the snippet means to show is declared with `// @errors: <code>`, and rendered.
+- `//    ^?` under an identifier shows its type inline.
+- A fragment that can't compile, such as a before-and-after diff, is marked `nocheck` (` ```ts nocheck `). Nothing checks it, so keep these few.
 
 ## Repo integration
 
 - The root ESLint config ignores `docs-site/`; `pnpm check` here is its check.
+- CI builds the site in its own workflow (`.github/workflows/docs.yml`) on any change to the library's source or the site, checking out the editor beside this repo as the setup above does.
 - Root Prettier formats this folder's `.ts`, `.tsx`, `.mjs`, `.json` and `.md` files, but not `.mdx`: Prettier parses MDX as MDX 1 and breaks MDX 2+ JSX blocks.

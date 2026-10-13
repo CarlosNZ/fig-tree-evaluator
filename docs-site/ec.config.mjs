@@ -1,4 +1,5 @@
 // @ts-check
+import { readFileSync } from 'node:fs'
 import { defineEcConfig, ExpressiveCodeTheme } from '@astrojs/starlight/expressive-code'
 import ecTwoSlash from 'expressive-code-twoslash'
 import { codeTheme } from './src/styles/palettes.mjs'
@@ -12,9 +13,21 @@ export default defineEcConfig({
   // background, so Expressive Code mustn't shift them
   minSyntaxHighlightingColorContrast: 0,
   plugins: [
-    // Only blocks whose meta says `twoslash` are compiled. Each one is
-    // type-checked against fig-tree-evaluator's real declarations, and the
-    // build fails on any error the block doesn't declare with `// @errors`.
-    ecTwoSlash({ tsConfigPath: './tsconfig.twoslash.json' }),
+    // Every ts and tsx block is compiled, unless its meta says `nocheck`
+    // (a fragment that can't compile). Each one is type-checked against
+    // fig-tree-evaluator's real declarations, and the build fails on any
+    // error the block doesn't declare with `// @errors`. Each snippet's
+    // program also has the globals in twoslash/globals.d.ts.
+    ecTwoSlash({
+      tsConfigPath: './tsconfig.twoslash.json',
+      instanceConfigs: { twoslash: { explicitTrigger: /^(?!.*\bnocheck\b)/ } },
+      twoslashOptions: {
+        extraFiles: {
+          // From the working directory, as `tsConfigPath` is: this file is
+          // bundled elsewhere for rendering, so its own URL doesn't lead here
+          'globals.d.ts': readFileSync('./twoslash/globals.d.ts', 'utf8'),
+        },
+      },
+    }),
   ],
 })

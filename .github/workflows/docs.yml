@@ -1,0 +1,85 @@
+name: Docs site
+
+# Builds the docs site (docs-site/), which is also its test: the build fails
+# when an expression example's outcome doesn't match what it says, when a
+# TypeScript snippet doesn't compile against the library's types, or when an
+# operator note no longer matches the catalog. So a change to the library that
+# breaks the docs fails here, in its own PR.
+#
+# The site links two packages it builds against: this repo (`link:..`) and
+# fig-tree-editor-react (`link:../../fig-tree-editor-react`), which has no
+# published v3 release yet. So the editor is checked out beside this repo,
+# from its v3.0-dev branch, as the site's README sets it up locally. Once the
+# editor publishes a v3 preview, the site can depend on that instead, and
+# this job loses the second checkout.
+
+on:
+  push:
+    branches: [main, v3.0-dev, v3.0-docs]
+    paths:
+      - 'src/**'
+      - 'docs-site/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'rollup.config.mjs'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'docs-site/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tsconfig.json'
+      - 'rollup.config.mjs'
+      - '.github/workflows/docs.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Side by side, so the site's `link:` paths resolve as they do locally
+      - uses: actions/checkout@v4
+        with:
+          path: fig-tree-evaluator
+      - uses: actions/checkout@v4
+        with:
+          repository: CarlosNZ/fig-tree-editor-react
+          ref: v3.0-dev
+          path: fig-tree-editor-react
+
+      # Reads the pnpm version from packageManager; with two checkouts there
+      # is no package.json at the workspace root to find it in
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: fig-tree-evaluator/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            fig-tree-evaluator/pnpm-lock.yaml
+            fig-tree-evaluator/docs-site/pnpm-lock.yaml
+            fig-tree-editor-react/pnpm-lock.yaml
+
+      # The site imports the library's build/, as a consumer would
+      - name: Build the library
+        working-directory: fig-tree-evaluator
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Build the editor
+        working-directory: fig-tree-editor-react
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Install the site
+        working-directory: fig-tree-evaluator/docs-site
+        run: pnpm install --frozen-lockfile
+      - name: Check the site's types
+        working-directory: fig-tree-evaluator/docs-site
+        run: pnpm check
+      - name: Build the site
+        working-directory: fig-tree-evaluator/docs-site
+        run: pnpm build
