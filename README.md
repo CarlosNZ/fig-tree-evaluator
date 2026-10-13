@@ -62,13 +62,22 @@ Everything else is left exactly as it is.
 
 And it's still just JSON. You can store it in a database, send it over the network, or let an admin edit it in a UI, and nothing in it can execute code. An expression can only do what the operators you've registered allow, so it can't even make an HTTP request or query a database unless you've given FigTree a client to do it with.
 
+### Features <!-- omit in toc -->
+
+- 🔒 **Sandboxed**: nothing in an expression can execute code; it can only use the operators you register
+- 🧮 **Around 40 built-in operators**: logic, comparison, maths, strings, arrays and objects
+- 🌐 **HTTP, GraphQL and SQL lookups**: with a client you pass in, so nothing you don't use ends up in your bundle
+- 🛟 **Fallbacks** on any node, for bad responses and bad data
+- ✅ **Checked before it runs**: unknown operators (with "did you mean") and malformed parameters are caught up front
+- 🧩 **Fragments**: reusable, named pieces of expression
+- 🛠️ **[Custom operators](https://DOCS_URL/custom-operators/)**: fully typed, written with `defineOperator`
+- 🎨 **[Visual editor](https://github.com/CarlosNZ/fig-tree-editor-react)**: drop an expression editor into your own app
+
 A few ways it's being used:
 
 - In the [Conforma](https://github.com/openmsupply/conforma-web-app) form builder, for conditional visibility and validation rules that go well beyond what a validation library offers
 - Configurable [decision trees](https://en.wikipedia.org/wiki/Decision_tree), for branching logic
 - Extending [JSON Forms](https://jsonforms.io) with conditional logic and dynamic lookups ([demo](https://github.com/CarlosNZ/jsonforms-with-figtree-demo))
-
-There are around 40 built-in operators, covering logic, comparison, maths, strings, arrays and objects, as well as HTTP, GraphQL and SQL lookups. When those aren't enough, you can [write your own](https://DOCS_URL/custom-operators/).
 
 ### [Try it in the Playground](https://DOCS_URL/playground/) <!-- omit in toc -->
 
@@ -106,9 +115,7 @@ Here's the same result from a deeper tree. One branch checks an answer in the us
 // → 6
 ```
 
-<!-- TO-DO: redraw for v3 syntax (plus / if / equal / http) -->
-
-![Expression tree](docs/img/Example_1.png)
+![Expression tree](images/expression_tree.png)
 
 <details>
 <summary>The same expression in canonical form</summary>

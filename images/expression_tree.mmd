@@ -1,0 +1,53 @@
+---
+config:
+  fontFamily: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif
+  flowchart:
+    wrappingWidth: 400
+    padding: 0.01
+  themeCSS: |
+    * { font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; }
+    foreignObject { overflow: visible; }
+    .labelBkg { padding: 1px 7px; border-radius: 5px; background-color: #e8e8e8 !important; }
+    .labelBkg span, .labelBkg p { background-color: transparent !important; color: #333 !important; }
+    .opname { font-size: 18px; font-weight: 700; }
+    .op .result, .ref .result, .box .result { color: #2e6b2a !important; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+    .small { font-size: 13px; }
+    .output { font-size: 22px; display: block; margin-bottom: 8px; }
+    .output, .output b, .box span { color: #000; }
+    .box { display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; width: 152px; height: 72px; background: #d5e8d4; border: 2px solid #82b366; }
+---
+flowchart TD
+  plus@{ shape: text, label: "<span class=output>Output: <b>⇒ 6</b></span><span class=box><span class=opname>plus</span><span class=result>⇒ 6</span></span>" }
+  if["<span class=opname>if</span><br/><span class=result>⇒ 1</span>"]
+  equal["<span class=opname>equal</span><br/><span class=result>⇒ true</span>"]
+  http["<span class=opname>http</span><br/><span class=result>⇒ 2</span>"]
+
+  plus --> if
+  plus --> http
+  plus --> three["3"]
+
+  if -->|condition| equal
+  if -->|then| one["1"]
+  if -.->|else| zero["0<br/><i>(not evaluated)</i>"]
+
+  equal --> ref["$data.responses.Q1<br/><span class=result>⇒ #quot;correct#quot;</span>"]
+  equal --> correct["#quot;correct#quot;"]
+
+  http -->|url| url["<span class=small>#quot;https#58;//my.server.com/api/get-count#quot;</span><br/><i>responds</i> <span class=mono>{count: 2}</span>"]
+  http -->|returnPath| returnPath["#quot;count#quot;"]
+
+  ref ~~~ data["<b>Data:</b><br/>{ responses: {<br/>Q1: #quot;correct#quot;,<br/>Q2: #quot;incorrect#quot;<br/>} }"]
+  data -.-> ref
+
+  classDef op fill:#d5e8d4,stroke:#82b366,color:#000
+  classDef val fill:#fff,stroke:#333,color:#000
+  classDef skipped fill:#f5f5f5,stroke:#aaa,color:#888,stroke-dasharray:4 3
+  classDef ref fill:#fff2cc,stroke:#d6b656,color:#000
+  classDef data fill:#dae8fc,stroke:#6c8ebf,color:#000
+  class if,equal,http op
+  class three,one,correct,url,returnPath val
+  class zero skipped
+  class ref ref
+  class data data
+  style plus fill:none,stroke:none
