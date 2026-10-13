@@ -1,6 +1,6 @@
 # FigTree docs site
 
-The FigTree v3 documentation site, built with [Starlight](https://starlight.astro.build) (Astro). It is in early construction: a home page, a skeleton of the Concepts section, and a **Prototype** page (`src/content/docs/prototype.mdx`) holding one example of each kind of element proposed in [docs-dev/doc-planning.md](../docs-dev/doc-planning.md).
+The FigTree v3 documentation site, built with [Starlight](https://starlight.astro.build) (Astro). It is in early construction: a home page, a skeleton of the Concepts section, and a **Prototype** page (`src/content/docs/prototype.mdx`, at `/prototype/`, out of the sidebar and search) holding one example of each kind of element proposed in [docs-dev/doc-planning.md](../docs-dev/doc-planning.md).
 
 This folder is a self-contained package, with its own `package.json` and lockfile. It isn't part of a pnpm workspace, so the library's install, tests and CI never touch it.
 
