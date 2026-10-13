@@ -17,6 +17,7 @@ import { Code, Tabs, TabItem, Aside } from '@astrojs/starlight/components'
 import Expression from '../../components/Expression.astro'
 import OperatorReference from '../../components/OperatorReference.astro'
 import Playground from '../../components/playground/Playground.tsx'
+import Callout from '../../components/Callout.astro'
 
 **FigTree** evaluates expressions written as plain JSON. An expression is any JSON value; wherever it holds an operator node — `{ $plus: [1, 2] }`, `{ $if: … }` — that node is evaluated in place, and everything else passes through untouched. It is a sandboxed way to keep dynamic logic in configuration, a database row or a form definition, without ever executing code.
 
@@ -186,6 +187,47 @@ A page can hold several widgets; each loads when it's reached. This one is about
     { total: 300, count: 4 }
   `}
 />
+
+## Callouts
+
+A passage that sits beside the main line goes in a callout. Each kind has one job, and a page picks the kind by what the passage is for, so the same look always means the same thing. Every kind has a default title, but a specific one helps a reader scanning the page.
+
+<Callout kind="note" title="Another way to write a node">
+  **Note**: worth knowing, but off the main line, such as another way to write something or a
+  related detail. The canonical form, `{ operator: 'plus', values: [1, 2, 3] }`, names everything,
+  and is the one tools work with.
+</Callout>
+
+<Callout kind="tip">
+  **Tip**: advice on doing something better, not just correctly. Named parameters say what each
+  value is for, which helps whoever reads a stored expression next.
+</Callout>
+
+<Callout kind="caution">
+  **Caution**: a gotcha that will bite if it's missed. A `$` key in data written inside an
+  expression is read as a node; put that data inside `literal`.
+</Callout>
+
+<Callout kind="danger">
+  **Danger**: security or data loss, and rare. Never build a SQL query by putting user input into
+  its text; pass the input as the query's values.
+</Callout>
+
+<Callout kind="v2">
+  **Coming from v2**: where v3 differs from v2, on the page where it matters, for a reader who is
+  migrating. In v2, `$If` and `$IF` both worked; v3's operator names are exact.
+</Callout>
+
+<Callout kind="why" title="Why unknown $ keys are errors">
+  **Why?**: a short design reason, linking into Under the hood for the full story. A `$` key is
+  always meant as a node, so a typo there fails loudly instead of quietly becoming data.
+</Callout>
+
+<Aside type="tip" title="Element: callouts">
+  `<Callout kind="…" title="…">` in `src/components/Callout.astro`, built on Starlight's `<Aside>`.
+  Four kinds are Starlight's own; `v2` and `why` add a colour and icon of their own. Restyling a
+  kind happens in one place.
+</Aside>
 
 ## Operator reference
 

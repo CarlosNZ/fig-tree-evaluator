@@ -109,6 +109,21 @@
   margin-top: 1em;
 }
 
+/* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
+
+/* The two kinds of the site's own, over Starlight's note */
+.fds-callout--v2 .starlight-aside {
+  --sl-color-asides-text-accent: var(--sl-color-green-high);
+  --sl-color-asides-border: var(--sl-color-green);
+  background-color: var(--sl-color-green-low);
+}
+
+.fds-callout--why .starlight-aside {
+  --sl-color-asides-text-accent: var(--sl-color-gray-2);
+  --sl-color-asides-border: var(--sl-color-gray-4);
+  background-color: var(--sl-color-gray-6);
+}
+
 /* ── Static expression blocks ───────────────────────────────────────────── */
 
 .fds-expression {

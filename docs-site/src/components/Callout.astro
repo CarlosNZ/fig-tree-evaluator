@@ -1,0 +1,47 @@
+---
+/**
+ * The site's callouts: a set of kinds, each with one job, so a page picks
+ * what a passage is for and the look follows. Built on Starlight's <Aside>;
+ * the Prototype page shows every kind with the rule for when to use it.
+ *
+ * - note: worth knowing but off the main line, such as another way to write
+ *   something
+ * - tip: advice on doing something better, not just correctly
+ * - caution: a gotcha that will bite if missed
+ * - danger: security or data loss; rare
+ * - v2: where v3 differs from v2, for a reader migrating
+ * - why: a short design reason, linking into Under the hood
+ *
+ * Every kind has a default title; a specific one helps a reader scanning the
+ * page.
+ */
+import { Aside } from '@astrojs/starlight/components'
+
+type Kind = 'note' | 'tip' | 'caution' | 'danger' | 'v2' | 'why'
+
+interface Props {
+  kind: Kind
+  title?: string
+}
+
+const KINDS = {
+  note: { type: 'note', title: 'Note' },
+  tip: { type: 'tip', title: 'Tip' },
+  caution: { type: 'caution', title: 'Caution' },
+  danger: { type: 'danger', title: 'Danger' },
+  // TO-DO: once the docs are written, drop this kind if few pages use it
+  v2: { type: 'note', title: 'Coming from v2', icon: 'clock' },
+  why: { type: 'note', title: 'Why?', icon: 'open-book' },
+} as const satisfies Record<
+  Kind,
+  { type: 'note' | 'tip' | 'caution' | 'danger'; title: string; icon?: string }
+>
+
+const { kind } = Astro.props
+const { type, title, ...rest } = KINDS[kind]
+const icon = 'icon' in rest ? rest.icon : undefined
+---
+
+<div class={`fds-callout fds-callout--${kind}`}>
+  <Aside type={type} title={Astro.props.title ?? title} icon={icon}><slot /></Aside>
+</div>
