@@ -102,11 +102,33 @@
   }
 }
 
-/* Headings after body content: Starlight's default is 1.5em */
+/*
+ * Headings after body content: Starlight's default is 1.5em, which above a
+ * large heading is far more than the 1rem between paragraphs. The gap is
+ * capped at twice that. Headings with anchor links sit in a wrapper, which
+ * carries the margin in their place.
+ */
 .sl-markdown-content
-  :not(h1, h2, h3, h4, h5, h6)
-  + :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)) {
-  margin-top: 1em;
+  :not(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper)
+  + :is(h1, h2, h3, h4, h5, h6, .sl-heading-wrapper):not(:where(.not-content *)) {
+  margin-top: min(1em, 2rem);
+}
+
+/* ── Footnotes ──────────────────────────────────────────────────────────── */
+
+.sl-markdown-content .footnotes {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-2);
+}
+
+/* The back-link's ↩ as text, not the emoji some platforms draw */
+.sl-markdown-content .footnotes [data-footnote-backref] {
+  font-variant-emoji: text;
+  font-family: var(--__sl-font-mono);
+  text-decoration: none;
 }
 
 /* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
