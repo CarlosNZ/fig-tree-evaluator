@@ -39,12 +39,19 @@ export default defineConfig({
       ],
       // The home page has no entry: the header title links to it. One group
       // per site section, each listing its folder's pages in
-      // `sidebar.order`. Previous/next links follow this order. The
-      // prototype page is deliberately absent: it is reachable only by its
-      // URL, /prototype/.
+      // `sidebar.order`, and the Playground as a single link. Previous/next
+      // links follow this order. The prototype page is deliberately absent:
+      // it is reachable only by its URL, /prototype/.
       sidebar: [
         { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
-        { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
+        { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
+        { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
+        { label: 'Operator reference', items: [{ autogenerate: { directory: 'reference' } }] },
+        { label: 'Custom operators', items: [{ autogenerate: { directory: 'custom-operators' } }] },
+        { label: 'Tooling', items: [{ autogenerate: { directory: 'tooling' } }] },
+        { label: 'Under the hood', items: [{ autogenerate: { directory: 'under-the-hood' } }] },
+        { label: 'Migrating from v2', items: [{ autogenerate: { directory: 'migrating' } }] },
+        { label: 'Playground', link: '/playground/' },
       ],
       // Expressive Code reads its plugins from ec.config.mjs, since the
       // twoslash plugin isn't serialisable into this file

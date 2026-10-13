@@ -20,9 +20,6 @@ hero:
 import { Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components'
 import Playground from '../../components/playground/Playground.tsx'
 
-{/* TO-DO: /playground/ and every "Where next?" link except Concepts point to
-sections that don't exist yet. */}
-
 FigTree lets you put real logic in places that can only hold data, like a config file, a database row or a form definition. Here's a form field that shows only for licensed drivers aged 16 or over, with help text that names the user's country. Change the data, or the expression, and watch the result follow:
 
 <Playground
@@ -117,27 +114,27 @@ FigTree is ESM-only, written in TypeScript with its types included, and needs No
   <LinkCard
     title="Adding FigTree to your app"
     description="Options, fallbacks, I/O clients, caching and tracing, and the FigTree class."
-    href="/guides/"
+    href="/guides/setup/"
   />
   <LinkCard
     title="Operator reference"
     description="Every built-in operator: its parameters, types and examples."
-    href="/operators/"
+    href="/reference/operators/"
   />
   <LinkCard
     title="Custom operators"
     description="Write your own with defineOperator, typed end to end."
-    href="/custom-operators/"
+    href="/custom-operators/writing/"
   />
   <LinkCard
     title="Building tools"
     description="Editors and analysis: the ./format, ./authoring and ./catalog subpaths."
-    href="/tooling/"
+    href="/tooling/overview/"
   />
   <LinkCard
     title="Migrating from v2"
     description="What changed, and the converter that updates your expressions."
-    href="/migrating/"
+    href="/migrating/upgrading/"
   />
 </CardGrid>
 

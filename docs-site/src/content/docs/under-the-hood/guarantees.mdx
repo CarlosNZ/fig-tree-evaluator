@@ -1,0 +1,32 @@
+---
+title: Guarantees
+description: The promises FigTree makes about every evaluation.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## No code runs
+
+An expression can only call registered operators. There is no way to execute code from an expression.
+
+## Data is never evaluated
+
+A value that arrives at runtime, from the data, a request or a query, is never read as an expression. A string that looks like a reference is just a string.
+
+## The input is never modified
+
+Neither the expression nor the data is written to. Results may share structure with them.
+
+## Checking never throws on content
+
+However malformed an expression, checking it reports every problem as an issue rather than stopping at the first.
+
+## Evaluation is bounded
+
+`maxDepth`, `maxNodes` and `timeout` put limits on what any expression can cost.

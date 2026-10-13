@@ -1,0 +1,36 @@
+---
+title: Parameters
+description: 'Declaring an operator''s parameters: types, defaults, nulls and evaluation modes.'
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Declaring parameters
+
+Names, aliases, `required` and `default`.
+
+## Types and constraints
+
+The type vocabulary, literal types, and constraints such as ranges and patterns.
+
+## Null policy
+
+What happens when a parameter is `null`: propagate it as the result, or pass it to the body. The conditional form.
+
+## Evaluation modes
+
+How a parameter reaches the body: evaluated in advance (`eager`), on demand (`lazy`), per element, and the other modes.
+
+## Positional parameters
+
+`positionalParams`, and the shorthand forms they allow.
+
+## Typed `params`
+
+How the body's `params` type is inferred from the declarations.

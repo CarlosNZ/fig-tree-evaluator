@@ -1,0 +1,32 @@
+---
+title: Caching
+description: The compile cache, the result cache, and controlling what is stored.
+sidebar:
+  order: 6
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Two caches
+
+The compile cache, which holds each expression's compiled form, and the result cache, which holds the results of operators whose definitions ask for it (the I/O operators among them).
+
+## The `cache` option
+
+`maxSize` and `maxTime`, and passing your own `store`.
+
+## Turning caching off
+
+`noCache` on a node, or for every use of an operator through `operatorDefaults`.
+
+## Clearing the cache
+
+`clearCache()`, and how instances made with `with()` keep their caches apart.
+
+## A shared store
+
+The `CacheStore` interface, for a cache that outlives the process or is shared between instances.

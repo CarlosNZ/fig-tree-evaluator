@@ -30,3 +30,15 @@ What a reference to a path that isn't there returns, and how to supply a default
 ## The `get` operator
 
 For paths that are built at evaluation time.
+
+## Every reference
+
+The `$` namespaces in one table, each with its one-letter alias and a link to where it's explained:
+
+- `$data`: the evaluation data, on this page
+- `$vars`: variables, on the Variables page
+- `$element` and `$index`: the current element in an iteration, on the Variables page
+- `$params`: a fragment's arguments, in the Fragments guide
+- `$error`: the failure a fallback caught, in the Fallbacks and errors guide
+
+A `$` string that names none of these is plain text, so `'$5.00'` passes through untouched.

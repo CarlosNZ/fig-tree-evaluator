@@ -1,0 +1,32 @@
+---
+title: The evaluate body
+description: 'Writing the body: its params, its context, and failing well.'
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## `params`
+
+The evaluated parameters, and lazy values for the ones evaluated on demand.
+
+## The context
+
+What `OperatorContext` gives a body: the evaluation's options, data, and the means to evaluate a lazy parameter.
+
+## Failing
+
+Throwing `OperatorFailure` with a code and details, and how a failure reaches a fallback.
+
+## Trace events
+
+Recording events in the trace from inside a body.
+
+## Matching core behaviour
+
+The engine-parity helpers, so a custom operator compares, renders and resolves paths exactly as the core operators do.

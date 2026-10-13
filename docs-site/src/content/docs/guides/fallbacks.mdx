@@ -1,0 +1,40 @@
+---
+title: Fallbacks and errors
+description: What happens when a node fails at runtime, and how to recover with a fallback.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## When a node fails
+
+Runtime failures (a type check, a missing path under `strictDataPaths`, a failed request) and how they travel up the tree.
+
+## `fallback`
+
+Any node can carry a `fallback`, the value used when that node or anything beneath it fails. The fallback is itself an expression.
+
+## `$error`
+
+Reading the failure inside a fallback: its code, message and the operator it came from.
+
+## Instance-wide fallbacks
+
+A default `fallback` for every use of an operator, through `operatorDefaults`.
+
+## Errors that reach the host
+
+`FigTreeError`, `isFigTreeError()` and `ErrorCodes`: what a thrown error carries, and telling one code from another.
+
+## Errors no fallback catches
+
+Static errors, and limits such as `timeout`. Links to Checking expressions.
+
+## Finding the gaps
+
+Checking which failures an expression's fallbacks cover, with `fallbackCoverage` from `./authoring`. Links to Tooling.

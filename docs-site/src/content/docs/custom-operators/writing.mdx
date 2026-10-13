@@ -1,0 +1,32 @@
+---
+title: Writing an operator
+description: Defining an operator with defineOperator and registering it.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## A first operator
+
+A complete, small example from definition to evaluation.
+
+## The definition
+
+The parts of a definition: `name`, `alias`, `category`, `parameters`, `positionalParams`, `returns`, and the `evaluate` body.
+
+## `defineOperator()`
+
+What it checks, and why every registered operator must go through it.
+
+## Registering
+
+Adding it to the `operators` option alongside `coreOperators`, and replacing or leaving out core operators.
+
+## What the engine does for you
+
+Type checks, null handling, defaults, truthiness and `fallback` all happen before or after the body runs, so the body holds only the operator's own logic.

@@ -1,0 +1,28 @@
+---
+title: Upgrading to v3
+description: The upgrade path from v2, in four steps.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## At a glance
+
+Same package, version 3. A clean break, with a converter for stored expressions.
+
+## The four steps
+
+Update the package, convert your expressions, review the converter's report, then fix by hand what it flags.
+
+## Updating host code
+
+`FigTreeEvaluator` becomes `FigTree`, and the options and methods that changed. Links to What's changed.
+
+## Requirements
+
+ESM only, and Node 22.12 or later.

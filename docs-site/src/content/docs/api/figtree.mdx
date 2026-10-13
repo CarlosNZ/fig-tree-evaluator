@@ -1,0 +1,56 @@
+---
+title: The FigTree class
+description: The constructor and every method of a FigTree instance.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Constructor
+
+`new FigTree(options?)`, and its type parameter.
+
+## `evaluate()`
+
+Evaluate an expression, with per-call options. Returns the result, or `{ result, trace }` under `trace`.
+
+## `compile()`
+
+Compile an expression once, for repeated evaluation. Returns a `CompiledExpression`.
+
+## `validate()`
+
+Check an expression without evaluating it.
+
+## `getDependencies()`
+
+What an expression reads.
+
+## `isEvaluable()`
+
+Whether an expression holds anything to evaluate.
+
+## `updateOptions()`
+
+Merge an update into the instance's options.
+
+## `with()`
+
+A new instance with an update applied.
+
+## `getOptions()`
+
+The instance's evaluation options.
+
+## `getOperators()` and `getFragments()`
+
+The registered operators and fragments, as plain data.
+
+## `clearCache()`
+
+Empty the result store.

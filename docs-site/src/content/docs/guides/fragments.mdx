@@ -1,0 +1,36 @@
+---
+title: Fragments
+description: Reusable named expressions, registered once and called by name.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## What a fragment is
+
+A named expression registered on the instance and called with a `$` key, like an operator.
+
+## Defining a fragment
+
+The `fragments` option: each fragment's `expression`, `parameters` and `description`.
+
+## Parameters
+
+Declaring parameters, passing arguments, and reading them in the body with `$params.`.
+
+## Calling a fragment
+
+The call node's forms, and how a call is checked against the fragment's parameters.
+
+## Registering and updating
+
+Fragments are set at construction or with `updateOptions()`, never per call, and an update merges with the existing set.
+
+## Presenting fragments in an editor
+
+A fragment's `metadata` and `samples`, read by `getCatalog` and by editors. Links to Tooling.

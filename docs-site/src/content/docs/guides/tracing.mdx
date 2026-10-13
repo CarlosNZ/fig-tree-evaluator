@@ -1,0 +1,32 @@
+---
+title: Tracing
+description: Recording what happened at every node of an evaluation.
+sidebar:
+  order: 7
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Turning tracing on
+
+The `trace` option, on the instance or per call, and the `{ result, trace }` that `evaluate()` returns with it.
+
+## The trace tree
+
+A `TraceNode` for each node evaluated, with its result or failure, and one for each element an iterator visits.
+
+## Events
+
+What a node records along the way: cache hits, requests and queries, a fallback taking over.
+
+## Tracing a failure
+
+A failing evaluation still throws, and its error carries the trace so far as `error.trace`.
+
+## Cost
+
+A trace holds values by reference, so keeping one keeps every value it recorded, whole API responses included.

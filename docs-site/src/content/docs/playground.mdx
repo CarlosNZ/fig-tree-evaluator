@@ -1,0 +1,26 @@
+---
+title: Playground
+description: Write and evaluate FigTree expressions in your browser.
+tableOfContents: false
+---
+
+import { Aside } from '@astrojs/starlight/components'
+import Playground from '../../components/playground/Playground.tsx'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. It will be a full-width playground that opens any example on the site, and whose expressions can be shared by URL.
+</Aside>
+
+<Playground
+  client:visible
+  id="playground"
+  readFromUrl
+  expression={`
+    {
+      $buildString: 'Hello {{$data.name}}',
+    }
+  `}
+  data={`
+    { name: 'World' }
+  `}
+/>

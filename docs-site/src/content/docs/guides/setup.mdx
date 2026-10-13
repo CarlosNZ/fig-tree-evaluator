@@ -1,0 +1,40 @@
+---
+title: Setting up FigTree
+description: Creating an instance, giving it data, and the options every evaluation uses.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Creating an instance
+
+`new FigTree(options)`. With no options, an instance has the core operators and nothing else.
+
+## Instance options and per-call options
+
+One option shape in two places: on the instance, and as `evaluate()`'s second argument, merged over the instance's for that call.
+
+## Changing options
+
+`updateOptions()` merges an update into the instance; `with()` returns a new instance with the update applied and leaves the original as it was. Passing `null` removes a stored value.
+
+## Choosing operators
+
+The `operators` option. Omitted, it is `coreOperators`; given, it lists the whole registry, so a host can leave operators out or add its own. Links to Custom operators and to HTTP and SQL.
+
+## Evaluating the same expression often
+
+`compile()` for an expression evaluated many times, and the compile cache behind `evaluate()`. Links to Caching.
+
+## Limits
+
+`maxDepth`, `maxNodes`, `timeout` and `signal`, for expressions from sources you don't fully control.
+
+## TypeScript
+
+The instance's type parameters, and how `evaluate()`'s return type follows the `trace` option.

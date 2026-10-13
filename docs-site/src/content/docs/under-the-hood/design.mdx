@@ -1,0 +1,36 @@
+---
+title: Why FigTree is shaped this way
+description: The reasoning behind the design, for anyone deciding whether it fits.
+sidebar:
+  order: 1
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Logic as data
+
+Rules that change often and are edited by people who aren't developers belong in data, not code, and data can't be allowed to run code.
+
+## Most of a config isn't logic
+
+A large structure with a few dynamic values in it: why FigTree treats every JSON value as an expression and leaves the plain parts alone.
+
+## Strict when checked, forgiving when run
+
+Mistakes in an expression are caught before it runs; problems with the data it meets are handled while it runs.
+
+## Absence isn't failure
+
+A missing value resolves to `null` and evaluation carries on. A failure is a separate thing, with its own handling.
+
+## Not every argument is computed
+
+Why some operators evaluate their parameters only when they need them.
+
+## What it costs
+
+The trade-offs: what the design gives up for these properties.

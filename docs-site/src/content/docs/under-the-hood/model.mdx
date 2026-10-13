@@ -1,0 +1,36 @@
+---
+title: Compile, check, evaluate
+description: The three stages an expression goes through, and what each one knows.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Three stages
+
+Compile, check and evaluate, and the strict division of what each is allowed to know.
+
+## Compile
+
+Recognising what each part of an expression is, using only the expression and the registered operators and fragments, never the data. The kinds of piece it recognises.
+
+## Check
+
+Static checks over the compiled expression: types of literal parameters, references to undeclared names, operators' own `validate` hooks.
+
+## Evaluate
+
+Filling in the expression's dynamic positions from the data and the call's options. Its cost follows the number of dynamic positions, not the size of the document.
+
+## What is reused
+
+The first two stages run once per expression and are cached; evaluation runs every time. How this explains `validate()` needing no data, and `compile()` being worth using.
+
+## One expression, end to end
+
+A small expression followed through all three stages.

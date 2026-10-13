@@ -1,0 +1,36 @@
+---
+title: What's changed
+description: Every operator, option and method that changed between v2 and v3.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## Operators
+
+Each v2 operator and what it is in v3. Generated from the operators' definitions.
+
+## Recycled names
+
+`!`, `get`, `lower`, `join`, `data` and `convert` mean something different in v3. The converter handles them; anyone reading or editing by hand needs to know.
+
+## Options
+
+Each v2 option and its v3 replacement.
+
+## Methods
+
+`evaluateExpression()` becomes `evaluate()`, and the removed methods and what replaces them.
+
+## Results that differ on purpose
+
+No implicit type coercion, different null handling, evaluation of the whole expression by default, and `updateOptions()` merging `data` and `fragments`.
+
+## HTTP and SQL setup
+
+I/O operators registered with a client, and the renamed SQL connections. Links to HTTP and SQL.

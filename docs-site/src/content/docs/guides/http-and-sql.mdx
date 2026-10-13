@@ -1,0 +1,40 @@
+---
+title: HTTP and SQL
+description: Registering the I/O operators with a client of your choice.
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## I/O is opt-in
+
+The `http`, `graphQL` and `sql` operators aren't in `coreOperators`. An instance has them only once `httpOperators(client)` or `sqlOperators(connection)` is in its `operators` option, and no client is bundled unless you import it.
+
+## HTTP clients
+
+`FetchClient` and `AxiosClient`, wrapping a `fetch` or an Axios instance.
+
+## The `http` and `graphQL` options
+
+Base endpoints and headers set on the instance or per call.
+
+## SQL connections
+
+`PostgresConnection` and `SQLiteConnection`, wrapping a node-postgres client or a SQLite database.
+
+## Writing your own client
+
+The `HttpClient` and `SqlConnection` interfaces, and `httpFailure()` / `sqlFailure()` for reporting failures the operators understand.
+
+## Timeouts and cancellation
+
+The `timeout` and `signal` options, and setting a timeout on the client itself.
+
+## Caching responses
+
+The I/O operators' results are cached by default. Links to Caching.

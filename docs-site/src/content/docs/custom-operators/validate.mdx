@@ -1,0 +1,28 @@
+---
+title: Static checks
+description: 'The validate hook: catching bad literal parameters before anything runs.'
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## The `validate` hook
+
+A function over a node's literal parameter values, run when the expression is compiled.
+
+## Findings
+
+Reporting a problem as a finding, with its severity and parameter.
+
+## Helpers
+
+The toolbox the hook receives.
+
+## When it runs
+
+At `validate()`, `compile()` and the first `evaluate()` of an expression, and never for parameters only known at runtime.

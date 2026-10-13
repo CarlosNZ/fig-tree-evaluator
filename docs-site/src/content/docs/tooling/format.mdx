@@ -1,0 +1,24 @@
+---
+title: 'Converting forms: ./format'
+description: Converting expressions between shorthand and canonical form, and reading their structure.
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## `toCanonical()` and `toShorthand()`
+
+Rewriting a whole expression into one form, and their options.
+
+## `toGet()` and `toReference()`
+
+Converting between a `$data.…` reference string and the equivalent `get` node.
+
+## Reading primitives
+
+`classifyObject`, `positionalLayout`, `singlePositionalTarget`, `recognizeReference` and `typesIntersect`: the compiler's own reading of an expression, for tools that walk one.

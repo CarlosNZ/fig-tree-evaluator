@@ -1,0 +1,32 @@
+---
+title: Variables
+description: Naming a value once and reading it anywhere below, and the values iteration provides.
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## `vars`
+
+Declaring variables on a node, or on a plain object, and reading them with `$vars.` references.
+
+## Scope
+
+Variables are lexical: a reference sees those declared on its own node and every node above it, and an inner declaration hides an outer one.
+
+## Evaluated once, when needed
+
+A variable is evaluated only if something reads it, and only once however many times it's read.
+
+## Iteration: `$element` and `$index`
+
+What `map`, `filter` and the other iterating operators make available to each element's expression, and naming them with `as`.
+
+## Mistakes caught early
+
+A `$vars` name that isn't declared in scope, or an `$element` outside an iterator, is an error when the expression is checked, not a `null` at runtime.

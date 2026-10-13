@@ -1,0 +1,32 @@
+---
+title: The converter
+description: Rewriting v2 expressions and fragments as v3, with migrateV2Expression.
+sidebar:
+  order: 3
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## `migrateV2Expression()`
+
+Converting one expression: what it takes and what it returns.
+
+## `migrateV2Fragments()`
+
+Converting a v2 instance's fragments.
+
+## The report
+
+The issues it returns: `non-convertible`, `intentional-semantic-change` and `lossy-default`, and what to do with each.
+
+## What converts cleanly
+
+The changes it makes without raising an issue.
+
+## Converting in bulk
+
+Running the converter over a store of expressions, and checking its output.
