@@ -69,6 +69,8 @@ docs-site/
       operator-notes/       the docs' own notes on operators, one optional file each
     components/
       Expression.astro        static expression block, evaluated at build time
+      ExpressionTree.astro    an expression drawn as a tree, each node's result evaluated at build time
+      TreeItem.astro          one entry in that tree, with its children
       OperatorReference.astro reference entries: the operators page, or a chosen few
       OperatorEntry.astro     one operator's entry
       playground/

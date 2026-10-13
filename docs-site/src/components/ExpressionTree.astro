@@ -1,0 +1,72 @@
+---
+/**
+ * An expression drawn as a tree: each node with its operator and the result
+ * it gives, its parameters below it, labelled with their names where the
+ * expression names them. Every result is computed when the site is built, by
+ * evaluating that node's subtree with the example's data, so the diagram
+ * can't disagree with the library.
+ *
+ * Draws shorthand nodes and their parameters; anything else is a leaf, shown
+ * as its value, and a reference also shows the value it reads. Each subtree
+ * is evaluated on its own, so an expression whose nodes read `$vars` or
+ * `$element` from a node above them can't be drawn.
+ */
+import JSON5 from 'json5'
+import { figTree } from '../lib/figTree'
+import { dedent } from '../lib/dedent'
+import { toJson5 } from '../lib/json5'
+import TreeItem, { type Item } from './TreeItem.astro'
+
+interface Props {
+  /** The expression, as JSON5 source. */
+  code: string
+  /** The evaluation data, as JSON5 source. */
+  data?: string
+  /** What the diagram shows, for screen readers. */
+  label: string
+}
+
+const { label } = Astro.props
+const expression = JSON5.parse(dedent(Astro.props.code))
+const data = Astro.props.data === undefined ? undefined : JSON5.parse(dedent(Astro.props.data))
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const shorthandKey = (value: Record<string, unknown>) => {
+  const keys = Object.keys(value).filter((key) => key.startsWith('$'))
+  return keys.length === 1 ? keys[0] : undefined
+}
+
+const evaluate = async (value: unknown) =>
+  toJson5(await figTree.evaluate(value as never, data ? { data } : undefined))
+
+const walk = async (value: unknown, name?: string): Promise<Item> => {
+  if (isPlainObject(value)) {
+    const key = shorthandKey(value)
+    if (key !== undefined) {
+      const payload = value[key]
+      const children = Array.isArray(payload)
+        ? await Promise.all(payload.map((child) => walk(child)))
+        : isPlainObject(payload) && shorthandKey(payload) === undefined
+          ? await Promise.all(Object.entries(payload).map(([param, child]) => walk(child, param)))
+          : [await walk(payload)]
+      return { kind: 'node', name, text: key, result: await evaluate(value), children }
+    }
+  }
+  const text = toJson5(value)
+  if (typeof value === 'string' && value.startsWith('$')) {
+    const result = await evaluate(value)
+    if (result !== text) return { kind: 'reference', name, text, result, children: [] }
+  }
+  return { kind: 'leaf', name, text, children: [] }
+}
+
+const root = await walk(expression)
+---
+
+<figure class="fds-tree not-content" role="img" aria-label={label}>
+  <ul>
+    <TreeItem item={root} />
+  </ul>
+</figure>

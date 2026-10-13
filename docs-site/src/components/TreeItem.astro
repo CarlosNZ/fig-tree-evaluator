@@ -1,0 +1,39 @@
+---
+/**
+ * One entry in an `<ExpressionTree>`, with its children below it, drawn by
+ * rendering itself for each one.
+ */
+export interface Item {
+  kind: 'node' | 'reference' | 'leaf'
+  /** The parameter name, where the expression names it. */
+  name?: string
+  /** The operator key, the reference, or the value. */
+  text: string
+  /** What a node or reference evaluates to. */
+  result?: string
+  children: Item[]
+}
+
+interface Props {
+  item: Item
+}
+
+const { item } = Astro.props
+---
+
+<li>
+  {item.name && <span class="fds-tree-param">{item.name}</span>}
+  <span class={`fds-tree-box fds-tree-box--${item.kind}`}>
+    <code>{item.text}</code>
+    {item.result !== undefined && <span class="fds-tree-result">→ {item.result}</span>}
+  </span>
+  {
+    item.children.length > 0 && (
+      <ul>
+        {item.children.map((child) => (
+          <Astro.self item={child} />
+        ))}
+      </ul>
+    )
+  }
+</li>
