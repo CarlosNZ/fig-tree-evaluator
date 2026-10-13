@@ -27,6 +27,10 @@
   --fds-tree-ref-data: color-mix(in oklab, #7b3fc4, white 40%);
   --fds-tree-ref-vars: color-mix(in oklab, #0f7c7a, white 40%);
   --fds-tree-ref-params: color-mix(in oklab, #b0307f, white 40%);
+  /* The tree's evaluation toasts: done, failed, caught by a fallback */
+  --fds-toast-done: #3fb950;
+  --fds-toast-failed: #f85149;
+  --fds-toast-fallback: #d29922;
 }
 
 :root[data-theme='light'] {
@@ -46,6 +50,9 @@
   --fds-tree-ref-data: #7b3fc4;
   --fds-tree-ref-vars: #0f7c7a;
   --fds-tree-ref-params: #b0307f;
+  --fds-toast-done: #1a7f37;
+  --fds-toast-failed: #cf222e;
+  --fds-toast-fallback: #9a6700;
 }
 
 /*
@@ -367,26 +374,34 @@
 .fds-widget-pane {
   display: flex;
   flex-direction: column;
-  min-height: 20rem;
   max-height: 32rem;
   overflow: auto;
 }
 
 .fds-widget-pane + .fds-widget-pane,
-.fds-widget-preview {
+.fds-widget-preview,
+.fds-widget-tree-cell {
   border-left: 1px solid var(--sl-color-hairline);
+}
+
+/* Without the preview, the panes stack */
+.fds-widget-panes--stacked > .fds-widget-pane + .fds-widget-pane {
+  border-left: none;
+  border-top: 1px solid var(--sl-color-hairline);
 }
 
 /*
  * The inline widget's tree: the editor drawn at a fraction of its size, not
- * interactive, and a button that opens the overlay. The frame is absolutely
- * placed so the text pane alone sets the row's height.
+ * interactive, and a button that opens the overlay. The tree is placed
+ * absolutely and scaled, so it takes no room of its own: the pane's minimum
+ * height, from its measured height, is what makes room for it.
  */
 .fds-widget-preview {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  /* Room for the label and the shrunken tree, measured, up to a pane's cap */
+  min-height: min(calc(var(--fds-preview-height, 0px) + 2.25rem), 32rem);
   background: var(--fds-tree-bg);
   cursor: zoom-in;
 }
@@ -402,10 +417,17 @@
   flex: 1;
   overflow: hidden;
   padding: 0 0.25rem;
+}
+
+.fds-widget-preview-frame--clip-bottom {
   mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
 }
 
-.fds-widget-preview-frame--clipped {
+.fds-widget-preview-frame--clip-right {
+  mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+}
+
+.fds-widget-preview-frame--clip-bottom.fds-widget-preview-frame--clip-right {
   mask-image:
     linear-gradient(to bottom, black calc(100% - 2.5rem), transparent),
     linear-gradient(to right, black calc(100% - 2.5rem), transparent);
@@ -476,8 +498,20 @@
 }
 
 .fds-overlay .fds-widget-below {
-  max-height: 35%;
-  overflow: auto;
+  flex: none;
+  height: 30%;
+}
+
+/* The tree's pane, with its toasts over its foot */
+.fds-widget-tree-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.fds-widget-tree-cell > .fds-widget-pane {
+  flex: 1;
 }
 
 @media (max-width: 48rem) {
@@ -487,12 +521,37 @@
     border-radius: 0;
   }
 
-  .fds-overlay .fds-widget-panes {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  /*
+   * The panes stack in one scrolling column under a toolbar that stays put,
+   * each as tall as its content, up to a share of the screen
+   */
+  .fds-overlay {
+    overflow-y: auto;
   }
 
-  .fds-overlay .fds-widget-pane + .fds-widget-pane {
+  .fds-overlay .fds-widget-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+  }
+
+  .fds-overlay .fds-widget-panes,
+  .fds-overlay .fds-widget-below {
+    flex: none;
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fds-overlay .fds-widget-pane {
+    max-height: 30dvh;
+  }
+
+  .fds-overlay .fds-widget-tree-cell > .fds-widget-pane {
+    max-height: 40dvh;
+  }
+
+  .fds-overlay .fds-widget-pane + .fds-widget-pane,
+  .fds-overlay .fds-widget-tree-cell {
     border-left: none;
     border-top: 1px solid var(--sl-color-hairline);
   }
@@ -544,6 +603,70 @@
   color: var(--sl-color-text);
 }
 
+/*
+ * The editor's own select (the operator and parameter pickers), on a dark
+ * page: its white boxes and list take the page's colours. Its border is
+ * `!important` in the editor's stylesheet, so this one is too.
+ */
+:root[data-theme='dark'] .fds-widget .ft-select-input {
+  border-color: var(--sl-color-gray-5) !important;
+  background-color: var(--sl-color-bg);
+  color: var(--sl-color-text);
+}
+
+:root[data-theme='dark'] .fds-widget input.ft-select-input::placeholder,
+:root[data-theme='dark'] .fds-widget .ft-select-placeholder,
+:root[data-theme='dark'] .fds-widget .ft-select-chevron {
+  color: var(--sl-color-gray-3);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-dropdown {
+  border-color: var(--sl-color-gray-5);
+  background-color: var(--sl-color-bg-nav);
+  color: var(--sl-color-text);
+  box-shadow: 0 0.3em 1em rgb(0 0 0 / 0.4);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-group-label {
+  background-color: var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-option-border {
+  border-top-color: var(--sl-color-gray-5);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-option:hover,
+:root[data-theme='dark'] .fds-widget .ft-select-highlighted {
+  background-color: var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-option.ft-select-disabled {
+  color: var(--sl-color-gray-4);
+  background-color: transparent;
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-option-description {
+  color: var(--sl-color-gray-2);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-option-hint {
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-selected {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-selected .ft-select-option-description,
+:root[data-theme='dark'] .fds-widget .ft-select-disabled .ft-select-option-description {
+  color: inherit;
+}
+
+:root[data-theme='dark'] .fds-widget .ft-select-selected .ft-select-option-hint {
+  color: #ffd24d;
+}
+
 /* The messages' quick fixes, on a dark page: a tint of the accent */
 :root[data-theme='dark'] .fds-widget .ft-fix {
   border-color: color-mix(in oklab, var(--sl-color-accent), transparent 50%);
@@ -590,6 +713,10 @@
   }
 }
 
+.fds-cm--bare .cm-lineNumbers {
+  display: none !important;
+}
+
 /* The inline widget shares its row with the preview, so its text runs smaller */
 .fds-widget:not(.fds-overlay) > .fds-widget-panes .cm-editor {
   font-size: 0.8125rem;
@@ -603,43 +730,288 @@
   border-top: 1px solid var(--sl-color-hairline);
 }
 
+/* ── Data and result ── */
+
 .fds-widget-below {
   border-top: 1px solid var(--sl-color-hairline);
-  padding: 0.6rem 0.75rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
 }
 
-.fds-widget-below .fds-segmented {
-  align-self: flex-start;
+.fds-widget-below .fds-widget-pane {
+  max-height: 16rem;
 }
 
+/* The latest result stays, faded, while the next is worked out */
 .fds-widget-result {
+  padding: 0.2rem 0.75rem 0.75rem;
+  transition: opacity 0.15s;
+}
+
+.fds-widget-result--stale {
+  opacity: 0.55;
+}
+
+.fds-widget-result-message {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  color: var(--sl-color-gray-3);
+}
+
+.fds-widget-result-failed {
   margin: 0;
-  padding: 0.6rem 0.9rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 0.25rem;
-  background: var(--sl-color-bg-inline-code);
+  background: var(--fds-error-bg);
+  color: var(--fds-error-text);
   font-family: var(--__sl-font-mono);
   font-size: var(--sl-text-code);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  max-height: 18rem;
-  overflow: auto;
 }
 
-.fds-widget-result--pending {
+/*
+ * A value, as a result or a toast shows it (ResultValue.tsx): text in the
+ * body font, sized by its length, and code in the code font.
+ */
+.fds-value {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fds-value--text {
+  font-family: var(--sl-font);
+  line-height: 1.3;
+  color: var(--sl-color-white);
+}
+
+.fds-value--large {
+  font-size: 1.75rem;
+  font-weight: 500;
+}
+
+.fds-value--medium {
+  font-size: 1.25rem;
+}
+
+.fds-value--small {
+  font-size: var(--sl-text-base);
+}
+
+.fds-value--empty {
+  font-family: var(--sl-font);
+  font-style: italic;
   color: var(--sl-color-gray-3);
 }
 
-.fds-widget-result--failed {
-  background: var(--fds-error-bg);
+.fds-value--code {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  color: var(--sl-color-white);
+}
+
+.fds-value--literal {
+  font-size: 1.25rem;
+}
+
+/* ── The tree's evaluation toasts (EvaluationToast.tsx) ── */
+
+.fds-toast-region {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  z-index: 2;
+  width: min(24rem, calc(100% - 1.5rem), 50vw);
+  pointer-events: none;
+}
+
+.fds-toast {
+  --fds-toast-accent: var(--sl-color-gray-3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem 0.75rem 0.7rem;
+  border: 1px solid var(--sl-color-hairline-shade);
+  border-left: 4px solid var(--fds-toast-accent);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  box-shadow:
+    0 6px 24px rgb(0 0 0 / 0.18),
+    0 1px 3px rgb(0 0 0 / 0.12);
+  pointer-events: auto;
+  animation: fds-toast-in 0.18s ease-out;
+}
+
+.fds-toast--done {
+  --fds-toast-accent: var(--fds-toast-done);
+}
+
+.fds-toast--failed {
+  --fds-toast-accent: var(--fds-toast-failed);
+}
+
+.fds-toast--fallback {
+  --fds-toast-accent: var(--fds-toast-fallback);
+}
+
+.fds-toast-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 1.5rem;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-toast-icon {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: var(--fds-toast-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.fds-toast-path,
+.fds-toast-note code {
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-xs);
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.25rem;
+  background: var(--sl-color-bg-inline-code);
+  overflow-wrap: anywhere;
+}
+
+.fds-toast-status {
+  color: var(--sl-color-gray-3);
+  font-size: var(--sl-text-xs);
+}
+
+.fds-toast-body {
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.fds-toast .fds-value--large {
+  font-size: 1.5rem;
+}
+
+.fds-toast-error {
+  margin: 0;
+  font-family: var(--__sl-font-mono);
+  font-size: var(--sl-text-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
   color: var(--fds-error-text);
 }
 
-.fds-widget-data {
-  border: 1px solid var(--sl-color-hairline);
+.fds-toast-note {
+  font-size: var(--sl-text-xs);
+  color: var(--sl-color-gray-2);
+}
+
+.fds-toast-copy {
+  align-self: flex-start;
+  font: inherit;
+  font-size: var(--sl-text-xs);
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--sl-color-gray-2);
+  cursor: pointer;
+}
+
+.fds-toast-copy:hover {
+  color: var(--sl-color-text-accent);
+  border-color: var(--sl-color-text-accent);
+}
+
+.fds-toast-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  padding: 0;
+  border: none;
   border-radius: 0.25rem;
-  max-height: 18rem;
-  overflow: auto;
+  background: transparent;
+  color: var(--sl-color-gray-3);
+  cursor: pointer;
+}
+
+.fds-toast-close:hover {
+  background: var(--sl-color-bg-inline-code);
+  color: var(--sl-color-text);
+}
+
+.fds-toast-close .fds-toast-icon {
+  width: 0.8rem;
+  height: 0.8rem;
+  stroke: currentColor;
+}
+
+.fds-toast-spinner {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--sl-color-gray-5);
+  border-top-color: var(--sl-color-gray-2);
+  border-radius: 50%;
+  animation: fds-spin 0.8s linear infinite;
+}
+
+@keyframes fds-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+@keyframes fds-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* On a small screen, a smaller toast */
+@media (max-width: 48rem) {
+  .fds-toast {
+    gap: 0.3rem;
+    padding: 0.45rem 0.55rem 0.55rem;
+    border-left-width: 3px;
+  }
+
+  .fds-toast-head,
+  .fds-toast-error,
+  .fds-toast .fds-value--code {
+    font-size: var(--sl-text-xs);
+  }
+
+  .fds-toast .fds-value--large,
+  .fds-toast .fds-value--literal {
+    font-size: 1.125rem;
+  }
+
+  .fds-toast .fds-value--medium {
+    font-size: 1rem;
+  }
+
+  .fds-toast .fds-value--small {
+    font-size: var(--sl-text-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fds-toast {
+    animation: none;
+  }
+
+  .fds-toast-spinner {
+    animation-duration: 2s;
+  }
 }

@@ -94,6 +94,8 @@ interface Props {
   value: string
   onChange: (text: string) => void
   label: string
+  /** Whether the pane shows line numbers (it does by default). */
+  lineNumbers?: boolean
 }
 
 /**
@@ -102,7 +104,7 @@ interface Props {
  * document and changes nothing, so the cursor stays put. Only a `value` the
  * parent produced some other way is written into the document.
  */
-export const Json5Editor = ({ value, onChange, label }: Props) => {
+export const Json5Editor = ({ value, onChange, label, lineNumbers = true }: Props) => {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -141,5 +143,5 @@ export const Json5Editor = ({ value, onChange, label }: Props) => {
     })
   }, [value])
 
-  return <div className="fds-cm" ref={host} />
+  return <div className={lineNumbers ? 'fds-cm' : 'fds-cm fds-cm--bare'} ref={host} />
 }
