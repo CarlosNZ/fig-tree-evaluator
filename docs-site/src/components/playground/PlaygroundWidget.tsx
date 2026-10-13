@@ -10,8 +10,8 @@ import { readPlaygroundSeed } from '../../lib/playgroundLink'
 import { Json5Editor, hasComments } from './Json5Editor'
 import type { PlaygroundProps } from './Playground'
 
-/** Below this width the two panes become tabs. */
-const NARROW = 760
+/** Below this width the inline widget leaves out the tree preview. */
+const PREVIEW_MIN_WIDTH = 560
 const EVALUATE_DELAY = 250
 
 type Outcome =
@@ -37,7 +37,9 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
   const [narrow, setNarrow] = useState(false)
   useLayoutEffect(() => {
     if (!element.current) return
-    const observer = new ResizeObserver(([entry]) => setNarrow(entry.contentRect.width < NARROW))
+    const observer = new ResizeObserver(([entry]) =>
+      setNarrow(entry.contentRect.width < PREVIEW_MIN_WIDTH)
+    )
     observer.observe(element.current)
     return () => observer.disconnect()
   }, [element])
@@ -45,8 +47,11 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
 }
 
 /**
- * The two-pane widget: JSON5 text on the left, the FigTree editor on the
- * right, both reading and writing one expression, with its result below.
+ * The two-pane widget: JSON5 text and the FigTree editor, both reading and
+ * writing one expression, with its result below. On the page, the widget
+ * keeps to the content column: the text pane, with a shrunken, read-only
+ * preview of the tree beside it where there's room. Expanding it opens an
+ * overlay with the two panes side by side at full size.
  *
  * The text pane keeps its own text, because half-typed JSON5 doesn't parse:
  * an edit that parses updates the shared expression, and one that doesn't
@@ -81,10 +86,15 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
   const [outcome, setOutcome] = useState<Outcome>({ status: 'pending' })
   const [notice, setNotice] = useState<string | null>(null)
-  const [pane, setPane] = useState<'text' | 'tree'>('text')
   const [below, setBelow] = useState<'result' | 'data'>('result')
+  const [expanded, setExpanded] = useState(false)
   const container = useRef<HTMLDivElement>(null)
   const narrow = useNarrow(container)
+  const overlay = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    if (expanded) overlay.current?.showModal()
+  }, [expanded])
 
   // An "open in editor" link lands here; the page has grown since the
   // browser scrolled to the anchor, so scroll again now the widget is drawn
@@ -168,82 +178,158 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     return () => clearTimeout(timer)
   }, [expression, data, parseError, dataError])
 
-  const showText = !narrow || pane === 'text'
-  const showTree = !narrow || pane === 'tree'
+  const formSwitch = (
+    <>
+      <div className="fds-segmented" role="group" aria-label="Form">
+        <button
+          aria-pressed={form === 'shorthand'}
+          disabled={!form}
+          onClick={() => convert('shorthand')}
+        >
+          Shorthand
+        </button>
+        <button aria-pressed={form === 'full'} disabled={!form} onClick={() => convert('full')}>
+          Full
+        </button>
+      </div>
+      {form === 'mixed' && <span className="fds-widget-hint">mixed forms</span>}
+    </>
+  )
+
+  const textPane = (
+    <div className="fds-widget-pane">
+      <div className="fds-widget-pane-label">JSON5</div>
+      <Json5Editor value={text} onChange={onTextChange} label="Expression (JSON5)" />
+      {parseError && <div className="fds-widget-error">{parseError}</div>}
+    </div>
+  )
+
+  const treeEditor = (
+    <FigTreeEditor
+      figTree={figTree}
+      expression={expression}
+      setExpression={replaceExpression}
+      evaluationData={data}
+      rootName="expression"
+      jsonParse={JSON5.parse}
+      minWidth="100%"
+      maxWidth="100%"
+    />
+  )
+
+  const noticeBar = notice && <div className="fds-widget-notice">{notice}</div>
+
+  const output = (
+    <div className="fds-widget-below">
+      <div className="fds-segmented" role="tablist" aria-label="Output">
+        <button role="tab" aria-selected={below === 'result'} onClick={() => setBelow('result')}>
+          Result
+        </button>
+        <button role="tab" aria-selected={below === 'data'} onClick={() => setBelow('data')}>
+          Data
+        </button>
+      </div>
+      {below === 'result' ? (
+        <ResultView outcome={outcome} />
+      ) : (
+        <div className="fds-widget-data">
+          <Json5Editor value={dataText} onChange={onDataChange} label="Evaluation data (JSON5)" />
+          {dataError && <div className="fds-widget-error">{dataError}</div>}
+        </div>
+      )}
+    </div>
+  )
 
   return (
-    <div className={`fds-widget${narrow ? ' fds-widget--narrow' : ''}`} ref={container}>
+    <div className="fds-widget" ref={container}>
       <div className="fds-widget-toolbar">
-        {narrow && (
-          <div className="fds-segmented" role="tablist" aria-label="Pane">
-            <button role="tab" aria-selected={pane === 'text'} onClick={() => setPane('text')}>
-              Text
+        {formSwitch}
+        <button className="fds-widget-action" onClick={() => setExpanded(true)}>
+          Expand
+        </button>
+      </div>
+
+      <div className={`fds-widget-panes${narrow ? '' : ' fds-widget-panes--preview'}`}>
+        {textPane}
+        {!narrow && <TreePreview onOpen={() => setExpanded(true)}>{treeEditor}</TreePreview>}
+      </div>
+
+      {noticeBar}
+      {output}
+
+      {expanded && (
+        <dialog
+          className="fds-widget fds-overlay"
+          ref={overlay}
+          aria-label="Expression editor"
+          onClose={() => setExpanded(false)}
+        >
+          <div className="fds-widget-toolbar">
+            {formSwitch}
+            <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
+              Close
             </button>
-            <button role="tab" aria-selected={pane === 'tree'} onClick={() => setPane('tree')}>
-              Tree
-            </button>
           </div>
-        )}
-        <div className="fds-segmented" role="group" aria-label="Form">
-          <button
-            aria-pressed={form === 'shorthand'}
-            disabled={!form}
-            onClick={() => convert('shorthand')}
-          >
-            Shorthand
-          </button>
-          <button aria-pressed={form === 'full'} disabled={!form} onClick={() => convert('full')}>
-            Full
-          </button>
+          <div className="fds-widget-panes">
+            {textPane}
+            <div className="fds-widget-pane fds-widget-pane--tree">
+              <div className="fds-widget-pane-label">Editor</div>
+              {treeEditor}
+            </div>
+          </div>
+          {noticeBar}
+          {output}
+        </dialog>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The inline widget's tree: the editor drawn shrunken and read-only, as a
+ * button that opens the overlay. Where the column is too narrow for it, its
+ * right side is cut off, and fades out as its foot does.
+ */
+const TreePreview = ({ onOpen, children }: { onOpen: () => void; children: React.ReactNode }) => {
+  const frame = useRef<HTMLDivElement>(null)
+  const scaled = useRef<HTMLDivElement>(null)
+  const [clipped, setClipped] = useState(false)
+
+  useLayoutEffect(() => {
+    // React 18 has no `inert` prop, so it's set on the element
+    frame.current!.setAttribute('inert', '')
+    const observer = new ResizeObserver(() =>
+      setClipped(
+        scaled.current!.getBoundingClientRect().right > frame.current!.getBoundingClientRect().right
+      )
+    )
+    observer.observe(frame.current!)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      className="fds-widget-preview"
+      role="button"
+      tabIndex={0}
+      aria-label="Open the tree editor"
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return
+        event.preventDefault()
+        onOpen()
+      }}
+    >
+      <div className="fds-widget-pane-label">Editor</div>
+      <div
+        className={`fds-widget-preview-frame${clipped ? ' fds-widget-preview-frame--clipped' : ''}`}
+        ref={frame}
+      >
+        <div className="fds-widget-preview-scaled" ref={scaled}>
+          {children}
         </div>
-        {form === 'mixed' && <span className="fds-widget-hint">mixed forms</span>}
       </div>
-
-      <div className="fds-widget-panes">
-        {showText && (
-          <div className="fds-widget-pane">
-            <div className="fds-widget-pane-label">JSON5</div>
-            <Json5Editor value={text} onChange={onTextChange} label="Expression (JSON5)" />
-            {parseError && <div className="fds-widget-error">{parseError}</div>}
-          </div>
-        )}
-        {showTree && (
-          <div className="fds-widget-pane fds-widget-pane--tree">
-            <div className="fds-widget-pane-label">Editor</div>
-            <FigTreeEditor
-              figTree={figTree}
-              expression={expression}
-              setExpression={replaceExpression}
-              evaluationData={data}
-              rootName="expression"
-              jsonParse={JSON5.parse}
-              minWidth="100%"
-              maxWidth="100%"
-            />
-          </div>
-        )}
-      </div>
-
-      {notice && <div className="fds-widget-notice">{notice}</div>}
-
-      <div className="fds-widget-below">
-        <div className="fds-segmented" role="tablist" aria-label="Output">
-          <button role="tab" aria-selected={below === 'result'} onClick={() => setBelow('result')}>
-            Result
-          </button>
-          <button role="tab" aria-selected={below === 'data'} onClick={() => setBelow('data')}>
-            Data
-          </button>
-        </div>
-        {below === 'result' ? (
-          <ResultView outcome={outcome} />
-        ) : (
-          <div className="fds-widget-data">
-            <Json5Editor value={dataText} onChange={onDataChange} label="Evaluation data (JSON5)" />
-            {dataError && <div className="fds-widget-error">{dataError}</div>}
-          </div>
-        )}
-      </div>
+      <span className="fds-widget-preview-hint">Open editor</span>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, basicSetup } from 'codemirror'
-import { Annotation, EditorState } from '@codemirror/state'
+import { Decoration, ViewPlugin, type DecorationSet } from '@codemirror/view'
+import { Annotation, EditorState, RangeSetBuilder } from '@codemirror/state'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { json5, json5Language } from 'codemirror-json5'
@@ -33,6 +34,45 @@ const theme = EditorView.theme({
     background: 'var(--fds-selection) !important',
   },
 })
+
+/**
+ * Long lines wrap, and a wrapped line's continuation sits one step in from
+ * the line's own indentation, so nesting still reads at a glance. Each line
+ * is padded by its indent plus a step, and its first row pulled back out.
+ */
+const CONTINUATION_INDENT = 2
+
+const indentLines = (view: EditorView): DecorationSet => {
+  const builder = new RangeSetBuilder<Decoration>()
+  for (const { from, to } of view.visibleRanges) {
+    for (let pos = from; pos <= to;) {
+      const line = view.state.doc.lineAt(pos)
+      const indent = /^ */.exec(line.text)![0].length + CONTINUATION_INDENT
+      builder.add(
+        line.from,
+        line.from,
+        Decoration.line({
+          attributes: { style: `padding-left: calc(${indent}ch + 6px); text-indent: -${indent}ch` },
+        })
+      )
+      pos = line.to + 1
+    }
+  }
+  return builder.finish()
+}
+
+const hangingIndent = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet
+    constructor(view: EditorView) {
+      this.decorations = indentLines(view)
+    }
+    update(update: { docChanged: boolean; viewportChanged: boolean; view: EditorView }) {
+      if (update.docChanged || update.viewportChanged) this.decorations = indentLines(update.view)
+    }
+  },
+  { decorations: (plugin) => plugin.decorations }
+)
 
 /** Marks a write of the parent's `value`, which isn't reported back as an edit. */
 const fromParent = Annotation.define<boolean>()
@@ -78,6 +118,8 @@ export const Json5Editor = ({ value, onChange, label }: Props) => {
           json5(),
           syntaxHighlighting(highlighting),
           theme,
+          EditorView.lineWrapping,
+          hangingIndent,
           EditorView.contentAttributes.of({ 'aria-label': label }),
           EditorView.updateListener.of((update) => {
             const echo = update.transactions.some((tr) => tr.annotation(fromParent))

@@ -1,8 +1,6 @@
 ---
 title: Prototype
 description: One example of each kind of element the docs site uses.
-# No contents column, so the two-pane widgets get the width (custom.css)
-tableOfContents: false
 banner:
   content: |
     Prototype — one page showing each kind of element proposed in
@@ -131,7 +129,7 @@ An example can also document a failure. It declares that it throws, and shows th
 
 ## Try it
 
-Where interaction teaches something, an example becomes a widget: JSON5 text on the left, the FigTree editor on the right, and the result below. Both panes edit the same expression. Try the **Shorthand / Full** switch, edit a value in either pane, or change the data.
+Where interaction teaches something, an example becomes a widget: JSON5 text, a preview of the FigTree editor beside it, and the result below. **Expand** (or a click on the preview) opens both editors side by side at full size; they edit the same expression. Try the **Shorthand / Full** switch, edit a value in either pane, or change the data.
 
 <Playground
   client:visible
@@ -161,7 +159,8 @@ Where interaction teaches something, an example becomes a widget: JSON5 text on 
   A React island mounted with `client:visible`: the editor and CodeMirror load only when the widget
   scrolls into view. The text pane keeps its own text, so half-typed JSON5 shows a parse error
   instead of breaking the tree; editing the tree regenerates the text (and says so if that drops
-  comments). Below 760px wide the panes become tabs.
+  comments). On the page the widget keeps to the content column, so the tree is a shrunken,
+  read-only preview, left out below 560px; the overlay is where it's edited.
 </Aside>
 
 A page can hold several widgets; each loads when it's reached. This one is about fallbacks: make the division fail and the fallback takes over.
