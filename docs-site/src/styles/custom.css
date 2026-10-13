@@ -6,14 +6,12 @@
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Starlight's default theme is dark; light overrides it below */
-  --fds-code-key: #79c0ff;
-  --fds-code-string: #7ee787;
-  --fds-code-literal: #d2a8ff;
-  --fds-code-comment: #8b949e;
-  --fds-code-punct: #a5aeb8;
+  /*
+   * Starlight's default theme is dark; light overrides it below. The
+   * palette's colours, Starlight's and the `--fds-code-*` syntax tokens, are
+   * set from src/styles/palettes.mjs.
+   */
   --fds-active-line: rgba(255, 255, 255, 0.04);
-  --fds-selection: rgba(56, 139, 253, 0.3);
   --fds-error-bg: #3b1219;
   --fds-error-text: #ffb3b8;
   --fds-notice-bg: #3a2e05;
@@ -21,13 +19,7 @@
 }
 
 :root[data-theme='light'] {
-  --fds-code-key: #0550ae;
-  --fds-code-string: #0a6b3d;
-  --fds-code-literal: #8a3ffc;
-  --fds-code-comment: #6e7781;
-  --fds-code-punct: #57606a;
   --fds-active-line: rgba(0, 0, 0, 0.035);
-  --fds-selection: rgba(9, 105, 218, 0.18);
   --fds-error-bg: #fff1f0;
   --fds-error-text: #a40e26;
   --fds-notice-bg: #fff8e1;

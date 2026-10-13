@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 import react from '@astrojs/react'
+import { paletteCss } from './src/styles/palettes.mjs'
 
 export default defineConfig({
   integrations: [
@@ -19,6 +20,8 @@ export default defineConfig({
         baseUrl: 'https://github.com/CarlosNZ/fig-tree-evaluator/edit/v3.0-dev/docs-site/',
       },
       customCss: ['./src/styles/custom.css'],
+      // The colour palette (src/styles/palettes.mjs)
+      head: [{ tag: 'style', content: paletteCss() }],
       // One group per site section, each listing its folder's pages in
       // `sidebar.order`. Previous/next links follow this order.
       sidebar: [
