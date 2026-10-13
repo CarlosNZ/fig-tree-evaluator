@@ -188,8 +188,8 @@ Reference entries are rendered from the operators' own definitions when the site
 <OperatorReference names={['plus', 'if', 'get', 'buildString']} />
 
 <Aside type="tip" title="Element: generated operator reference">
-  Built from `figTree.getOperators()` and `./editor-hints`'s categories — the same data `pnpm
-  generate:operators` renders for the published operators page. The full site would give each
+  Built from `getCatalog(figTree)`, which joins the operators' definitions with `./catalog`'s
+  listings: the same data `pnpm generate:operators` renders for the published operators page. The full site would give each
   category its own page.
 </Aside>
 

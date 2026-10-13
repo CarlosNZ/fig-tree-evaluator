@@ -1,12 +1,13 @@
 ---
 /**
- * Operator reference entries, rendered at build time from the registry's own
- * snapshot (`getOperators()`), so every name, alias, type and null policy
- * shown is the one the code has. Section labels and colours come from
- * `./editor-hints`, as they do in the editor.
+ * Operator reference entries, rendered at build time from the instance's
+ * catalog (`getCatalog`): the registry's own snapshot, so every name, alias,
+ * type and null policy shown is the one the code has, joined with the
+ * package's listings for descriptions, labels and colours, as the editor
+ * shows them.
  */
 import { EvaluationData, type ExpectedType, type ParameterInfo } from 'fig-tree-evaluator'
-import { categoryHints, operatorHints } from 'fig-tree-evaluator/editor-hints'
+import { getCatalog } from 'fig-tree-evaluator/catalog'
 import { figTree } from '../lib/figTree'
 import { toJson5 } from '../lib/json5'
 
@@ -15,7 +16,7 @@ interface Props {
   names: string[]
 }
 
-const all = figTree.getOperators()
+const { categories, operators: all } = getCatalog(figTree)
 const operators = Astro.props.names.map((name) => {
   const op = all.find((op) => op.name === name)
   if (!op) throw new Error(`<OperatorReference>: '${name}' is not a registered operator`)
@@ -61,8 +62,7 @@ const signature = (name: string, positional: string[] | undefined, rest: string 
 <div class="fds-reference not-content">
   {
     operators.map((op) => {
-      const category = categoryHints[op.category]
-      const hint = operatorHints[op.name]
+      const category = categories.find((c) => c.name === op.category)!
       return (
         <section class="fds-op" id={`op-${op.name}`}>
           <header class="fds-op-header">
@@ -119,7 +119,9 @@ const signature = (name: string, positional: string[] | undefined, rest: string 
               </tbody>
             </table>
           </div>
-          {hint?.displayName && <p class="fds-op-hint">Shown in the editor as “{hint.displayName}”</p>}
+          {op.displayName !== op.name && (
+            <p class="fds-op-hint">Shown in the editor as “{op.displayName}”</p>
+          )}
         </section>
       )
     })
