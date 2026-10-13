@@ -12,7 +12,7 @@ v3 gets a docs site with multiple linked pages, plus a short README that points 
   - authors writing expressions
   - hosts integrating the evaluator (options, fallbacks, HTTP/SQL clients, `compile` / `inspect` / trace)
   - developers writing custom operators with `defineOperator`
-  - tool builders using `./format`, `./authoring` and `./editor-hints`
+  - tool builders using `./format`, `./authoring` and `./catalog`
   - users migrating from v2
 
   In one file, each reader scrolls past everything the others need. A v3 README written that way would likely pass 3,500 lines.
@@ -36,11 +36,13 @@ The v2 docs stay where they are, as the README on the `v2.x` branch. The site do
 ### Site sections
 
 - **Concepts:** nodes, evaluation, the shorthand forms
-- **Guides:** options, fallbacks and errors, fragments and aliases, I/O clients, caching, `compile` / `inspect` / trace
+- **Guides:** fallbacks and errors, fragments and aliases, I/O clients, caching, tracing
+- **API reference:** the `FigTree` class: constructor options and methods (`evaluate`, `validate`, `compile`, `inspect`, `updateOptions`, …)
 - **Operator reference:** generated (see "Generated operator reference" below)
 - **Custom operators:** `defineOperator` and the operator contract
-- **Tooling subpaths:** `./format`, `./authoring`, `./editor-hints`
-- **Migrating from v2:** the converter, `migrateV2Expression`, and what it can't do mechanically
+- **Tooling subpaths:** `./format`, `./authoring`, `./catalog`
+- **Migrating from v2:** the upgrade guide (what changed and how to update), the converter, `migrateV2Expression`, and what it can't do mechanically
+- **Playground:** try expressions in the browser
 
 ### Seed material
 
@@ -147,6 +149,10 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
    - **Cost:** every snippet must compile, so writing one takes slightly more care.
    - **Before deciding:** try it on a small sample of snippets to see how it behaves with Starlight, what the build-time cost is, how much authoring friction the cut markers add, and how readable the errors are.
 4. **Repo docs to update when this lands:** `CLAUDE.md` calls the README "the authoritative reference for every operator", and `package.json`'s `homepage` points to the README.
+
+## To-do
+
+- **Replace the logo.** The tree icon in the current logo is a third-party Noun Project resource, credited at the end of the README. Replace it with an original design, in light and dark variants for the README's `<picture>` element and for the site, then remove the README's Credit section.
 
 ## Next step
 

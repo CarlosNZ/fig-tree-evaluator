@@ -92,7 +92,7 @@ It runs throughout [Conforma](https://github.com/openmsupply/conforma-web-app), 
 
 ## The basics
 
-Under the hood, every expression is a tree. A node is an **operator** plus its parameters, and any parameter can itself be another node, so you can nest them as deep as you need. Each node's result becomes a value for the node above it.
+Every expression is a tree. Each branching point is a **node**: an **operator** plus its parameters. A parameter can be a plain value or another node, nested as deep as you need. A node's result becomes a parameter value for the node above it, and the result at the top is what you get back.
 
 The simplest node:
 
@@ -111,7 +111,7 @@ That's the **shorthand** form you saw above. Every node also has the **canonical
 
 Shorthand is nicer to write by hand; the canonical form is easier for tools and editors to work with. Use whichever suits, and mix them freely.
 
-Here's the same result from a deeper tree. One branch checks an answer in the user's data, another asks an API for a number:
+Here's the same result from a deeper tree — the `1` and `2` have each been replaced by a node of their own. One checks an answer in the user's data, the other asks an API for a number:
 
 ```js
 {
@@ -124,7 +124,9 @@ Here's the same result from a deeper tree. One branch checks an answer in the us
 // → 6
 ```
 
-![Expression tree](images/expression_tree.png)
+Represented as a tree, with each node's result under its name:
+
+![The expression above represented as a tree: plus at the root, with if, http and 3 as its parameters](images/expression_tree.png)
 
 <details>
 <summary>The same expression in canonical form</summary>
@@ -149,14 +151,7 @@ Here's the same result from a deeper tree. One branch checks an answer in the us
 
 ## When things go wrong
 
-Expressions often come from people, and they often run against data you didn't write, so FigTree is strict where it can be and forgiving where it has to be.
-
-Any node can carry a `fallback`, which stands in when that node fails, for example on a bad API response or a division by zero:
-
-```js
-{ $divide: ['$data.total', '$data.count'], fallback: 'No orders yet' }
-// with count: 0 → 'No orders yet'
-```
+Expressions often come from people, and they often run against data you didn't write. So FigTree's rule is to be _strict where it can be, and forgiving where it has to be_.
 
 Mistakes in the expression itself are caught before anything runs:
 
@@ -165,7 +160,14 @@ fig.validate({ $plsu: [1, 2] })
 // → '$plsu' is not a registered operator or fragment — did you mean '$plus'?
 ```
 
-And there's no silent type coercion: `{ $plus: [1, 'two'] }` is an error, not `'1two'`.
+There's no silent type coercion either: `{ $plus: [1, 'two'] }` is an error, not `'1two'`.
+
+And where something can only go wrong at runtime, like a bad API response or a division by zero, any node can carry a `fallback`, which stands in when that node fails:
+
+```js
+{ $divide: ['$data.total', '$data.count'], fallback: 'No orders yet' }
+// with count: 0 → 'No orders yet'
+```
 
 ## Install
 
@@ -200,11 +202,13 @@ const fig = new FigTree({
 The full documentation is at **[DOCS_URL](https://DOCS_URL/)**:
 
 - **[Concepts](https://DOCS_URL/concepts/)**: how expressions are built and evaluated, data references, shorthand and canonical forms
-- **[Guides](https://DOCS_URL/guides/)**: options, fallbacks and errors, fragments, HTTP and SQL, caching, tracing
+- **[Guides](https://DOCS_URL/guides/)**: fallbacks and errors, fragments, HTTP and SQL, caching, tracing
+- **[API reference](https://DOCS_URL/api/)**: the `FigTree` class, its options and methods
 - **[Operator reference](https://DOCS_URL/operators/)**: every built-in operator and its parameters
 - **[Custom operators](https://DOCS_URL/custom-operators/)**: adding your own with `defineOperator`
-- **[Tooling](https://DOCS_URL/tooling/)**: `./format`, `./authoring` and `./catalog`, for building editors and other tools around FigTree
-- **[Migrating from v2](https://DOCS_URL/migrating/)**: the converter, and what it can't do for you
+- **[Tooling](https://DOCS_URL/tooling/)**: building editors and other tools around FigTree, with form conversion, static analysis and operator metadata for UIs
+- **[Migrating from v2](https://DOCS_URL/migrating/)**: what's changed and how to upgrade, the converter that rewrites your expressions, and the few cases it leaves to you
+- **[Playground](https://DOCS_URL/playground/)**: try expressions in your browser
 
 For a visual editor in your own app, see [fig-tree-editor-react](https://github.com/CarlosNZ/fig-tree-editor-react).
 
