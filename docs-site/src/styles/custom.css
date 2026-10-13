@@ -28,15 +28,56 @@
 
 /*
  * A page without the contents column gives its widgets that width. Prose and
- * code keep a reading measure; the widgets and the reference use the whole
- * column. (An Astro island wraps each widget, hence :has.)
+ * code keep a reading measure; the widgets, the reference and card grids use
+ * the whole column. (An Astro island wraps each widget, hence :has.)
  */
 :root:not([data-has-toc]) {
   --sl-content-width: 72rem;
 }
 
-:root:not([data-has-toc]) .sl-markdown-content > :not(:has(> .fds-playground), .fds-reference) {
+:root:not([data-has-toc])
+  .sl-markdown-content
+  > :not(:has(> .fds-playground), .fds-reference, .card-grid) {
   max-width: 48rem;
+}
+
+/*
+ * A splash page (the home page) has no sidebar to sit beside, so its reading
+ * column is centred, and the wider blocks extend past it on both sides: grids
+ * of content cards a little, widgets to the full width. Grids of link cards
+ * keep to the column.
+ */
+:root[data-has-hero] .sl-markdown-content > :not(:has(> .fds-playground)) {
+  margin-inline: auto;
+}
+
+:root[data-has-hero] .hero,
+:root[data-has-hero] .sl-container > footer {
+  max-width: 48rem;
+  margin-inline: auto;
+}
+
+:root[data-has-hero] .sl-markdown-content > .card-grid {
+  max-width: 54rem;
+}
+
+:root[data-has-hero] .sl-markdown-content > .card-grid:has(.sl-link-card) {
+  max-width: 48rem;
+}
+
+@media (min-width: 50rem) {
+  /* Starlight's layout keeps a column for a hero image, which we don't use */
+  :root[data-has-hero] .hero {
+    grid-template-columns: 100%;
+    padding-block: clamp(1.75rem, calc(0.75rem + 6.5vmin), 6.5rem);
+  }
+}
+
+/* Headings after body content: Starlight's default is 1.5em */
+.sl-markdown-content
+  :not(h1, h2, h3, h4, h5, h6)
+  + :is(h1, h2, h3, h4, h5, h6):not(:where(.not-content *)) {
+  margin-top: 1em;
 }
 
 /* ── Static expression blocks ───────────────────────────────────────────── */
