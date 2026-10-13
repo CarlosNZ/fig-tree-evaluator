@@ -10,9 +10,34 @@ import { readPlaygroundSeed } from '../../lib/playgroundLink'
 import { Json5Editor, hasComments } from './Json5Editor'
 import type { PlaygroundProps } from './Playground'
 
+/** The editor's own colours that need a dark-mode variant (custom.css). */
+const editorColours = {
+  refData: 'var(--fds-tree-ref-data)',
+  refVars: 'var(--fds-tree-ref-vars)',
+  refParams: 'var(--fds-tree-ref-params)',
+}
+
 /** Below this width the inline widget leaves out the tree preview. */
 const PREVIEW_MIN_WIDTH = 468
 const EVALUATE_DELAY = 250
+
+/**
+ * The tree editor's layer of json-edit-react's theme. Its container is
+ * transparent, so the docs' CSS sets the pane's background, and its padding
+ * lines its first row up with the code pane's first line. Colours are CSS
+ * variables (custom.css), so the editor follows the site's light and dark
+ * themes.
+ */
+const editorStyles = {
+  container: { backgroundColor: 'transparent', padding: '0.1em 0.5em 1em 1.5em' },
+  property: 'var(--fds-code-key)',
+  string: 'var(--fds-tree-string)',
+  input: 'var(--fds-tree-input)',
+  inputHighlight: 'var(--fds-tree-highlight)',
+  bracket: 'var(--fds-tree-bracket)',
+  itemCount: 'var(--fds-tree-item-count)',
+  iconCollection: 'var(--fds-tree-chevron)',
+}
 
 type Outcome =
   | { status: 'pending' }
@@ -191,8 +216,9 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
         <button aria-pressed={form === 'full'} disabled={!form} onClick={() => convert('full')}>
           Full
         </button>
+        {/* Not a choice: it says what the expression is, as the pressed one would */}
+        {form === 'mixed' && <span className="fds-segmented-state">Mixed forms</span>}
       </div>
-      {form === 'mixed' && <span className="fds-widget-hint">mixed forms</span>}
     </>
   )
 
@@ -212,6 +238,8 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       evaluationData={data}
       rootName="expression"
       jsonParse={JSON5.parse}
+      theme={editorStyles}
+      editorTheme={editorColours}
       minWidth="100%"
       maxWidth="100%"
     />

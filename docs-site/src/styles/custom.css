@@ -16,6 +16,17 @@
   --fds-error-text: #ffb3b8;
   --fds-notice-bg: #3a2e05;
   --fds-notice-text: #f5d77a;
+  /* The tree editor's brackets, collapsed counts and chevrons */
+  --fds-tree-bracket: var(--fds-code-punct);
+  --fds-tree-item-count: var(--sl-color-gray-3);
+  --fds-tree-chevron: var(--sl-color-gray-2);
+  /* Its strings, text inputs and $ references, lifted from the light colours */
+  --fds-tree-string: color-mix(in oklab, #cb4b16, white 30%);
+  --fds-tree-input: var(--sl-color-text);
+  --fds-tree-highlight: var(--fds-selection);
+  --fds-tree-ref-data: color-mix(in oklab, #7b3fc4, white 40%);
+  --fds-tree-ref-vars: color-mix(in oklab, #0f7c7a, white 40%);
+  --fds-tree-ref-params: color-mix(in oklab, #b0307f, white 40%);
 }
 
 :root[data-theme='light'] {
@@ -24,6 +35,17 @@
   --fds-error-text: #a40e26;
   --fds-notice-bg: #fff8e1;
   --fds-notice-text: #6b4e00;
+  /* json-edit-react's own colours */
+  --fds-tree-bracket: #002b36;
+  --fds-tree-item-count: #0000004d;
+  --fds-tree-chevron: #002b36;
+  --fds-tree-string: #cb4b16;
+  --fds-tree-input: #292929;
+  --fds-tree-highlight: #b3d8ff;
+  /* The editor's own (fig-tree-editor-react's defaultEditorTheme) */
+  --fds-tree-ref-data: #7b3fc4;
+  --fds-tree-ref-vars: #0f7c7a;
+  --fds-tree-ref-params: #b0307f;
 }
 
 /*
@@ -231,6 +253,8 @@
 }
 
 .fds-widget {
+  /* The tree editor's pane: the code pane's background, a shade towards the text */
+  --fds-tree-bg: color-mix(in oklab, var(--sl-color-bg), var(--sl-color-text) 4%);
   /* The tree preview lays the editor out this wide, then shrinks it */
   --fds-preview-width: 26rem;
   --fds-preview-scale: 0.8;
@@ -249,11 +273,6 @@
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--sl-color-hairline);
   background: var(--sl-color-bg-nav);
-}
-
-.fds-widget-hint {
-  font-size: var(--sl-text-xs);
-  color: var(--sl-color-gray-3);
 }
 
 .fds-widget-action {
@@ -294,7 +313,8 @@
   overflow: hidden;
 }
 
-.fds-segmented button {
+.fds-segmented button,
+.fds-segmented-state {
   font: inherit;
   font-size: var(--sl-text-sm);
   padding: 0.2rem 0.75rem;
@@ -304,15 +324,21 @@
   cursor: pointer;
 }
 
-.fds-segmented button + button {
+.fds-segmented > * + * {
   border-left: 1px solid var(--sl-color-hairline);
 }
 
 .fds-segmented button[aria-pressed='true'],
-.fds-segmented button[aria-selected='true'] {
+.fds-segmented button[aria-selected='true'],
+.fds-segmented-state {
   background: var(--sl-color-accent-low);
   color: var(--sl-color-text-accent);
   font-weight: 600;
+}
+
+.fds-segmented-state {
+  font-style: italic;
+  cursor: default;
 }
 
 .fds-segmented button:disabled {
@@ -328,7 +354,7 @@
 .fds-widget-panes--preview {
   grid-template-columns:
     minmax(0, 1fr)
-    min(calc(var(--fds-preview-width) * var(--fds-preview-scale) + 1rem), 50%);
+    min(calc(var(--fds-preview-width) * var(--fds-preview-scale) + 0.5rem), 50%);
 }
 
 /* In a narrow widget the code needs more of the width than the preview */
@@ -361,12 +387,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--fds-tree-bg);
   cursor: zoom-in;
 }
 
 .fds-widget-preview:hover,
 .fds-widget-preview:focus-visible {
-  background: var(--sl-color-bg-nav);
+  background: color-mix(in oklab, var(--fds-tree-bg), var(--sl-color-text) 4%);
   outline: none;
 }
 
@@ -374,7 +401,7 @@
   position: relative;
   flex: 1;
   overflow: hidden;
-  padding: 0 0.5rem;
+  padding: 0 0.25rem;
   mask-image: linear-gradient(to bottom, black calc(100% - 2.5rem), transparent);
 }
 
@@ -388,7 +415,7 @@
 .fds-widget-preview-scaled {
   position: absolute;
   top: 0;
-  left: 0.5rem;
+  left: 0.25rem;
   width: var(--fds-preview-width);
   transform: scale(var(--fds-preview-scale));
   transform-origin: 0 0;
@@ -472,7 +499,66 @@
 }
 
 .fds-widget-pane--tree {
-  padding: 0 0.5rem 0.5rem;
+  padding: 0 0.25rem 0.5rem;
+  background: var(--fds-tree-bg);
+}
+
+/*
+ * The tree editor's messages area, which its stylesheet colours for a light
+ * page: here it takes the pane's background and the site's text.
+ */
+.fds-widget .ft-message-container {
+  background-color: transparent;
+  color: var(--sl-color-text);
+}
+
+.fds-widget .ft-messages-header {
+  background-color: color-mix(in oklab, var(--fds-tree-bg), var(--sl-color-text) 5%);
+}
+
+.fds-widget .ft-message {
+  border-top-color: var(--sl-color-hairline);
+}
+
+.fds-widget button.ft-message-path {
+  color: var(--sl-color-text-accent);
+}
+
+/*
+ * json-edit-react's type dropdown, on a dark page: a native <select> in a
+ * white box, which takes the page's colours. Its variables are set on :root,
+ * so the widget's own values override them here.
+ */
+:root[data-theme='dark'] .fds-widget {
+  --jer-select-border: var(--sl-color-gray-5);
+  --jer-select-focus: var(--sl-color-gray-3);
+  --jer-select-arrow: var(--sl-color-gray-3);
+}
+
+:root[data-theme='dark'] .fds-widget .jer-select {
+  background: var(--sl-color-bg);
+  color-scheme: dark;
+}
+
+:root[data-theme='dark'] .fds-widget .jer-select select {
+  color: var(--sl-color-text);
+}
+
+/* The messages' quick fixes, on a dark page: a tint of the accent */
+:root[data-theme='dark'] .fds-widget .ft-fix {
+  border-color: color-mix(in oklab, var(--sl-color-accent), transparent 50%);
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
+}
+
+:root[data-theme='dark'] .fds-widget .ft-fix:hover {
+  background-color: color-mix(in oklab, var(--sl-color-accent-low), var(--sl-color-accent) 30%);
+}
+
+/* The root's Evaluate button is dark on a light page; on a dark one, light */
+:root[data-theme='dark'] .fds-widget .ft-root-bar .ft-evaluate-button {
+  background-color: var(--sl-color-gray-2);
+  color: var(--sl-color-black);
 }
 
 .fds-widget-pane-label {
