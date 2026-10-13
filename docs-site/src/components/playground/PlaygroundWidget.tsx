@@ -11,7 +11,7 @@ import { Json5Editor, hasComments } from './Json5Editor'
 import type { PlaygroundProps } from './Playground'
 
 /** Below this width the inline widget leaves out the tree preview. */
-const PREVIEW_MIN_WIDTH = 560
+const PREVIEW_MIN_WIDTH = 468
 const EVALUATE_DELAY = 250
 
 type Outcome =
@@ -245,7 +245,10 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       <div className="fds-widget-toolbar">
         {formSwitch}
         <button className="fds-widget-action" onClick={() => setExpanded(true)}>
-          Expand
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />
+          </svg>
+          Expand editor
         </button>
       </div>
 
@@ -267,6 +270,9 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
           <div className="fds-widget-toolbar">
             {formSwitch}
             <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
               Close
             </button>
           </div>
