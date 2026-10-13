@@ -119,7 +119,7 @@ The default way to show an expression: highlighted source, the data it reads, an
 
 An example can also document a failure. It declares that it throws, and shows the error the library actually raises:
 
-<Expression throws title="No coercion" code={`{ $plus: [1, 'two'] }`} />
+<Expression throws editor={false} title="No coercion" code={`{ $plus: [1, 'two'] }`} />
 
 <Aside type="tip" title="Element: static expression block (tier 1)">
   `<Expression>` takes JSON5 source, so examples keep their comments. "Open in editor" turns the
@@ -183,14 +183,15 @@ A page can hold several widgets; each loads when it's reached. This one is about
 
 ## Operator reference
 
-Reference entries are rendered from the operators' own definitions when the site builds, so names, aliases, types, defaults and null policies can't drift from the code. A sample of four:
+Reference entries are rendered from the operators' own definitions when the site builds, so names, aliases, types, defaults and null policies can't drift from the code. The [operators page](/reference/operators/) has them all, by category; another page can show a few, as here, with each one's category:
 
-<OperatorReference names={['plus', 'if', 'get', 'buildString']} />
+<OperatorReference names={['plus', 'if', 'get', 'buildString']} showCategory />
 
 <Aside type="tip" title="Element: generated operator reference">
   Built from `getCatalog(figTree)`, which joins the operators' definitions with `./catalog`'s
-  listings: the same data `pnpm generate:operators` renders for the published operators page. The full site would give each
-  category its own page.
+  listings: the same data `pnpm generate:operators` renders for the published operators page. The
+  docs' own operator notes (`src/content/operator-notes/`) add to or replace an operator's
+  descriptions, and add longer notes: `if`, `get` and `buildString` here have them.
 </Aside>
 
 ## Host code, type-checked

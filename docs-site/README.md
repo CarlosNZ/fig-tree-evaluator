@@ -50,7 +50,8 @@ Astro 7 runs `dev` and `preview` as background servers, so the command returns s
 - an expression example throws, when it doesn't say it should;
 - an example marked `throws` doesn't throw;
 - a twoslash snippet doesn't compile against the library's types;
-- an `<OperatorReference>` names an operator that isn't registered.
+- an `<OperatorReference>` names an operator that isn't registered;
+- an operator note names an operator or parameter that doesn't exist, or its replacement no longer matches the text it was written against.
 
 ## Layout
 
@@ -60,15 +61,23 @@ docs-site/
   ec.config.mjs             Expressive Code plugins (twoslash)
   tsconfig.twoslash.json    compiler options twoslash checks snippets with
   src/
-    content/docs/           the pages: index.mdx (home), prototype.mdx, a folder per section
+    content.config.ts       the content collections: the pages, and the operator notes
+    routeData.ts            Starlight route middleware: the operators page's contents list
+    content/
+      docs/                 the pages: index.mdx (home), prototype.mdx, a folder per section
+      operator-notes/       the docs' own notes on operators, one optional file each
     components/
       Expression.astro        static expression block, evaluated at build time
-      OperatorReference.astro reference entries from the operators' definitions
+      OperatorReference.astro reference entries: the operators page, or a chosen few
+      OperatorEntry.astro     one operator's entry
       playground/
         Playground.tsx        the island a page mounts; lazy-loads the widget
         PlaygroundWidget.tsx  the two-pane widget
+        ExpressionEditor.tsx  the island that opens an expression block as a widget
+        EvaluationToast.tsx   the tree editor's evaluation toasts
+        ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
-    lib/                    the shared FigTree instance, JSON5 printing, link encoding
+    lib/                    the shared FigTree instance and catalog, JSON5, link encoding, notes
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
 ```
 
@@ -86,7 +95,7 @@ docs-site/
 />
 ```
 
-Set `throws` on an example that shows an error. Each example links to the page's widget (id `playground`); pass `editor="<id>"` to target a different one.
+Set `throws` on an example that shows an error. "Open in editor" turns the block into a widget where it stands, and "Close editor" turns it back. The link's address loads the example into the page's main widget instead (id `playground`, or `editor="<id>"`), for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor.
 
 **Widgets** are kept for examples where interaction teaches something:
 
@@ -94,9 +103,25 @@ Set `throws` on an example that shows an error. Each example links to the page's
 <Playground client:visible id="fallbacks" expression={`{ $divide: [1, 0], fallback: 0 }`} />
 ```
 
-`readFromUrl` makes a widget load the example that an "open in editor" link carries. A page with widgets turns off its contents column (`tableOfContents: false`), which gives the widgets the column's full width. Below 760px they switch to tabs.
+`readFromUrl` makes a widget load the example that an "open in editor" link's address carries. On the page a widget keeps to the content column, with a shrunken preview of the tree beside the code; "Expand editor" opens both editors full size.
 
-**Reference entries:** `<OperatorReference names={['plus', 'if']} />`.
+**Reference entries:** `<OperatorReference all />` is the operators page, every operator by category. Any other page can show a few: `<OperatorReference names={['plus', 'if']} />`, with `showCategory` to label each one's category.
+
+**Operator notes** add the docs' own text to the catalog's short descriptions, in `src/content/operator-notes/<operator>.mdx`:
+
+```mdx
+---
+description: "A sentence added after the operator's description."
+parameters:
+  condition:
+    replace: "Text shown instead of the parameter's description."
+    against: 7bd1b747
+---
+
+Longer notes, shown below the description. `<Expression>` works here.
+```
+
+A plain string adds; `replace` replaces, and `against` records the text it replaced (the build gives the value to use, and asks again when that text changes). Quote each text: YAML misreads an unquoted one that contains `: `.
 
 **Host code** goes in ordinary fenced blocks. Add `twoslash` to a `ts` block's meta to type-check it against the library at build time, and to show types on hover. Setup that shouldn't be displayed goes above a `// ---cut---` line. An error the snippet means to show is declared with `// @errors: <code>`.
 

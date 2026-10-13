@@ -198,13 +198,105 @@
   margin: 0.6rem 0;
 }
 
-.fds-op-meta {
+/*
+ * The operators page: an index of every operator by category, then a section
+ * per category whose heading stays pinned below the site's header (and, on a
+ * narrow screen, its contents bar) while the section's operators scroll
+ * beneath it. A sticky heading can't leave its section, so the next one takes
+ * its place. Each section's category colour is `--fds-category`.
+ */
+.fds-ref-index {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem 1.5rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--sl-color-hairline);
+  border-radius: 0.5rem;
+}
+
+.fds-ref-index-category {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem 1.25rem;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  color: var(--sl-color-white);
+  text-decoration: none;
+}
+
+.fds-ref-index-category::before {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--fds-category);
+}
+
+.fds-ref-index ul {
+  margin: 0.4rem 0 0;
+  padding: 0 0 0 1.1rem;
+  list-style: none;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-ref-index li {
+  margin: 0.15rem 0;
+}
+
+.fds-ref-index a:hover {
+  color: var(--sl-color-text-accent);
+}
+
+.fds-ref-index li a {
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+}
+
+.fds-ref-category {
+  margin-top: 2.5rem;
+}
+
+.fds-ref-category-header {
+  position: sticky;
+  top: calc(var(--sl-nav-height) + var(--sl-mobile-toc-height));
+  z-index: 2;
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.75rem;
+  border-left: 4px solid var(--fds-category);
+  border-bottom: 1px solid var(--sl-color-hairline);
+  background: var(--sl-color-bg);
+  font-size: var(--sl-text-h4);
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+/* A link to an operator lands it below its category's pinned heading */
+.fds-ref-category .fds-op {
+  scroll-margin-top: 3.5rem;
+}
+
+/* The docs' own longer notes on an operator (src/content/operator-notes/) */
+.fds-op-notes {
+  margin: 0 0 1.25rem;
+}
+
+.fds-op-notes > p {
+  margin: 0.6rem 0;
+}
+
+.fds-op-meta {
+  margin: 0.75rem 0 0;
   font-size: var(--sl-text-sm);
   color: var(--sl-color-gray-2);
-  margin: 0 0 0.75rem;
+}
+
+.fds-op-meta p {
+  margin: 0.25rem 0;
+}
+
+.fds-op-meta-label {
+  font-weight: 600;
 }
 
 .fds-op-params-scroll {

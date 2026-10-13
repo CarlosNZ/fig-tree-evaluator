@@ -17,7 +17,7 @@ v3 gets a docs site with multiple linked pages, plus a short README that points 
 
   In one file, each reader scrolls past everything the others need. A v3 README written that way would likely pass 3,500 lines.
 
-- **Reference and guide are different kinds of reading.** The operator reference is looked up, so it wants search and a page per group. Fallbacks or null policy are read in order. A single page serves both badly.
+- **Reference and guide are different kinds of reading.** The operator reference is looked up, so it wants search and quick navigation. Fallbacks or null policy are read in order. A single page serves both badly.
 - **The migration guide is temporary.** It matters for about a year and then rarely. On its own page it doesn't take up permanent space in the main doc.
 
 ## Shape
@@ -38,7 +38,7 @@ The v2 docs stay where they are, as the README on the `v2.x` branch. The site do
 - **Concepts:** nodes, evaluation, the shorthand forms
 - **Guides:** fallbacks and errors, fragments and aliases, I/O clients, caching, tracing
 - **API reference:** the `FigTree` class: constructor options and methods (`evaluate`, `validate`, `compile`, `inspect`, `updateOptions`, …)
-- **Operator reference:** generated (see "Generated operator reference" below)
+- **Operator reference:** one generated page, by category (see "Generated operator reference" below)
 - **Custom operators:** `defineOperator` and the operator contract
 - **Tooling subpaths:** `./format`, `./authoring`, `./catalog`
 - **Migrating from v2:** the upgrade guide (what changed and how to update), the converter, `migrateV2Expression`, and what it can't do mechanically
@@ -97,7 +97,16 @@ Biome's rule-page examples are static code blocks with an "open in playground" l
 
 ## Generated operator reference
 
-Names, aliases, descriptions, parameters, types and null policies are all on each definition in `coreDefinitions`, so the reference pages are rendered from them and can't drift from the code. `pnpm generate:operators` already does this for the _FigTree v3 Operators_ artifact, so the site's version is the same data with a different renderer.
+Names, aliases, descriptions, parameters, types and null policies are all on each definition in `coreDefinitions`, so the reference is rendered from them and can't drift from the code. `pnpm generate:operators` already does this for the _FigTree v3 Operators_ artifact, so the site's version is the same data with a different renderer. Built (October 2026) as described here.
+
+**One page, every operator, by category** (`/reference/operators/`). Forty operators fit one page, and one page keeps the browser's find working across every name, alias and description. Rejected: a page per category, which splits that search and adds a click to every lookup.
+
+- **An index first:** each category with its operators' names as links, a one-screen view of the whole vocabulary.
+- **A section per category,** whose heading stays pinned below the site's header while its operators scroll beneath it, then gives way to the next one's. It is CSS only (`position: sticky` within the section), with no script.
+- **The page's contents list holds the categories,** not the operators, which would make it too long. Starlight builds that list from a page's Markdown headings, and these come from a component, so a route middleware (`src/routeData.ts`) adds them from the same catalog the page renders.
+- **The category colour marks each section** (its heading's stripe, the index's dots). Entries carry no category pill there; the short lists other pages show (`<OperatorReference names={…} showCategory />`) can.
+
+**Docs notes beside the catalog.** The catalog's descriptions are written short, for an editor's UI. An optional notes file per operator (`docs-site/src/content/operator-notes/<operator>.mdx`) adds a sentence to a description or a parameter's, or replaces it, and its MDX body adds longer notes, examples included. A replacement records a hash of the text it replaced, so the build stops when that text changes and the replacement is checked again. The notes stay in the docs site: the listings ship in consumers' bundles, where their brevity is the point.
 
 ## Examples
 

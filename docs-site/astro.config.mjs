@@ -27,6 +27,8 @@ export default defineConfig({
         baseUrl: 'https://github.com/CarlosNZ/fig-tree-evaluator/edit/v3.0-dev/docs-site/',
       },
       customCss: ['./src/styles/custom.css'],
+      // Gives the operators page its category headings' contents list
+      routeMiddleware: './src/routeData.ts',
       head: [
         // The colour palette (src/styles/palettes.mjs)
         { tag: 'style', content: paletteCss() },
@@ -40,6 +42,7 @@ export default defineConfig({
       // `sidebar.order`. Previous/next links follow this order.
       sidebar: [
         { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
+        { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
         { label: 'Prototype', link: '/prototype/' },
       ],
       // Expressive Code reads its plugins from ec.config.mjs, since the

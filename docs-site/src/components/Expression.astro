@@ -10,7 +10,9 @@
  *
  * "Open in editor" turns the block into a widget where it stands
  * (ExpressionEditor.tsx). Its address loads the example into the page's main
- * widget instead, for a new tab or a shared link.
+ * widget instead, for a new tab or a shared link. An example that doesn't
+ * suit an editor sets `editor={false}`, and has neither the link nor its
+ * island.
  */
 import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
@@ -30,8 +32,11 @@ interface Props {
   title?: string
   /** The example demonstrates an error rather than a result. */
   throws?: boolean
-  /** The id of the widget the link's address loads the example into. */
-  editor?: string
+  /**
+   * The id of the widget the link's address loads the example into, or
+   * `false` for no "Open in editor" at all.
+   */
+  editor?: string | false
 }
 
 const { title = 'Expression', throws = false, editor = 'playground' } = Astro.props
@@ -61,7 +66,7 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const href = playgroundHref({ expression: code, data: dataSource }, editor)
+const href = editor === false ? null : playgroundHref({ expression: code, data: dataSource }, editor)
 ---
 
 <div class="fds-expression-block not-content">
@@ -80,8 +85,12 @@ const href = playgroundHref({ expression: code, data: dataSource }, editor)
     }
     <figcaption>
       <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
-      <a class="fds-expression-open" href={href}>Open in editor</a>
+      {href && <a class="fds-expression-open" href={href}>Open in editor</a>}
     </figcaption>
   </figure>
-  <ExpressionEditor client:visible title={title} expression={code} data={dataSource} />
+  {
+    href && (
+      <ExpressionEditor client:visible title={title} expression={code} data={dataSource} />
+    )
+  }
 </div>

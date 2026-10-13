@@ -1,0 +1,146 @@
+---
+/**
+ * One operator's reference entry (OperatorReference.astro): its names, its
+ * description and any notes, its parameters, its positional form and what it
+ * returns. Every fact is the catalog's; the docs' own notes add to or replace
+ * its descriptions (src/lib/operatorNotes.ts).
+ */
+import type { CollectionEntry, render } from 'astro:content'
+import { EvaluationData, type ExpectedType, type ParameterInfo } from 'fig-tree-evaluator'
+import type { CatalogCategory, CatalogOperator } from '../lib/operatorCatalog'
+import { toJson5 } from '../lib/json5'
+import { applyNote } from '../lib/operatorNotes'
+import Expression from './Expression.astro'
+
+interface Props {
+  op: CatalogOperator
+  category: CatalogCategory
+  /** The docs' note on the operator, if it has one. */
+  note?: CollectionEntry<'operatorNotes'>['data']
+  /** The note's longer text, rendered, if it has any. */
+  Notes?: Awaited<ReturnType<typeof render>>['Content'] | null
+  /** Show the category as a pill, for a list that mixes categories. */
+  showCategory?: boolean
+}
+
+const { op, category, note, Notes, showCategory = false } = Astro.props
+
+/** Metadata type → the reference's notation; literal unions keep quotes. */
+const formatType = (type: ExpectedType): string => {
+  if (Array.isArray(type)) return type.map(formatType).join(' | ')
+  if (typeof type === 'object' && type !== null && 'literal' in type)
+    return type.literal.map((m) => (typeof m === 'string' ? `'${m}'` : String(m))).join(' | ')
+  return String(type)
+}
+
+const paramType = (p: ParameterInfo): string => {
+  const type = formatType(p.type)
+  const homogeneous = p.constraints?.homogeneous
+  return homogeneous?.length && type === 'array'
+    ? `array[${homogeneous.map(formatType).join(' | ')}]`
+    : type
+}
+
+const presence = (p: ParameterInfo): string => {
+  if (p.required) return 'required'
+  if (!('default' in p)) return 'optional'
+  return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
+}
+
+const nullPolicy = (p: ParameterInfo): string =>
+  typeof p.nullPolicy === 'string'
+    ? p.nullPolicy
+    : `by ${p.nullPolicy.selector}: ` +
+      p.nullPolicy.table.map((row) => `${toJson5(row.value)} → ${row.policy}`).join(', ')
+
+/** The positional shorthand, e.g. `{ $plus: [...values] }`, where there is one. */
+const positionalForm = (() => {
+  if (!op.positionalParams?.length) return null
+  const args = op.positionalParams.map((p) => (p === op.restParam ? `...${p}` : p))
+  return `{ $${op.name}: [${args.join(', ')}] }`
+})()
+---
+
+<section class="fds-op" id={`op-${op.name}`}>
+  <header class="fds-op-header">
+    <h3>
+      <code>{op.name}</code>
+    </h3>
+    {
+      op.alias && (
+        <code class="fds-op-alias" title="Alias">
+          {op.alias}
+        </code>
+      )
+    }
+    {
+      showCategory && (
+        <span
+          class="fds-op-category"
+          style={`background:${category.backgroundColor};color:${category.textColor}`}
+        >
+          {category.displayName}
+        </span>
+      )
+    }
+  </header>
+  <p class="fds-op-description" set:html={applyNote(op.description, note?.description)} />
+  {
+    Notes && (
+      <div class="fds-op-notes">
+        <Notes components={{ Expression }} />
+      </div>
+    )
+  }
+  <div class="fds-op-params-scroll">
+    <table class="fds-op-params">
+      <thead>
+        <tr>
+          <th>Parameter</th>
+          <th>Type</th>
+          <th>Presence</th>
+          <th>Null</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          Object.entries(op.parameters).map(([name, p]) => (
+            <tr>
+              <td>
+                <code>{name}</code>
+                {p.evaluation && p.evaluation !== 'eager' && (
+                  <span class="fds-op-flag">{p.evaluation}</span>
+                )}
+              </td>
+              <td>
+                <code>{paramType(p)}</code>
+              </td>
+              <td>{presence(p)}</td>
+              <td>{nullPolicy(p)}</td>
+              <td set:html={applyNote(p.description, note?.parameters?.[name])} />
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+  <div class="fds-op-meta">
+    {
+      positionalForm && (
+        <p>
+          <span class="fds-op-meta-label">Positional form (shorthand):</span>{' '}
+          <code>{positionalForm}</code>
+        </p>
+      )
+    }
+    <p>
+      <span class="fds-op-meta-label">Returns:</span> <code>{formatType(op.returns)}</code>
+    </p>
+  </div>
+  {
+    op.displayName !== op.name && (
+      <p class="fds-op-hint">Shown in the editor as “{op.displayName}”</p>
+    )
+  }
+</section>

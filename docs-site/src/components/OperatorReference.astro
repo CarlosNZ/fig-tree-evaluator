@@ -4,128 +4,106 @@
  * catalog (`getCatalog`): the registry's own snapshot, so every name, alias,
  * type and null policy shown is the one the code has, joined with the
  * package's listings for descriptions, labels and colours, as the editor
- * shows them.
+ * shows them. The docs' own operator notes, where an operator has one, add to
+ * or replace a description, and add longer notes below it
+ * (src/lib/operatorNotes.ts).
+ *
+ * Two forms. `all` is the operators page: every operator, under a heading per
+ * category that stays pinned while its operators scroll beneath it, with an
+ * index of them all first. `names` is a short list of chosen operators for
+ * any other page, which can show each one's category as a pill.
  */
-import { EvaluationData, type ExpectedType, type ParameterInfo } from 'fig-tree-evaluator'
-import { getCatalog } from 'fig-tree-evaluator/catalog'
+import { render } from 'astro:content'
 import { figTree } from '../lib/figTree'
-import { toJson5 } from '../lib/json5'
+import { catalog, categoryId, operatorGroups, type CatalogOperator } from '../lib/operatorCatalog'
+import { loadOperatorNotes } from '../lib/operatorNotes'
+import OperatorEntry from './OperatorEntry.astro'
 
-interface Props {
-  /** Canonical operator names, in the order to show them. */
-  names: string[]
+type Props =
+  | {
+      /** Every operator, by category: the operators page. */
+      all: true
+    }
+  | {
+      /** Canonical operator names, in the order to show them. */
+      names: string[]
+      /** Show each operator's category, for a list that mixes them. */
+      showCategory?: boolean
+    }
+
+const notes = await loadOperatorNotes(catalog)
+
+/** What an entry needs beside the operator: its category, note and notes body. */
+const withNotes = async (op: CatalogOperator) => {
+  const note = notes.get(op.name)
+  return {
+    op,
+    category: catalog.categories.find((c) => c.name === op.category)!,
+    note: note?.data,
+    Notes: note?.body?.trim() ? (await render(note)).Content : null,
+  }
 }
 
-const { categories, operators: all } = getCatalog(figTree)
-const operators = Astro.props.names.map((name) => {
-  const op = all.find((op) => op.name === name)
-  if (!op) throw new Error(`<OperatorReference>: '${name}' is not a registered operator`)
-  return op
-})
+const groups =
+  'all' in Astro.props
+    ? await Promise.all(
+        operatorGroups().map(async ({ category, operators }) => ({
+          category,
+          entries: await Promise.all(operators.map(withNotes)),
+        }))
+      )
+    : null
 
-/** Metadata type → the reference's notation; literal unions keep quotes. */
-const formatType = (type: ExpectedType): string => {
-  if (Array.isArray(type)) return type.map(formatType).join(' | ')
-  if (typeof type === 'object' && type !== null && 'literal' in type)
-    return type.literal.map((m) => (typeof m === 'string' ? `'${m}'` : String(m))).join(' | ')
-  return String(type)
-}
-
-const paramType = (p: ParameterInfo): string => {
-  const type = formatType(p.type)
-  const homogeneous = p.constraints?.homogeneous
-  return homogeneous?.length && type === 'array'
-    ? `array[${homogeneous.map(formatType).join(' | ')}]`
-    : type
-}
-
-const presence = (p: ParameterInfo): string => {
-  if (p.required) return 'required'
-  if (!('default' in p)) return 'optional'
-  return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
-}
-
-const nullPolicy = (p: ParameterInfo): string =>
-  typeof p.nullPolicy === 'string'
-    ? p.nullPolicy
-    : `by ${p.nullPolicy.selector}: ` +
-      p.nullPolicy.table.map((row) => `${toJson5(row.value)} → ${row.policy}`).join(', ')
-
-/** The shorthand call shape, e.g. `{ $plus: [values…] }`. */
-const signature = (name: string, positional: string[] | undefined, rest: string | null) => {
-  if (!positional?.length) return `{ $${name}: { … } }`
-  const args = positional.map((p) => (p === rest ? `...${p}` : p))
-  return `{ $${name}: [${args.join(', ')}] }`
-}
+const list =
+  'names' in Astro.props
+    ? await Promise.all(
+        Astro.props.names.map((name) => {
+          const op = catalog.operators.find((op) => op.name === name)
+          if (!op) throw new Error(`<OperatorReference>: '${name}' is not a registered operator`)
+          return withNotes(op)
+        })
+      )
+    : null
+const showCategory = 'names' in Astro.props && Astro.props.showCategory === true
 ---
 
 <div class="fds-reference not-content">
   {
-    operators.map((op) => {
-      const category = categories.find((c) => c.name === op.category)!
-      return (
-        <section class="fds-op" id={`op-${op.name}`}>
-          <header class="fds-op-header">
-            <h3>
-              <code>{op.name}</code>
-            </h3>
-            {op.alias && (
-              <code class="fds-op-alias" title="Alias">
-                {op.alias}
-              </code>
-            )}
-            <span
-              class="fds-op-category"
-              style={`background:${category.backgroundColor};color:${category.textColor}`}
-            >
+    groups && (
+      <nav class="fds-ref-index" aria-label="Operators by category">
+        {groups.map(({ category, entries }) => (
+          <div class="fds-ref-index-group" style={`--fds-category:${category.backgroundColor}`}>
+            <a class="fds-ref-index-category" href={`#${categoryId(category.name)}`}>
               {category.displayName}
-            </span>
-          </header>
-          <p class="fds-op-description">{op.description}</p>
-          <p class="fds-op-meta">
-            <code>{signature(op.name, op.positionalParams, op.restParam)}</code>
-            <span>
-              returns <code>{formatType(op.returns)}</code>
-            </span>
-          </p>
-          <div class="fds-op-params-scroll">
-            <table class="fds-op-params">
-              <thead>
-                <tr>
-                  <th>Parameter</th>
-                  <th>Type</th>
-                  <th>Presence</th>
-                  <th>Null</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(op.parameters).map(([name, p]) => (
-                  <tr>
-                    <td>
-                      <code>{name}</code>
-                      {p.evaluation && p.evaluation !== 'eager' && (
-                        <span class="fds-op-flag">{p.evaluation}</span>
-                      )}
-                    </td>
-                    <td>
-                      <code>{paramType(p)}</code>
-                    </td>
-                    <td>{presence(p)}</td>
-                    <td>{nullPolicy(p)}</td>
-                    <td>{p.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            </a>
+            <ul>
+              {entries.map(({ op }) => (
+                <li>
+                  <a href={`#op-${op.name}`}>
+                    <code>{op.name}</code>
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
-          {op.displayName !== op.name && (
-            <p class="fds-op-hint">Shown in the editor as “{op.displayName}”</p>
-          )}
-        </section>
-      )
-    })
+        ))}
+      </nav>
+    )
   }
+  {
+    groups?.map(({ category, entries }) => (
+      <section class="fds-ref-category" style={`--fds-category:${category.backgroundColor}`}>
+        {/* The id is the heading's, which the page's contents list tracks */}
+        <h2 class="fds-ref-category-header" id={categoryId(category.name)}>
+          {category.displayName}
+        </h2>
+        {entries.map((entry) => (
+          <OperatorEntry {...entry} />
+        ))}
+      </section>
+    ))
+  }
+  {list?.map((entry) => <OperatorEntry {...entry} showCategory={showCategory} />)}
   <p class="fds-reference-note">
     Generated from fig-tree-evaluator {figTree.version}'s operator definitions.
   </p>
