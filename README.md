@@ -9,9 +9,14 @@
 
 FigTree evaluates expressions written as JSON. It lets you put real logic in places that can only hold data, like a config file, a database row or a form definition, without ever running code that came from outside your app.
 
-> **Upgrading from v2?** v3 is a significant redesign, and there's a converter for your existing expressions. See [Migrating from v2](https://DOCS_URL/migrating/). The v2 docs are on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).
+<details>
+<summary><strong>Upgrading from v2?</strong></summary>
 
-## Your config is already an expression
+> v3 is a significant redesign, and there's a converter for your existing expressions. See [Migrating from v2](https://DOCS_URL/migrating/). The v2 docs are on the [`v2.x` branch](https://github.com/CarlosNZ/fig-tree-evaluator/tree/v2.x).
+
+</details>
+
+## Make any value dynamic
 
 Say your app builds forms from JSON definitions, and one of the fields looks like this:
 
@@ -37,9 +42,9 @@ That's fine until someone asks for the field to show only for licensed drivers a
 Give that to FigTree along with the current user's data:
 
 ```js
-const field = await fig.evaluate(fieldDefinition, {
-  data: { age: 34, hasLicence: true, country: 'New Zealand' },
-})
+const user = { age: 34, hasLicence: true, country: 'New Zealand' } // from your app's state
+
+const field = await fig.evaluate(fieldDefinition, { data: user })
 ```
 
 and you get plain config back, ready to use:
@@ -56,6 +61,7 @@ and you get plain config back, ready to use:
 There are only two rules to learn to read that:
 
 - a **key** starting with `$` runs an operator (`$and`, `$>=`, `$buildString`)
+  - that's shorthand: `{ "$and": [...] }` can also be written in full as `{ "operator": "and", "values": [...] }`, which is easier for tools and editors to work with
 - a **string** starting with `$` reads a value (`"$data.age"`)
 
 Everything else is left exactly as it is.
@@ -93,7 +99,7 @@ The simplest node:
 // → 6
 ```
 
-That's the **shorthand** form. Every node also has a **canonical** form that spells everything out, and the two are interchangeable:
+That's the **shorthand** form you saw above. Every node also has the **canonical** form, which spells everything out, and the two are interchangeable:
 
 ```js
 { operator: 'plus', values: [1, 2, 3] }
