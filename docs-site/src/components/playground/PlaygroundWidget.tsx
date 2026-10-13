@@ -360,6 +360,14 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
           </svg>
           Expand editor
         </button>
+        {props.onClose && (
+          <button className="fds-widget-action" onClick={props.onClose}>
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
+            Close editor
+          </button>
+        )}
       </div>
 
       <div className={inlinePanes}>

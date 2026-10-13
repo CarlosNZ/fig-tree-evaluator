@@ -11,16 +11,26 @@ const PlaygroundWidget = lazy(() => import('./PlaygroundWidget'))
 
 export interface PlaygroundProps {
   /** The element id, which "open in editor" links target. */
-  id: string
+  id?: string
+  /** A title above the widget, for one standing in for an example. */
+  title?: string
   /** The starting expression, as JSON5 source. */
   expression: string
   /** The starting evaluation data, as JSON5 source. */
   data?: string
   /** Load an example from the page URL, if one is there, in place of the above. */
   readFromUrl?: boolean
+  /** The placeholder's height while the widget loads, where it's known. */
+  placeholderHeight?: number
+  /** Given, the toolbar has "Close editor", which calls it. */
+  onClose?: () => void
 }
 
-const Placeholder = () => <div className="fds-playground-placeholder">Loading editor…</div>
+const Placeholder = ({ height }: { height?: number }) => (
+  <div className="fds-playground-placeholder" style={height ? { minHeight: height } : undefined}>
+    Loading editor…
+  </div>
+)
 
 export default function Playground(props: PlaygroundProps) {
   const [mounted, setMounted] = useState(false)
@@ -28,8 +38,9 @@ export default function Playground(props: PlaygroundProps) {
 
   return (
     <div className="fds-playground not-content" id={props.id}>
+      {props.title && <div className="fds-playground-title">{props.title}</div>}
       {mounted ? (
-        <Suspense fallback={<Placeholder />}>
+        <Suspense fallback={<Placeholder height={props.placeholderHeight} />}>
           <PlaygroundWidget
             {...props}
             expression={dedent(props.expression)}
@@ -37,7 +48,7 @@ export default function Playground(props: PlaygroundProps) {
           />
         </Suspense>
       ) : (
-        <Placeholder />
+        <Placeholder height={props.placeholderHeight} />
       )}
     </div>
   )

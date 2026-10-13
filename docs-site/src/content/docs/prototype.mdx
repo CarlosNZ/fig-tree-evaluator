@@ -122,9 +122,10 @@ An example can also document a failure. It declares that it throws, and shows th
 <Expression throws title="No coercion" code={`{ $plus: [1, 'two'] }`} />
 
 <Aside type="tip" title="Element: static expression block (tier 1)">
-  `<Expression>` takes JSON5 source, so examples keep their comments. "Open in editor" loads the
-  example, comments and all, into the widget below — the same link could later target a
-  standalone playground page, as Biome's do.
+  `<Expression>` takes JSON5 source, so examples keep their comments. "Open in editor" turns the
+  block into a widget where it stands, comments and all, and "Close editor" turns it back. The
+  link's address loads the example into the page's main widget instead (for a new tab or a shared
+  link); it could later target a standalone playground page, as Biome's do.
 </Aside>
 
 ## Try it
