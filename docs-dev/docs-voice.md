@@ -28,6 +28,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "**An array** gives them in order, for operators that have a positional form."
   - After: "**Positional:** an array, where each value's position says which parameter it is."
 
+## Punctuation
+
+- **No full stop on a one-sentence summary,** such as a page's frontmatter `description`. Full stops only where there's more than one sentence.
+  - Before: `description: The order nodes are evaluated in, and what the engine checks along the way.`
+  - After: `description: What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures`
+
 ## What to leave out
 
 - **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt.
