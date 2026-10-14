@@ -15,6 +15,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## Wording
 
+- **FigTree's design principle has one wording: _strict where it can be, and forgiving where it has to be_,** as the README puts it. Use it as written wherever the principle comes up, so it reads as a slogan rather than a paraphrase.
+  - Before: "Strict when checked, forgiving when run" (a heading in Why FigTree is shaped this way)
+  - After: "Strict where it can be, and forgiving where it has to be"
 - **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
   - Before: "An object in an expression with a `$` key is read as a node."
   - After: "An object in an expression that has a key prefixed with `$` is read as a node."
@@ -32,7 +35,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 - **No full stop on a one-sentence summary,** such as a page's frontmatter `description`. Full stops only where there's more than one sentence.
   - Before: `description: The order nodes are evaluated in, and what the engine checks along the way.`
-  - After: `description: What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures`
+  - After: `description: 'What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures'`
 
 ## What to leave out
 

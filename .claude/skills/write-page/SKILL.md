@@ -15,10 +15,21 @@ The page is `docs-site/src/content/docs/$ARGUMENTS.mdx`. If no page was given, o
 Read:
 
 - the page as it stands (most are skeletons whose headings note what they'll cover)
+- any `NOTE` comments on it, left by earlier pages for detail that belongs here (see "Detail for another page" below). Each is part of the page's brief, and is removed once the page covers it
 - its neighbours in sidebar order (`sidebar.order` frontmatter, sections ordered in `docs-site/astro.config.mjs`), so the page doesn't repeat them and links where they take over
 - [docs-dev/docs-voice.md](../../../docs-dev/docs-voice.md), the voice guide built up from earlier pages
 - "Writing the pages" and "Examples" in [docs-dev/doc-planning.md](../../../docs-dev/doc-planning.md)
 - the components available for examples, in [docs-site/README.md](../../../docs-site/README.md) ("Layout") and the Prototype page (`docs-site/src/content/docs/prototype.mdx`)
+
+## Detail for another page
+
+At any stage, when some detail is agreed to belong on another, known page rather than this one, add a note to that page straight away, under the heading it belongs to, so it isn't forgotten when that page is written:
+
+```mdx
+{/* NOTE (from <this page's title>): what to cover there, with any examples, facts or caveats found while checking */}
+```
+
+A note is an MDX comment, never visible prose, so it can't be mistaken for written text. It goes in the same commit as this page.
 
 ## Stage 1: skeleton and facts, in chat
 
