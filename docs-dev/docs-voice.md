@@ -6,4 +6,6 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## Rules
 
-_None yet: the first entries come from the first page's rewrite._
+- **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
+  - Before: "An object in an expression with a `$` key is read as a node."
+  - After: "An object in an expression that has a key prefixed with `$` is read as a node."

@@ -49,14 +49,12 @@ In an expression, a node is an object with one key starting with `$`. The key na
   `}
 />
 
-Beside its `$` key, a node can carry a few **modifiers**, which affect how the node's result is computed:
+Alongside its operator, a node can carry only a few other keys, called **modifiers**, which affect how the node's result is computed:
 
 - **`fallback`**: the value to use if the node fails ([Fallbacks and errors](/guides/fallbacks/))
 - **`vars`**: values defined once and read anywhere below ([Variables](/concepts/variables/))
 - **`noCache`**: always fetch fresh results, never cached ones ([Caching](/guides/caching/))
 - **`//`**: a comment ([below](#comments))
-
-No other key can sit beside the `$` key.
 
 <Callout kind="note" title="Another way to write a node">
   This is the _shorthand_ form, the one for writing by hand. The _canonical_ form, `{ operator: 'plus', values: [1, 2, 3] }`, names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds. The two mean the same thing: see [Shorthand and canonical forms](/concepts/forms/).
@@ -84,12 +82,31 @@ Several operators have symbolic aliases, such as `+` for `plus` and `=` for `equ
 
 The HTTP and SQL operators join these when your app gives FigTree a client to use ([HTTP and SQL](/guides/http-and-sql/)), and you can add operators of your own ([Writing an operator](/custom-operators/writing/)).
 
+<Callout kind="caution" title="Every key prefixed with $ is checked">
+
+A key prefixed with `$` is always read as an operator, and checked before anything runs. A name FigTree doesn't know is an error, as is any other mistake in a node's shape, such as a parameter the operator doesn't have; [Checking expressions](/guides/validation/) shows how to find them as you write.
+
+So when an expression holds legitimate non-FigTree data that happen to have `$`-prefixed keys, such as a stored MongoDB query, put it inside `literal`, and FigTree leaves it as it is:
+
+<Expression
+  code={`
+    {
+      // $match is a FigTree operator, so it would be read as one
+      stage: { $literal: { $match: { status: 'active' } } },
+      // $ne isn't, so it would be an error
+      filter: { $literal: { status: { $ne: 'closed' } } },
+    }
+  `}
+/>
+
+</Callout>
+
 ## Parameters
 
 An operator's parameters can be given in four ways, depending on the form the node is written in:
 
 - **Canonical form:** always by name, as keys alongside `operator`.
-- **Shorthand form**, where the value of the `$` key decides:
+- **Shorthand form**, where the value of the `$`-prefixed key decides:
   - **Named:** an object, with a key for each parameter.
   - **Positional:** an array, where each value's position says which parameter it is. The [operator reference](/reference/operators/) gives each operator's order.
   - **Single value:** anything else. It goes to the first parameter, and the rest keep their defaults, which suits operators that mostly need just one value, like `not` or `round`.
@@ -150,7 +167,7 @@ Results flow upwards: the leaves first, then each node once its parameters are r
 
 ## Comments
 
-A `//` key is a comment. It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result:
+A `//` key is a comment, there purely for the author's convenience. It's allowed in any object, whether a node or a plain object, and has no effect on the result:
 
 <Expression
   code={`
@@ -165,29 +182,20 @@ A `//` key is a comment. It's allowed on any object, a node or plain data, can h
   `}
 />
 
-JSON allows an object only one of each key, so a longer note goes in an array of strings.
+<Callout kind="tip">
 
-## When something isn't a node
+To include multi-line comments, put them in an array of strings:
 
-FigTree checks the whole expression before evaluating any of it, and stops at anything meant as a node that isn't one:
+```json5
+{
+  '//': [
+    'Prices are stored excluding GST',
+    'GST is 15% in New Zealand',
+  ],
+  $multiply: ['$data.price', 1.15],
+}
+```
 
-<Expression throws editor={false} title="A misspelt operator" code={`{ $plsu: [1, 2] }`} />
-
-The same goes for each rule above: a name in the wrong case (`$Plus`), a parameter the operator doesn't have (`thn` for `then`), and a key beside the `$` key that isn't a modifier. These are mistakes in the expression itself, so no `fallback` catches them: an expression that could never work says so the first time it's used. [Checking expressions](/guides/validation/) shows how to find them before then.
-
-A `$` _string_ is different. If it doesn't name anything FigTree knows, it's just text, so `'$5.00'` passes through untouched. [Data references](/concepts/data/) covers the `$` strings that do mean something.
-
-When an expression holds data that really does have `$` keys, put it inside `literal`. Nothing inside a `literal` is checked or evaluated:
-
-<Expression
-  code={`
-    {
-      price: '$5.00',
-      // A MongoDB query stored as data. Without literal, $match would run
-      // FigTree's match operator
-      query: { $literal: { $match: { status: 'active' } } },
-    }
-  `}
-/>
+</Callout>
 
 [^node]: Speaking strictly mathematically, every point in a tree is a node, the leaves included. FigTree uses "node" for the parts that compute something (strictly: "operator nodes"), and calls everything else a plain "value", whether it's a leaf or an object or array with nodes inside it.

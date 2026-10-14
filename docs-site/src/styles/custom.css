@@ -133,6 +133,11 @@
 
 /* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
 
+/* A code block in a callout lets the callout's colour through */
+.starlight-aside .expressive-code .frame pre {
+  background: color-mix(in srgb, var(--code-background) 50%, transparent);
+}
+
 /* The two kinds of the site's own, over Starlight's note */
 .fds-callout--v2 .starlight-aside {
   --sl-color-asides-text-accent: var(--sl-color-green-high);
