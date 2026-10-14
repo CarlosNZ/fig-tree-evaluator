@@ -6,11 +6,13 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## Tone
 
-- **Relaxed and plain, not formal.** Round a number where the exact figure would go stale.
+- **Relaxed and plain, not formal, but never imprecise.** Round a number where the exact figure would go stale, but swap a casual word for the exact one where the casual one is slightly wrong.
   - Before: "An expression is a value that can work something out."
   - After: "A **FigTree expression** is a bit of plain JSON, structured as a _tree_, that can work something out."
   - Before: "FigTree has 40 built-in operators"
   - After: "FigTree has 40-ish built-in operators"
+  - Before: "Where an operator needs a yes or no"
+  - After: "Where an operator needs true or false"
 - **Bold a key term where it's introduced:** **FigTree expression**, **parameters**, **modifiers**.
 
 ## Wording
@@ -24,9 +26,14 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Describe the effect, not the mechanism.** How FigTree achieves something is implementation detail; what the reader sees is the point.
   - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
   - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
-- **Say who it helps, concretely.**
+- **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
+  - Before: "a node that needs two requests sends both at once"
+  - After: "a node that needs two slow network requests sends both at once"
+- **Frame a design choice by what it gives the reader, not what it costs.** Wording that reads as a shortcoming makes the library sound like it's apologising.
+  - Before: "evaluation is always asynchronous, even when there's nothing to wait for"
+  - After: "evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one"
 - **Define by what the reader sees, and never use a term inside its own definition.** Name each option, then say what it looks like.
   - Before: "**An array** gives them in order, for operators that have a positional form."
   - After: "**Positional:** an array, where each value's position says which parameter it is."
@@ -41,9 +48,15 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 - **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt.
   - Cut: "There's no setting to make FigTree look deeper or shallower: it always looks all the way down. Nodes are found once, when FigTree first reads the expression, and never in the data it's evaluated with, so a value in your data that happens to look like a node is never run."
-- **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry.
+- **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete says so ("for example") and stays short, rather than reading as the full set.
   - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
+  - Before: "A few more operators work this way: `and` and `or` …, and `map`, `filter` and the other iterating operators…"
+  - After: "Other operators work this way too: `and` and `or`, for example, …"
+- **Only what the reader can place here.** Cut what an earlier page already covered, and allusions to features they haven't met. A closing pointer teases the one thing they'll want next.
+  - Cut: "(The `http` operator is there when your app gives FigTree an HTTP client …)", already covered in Expressions and nodes
+  - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
+  - After: "A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong."
 - **Precise, but uncluttered.** A strictly technical point goes in a footnote rather than the text.
   - Example: what "node" means in graph theory, as a footnote to "trees have nodes (as well as plain values at the leaves)"
 
@@ -53,21 +66,32 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, values named once and read anywhere below (…); `noCache` (…); and `//`, a comment (…)."
   - After: one bullet per modifier, each with its description and link
   - Example: the ways to give parameters, as **Canonical form** and **Shorthand form**, with the three shorthand forms nested under it
-- **Callouts are for asides: rarely two in a row, and related ones merged.** Back-to-back callouts weaken each other and clutter the section.
-  - Before: a Note ("Another way to write a node") directly followed by a Caution ("Data with $ keys"), plus a separate Note ("Caught before anything runs") in the next section
+- **Motivate before you define.** Open with why it matters, or an example of the difference, then name the mechanism.
+  - Before: "A failure while running … fails its node. The failure travels up the tree…"
+  - After: "An unhandled runtime error … makes the whole evaluation throw a `FigTreeError`. This is where fallbacks come in…"
+  - Example: Null handling shows four operators treating the same `null` differently before it says "null policy"
+- **Asides go in callouts, out of the paragraph flow: a tip, a gotcha, a design reason.** They also break up a long run of prose. A gotcha callout shows the wrong way and the right way in an example, not just advice. Rarely two in a row, and related ones merged. The rule a section exists to state isn't an aside: it stands apart as a blockquote.
+  - Before: "Since `0` counts as false, test numbers explicitly…" in the paragraph
+  - After: a "Zero counts as false" caution, with `bare` against `explicit` on a free item
+  - Before: a Note ("Another way to write a node") directly followed by a Caution ("Data with $ keys"), plus a separate Note in the next section
   - After: one Caution at the end of Operators, "Every key prefixed with $ is checked", covering both
+  - Example: the truthiness rule, as a blockquote
 
 ## Examples
 
-- **Real-world examples with realistic values.** They get readers thinking about their own uses.
+- **Real-world examples with realistic values,** whose outcomes are things a real expression would produce, and differ visibly. They get readers thinking about their own uses.
   - Examples: a GST price that rounds to `$92.56`, a stored MongoDB query, a notification config
+  - Before: `'Hi %1'` against `'Hi there'`; `'Stock level known'` against `'No stock level'`
+  - After: `'Call %1'` against `'No phone number on file'`; `'$0'` against `'Price data missing'`
 - **Put each named parameter on its own line,** so the names stand out beside the operator.
   - Before: `named: { $if: { condition: '$data.isMember', then: 'Member price', else: 'Standard price' } }`
   - After: `condition`, `then` and `else` each on a line of their own inside `$if`
 - **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
   - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
-- **Comments in an example point at what to notice or try, for the point the example makes.** Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
+- **Comments in an example point at what to notice or try, for the point the example makes.** They say what happens, in plain words, not the name of a category. Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
+  - Before: `// Passed on: plus doesn't run`
+  - After: `// Can't be worked out without the shipping cost, so gives null`
   - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
   - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
   - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
