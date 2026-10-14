@@ -155,7 +155,7 @@
   gap: 0.5rem;
 }
 
-.fds-expression figcaption {
+:is(.fds-expression, .fds-tree-figure) figcaption {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
@@ -164,7 +164,7 @@
   color: var(--sl-color-gray-3);
 }
 
-.fds-expression figcaption a {
+:is(.fds-expression, .fds-tree-figure) figcaption a {
   color: var(--sl-color-text-accent);
   text-decoration: none;
   font-weight: 600;
@@ -186,8 +186,11 @@
   margin-right: 0.6em;
 }
 
-/* Opened in an editor, the block gives its place to the widget */
-.fds-expression-block--editing > .fds-expression {
+/*
+ * Opened in an editor, an example gives its place to the widget
+ * (ExpressionEditor.tsx)
+ */
+.fds-swap--editing > .fds-swap-static {
   display: none;
 }
 
@@ -199,10 +202,16 @@
  * outermost entries leave off their outer half, and an only child has no bar
  * at all. A wide tree scrolls within the figure, never the page.
  */
+.fds-tree-figure {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .fds-tree {
   --fds-tree-line: var(--sl-color-gray-4);
   --fds-tree-gap: 1.25rem;
-  margin-top: 1.5rem;
   overflow-x: auto;
   padding-bottom: 0.25rem;
 }
@@ -302,7 +311,12 @@
   border-color: var(--sl-color-accent);
 }
 
+/*
+ * An operator name is a label, set in the body font: in a monospace font the
+ * narrow `$` sits apart from the name
+ */
 .fds-tree-box--node > code {
+  font-family: var(--__sl-font);
   font-weight: 600;
   color: var(--sl-color-text-accent);
 }

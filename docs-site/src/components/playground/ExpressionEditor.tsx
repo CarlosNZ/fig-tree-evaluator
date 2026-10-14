@@ -2,37 +2,42 @@ import { useEffect, useRef, useState } from 'react'
 import Playground from './Playground'
 
 interface Props {
-  /** The example's title, shown in the widget's toolbar. */
-  title: string
+  /** The example's title, shown above the widget. */
+  title?: string
   /** The expression and its data, as JSON5 source. */
   expression: string
   data?: string
+  /** The label of the widget's button that turns it back. */
+  closeLabel?: string
 }
 
 /**
- * The island inside each static expression block (Expression.astro). It
- * renders nothing until the block's "Open in editor" link is clicked, then
- * turns the block into a widget where it stands, with the example in it, and
- * "Close editor" turns it back. Nothing scrolls, and no other widget changes.
+ * The island inside each static example that can open in an editor: an
+ * expression block (Expression.astro) or a tree (ExpressionTree.astro). The
+ * example sits in a `.fds-swap` container, its static view marked
+ * `.fds-swap-static` and its link `.fds-swap-open`. The island renders
+ * nothing until the link is clicked, then turns the example into a widget
+ * where it stands, and the widget's close button turns it back. Nothing
+ * scrolls, and no other widget changes.
  *
  * The link keeps its address, so a click that means something else (a new
- * tab, a copied link) still follows it, into the page's main widget. While the
- * widget's code loads, its placeholder takes the static block's height, so
- * the page below doesn't jump twice.
+ * tab, a copied link) still follows it, into the Playground page. While the
+ * widget's code loads, its placeholder takes the static view's height, so the
+ * page below doesn't jump twice.
  */
-export default function ExpressionEditor({ title, expression, data }: Props) {
+export default function ExpressionEditor({ title, expression, data, closeLabel }: Props) {
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState<{ height: number } | null>(null)
 
-  const block = () => anchor.current!.closest<HTMLElement>('.fds-expression-block')!
-  const link = () => block().querySelector<HTMLAnchorElement>('.fds-expression-open')!
+  const block = () => anchor.current!.closest<HTMLElement>('.fds-swap')!
+  const link = () => block().querySelector<HTMLAnchorElement>('.fds-swap-open')!
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return
       event.preventDefault()
-      const figure = block().querySelector<HTMLElement>('.fds-expression')!
+      const figure = block().querySelector<HTMLElement>('.fds-swap-static')!
       setOpen({ height: figure.offsetHeight })
     }
     const target = link()
@@ -41,7 +46,7 @@ export default function ExpressionEditor({ title, expression, data }: Props) {
   }, [])
 
   useEffect(() => {
-    block().classList.toggle('fds-expression-block--editing', open !== null)
+    block().classList.toggle('fds-swap--editing', open !== null)
   }, [open])
 
   const close = () => {
@@ -59,6 +64,7 @@ export default function ExpressionEditor({ title, expression, data }: Props) {
           data={data}
           placeholderHeight={open.height}
           onClose={close}
+          closeLabel={closeLabel}
         />
       )}
     </div>

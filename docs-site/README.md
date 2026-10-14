@@ -77,7 +77,7 @@ docs-site/
       playground/
         Playground.tsx        the island a page mounts; lazy-loads the widget
         PlaygroundWidget.tsx  the two-pane widget
-        ExpressionEditor.tsx  the island that opens an expression block as a widget
+        ExpressionEditor.tsx  the island that opens an expression block or a tree as a widget
         EvaluationToast.tsx   the tree editor's evaluation toasts
         ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
@@ -99,7 +99,7 @@ docs-site/
 />
 ```
 
-Set `throws` on an example that shows an error. "Open in editor" turns the block into a widget where it stands, and "Close editor" turns it back. The link's address loads the example into the page's main widget instead (id `playground`, or `editor="<id>"`), for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor.
+Set `throws` on an example that shows an error. "Open in editor" turns the block into a widget where it stands, and "Close editor" turns it back. The link's address loads the example into the Playground page instead, for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor.
 
 **Widgets** are kept for examples where interaction teaches something:
 
@@ -107,7 +107,7 @@ Set `throws` on an example that shows an error. "Open in editor" turns the block
 <Playground client:visible id="fallbacks" expression={`{ $divide: [1, 0], fallback: 0 }`} />
 ```
 
-`readFromUrl` makes a widget load the example that an "open in editor" link's address carries. On the page a widget keeps to the content column, with a shrunken preview of the tree beside the code; "Expand editor" opens both editors full size.
+`readFromUrl` makes a widget load the example that an "open in editor" link's address carries; the Playground page's widget has it. On the page a widget keeps to the content column, with a shrunken preview of the tree beside the code; "Expand editor" opens both editors full size.
 
 **Reference entries:** `<OperatorReference all />` is the operators page, every operator by category. Any other page can show a few: `<OperatorReference names={['plus', 'if']} />`, with `showCategory` to label each one's category.
 

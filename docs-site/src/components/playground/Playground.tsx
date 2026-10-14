@@ -22,8 +22,10 @@ export interface PlaygroundProps {
   readFromUrl?: boolean
   /** The placeholder's height while the widget loads, where it's known. */
   placeholderHeight?: number
-  /** Given, the toolbar has "Close editor", which calls it. */
+  /** Given, the toolbar has a close button, which calls it. */
   onClose?: () => void
+  /** The close button's label: "Close editor" unless given. */
+  closeLabel?: string
 }
 
 const Placeholder = ({ height }: { height?: number }) => (

@@ -9,10 +9,9 @@
  * fails if an example's outcome doesn't match what it says, either way.
  *
  * "Open in editor" turns the block into a widget where it stands
- * (ExpressionEditor.tsx). Its address loads the example into the page's main
- * widget instead, for a new tab or a shared link. An example that doesn't
- * suit an editor sets `editor={false}`, and has neither the link nor its
- * island.
+ * (ExpressionEditor.tsx). Its address loads the example into the Playground
+ * page instead, for a new tab or a shared link. An example that doesn't suit
+ * an editor sets `editor={false}`, and has neither the link nor its island.
  */
 import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
@@ -32,14 +31,11 @@ interface Props {
   title?: string
   /** The example demonstrates an error rather than a result. */
   throws?: boolean
-  /**
-   * The id of the widget the link's address loads the example into, or
-   * `false` for no "Open in editor" at all.
-   */
-  editor?: string | false
+  /** `false` for no "Open in editor" at all. */
+  editor?: boolean
 }
 
-const { title = 'Expression', throws = false, editor = 'playground' } = Astro.props
+const { title = 'Expression', throws = false, editor = true } = Astro.props
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 
@@ -66,11 +62,11 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const href = editor === false ? null : playgroundHref({ expression: code, data: dataSource }, editor)
+const href = editor ? playgroundHref({ expression: code, data: dataSource }) : null
 ---
 
-<div class="fds-expression-block not-content">
-  <figure class="fds-expression">
+<div class="fds-swap not-content">
+  <figure class="fds-expression fds-swap-static">
     <Code code={code} lang="json5" title={title} />
     {dataSource !== undefined && <Code code={dataSource} lang="json5" title="Data" />}
     {
@@ -85,7 +81,7 @@ const href = editor === false ? null : playgroundHref({ expression: code, data: 
     }
     <figcaption>
       <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
-      {href && <a class="fds-expression-open" href={href}>Open in editor</a>}
+      {href && <a class="fds-swap-open" href={href}>Open in editor</a>}
     </figcaption>
   </figure>
   {

@@ -9,12 +9,19 @@
  * Draws shorthand nodes and their parameters; anything else is a leaf, shown
  * as its value, and a reference also shows the value it reads. Each subtree
  * is evaluated on its own, so an expression whose nodes read `$vars` or
- * `$element` from a node above them can't be drawn.
+ * `$element` from a node above them can't be drawn, and a branch a lazy
+ * operator such as `if` doesn't take still shows a result.
+ *
+ * "Open in editor" turns the tree into a widget where it stands, with the
+ * expression in it, and "Back to tree" turns it back (ExpressionEditor.tsx),
+ * so a page needs no separate widget for the same example.
  */
 import JSON5 from 'json5'
 import { figTree } from '../lib/figTree'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
+import { playgroundHref } from '../lib/playgroundLink'
+import ExpressionEditor from './playground/ExpressionEditor.tsx'
 import TreeItem, { type Item } from './TreeItem.astro'
 
 interface Props {
@@ -27,8 +34,10 @@ interface Props {
 }
 
 const { label } = Astro.props
-const expression = JSON5.parse(dedent(Astro.props.code))
-const data = Astro.props.data === undefined ? undefined : JSON5.parse(dedent(Astro.props.data))
+const code = dedent(Astro.props.code)
+const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
+const expression = JSON5.parse(code)
+const data = dataSource === undefined ? undefined : JSON5.parse(dataSource)
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -65,8 +74,19 @@ const walk = async (value: unknown, name?: string): Promise<Item> => {
 const root = await walk(expression)
 ---
 
-<figure class="fds-tree not-content" role="img" aria-label={label}>
-  <ul>
-    <TreeItem item={root} />
-  </ul>
-</figure>
+<div class="fds-swap not-content">
+  <figure class="fds-tree-figure fds-swap-static">
+    <div class="fds-tree" role="img" aria-label={label}>
+      <ul>
+        <TreeItem item={root} />
+      </ul>
+    </div>
+    <figcaption>
+      <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
+      <a class="fds-swap-open" href={playgroundHref({ expression: code, data: dataSource })}>
+        Open in editor
+      </a>
+    </figcaption>
+  </figure>
+  <ExpressionEditor client:visible expression={code} data={dataSource} closeLabel="Back to tree" />
+</div>
