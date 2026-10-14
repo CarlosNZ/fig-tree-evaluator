@@ -179,6 +179,7 @@ Here `shipping` is missing, and each operator that reads it does something diffe
       rounded: { $round: ['$data.subtotal', '$data.decimals'] },
     }
   `}
+  caption="Every key reads the same missing `shipping` or `decimals`, and each operator does something different with the `null`."
   data={`
       // Uncomment shipping and decimals to see each value change
     {
