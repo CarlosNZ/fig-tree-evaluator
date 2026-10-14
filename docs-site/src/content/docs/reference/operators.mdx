@@ -13,4 +13,6 @@ Every core operator, grouped by category. Each entry is rendered from the operat
 
 {/* NOTE (from How evaluation works): an idea to consider: filters on this page, such as by category, by evaluation tag (`lazy` and the rest), and perhaps by null policy or return type. */}
 
+{/* NOTE (from How evaluation works): the Null column prints each parameter's stored nullPolicy, which is wrong wherever none applies (#250). Once #250 exposes the effective outcome, show it with reader-facing labels and tooltips, matching the four outcomes in How evaluation works: `passed on` (and `passed on (each)`), `value`, `default`, `error`, and `—` for lazy parameters. */}
+
 <OperatorReference all />

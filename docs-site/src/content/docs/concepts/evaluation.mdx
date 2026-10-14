@@ -7,7 +7,6 @@ sidebar:
 
 import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
-import Playground from '../../../components/playground/Playground.tsx'
 
 Evaluating an expression means computing each of its nodes and bubbling the results up through the tree. This page follows that process: what FigTree checks before anything runs, the order the nodes are evaluated in, and what happens when a value isn't what an operator expects, or isn't there at all.
 
@@ -165,58 +164,65 @@ Data is often incomplete: a form field left blank, a setting left out because it
 
 Not every operator can do something useful with a `null`, though, so each parameter has its own rule for what a `null` means to it, and a `null` is only an error where there's nothing sensible to do with it.
 
-Here `shipping` is missing, and each operator that reads it does something different with the `null`. Add `shipping` and `decimals` to **Data** and watch each value change:
+Here `shipping` is missing, and each operator that reads it does something different with the `null`:
 
-<Playground
-  client:visible
-  id="null-handling"
-  expression={`
+<Expression
+  code={`
     {
-      // Can't be worked out without the shipping cost
+      // Can't be worked out without the shipping cost, so gives null
       total: { $plus: ['$data.subtotal', '$data.shipping'] },
-      // Still worth showing, just without the amount
+      // Still worth showing, so the missing amount is left blank
       shippingLabel: { $buildString: ['Shipping: %1', '$data.shipping'] },
-      // A question about the null itself
+      // A question about the null itself, so it answers false
       shippingKnown: { $notEqual: ['$data.shipping', null] },
-      // No decimals given, so it rounds to the default of 0
+      // No decimals given, so it rounds to the default of 0 places
       rounded: { $round: ['$data.subtotal', '$data.decimals'] },
     }
   `}
   data={`
-    { subtotal: 120.456 }
+      // Uncomment shipping and decimals to see each value change
+    {
+      subtotal: 120.456,
+      // shipping: 5.5,
+      // decimals: 2,
+    }
   `}
 />
 
 Each of these is the sensible reading for its operator. A total with an unknown shipping cost can't be worked out: treating the `null` as `0` would give a total that looks right but isn't, so `plus` gives `null` too. A label can still be written, just without the amount. And "is the shipping known?" has a definite answer: no.
 
-That rule is a parameter's **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are three:
+{/* TO-DO: the operator reference shows the raw nullPolicy until #250 is fixed; check it matches these four once it is */}
 
-- **Passed on:** the node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`.
+That rule is a parameter's **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are four:
+
+- **Passed on:** if a parameter with this policy receives `null`, the whole node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`. For a list of values, such as `plus`'s, one `null` among them is enough.
 - **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstOf` skips it, and a condition reads it as false.
+- **Default:** for an optional setting, such as the number of decimal places to `round` to, `null` means the setting wasn't given, so its default applies, as in `rounded` above.
 - **A type error:** where nothing sensible can be done with it, such as the `url` of an `http` request.
 
-A `null` given for an optional setting, such as the number of decimal places to `round` to, means the setting wasn't given, so its default applies, as in `rounded` above.
+A `null` that's passed on can still steer a decision: if `age` is missing, `{ $greaterThan: ['$data.age', 18] }` gives `null`, and an `if` reads that as false.
 
-Nulls chain through an expression the same way: a `greaterThan` with a missing value gives `null`, which an `if` reads as false, so it takes its `else` branch.
-
-By default, a missing value and a stored `null` look the same, so a value missing by mistake, such as a misspelt path, passes just as quietly. When a missing value should be an error instead, [Data references](/concepts/data/#missing-values) shows how to make it one.
+<Callout kind="caution" title="Missing by mistake">
+  A missing value and a stored `null` look the same, so a value missing by mistake, such as a misspelt path, is passed on just as quietly as one that's meant to be missing. When a missing value _should_ be an error instead, [Data references](/concepts/data/#missing-values) shows how to make it one.
+</Callout>
 
 ## When evaluation fails
 
-A failure while running, such as a value of the wrong type in the data, a division by zero or a request that gets no answer, fails its node. The failure travels up the tree, through any plain objects and arrays on the way, to the nearest node with a `fallback`, and that node gives its fallback's value instead:
+An unhandled runtime error, such as those described above, makes the whole evaluation throw a [`FigTreeError`](/api/errors/#figtreeerror). This is where fallbacks come in — put a `fallback` on any node and, if that node _or anything inside it_ fails, the node returns the fallback's value instead:
 
 <Expression
   code={`
     { $multiply: ['$data.price', '$data.quantity'], fallback: 0 }
   `}
   data={`
+    // Change quantity to 2 to get the real result instead of the fallback
     { price: 4.5, quantity: 'two' }
   `}
 />
 
-A fallback is only evaluated when its node fails. With no fallback on the way up, `evaluate()` throws the failure as a `FigTreeError`.
+The nearest fallback above a failure is the one that catches it, and a fallback is only evaluated when its node fails.
 
-[Fallbacks and errors](/guides/fallbacks/) covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives.
+A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong. [Fallbacks and errors](/guides/fallbacks/) has the full story.
 
 {/* TO-DO: update this footnote when #248 (NaN in the data) is decided */}
 
