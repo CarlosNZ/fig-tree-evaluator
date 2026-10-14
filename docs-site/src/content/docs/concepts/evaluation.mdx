@@ -34,19 +34,25 @@ A compiled expression is kept in the [compile cache](/guides/caching/#two-caches
 
 ## Recursive and async
 
-Evaluation works from the leaves up: a node's parameters are evaluated first, and its operator runs once they're ready, with their results. Parameters at the same level are evaluated at the same time rather than one after another, so a node that needs two requests sends both at once.
+Evaluation works from the leaves up: a node's parameters are evaluated first, and its operator runs once they're ready, using their results as its own inputs. Parameters at the same level are evaluated in parallel rather than one after another, so a node that needs two slow network requests sends both at once.
 
-Since any node might have to wait, for a request or a database query, evaluation is always asynchronous, even when there's nothing to wait for:
+Since any node might have to wait, evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one:
 
 ```ts title="evaluate.ts"
-const sum = await fig.evaluate({ $plus: [1, 2] }) // 3
+const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3
 ```
+
+{/* TO-DO: update when #244 is resolved */}
+
+<Callout kind="note" title="A synchronous evaluator?">
+  A future release may add a synchronous way to evaluate expressions that never wait, such as those without HTTP or SQL operators. That would let FigTree run inside tools that only call synchronous code, like Ajv validation in JSONForms, or AG Grid's value getters. If that would help you, please comment on [issue #244](https://github.com/CarlosNZ/fig-tree-evaluator/issues/244).
+</Callout>
 
 ## Lazy parameters
 
-Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only need _one of_ the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, `match` only runs the matching branch. In the [operator reference](/reference/operators/), parameters like these carry a flag, such as `lazy`.
+Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only ever need _one of_ the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, `match` only runs the matching branch. In the [operator reference](/reference/operators/), parameters like these display a tag, such as `lazy`.
 
-`firstOf` gives the first of its values that isn't `null`, evaluating them in order and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
+`firstOf` gives the first of its values that isn't `null`, evaluating them sequentially and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
 
 ```json5
 {
@@ -57,8 +63,6 @@ Most parameters are evaluated _before_ their operator runs (since they're all ne
   ],
 }
 ```
-
-(The `http` operator is there when your app gives FigTree an HTTP client: see [HTTP and SQL](/guides/http-and-sql/).)
 
 And an `if` can guard a calculation that would otherwise fail. With no items, dividing by the count is an error, but the `divide` is in the branch that isn't taken, so it never runs:
 
@@ -78,7 +82,7 @@ And an `if` can guard a calculation that would otherwise fail. With no items, di
   `}
 />
 
-A few more operators work this way: `and` and `or` answer as soon as one value settles the answer, without waiting for the rest, and `map`, `filter` and the other iterating operators evaluate their `each` once for every element.
+Other operators work this way too: `and` and `or`, for example, stop as soon as the answer is known, and cancel anything still running.
 
 ## Types and truthiness
 
