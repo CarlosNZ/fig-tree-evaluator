@@ -53,6 +53,31 @@ const nullPolicy = (p: ParameterInfo): string =>
     : `by ${p.nullPolicy.selector}: ` +
       p.nullPolicy.table.map((row) => `${toJson5(row.value)} → ${row.policy}`).join(', ')
 
+/**
+ * The tag shown beside a parameter that isn't evaluated up front, and the
+ * fuller explanation its tooltip gives. Eager parameters have none.
+ */
+const evaluationTags: Record<
+  Exclude<NonNullable<ParameterInfo['evaluation']>, 'eager'>,
+  { label: string; title: string }
+> = {
+  lazy: { label: 'lazy', title: 'Evaluated only if needed, and at most once' },
+  lazyEntries: { label: 'lazy, per entry', title: 'Only the entry chosen is evaluated' },
+  lazyElements: {
+    label: 'lazy, per element',
+    title: 'Evaluated in order, each element only if reached',
+  },
+  perElement: {
+    label: 'once per element',
+    title: 'Evaluated once for each element of the input: maybe many times, maybe none',
+  },
+  race: {
+    label: 'stops early',
+    title: 'All start together; the first value that decides the answer wins, and the rest are cancelled',
+  },
+  structural: { label: 'literal only', title: 'Never evaluated: must be written as a literal' },
+}
+
 /** The positional shorthand, e.g. `{ $plus: [...values] }`, where there is one. */
 const positionalForm = (() => {
   if (!op.positionalParams?.length) return null
@@ -110,7 +135,9 @@ const positionalForm = (() => {
               <td>
                 <code>{name}</code>
                 {p.evaluation && p.evaluation !== 'eager' && (
-                  <span class="fds-op-flag">{p.evaluation}</span>
+                  <span class="fds-op-tag" title={evaluationTags[p.evaluation].title}>
+                    {evaluationTags[p.evaluation].label}
+                  </span>
                 )}
               </td>
               <td>

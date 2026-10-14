@@ -597,8 +597,9 @@
   white-space: nowrap;
 }
 
-.fds-op-flag {
+.fds-op-tag {
   display: inline-block;
+  cursor: help;
   margin-left: 0.35rem;
   font-size: var(--sl-text-xs);
   padding: 0 0.35rem;
