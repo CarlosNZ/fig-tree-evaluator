@@ -5,28 +5,166 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Expression from '../../../components/Expression.astro'
+import Playground from '../../../components/playground/Playground.tsx'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Evaluating an expression means computing each of its nodes and bubbling the results up through the tree. This page follows that process: what FigTree checks before anything runs, the order the nodes are evaluated, and what happens when a value isn't what an operator expects, or isn't there at all.
 
-## Checked first, then run
+## Compiled first, then run
 
-An expression is read and checked once, before any of it runs: operator names, the shape of each node, parameter names, and `$vars` names in scope. Mistakes found here are errors in the expression, reported all at once, and no `fallback` catches them; failures while running (bad data, a lookup that fails) are what fallbacks are for. A checked expression is reused, so evaluating it again is cheap. Links to [Checking expressions](/guides/validation/), "Evaluating the same expression often" in [Setting up FigTree](/guides/setup/), and [Compile, check, evaluate](/under-the-hood/model/).
+An expression is **compiled** and checked once, before anything actually runs. Compiling works out what each part of the expression is: which objects are nodes, which operator each one names, and which parameters it's given. Checking then looks for mistakes, such as an operator FigTree doesn't know, a parameter the operator doesn't have, or a value of the wrong type written into the expression.
 
-## Recursive and asynchronous
+Mistakes in the expression itself are errors no `fallback` catches; failures while running are what fallbacks are for. Here the mistake is in the expression, so the fallback never gets a chance:
 
-Children are evaluated before their parent, and evaluation is always async.
+<Expression
+  throws
+  code={`
+    { $plus: [1, 'two'], fallback: 0 }
+  `}
+/>
 
-## Parameters an operator evaluates itself
+[Checking expressions](/guides/validation/) shows how to find these mistakes as you write, before an expression is stored or run.
 
-Branching operators such as `if` evaluate only the branch they take.
+A compiled expression is reused, so evaluating it again is cheap. [Compile, check, evaluate](/under-the-hood/model/) goes through the stages in detail.
 
-## Types and nulls
+## Recursive and async
 
-The engine checks each parameter's type before the operator runs, and applies the operator's null policy.
+Evaluation works from the leaves up: a node's parameters are evaluated first, and its operator runs once they're ready, with their results. Parameters at the same level are evaluated at the same time rather than one after another, so a node that needs two requests sends both at once.
+
+Since any node might have to wait, for a request or a database query, evaluation is always asynchronous, even when there's nothing to wait for:
+
+```ts title="evaluate.ts"
+const sum = await fig.evaluate({ $plus: [1, 2] }) // 3
+```
+
+## Lazy parameters
+
+Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only need *one of* the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, for the `match` operator — only the matching branch runs. In the [operator reference](/reference/operators/), parameters like these carry a flag, such as `lazy`.
+
+`firstOf` gives the first of its values that isn't `null`, evaluating them in order and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
+
+```json5
+{
+  $firstOf: [
+    '$data.cachedRate',
+    // Only sent when there's no cached rate
+    { $http: { url: 'https://api.example.com/rates/NZD', returnPath: 'USD' } },
+  ],
+}
+```
+
+(The `http` operator is there when your app gives FigTree an HTTP client: see [HTTP and SQL](/guides/http-and-sql/).)
+
+And an `if` can guard a calculation that would otherwise fail. With no items, dividing by the count is an error, but the `divide` is in the branch that isn't taken, so it never runs:
+
+<Expression
+  title="Average price per item"
+  code={`
+    {
+      $if: [
+        { $greaterThan: ['$data.itemCount', 0] },
+        { $divide: ['$data.total', '$data.itemCount'] },
+        'No items',
+      ],
+    }
+  `}
+  data={`
+    { total: 0, itemCount: 0 }
+  `}
+/>
+
+A few more operators work this way: `and` and `or` answer as soon as one value settles the answer, without waiting for the rest, and `map`, `filter` and the other iterating operators evaluate their `each` once for every element.
+
+## Types and truthiness
+
+Each operator declares the types its parameters take, and each value is checked before the operator runs. Nothing is converted for you: `1` and `'1'` are different values, and a value of the wrong type is a failure rather than a guess.
+
+<Expression
+  throws
+  code={`
+    { $multiply: ['$data.price', '$data.quantity'] }
+  `}
+  data={`
+    { price: 4.5, quantity: 'two' }
+  `}
+/>
+
+To change a value's type on purpose, such as a number that arrives as a string from a form, use [`convert`](/reference/operators/#op-convert).
+
+Where an operator needs a yes or no, such as `if`'s `condition`, the values of `and`, `or` and `not`, or the test in `filter`, any value will do, read by one rule. `false`, `null`, `0` and `""` count as false, and everything else counts as true, including empty arrays and objects. That makes checking whether a value is there a one-liner:
+
+<Expression
+  code={`
+    {
+      greeting: {
+        $if: ['$data.user.nickname', { $buildString: ['Hi %1', '$data.user.nickname'] }, 'Hi there'],
+      },
+    }
+  `}
+  data={`
+    { user: { name: 'Aroha', nickname: '' } }
+  `}
+/>
+
+Since `0` counts as false, test numbers explicitly, as the average price example above does with `greaterThan`, so that a genuine zero isn't read as a missing value.
+
+`and`, `or` and `not` always give `true` or `false`, never one of their values. To pick the first value that's there, use `firstOf`.
+
+## Null handling
+
+Data is often incomplete: a form field left blank, a setting left out because it has a default, etc. So a reference to a value that isn't there returns `null` ([Data references](/concepts/data/#missing-values)), and FigTree's operators will handle that gracefully — rather than failing, most pass the `null` on, so the parts of the result that depend on the missing value come out empty, while the rest of the expression carries on as normal.
+
+Not every operator can do something useful with a `null`, though, so each parameter has its own rule for what a `null` means to it, and only fails where there's nothing sensible to do with it.
+
+Here `shipping` is missing, and each operator that reads it does something different with the `null`. Add `shipping` and `decimals` to **Data** and watch each value change:
+
+<Playground
+  client:visible
+  id="null-handling"
+  expression={`
+    {
+      // Can't be worked out without the shipping cost
+      total: { $plus: ['$data.subtotal', '$data.shipping'] },
+      // Still worth showing, just without the amount
+      shippingLabel: { $buildString: ['Shipping: %1', '$data.shipping'] },
+      // A question about the null itself
+      shippingKnown: { $notEqual: ['$data.shipping', null] },
+      // No decimals given, so it rounds to the default of 0
+      rounded: { $round: ['$data.subtotal', '$data.decimals'] },
+    }
+  `}
+  data={`
+    { subtotal: 120.456 }
+  `}
+/>
+
+Each of these is the sensible reading for its operator. A total with an unknown shipping cost can't be worked out: treating the `null` as `0` would give a total that looks right but isn't, so `plus` gives `null` too. A label can still be written, just without the amount. And "is the shipping known?" has a definite answer: no.
+
+How a parameter treats `null` is its **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are three:
+
+- **Passed on:** the node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`.
+- **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstOf` skips it, and a condition reads it as false.
+- **A type error:** where nothing sensible can be done with it, such as the `url` of an `http` request.
+
+A `null` given for an optional setting, such as the number of decimal places to `round` to, means the setting wasn't given, so its default applies, as in `rounded` above.
+
+Nulls chain through an expression the same way: a `greaterThan` with a missing value gives `null`, which an `if` reads as false, so it takes its `else` branch.
+
+By default, a missing value and a stored `null` look the same, so a value missing by mistake, such as a misspelt path, passes just as quietly. When a missing value should be an error instead, [Data references](/concepts/data/#missing-values) shows how to make it one.
 
 ## When evaluation fails
 
-Errors stop evaluation unless a fallback catches them. A short summary, linking to the fallbacks and errors guide.
+A failure while running, such as a value of the wrong type in the data, a division by zero or a request that gets no answer, fails its node. The failure travels up the tree, through any plain objects and arrays on the way, to the nearest node with a `fallback`, and that node gives its fallback's value instead:
+
+<Expression
+  code={`
+    { $multiply: ['$data.price', '$data.quantity'], fallback: 0 }
+  `}
+  data={`
+    { price: 4.5, quantity: 'two' }
+  `}
+/>
+
+A fallback is only evaluated when its node fails. With no fallback on the way up, `evaluate()` throws the failure as a `FigTreeError`.
+
+[Fallbacks and errors](/guides/fallbacks/) covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives.
