@@ -922,7 +922,7 @@
 }
 
 .fds-overlay .fds-widget-panes {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 }
@@ -932,9 +932,16 @@
   max-height: none;
 }
 
+/*
+ * The data and result take 30% of the height, unless the panes above need
+ * more room than the rest and these need less than their 30%. Each row starts
+ * at its content's height, so an overflow is taken from this row first, down
+ * to its own content, and only then from the panes above.
+ */
 .fds-overlay .fds-widget-below {
-  flex: none;
-  height: 30%;
+  flex: 0 1000 30%;
+  min-height: auto;
+  max-height: 30%;
 }
 
 /* What to do or notice in the editor, at the overlay's foot */
@@ -984,6 +991,7 @@
   .fds-overlay .fds-widget-below {
     flex: none;
     height: auto;
+    max-height: none;
     grid-template-columns: minmax(0, 1fr);
   }
 
