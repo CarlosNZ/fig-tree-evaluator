@@ -69,5 +69,6 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
 - **Comments in an example point at what to notice or try, for the point the example makes.** Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
   - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
+  - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
   - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
   - After: no comment, since the prose already carries the point
