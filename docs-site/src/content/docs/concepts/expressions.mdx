@@ -8,7 +8,6 @@ sidebar:
 import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 import ExpressionTree from '../../../components/ExpressionTree.astro'
-import Playground from '../../../components/playground/Playground.tsx'
 
 A **FigTree expression** is a bit of plain JSON, structured as a _tree_, that can work something out. Most configuration is already JSON, and most of it is just data. The parts of an expression that compute are its _nodes_. When FigTree evaluates an expression, each node is replaced by its result, and everything else comes back exactly as it went in.
 
@@ -126,43 +125,28 @@ Names say what each value is for, which helps whoever reads the expression next;
 
 This is how nodes grow into a tree: any parameter can be another node, and that node's parameters can be nodes too. This recursive structure is how small operators build up into complex logic, each node doing one simple thing and passing its result to its parent.
 
-Here's an expression that adds GST to a subtotal and puts the total in a sentence, drawn as a tree. Each box shows what it evaluates to:
+Here's an expression that adds GST to a subtotal, rounds it to cents and puts the total in a sentence, drawn as a tree. Each box shows what it evaluates to:
 
 <ExpressionTree
-  label="A buildString node at the top, whose parameters are a template string and a plus node. The plus node adds the subtotal to a multiply node, which multiplies the subtotal by 0.15."
+  label="A buildString node at the top, whose parameters are a template string and a round node. The round node rounds a plus node to 2 decimals. The plus node adds the subtotal to a multiply node, which multiplies the subtotal by 0.15."
   code={`
     {
       $buildString: [
-        'Total incl. GST: %1',
-        { $plus: ['$data.subtotal', { $multiply: ['$data.subtotal', 0.15] }] },
+        'Total incl. GST: $%1',
+        {
+          $round: [{ $plus: ['$data.subtotal', { $multiply: ['$data.subtotal', 0.15] }] }, 2],
+        },
       ],
     }
   `}
   data={`
-    { subtotal: 80 }
+    { subtotal: 80.49 }
   `}
 />
 
 Results flow upwards: the leaves first, then each node once its parameters are ready, until the node at the top gives the expression's result. [How evaluation works](/concepts/evaluation/) has the details, including the operators that choose which of their parameters to evaluate at all.
 
-Here's the same expression to try. The editor beside the text shows the tree as you'd edit it; change the subtotal in **Data** and the result follows.
-
-<Playground
-  client:visible
-  id="playground"
-  readFromUrl
-  expression={`
-    {
-      $buildString: [
-        'Total incl. GST: %1',
-        { $plus: ['$data.subtotal', { $multiply: ['$data.subtotal', 0.15] }] },
-      ],
-    }
-  `}
-  data={`
-    { subtotal: 80 }
-  `}
-/>
+**Open in editor**, under the tree, swaps it for the expression itself: change the subtotal in **Data** and the result follows.
 
 ## Comments
 
