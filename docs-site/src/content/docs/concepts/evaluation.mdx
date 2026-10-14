@@ -25,7 +25,7 @@ Mistakes in the expression itself are **static errors**, and no `fallback` catch
 />
 
 <Callout kind="why" title="Strict where it can be, and forgiving where it has to be">
-  A mistake in the expression can be fixed while it's being written, so FigTree makes it an error. The data an expression will meet can't be known in advance, so problems there are handled gently instead: with fallbacks, and the null handling [below](#null-handling). [Why FigTree is shaped this way](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be) has the full reasoning.
+  A mistake in the expression can be fixed while it's being written, so FigTree makes it an error. Runtime data can't be known in advance, so problems there are handled gently instead — with fallbacks, and the null handling rules [below](#null-handling). [Why FigTree is shaped this way](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be) has the full reasoning.
 </Callout>
 
 [Checking expressions](/guides/validation/) shows how to find these mistakes as you write, before an expression is stored or run.
@@ -98,26 +98,66 @@ Each operator declares the types its parameters take, and each value is checked 
   `}
 />
 
-To change a value's type on purpose, such as a number that arrives as a string from a form, use [`convert`](/reference/operators/#op-convert).
+Unlike the static error [above](#compiled-first-then-run), this is a **runtime error**: the values in `$data` can't be known until the expression runs. Here you'd probably want to add a [`fallback`](#when-evaluation-fails) to handle it gracefully.
 
-Where an operator needs a yes or no, such as `if`'s `condition`, the values of `and`, `or` and `not`, or the test in `filter`, any value will do, read by one rule. `false`, `null`, `0` and `""` count as false, and everything else counts as true, including empty arrays and objects. That makes checking whether a value is there a one-liner:
+The same check applies to every value a parameter receives, whether it comes from the data or from another node.
+
+<Callout kind="tip" title="Changing a type on purpose">
+  To change a value's type, such as a number that arrives as a string from a form, use [`convert`](/reference/operators/#op-convert).
+</Callout>
+
+Where an operator needs true or false, such as `if`'s `condition`, the values of `and`, `or` and `not`, or the test in `filter`, any value will do, read by one rule, called **truthiness**:
+
+> `false`, `null`, `0` and `""` count as false. Everything else counts as true, including empty arrays and objects.[^truthiness]
+
+This makes checking whether a value is there a one-liner:
 
 <Expression
   code={`
     {
-      greeting: {
-        $if: ['$data.user.nickname', { $buildString: ['Hi %1', '$data.user.nickname'] }, 'Hi there'],
+      contact: {
+        $if: [
+          '$data.customer.phone', // '' counts as false
+          { $buildString: ['Call %1', '$data.customer.phone'] },
+          'No phone number on file',
+        ],
       },
     }
   `}
   data={`
-    { user: { name: 'Aroha', nickname: '' } }
+    // Add an actual phone number to see the change
+    { customer: { name: 'Aroha', phone: '' } }
   `}
 />
 
-Since `0` counts as false, test numbers explicitly, as the average price example above does with `greaterThan`, so that a genuine zero isn't read as a missing value.
+<Callout kind="caution" title="Zero counts as false">
 
-`and`, `or` and `not` always give `true` or `false`, never one of their values. To pick the first value that's there, use `firstOf`.
+A number used directly as a condition can't tell `0` apart from a missing value. Say what you mean instead: `{ $notEqual: [value, null] }` for "there's a number at all", or `{ $greaterThan: [value, 0] }` for "more than zero", as the average price example above does.
+
+<Expression
+  code={`
+    {
+      // A price of 0 reads as false, so a free item shows as unpriced
+      bare: {
+        $if: ['$data.price', { $buildString: ['$%1', '$data.price'] }, 'Price data missing'],
+      },
+      // Testing for null keeps 0 as a real price
+      explicit: {
+        $if: [
+          { $notEqual: ['$data.price', null] },
+          { $buildString: ['$%1', '$data.price'] },
+          'Price data missing',
+        ],
+      },
+    }
+  `}
+  data={`
+    // Delete the price, and both report it missing
+    { price: 0 }
+  `}
+/>
+
+</Callout>
 
 ## Null handling
 
@@ -177,3 +217,7 @@ A failure while running, such as a value of the wrong type in the data, a divisi
 A fallback is only evaluated when its node fails. With no fallback on the way up, `evaluate()` throws the failure as a `FigTreeError`.
 
 [Fallbacks and errors](/guides/fallbacks/) covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives.
+
+{/* TO-DO: update this footnote when #248 (NaN in the data) is decided */}
+
+[^truthiness]: This is JavaScript's rule. JavaScript's other falsy values, `undefined` and `NaN`, don't come up, because FigTree never produces them: a missing value is `null`, and arithmetic that would give `NaN` fails instead.

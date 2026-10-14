@@ -42,3 +42,5 @@ The `$` namespaces in one table, each with its one-letter alias and a link to wh
 - `$error`: the failure a fallback caught, in the Fallbacks and errors guide
 
 A `$` string that names none of these is plain text, so `'$5.00'` passes through untouched.
+
+{/* NOTE (from How evaluation works): today such a string also gets an `unrecognized-identifier` warning from validate(), even where the `$` can't start a reference (`'$5.00'`, `'$%1'`). Check how #249 was decided before writing this. */}
