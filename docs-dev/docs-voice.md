@@ -64,3 +64,6 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Put each named parameter on its own line,** so the names stand out beside the operator.
   - Before: `named: { $if: { condition: '$data.isMember', then: 'Member price', else: 'Standard price' } }`
   - After: `condition`, `then` and `else` each on a line of their own inside `$if`
+- **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
+  - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
+  - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
