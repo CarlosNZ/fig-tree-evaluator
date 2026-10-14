@@ -99,7 +99,7 @@ docs-site/
 />
 ```
 
-Set `throws` on an example that shows an error. "Open in editor" turns the block into a widget where it stands, and "Close editor" turns it back. The link's address loads the example into the Playground page instead, for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor.
+Set `throws` on an example that shows an error. "Open in editor" opens the example in a full-size editor over the page, and `caption` adds a sentence or two at its foot: what to do or notice there. The link's address loads the example into the Playground page instead, for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor.
 
 **Widgets** are kept for examples where interaction teaches something:
 

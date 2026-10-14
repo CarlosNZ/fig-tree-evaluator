@@ -6,6 +6,10 @@ import { dedent } from '../../lib/dedent'
  * placeholder on the server and on first hydration, then loads the widget —
  * CodeMirror and the FigTree editor — as a separate chunk, so a page pays
  * for them only once a reader scrolls to a widget.
+ *
+ * With `overlayOnly` it is the editor a static example opens
+ * (ExpressionEditor.tsx): no placeholder and no inline widget, just the
+ * full-size overlay, opened as soon as the widget loads.
  */
 const PlaygroundWidget = lazy(() => import('./PlaygroundWidget'))
 
@@ -20,37 +24,43 @@ export interface PlaygroundProps {
   data?: string
   /** Load an example from the page URL, if one is there, in place of the above. */
   readFromUrl?: boolean
-  /** The placeholder's height while the widget loads, where it's known. */
-  placeholderHeight?: number
-  /** Given, the toolbar has a close button, which calls it. */
+  /**
+   * A sentence or two at the foot of the overlay: what to do or notice in
+   * the editor. Inline Markdown: `code`, **strong**, *emphasis*, [links](url).
+   */
+  caption?: string
+  /** Show only the overlay, open from the start, in place of the widget. */
+  overlayOnly?: boolean
+  /** Called once the overlay is open. */
+  onOpen?: () => void
+  /** Called when the overlay closes, in `overlayOnly` mode. */
   onClose?: () => void
-  /** The close button's label: "Close editor" unless given. */
-  closeLabel?: string
 }
 
-const Placeholder = ({ height }: { height?: number }) => (
-  <div className="fds-playground-placeholder" style={height ? { minHeight: height } : undefined}>
-    Loading editor…
-  </div>
-)
+const Placeholder = () => <div className="fds-playground-placeholder">Loading editor…</div>
 
 export default function Playground(props: PlaygroundProps) {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
+  const widget = (
+    <PlaygroundWidget
+      {...props}
+      expression={dedent(props.expression)}
+      data={props.data === undefined ? undefined : dedent(props.data)}
+    />
+  )
+
+  // The link that opened it shows that it's loading
+  if (props.overlayOnly) return mounted && <Suspense fallback={null}>{widget}</Suspense>
+
   return (
     <div className="fds-playground not-content" id={props.id}>
       {props.title && <div className="fds-playground-title">{props.title}</div>}
       {mounted ? (
-        <Suspense fallback={<Placeholder height={props.placeholderHeight} />}>
-          <PlaygroundWidget
-            {...props}
-            expression={dedent(props.expression)}
-            data={props.data === undefined ? undefined : dedent(props.data)}
-          />
-        </Suspense>
+        <Suspense fallback={<Placeholder />}>{widget}</Suspense>
       ) : (
-        <Placeholder height={props.placeholderHeight} />
+        <Placeholder />
       )}
     </div>
   )

@@ -2,55 +2,50 @@ import { useEffect, useRef, useState } from 'react'
 import Playground from './Playground'
 
 interface Props {
-  /** The example's title, shown above the widget. */
+  /** The example's title. */
   title?: string
   /** The expression and its data, as JSON5 source. */
   expression: string
   data?: string
-  /** The label of the widget's button that turns it back. */
-  closeLabel?: string
+  /** What to do or notice in the editor, at the foot of the overlay. */
+  caption?: string
 }
 
 /**
  * The island inside each static example that can open in an editor: an
  * expression block (Expression.astro) or a tree (ExpressionTree.astro). The
- * example sits in a `.fds-swap` container, its static view marked
- * `.fds-swap-static` and its link `.fds-swap-open`. The island renders
- * nothing until the link is clicked, then turns the example into a widget
- * where it stands, and the widget's close button turns it back. Nothing
- * scrolls, and no other widget changes.
+ * example sits in an `.fds-editable` container with an `.fds-editor-link`.
+ * The island renders nothing until the link is clicked, then opens the
+ * editor as a full-size overlay over the page; closing it leaves the example
+ * as it was, with focus back on the link.
  *
  * The link keeps its address, so a click that means something else (a new
  * tab, a copied link) still follows it, into the Playground page. While the
- * widget's code loads, its placeholder takes the static view's height, so the
- * page below doesn't jump twice.
+ * editor's code loads, the link shows that it's on its way.
  */
-export default function ExpressionEditor({ title, expression, data, closeLabel }: Props) {
+export default function ExpressionEditor({ title, expression, data, caption }: Props) {
   const anchor = useRef<HTMLDivElement>(null)
-  const [open, setOpen] = useState<{ height: number } | null>(null)
+  const [open, setOpen] = useState(false)
 
-  const block = () => anchor.current!.closest<HTMLElement>('.fds-swap')!
-  const link = () => block().querySelector<HTMLAnchorElement>('.fds-swap-open')!
+  const block = () => anchor.current!.closest<HTMLElement>('.fds-editable')!
+  const link = () => block().querySelector<HTMLAnchorElement>('.fds-editor-link')!
+  const loading = (on: boolean) => block().classList.toggle('fds-editable--loading', on)
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
       if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
         return
       event.preventDefault()
-      const figure = block().querySelector<HTMLElement>('.fds-swap-static')!
-      setOpen({ height: figure.offsetHeight })
+      loading(true)
+      setOpen(true)
     }
     const target = link()
     target.addEventListener('click', onClick)
     return () => target.removeEventListener('click', onClick)
   }, [])
 
-  useEffect(() => {
-    block().classList.toggle('fds-swap--editing', open !== null)
-  }, [open])
-
   const close = () => {
-    setOpen(null)
+    setOpen(false)
     // Back where the reader started: on the link that opened it
     requestAnimationFrame(() => link().focus({ preventScroll: true }))
   }
@@ -59,12 +54,13 @@ export default function ExpressionEditor({ title, expression, data, closeLabel }
     <div ref={anchor}>
       {open && (
         <Playground
+          overlayOnly
           title={title}
           expression={expression}
           data={data}
-          placeholderHeight={open.height}
+          caption={caption}
+          onOpen={() => loading(false)}
           onClose={close}
-          closeLabel={closeLabel}
         />
       )}
     </div>

@@ -244,12 +244,10 @@
   border: 2px dashed var(--fds-error-text);
 }
 
-/*
- * Opened in an editor, an example gives its place to the widget
- * (ExpressionEditor.tsx)
- */
-.fds-swap--editing > .fds-swap-static {
-  display: none;
+/* "Open in editor" while the editor's code loads (ExpressionEditor.tsx) */
+.fds-editable--loading .fds-editor-link {
+  cursor: progress;
+  opacity: 0.6;
 }
 
 /* ── Expression trees (ExpressionTree.astro) ────────────────────────────── */
@@ -937,6 +935,16 @@
 .fds-overlay .fds-widget-below {
   flex: none;
   height: 30%;
+}
+
+/* What to do or notice in the editor, at the overlay's foot */
+.fds-overlay-caption {
+  flex: none;
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--sl-color-hairline);
+  color: var(--sl-color-gray-2);
+  font-size: var(--sl-text-sm);
 }
 
 /* The tree's pane, with its toasts over its foot */

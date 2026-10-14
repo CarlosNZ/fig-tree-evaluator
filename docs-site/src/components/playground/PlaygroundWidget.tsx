@@ -6,6 +6,7 @@ import { FigTreeEditor, type Evaluation, type SetExpressionOptions } from 'fig-t
 import 'fig-tree-editor-react/style.css'
 import { figTree } from '../../lib/figTree'
 import { parseJson5, toJson5 } from '../../lib/json5'
+import { inlineMarkdown } from '../../lib/inlineMarkdown'
 import { readPlaygroundSeed } from '../../lib/playgroundLink'
 import { Json5Editor, hasComments } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
@@ -84,7 +85,9 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
  * it; the tree's Evaluate buttons answer in a toast instead. On the page, the widget
  * keeps to the content column: the text pane, with a shrunken, read-only
  * preview of the tree beside it where there's room. Expanding it opens an
- * overlay with the two panes side by side at full size.
+ * overlay with the two panes side by side at full size, and an optional
+ * caption at its foot. A static example's editor is the overlay alone
+ * (`overlayOnly`).
  *
  * The text pane keeps its own text, because half-typed JSON5 doesn't parse.
  * Once typing pauses, text that parses updates the shared expression, and
@@ -138,13 +141,15 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   const [stale, setStale] = useState(true)
   const [notice, setNotice] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
-  const [expanded, setExpanded] = useState(false)
+  const [expanded, setExpanded] = useState(props.overlayOnly === true)
   const container = useRef<HTMLDivElement>(null)
   const narrow = useNarrow(container)
   const overlay = useRef<HTMLDialogElement>(null)
 
   useEffect(() => {
-    if (expanded) overlay.current?.showModal()
+    if (!expanded) return
+    overlay.current?.showModal()
+    props.onOpen?.()
   }, [expanded])
 
   // An "open in editor" link lands here; the page has grown since the
@@ -350,6 +355,52 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
   const inlinePanes = `fds-widget-panes fds-widget-panes--${narrow ? 'stacked' : 'preview'}`
 
+  const dialog = expanded && (
+    <dialog
+      className="fds-widget fds-overlay"
+      ref={overlay}
+      aria-label="Expression editor"
+      onClose={() => {
+        // The toast belongs to this visit to the overlay
+        clearTimeout(runningTimer.current)
+        setToast(null)
+        setExpanded(false)
+        if (props.overlayOnly) props.onClose?.()
+      }}
+    >
+      <div className="fds-widget-toolbar">
+        {formSwitch}
+        <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+          Close
+        </button>
+      </div>
+      <div className="fds-widget-panes">
+        {textPane}
+        <div className="fds-widget-tree-cell">
+          <div className="fds-widget-pane fds-widget-pane--tree">
+            <div className="fds-widget-pane-label">Editor</div>
+            {treeEditor}
+          </div>
+          <EvaluationToast toast={toast} onClose={() => setToast(null)} />
+        </div>
+      </div>
+      {noticeBar}
+      {output('fds-widget-panes')}
+      {props.caption && (
+        <p
+          className="fds-overlay-caption"
+          dangerouslySetInnerHTML={{ __html: inlineMarkdown(props.caption) }}
+        />
+      )}
+    </dialog>
+  )
+
+  // Opened from a static example, the overlay is the whole widget
+  if (props.overlayOnly) return <div ref={container}>{dialog}</div>
+
   return (
     <div className="fds-widget" ref={container}>
       <div className="fds-widget-toolbar">
@@ -360,14 +411,6 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
           </svg>
           Expand editor
         </button>
-        {props.onClose && (
-          <button className="fds-widget-action" onClick={props.onClose}>
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-            {props.closeLabel ?? 'Close editor'}
-          </button>
-        )}
       </div>
 
       <div className={inlinePanes}>
@@ -378,41 +421,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       {noticeBar}
       {output(inlinePanes)}
 
-      {expanded && (
-        <dialog
-          className="fds-widget fds-overlay"
-          ref={overlay}
-          aria-label="Expression editor"
-          onClose={() => {
-            // The toast belongs to this visit to the overlay
-            clearTimeout(runningTimer.current)
-            setToast(null)
-            setExpanded(false)
-          }}
-        >
-          <div className="fds-widget-toolbar">
-            {formSwitch}
-            <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
-              Close
-            </button>
-          </div>
-          <div className="fds-widget-panes">
-            {textPane}
-            <div className="fds-widget-tree-cell">
-              <div className="fds-widget-pane fds-widget-pane--tree">
-                <div className="fds-widget-pane-label">Editor</div>
-                {treeEditor}
-              </div>
-              <EvaluationToast toast={toast} onClose={() => setToast(null)} />
-            </div>
-          </div>
-          {noticeBar}
-          {output('fds-widget-panes')}
-        </dialog>
-      )}
+      {dialog}
     </div>
   )
 }

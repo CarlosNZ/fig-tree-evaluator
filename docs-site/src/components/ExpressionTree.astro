@@ -22,9 +22,9 @@
  * `dataPosition` places it instead, as CSS offsets from the figure's edges.
  * It scrolls with the diagram, so it keeps its place on a narrow screen.
  *
- * "Open in editor" turns the tree into a widget where it stands, with the
- * expression in it, and "Back to tree" turns it back (ExpressionEditor.tsx),
- * so a page needs no separate widget for the same example.
+ * "Open in editor" opens the expression in a full-size editor over the page
+ * (ExpressionEditor.tsx), with `caption` at its foot if given, so a page
+ * needs no separate widget for the same example.
  */
 import JSON5 from 'json5'
 import { figTree } from '../lib/figTree'
@@ -43,9 +43,11 @@ interface Props {
   label: string
   /** Offsets from the figure's edges, as numbers (px) or CSS lengths. */
   dataPosition?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number | string>>
+  /** What to do or notice in the editor, at the foot of its overlay. */
+  caption?: string
 }
 
-const { label, dataPosition } = Astro.props
+const { label, dataPosition, caption } = Astro.props
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 const expression = JSON5.parse(code)
@@ -94,8 +96,8 @@ const placement =
     .join('; ')
 ---
 
-<div class="fds-swap not-content">
-  <figure class="fds-tree-figure fds-swap-static">
+<div class="fds-editable not-content">
+  <figure class="fds-tree-figure">
     <div class="fds-tree" role="img" aria-label={label}>
       <div class="fds-tree-canvas">
         {
@@ -116,12 +118,12 @@ const placement =
     </div>
     <figcaption>
       <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
-      <a class="fds-swap-open" href={playgroundHref({ expression: code, data: dataSource })}>
+      <a class="fds-editor-link" href={playgroundHref({ expression: code, data: dataSource })}>
         Open in editor
       </a>
     </figcaption>
   </figure>
-  <ExpressionEditor client:visible expression={code} data={dataSource} closeLabel="Back to tree" />
+  <ExpressionEditor client:visible expression={code} data={dataSource} caption={caption} />
 </div>
 
 <script>
