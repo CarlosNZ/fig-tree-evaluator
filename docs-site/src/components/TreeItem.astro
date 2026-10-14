@@ -22,10 +22,12 @@ const { item } = Astro.props
 ---
 
 <li>
-  {item.name && <span class="fds-tree-param">{item.name}</span>}
-  <span class={`fds-tree-box fds-tree-box--${item.kind}`}>
-    <code>{item.text}</code>
-    {item.result !== undefined && <span class="fds-tree-result">→ {item.result}</span>}
+  <span class="fds-tree-unit">
+    {item.name && <span class="fds-tree-param">{item.name}</span>}
+    <span class={`fds-tree-box fds-tree-box--${item.kind}`}>
+      <code>{item.text}</code>
+      {item.result !== undefined && <span class="fds-tree-result">→ {item.result}</span>}
+    </span>
   </span>
   {
     item.children.length > 0 && (

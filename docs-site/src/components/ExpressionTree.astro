@@ -12,6 +12,16 @@
  * `$element` from a node above them can't be drawn, and a branch a lazy
  * operator such as `if` doesn't take still shows a result.
  *
+ * The layout happens in the browser (src/lib/treeLayout.ts), which packs the
+ * branches and draws the connectors; without it, CSS draws a plainer
+ * diagram from the same lists.
+ *
+ * An example with data shows it in the diagram, so the values its references
+ * read come from somewhere. The layout puts it in the first corner the tree
+ * leaves empty, or else at the figure's bottom-left, beside the tree;
+ * `dataPosition` places it instead, as CSS offsets from the figure's edges.
+ * It scrolls with the diagram, so it keeps its place on a narrow screen.
+ *
  * "Open in editor" turns the tree into a widget where it stands, with the
  * expression in it, and "Back to tree" turns it back (ExpressionEditor.tsx),
  * so a page needs no separate widget for the same example.
@@ -31,9 +41,11 @@ interface Props {
   data?: string
   /** What the diagram shows, for screen readers. */
   label: string
+  /** Offsets from the figure's edges, as numbers (px) or CSS lengths. */
+  dataPosition?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number | string>>
 }
 
-const { label } = Astro.props
+const { label, dataPosition } = Astro.props
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 const expression = JSON5.parse(code)
@@ -66,20 +78,41 @@ const walk = async (value: unknown, name?: string): Promise<Item> => {
   const text = toJson5(value)
   if (typeof value === 'string' && value.startsWith('$')) {
     const result = await evaluate(value)
-    if (result !== text) return { kind: 'reference', name, text, result, children: [] }
+    // A reference is shown bare: its colour marks it, and quotes would only
+    // widen the tree
+    if (result !== text) return { kind: 'reference', name, text: value, result, children: [] }
   }
   return { kind: 'leaf', name, text, children: [] }
 }
 
 const root = await walk(expression)
+
+const placement =
+  dataPosition &&
+  Object.entries(dataPosition)
+    .map(([side, offset]) => `${side}: ${typeof offset === 'number' ? `${offset}px` : offset}`)
+    .join('; ')
 ---
 
 <div class="fds-swap not-content">
   <figure class="fds-tree-figure fds-swap-static">
     <div class="fds-tree" role="img" aria-label={label}>
-      <ul>
-        <TreeItem item={root} />
-      </ul>
+      <div class="fds-tree-canvas">
+        {
+          data !== undefined && (
+            <div
+              class:list={['fds-tree-data', { 'fds-tree-data--placed': placement }]}
+              style={placement}
+            >
+              <span class="fds-tree-data-label">Data</span>
+              <code>{toJson5(data)}</code>
+            </div>
+          )
+        }
+        <ul>
+          <TreeItem item={root} />
+        </ul>
+      </div>
     </div>
     <figcaption>
       <span>Evaluated by fig-tree-evaluator {figTree.version} when this page was built</span>
@@ -90,3 +123,8 @@ const root = await walk(expression)
   </figure>
   <ExpressionEditor client:visible expression={code} data={dataSource} closeLabel="Back to tree" />
 </div>
+
+<script>
+  import { layOutTrees } from '../lib/treeLayout'
+  layOutTrees()
+</script>

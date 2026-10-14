@@ -196,12 +196,6 @@
 
 /* ── Expression trees (ExpressionTree.astro) ────────────────────────────── */
 
-/*
- * Each entry draws the line down to it from its parent: half of the bar
- * across its siblings on each side, and a drop from that bar to its box. The
- * outermost entries leave off their outer half, and an only child has no bar
- * at all. A wide tree scrolls within the figure, never the page.
- */
 .fds-tree-figure {
   margin-top: 1.5rem;
   display: flex;
@@ -209,6 +203,7 @@
   gap: 0.5rem;
 }
 
+/* A wide tree scrolls within the figure, never the page */
 .fds-tree {
   --fds-tree-line: var(--sl-color-gray-4);
   --fds-tree-gap: 1.25rem;
@@ -216,6 +211,52 @@
   padding-bottom: 0.25rem;
 }
 
+/* The diagram's own box, which the data box is positioned in */
+.fds-tree-canvas {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+}
+
+.fds-tree-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: max-content;
+  max-width: 100%;
+  margin-bottom: var(--fds-tree-gap);
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--fds-tree-ref-data);
+  border-radius: 0.375rem;
+  background: var(--sl-color-bg);
+  font-size: var(--sl-text-sm);
+}
+
+.fds-tree-data--placed {
+  position: absolute;
+  margin: 0;
+}
+
+.fds-tree-data-label {
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  color: var(--fds-tree-ref-data);
+}
+
+.fds-tree-data code {
+  padding: 0;
+  background: none;
+  font-size: inherit;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/*
+ * Without the layout script, CSS draws the lists as the diagram: each entry
+ * draws the line down to it from its parent, half of the bar across its
+ * siblings on each side and a drop from that bar to its box. The outermost
+ * entries leave off their outer half, and an only child has no bar at all.
+ */
 .fds-tree ul {
   display: flex;
   justify-content: center;
@@ -246,11 +287,11 @@
   flex-direction: column;
   align-items: center;
   margin: 0;
-  padding: var(--fds-tree-gap) 0.4rem 0;
+  padding: var(--fds-tree-gap) 0.25rem 0;
   list-style: none;
 }
 
-.fds-tree > ul > li {
+.fds-tree-canvas > ul > li {
   padding-top: 0;
 }
 
@@ -282,6 +323,55 @@
   border-top: none;
 }
 
+.fds-tree-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/*
+ * Laid out (src/lib/treeLayout.ts), every unit and the data box are placed in
+ * the canvas, which the script sizes to the figure, or to the tree where it's
+ * wider, and the SVG draws the lines.
+ * Until then a tree is hidden where scripts run, so it doesn't jump.
+ */
+@media (scripting: enabled) {
+  .fds-tree:not(.fds-tree--laid-out) .fds-tree-canvas {
+    visibility: hidden;
+  }
+}
+
+.fds-tree--laid-out .fds-tree-canvas {
+  min-width: 0;
+}
+
+/* Doubled class to outrank the fallback's list rules */
+.fds-tree.fds-tree--laid-out :is(ul, li) {
+  position: static;
+  display: block;
+  padding: 0;
+}
+
+.fds-tree.fds-tree--laid-out :is(ul, li)::before,
+.fds-tree.fds-tree--laid-out :is(ul, li)::after {
+  display: none;
+}
+
+.fds-tree--laid-out :is(.fds-tree-unit, .fds-tree-data) {
+  position: absolute;
+  margin: 0;
+}
+
+.fds-tree-lines {
+  position: absolute;
+  top: 0;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--fds-tree-line);
+  stroke-width: 1;
+}
+
 .fds-tree-param {
   font-size: var(--sl-text-xs);
   color: var(--sl-color-gray-3);
@@ -298,10 +388,12 @@
   border-radius: 0.375rem;
   background: var(--sl-color-gray-7, var(--sl-color-black));
   font-size: var(--sl-text-sm);
-  white-space: nowrap;
+  text-align: center;
 }
 
+/* A long value wraps at its spaces rather than widening the whole tree */
 .fds-tree-box code {
+  max-width: 9rem;
   background: none;
   padding: 0;
   font-size: inherit;

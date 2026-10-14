@@ -81,7 +81,7 @@ docs-site/
         EvaluationToast.tsx   the tree editor's evaluation toasts
         ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
-    lib/                    the shared FigTree instance and catalog, JSON5, link encoding, notes
+    lib/                    the shared FigTree instance and catalog, JSON5, link encoding, notes, tree layout
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
 ```
 
