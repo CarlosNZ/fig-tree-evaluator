@@ -67,3 +67,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
   - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
+- **Comments in an example point at what to notice or try, for the point the example makes.** Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
+  - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
+  - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
+  - After: no comment, since the prose already carries the point
