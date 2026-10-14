@@ -192,6 +192,59 @@
 }
 
 /*
+ * The two kinds of error an example can show. A runtime error is a filled
+ * box with a solid edge: the expression ran, and failed. A static error is
+ * an empty, dashed outline: nothing ran at all.
+ */
+.fds-expression-error--runtime {
+  border-left: 4px solid var(--fds-error-text);
+}
+
+.fds-expression-error--static {
+  background: transparent;
+  border: 2px dashed var(--fds-error-text);
+}
+
+/*
+ * Which kind it is, as a badge straddling the box's top-right edge, so it
+ * takes no room from the message. Its fill follows the box's: solid for a
+ * runtime error, a dashed outline for a static one.
+ */
+.fds-expression-error--static,
+.fds-expression-error--runtime {
+  position: relative;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+}
+
+.fds-expression-error-badge {
+  position: absolute;
+  top: 0;
+  right: 0.75rem;
+  transform: translateY(-50%);
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-family: var(--__sl-font);
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+}
+
+.fds-expression-error--runtime .fds-expression-error-badge {
+  background: var(--fds-error-text);
+  color: var(--fds-error-bg);
+}
+
+.fds-expression-error--static .fds-expression-error-badge {
+  background: var(--sl-color-bg);
+  color: var(--fds-error-text);
+  border: 2px dashed var(--fds-error-text);
+}
+
+/*
  * Opened in an editor, an example gives its place to the widget
  * (ExpressionEditor.tsx)
  */

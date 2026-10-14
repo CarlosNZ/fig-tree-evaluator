@@ -50,12 +50,26 @@ const parse = (source: string, what: string) => {
 const expression = parse(code, 'expression')
 const data = dataSource === undefined ? undefined : parse(dataSource, 'data')
 
-let outcome: { ok: true; result: unknown } | { ok: false; code: string; message: string }
+/**
+ * A failed example says which kind of error it shows: a static error is
+ * thrown with the validation issues that found it, before anything runs; a
+ * runtime error, thrown while the expression runs, has none.
+ */
+type Stage = 'static' | 'runtime'
+const stages: Record<Stage, { label: string; gloss: string }> = {
+  static: { label: 'Static error', gloss: 'found before anything ran' },
+  runtime: { label: 'Runtime error', gloss: 'failed while running' },
+}
+
+let outcome:
+  | { ok: true; result: unknown }
+  | { ok: false; stage: Stage; code: string; message: string }
 try {
   outcome = { ok: true, result: await figTree.evaluate(expression, data ? { data } : undefined) }
 } catch (error) {
   if (!isFigTreeError(error)) throw error
-  outcome = { ok: false, code: error.code, message: error.message }
+  const stage = error.issues === undefined ? 'runtime' : 'static'
+  outcome = { ok: false, stage, code: error.code, message: error.message }
 }
 if (outcome.ok && throws)
   throw new Error(`${where}\n\nThis example says it throws, but it evaluated to:\n${toJson5(outcome.result)}`)
@@ -73,7 +87,10 @@ const href = editor ? playgroundHref({ expression: code, data: dataSource }) : n
       outcome.ok ? (
         <Code code={toJson5(outcome.result)} lang="json5" title="Result" />
       ) : (
-        <div class="fds-expression-error" role="note">
+        <div class={`fds-expression-error fds-expression-error--${outcome.stage}`} role="note">
+          <span class="fds-expression-error-badge" title={stages[outcome.stage].gloss}>
+            {stages[outcome.stage].label}
+          </span>
           <span class="fds-expression-error-code">{outcome.code}</span>
           <span>{outcome.message}</span>
         </div>
