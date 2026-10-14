@@ -35,7 +35,7 @@ The v2 docs stay where they are, as the README on the `v2.x` branch. The site do
 
 ### Site sections
 
-- **Concepts:** nodes, evaluation, data references, variables, the shorthand forms
+- **Concepts:** nodes, evaluation, data references, variables, iteration, the shorthand forms
 - **Guides:** setting up, checking expressions, fallbacks and errors, fragments, I/O clients, caching, tracing
 - **API reference:** the `FigTree` class: constructor options and methods (`evaluate`, `validate`, `compile`, `inspect`, `updateOptions`, …)
 - **Operator reference:** one generated page, by category (see "Generated operator reference" below)

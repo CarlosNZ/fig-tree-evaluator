@@ -1,0 +1,40 @@
+---
+title: Iteration
+description: Working through an array with map, filter and the other iterating operators, and reading the current element
+sidebar:
+  order: 5
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## The iterating operators
+
+`map`, `filter`, `find`, `some` and `every`: an `input` array, and an `each` expression evaluated once for every element.
+
+## `$element` and `$index`
+
+Reading the current element and its position inside `each`.
+
+## Naming them with `as`
+
+`as: 'order'` gives the element and index the names `$order` and `$orderIndex`, in place of `$element` and `$index`.
+
+## Nested iteration
+
+An inner iterator's `$element` is its own element; an outer one is reached by the name its `as` gave it.
+
+## Stopping early
+
+`find`, `some` and `every` stop as soon as they have their answer.
+
+## Empty and missing input
+
+What each operator gives for an empty array, and `nullInputDefault` for an input that's `null`.
+
+## Mistakes caught early
+
+An `$element` outside an iterator, or an `as` name used outside its own `each`, is an error when the expression is checked.
