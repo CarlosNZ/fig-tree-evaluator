@@ -1,20 +1,21 @@
 ---
 title: How evaluation works
-description: The order nodes are evaluated in, and what the engine checks along the way.
+description: 'What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures'
 sidebar:
   order: 2
 ---
 
+import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 import Playground from '../../../components/playground/Playground.tsx'
 
-Evaluating an expression means computing each of its nodes and bubbling the results up through the tree. This page follows that process: what FigTree checks before anything runs, the order the nodes are evaluated, and what happens when a value isn't what an operator expects, or isn't there at all.
+Evaluating an expression means computing each of its nodes and bubbling the results up through the tree. This page follows that process: what FigTree checks before anything runs, the order the nodes are evaluated in, and what happens when a value isn't what an operator expects, or isn't there at all.
 
 ## Compiled first, then run
 
-An expression is **compiled** and checked once, before anything actually runs. Compiling works out what each part of the expression is: which objects are nodes, which operator each one names, and which parameters it's given. Checking then looks for mistakes, such as an operator FigTree doesn't know, a parameter the operator doesn't have, or a value of the wrong type written into the expression.
+An expression is **compiled** and checked once, before anything actually runs. Compiling works out what each part of the expression is: which objects are nodes, which operator each one names, and which parameters it's given. Checking then looks for mistakes, such as an operator FigTree doesn't know, a parameter the operator doesn't have, or a value of the wrong type written into the expression, including an operator whose result could never fit where it's used.
 
-Mistakes in the expression itself are errors no `fallback` catches; failures while running are what fallbacks are for. Here the mistake is in the expression, so the fallback never gets a chance:
+Mistakes in the expression itself are **static errors**, and no `fallback` catches them: fallbacks are for failures while the expression runs. Here `'two'` is a static error, so the fallback never gets a chance:
 
 <Expression
   throws
@@ -23,9 +24,13 @@ Mistakes in the expression itself are errors no `fallback` catches; failures whi
   `}
 />
 
+<Callout kind="why" title="Strict where it can be, and forgiving where it has to be">
+  A mistake in the expression can be fixed while it's being written, so FigTree makes it an error. The data an expression will meet can't be known in advance, so problems there are handled gently instead: with fallbacks, and the null handling [below](#null-handling). [Why FigTree is shaped this way](/under-the-hood/design/#strict-where-it-can-be-and-forgiving-where-it-has-to-be) has the full reasoning.
+</Callout>
+
 [Checking expressions](/guides/validation/) shows how to find these mistakes as you write, before an expression is stored or run.
 
-A compiled expression is reused, so evaluating it again is cheap. [Compile, check, evaluate](/under-the-hood/model/) goes through the stages in detail.
+A compiled expression is kept in the [compile cache](/guides/caching/#two-caches), so evaluating it again goes straight to running it. [Compile, check, evaluate](/under-the-hood/model/) goes through the stages in detail.
 
 ## Recursive and async
 
@@ -39,7 +44,7 @@ const sum = await fig.evaluate({ $plus: [1, 2] }) // 3
 
 ## Lazy parameters
 
-Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only need *one of* the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, for the `match` operator — only the matching branch runs. In the [operator reference](/reference/operators/), parameters like these carry a flag, such as `lazy`.
+Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only need _one of_ the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, `match` only runs the matching branch. In the [operator reference](/reference/operators/), parameters like these carry a flag, such as `lazy`.
 
 `firstOf` gives the first of its values that isn't `null`, evaluating them in order and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
 
@@ -114,7 +119,7 @@ Since `0` counts as false, test numbers explicitly, as the average price example
 
 Data is often incomplete: a form field left blank, a setting left out because it has a default, etc. So a reference to a value that isn't there returns `null` ([Data references](/concepts/data/#missing-values)), and FigTree's operators will handle that gracefully — rather than failing, most pass the `null` on, so the parts of the result that depend on the missing value come out empty, while the rest of the expression carries on as normal.
 
-Not every operator can do something useful with a `null`, though, so each parameter has its own rule for what a `null` means to it, and only fails where there's nothing sensible to do with it.
+Not every operator can do something useful with a `null`, though, so each parameter has its own rule for what a `null` means to it, and a `null` is only an error where there's nothing sensible to do with it.
 
 Here `shipping` is missing, and each operator that reads it does something different with the `null`. Add `shipping` and `decimals` to **Data** and watch each value change:
 
@@ -140,7 +145,7 @@ Here `shipping` is missing, and each operator that reads it does something diffe
 
 Each of these is the sensible reading for its operator. A total with an unknown shipping cost can't be worked out: treating the `null` as `0` would give a total that looks right but isn't, so `plus` gives `null` too. A label can still be written, just without the amount. And "is the shipping known?" has a definite answer: no.
 
-How a parameter treats `null` is its **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are three:
+That rule is a parameter's **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are three:
 
 - **Passed on:** the node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`.
 - **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstOf` skips it, and a condition reads it as false.

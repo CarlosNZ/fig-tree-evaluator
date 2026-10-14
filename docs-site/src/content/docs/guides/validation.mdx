@@ -21,7 +21,9 @@ An issue's shape: its severity, code, message and path to the node.
 
 ## Static errors
 
-An expression with a static error never runs: `evaluate()` throws before anything is evaluated, and no fallback catches it. Why it's strict at authoring time and forgiving at runtime.
+An expression with a static error never runs: `evaluate()` throws before anything is evaluated, and no fallback catches it. Why: strict where it can be, and forgiving where it has to be.
+
+{/* NOTE (from How evaluation works): examples side by side of a static error and a failure that can only be known at runtime, including how the check carries an operator's result type into its parent's parameter: `{ $upper: { $length: … } }` is a static error, since `length` always returns a number, while `{ $upper: { $plus: … } }` is left to runtime, since `plus` can return a string. Before writing this, check whether a node inside an array parameter is covered: `{ $multiply: [2, { $upper: 'x' }] }` passes validation. */}
 
 ## What an expression reads
 
