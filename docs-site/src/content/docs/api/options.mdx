@@ -27,6 +27,8 @@ Instance options, per-call options, and the options that can only be set on the 
 
 ## `strictDataPaths`
 
+{/* NOTE (from Data references): the option covers drilling into every namespace, not only `$data`: a miss inside `$vars`, `$element` or `$params` fails too, but a miss inside `$error` is always `null`. A `[*]` projection still gives `null` for an element where the rest of the path is missing. A `get` with a `default` (even `default: null`) is the per-place opt-out, and `firstOf` can't fill a gap under it, since the reference fails first. The failure's code is `missing-data-path`. */}
+
 ## `maxDepth` and `maxNodes`
 
 ## `timeout` and `signal`

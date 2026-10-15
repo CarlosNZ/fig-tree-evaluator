@@ -1,46 +1,227 @@
 ---
 title: Data references
-description: Reading values from the data passed in at evaluation time
+description: Reading values from your app's data
 sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Most expressions do something with your application's data — define logic for form fields based on a user's input, compose messages based on user data, or make API calls based on application state, for example. You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it.
 
 ## The data object
 
-What's passed in with each evaluation, and how it differs from the instance's options.
+FigTree takes data in two places:
+
+- **On the instance**, for values that *stay the same* from one evaluation to the next: app settings, a lookup table, the signed-in user. It's the `data` option when you create the instance, and [Setting up FigTree](/guides/setup/#changing-options) shows how to change it later.
+- **With each evaluation**, for what *changes* every time: form data, API requests, event payloads. It's `data` in `evaluate()`'s second argument.
+
+```ts title="data.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({ data: { currency: 'NZD', gstRate: 0.15 } })
+
+const data = { order: { id: 'A-1042', subtotal: 80.49 } }
+await fig.evaluate('$data.order.id', { data }) // => 'A-1042'
+```
+
+<Callout kind="caution" title="Per-call data replaces instance data">
+
+Data passed with an evaluation replaces the instance's data for that evaluation — the two are never merged. So above, `$data.gstRate` would give `null`, since the instance's data has been replaced by the object holding `order`. When an expression needs both, pass one object holding both:
+
+```ts title="data.ts"
+import { FigTree } from 'fig-tree-evaluator'
+const settings = { currency: 'NZD', gstRate: 0.15 }
+const fig = new FigTree({ data: settings })
+const data = { order: { id: 'A-1042', subtotal: 80.49 } }
+// ---cut---
+await fig.evaluate('$data.gstRate', { data }) // => null
+await fig.evaluate('$data.gstRate', { data: { ...settings, ...data } }) // => 0.15
+```
+
+</Callout>
 
 ## `$data.` strings
 
-Referring to a value by its path, such as `'$data.user.age'`.
+A reference can go anywhere a value can: as an operator's parameter, inside a plain object or array, or as the whole expression. `$d` is short for `$data`, and a bare `$data` gives the whole data object.
 
-## Paths
+<Expression
+  title="An order confirmation"
+  code={`
+    {
+      orderId: '$data.order.id',
+      // $d is short for $data
+      customer: '$d.customer.name',
+      total: { $plus: ['$d.order.subtotal', '$d.order.shipping'] },
+      // Only a whole string is a reference, so this one is plain text
+      plain: 'Thanks, $data.customer.firstName!',
+      // To put a value inside text, use a buildString template
+      greeting: { $buildString: 'Thanks, {{$d.customer.firstName}}!' },
+    }
+  `}
+  data={`
+    {
+      customer: { name: 'Aroha Ngata', firstName: 'Aroha' },
+      order: { id: 'A-1042', subtotal: 80, shipping: 5.5 },
+    }
+  `}
+/>
 
-The path syntax: nested properties and array indexes.
-
-## Missing values
-
-What a reference to a path that isn't there returns, and how to supply a default.
+A string is a reference only when it _starts_ with `$data` or `$d`.
 
 ## The `get` operator
 
-For paths that are built at evaluation time.
+A `$data` reference is really just a convenient way to write a [`get` operator](/reference/operators/#op-get): `$data.order.id` is the same as `{ $get: 'order.id' }`. Most of the time, it's all you need, but there are a few cases where you need to write it the long way:
+
+- **When `null` isn't the right replacement for missing data:** `get` takes a `default` to give instead ([Missing values](#missing-values)).
+- **When reading from something other than the data:** `get` takes a `from` to read from instead, such as a lookup table written into the expression itself.
+- **When the path is itself computed by an expression**, such as a key chosen by the user.
+
+Here, the path references the lookup table, so it has no `$data`:
+
+```json5
+{
+  $get: {
+    // Read from the table below, so no $data
+    path: 'mi',
+    from: { en: 'Hello', mi: 'Kia ora', fr: 'Bonjour' },
+  },
+}
+```
+
+Computing the path as well picks the greeting in the user's language from the same table:
+
+<Expression
+  title="A greeting in the user's language"
+  code={`
+    {
+      $get: {
+        // The key to read comes from the data: here, 'mi'
+        path: '$data.user.language',
+        from: { en: 'Hello', mi: 'Kia ora', fr: 'Bonjour' },
+      },
+    }
+  `}
+  data={`
+    // Change language to 'fr'
+    { user: { name: 'Aroha', language: 'mi' } }
+  `}
+/>
+
+## Missing values
+
+Real data has gaps, such as a form field left blank or a user without a middle name. So a reference to something that isn't there doesn't stop the evaluation — it returns `null`, and the expression carries on, handling that `null` as [How evaluation works](/concepts/evaluation/#null-handling) describes. If `null` isn't the appropriate value, you can supply a `default`.
+
+There are two ways, and they differ in how they treat a value stored as `null`:
+
+- **`get`'s `default`** replaces only a missing value. A value stored as `null` stays `null`, for where that means something, such as a field the user cleared. In the positional form, it comes after the path: `{ $get: ['customer.email', 'Missing'] }`.
+- **`firstOf`** gives the first of its values that isn't `null`, so it replaces a stored `null` too.
+
+<Expression
+  code={`
+    {
+      // Only the genuinely missing one takes the default
+      phoneOnFile: { $get: { path: 'customer.phone', default: 'Missing' } },
+      emailOnFile: { $get: { path: 'customer.email', default: 'Missing' } },
+      // Missing AND null are both passed over
+      phone: { $firstOf: ['$data.customer.phone', 'Not given'] },
+      email: { $firstOf: ['$data.customer.email', 'Not given'] },
+    }
+  `}
+  data={`
+    // Asked for a phone number, and has none; never asked for an email
+    { customer: { name: 'Aroha Ngata', phone: null } }
+  `}
+/>
+
+### When missing is a mistake
+
+A misspelt path is missing too, so it gives `null` just as quietly. When your data should always have the values an expression reads, the `strictDataPaths` option makes a missing path an error instead, which a `fallback` can catch like any other failure. A `get` with a `default` marks a value that's allowed to be missing:
+
+```ts title="strict.ts"
+import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({ strictDataPaths: true })
+const data = { customer: { name: 'Aroha Ngata' } }
+
+await fig.evaluate('$data.customer.nmae', { data }) // throws: missing-data-path
+await fig.evaluate({ $upper: '$data.customer.nmae', fallback: 'Unknown' }, { data }) // => 'Unknown'
+await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null
+```
+
+<Callout kind="caution" title="firstOf under strictDataPaths">
+  With `strictDataPaths` on, `firstOf` can't fill a gap: the reference to the missing value fails before `firstOf` sees it. Use `get` with a `default` for a value that's allowed to be missing.
+</Callout>
+
+## Path syntax
+
+A path follows straight after `$data` (or `$d`), starting with a `.` or a `[`, so `'$database'` isn't a reference. It's read left to right, each step going one level deeper:
+
+- **`.key`**: a property of an object.
+- **`[0]`**: an element of an array, counting from 0. `.0` works too.
+- **`["key"]`**: a key containing a `.` or `[`, in single or double quotes.
+- **`[*]`**: every element of an array. The rest of the path is read from each one, and the results come back as an array, with `null` wherever it's missing.
+
+<Expression
+  code={`
+    {
+      firstItem: '$data.order.items[0].name',
+      // The sku of every item
+      skus: '$data.order.items[*].sku',
+      // The key has a dot in it, so it goes in quotes
+      newCheckout: '$data.flags["checkout.v2"]',
+    }
+  `}
+  data={`
+    {
+      order: {
+        items: [
+          { sku: 'TEA-01', name: 'Green tea' },
+          { sku: 'MUG-03', name: 'Mug' },
+        ],
+      },
+      flags: { 'checkout.v2': true },
+    }
+  `}
+/>
+
+A `get` path can also be an array of keys and indexes, each used exactly as written, so `{ $get: { path: ['flags', 'checkout.v2'] } }` needs no quotes.
+
+<Callout kind="caution" title="No .length">
+
+A path reads only the keys actually in your data, so `.length`, on an array or a string, isn't one. Use the `length` operator instead:
+
+<Expression
+  code={`
+    {
+      // Not a key in the data, so null
+      wrong: '$data.order.items.length',
+      // The number of items
+      right: { $length: '$data.order.items' },
+    }
+  `}
+  data={`
+    { order: { items: ['Green tea', 'Mug'] } }
+  `}
+/>
+
+</Callout>
 
 ## Every reference
 
-The `$` namespaces in one table, each with its one-letter alias and a link to where it's explained:
+`$data` is one of six kinds of reference, each reading from a different place. The rest are explained where the things they read are:
 
-- `$data`: the evaluation data, on this page
-- `$vars`: variables, on the Variables page
-- `$element` and `$index`: the current element in an iteration, on the Iteration page
-- `$params`: a fragment's arguments, in the Fragments guide
-- `$error`: the failure a fallback caught, in the Fallbacks and errors guide
+| Reference            | Short form | Reads                                     | Explained in                               |
+| -------------------- | ---------- | ----------------------------------------- | ------------------------------------------ |
+| `$data`              | `$d`       | the evaluation data                       | this page                                  |
+| `$vars`              | `$v`       | a variable declared above it              | [Variables](/concepts/variables/)          |
+| `$element`, `$index` | `$e`, `$i` | the current element, in `map`, `filter` … | [Iteration](/concepts/iteration/)          |
+| `$params`            | `$p`       | a fragment's arguments                    | [Fragments](/guides/fragments/)            |
+| `$error`             | `$err`     | the failure a fallback caught             | [Fallbacks and errors](/guides/fallbacks/) |
+
+They all follow this page's rules: a reference is always the whole string, and reads a path in the same syntax, so `$vars.country[0].name` works as you'd expect.
+
+{/* TO-DO: once #249 is decided, say whether such strings get a validate() warning */}
 
 A `$` string that names none of these is plain text, so `'$5.00'` passes through untouched.
-
-{/* NOTE (from How evaluation works): today such a string also gets an `unrecognized-identifier` warning from validate(), even where the `$` can't start a reference (`'$5.00'`, `'$%1'`). Check how #249 was decided before writing this. */}

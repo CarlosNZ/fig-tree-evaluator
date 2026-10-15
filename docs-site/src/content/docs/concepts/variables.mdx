@@ -17,6 +17,8 @@ The page's opening points to [Iteration](/concepts/iteration/) for `$element` an
 
 Declaring variables on a node, or on a plain object, and reading them with `$vars.` references.
 
+{/* NOTE (from Data references): references to vars use the same path syntax as `$data` (Data references, "Paths"). For a path built at runtime, `get` takes `from: '$vars'` (or `$v`), with the path's first key naming the var: `{ $get: { path: 'country.code', from: '$vars' } }`. Beside `from: '$vars'` the path must be written out and open with a key; an undeclared name is a compile error, not a miss `default` covers. A bare `'$vars'` anywhere else is an error. */}
+
 ## Scope
 
 Variables are lexical: a reference sees those declared on its own node and every node above it, and an inner declaration hides an outer one.
