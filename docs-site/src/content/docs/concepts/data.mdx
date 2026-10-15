@@ -68,7 +68,9 @@ A reference can go anywhere a value can: as an operator's parameter, inside a pl
   `}
 />
 
-A string is a reference only when it _starts_ with `$data` or `$d`.
+{/* TO-DO: once #249 is decided, say whether such strings get a validate() warning */}
+
+A string is a reference only when it _starts_ with `$data` or `$d`, or one of the other kinds of reference [below](#every-reference). Any other string is plain text, even one starting with `$`, such as `'$5.00'`.
 
 ## The `get` operator
 
@@ -146,22 +148,24 @@ const fig = new FigTree({ strictDataPaths: true })
 const data = { customer: { name: 'Aroha Ngata' } }
 
 await fig.evaluate('$data.customer.nmae', { data }) // throws: missing-data-path
-await fig.evaluate({ $upper: '$data.customer.nmae', fallback: 'Unknown' }, { data }) // => 'Unknown'
-await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null
-```
 
-<Callout kind="caution" title="firstOf under strictDataPaths">
-  With `strictDataPaths` on, `firstOf` can't fill a gap: the reference to the missing value fails before `firstOf` sees it. Use `get` with a `default` for a value that's allowed to be missing.
-</Callout>
+await fig.evaluate(
+  { $upper: '$data.customer.nmae', fallback: 'Unknown' },
+  { data }
+) // => 'Unknown'
+
+await fig.evaluate(
+  { $get: { path: 'customer.email', default: null } },
+  { data }
+) // => null
+```
 
 ## Path syntax
 
-A path follows straight after `$data` (or `$d`), starting with a `.` or a `[`, so `'$database'` isn't a reference. It's read left to right, each step going one level deeper:
+For the most part, paths are written as you'd write them in JavaScript, so `$d.user.name`, `$data.items[0].price` and `$data.flags["key.with.dots"]` are all valid paths, and `.0` works as well as `[0]`. There are a couple of extensions, though:
 
-- **`.key`**: a property of an object.
-- **`[0]`**: an element of an array, counting from 0. `.0` works too.
-- **`["key"]`**: a key containing a `.` or `[`, in single or double quotes.
 - **`[*]`**: every element of an array. The rest of the path is read from each one, and the results come back as an array, with `null` wherever it's missing.
+- **A path as an array**: `get` also takes its path as an array of keys and indexes, each used exactly as written. That's handy when building a path from parts: `{ $get: { path: ['items', 0, 'price'] } }`.
 
 <Expression
   code={`
@@ -186,28 +190,6 @@ A path follows straight after `$data` (or `$d`), starting with a `.` or a `[`, s
   `}
 />
 
-A `get` path can also be an array of keys and indexes, each used exactly as written, so `{ $get: { path: ['flags', 'checkout.v2'] } }` needs no quotes.
-
-<Callout kind="caution" title="No .length">
-
-A path reads only the keys actually in your data, so `.length`, on an array or a string, isn't one. Use the `length` operator instead:
-
-<Expression
-  code={`
-    {
-      // Not a key in the data, so null
-      wrong: '$data.order.items.length',
-      // The number of items
-      right: { $length: '$data.order.items' },
-    }
-  `}
-  data={`
-    { order: { items: ['Green tea', 'Mug'] } }
-  `}
-/>
-
-</Callout>
-
 ## Every reference
 
 `$data` is one of six kinds of reference, each reading from a different place. The rest are explained where the things they read are:
@@ -220,8 +202,6 @@ A path reads only the keys actually in your data, so `.length`, on an array or a
 | `$params`            | `$p`       | a fragment's arguments                    | [Fragments](/guides/fragments/)            |
 | `$error`             | `$err`     | the failure a fallback caught             | [Fallbacks and errors](/guides/fallbacks/) |
 
-They all follow this page's rules: a reference is always the whole string, and reads a path in the same syntax, so `$vars.country[0].name` works as you'd expect.
+Inside an iterator, `as` lets you name the element and index yourself: with `as: 'order'`, `$order` and `$orderIndex` are references within that iterator ([Iteration](/concepts/iteration/)).
 
-{/* TO-DO: once #249 is decided, say whether such strings get a validate() warning */}
-
-A `$` string that names none of these is plain text, so `'$5.00'` passes through untouched.
+They all follow this page's rules: a reference is a whole string, or a `{{…}}` token in a `buildString` template, and its path uses the same syntax, so `$vars.country[0].name` works as you'd expect.

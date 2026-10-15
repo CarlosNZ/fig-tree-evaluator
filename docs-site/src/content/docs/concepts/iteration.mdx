@@ -15,6 +15,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 `map`, `filter`, `find`, `some` and `every`: an `input` array, and an `each` expression evaluated once for every element.
 
+{/* NOTE (from Data references): a path's `[*]` (Data references, "Path syntax") covers the simple case of reading one path from every element, `'$data.items[*].sku'`; `map` is for anything more. The two aren't equivalent at the edges, so don't call `[*]` sugar for `map`. Against `{ $map: { input: '$data.items', each: '$element.sku' } }`: an element missing `sku` gives a `null` slot in both, but under `strictDataPaths` only `map` throws (`missing-data-path`); `items` that isn't an array, or is missing, gives `null` from `[*]` and a `type-check` failure from `map` (unless `nullInputDefault`). */}
+
 ## `$element` and `$index`
 
 Reading the current element and its position inside `each`.
