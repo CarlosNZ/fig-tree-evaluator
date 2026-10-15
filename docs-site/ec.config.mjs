@@ -12,6 +12,9 @@ export default defineEcConfig({
   // The palette's syntax colours already reach 4.5:1 on their own code
   // background, so Expressive Code mustn't shift them
   minSyntaxHighlightingColorContrast: 0,
+  // Long lines wrap rather than scroll, each continuation indented two
+  // columns past its line's own indent so it reads as one line
+  defaultProps: { wrap: true, hangingIndent: 2 },
   plugins: [
     // Every ts and tsx block is compiled, unless its meta says `nocheck`
     // (a fragment that can't compile). Each one is type-checked against
