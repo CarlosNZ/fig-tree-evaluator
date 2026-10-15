@@ -34,12 +34,13 @@ The site uses two packages through local `link:` dependencies, and both must be 
 
 Run these from `docs-site/`:
 
-| Command        | What it does                                                                |
-| -------------- | --------------------------------------------------------------------------- |
-| `pnpm dev`     | Dev server with hot reload, at http://localhost:4321                        |
-| `pnpm build`   | Static build into `dist/`, including the Pagefind search index              |
-| `pnpm preview` | Serves `dist/` at http://localhost:4321, to check a build before publishing |
-| `pnpm check`   | Type-checks the site's `.astro`, `.ts` and `.tsx` files                     |
+| Command            | What it does                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------- |
+| `pnpm dev`         | Dev server with hot reload, at http://localhost:4321                                      |
+| `pnpm build`       | Static build into `dist/`, including the Pagefind search index                            |
+| `pnpm preview`     | Serves `dist/` at http://localhost:4321, to check a build before publishing               |
+| `pnpm check`       | Type-checks the site's `.astro`, `.ts` and `.tsx` files                                   |
+| `pnpm record:http` | Rebuilds the HTTP examples' recorded responses from the real API (see "Writing examples") |
 
 Astro 7 runs `dev` and `preview` as background servers, so the command returns straight away. Stop them with `pnpm astro dev stop` or `pnpm astro preview stop`; `pnpm astro dev logs` shows the dev server's output. Add `--port <n>` to use another port.
 
@@ -108,6 +109,8 @@ Set `throws` on an example that shows an error. "Open in editor" opens the examp
 ```
 
 `readFromUrl` makes a widget load the example that an "open in editor" link's address carries; the Playground page's widget has it. On the page a widget keeps to the content column, with a shrunken preview of the tree beside the code; "Expand editor" opens both editors full size.
+
+**HTTP requests** in examples go to [JSONPlaceholder](https://jsonplaceholder.typicode.com), which needs no key and allows cross-origin requests. In the browser they're real requests. At build time they're replayed from `src/lib/httpRecordings.json` (generated, never hand-edited), so the build stays offline; a request with no recording fails the build. After adding or changing an example's request, run `pnpm record:http`, which builds the site against the real API and rewrites the recordings with every response the build asked for.
 
 **Reference entries:** `<OperatorReference all />` is the operators page, every operator by category. Any other page can show a few: `<OperatorReference names={['plus', 'if']} />`, with `showCategory` to label each one's category.
 
