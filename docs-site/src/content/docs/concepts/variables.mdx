@@ -1,32 +1,224 @@
 ---
 title: Variables
-description: Naming a value once and reading it anywhere below
+description: Evaluate part of an expression once, and reuse the result wherever it's needed
 sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+**The problem**: You have an expression like this that needs to check a slow API call's value multiple times[^cache]:
 
-The page's opening points to [Iteration](/concepts/iteration/) for `$element` and `$index`, the values the iterating operators provide.
+<Expression
+  title="A customer quote"
+  code={`
+    {
+      inServiceArea: {
+        $equal: [
+          { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'address.city' } },
+          'Gwenborough',
+        ],
+      },
+      message: {
+        $buildString: [
+          'Send the quote to %1 at %2',
+          { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'name' } },
+          { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'email' } },
+        ],
+      },
+    }
+  `}
+/>
+  
+What if you could just evaluate (and write) the API result once, then re-use it wherever it's needed?
+
+**The solution**: **Variables** — _write once, read anywhere_
 
 ## `vars`
 
-Declaring variables on a node, or on a plain object, and reading them with `$vars.` references.
+Declare variables in a `vars` block on any object in the expression, and read them with `$vars` references (or `$v` for short) anywhere inside that object ([Scope](#scope)). Here's the same expression, with that API call written once:
 
-{/* NOTE (from Data references): references to vars use the same path syntax as `$data` (Data references, "Paths"). For a path built at runtime, `get` takes `from: '$vars'` (or `$v`), with the path's first key naming the var: `{ $get: { path: 'country.code', from: '$vars' } }`. Beside `from: '$vars'` the path must be written out and open with a key; an undeclared name is a compile error, not a miss `default` covers. A bare `'$vars'` anywhere else is an error. */}
+<Expression
+  title="A customer quote"
+  code={`
+    {
+      vars: {
+        customer: { $http: 'https://jsonplaceholder.typicode.com/users/1' },
+      },
+      inServiceArea: { $equal: ['$vars.customer.address.city', 'Gwenborough'] },
+      message: {
+        $buildString: 'Send the quote to {{$vars.customer.name}} at {{$vars.customer.email}}',
+      },
+    }
+  `}
+/>
+
+A variable's name can be any string that doesn't start with `$` and has no `.`, `[` or `]` in it, since those would make a path ambiguous. So `'unit price'` is fine as a name, but `'unit.price'` isn't.
+
+<Callout kind="note" title="Same paths as $data">
+  A `$vars` reference reads into a variable with the same [path syntax](/concepts/data/#path-syntax) as `$data`, in a `buildString` template's `{{…}}` tokens as well as on its own.
+</Callout>
+
+As with `$data`, a `$vars` reference is a short way to write a [`get` operator](/concepts/data/#the-get-operator), and the long way is there for the same reasons, such as a `default`. Give it `from: '$vars'`, and start the path with the variable's name:
+
+```json5
+{
+  $get: {
+    path: 'customer.email',
+    from: '$vars',
+    default: 'No email on file',
+  },
+}
+```
 
 ## Scope
 
-Variables are lexical: a reference sees those declared on its own node and every node above it, and an inner declaration hides an outer one.
+A variable is visible to the node it's declared on and everything inside it, including that node's `fallback`. Anywhere else, it doesn't exist, so a sibling can't read it. Declaring the same name further in hides the outer variable, for that part of the tree only:
+
+<Expression
+  title="Price labels"
+  code={`
+    {
+      vars: { currency: 'NZD' },
+      domestic: { $buildString: 'Prices in {{$vars.currency}}' },
+      export: {
+        // Hides the outer currency, inside export only
+        vars: { currency: 'USD' }, // Comment out, and export reads the outer NZD
+        label: { $buildString: 'Prices in {{$vars.currency}}' },
+      },
+    }
+  `}
+/>
+
+A variable's own definition sees the same scope, so it can read the variables declared beside it as well as those further out:
+
+<Expression
+  title="An order summary"
+  code={`
+    {
+      vars: {
+        subtotal: { $plus: '$data.order.itemPrices' },
+        // Reads the variable declared above it
+        freeShipping: { $greaterThanOrEqual: ['$vars.subtotal', 100] },
+      },
+      subtotal: '$vars.subtotal',
+      shipping: { $if: ['$vars.freeShipping', 0, 7.5] },
+      message: {
+        $if: ['$vars.freeShipping', 'Free shipping on this order', 'Free shipping over $100'],
+      },
+    }
+  `}
+  data={`
+    // Uncomment the third item to get free shipping
+    {
+      order: {
+        itemPrices: [
+          45,
+          35,
+          // 24,
+        ],
+      },
+    }
+  `}
+/>
+
+In an [iterator](/concepts/iteration/), where a variable is declared decides what it can read. A `vars` block inside `each` is evaluated for each element, so it can read `$element`. One on the iterator node itself is evaluated once, and shared by every element:
+
+<Expression
+  title="Delivery per line"
+  code={`
+    {
+      // Evaluated once, for every element
+      vars: { freeOver: 50 },
+      $map: {
+        input: '$data.items',
+        each: {
+          // Evaluated for each element
+          vars: { lineTotal: { $multiply: ['$element.price', '$element.quantity'] } },
+          item: '$element.name',
+          total: '$vars.lineTotal',
+          freeDelivery: { $greaterThanOrEqual: ['$vars.lineTotal', '$vars.freeOver'] },
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Green tea', price: 12, quantity: 5 },
+        { name: 'Mug', price: 18, quantity: 1 },
+      ],
+    }
+  `}
+/>
 
 ## Evaluated once, when needed
 
-A variable is evaluated only if something reads it, and only once however many times it's read.
+Variables benefit from [lazy evaluation](/concepts/evaluation/#lazy-parameters) too — they only run when something actually needs them, and only *once*.
+
+So a variable that nothing reads costs nothing. That makes it safe to declare a slow request that only one branch needs:
+
+<Expression
+  code={`
+    {
+      vars: {
+        customer: { $http: 'https://jsonplaceholder.typicode.com/users/1' },
+      },
+      $if: {
+        condition: '$data.quoteRequested',
+        // The request is only sent once a quote has been asked for
+        then: { $buildString: 'Send the quote to {{$vars.customer.email}}' },
+        else: 'No quote requested',
+      },
+    }
+  `}
+  data={`
+    // Change to true, and the request is sent
+    { quoteRequested: false }
+  `}
+/>
+
+Since a variable runs where it's first read, that's also where a failure in it shows up: the node reading it fails, and that node's `fallback` catches it.
+
+<Expression
+  title="Average price per item"
+  code={`
+    {
+      vars: { perItem: { $divide: ['$data.total', '$data.itemCount'] } },
+      average: { $round: ['$vars.perItem', 2], fallback: 'No items' },
+    }
+  `}
+  data={`
+    // Change itemCount to 3 to see the average
+    { total: 0, itemCount: 0 }
+  `}
+/>
 
 ## Mistakes caught early
 
-A `$vars` name that isn't declared in scope is an error when the expression is checked, not a `null` at runtime.
+Every variable is declared in the expression itself, so FigTree knows them all before anything runs. That makes a `$vars` reference to a name that isn't in scope a static error, rather than the quiet `null` a misspelt `$data` path gives:
+
+<Expression
+  throws
+  code={`
+    {
+      vars: { subtotal: { $plus: '$data.order.itemPrices' } },
+      total: { $plus: ['$vars.subtotl', 7.5] }, // Oops, typo -- fix me
+    }
+  `}
+  data={`
+    { order: { itemPrices: [45, 35] } }
+  `}
+/>
+
+The same goes for the other mistakes a `vars` block can hold:
+
+- a bare `$vars`, with no name after it (except as `get`'s `from`)
+- variables that read each other in a circle, such as `a` reading `b` while `b` reads `a`
+- a name that breaks the naming rule [above](#vars)
+- a `vars` value that isn't an object
+
+FigTree also flags two things that are allowed, but usually a slip, when you check an expression: a variable nothing reads, and an inner variable hiding an outer one. [Checking expressions](/guides/validation/) shows how to see these as you write.
+
+[^cache]: You might think the request's result gets [cached](/guides/caching/), so the slow part only happens once anyway. Not in a case like this, though — the nodes are evaluated in parallel, so each request has to start before any of them has finished and been cached. Only by putting it in a variable do you get a single request. Try it and see — open the example in the editor, and look at the Network tab of your browser's dev tools.
