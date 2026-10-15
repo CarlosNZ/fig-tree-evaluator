@@ -28,9 +28,15 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
   - Before: "An object in an expression with a `$` key is read as a node."
   - After: "An object in an expression that has a key prefixed with `$` is read as a node."
+- **The concept's name in prose, the syntax only in code.** Prose says what a thing is; code formatting is for what you type.
+  - Before: "A var's name can be any string…", "the `get` operator reads vars too"
+  - After: "A variable's name can be any string…", "reads variables too", with `vars` and `$vars` kept for the syntax
 - **Describe the effect, not the mechanism.** How FigTree achieves something is implementation detail; what the reader sees is the point.
   - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
   - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
+  - Where the reader has something to write, tell them what to write.
+  - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
+  - After: "Give it `from: '$vars'`, and start the path with the variable's name"
 - **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
@@ -72,19 +78,23 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## What to leave out
 
-- **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt.
+- **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt. The same goes for a restriction the reader would only meet by trying something unusual, when the error they'd get explains itself: it's obvious to someone heading that way, and confusing to everyone else.
   - Cut: "There's no setting to make FigTree look deeper or shallower: it always looks all the way down. Nodes are found once, when FigTree first reads the expression, and never in the data it's evaluated with, so a value in your data that happens to look like a node is never run."
   - Cut: a "No .length" callout on Data references, when nothing on the page suggested a path could read `.length`
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
+  - Cut: "The `vars` block itself is left out of the result."
+  - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
 - **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete stays short, and is marked as examples (see Wording).
   - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
   - Before: "A few more operators work this way: `and` and `or` …, and `map`, `filter` and the other iterating operators…"
   - After: "Other operators work this way too: `and` and `or`, for example, …"
-- **Only what the reader can place here.** Cut what an earlier page already covered, and allusions to features they haven't met. A closing pointer teases the one thing they'll want next.
+- **Only what the reader can place here.** Cut what an earlier page already covered, and allusions to features they haven't met. A closing pointer teases the one thing they'll want next. This isn't strict: a feature from a later page is fine where it makes an important point and is clear enough to follow without it, as the `map` example on Variables is. A bare API name that means nothing yet is better described by what it does.
   - Cut: "(The `http` operator is there when your app gives FigTree an HTTP client …)", already covered in Expressions and nodes
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
   - After: "A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong."
+  - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
+  - After: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…"
 - **Precise, but uncluttered.** A strictly technical point goes in a footnote rather than the text.
   - Example: what "node" means in graph theory, as a footnote to "trees have nodes (as well as plain values at the leaves)"
 
@@ -98,6 +108,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "A failure while running … fails its node. The failure travels up the tree…"
   - After: "An unhandled runtime error … makes the whole evaluation throw a `FigTreeError`. This is where fallbacks come in…"
   - Example: Null handling shows four operators treating the same `null` differently before it says "null policy"
+  - Example: Variables opens with **The problem**, an expression repeating the same request three times, then **The solution**, the same expression with one variable
   - Before: "A reference's path is fixed when the expression is written. When the path itself depends on the data, … `get` takes it as a parameter"
   - After: "A `$data` reference is really just a convenient way to write a `get` operator … Most of the time, it's all you need, but there are a few cases where you need to write it the long way:", then the cases as bullets
 - **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
@@ -106,12 +117,19 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Most common first.** Options, bullets and an example's keys go in the order the reader will most often need them.
   - Before: `firstOf`, then `get`'s `default`; `get`'s uses as a computed path, a `default`, a `from`
   - After: `default` first in both
-- **Asides go in callouts, out of the paragraph flow: a tip, a gotcha, a design reason.** They also break up a long run of prose. A gotcha callout shows the wrong way and the right way in an example, not just advice. Rarely two in a row, and related ones merged. The rule a section exists to state isn't an aside: it stands apart as a blockquote.
+- **Each point goes in the section whose question it answers,** even when an earlier section's example happens to show it.
+  - Before: "A var can also read the others declared beside it", in the `vars` section
+  - After: "A variable's own definition sees the same scope, so it can read the variables declared beside it…", in Scope
+- **A general remark beside an example reads as a claim about that example.** Cut it, or move it away from an example its surface reading contradicts.
+  - Cut: "A variable nothing reads can't fail.", just before an example whose variable is read, and fails
+- **Asides go in callouts, out of the paragraph flow: a tip, a gotcha, a design reason, a reminder of something an earlier page explained.** They also break up a long run of prose. A gotcha callout shows the wrong way and the right way in an example, not just advice. Rarely two in a row, and related ones merged. The rule a section exists to state isn't an aside: it stands apart as a blockquote.
   - Before: "Since `0` counts as false, test numbers explicitly…" in the paragraph
   - After: a "Zero counts as false" caution, with `bare` against `explicit` on a free item
   - Before: a Note ("Another way to write a node") directly followed by a Caution ("Data with $ keys"), plus a separate Note in the next section
   - After: one Caution at the end of Operators, "Every key prefixed with $ is checked", covering both
   - Example: the truthiness rule, as a blockquote
+  - Before: "A reference reads into a var with the same path syntax as `$data` (Data references)…", in the paragraph flow
+  - After: a "Same paths as $data" note callout
 
 ## Examples
 
@@ -137,6 +155,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: `// Passed on: plus doesn't run`
   - After: `// Can't be worked out without the shipping cost, so gives null`
   - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
+  - Example: `// Comment out, and export reads the outer NZD`, on an inner `vars` block that hides an outer one
+  - Example: `// Oops, typo -- fix me`, on the misspelt reference in an example that throws
   - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
   - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
   - After: no comment, since the prose already carries the point
