@@ -58,7 +58,7 @@ They differ in what they do with the results:
 
 ## `$element` and `$index`
 
-Inside `each`, `$element` is the current element, and `$index` its position in the array, counting from 0. `$element` reads into the element with the same [path syntax](/concepts/data/#path-syntax) as `$data`, while `$index` is just a number. Their short forms are `$e` and `$i`.
+Alongside `$element`, `each` can read `$index`, the current element's position in the array, counting from 0. `$element` reads into the element with the same [path syntax](/concepts/data/#path-syntax) as `$data`, while `$index` is just a number. Their short forms are `$e` and `$i`.
 
 <Expression
   title="A pick list"
@@ -90,12 +90,12 @@ Inside `each`, `$element` is the current element, and `$index` its position in t
 
 ## Naming them with `as`
 
-You can rename the `$element` to something more descriptive with the `as` parameter. Setting `as: "user"` means you use `$user` and `$userIndex` inside the `each` expression. Why would you want to do this? Two reasons:
+You can rename the `$element` to something more descriptive with the `as` parameter. Setting `as: 'user'` means you use `$user` and `$userIndex` inside the `each` expression. Why would you want to do this? Two reasons:
 
 - **Convenience:** using a descriptive name makes the expression a little more readable.
-- **[Nested iteration](#nested-iteration):** if you have an iterator running inside an iterator, what do `$element` and `$index` refer to? To read both elements, name at least one of the iterators with `as`. `$element` and `$index` then refer to the nearest iterator that isn't named.
+- **[Nested iteration](#nested-iteration):** if you have an iterator running inside an iterator, what do `$element` and `$index` refer to? To read both elements, name at least one of the iterators with `as`.
 
-Here's the pick list again, with its bindings named. `as` can only be given by name, so the iterator uses the named form:
+Here's the pick list again, with its element and index named. `as` can only be given by name, so the iterator uses the named form:
 
 <Expression
   title="A pick list"
@@ -237,8 +237,6 @@ An empty array is an ordinary input, and each operator gives the answer you'd ex
 - `every`: `true`
 
 A missing `input` is different. Like any value of the wrong type, `null` makes the node fail.
-
-When nothing matches, `find` gives `null`, or the value of its `noMatchDefault` if you set one.
 
 ## Mistakes caught early
 
