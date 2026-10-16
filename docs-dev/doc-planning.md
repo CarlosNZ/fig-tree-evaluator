@@ -57,6 +57,7 @@ Each page follows the `/write-page` workflow ([.claude/skills/write-page/SKILL.m
 - **After writing it,** the three published pages in [docs-artifacts/](../docs-artifacts/) (see [artifacts.md](artifacts.md)) can be skimmed for a good example or diagram the page lacks. They predate parts of the specs and the code, so nothing is taken from them unchecked.
 - **Order:** Concepts first, since everything else links back to it and it sets the site's voice; then Guides; then Custom operators, Tooling and Under the hood; the API reference last.
 - **Placement:** Concepts hold what anyone reading or writing an expression needs; Guides are task-shaped and mostly about the host's side.
+- **Shorthand is the default form.** Examples and explanations use shorthand throughout, so a reader can use FigTree without ever meeting the canonical form. Where a parameter's name matters, the example uses named shorthand rather than canonical. Canonical is an alternative, presented on Shorthand and canonical forms and in Tooling, for the cases that need it: a program building expressions, storage where `$` keys can't go, and tools that read an expression without its `FigTree` instance.
 
 ## Tooling: Starlight
 
