@@ -19,6 +19,8 @@ The evaluated parameters, and lazy values for the ones evaluated on demand.
 
 What `OperatorContext` gives a body: the evaluation's options, data, and the means to evaluate a lazy parameter.
 
+{/* NOTE (from Iteration): `context.signal` aborts when the node's result is no longer wanted — `and` / `or` or `find` / `some` / `every` answered early, the evaluation timed out, or the caller aborted. A body doing slow async work should check it (or pass it to whatever it awaits, as the HTTP and SQL clients do). JavaScript can't interrupt code already running, so a slow synchronous body runs to completion and its result is discarded. Concepts (Evaluation, Iteration) say only that work not yet started never runs and requests in progress are cancelled. */}
+
 ## Failing
 
 Throwing `OperatorFailure` with a code and details, and how a failure reaches a fallback.

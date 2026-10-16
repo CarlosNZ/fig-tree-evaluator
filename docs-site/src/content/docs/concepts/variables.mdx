@@ -219,6 +219,4 @@ The same goes for the other mistakes a `vars` block can hold:
 - a name that breaks the naming rule [above](#vars)
 - a `vars` value that isn't an object
 
-FigTree also flags two things that are allowed, but usually a slip, when you check an expression: a variable nothing reads, and an inner variable hiding an outer one. [Checking expressions](/guides/validation/) shows how to see these as you write.
-
 [^cache]: You might think the request's result gets [cached](/guides/caching/), so the slow part only happens once anyway. Not in a case like this, though — the nodes are evaluated in parallel, so each request has to start before any of them has finished and been cached. Only by putting it in a variable do you get a single request. Try it and see — open the example in the editor, and look at the Network tab of your browser's dev tools.

@@ -23,6 +23,8 @@ The `fragments` option: each fragment's `expression`, `parameters` and `descript
 
 Declaring parameters, passing arguments, and reading them in the body with `$params.`.
 
+{/* NOTE (from Iteration): a fragment called inside an iterator's `each` doesn't see `$element` / `$index` (or `as` names) — fragments are sealed, the same rule as the caller's `vars`. Pass them as parameters: `parameters: { user: '$element' }`. */}
+
 ## Calling a fragment
 
 The call node's forms, and how a call is checked against the fragment's parameters.

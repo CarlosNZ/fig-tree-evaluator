@@ -1,42 +1,263 @@
 ---
 title: Iteration
-description: Working through an array with map, filter and the other iterating operators, and reading the current element
+description: Evaluating each item in an array
 sidebar:
   order: 5
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+FigTree has five operators that can run individual array _elements_ through an expression, which should be familiar to JavaScript users: `map`, `filter`, `find`, `some` and `every`. Using them effectively requires some new syntax, hence the dedicated page.
 
 ## The iterating operators
 
-`map`, `filter`, `find`, `some` and `every`: an `input` array, and an `each` expression evaluated once for every element.
+All five require the same two parameters: an `input` array, and an `each` expression, which is evaluated once for every element. Inside `each`, `$element` is the current element ([below](#element-and-index)). Here are all five, over the same cart:
 
-{/* NOTE (from Data references): a path's `[*]` (Data references, "Path syntax") covers the simple case of reading one path from every element, `'$data.items[*].sku'`; `map` is for anything more. The two aren't equivalent at the edges, so don't call `[*]` sugar for `map`. Against `{ $map: { input: '$data.items', each: '$element.sku' } }`: an element missing `sku` gives a `null` slot in both, but under `strictDataPaths` only `map` throws (`missing-data-path`); `items` that isn't an array, or is missing, gives `null` from `[*]` and a `type-check` failure from `map` (unless `nullInputDefault`). */}
+<Expression
+  title="A shopping cart"
+  code={`
+    {
+      lineTotals: {
+        $map: {
+          input: '$data.items',
+          each: { $multiply: ['$element.price', '$element.quantity'] },
+        },
+      },
+      // The same two parameters, by position: [input, each]
+      inStock: { $filter: ['$data.items', '$element.inStock'] },
+      firstOver50: { $find: ['$data.items', { $greaterThan: ['$element.price', 50] }] },
+      anyOver50: { $some: ['$data.items', { $greaterThan: ['$element.price', 50] }] },
+      allInStock: { $every: ['$data.items', '$element.inStock'] },
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Green tea', price: 12, quantity: 5, inStock: true },
+        { name: 'Teapot', price: 64, quantity: 1, inStock: false },
+        { name: 'Mug', price: 18, quantity: 2, inStock: true },
+      ],
+    }
+  `}
+/>
+
+They differ in what they do with the results:
+
+- **`map`**: an array of every element's result, in the same order.
+- **`filter`**: the elements whose result is [truthy](/concepts/evaluation/#types-and-truthiness). The elements themselves, not the results.
+- **`find`**: the first element, in the array's order, whose result is truthy, or `null` if none is.
+- **`some`**: `true` if _any_ element's result is truthy.
+- **`every`**: `true` if _every_ element's result is truthy.
+
+<Callout kind="note" title="Just pulling out one field?">
+  To read the same path from every element, a wildcard [`[*]`](/concepts/data/#path-syntax) in the path is a convenient shorthand: `'$data.items[*].name'`, rather than `{ $map: ['$data.items', '$element.name'] }`.
+
+  The two differ slightly at the edges, though: an input array (`items` here) that's missing, or isn't an array, gives `null` from `[*]`, but makes `map` fail ([below](#empty-and-missing-input)).[^strict]
+</Callout>
 
 ## `$element` and `$index`
 
-Reading the current element and its position inside `each`.
+Inside `each`, `$element` is the current element, and `$index` its position in the array, counting from 0. `$element` reads into the element with the same [path syntax](/concepts/data/#path-syntax) as `$data`, while `$index` is just a number. Their short forms are `$e` and `$i`.
+
+<Expression
+  title="A pick list"
+  code={`
+    {
+      $map: [
+        '$data.items',
+        {
+          $buildString: [
+            '%1. %2 × %3',
+            { $plus: ['$index', 1] }, // $index starts at 0
+            '$element.quantity',
+            '$element.name',
+          ],
+        },
+      ],
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Green tea', quantity: 5 },
+        { name: 'Teapot', quantity: 1 },
+        { name: 'Mug', quantity: 2 },
+      ],
+    }
+  `}
+/>
 
 ## Naming them with `as`
 
-`as: 'order'` gives the element and index the names `$order` and `$orderIndex`, in place of `$element` and `$index`.
+You can rename the `$element` to something more descriptive with the `as` parameter. Setting `as: "user"` means you use `$user` and `$userIndex` inside the `each` expression. Why would you want to do this? Two reasons:
+
+- **Convenience:** using a descriptive name makes the expression a little more readable.
+- **[Nested iteration](#nested-iteration):** if you have an iterator running inside an iterator, what do `$element` and `$index` refer to? To read both elements, name at least one of the iterators with `as`. `$element` and `$index` then refer to the nearest iterator that isn't named.
+
+Here's the pick list again, with its bindings named. `as` can only be given by name, so the iterator uses the named form:
+
+<Expression
+  title="A pick list"
+  code={`
+    {
+      $map: {
+        input: '$data.items',
+        as: 'item',
+        each: {
+          $buildString: [
+            '%1. %2 × %3',
+            { $plus: ['$itemIndex', 1] },
+            '$item.quantity',
+            '$item.name',
+          ],
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Green tea', quantity: 5 },
+        { name: 'Teapot', quantity: 1 },
+        { name: 'Mug', quantity: 2 },
+      ],
+    }
+  `}
+/>
+
+Once an iterator is named, its element and index go by those names only: `$element` and `$index` no longer refer to it.
 
 ## Nested iteration
 
-An inner iterator's `$element` is its own element; an outer one is reached by the name its `as` gave it.
+When one iterator is inside the `each` of another, `$element` and `$index` belong to the nearest one that isn't named. So naming either iterator lets the inner `each` read both elements.
+
+In this example, the outer one is named. The inner iterator's `input` is inside the outer `each`, so it can read the outer element, as `$order.items` does:
+
+<Expression
+  title="Packing slips"
+  code={`
+    {
+      $map: {
+        input: '$data.orders',
+        as: 'order',
+        each: {
+          $map: [
+            '$order.items',
+            {
+              $buildString: [
+                '%1 × %2 (order %3)',
+                '$element.quantity', // The inner element
+                '$element.name',
+                '$order.id', // The outer element
+              ],
+            },
+          ],
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      orders: [
+        {
+          id: 'A-1042',
+          items: [
+            { name: 'Green tea', quantity: 5 },
+            { name: 'Mug', quantity: 2 },
+          ],
+        },
+        { id: 'A-1043', items: [{ name: 'Teapot', quantity: 1 }] },
+      ],
+    }
+  `}
+/>
 
 ## Stopping early
 
-`find`, `some` and `every` stop as soon as they have their answer.
+`find`, `some` and `every` don't always need every element's result. `some` has its answer at the first truthy result, `every` at the first falsy one, and `find` at its first match. Like [`and` and `or`](/concepts/evaluation/#lazy-parameters), they answer as soon as they can, and abandon the rest: any part not yet started never runs, and requests still in progress are cancelled.
+
+Elements are evaluated in parallel, though, so they all start before the answer is known. If `each` sends a request, for example, one is sent for every element, even if the first one is enough for `some` to answer.
+
+## When an element fails
+
+For `map` and `filter`, every element's result is required for the answer, so one element failing fails the whole node. To handle elements one at a time, put the `fallback` inside `each`:
+
+<Expression
+  title="Line totals"
+  code={`
+    {
+      $map: [
+        '$data.items',
+        {
+          $multiply: ['$element.price', '$element.quantity'],
+          fallback: 'Price on request', // Comment out, and one bad price fails the whole map
+        },
+      ],
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Green tea', price: 12, quantity: 5 },
+        { name: 'Teapot', price: 'TBC', quantity: 1 },
+        { name: 'Mug', price: 18, quantity: 2 },
+      ],
+    }
+  `}
+/>
+
+`find`, `some` and `every` are more forgiving — a failing element only fails the node if the answer depends on it. Here, the teapot is enough for `some` to answer `true`, so the mug's `'TBC'` price doesn't matter:
+
+<Expression
+  title="Anything over $50?"
+  code={`
+    {
+      $some: ['$data.items', { $greaterThan: ['$element.price', 50] }],
+    }
+  `}
+  data={`
+    {
+      items: [
+        { name: 'Mug', price: 'TBC' },
+        { name: 'Teapot', price: 64 }, // Change to 40, and the answer depends on the mug
+      ],
+    }
+  `}
+/>
 
 ## Empty and missing input
 
-What each operator gives for an empty array, and `nullInputDefault` for an input that's `null`.
+An empty array is an ordinary input, and each operator gives the answer you'd expect from JavaScript:
+
+- `map`: `[]`
+- `filter`: `[]`
+- `find`: `null` (where JavaScript gives `undefined`)
+- `some`: `false`
+- `every`: `true`
+
+A missing `input` is different. Like any value of the wrong type, `null` makes the node fail.
+
+When nothing matches, `find` gives `null`, or the value of its `noMatchDefault` if you set one.
 
 ## Mistakes caught early
 
-An `$element` outside an iterator, or an `as` name used outside its own `each`, is an error when the expression is checked.
+Iteration's names are all known before anything runs, so FigTree can catch one used in the wrong place as a static error:
+
+<Expression
+  throws
+  code={`
+    {
+      $map: {
+        input: '$data.items',
+        as: 'item',
+        each: '$element.name', // Oops, it's $item now -- fix me
+      },
+    }
+  `}
+  data={`
+    { items: [{ name: 'Green tea' }, { name: 'Mug' }] }
+  `}
+/>
+
+[^strict]: Under [`strictDataPaths`](/api/options/#strictdatapaths), it's different again: both fail when `items` is missing or isn't an array, and an element missing its `name` gives `null` from `[*]`, but makes `map` fail.

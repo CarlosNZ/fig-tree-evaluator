@@ -81,7 +81,7 @@ And an `if` can guard a calculation that would otherwise fail. With no items, di
   `}
 />
 
-Other operators work this way too: `and` and `or`, for example, stop as soon as the answer is known, and cancel anything still running.
+Other operators work this way too: `and` and `or`, for example, stop as soon as the answer is known. Any part not yet started never runs, and requests still in progress are cancelled.
 
 ## Types and truthiness
 
