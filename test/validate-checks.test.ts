@@ -181,6 +181,15 @@ describe('as renaming', () => {
     )
   })
 
+  test('as must start with a letter or _, as a namespace does', () => {
+    for (const as of ['5', '1st', '%1', ' item', '€', '-x']) {
+      expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')
+    }
+    for (const as of ['item', '_item', 'élément', 'line item', 'my-item', 'x1']) {
+      expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toEqual([])
+    }
+  })
+
   test('as may not collide with reserved namespaces, long or short form', () => {
     for (const as of ['data', 'e', 'index', 'v', 'error', 'err']) {
       expect(errorCodes({ operator: 'map', input: [1], as, each: 1 })).toContain('invalid-as')

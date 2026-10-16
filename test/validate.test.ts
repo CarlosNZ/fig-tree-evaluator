@@ -64,6 +64,16 @@ test("a rest slice's own issue leads the issues from its elements", () => {
   expect(element).toBeGreaterThan(parent)
 })
 
+test('a buildString template or currency amount raises no unrecognized-$ warning', () => {
+  const core = new FigTree()
+  expect(core.validate({ $buildString: ['$%1', '$data.price'] }).issues).toEqual([])
+  expect(core.validate({ $buildString: ['$%1 or $5.00', '$data.price'] }).issues).toEqual([])
+  expect(core.validate({ $and: ['$5.00', '$€'] }).issues).toEqual([])
+  const [typo] = core.validate({ $and: ['$USD', true] }).issues
+  expect(typo).toMatchObject({ severity: 'warning', code: 'unrecognized-identifier' })
+  expect(typo.message).toContain("wrap it in 'literal'")
+})
+
 test('the evaluator-methods worked example: typo key, unresolved var, unknown operator', () => {
   const result = fig.validate({
     operator: 'if',

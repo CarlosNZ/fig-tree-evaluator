@@ -460,6 +460,24 @@ const invalid = (raw: unknown, path: LinkedPath, order: number): CompiledNode =>
 
 // ── Strings: the reference token rule ───────────────────────────────
 
+/**
+ * Whether a `$` token can name something: it starts with a letter or `_`,
+ * as every namespace does, and as `readAsBinding` requires of every `as`
+ * name. A token that doesn't (`5`, `%1`, `€`) can never be a reference.
+ */
+const isNameShaped = (token: string): boolean => /^[\p{L}_]/u.test(token)
+
+/**
+ * Whether an unrecognized `$`-string is shaped like a reference, and so
+ * worth the warning that catches typos: its token is name-shaped
+ * (`'$dat.price'`, `'$total'`, `'$USD'`), or empty before a drill
+ * (`'$.price'`, a JSONPath habit). Currency amounts and `buildString`
+ * templates (`'$5.00'`, `'$ 5'`, `'$€'`, `'$%1'`) can't be references,
+ * so they pass through silently.
+ */
+const couldBeReference = (token: string, rest: string): boolean =>
+  isNameShaped(token) || (token === '' && rest !== '')
+
 const walkString = (
   state: WalkState,
   raw: string,
@@ -471,19 +489,19 @@ const walkString = (
     case 'plain':
       return constant(raw, path, order)
     case 'unrecognized': {
+      const { token, rest } = splitSigilToken(raw)!
+      if (!couldBeReference(token, rest)) return constant(raw, path, order)
       const issue = emit(
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
-        `'${raw}' matches no reference namespace and will pass through as data`,
+        `'${raw}' matches no reference namespace and will pass through as data — wrap it in 'literal' to mark it as data`,
         path,
         order
       )
       // Not a candidate for the out-of-scope upgrade beneath an unknown
       // node, which may have been the iterator binding it
-      const sigil = splitSigilToken(raw)
-      if (sigil !== null && state.unknownNodes === 0)
-        state.unrecognized.push({ token: sigil.token, issue, raw })
+      if (state.unknownNodes === 0) state.unrecognized.push({ token, issue, raw })
       return constant(raw, path, order)
     }
     case 'invalid':
@@ -1321,8 +1339,9 @@ const walkEntriesParam = (
  * Validate an `as` value and return it as the binding name. `as` is
  * structural — a compile-time literal identifier; a dynamic value is a
  * grammar error. Names are checked against the shared legality rule, the
- * reserved namespace words (canonical and alias) and every enclosing `as`
- * name, derived `…Index` forms included ("$element / $index and as" in
+ * namespaces' leading letter or `_`, the reserved namespace words
+ * (canonical and alias) and every enclosing `as` name, derived `…Index`
+ * forms included ("$element / $index and as" in
  * docs-dev/v3-specs/v3-api.md).
  */
 const readAsBinding = (
@@ -1340,6 +1359,11 @@ const readAsBinding = (
     return asError("'as' must be a literal name — a dynamic value cannot be statically resolved")
   const legality = checkNameLegality(value)
   if (!legality.ok) return asError(`'${value}' is not a legal binding name — ${legality.reason}`)
+  // A binding is read as the token after a `$`, so it takes the namespaces'
+  // shape: otherwise `as: '5'` would make every `'$5.00'` in its `each` a
+  // reference
+  if (!isNameShaped(value))
+    return asError(`'${value}' is not a legal binding name — it must start with a letter or '_'`)
 
   const names = [value, indexBinding(value)]
   for (const name of names) {
