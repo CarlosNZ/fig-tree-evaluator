@@ -150,7 +150,7 @@ export const renderTree = (artifact: CompileArtifact): InspectNode => {
       case 'skeleton': {
         // Filled by the engine's own `splice`, a placeholder standing in for
         // each hole's value: the shape is assembled exactly as evaluation
-        // assembles a result, hole keys landing after the constant ones
+        // assembles a result, each hole in its authored position
         const filled = splice(
           node.skeleton,
           node.holes,

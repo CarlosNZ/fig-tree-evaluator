@@ -86,6 +86,31 @@ describe('skeletons splice hole results into a copy', () => {
     expect(result.keep).toBe(shared)
   })
 
+  // `toEqual` ignores key order, so these compare the serialized result
+  describe('an object keeps its authored key order (#245)', () => {
+    const serialized = async (expression: unknown) =>
+      JSON.stringify(await fig.evaluate(expression, { data: { v: 'read' } }))
+
+    test('at the top level, holes among constants', async () => {
+      expect(await serialized({ a: 1, b: { $echo: 2 }, c: 3 })).toBe('{"a":1,"b":2,"c":3}')
+      expect(await serialized({ a: '$data.v', b: 2, c: { $echo: 3 } })).toBe(
+        '{"a":"read","b":2,"c":3}'
+      )
+    })
+
+    test('in a nested literal flattened into its parent', async () => {
+      expect(
+        await serialized({ x: { p: '$data.v', q: 1 }, y: 2, z: { r: 1, s: { $echo: 2 }, t: 3 } })
+      ).toBe('{"x":{"p":"read","q":1},"y":2,"z":{"r":1,"s":2,"t":3}}')
+    })
+
+    test('in a nested literal that keeps its own vars block', async () => {
+      expect(
+        await serialized({ a: { vars: { n: 2 }, p: 1, q: '$vars.n', r: 3 }, b: { $echo: 4 }, c: 5 })
+      ).toBe('{"a":{"p":1,"q":2,"r":3},"b":4,"c":5}')
+    })
+  })
+
   test('a node root is the degenerate one-hole case', async () => {
     expect(await fig.evaluate({ $echo: 'root' })).toBe('root')
   })
