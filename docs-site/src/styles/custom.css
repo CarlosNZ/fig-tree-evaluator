@@ -648,6 +648,13 @@
   white-space: nowrap;
 }
 
+.fds-op-null {
+  cursor: help;
+  white-space: nowrap;
+  text-decoration: underline dotted var(--sl-color-gray-4);
+  text-underline-offset: 0.2em;
+}
+
 .fds-op-tag {
   display: inline-block;
   cursor: help;

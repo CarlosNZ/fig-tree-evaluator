@@ -6,7 +6,15 @@
  * its descriptions (src/lib/operatorNotes.ts).
  */
 import type { CollectionEntry, render } from 'astro:content'
-import { EvaluationData, type ExpectedType, type ParameterInfo } from 'fig-tree-evaluator'
+import {
+  EvaluationData,
+  type CatalogParameter,
+  type CompiledNullPolicy,
+  type ExpectedType,
+  type NullOutcome,
+  type NullPolicyValue,
+  type ParameterInfo,
+} from 'fig-tree-evaluator'
 import type { CatalogCategory, CatalogOperator } from '../lib/operatorCatalog'
 import { toJson5 } from '../lib/json5'
 import { applyNote } from '../lib/operatorNotes'
@@ -47,11 +55,78 @@ const presence = (p: ParameterInfo): string => {
   return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
 }
 
-const nullPolicy = (p: ParameterInfo): string =>
-  typeof p.nullPolicy === 'string'
-    ? p.nullPolicy
-    : `by ${p.nullPolicy.selector}: ` +
-      p.nullPolicy.table.map((row) => `${toJson5(row.value)} → ${row.policy}`).join(', ')
+interface NullTag {
+  label: string
+  title: string
+  before?: string
+  after?: string
+}
+
+/**
+ * What a `null` at a parameter does (the catalog's `nullOutcome`), as the
+ * reference words it, and the fuller explanation its tooltip gives.
+ */
+const nullOutcomes: Record<NullOutcome, NullTag> = {
+  propagate: {
+    label: 'passed on',
+    title: 'A null here makes the whole node null, and the operator doesn’t run',
+  },
+  value: { label: 'value', title: 'The operator receives the null and uses it as a value' },
+  unset: {
+    label: 'default',
+    title: 'A null here counts as leaving the parameter out, so its default applies',
+  },
+  error: { label: 'error', title: 'A null here is a type error' },
+  none: {
+    label: '—',
+    title: 'A null here replaces nothing: what the parameter it fills in for does applies',
+  },
+}
+
+/** The same for each element or entry of a list or object. */
+const elementOutcomes: Record<NullPolicyValue, NullTag> = {
+  propagate: {
+    label: 'passed on (each)',
+    title: 'A null element makes the whole node null, and the operator doesn’t run',
+  },
+  value: { label: 'value (each)', title: 'The operator receives a null element as a value' },
+}
+
+/**
+ * A policy that depends on another parameter: the outcome most of its
+ * values share reads as "otherwise", and the rest name their values.
+ */
+const conditionalTags = ({ selector, table }: CompiledNullPolicy): NullTag[] => {
+  const byOutcome = new Map<NullPolicyValue, string[]>()
+  for (const { value, policy } of table)
+    byOutcome.set(policy, [...(byOutcome.get(policy) ?? []), toJson5(value)])
+  const [[otherwise], ...exceptions] = [...byOutcome].sort((a, b) => b[1].length - a[1].length)
+  if (exceptions.length === 0) return [nullOutcomes[otherwise]]
+  return [
+    ...exceptions.map(([outcome, values]) => ({
+      ...nullOutcomes[outcome],
+      after: ` if ${selector} is ${values.join(' or ')}`,
+    })),
+    { ...nullOutcomes[otherwise], before: 'otherwise ' },
+  ]
+}
+
+/**
+ * The parameter's Null cell, a line per tag. A list's or object's elements
+ * come first where they have a rule of their own: their declared policy,
+ * else, for the lazy containers, `value`, since each element is an operand
+ * the operator receives as it is. Beside them, the whole value's outcome
+ * is marked as such.
+ */
+const nullTags = (p: CatalogParameter): NullTag[] => {
+  const lazyContainer =
+    p.evaluation === 'lazyElements' || p.evaluation === 'lazyEntries' || p.evaluation === 'race'
+  const element = p.elementNullPolicy ?? (lazyContainer ? 'value' : undefined)
+  const whole =
+    typeof p.nullOutcome === 'string' ? [nullOutcomes[p.nullOutcome]] : conditionalTags(p.nullOutcome)
+  if (element === undefined) return whole
+  return [elementOutcomes[element], ...whole.map((tag) => ({ ...tag, after: ' (whole)' }))]
+}
 
 /**
  * The tag shown beside a parameter that isn't evaluated up front, and the
@@ -144,7 +219,18 @@ const positionalForm = (() => {
                 <code>{paramType(p)}</code>
               </td>
               <td>{presence(p)}</td>
-              <td>{nullPolicy(p)}</td>
+              <td>
+                {nullTags(p).map((tag, i) => (
+                  <>
+                    {i > 0 && <br />}
+                    {tag.before}
+                    <span class="fds-op-null" title={tag.title}>
+                      {tag.label}
+                    </span>
+                    {tag.after}
+                  </>
+                ))}
+              </td>
               <td set:html={applyNote(p.description, note?.parameters?.[name])} />
             </tr>
           ))
