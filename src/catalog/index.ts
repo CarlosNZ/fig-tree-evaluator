@@ -151,7 +151,7 @@ export const operatorListings: OperatorListingMap = {
       default: 'The branch taken when none matches; absent means failure',
     },
   },
-  firstOf: {
+  firstNonNull: {
     displayName: 'First non-null',
     description:
       'The first candidate that is not null (SQL COALESCE) — later candidates never evaluate',
@@ -563,7 +563,7 @@ export const operatorListings: OperatorListingMap = {
         'The source the path reads: a value, or a bare namespace ($data, $vars, $params, $element) ' +
         'whose var or parameter name opens the path — replace, never merge; a null source misses every path',
       default:
-        'The answer when the path is missing — a stored null passes through unchanged (firstOf replaces one); supplying it also opts out of strictDataPaths',
+        'The answer when the path is missing — a stored null passes through unchanged (firstNonNull replaces one); supplying it also opts out of strictDataPaths',
     },
   },
   buildObject: {

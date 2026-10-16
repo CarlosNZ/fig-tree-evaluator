@@ -14,7 +14,7 @@
  * Elements evaluate in parallel, always. They are homogeneous data, not a
  * priority chain: the transforms need every element on every path, and the
  * deciders reuse `and` / `or`'s early resolution rather than serializing.
- * The contrast is `firstOf`, whose candidates are alternatives that must
+ * The contrast is `firstNonNull`, whose candidates are alternatives that must
  * not all fire. One consequence worth stating plainly: every element's
  * evaluation STARTS, so order-dependent or skip-dependent side effects do
  * not belong in an `each`.

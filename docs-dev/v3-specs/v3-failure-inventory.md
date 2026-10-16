@@ -31,7 +31,7 @@ A failure in a parameter's subtree fails the node, unless the delivery mode mean
 | `lazy`                           | the body demands it: `if`'s untaken branch, a `noMatchDefault` with a match, `get.default` with a hit                                                  |
 | `replacesNullAt` holder          | a null arrives at its target                                                                                                                           |
 | `race` (`and`, `or`)             | no operand decides. `{ $or: [{ $divide: [1, 0] }, true] }` is `true`; `{ $and: [true, { $divide: [1, 0] }] }` throws                                   |
-| `lazyElements` (`firstOf`)       | every earlier candidate was null. `{ $firstOf: [1, <failing>] }` is 1                                                                                  |
+| `lazyElements` (`firstNonNull`)  | every earlier candidate was null. `{ $firstNonNull: [1, <failing>] }` is 1                                                                             |
 | `lazyEntries` (`match.branches`) | it is the selected branch                                                                                                                              |
 | `perElement`, `map` / `filter`   | any element fails                                                                                                                                      |
 | `perElement`, `find`             | the element is at or before the first truthy one                                                                                                       |
@@ -43,13 +43,13 @@ A failure in a parameter's subtree fails the node, unless the delivery mode mean
 
 ### Logic & control
 
-| Operator    | Typed parameters                                                                            | Internal, engine, option, external                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `and`, `or` | `values: array`                                                                             | none                                                                                                                                   |
-| `not`       |                                                                                             | none                                                                                                                                   |
-| `if`        |                                                                                             | none                                                                                                                                   |
-| `match`     | `value: string \| number \| boolean \| null` (an array or object fails); `branches: object` | **internal:** no own key of `branches` equals the value's canonical string, and `default` is not supplied. A null value matches no key |
-| `firstOf`   | `values: array`                                                                             | none                                                                                                                                   |
+| Operator       | Typed parameters                                                                            | Internal, engine, option, external                                                                                                     |
+| -------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `and`, `or`    | `values: array`                                                                             | none                                                                                                                                   |
+| `not`          |                                                                                             | none                                                                                                                                   |
+| `if`           |                                                                                             | none                                                                                                                                   |
+| `match`        | `value: string \| number \| boolean \| null` (an array or object fails); `branches: object` | **internal:** no own key of `branches` equals the value's canonical string, and `default` is not supplied. A null value matches no key |
+| `firstNonNull` | `values: array`                                                                             | none                                                                                                                                   |
 
 ### Comparison
 
@@ -147,9 +147,9 @@ Out of scope: the caller's kill switch and abort signal, which cut through every
 
 Shapes 1, 3 and 4 name one parameter and a predicate on it. Shapes 2 and 5 relate parameters, or test whether one was supplied, so the vocabulary needs predicates over the whole parameter set rather than flags on single parameters.
 
-**Delivery modes already decide how a child's failure travels.** `and`, `or`, `some` and `every` absorb a failure when something else decides, and `if`, `match`, `firstOf` and `find` never evaluate what they do not choose. These are declared, so a walk can read them. Used conservatively, a lazy subtree counts as demanded; with a constant condition or a constant deciding operand, the walk can do better.
+**Delivery modes already decide how a child's failure travels.** `and`, `or`, `some` and `every` absorb a failure when something else decides, and `if`, `match`, `firstNonNull` and `find` never evaluate what they do not choose. These are declared, so a walk can read them. Used conservatively, a lazy subtree counts as demanded; with a constant condition or a constant deciding operand, the walk can do better.
 
-**`returns` is too coarse for some operators.** `plus` returns any of four types, and `if`, `match`, `firstOf`, `find` and `get` return `any`, so a node fed by one of them can never prove its type check passes. `{ $multiply: [{ $plus: [<safe number>, 1] }, 2] }` fails to prove, because `plus` might return a string. Each has an obvious rule from its inputs, listed in "Output types" below. That is a second thing to declare, beside failure conditions: an output type narrowed by the inputs.
+**`returns` is too coarse for some operators.** `plus` returns any of four types, and `if`, `match`, `firstNonNull`, `find` and `get` return `any`, so a node fed by one of them can never prove its type check passes. `{ $multiply: [{ $plus: [<safe number>, 1] }, 2] }` fails to prove, because `plus` might return a string. Each has an obvious rule from its inputs, listed in "Output types" below. That is a second thing to declare, beside failure conditions: an output type narrowed by the inputs.
 
 ## Output types
 
@@ -158,7 +158,7 @@ What a node can return decides whether the parameter it feeds can fail its type 
 Null is listed apart, because it gets into an output two ways:
 
 - **Propagation**, derivable from the declarations: a node returns null without running its body when a parameter with null policy `propagate` receives a null, or an element does at a parameter whose element null policy is `propagate`. `returns` never says so: `divide` declares `number` and can return null.
-- **The body** returns null itself in a few operators (`get`, `firstOf`, `find`, `regex`'s `extract`, `if` with no `else`, `sql`'s single-row shapes), whose `returns` already admits null or is `any`.
+- **The body** returns null itself in a few operators (`get`, `firstNonNull`, `find`, `regex`'s `extract`, `if` with no `else`, `sql`'s single-row shapes), whose `returns` already admits null or is `any`.
 
 Every other parameter stops a null rather than passing it on: it takes the null as a value (`equal`, `join`, `match.value`, `convert` to `boolean`), treats it as unset and uses the default, or rejects it as a type error (`map.input`, any whole `values` array).
 
@@ -171,7 +171,7 @@ Notation: `array<T>` is an array whose elements are all `T`. "+ null" means null
 | `and`, `or`, `not` | `boolean`          | `boolean`, never null                                                                                                                     |
 | `if`               | `any`              | `then` ∪ `else`, with null when `else` is omitted. A known condition: the taken branch only                                               |
 | `match`            | `any`              | every branch ∪ `default`. A known value: its branch, or `default`                                                                         |
-| `firstOf`          | `any`              | the candidates' non-null types, with null when every candidate can be null. The union stops at the first candidate known never to be null |
+| `firstNonNull`     | `any`              | the candidates' non-null types, with null when every candidate can be null. The union stops at the first candidate known never to be null |
 
 ### Comparison
 
@@ -251,7 +251,7 @@ The iterators never return null by propagation, since `input` rejects a null.
 1. **Already exact.** Most boolean, number and string operators. Nothing to declare, and null by propagation is derivable.
 2. **Chosen by a literal parameter.** `convert` (`to`), `regex` (`mode`), `plus` (`expect`), `sql` (`shape`).
 3. **An input's type passed through.** `plus`, `min` and `max` (the operands' kind), `filter` (`input`'s elements), `find`.
-4. **A union of lazy branches.** `if`, `match`, `firstOf`.
+4. **A union of lazy branches.** `if`, `match`, `firstNonNull`.
 5. **A container built from another type.** `map` (`array<each>`), `split` and `regex`'s `match` (`array<string>`), `convert` to `array`, `buildObject`.
 6. **A refinement inside the declared type.** `floor`, `ceil`, and `round` to whole places return integers. That matters wherever one feeds an `integer` parameter: `round.decimals`, `timeout`, a host's.
 7. **A path lookup.** `get`.

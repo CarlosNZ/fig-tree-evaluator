@@ -49,7 +49,7 @@ interface CoveredFinding extends CoverageFinding {
 - **A var or an argument is reported once per fallback that catches it.** Its failure is memoised and reaches every place that reads it, so the same finding can be covered by one fallback and uncovered by another route, or covered by two.
 - **`code` is the runtime error's code**, so a finding and the error it predicts are classified the same way. The one exception is an external operator, whose one `operator-failure` finding stands for whatever code its own code throws (see "Operator rules").
 - **CI checks `uncovered.length === 0`.** `covered` is for tools that show where fallbacks do their work.
-- **It is async.** Rule 4 runs a pure node's own body, and the bodies of the operators that read their children one at a time or as they settle (`firstOf`, `and`, `or`, `find`, `filter`, `map`, `some`, `every`) are async.
+- **It is async.** Rule 4 runs a pure node's own body, and the bodies of the operators that read their children one at a time or as they settle (`firstNonNull`, `and`, `or`, `find`, `filter`, `map`, `some`, `every`) are async.
 
 For example, `{ $plus: [{ $divide: ['$data.a', '$data.b'] }, 1] }` gives three uncovered findings on `divide`: `type-check` on `value`, `type-check` on `by`, and `non-finite-result` on `by` (it may be 0). `plus` has none: `divide` returns a number or null, which `plus` accepts. With a fallback on `divide`, all three move to `covered`.
 
@@ -150,7 +150,7 @@ A run calls the operator's own `evaluate`, on parameters the walk resolves as th
 
   An `each` walked per element delivers each element's own (see "Per-element walks"); one walked once comes to the same for every element, or is a stand-in.
 
-- **A stand-in has no value.** A run in which the body waits on one is inconclusive, and the node is not run after all. The exception is a synchronous body that hands the stand-in's own promise straight back as its answer (`if`, `match`, `get`'s `default`, `regex`'s `noMatchDefault`): the node then returns whatever that child returns, and fails with whatever it fails with. So `{ $match: { value: 'a', branches: { a: '$data.x', b: 2 } } }` runs, while `{ $firstOf: ['$data.a', …] }`, whose body inspects its candidate for null, does not.
+- **A stand-in has no value.** A run in which the body waits on one is inconclusive, and the node is not run after all. The exception is a synchronous body that hands the stand-in's own promise straight back as its answer (`if`, `match`, `get`'s `default`, `regex`'s `noMatchDefault`): the node then returns whatever that child returns, and fails with whatever it fails with. So `{ $match: { value: 'a', branches: { a: '$data.x', b: 2 } } }` runs, while `{ $firstNonNull: ['$data.a', …] }`, whose body inspects its candidate for null, does not.
 - **A race** delivers its known operands first, in index order, and never any stand-in. That relies on the race contract: a body's answer does not depend on the order its operands settle in. The engine starts every operand, so each is reached; its failure counts only where a run's answer depended on it.
 - **A `replacesNullAt` holder** is asked for by the layers, not the body: it is reached only where a null meets its target, and a run that needs a holder whose value is not known is inconclusive.
 
@@ -258,7 +258,7 @@ type DeclaredOutput =
   | { oneOf: DeclaredOutput[] }
   | { typeNamedBy: string } // the type a literal parameter names
   | { byParam: string; cases: Record<string, DeclaredOutput>; otherwise?: DeclaredOutput } // chosen by a literal parameter
-  | { firstNonNull: string } // firstOf's candidates
+  | { firstNonNull: string } // firstNonNull's candidates
   | { sum: string } // the sum of an array parameter's elements
   | { product: string } // the product of an array parameter's numbers
   | { difference: [string, string] } // one number parameter less another
@@ -270,7 +270,7 @@ type DeclaredOutput =
 ```ts
 if:          { oneOf: [{ param: 'then' }, { param: 'else' }] }
 match:       { oneOf: [{ param: 'branches' }, { param: 'default' }] }
-firstOf:     { firstNonNull: 'values' }
+firstNonNull:     { firstNonNull: 'values' }
 find:        { oneOf: [{ elementOf: 'input' }, { param: 'noMatchDefault' }] }
 plus:        { oneOf: [{ sum: 'values' }, { typeNamedBy: 'expect' }] }
 subtract:    { difference: ['value', 'minus'] }
@@ -286,7 +286,7 @@ convert:     { typeNamedBy: 'to' }
 regex:       { byParam: 'mode', cases: { test: 'boolean', extract: { oneOf: ['string', { param: 'noMatchDefault' }] }, match: { arrayOf: 'string' } } }
 ```
 
-`{ param }` over a container-lazy parameter (`match.branches`, `firstOf.values`) means the union of its entries or elements, and over a `perElement` parameter (`map.each`) what one element gives; `{ arrayOf }` of that, where each element was walked on its own, is their results in order. `{ elementOf }` is one of the elements as it is, which is right for `min` and `max`; `{ kindOf }` widens each exact element to its type, which is right for `plus`, since a sum is none of its operands: `{ $plus: [-1, 1] }` is an integer, not -1 or 1. `{ typeNamedBy }` and `{ byParam }` take the named type or case when the parameter is known exactly, and every one otherwise; `byParam`'s `otherwise` is the case for any value its `cases` do not name. `split` needs it: an empty delimiter splits into code points, so `split('', '')` is `[]`, while any other delimiter gives at least one piece. The arithmetic forms are in "Value ranges". `{ firstNonNull }` reads a literal array's elements in order, and stops at the first that cannot be null.
+`{ param }` over a container-lazy parameter (`match.branches`, `firstNonNull.values`) means the union of its entries or elements, and over a `perElement` parameter (`map.each`) what one element gives; `{ arrayOf }` of that, where each element was walked on its own, is their results in order. `{ elementOf }` is one of the elements as it is, which is right for `min` and `max`; `{ kindOf }` widens each exact element to its type, which is right for `plus`, since a sum is none of its operands: `{ $plus: [-1, 1] }` is an integer, not -1 or 1. `{ typeNamedBy }` and `{ byParam }` take the named type or case when the parameter is known exactly, and every one otherwise; `byParam`'s `otherwise` is the case for any value its `cases` do not name. `split` needs it: an empty delimiter splits into code points, so `split('', '')` is `[]`, while any other delimiter gives at least one piece. The arithmetic forms are in "Value ranges". `{ firstNonNull }` reads a literal array's elements in order, and stops at the first that cannot be null.
 
 `sql` has no declaration: `sqlOperators()` builds a definition for each connection, so there is no one definition to key a table by. It is external, and returns its `returns`, `any`. A literal array keeps its elements in order, which is what lets `firstNonNull` stop, and a drill into one reach the right element.
 

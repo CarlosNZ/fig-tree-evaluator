@@ -118,7 +118,7 @@ type InspectNode = { order: number; path: Path } & (
 Two parts of the example look inconsistent and are not: `"no contact"` is a `constant` node, while `"Due: "` is part of a shape, with no node and no order. What decides it is the delivery mode of the parameter the value sits in, not the value.
 
 - `join`'s `values` is delivered **whole**: the body receives one finished array, with every hole evaluated first. A skeleton is exactly that, so the constants inside it fold into the shape — the walk makes a `ConstantNode` for `"Due: "` (#22), and container assembly keeps only its value. Evaluation then copies only the containers on each splice path and shares the constant parts by reference, which is why constants inside a container are structure rather than work, and why `nodeCount` does not count them.
-- `firstOf`'s `values` is **`lazyElements`**: the body receives one handle per element and evaluates them one at a time, stopping at the first non-null — the sequencing is its semantics, since a backup lookup must not fire when the primary answered. A skeleton can only produce the whole array at once, every hole evaluated, and has no "element 2" to hand over; a partly-constant element would dissolve into the enclosing shape entirely. So each element needs a node to build its handle from, the constant included — and a constant node's handle answers at once. `race` (`and`, `or`) and `lazyEntries` (`match`'s branches) have the same need.
+- `firstNonNull`'s `values` is **`lazyElements`**: the body receives one handle per element and evaluates them one at a time, stopping at the first non-null — the sequencing is its semantics, since a backup lookup must not fire when the primary answered. A skeleton can only produce the whole array at once, every hole evaluated, and has no "element 2" to hand over; a partly-constant element would dissolve into the enclosing shape entirely. So each element needs a node to build its handle from, the constant included — and a constant node's handle answers at once. `race` (`and`, `or`) and `lazyEntries` (`match`'s branches) have the same need.
 
 The rule: a constant is a node where it fills a slot that needs one — a parameter value, a `fallback`, an element of `elements`, an entry of `entries`, the root — and part of the shape where it sits inside a plain container that has holes. An all-constant literal in any of those slots stays a single `constant` node. The compile-side record is the Phase-5 amendment to B3 in [v3-artifact-obligations.md](v3-artifact-obligations.md). `inspect()` shows this faithfully rather than inventing nodes for folded values, which would need order numbers the artifact does not have.
 
@@ -224,7 +224,7 @@ const fragments = {
 const options = {
   data: { subtotal: 40, shipping: 5, status: 'pending', customer: {}, items: [] },
   maxNodes: 20,
-  operatorDefaults: { join: { delimiter: '' }, firstOf: { fallback: 'unknown' } },
+  operatorDefaults: { join: { delimiter: '' }, firstNonNull: { fallback: 'unknown' } },
   http: { baseEndpoint: 'https://api.example.com', headers: { Authorization: 'Bearer s3cret' } },
   signal: new AbortController().signal,
 }
@@ -240,7 +240,7 @@ const expression = {
   status: {
     $match: ['$data.status', { paid: 'Thanks!', pending: { $join: ['Due: ', '$vars.sum'] } }],
   },
-  contact: { $firstOf: ['$data.customer.email', '$data.customer.phone', 'no contact'] },
+  contact: { $firstNonNull: ['$data.customer.email', '$data.customer.phone', 'no contact'] },
   total: { operator: '+', values: ['$vars.sum', 0], fallback: 0 },
   broken: { operator: 'flibble' },
   note: undefined,
@@ -273,7 +273,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
         { "paid": "Thanks!", "pending": { "$join": ["Due: ", "$vars.sum"] } }
       ]
     },
-    "contact": { "$firstOf": ["$data.customer.email", "$data.customer.phone", "no contact"] },
+    "contact": { "$firstNonNull": ["$data.customer.email", "$data.customer.phone", "no contact"] },
     "total": { "operator": "+", "values": ["$vars.sum", 0], "fallback": 0 },
     "broken": { "operator": "flibble" },
     "note": "[undefined]",
@@ -283,7 +283,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
   "options": {
     "data": "[supplied: 5 top-level keys]",
     "maxNodes": 20,
-    "operatorDefaults": { "join": { "delimiter": "" }, "firstOf": { "fallback": "unknown" } },
+    "operatorDefaults": { "join": { "delimiter": "" }, "firstNonNull": { "fallback": "unknown" } },
     "http": {
       "baseEndpoint": "https://api.example.com",
       "headers": { "Authorization": "[redacted]" }
@@ -315,31 +315,31 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
           "order": 24,
           "kind": "operator",
           "path": ["contact"],
-          "operator": "firstOf",
+          "operator": "firstNonNull",
           "params": {
             "values": {
               "order": 25,
               "kind": "elements",
-              "path": ["contact", "$firstOf"],
+              "path": ["contact", "$firstNonNull"],
               "elements": [
                 {
                   "order": 26,
                   "kind": "reference",
-                  "path": ["contact", "$firstOf", 0],
+                  "path": ["contact", "$firstNonNull", 0],
                   "reference": "$data.customer.email",
                   "authored": "$data.customer.email"
                 },
                 {
                   "order": 27,
                   "kind": "reference",
-                  "path": ["contact", "$firstOf", 1],
+                  "path": ["contact", "$firstNonNull", 1],
                   "reference": "$data.customer.phone",
                   "authored": "$data.customer.phone"
                 },
                 {
                   "order": 28,
                   "kind": "constant",
-                  "path": ["contact", "$firstOf", 2],
+                  "path": ["contact", "$firstNonNull", 2],
                   "value": "no contact"
                 }
               ]
@@ -422,13 +422,13 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "severity": "warning",
       "code": "missing-data-path",
       "message": "'$data.customer.email' is absent from the supplied sample data",
-      "path": ["contact", "$firstOf", 0]
+      "path": ["contact", "$firstNonNull", 0]
     },
     {
       "severity": "warning",
       "code": "missing-data-path",
       "message": "'$data.customer.phone' is absent from the supplied sample data",
-      "path": ["contact", "$firstOf", 1]
+      "path": ["contact", "$firstNonNull", 1]
     }
   ],
   "timeoutShielded": false,
@@ -447,7 +447,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
     "dynamic": false,
     "paramNames": [],
     "paramsDynamic": false,
-    "operators": ["plus", "map", "join", "match", "firstOf"],
+    "operators": ["plus", "map", "join", "match", "firstNonNull"],
     "fragments": ["greet"]
   },
   "own": {
@@ -466,7 +466,7 @@ An excerpt of the report (the whole is about 300 lines): `expression` and `optio
       "dynamic": false,
       "paramNames": [],
       "paramsDynamic": false,
-      "operators": ["plus", "map", "join", "match", "firstOf"],
+      "operators": ["plus", "map", "join", "match", "firstNonNull"],
       "fragments": ["greet"]
     }
   }

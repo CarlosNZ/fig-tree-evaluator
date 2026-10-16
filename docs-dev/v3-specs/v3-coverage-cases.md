@@ -373,21 +373,21 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✓ **lower** at `$plus[0].$match.value` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ k: 1 }`
 
-**firstOf with an untyped candidate**
+**firstNonNull with an untyped candidate**
 
 ```json5
-{ $plus: [{ $firstOf: ['$data.a', 0] }, 1] }
+{ $plus: [{ $firstNonNull: ['$data.a', 0] }, 1] }
 ```
 
 - ✗ **plus** at the root — may fail: `type-check` on `values`. E.g. data `{ a: 'x' }`
 
-**firstOf drops the nulls of all but the last candidate**
+**firstNonNull drops the nulls of all but the last candidate**
 
 ```json5
-{ $plus: [{ $firstOf: [{ $length: '$data.a', fallback: null }, 0] }, 1] }
+{ $plus: [{ $firstNonNull: [{ $length: '$data.a', fallback: null }, 0] }, 1] }
 ```
 
-- ✓ **length** at `$plus[0].$firstOf[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ a: 1 }`
+- ✓ **length** at `$plus[0].$firstNonNull[0]` — may fail: `type-check` on `value`, caught by its own fallback. E.g. data `{ a: 1 }`
 
 **max passes its candidates’ kind through**
 
@@ -890,29 +890,29 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✗ **lower** at `$and[1]` — may fail: `type-check` on `value`. E.g. data `{ a: true, s: 1 }`
 
-**firstOf stops at a known non-null candidate**
+**firstNonNull stops at a known non-null candidate**
 
 ```json5
-{ $firstOf: [1, { $lower: '$data.s' }] }
+{ $firstNonNull: [1, { $lower: '$data.s' }] }
 ```
 
 - Nothing can throw.
 
-**firstOf past a computed candidate**
+**firstNonNull past a computed candidate**
 
 ```json5
-{ $firstOf: ['$data.a', { $lower: '$data.s' }] }
+{ $firstNonNull: ['$data.a', { $lower: '$data.s' }] }
 ```
 
-- ✗ **lower** at `$firstOf[1]` — may fail: `type-check` on `value`. E.g. data `{ a: null, s: 1 }`
+- ✗ **lower** at `$firstNonNull[1]` — may fail: `type-check` on `value`. E.g. data `{ a: null, s: 1 }`
 
-**firstOf always evaluates its first candidate**
+**firstNonNull always evaluates its first candidate**
 
 ```json5
-{ $firstOf: [{ $lower: '$data.s' }, 'x'] }
+{ $firstNonNull: [{ $lower: '$data.s' }, 'x'] }
 ```
 
-- ✗ **lower** at `$firstOf[0]` — may fail: `type-check` on `value`. E.g. data `{ s: 1 }`
+- ✗ **lower** at `$firstNonNull[0]` — may fail: `type-check` on `value`. E.g. data `{ s: 1 }`
 
 **match with a known value never runs the other branches**
 

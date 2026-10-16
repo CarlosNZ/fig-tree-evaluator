@@ -83,8 +83,8 @@ export const CATALOGUE = {
     message: () =>
       'In v2 a missing path failed, and this `fallback` answered. In v3 the read gives `null` ' +
       'and the node carries on. For data, set the host option `strictDataPaths: true` to fail ' +
-      "as v2 did, or give the read its own default (`get`'s `default`, or `firstOf`). For a " +
-      "response's `returnPath`, which `strictDataPaths` does not reach, use `firstOf`, or read " +
+      "as v2 did, or give the read its own default (`get`'s `default`, or `firstNonNull`). For a " +
+      "response's `returnPath`, which `strictDataPaths` does not reach, use `firstNonNull`, or read " +
       'the path with a `get` and its `default`.',
   },
   'cache-opt-in': {

@@ -21,7 +21,7 @@ export const V3_NAMES: Record<string, string> = {
   if: 'if',
   '?': 'if',
   match: 'match',
-  firstOf: 'firstOf',
+  firstNonNull: 'firstNonNull',
   equal: 'equal',
   '=': 'equal',
   notEqual: 'notEqual',

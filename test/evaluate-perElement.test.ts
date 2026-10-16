@@ -194,13 +194,15 @@ test('a second settle() is iterable too — streams are built fresh', async () =
 })
 
 test('resolving early cancels the indexes still in flight', async () => {
-  const first = iterator('firstOf2', async (each) => {
+  const first = iterator('firstNonNull2', async (each) => {
     for await (const s of each.settle()) if (s.ok) return s.value
     return null
   })
   const slow = latencyOp('slow')
   const fig = figWith([first, slow.definition])
-  const result = await fig.evaluate({ $firstOf2: [[0, 50], { $slow: ['$element', '$element'] }] })
+  const result = await fig.evaluate({
+    $firstNonNull2: [[0, 50], { $slow: ['$element', '$element'] }],
+  })
   expect(result).toBe(0)
   await new Promise((resolve) => setTimeout(resolve, 15))
   expect(slow.aborted).toEqual([50])

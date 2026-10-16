@@ -6,7 +6,7 @@
  * Consumed by `if.condition`, `and`/`or`/`not`, the predicate iterators, and
  * `convert to:'boolean'` (after its `"true"`/`"false"` carve-out).
  *
- * NOTE: `firstOf` deliberately does NOT use this — it skips `null` only.
+ * NOTE: `firstNonNull` deliberately does NOT use this — it skips `null` only.
  *
  * The empty-container ruling is open for revisiting; keeping the falsy set as
  * one constant here makes that a one-line change applied at every site.
