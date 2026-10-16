@@ -13,6 +13,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "FigTree has 40-ish built-in operators"
   - Before: "Where an operator needs a yes or no"
   - After: "Where an operator needs true or false"
+  - A relaxed phrase beats strict parallel wording.
+  - Before: `// and the same again, with the forms mixed`, matching the "is the same as" comments above it
+  - After: `// You can mix and match freely`; and "Have a play with this one"
   - When JavaScript is the reference, mark where FigTree differs.
   - Before: "the answer you'd expect from JavaScript: … `find`: `null`"
   - After: "`find`: `null` (where JavaScript gives `undefined`)"
@@ -43,11 +46,17 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Where the reader has something to write, tell them what to write.
   - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
   - After: "Give it `from: '$vars'`, and start the path with the variable's name"
+  - Where the reader has something to do, say what they do.
+  - Before: "The playgrounds on this site convert for you"
+  - After: "In the playgrounds on this site, open the editor and hover over the top right of a node"
 - **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
   - Before: "a node that needs two requests sends both at once"
   - After: "a node that needs two slow network requests sends both at once"
+- **Each reason in a list says why it helps, in terms the reader can picture.** Drop a weak one rather than pad the list.
+  - Before: "**A program builds expressions:** every node has the same shape, whatever its operator.", and a third bullet, "**A tool reads expressions without your FigTree instance:** …"
+  - After: "**You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying expression tree, so it maps cleanly onto the UI components that represent the tree.", and the third bullet cut
 - **Name the actual difference, not an abstraction of it, and drop qualifiers that don't bear on the point.**
   - Before: "There are two ways, and they differ in what counts as a gap"
   - After: "There are two ways, and they differ in how they treat a value stored as `null`"
@@ -56,6 +65,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Show a simple thing simply.** An example in passing does more than a sentence spelling it out.
   - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
+  - Where describing a shape would get convoluted, show it first, and describe it only as far as the example needs.
+  - Before: "Everything is described in full: each node has an operator property, and associated parameter properties in the same object, along with any modifiers."
+  - After: "…which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:", then `{ operator: 'plus', values: [4, 5, 6] } // => 15`
 - **One word, once a sentence.** Where a word repeats, rephrase so it appears once.
   - Before: "You pass this data to FigTree when evaluating an expression and it becomes accessible inside the expression via `$data` references."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references … read from it."
@@ -93,6 +105,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
+  - Nor state what already follows from rules the reader has.
+  - Cut: "`operator` takes an alias too, such as `'+'`, but never the `$`. And `literal` is written `{ operator: 'literal', value: … }`.", on Shorthand and canonical forms: `literal` is just another operator, and nothing suggested an alias wouldn't work
   - So a concept page shows one static error in an example, never the full list of them, and never the warnings: readers meet those when they happen, with a message that explains itself.
   - Cut: "The same goes for:" and four bullets of `as` and `$index` errors, on Iteration
   - Cut: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", on Iteration and Variables, which also leaned on "flags", a term the reader hadn't met
@@ -139,6 +153,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for. Introduce the example with "In this example", not "Here".
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
+- **Lead with what the reader will use. Introduce an optional feature by when they'd need it, and say plainly when they won't.**
+  - Before: "Each node can be written two ways. Shorthand is for writing by hand; canonical spells everything out, which suits programs and editors."
+  - After: "The examples on this site are written in _shorthand_ … Each node also has a _canonical_ form … You won't need it when writing expressions by hand, but it's useful when, for example:"
+- **Where the site's UI demonstrates a library feature, lead with the feature, and present the UI as a way to try it.**
+  - Before: "The playgrounds on this site convert for you: the **Shorthand** and **Full** buttons…", then "In your own code, `toCanonical` and `toShorthand` do the same."
+  - After: "FigTree offers a few helper functions for converting between forms…", the snippet, then "In the playgrounds on this site, open the editor and hover…"
 - **Most common first.** Options, bullets and an example's keys go in the order the reader will most often need them.
   - Before: `firstOf`, then `get`'s `default`; `get`'s uses as a computed path, a `default`, a `from`
   - After: `default` first in both
@@ -179,6 +199,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **In host code, a call that doesn't fit on a line puts each argument on its own line,** and the expression stays on one line where it fits. Where the example is about a parameter, use the named form.
   - Before: `await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null`
   - After: `{ $get: { path: 'customer.email', default: null } }` and `{ data }` each on a line of their own inside `fig.evaluate(` … `) // => null`
+  - A `// =>` result that doesn't fit beside its call goes on the next line, indented under it.
+  - Before: `toCanonical({ $plus: [1, 2, 3] }, fig) // => { operator: 'plus', values: [1, 2, 3] }`
+  - After: the call on its own line, and `  // => { operator: 'plus', values: [1, 2, 3] }` beneath it
 - **Comments in an example point at what to notice or try, for the point the example makes.** They say what happens, in plain words, not the name of a category. Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
   - Before: `// Passed on: plus doesn't run`
   - After: `// Can't be worked out without the shipping cost, so gives null`
