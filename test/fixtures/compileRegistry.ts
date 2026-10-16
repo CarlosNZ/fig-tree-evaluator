@@ -199,10 +199,10 @@ export const orOp = () =>
     evaluate: noop,
   })
 
-/** `firstOf` — `lazyElements`: one demandable handle per element. */
-export const firstOfOp = () =>
+/** `firstNonNull` — `lazyElements`: one demandable handle per element. */
+export const firstNonNullOp = () =>
   defineOperator({
-    name: 'firstOf',
+    name: 'firstNonNull',
     category: 'other',
     parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
     positionalParams: ['...values'],
@@ -252,7 +252,7 @@ export const getOp = () =>
 
 export const compileOps = (): ValidatedOperatorDefinition[] => [
   orOp(),
-  firstOfOp(),
+  firstNonNullOp(),
   pickOp(),
   matchOp(),
   ifOp(),

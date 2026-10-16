@@ -1129,7 +1129,7 @@ class Converter {
   /**
    * A fragment's body ("Definitions"): each placeholder reads its parameter.
    * v3's defaults are constants, so a computed one is bound once at the root,
-   * where the body reads it: v3's own recipe, with `firstOf` over the
+   * where the body reads it: v3's own recipe, with `firstNonNull` over the
    * argument.
    */
   body(fragment: FragmentInfo) {
@@ -1149,7 +1149,7 @@ class Converter {
         continue
       }
       defaults.set(key, 'computed')
-      bound[name] = { operator: 'firstOf', values: [`$params.${name}`, value] }
+      bound[name] = { operator: 'firstNonNull', values: [`$params.${name}`, value] }
       sources.set(name, { input: given.value, path: given.path })
       refs.set(key, `$vars.${name}`)
     }

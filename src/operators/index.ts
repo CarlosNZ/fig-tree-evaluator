@@ -34,7 +34,7 @@ import { buildString, join, lower, upper, trim, split, regex } from './string'
 import { length, map, filter, find, some, every } from './array'
 import { get, buildObject } from './data'
 import { convert } from './convert'
-import { and, or, not, ifOperator, match, firstOf } from './logic'
+import { and, or, not, ifOperator, match, firstNonNull } from './logic'
 
 /**
  * The core definitions as authored. `buildOperator` builds them without
@@ -49,7 +49,7 @@ export const coreDefinitions: OperatorDefinition[] = [
   not,
   ifOperator,
   match,
-  firstOf,
+  firstNonNull,
   // Comparison
   equal,
   notEqual,

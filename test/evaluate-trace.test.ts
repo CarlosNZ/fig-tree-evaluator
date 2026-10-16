@@ -143,8 +143,8 @@ describe('`skipped` — laziness made visible', () => {
     expect(untaken?.children).toBeUndefined()
   })
 
-  it('marks an undemanded firstOf candidate', async () => {
-    const trace = await traceOf(setup(), { $firstOf: ['first', { $plus: [1, 2] }] })
+  it('marks an undemanded firstNonNull candidate', async () => {
+    const trace = await traceOf(setup(), { $firstNonNull: ['first', { $plus: [1, 2] }] })
     const candidates = trace.children ?? []
     expect(candidates[0].status).toBe('value')
     expect(candidates[1].status).toBe('skipped')

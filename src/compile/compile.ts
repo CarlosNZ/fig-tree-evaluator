@@ -1255,7 +1255,7 @@ const sliceChildren = (
  * the runtime degeneration rule turns it back into handles, and it stays
  * visible to `validate` hooks, which see constant parameters only — that
  * is what keeps the dead-expression warnings on `{ $and: [] }` and
- * `{ $firstOf: [] }` working.
+ * `{ $firstNonNull: [] }` working.
  */
 const walkSynthetic = (
   state: WalkState,

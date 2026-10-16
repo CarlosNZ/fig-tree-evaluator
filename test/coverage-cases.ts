@@ -365,19 +365,19 @@ export const sections: Record<string, CoverageCase[]> = {
       ],
     },
     {
-      name: 'firstOf with an untyped candidate',
-      expression: { $plus: [{ $firstOf: ['$data.a', 0] }, 1] },
+      name: 'firstNonNull with an untyped candidate',
+      expression: { $plus: [{ $firstNonNull: ['$data.a', 0] }, 1] },
       uncovered: [{ at: [], code: 'type-check', parameter: 'values', witness: { a: 'x' } }],
     },
     {
-      name: 'firstOf drops the nulls of all but the last candidate',
-      expression: { $plus: [{ $firstOf: [{ $length: '$data.a', fallback: null }, 0] }, 1] },
+      name: 'firstNonNull drops the nulls of all but the last candidate',
+      expression: { $plus: [{ $firstNonNull: [{ $length: '$data.a', fallback: null }, 0] }, 1] },
       covered: [
         {
-          at: ['$plus', 0, '$firstOf', 0],
+          at: ['$plus', 0, '$firstNonNull', 0],
           code: 'type-check',
           parameter: 'value',
-          by: ['$plus', 0, '$firstOf', 0],
+          by: ['$plus', 0, '$firstNonNull', 0],
           witness: { a: 1 },
         },
       ],
@@ -1004,15 +1004,15 @@ export const sections: Record<string, CoverageCase[]> = {
       ],
     },
     {
-      name: 'firstOf stops at a known non-null candidate',
-      expression: { $firstOf: [1, { $lower: '$data.s' }] },
+      name: 'firstNonNull stops at a known non-null candidate',
+      expression: { $firstNonNull: [1, { $lower: '$data.s' }] },
     },
     {
-      name: 'firstOf past a computed candidate',
-      expression: { $firstOf: ['$data.a', { $lower: '$data.s' }] },
+      name: 'firstNonNull past a computed candidate',
+      expression: { $firstNonNull: ['$data.a', { $lower: '$data.s' }] },
       uncovered: [
         {
-          at: ['$firstOf', 1],
+          at: ['$firstNonNull', 1],
           code: 'type-check',
           parameter: 'value',
           witness: { a: null, s: 1 },
@@ -1020,10 +1020,10 @@ export const sections: Record<string, CoverageCase[]> = {
       ],
     },
     {
-      name: 'firstOf always evaluates its first candidate',
-      expression: { $firstOf: [{ $lower: '$data.s' }, 'x'] },
+      name: 'firstNonNull always evaluates its first candidate',
+      expression: { $firstNonNull: [{ $lower: '$data.s' }, 'x'] },
       uncovered: [
-        { at: ['$firstOf', 0], code: 'type-check', parameter: 'value', witness: { s: 1 } },
+        { at: ['$firstNonNull', 0], code: 'type-check', parameter: 'value', witness: { s: 1 } },
       ],
     },
     {

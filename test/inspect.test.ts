@@ -70,7 +70,7 @@ describe('the report', () => {
     vars: { sum: { $plus: ['$data.subtotal', '$data.shipping'] } },
     createdAt: new Date('2026-09-23T00:00:00Z'),
     greeting: { $greet: { name: '$d.customer.name' } },
-    contact: { $firstOf: ['$data.customer.email', 'no contact'] },
+    contact: { $firstNonNull: ['$data.customer.email', 'no contact'] },
     total: { operator: '+', values: ['$vars.sum', 0], fallback: 0 },
     note: undefined,
   }
@@ -118,7 +118,7 @@ describe('canonicalForm', () => {
     greeting: { $greet: { name: '$d.name' } },
     lines: { $map: { input: '$data.items', as: 'item', each: '$item.id' } },
     status: { $match: ['$data.s', { ok: 'yes', no: '$vars.sum' }] },
-    first: { $firstOf: ['$data.x', 'none'] },
+    first: { $firstNonNull: ['$data.x', 'none'] },
     broken: { operator: 'flibble' },
   }
   const { canonicalForm: root, issues } = report(expression)
@@ -212,7 +212,7 @@ describe('canonicalForm', () => {
         no: { kind: 'reference', reference: '$vars.sum' },
       },
     })
-    expect(at('first', '$firstOf')).toMatchObject({
+    expect(at('first', '$firstNonNull')).toMatchObject({
       kind: 'elements',
       elements: [
         { kind: 'reference', reference: '$data.x' },
@@ -267,12 +267,12 @@ describe('timeoutFallback', () => {
       {
         authored: { $plus: [1, '$data.x'], fallback: 0 },
         scoped: { vars: { x: '$data.x' }, value: { $plus: [1, '$vars.x'], fallback: 0 } },
-        defaulted: { $firstOf: ['$data.y'] },
+        defaulted: { $firstNonNull: ['$data.y'] },
         lifted: { $greet: { name: '$data.n' } },
         nested: { $plus: [{ $divide: [1, '$data.z'], fallback: 0 }, 1] },
         dynamic: { $plus: [1, '$data.w'], fallback: '$data.v' },
       },
-      { operatorDefaults: { firstOf: { fallback: 'unknown' } } }
+      { operatorDefaults: { firstNonNull: { fallback: 'unknown' } } }
     )
     if (canonicalForm.kind !== 'skeleton') throw new Error('unreachable')
     const hole = (key: string) => canonicalForm.holes.find((entry) => entry.at[0] === key)?.node
@@ -328,12 +328,12 @@ describe('timeoutFallback', () => {
     const { canonicalForm, timeoutShielded } = report(
       {
         authored: { $plus: [1, '$data.x'], fallback: { failed: true, code: '$error.code' } },
-        defaulted: { $firstOf: ['$data.y'] },
+        defaulted: { $firstNonNull: ['$data.y'] },
         lifted: { $guarded: { name: '$data.n' } },
       },
       {
         fragments: { greet, guarded },
-        operatorDefaults: { firstOf: { fallback: '$err.message' } },
+        operatorDefaults: { firstNonNull: { fallback: '$err.message' } },
       }
     )
     if (canonicalForm.kind !== 'skeleton') throw new Error('unreachable')

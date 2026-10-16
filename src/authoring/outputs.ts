@@ -50,7 +50,7 @@ import type { Failure } from './findings'
 export const CORE_OUTPUTS: Record<string, DeclaredOutput> = {
   if: { oneOf: [{ param: 'then' }, { param: 'else' }] },
   match: { oneOf: [{ param: 'branches' }, { param: 'default' }] },
-  firstOf: { firstNonNull: 'values' },
+  firstNonNull: { firstNonNull: 'values' },
   find: { oneOf: [{ elementOf: 'input' }, { param: 'noMatchDefault' }] },
   plus: { oneOf: [{ sum: 'values' }, { typeNamedBy: 'expect' }] },
   subtract: { difference: ['value', 'minus'] },
@@ -108,7 +108,7 @@ const literalsOf = (received: Received, name: string): unknown[] | undefined => 
   return typeof type === 'object' && 'literal' in type ? [...type.literal] : undefined
 }
 
-/** firstOf's answer: each candidate's non-null value, up to one never null. */
+/** Each candidate's non-null value, up to the first one never null. */
 const firstNonNull = (known: Known): Known =>
   unionOf(
     known.map((member: Member): Known => {

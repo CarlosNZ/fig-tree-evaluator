@@ -620,7 +620,10 @@ describe('what a node returns', () => {
       'match: one of its branches or its default',
       { $upper: { $match: { value: 'k', branches: { k: 'x', j: 'y' }, default: 'z' } } },
     ],
-    ['firstOf: stops at a candidate never null', { $upper: { $firstOf: ['a', '$data.x'] } }],
+    [
+      'firstNonNull: stops at a candidate never null',
+      { $upper: { $firstNonNull: ['a', '$data.x'] } },
+    ],
     ['min: one of its values', { $upper: { $min: ['a', 'b'] } }],
     ['split: an array of strings', { $join: { $split: ['a,b', ','] } }],
     [
@@ -636,8 +639,8 @@ describe('what a node returns', () => {
     expect((await findings(expression)).filter((finding) => finding.path.length === 0)).toEqual([])
   })
 
-  test('firstOf past a candidate that may be null', async () => {
-    expect(await findings({ $upper: { $firstOf: ['$data.x', 'a'] } })).toEqual([
+  test('firstNonNull past a candidate that may be null', async () => {
+    expect(await findings({ $upper: { $firstNonNull: ['$data.x', 'a'] } })).toEqual([
       typeCheck([], 'value'),
     ])
   })
@@ -1022,11 +1025,11 @@ describe('running a node', () => {
   })
 
   test('a body that waits on a value nothing knows is not run', async () => {
-    // firstOf skips a null, so whether it goes on depends on the data
-    expect(await findings({ $firstOf: ['$data.a', lower] })).toEqual([
-      typeCheck(['$firstOf', 1], 'value'),
+    // firstNonNull skips a null, so whether it goes on depends on the data
+    expect(await findings({ $firstNonNull: ['$data.a', lower] })).toEqual([
+      typeCheck(['$firstNonNull', 1], 'value'),
     ])
-    expect(await findings({ $firstOf: ['a', lower] })).toEqual([])
+    expect(await findings({ $firstNonNull: ['a', lower] })).toEqual([])
   })
 
   test('a decider is decided by a known operand, wherever it is', async () => {
