@@ -800,6 +800,13 @@ export const getCatalog = (
         nullOutcome: nullOutcomeOf(key, parameter, parameters),
         seed: seedOf(listing, key, parameter.type),
       }
+      if ([parameter.type].flat().every((member) => member === 'array' || member === 'object')) {
+        // Unless a policy takes them, null elements meet the constraints
+        const { homogeneous, elementShape } = parameter.constraints ?? {}
+        entry.elementNullOutcome =
+          parameter.elementNullPolicy ??
+          (elementShape || (homogeneous && !homogeneous.includes('any')) ? 'error' : 'value')
+      }
       const description = own(listing.parameterDescriptions, key)
       if (description !== undefined) entry.description = description
       operator.parameters[key] = entry
