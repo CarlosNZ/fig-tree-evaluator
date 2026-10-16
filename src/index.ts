@@ -163,6 +163,7 @@ export type {
   CategoryListing,
   CategoryListingMap,
   FragmentMetadata,
+  NullOutcome,
   OperatorListing,
   OperatorListingMap,
   TypeSeeds,

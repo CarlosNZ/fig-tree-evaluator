@@ -223,6 +223,13 @@ export interface ValidatedParameter {
   metadata?: Record<string, unknown>
   evaluation: EvaluationMode
   truthiness: boolean
+  /**
+   * The declared policy, else `'value'` where `truthiness` implies it, else
+   * `'propagate'`, filled in even where no policy can apply: at a type that
+   * doesn't name `null`, at a lazily delivered parameter, and at a holder.
+   * What a `null` does at every parameter is the catalog's `nullOutcome`
+   * (`CatalogParameter`).
+   */
   nullPolicy: NullPolicyValue | CompiledNullPolicy
   elementNullPolicy?: NullPolicyValue
   constraints?: Constraints
