@@ -5,24 +5,157 @@ sidebar:
   order: 6
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import Playground from '../../../components/playground/Playground.tsx'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Each node can be written two ways. _Shorthand_ is for writing by hand; _canonical_ spells everything out, which suits programs and editors (the playgrounds on this site call it _full_). Both mean exactly the same thing, and you can convert from one to the other at any time.
 
-## Shorthand
+```json5
+// Shorthand, with positional parameters
+{
+  $if: [
+    '$data.isLoggedIn',
+    { $buildString: ['Hello, %1!', '$data.firstName'] },
+    'Welcome, guest!',
+  ],
+}
 
-`{ $plus: [1, 2, 3] }`: the form for writing by hand.
+// is the same as shorthand, with named parameters
+{
+  $if: {
+    condition: '$data.isLoggedIn',
+    then: {
+      $buildString: {
+        template: 'Hello, %1!',
+        substitutions: ['$data.firstName'],
+      },
+    },
+    else: 'Welcome, guest!',
+  },
+}
 
-## Canonical
+// is the same as canonical
+{
+  operator: 'if',
+  condition: '$data.isLoggedIn',
+  then: {
+    operator: 'buildString',
+    template: 'Hello, %1!',
+    substitutions: ['$data.firstName'],
+  },
+  else: 'Welcome, guest!',
+}
+```
 
-`{ operator: 'plus', values: [1, 2, 3] }`: every parameter named, the form tools and editors work with.
+## The canonical form
+
+Everything is spelled out: each node has an `operator` key, and its parameters and any modifiers are keys beside it, in the same object.
+
+That's where the two forms differ most. Shorthand puts the parameters inside the value of the `$`-prefixed key, and the modifiers beside it:
+
+<Expression
+  code={`
+    {
+      shorthand: {
+        $divide: { value: '$data.totalSpend', by: '$data.orderCount' },
+        fallback: 0, // BESIDE $divide, not inside it
+      },
+      canonical: {
+        operator: 'divide',
+        value: '$data.totalSpend',
+        by: '$data.orderCount',
+        fallback: 0, // All on one level
+      },
+    }
+  `}
+  data={`
+    // A new customer, with no orders yet
+    { totalSpend: 0, orderCount: 0 }
+  `}
+/>
+
+`operator` takes an alias too, such as `'+'`, but never the `$`. And `literal` is written `{ operator: 'literal', value: … }`.
+
+<Callout kind="caution" title="Every object with an operator key is a node">
+
+Just like a key prefixed with `$`, an `operator` key is always read as a node, so data with an `operator` key of its own is an error. Put it inside `literal`, and FigTree leaves it as it is:
+
+<Expression
+  code={`
+    {
+      customer: '$data.name',
+      // The phone company, not a FigTree operator
+      phone: { $literal: { operator: 'One NZ', plan: 'Prepay' } },
+    }
+  `}
+  data={`
+    { name: 'Ana Ngata' }
+  `}
+/>
+
+The same goes for a `fragment` key, which calls a [fragment](/guides/fragments/).
+
+</Callout>
 
 ## Mixing the two
 
-Both forms can appear in one expression, at any depth.
+Each node is written in one form or the other, but its children can be in either, so the two mix freely. A common shape has canonical nodes near the top, where the structure is, and shorthand and references at the leaves:
+
+<Expression
+  title="Shipping: free over $100, otherwise $5 plus $1.50 per kg"
+  code={`
+    {
+      operator: 'if',
+      condition: { '$>=': ['$data.order.subtotal', 100] },
+      then: 0,
+      else: {
+        operator: 'plus',
+        values: [5, { $multiply: ['$data.order.weightKg', 1.5] }],
+      },
+    }
+  `}
+  data={`
+    { order: { subtotal: 72, weightKg: 2 } }
+  `}
+/>
 
 ## Converting
 
-Converting between the forms with `./format`, linking to the Tooling section.
+The playgrounds on this site convert for you: the **Shorthand** and **Full** buttons rewrite the whole expression in one form. Try them on the same expression:
+
+{/* TO-DO: decide whether to fix the widget's form label (formOf in PlaygroundWidget.tsx), which calls named shorthand and `$get` "Mixed forms". Decided after the page is written. */}
+
+<Playground
+  client:visible
+  id="forms"
+  expression={`
+    {
+      operator: 'if',
+      condition: { '$>=': ['$data.order.subtotal', 100] },
+      then: 0,
+      else: {
+        operator: 'plus',
+        values: [5, { $multiply: ['$data.order.weightKg', 1.5] }],
+      },
+    }
+  `}
+  data={`
+    { order: { subtotal: 72, weightKg: 2 } }
+  `}
+/>
+
+References such as `$data.order.subtotal` stay as they are in both forms. Their long form is a [`get` node](/concepts/data/#the-get-operator), which the editor converts one at a time.
+
+In your own code, `toCanonical` and `toShorthand` do the same. Each takes your FigTree instance too, since how a node is read depends on which operators it has, and the order of their parameters:
+
+```ts
+import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
+
+const full = toCanonical({ $plus: [1, 2, 3] }, fig)
+// => { operator: 'plus', values: [1, 2, 3] }
+
+toShorthand(full, fig) // => { $plus: [1, 2, 3] }
+```
+
+[Converting forms](/tooling/format/) has their options, such as named parameters rather than positional ones.
