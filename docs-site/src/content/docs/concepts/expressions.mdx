@@ -66,13 +66,14 @@ FigTree has 40-ish built-in operators, for logic, comparison, arithmetic, string
 
 ```json5
 {
-  operator: 'if',
-  condition: true,
-  then: 'yes',
-  else: 'no', // optional
+  $if: {
+    condition: true,
+    then: 'yes',
+    else: 'no', // optional
+  },
 }
 
-// Shorthand equivalent:
+// The same, by position: [condition, then, else]
 { $if: [true, 'yes', 'no'] }
 ```
 
@@ -86,7 +87,7 @@ The HTTP and SQL operators join these when your app gives FigTree a client to us
 
 A key prefixed with `$` is always read as an operator, and checked before anything runs. A name FigTree doesn't know is an error, as is any other mistake in a node's shape, such as a parameter the operator doesn't have; [Checking expressions](/guides/validation/) shows how to find them as you write.
 
-So when an expression holds legitimate non-FigTree data that happen to have `$`-prefixed keys, such as a stored MongoDB query, put it inside `literal`, and FigTree leaves it as it is:
+So when an expression holds legitimate non-FigTree data that happen to have `$`-prefixed keys, such as a stored MongoDB query, put it inside `literal`, and FigTree leaves it as it is. The same goes for data with an `operator` or `fragment` key, since those mark a node written in [canonical form](/concepts/forms/):
 
 <Expression
   code={`
@@ -95,6 +96,8 @@ So when an expression holds legitimate non-FigTree data that happen to have `$`-
       stage: { $literal: { $match: { status: 'active' } } },
       // $ne isn't, so it would be an error
       filter: { $literal: { status: { $ne: 'closed' } } },
+      // operator marks a canonical node, so this would be an error too
+      phone: { $literal: { operator: 'One NZ', plan: 'Prepay' } },
     }
   `}
 />
@@ -103,23 +106,15 @@ So when an expression holds legitimate non-FigTree data that happen to have `$`-
 
 ## Parameters
 
-An operator's parameters can be given in four ways, depending on the form the node is written in:
+An operator's parameters can be given in three ways, and the value of the `$`-prefixed key decides which:
 
-- **Canonical form:** always by name, as keys alongside `operator`.
-- **Shorthand form**, where the value of the `$`-prefixed key decides:
-  - **Named:** an object, with a key for each parameter.
-  - **Positional:** an array, where each value's position says which parameter it is. The [operator reference](/reference/operators/) gives each operator's order.
-  - **Single value:** anything else. It goes to the first parameter, and the rest keep their defaults, which suits operators that mostly need just one value, like `not` or `round`.
+- **Named:** an object, with a key for each parameter.
+- **Positional:** an array, where each value's position says which parameter it is. The [operator reference](/reference/operators/) gives each operator's order.
+- **Single value:** anything else. It goes to the first parameter, and the rest keep their defaults, which suits operators that mostly need just one value, like `not` or `round`.
 
 <Expression
   code={`
     {
-      canonical: {
-        operator: 'if',
-        condition: '$data.isMember',
-        then: 'Member price',
-        else: 'Standard price',
-      },
       named: {
         $if: {
           condition: '$data.isMember',
@@ -136,7 +131,7 @@ An operator's parameters can be given in four ways, depending on the form the no
   `}
 />
 
-Names say what each value is for, which helps whoever reads the expression next; the array is shorter. The result is the same either way.
+Names say what each value is for, which helps whoever reads the expression next; the array is shorter. The result is the same either way. In [canonical form](/concepts/forms/), parameters are always given by name, as keys beside `operator`.
 
 ## Nodes inside nodes: the tree
 
