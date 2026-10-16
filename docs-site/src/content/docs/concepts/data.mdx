@@ -118,7 +118,7 @@ Real data has gaps, such as a form field left blank or a user without a middle n
 There are two ways, and they differ in how they treat a value stored as `null`:
 
 - **`get`'s `default`** replaces only a missing value. A value stored as `null` stays `null`, for where that means something, such as a field the user cleared. In the positional form, it comes after the path: `{ $get: ['customer.email', 'Missing'] }`.
-- **`firstOf`** gives the first of its values that isn't `null`, so it replaces a stored `null` too.
+- **`firstNonNull`** gives the first of its values that isn't `null`, so it replaces a stored `null` too.
 
 <Expression
   code={`
@@ -127,8 +127,8 @@ There are two ways, and they differ in how they treat a value stored as `null`:
       phoneOnFile: { $get: { path: 'customer.phone', default: 'Missing' } },
       emailOnFile: { $get: { path: 'customer.email', default: 'Missing' } },
       // Missing AND null are both passed over
-      phone: { $firstOf: ['$data.customer.phone', 'Not given'] },
-      email: { $firstOf: ['$data.customer.email', 'Not given'] },
+      phone: { $firstNonNull: ['$data.customer.phone', 'Not given'] },
+      email: { $firstNonNull: ['$data.customer.email', 'Not given'] },
     }
   `}
   data={`

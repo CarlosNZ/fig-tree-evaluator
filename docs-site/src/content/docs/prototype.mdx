@@ -114,7 +114,7 @@ The default way to show an expression: highlighted source, the data it reads, an
   title="When the data isn't there"
   code={`
     {
-      displayName: { $firstOf: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
+      displayName: { $firstNonNull: ['$data.user.nickname', '$data.user.name', 'Anonymous'] },
       contact: { $buildString: 'Phone: {{$data.user.phone}}' },
       timezone: { $get: ['user.prefs.timezone', 'Pacific/Auckland'] },
       ratio: { $divide: [1, 0], fallback: 'n/a' },

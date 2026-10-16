@@ -51,11 +51,11 @@ const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3
 
 Most parameters are evaluated _before_ their operator runs (since they're all needed for the operation), but some are delayed until the operator is sure it needs them. For example, an `if` operation will only ever need _one of_ the `then` or `else` branches, so it would be wasteful to evaluate both upfront — particularly if they include slow network requests, or would fail if evaluated against the wrong `condition`. Similarly, `match` only runs the matching branch. In the [operator reference](/reference/operators/), parameters like these display a tag, such as `lazy`.
 
-`firstOf` gives the first of its values that isn't `null`, evaluating them sequentially and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
+`firstNonNull` gives the first of its values that isn't `null`, evaluating them sequentially and stopping as soon as it has one. Here it uses the exchange rate already in the data if there is one, and only sends a request when there isn't:
 
 ```json5
 {
-  $firstOf: [
+  $firstNonNull: [
     '$data.cachedRate',
     // Only sent when there's no cached rate
     { $http: { url: 'https://api.example.com/rates/NZD', returnPath: 'USD' } },
@@ -197,7 +197,7 @@ Each of these is the sensible reading for its operator. A total with an unknown 
 That rule is a parameter's **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are four:
 
 - **Passed on:** if a parameter with this policy receives `null`, the whole node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`. For a list of values, such as `plus`'s, one `null` among them is enough.
-- **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstOf` skips it, and a condition reads it as false.
+- **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstNonNull` skips it, and a condition reads it as false.
 - **Default:** for an optional setting, such as the number of decimal places to `round` to, `null` means the setting wasn't given, so its default applies, as in `rounded` above.
 - **A type error:** where nothing sensible can be done with it, such as the `url` of an `http` request.
 
