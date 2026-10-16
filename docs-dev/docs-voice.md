@@ -13,12 +13,18 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "FigTree has 40-ish built-in operators"
   - Before: "Where an operator needs a yes or no"
   - After: "Where an operator needs true or false"
+  - When JavaScript is the reference, mark where FigTree differs.
+  - Before: "the answer you'd expect from JavaScript: … `find`: `null`"
+  - After: "`find`: `null` (where JavaScript gives `undefined`)"
 - **Bold a key term where it's introduced:** **FigTree expression**, **parameters**, **modifiers**.
 - **Emphasise the contrast.** Where parallel items differ by a word or two, italicise those words. In a code comment, which can't, capitals do the same job.
   - Before: "for values that stay the same from one evaluation to the next … for what changes every time"
   - After: "for values that _stay the same_ from one evaluation to the next … for what _changes_ every time"
   - Before: `// Missing and null are both passed over`
   - After: `// Missing AND null are both passed over`
+  - Parallel options each get their own bullet, even where two would share one, so the contrast lines up.
+  - Before: "**`some`** and **`every`**: `true` if any element's result is truthy, or if every one is."
+  - After: "**`some`**: `true` if _any_ element's result is truthy." and "**`every`**: `true` if _every_ element's result is truthy."
 
 ## Wording
 
@@ -71,6 +77,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **No full stop on a one-sentence summary,** such as a page's frontmatter `description`. Full stops only where there's more than one sentence.
   - Before: `description: The order nodes are evaluated in, and what the engine checks along the way.`
   - After: `description: 'What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures'`
+- **A bullet's headline is bold and capitalised, with the colon inside the bold,** as in "**Passed on:**". Where the label is code alone, the colon goes outside: "**`map`**:". A bullet with a headline ends with a full stop.
+  - Before: "- convenience: Using a descriptive name …"
+  - After: "- **Convenience:** using a descriptive name makes the expression a little more readable."
 - **A reference in prose takes no quotes.** Quotes only where the point is that it's a string.
   - Before: "a bare `'$data'` gives the whole data object"
   - After: "a bare `$data` gives the whole data object"
@@ -84,6 +93,17 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
+  - So a concept page shows one static error in an example, never the full list of them, and never the warnings: readers meet those when they happen, with a message that explains itself.
+  - Cut: "The same goes for:" and four bullets of `as` and `$index` errors, on Iteration
+  - Cut: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", on Iteration and Variables, which also leaned on "flags", a term the reader hadn't met
+- **Don't restate what a definition already gives.** Once a bullet or a rule has said it, its consequences don't need a sentence of their own.
+  - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said "the first element, in the array's order"
+  - Cut: "When nothing matches, `find` gives `null`…", after the empty-input list had shown `find: null`
+  - Cut: "Both exist only inside `each`…", in a section that opened with "Inside `each`"
+- **A parameter many operators share is explained once, in one place,** not on each concept page that meets one of them.
+  - Cut: the `nullInputDefault` example on Iteration, and its `operatorDefaults` line; the family of default parameters gets one explanation, on the operator reference
+- **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea; the one place that warns against it does so loudly.
+  - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
 - **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete stays short, and is marked as examples (see Wording).
   - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
@@ -94,9 +114,11 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
   - After: "A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong."
   - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
-  - After: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…"
+  - After: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", later cut entirely (see "Don't answer worries")
 - **Precise, but uncluttered.** A strictly technical point goes in a footnote rather than the text.
   - Example: what "node" means in graph theory, as a footnote to "trees have nodes (as well as plain values at the leaves)"
+  - Before: two bullets in the `[*]` callout on Iteration, the second one only about `strictDataPaths`
+  - After: the one difference in the callout, and `strictDataPaths` in a footnote
 
 ## Structure
 
@@ -114,6 +136,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
   - Before: "Paths" third on Data references: "A path is read left to right, each step going one level deeper:", then every kind of step
   - After: "Path syntax" just before the summary table: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", then `[*]` and array paths
+- **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for. Introduce the example with "In this example", not "Here".
+  - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
+  - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
 - **Most common first.** Options, bullets and an example's keys go in the order the reader will most often need them.
   - Before: `firstOf`, then `get`'s `default`; `get`'s uses as a computed path, a `default`, a `from`
   - After: `default` first in both
@@ -140,6 +165,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Put each named parameter on its own line,** so the names stand out beside the operator.
   - Before: `named: { $if: { condition: '$data.isMember', then: 'Member price', else: 'Standard price' } }`
   - After: `condition`, `then` and `else` each on a line of their own inside `$if`
+- **Show a parameter by name before a shortcut hides it.** Where the prose has just named the parameters, the first example uses those names, and a comment marks the switch to the positional form.
+  - Before: all five iterators positional, straight after a sentence naming `input` and `each`
+  - After: `map` with `input` and `each` named, then `// The same two parameters, by position: [input, each]` above the other four
 - **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
   - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`

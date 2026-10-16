@@ -11,6 +11,8 @@ import { Aside } from '@astrojs/starlight/components'
   This page is a skeleton. Each heading notes what it will cover.
 </Aside>
 
+{/* NOTE (from Iteration): a big Danger callout (`<Callout kind="danger">`) recommending against using FigTree for mutations. Every I/O node is treated as an idempotent read (the read contract, src/operators/io.ts): the engine starts requests in parallel, cancels them when an answer arrives early (`and`/`or`, `find`/`some`/`every`), caches and re-evaluates them — so a request may be sent, cancelled, sent twice or skipped. `method` admits `get` and `post` only, but a POST that changes something, or a SQL write, is reachable and isn't policed. The enforcement that works is on the host's side, such as a read-only database role on the connection. */}
+
 ## I/O is opt-in
 
 The `http`, `graphQL` and `sql` operators aren't in `coreOperators`. An instance has them only once `httpOperators(client)` or `sqlOperators(connection)` is in its `operators` option, and no client is bundled unless you import it.
