@@ -84,12 +84,13 @@ const nullOutcomes: Record<NullOutcome, NullTag> = {
 }
 
 /** The same for each element or entry of a list or object. */
-const elementOutcomes: Record<NullPolicyValue, NullTag> = {
+const elementOutcomes: Record<NonNullable<CatalogParameter['elementNullOutcome']>, NullTag> = {
   propagate: {
     label: 'passed on (each)',
     title: 'A null element makes the whole node null, and the operator doesn’t run',
   },
   value: { label: 'value (each)', title: 'The operator receives a null element as a value' },
+  error: { label: 'error (each)', title: 'A null element is a type error' },
 }
 
 /**
@@ -112,20 +113,17 @@ const conditionalTags = ({ selector, table }: CompiledNullPolicy): NullTag[] => 
 }
 
 /**
- * The parameter's Null cell, a line per tag. A list's or object's elements
- * come first where they have a rule of their own: their declared policy,
- * else, for the lazy containers, `value`, since each element is an operand
- * the operator receives as it is. Beside them, the whole value's outcome
- * is marked as such.
+ * The parameter's Null cell, a line per tag: a list's or object's elements
+ * first, then the whole value's outcome, marked as such beside them.
  */
 const nullTags = (p: CatalogParameter): NullTag[] => {
-  const lazyContainer =
-    p.evaluation === 'lazyElements' || p.evaluation === 'lazyEntries' || p.evaluation === 'race'
-  const element = p.elementNullPolicy ?? (lazyContainer ? 'value' : undefined)
   const whole =
     typeof p.nullOutcome === 'string' ? [nullOutcomes[p.nullOutcome]] : conditionalTags(p.nullOutcome)
-  if (element === undefined) return whole
-  return [elementOutcomes[element], ...whole.map((tag) => ({ ...tag, after: ' (whole)' }))]
+  if (p.elementNullOutcome === undefined) return whole
+  return [
+    elementOutcomes[p.elementNullOutcome],
+    ...whole.map((tag) => ({ ...tag, after: ' (whole)' })),
+  ]
 }
 
 /**
