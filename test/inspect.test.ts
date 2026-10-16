@@ -245,6 +245,14 @@ describe('canonicalForm', () => {
     expect(canonicalForm.holes.map((hole) => hole.at)).toEqual([['b']])
   })
 
+  test('a shape keeps its authored key order (#245)', () => {
+    const { canonicalForm } = report({ a: '$data.x', b: 1, c: { d: '$data.y', e: 2 } })
+    if (canonicalForm.kind !== 'skeleton') throw new Error('unreachable')
+    expect(JSON.stringify(canonicalForm.shape)).toBe(
+      '{"a":"<hole>","b":1,"c":{"d":"<hole>","e":2}}'
+    )
+  })
+
   test('a reserved array slot is a hole, not an unassigned slot', () => {
     const { canonicalForm } = report({ list: [1, '$data.x'] })
     expect(canonicalForm).toMatchObject({ shape: { list: [1, '<hole>'] } })

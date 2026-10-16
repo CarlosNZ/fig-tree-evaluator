@@ -29,6 +29,7 @@ import {
   renderReference,
   runStaticChecks,
   checkNoCache,
+  splice,
   toNodePath,
   type ArtifactHole,
   type CompiledNode,
@@ -65,35 +66,33 @@ const preview = (value: unknown, max = 48): string => {
 const HOLE = '<hole>'
 
 /**
- * Render a skeleton with its empty slots marked. A skeleton reserves each
- * hole's position without filling it: an array slot is left unassigned
- * (sparse) and an object key is simply absent — so plain `JSON.stringify`
- * would print a sparse slot as `null`, indistinguishable from a null the
- * author actually wrote. Top-level hole keys are marked too, to show the
+ * Render a skeleton with its holes marked. A skeleton reserves each hole's
+ * position without filling it — an unassigned (sparse) array slot, an
+ * object key holding `undefined` — so plain `JSON.stringify` would print a
+ * sparse slot as `null`, indistinguishable from a null the author actually
+ * wrote. Splicing a marker into every hole, nested ones included, shows the
  * container's full shape.
  */
 const renderSkeleton = (skeleton: unknown, holes: SkeletonHole[], max = 44): string => {
-  const holeKeys = new Set(
-    holes.filter((hole) => hole.at.length === 1).map((hole) => String(hole.at[0]))
-  )
-  const render = (value: unknown, top: boolean): string => {
-    if (Array.isArray(value)) {
-      const slots: string[] = []
-      for (let i = 0; i < value.length; i++) slots.push(i in value ? render(value[i], false) : HOLE)
-      return `[${slots.join(',')}]`
-    }
+  const marker = Symbol('hole')
+  const render = (value: unknown): string => {
+    if (value === marker) return HOLE
+    if (Array.isArray(value)) return `[${value.map(render).join(',')}]`
     if (isPlainDataObject(value)) {
       const parts = Object.entries(value).map(
-        ([key, child]) => `${JSON.stringify(key)}:${render(child, false)}`
+        ([key, child]) => `${JSON.stringify(key)}:${render(child)}`
       )
-      if (top)
-        for (const key of holeKeys)
-          if (!(key in value)) parts.push(`${JSON.stringify(key)}:${HOLE}`)
       return `{${parts.join(',')}}`
     }
     return preview(value, 24)
   }
-  const text = render(skeleton, true)
+  const text = render(
+    splice(
+      skeleton,
+      holes,
+      holes.map(() => marker)
+    )
+  )
   return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 
