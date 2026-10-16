@@ -598,6 +598,15 @@ describe('getCatalog', () => {
 
       const elementCases = cases.filter(([, , , parameter]) => parameter.elementNullOutcome)
 
+      test('a holder reports no element outcome, even where it takes a list', () => {
+        const holders = catalog.operators.flatMap((operator) =>
+          Object.values(operator.parameters).filter((parameter) => parameter.replacesNullAt)
+        )
+        expect(holders.some((holder) => holder.type === 'array')).toBe(true)
+        for (const holder of holders)
+          expect(Object.hasOwn(holder, 'elementNullOutcome')).toBe(false)
+      })
+
       test.each(elementCases)('%s, a null element', async (_, operator, name, parameter) => {
         underTest = { operator: operator.name, parameter: name, element: true }
         const { seed } = parameter
