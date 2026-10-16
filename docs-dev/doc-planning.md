@@ -144,11 +144,11 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 - The left pane keeps its own text. On each edit, if the text parses, it updates the shared state. If it doesn't, the pane shows the parse error and leaves the state alone.
 - When the state changes from the right, the left pane re-renders its text only if its current text doesn't already parse to the same value. That avoids update loops, and avoids resetting the cursor while someone is typing on the left.
 - Evaluation runs on the shared state, debounced.
-- Comments live only in the text. When the left pane re-renders from the shared state (after an edit on the right, or a form toggle), the text is regenerated from the value and its comments are lost. Comments are mainly for the examples as authored, so this is acceptable, but the widget could warn before an action that would drop them.
+- Comments live only in the text. When the left pane re-renders from the shared state (after an edit on the right), the text is regenerated from the value and its comments are lost. Comments are mainly for the examples as authored, so this is acceptable, but the widget could warn before an action that would drop them.
 
 #### Extras
 
-- **Form toggle.** A "shorthand / full" switch on the left pane rewrites the shared state through `toShorthand` / `toCanonical` from `./format`. Showing that the forms are equivalent is hard in prose and takes one click here.
+- **Form toggle: dropped (October 2026).** A "shorthand / full" switch on the left pane, rewriting the whole expression through `toShorthand` / `toCanonical`, was built and then removed. Shorthand is the docs' default form ("Writing the pages", above), and a switch on every widget put canonical form in front of every reader. The tree editor's own per-node conversion buttons cover it, in the expanded editor.
 - **Data pane.** Most real examples read `$data.…`, so the widget takes an optional data input, perhaps as a tab beside the result. The MDX provides its starting value along with the expression.
 - **Narrow screens.** The panes collapse into tabs when there isn't room for both side by side.
 - **Lazy loading.** Each widget is mounted with `client:visible`, so a page with several widgets loads the editor only when a reader scrolls to one.

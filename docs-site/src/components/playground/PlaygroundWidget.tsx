@@ -1,7 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import JSON5 from 'json5'
 import { deepEqual, isFigTreeError } from 'fig-tree-evaluator'
-import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
 import { FigTreeEditor, type Evaluation, type SetExpressionOptions } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
 import { figTree } from '../../lib/figTree'
@@ -52,19 +51,6 @@ type Outcome =
   | { status: 'failed'; code: string; message: string }
   | { status: 'blocked'; reason: string }
 
-type Form = 'shorthand' | 'full' | 'mixed'
-
-/** Which form the whole expression is in, judged by whether converting changes it. */
-const formOf = (expression: unknown): Form | null => {
-  try {
-    if (deepEqual(toShorthand(expression, figTree), expression)) return 'shorthand'
-    if (deepEqual(toCanonical(expression, figTree), expression)) return 'full'
-    return 'mixed'
-  } catch {
-    return null
-  }
-}
-
 const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
   const [narrow, setNarrow] = useState(false)
   useLayoutEffect(() => {
@@ -97,8 +83,7 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
  * where it is. The tree's own completion of what it's given (its fill-in
  * step, marked `autoUpdate`) never does: half-typed text that happens to
  * parse would otherwise be rewritten under the cursor. Regenerated text has
- * no comments, so a change that would drop them asks first where it can (the
- * form toggle) and says so where it can't (an edit in the tree).
+ * no comments, so an edit in the tree that drops them says so.
  */
 export default function PlaygroundWidget(props: PlaygroundProps) {
   const seed = useMemo(
@@ -196,25 +181,16 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     setParseError(null)
   }
 
-  const form = useMemo(() => (parseError ? null : formOf(expression)), [expression, parseError])
-
-  const convert = (to: 'shorthand' | 'full') => {
-    if (form === to) return
-    if (
-      hasComments(textRef.current) &&
-      !window.confirm('Rewriting the expression drops the comments in its text. Continue?')
-    )
-      return
-    try {
-      const next =
-        to === 'shorthand' ? toShorthand(expression, figTree) : toCanonical(expression, figTree)
-      dropPendingText()
-      setNotice(null)
-      setExpression(next)
-      setText(toJson5(next))
-    } catch (error) {
-      setNotice(`Can't convert: ${(error as Error).message}`)
-    }
+  // Reset puts back the example as the page wrote it, comments and all
+  const edited = text !== initialText || dataText !== initialData
+  const reset = () => {
+    dropPendingText()
+    clearTimeout(dataTimer.current)
+    setNotice(null)
+    setText(initialText)
+    applyText(initialText)
+    setDataText(initialData)
+    applyData(initialData)
   }
 
   const onDataChange = (next: string) => {
@@ -283,23 +259,15 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   }
   useEffect(() => () => clearTimeout(runningTimer.current), [])
 
-  const formSwitch = (
-    <>
-      <div className="fds-segmented" role="group" aria-label="Form">
-        <button
-          aria-pressed={form === 'shorthand'}
-          disabled={!form}
-          onClick={() => convert('shorthand')}
-        >
-          Shorthand
-        </button>
-        <button aria-pressed={form === 'full'} disabled={!form} onClick={() => convert('full')}>
-          Full
-        </button>
-        {/* Not a choice: it says what the expression is, as the pressed one would */}
-        {form === 'mixed' && <span className="fds-segmented-state">Mixed forms</span>}
-      </div>
-    </>
+  const title = <div className="fds-widget-title">{props.title ?? 'Playground'}</div>
+
+  const resetButton = (
+    <button className="fds-widget-action" disabled={!edited} onClick={reset}>
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M2 8a6 6 0 1 0 6-6 6.5 6.5 0 0 0-4.5 1.8L2 5.3M2 2v3.3h3.3" />
+      </svg>
+      Reset
+    </button>
   )
 
   const textPane = (
@@ -369,7 +337,8 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       }}
     >
       <div className="fds-widget-toolbar">
-        {formSwitch}
+        {title}
+        {resetButton}
         <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M4 4l8 8M12 4l-8 8" />
@@ -404,7 +373,8 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   return (
     <div className="fds-widget" ref={container}>
       <div className="fds-widget-toolbar">
-        {formSwitch}
+        {title}
+        {resetButton}
         <button className="fds-widget-action" onClick={() => setExpanded(true)}>
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" />

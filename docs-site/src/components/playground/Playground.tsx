@@ -16,7 +16,7 @@ const PlaygroundWidget = lazy(() => import('./PlaygroundWidget'))
 export interface PlaygroundProps {
   /** The element id, which "open in editor" links target. */
   id?: string
-  /** A title above the widget, for one standing in for an example. */
+  /** The title at the left of the widget's toolbar; "Playground" if not given. */
   title?: string
   /** The starting expression, as JSON5 source. */
   expression: string
@@ -56,12 +56,7 @@ export default function Playground(props: PlaygroundProps) {
 
   return (
     <div className="fds-playground not-content" id={props.id}>
-      {props.title && <div className="fds-playground-title">{props.title}</div>}
-      {mounted ? (
-        <Suspense fallback={<Placeholder />}>{widget}</Suspense>
-      ) : (
-        <Placeholder />
-      )}
+      {mounted ? <Suspense fallback={<Placeholder />}>{widget}</Suspense> : <Placeholder />}
     </div>
   )
 }
