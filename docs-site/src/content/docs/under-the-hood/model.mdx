@@ -19,6 +19,8 @@ Compile, check and evaluate, and the strict division of what each is allowed to 
 
 Recognising what each part of an expression is, using only the expression and the registered operators and fragments, never the data. The kinds of piece it recognises.
 
+{/* NOTE (from Shorthand and canonical forms): that page's footnote links here for "this is close to how FigTree represents an expression internally". Say that compiling produces one tree whichever form the expression was written in: one object per node, its parameters by name (grouped together, not beside the operator as in canonical form), plus what the engine needs to run it. References, constants and plain objects holding nodes are compiled pieces too (src/compile/artifact.ts: OperatorNode, FragmentCallNode, ReferenceNode, ConstantNode, SkeletonNode). Describe the model, not the types: the page names no files. */}
+
 ## Check
 
 Static checks over the compiled expression: types of literal parameters, references to undeclared names, operators' own `validate` hooks.

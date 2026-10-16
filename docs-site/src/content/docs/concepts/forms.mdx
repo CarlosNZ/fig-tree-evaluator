@@ -9,7 +9,21 @@ import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 import Playground from '../../../components/playground/Playground.tsx'
 
-Each node can be written two ways. _Shorthand_ is for writing by hand; _canonical_ spells everything out, which suits programs and editors (the playgrounds on this site call it _full_). Both mean exactly the same thing, and you can convert from one to the other at any time.
+The examples on this site are written in _shorthand_ — using `$`-prefixed keys for operators. Each node also has a _canonical_ form (the playgrounds call it _full_), which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:
+
+```json5
+{
+  operator: 'plus',
+  values: [4, 5, 6],
+} // => 15
+```
+
+You won't need it when writing expressions by hand, but it's useful when, for example:
+
+- **You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying [expression tree](/concepts/expressions/#nodes-inside-nodes-the-tree), so it maps cleanly onto the UI components that represent the tree.[^internal]
+- **Expressions are stored where `$` keys can't go,** such as Firebase, which rejects them, or MongoDB, where they clash with its own query operators.
+
+Both forms mean exactly the same thing, and you can [convert](#converting) from one to the other at any time.
 
 ```json5
 // Shorthand, with positional parameters
@@ -46,13 +60,19 @@ Each node can be written two ways. _Shorthand_ is for writing by hand; _canonica
   },
   else: 'Welcome, guest!',
 }
+
+// You can mix and match freely
+{
+  operator: 'if',
+  condition: '$data.isLoggedIn',
+  then: { $buildString: ['Hello, %1!', '$data.firstName'] },
+  else: 'Welcome, guest!',
+}
 ```
 
 ## The canonical form
 
-Everything is spelled out: each node has an `operator` key, and its parameters and any modifiers are keys beside it, in the same object.
-
-That's where the two forms differ most. Shorthand puts the parameters inside the value of the `$`-prefixed key, and the modifiers beside it:
+Modifiers go in the same object too, which is where the two forms differ most. Shorthand puts the parameters inside the value of the `$`-prefixed key, and the modifiers beside it:
 
 <Expression
   code={`
@@ -75,54 +95,13 @@ That's where the two forms differ most. Shorthand puts the parameters inside the
   `}
 />
 
-`operator` takes an alias too, such as `'+'`, but never the `$`. And `literal` is written `{ operator: 'literal', value: … }`.
-
-<Callout kind="caution" title="Every object with an operator key is a node">
-
-Just like a key prefixed with `$`, an `operator` key is always read as a node, so data with an `operator` key of its own is an error. Put it inside `literal`, and FigTree leaves it as it is:
-
-<Expression
-  code={`
-    {
-      customer: '$data.name',
-      // The phone company, not a FigTree operator
-      phone: { $literal: { operator: 'One NZ', plan: 'Prepay' } },
-    }
-  `}
-  data={`
-    { name: 'Ana Ngata' }
-  `}
-/>
-
-The same goes for a `fragment` key, which calls a [fragment](/guides/fragments/).
-
+<Callout kind="note" title="Data with an operator key">
+  Like a key prefixed with `$`, an `operator` key is read as a node wherever it appears, whichever form you write in, so data with one of its own goes inside `literal` ([Operators](/concepts/expressions/#operators)).
 </Callout>
-
-## Mixing the two
-
-Each node is written in one form or the other, but its children can be in either, so the two mix freely. A common shape has canonical nodes near the top, where the structure is, and shorthand and references at the leaves:
-
-<Expression
-  title="Shipping: free over $100, otherwise $5 plus $1.50 per kg"
-  code={`
-    {
-      operator: 'if',
-      condition: { '$>=': ['$data.order.subtotal', 100] },
-      then: 0,
-      else: {
-        operator: 'plus',
-        values: [5, { $multiply: ['$data.order.weightKg', 1.5] }],
-      },
-    }
-  `}
-  data={`
-    { order: { subtotal: 72, weightKg: 2 } }
-  `}
-/>
 
 ## Converting
 
-The playgrounds on this site convert for you: the **Shorthand** and **Full** buttons rewrite the whole expression in one form. Try them on the same expression:
+In the playgrounds on this site, the **Shorthand** and **Full** buttons rewrite the whole expression in one form. Try them on this one:
 
 {/* TO-DO: decide whether to fix the widget's form label (formOf in PlaygroundWidget.tsx), which calls named shorthand and `$get` "Mixed forms". Decided after the page is written. */}
 
@@ -159,3 +138,5 @@ toShorthand(full, fig) // => { $plus: [1, 2, 3] }
 ```
 
 [Converting forms](/tooling/format/) has their options, such as named parameters rather than positional ones.
+
+[^internal]: In fact, this is close to the structure FigTree compiles an expression into internally, whichever form it was written in: one object per node, with its parameters by name, plus what the engine needs to run it ([Compile, check, evaluate](/under-the-hood/model/#compile)).
