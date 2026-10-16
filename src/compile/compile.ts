@@ -872,13 +872,11 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
     return { mode: 'dynamic' }
   }
   if (supplied.kind === 'skeleton') {
-    const { skeleton, holes } = supplied
+    const { skeleton } = supplied
     if (Array.isArray(skeleton)) return { mode: 'array', length: skeleton.length }
-    // A hole's key is absent from the skeleton — the two halves together
-    // are the authored key set
-    const keys = new Set(Object.keys(skeleton as object))
-    for (const hole of holes) keys.add(String(hole.at[0]))
-    return { mode: 'object', keys }
+    // An authored skeleton reserves each hole's key, so its keys are the
+    // authored key set
+    return { mode: 'object', keys: new Set(Object.keys(skeleton as object)) }
   }
   return { mode: 'dynamic' }
 }
@@ -888,9 +886,9 @@ const readFace = (supplied: CompiledNode | undefined): SubstitutionFace => {
  * that is statically an array or object can only ever render as its
  * placeholder, so it is reported exactly as `join` reports a composite
  * element — once, at the parameter. `Object.values` reads both faces and
- * the skeleton alike: a dynamic element is an empty slot or a missing key
- * there, and a nested literal is flattened in as a value, so `[['x',
- * '$data.y']]` is caught while `['$data.tags']` is not.
+ * the skeleton alike: a dynamic element is an empty slot or an undefined
+ * placeholder there, and a nested literal is flattened in as a value, so
+ * `[['x', '$data.y']]` is caught while `['$data.tags']` is not.
  */
 const reportCompositeSubstitutions = (state: WalkState, node: OperatorNode) => {
   const supplied = node.params.substitutions
@@ -1898,6 +1896,10 @@ const assembleContainer = (
       holes.push(...node.holes.map((hole) => ({ ...hole, at: [key, ...hole.at] })))
       continue
     }
+    // An object reserves the hole's key where it was authored, so the
+    // splice fills it in place and the result keeps the authored key order.
+    // An array's slot is reserved already
+    if (!isArray) setOwn(skeleton, key, undefined)
     holes.push({ path: node.path, at: [key], node })
   }
 
