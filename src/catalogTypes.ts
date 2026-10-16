@@ -13,7 +13,7 @@
  */
 import type { FragmentParameter } from './fragments'
 import type { FragmentInfo, OperatorInfo, ParameterInfo } from './introspect'
-import type { CompiledNullPolicy, OperatorCategory } from './operatorDefinition'
+import type { CompiledNullPolicy, NullPolicyValue, OperatorCategory } from './operatorDefinition'
 import type { BasicType } from './typeCheck'
 
 /**
@@ -121,9 +121,18 @@ export interface CatalogParameter extends ParameterInfo {
    * It describes a `null` with no holder supplied: where a `…Default`
    * sibling names this parameter in its `replacesNullAt`, supplying it
    * replaces the `null` first. A container's elements are
-   * `elementNullPolicy`'s, where it declares one.
+   * `elementNullOutcome`'s.
    */
   nullOutcome: NullOutcome | CompiledNullPolicy
+  /**
+   * What a `null` element (or an object's `null` value) does, at a
+   * parameter that takes only arrays or objects: the declared
+   * `elementNullPolicy`; else `error` where a `homogeneous` constraint
+   * without `any`, or an `elementShape`, rules a `null` out; else `value`,
+   * since an element nothing covers reaches the operator as it is. Absent
+   * at every other parameter.
+   */
+  elementNullOutcome?: NullPolicyValue | 'error'
   description?: string
   /**
    * What the parameter starts as when an editor adds it: the listing's

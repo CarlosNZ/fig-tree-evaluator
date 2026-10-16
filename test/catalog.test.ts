@@ -25,6 +25,7 @@ import {
   type OperatorContext,
   type OperatorListingMap,
   type PerElement,
+  type SettlementStream,
 } from '../src'
 import { categoryListings, getCatalog, operatorListings, typeSeeds } from '../src/catalog'
 import { isDeepStrictEqual } from 'node:util'
@@ -235,8 +236,8 @@ describe('getCatalog', () => {
         void [displayName, description, docUrl, backgroundColor, textColor]
         const parameters = Object.fromEntries(
           Object.entries(rest.parameters).map(
-            ([name, { description, seed, nullOutcome, ...parameter }]) => {
-              void [description, seed, nullOutcome]
+            ([name, { description, seed, nullOutcome, elementNullOutcome, ...parameter }]) => {
+              void [description, seed, nullOutcome, elementNullOutcome]
               return [name, parameter]
             }
           )
@@ -431,6 +432,14 @@ describe('getCatalog', () => {
           branch: { type: 'any', evaluation: 'lazy' },
           strictBranch: { type: 'number', evaluation: 'lazy', required: false },
           items: { type: 'array', elementNullPolicy: 'propagate' },
+          entries: { type: 'object', required: false },
+          numbers: { type: 'array', constraints: { homogeneous: ['number'] }, required: false },
+          mixed: { type: 'array', constraints: { homogeneous: ['any'] }, required: false },
+          rows: {
+            type: 'array',
+            constraints: { elementShape: { id: { type: 'number' } } },
+            required: false,
+          },
           each: { type: 'any', evaluation: 'perElement', over: 'items' },
           as: { type: 'string', evaluation: 'structural', required: false },
           nullValueDefault: {
@@ -463,19 +472,37 @@ describe('getCatalog', () => {
         branch: 'value',
         strictBranch: 'error',
         items: 'error',
+        entries: 'unset',
+        numbers: 'unset',
+        mixed: 'unset',
+        rows: 'unset',
         each: 'value',
         as: 'error',
         nullValueDefault: 'none',
       })
       // The placeholder the outcome replaces, for contrast
       expect(operator.parameters.places.nullPolicy).toBe('propagate')
+      // Only the containers report their elements', and a constraint a null
+      // fails rules a null element out where no policy takes it
+      const elementOutcomes = Object.fromEntries(
+        Object.entries(operator.parameters)
+          .filter(([, parameter]) => Object.hasOwn(parameter, 'elementNullOutcome'))
+          .map(([name, { elementNullOutcome }]) => [name, elementNullOutcome])
+      )
+      expect(elementOutcomes).toEqual({
+        items: 'propagate',
+        entries: 'value',
+        numbers: 'error',
+        mixed: 'value',
+        rows: 'error',
+      })
     })
 
     // The catalog repeats the engine's rules, so this holds them to it: each
     // package parameter in turn handed a null, by an operator whose body
     // records what it was given in place of its own
     describe('matches what the engine does with a null', () => {
-      let underTest = { operator: '', parameter: '' }
+      let underTest = { operator: '', parameter: '', element: false }
       let received: { has: boolean; value: unknown } | undefined
       const recording = packageOperators.map((operator) => ({
         ...operator,
@@ -487,8 +514,9 @@ describe('getCatalog', () => {
           // A handle is demanded here, while the node is still running
           received = {
             has: Object.hasOwn(params, name),
-            value:
-              evaluation === 'lazy'
+            value: underTest.element
+              ? await probedElement(value, evaluation)
+              : evaluation === 'lazy'
                 ? await (value as LazyValue).evaluate()
                 : evaluation === 'perElement'
                   ? await (value as PerElement).evaluate(0)
@@ -497,6 +525,27 @@ describe('getCatalog', () => {
           return 'ran'
         },
       }))
+      // The element a test puts the null in: an array's last, or an object's
+      // `probe` value, through whichever delivery the parameter declares
+      const probedElement = async (value: unknown, evaluation: string): Promise<unknown> => {
+        switch (evaluation) {
+          case 'lazyElements':
+            return (value as LazyValue[]).at(-1)!.evaluate()
+          case 'lazyEntries':
+            return (value as Record<string, LazyValue>).probe.evaluate()
+          case 'race': {
+            const stream = value as SettlementStream
+            for await (const settlement of stream)
+              if (settlement.index === stream.length - 1) {
+                if (!settlement.ok) throw settlement.error
+                return settlement.value
+              }
+            throw new Error('the probed element never settled')
+          }
+          default:
+            return Array.isArray(value) ? value.at(-1) : (value as Record<string, unknown>).probe
+        }
+      }
       // A null from a node rather than a literal, as data would give it
       const nothing = defineOperator({
         name: 'nothing',
@@ -531,7 +580,7 @@ describe('getCatalog', () => {
       ) as [string, CatalogOperator, string, CatalogParameter][]
 
       test.each(cases)('%s', async (_, operator, name, parameter) => {
-        underTest = { operator: operator.name, parameter: name }
+        underTest = { operator: operator.name, parameter: name, element: false }
         // A structural parameter takes only a literal
         const missing = parameter.evaluation === 'structural' ? null : { operator: 'nothing' }
         const node = { ...startingNode(operator), [name]: missing }
@@ -545,6 +594,22 @@ describe('getCatalog', () => {
             [nullOutcome.selector]: value,
             outcome: await observe({ ...node, [nullOutcome.selector]: value }, parameter),
           }).toEqual({ [nullOutcome.selector]: value, outcome: policy })
+      })
+
+      const elementCases = cases.filter(([, , , parameter]) => parameter.elementNullOutcome)
+
+      test.each(elementCases)('%s, a null element', async (_, operator, name, parameter) => {
+        underTest = { operator: operator.name, parameter: name, element: true }
+        const { seed } = parameter
+        const nothing = { operator: 'nothing' }
+        // In place of the seed's last element, so a length constraint holds
+        const container = [parameter.type].flat().includes('array')
+          ? Array.isArray(seed) && seed.length > 0
+            ? [...seed.slice(0, -1), nothing]
+            : [nothing]
+          : { ...(seed as object), probe: nothing }
+        const node = { ...startingNode(operator), [name]: container }
+        expect(await observe(node, parameter)).toBe(parameter.elementNullOutcome)
       })
     })
   })
