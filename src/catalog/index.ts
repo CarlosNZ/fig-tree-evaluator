@@ -800,7 +800,11 @@ export const getCatalog = (
         nullOutcome: nullOutcomeOf(key, parameter, parameters),
         seed: seedOf(listing, key, parameter.type),
       }
-      if ([parameter.type].flat().every((member) => member === 'array' || member === 'object')) {
+      // A holder has no outcome of its own, for its elements either
+      if (
+        !parameter.replacesNullAt &&
+        [parameter.type].flat().every((member) => member === 'array' || member === 'object')
+      ) {
         // Unless a policy takes them, null elements meet the constraints
         const { homogeneous, elementShape } = parameter.constraints ?? {}
         entry.elementNullOutcome =

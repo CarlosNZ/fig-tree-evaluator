@@ -130,7 +130,8 @@ export interface CatalogParameter extends ParameterInfo {
    * `elementNullPolicy`; else `error` where a `homogeneous` constraint
    * without `any`, or an `elementShape`, rules a `null` out; else `value`,
    * since an element nothing covers reaches the operator as it is. Absent
-   * at every other parameter.
+   * at every other parameter, and at a holder, whose `null` elements are
+   * the target's business as its `null` is.
    */
   elementNullOutcome?: NullPolicyValue | 'error'
   description?: string
