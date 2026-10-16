@@ -16,12 +16,18 @@ import {
   httpOperators,
   sqlOperators,
   type CatalogOperator,
+  type CatalogParameter,
   type ExpectedType,
+  type FigTreeError,
   type FragmentDefinition,
   type FragmentMetadata,
+  type LazyValue,
+  type OperatorContext,
   type OperatorListingMap,
+  type PerElement,
 } from '../src'
 import { categoryListings, getCatalog, operatorListings, typeSeeds } from '../src/catalog'
+import { isDeepStrictEqual } from 'node:util'
 import { checkConstraints, checkType } from '../src/typeCheck'
 import { MockHttpClient, MockSqlConnection } from './helpers'
 
@@ -228,10 +234,12 @@ describe('getCatalog', () => {
         const { displayName, description, docUrl, backgroundColor, textColor, ...rest } = operator
         void [displayName, description, docUrl, backgroundColor, textColor]
         const parameters = Object.fromEntries(
-          Object.entries(rest.parameters).map(([name, { description, seed, ...parameter }]) => {
-            void [description, seed]
-            return [name, parameter]
-          })
+          Object.entries(rest.parameters).map(
+            ([name, { description, seed, nullOutcome, ...parameter }]) => {
+              void [description, seed, nullOutcome]
+              return [name, parameter]
+            }
+          )
         )
         expect({ ...rest, parameters }).toStrictEqual(snapshot[i])
       })
@@ -400,6 +408,143 @@ describe('getCatalog', () => {
         const parameter = operator.parameters['constructor' as string]
         expect(Object.hasOwn(parameter, 'description')).toBe(false)
         expect(parameter.seed).toBe(typeSeeds.string)
+      })
+    })
+  })
+
+  describe('nullOutcome', () => {
+    test('each rule, in the order the engine meets them', () => {
+      const probe = defineOperator({
+        name: 'probe',
+        category: 'other',
+        parameters: {
+          mode: { type: { literal: ['keep', 'drop'] }, default: 'keep' },
+          count: { type: 'number' },
+          places: { type: 'number', default: 1 },
+          nullable: { type: ['number', 'null'] },
+          kept: { type: ['number', 'null'], nullPolicy: 'value' },
+          judged: { type: 'any', truthiness: true },
+          chosen: {
+            type: 'any',
+            nullPolicy: (mode: string) => (mode === 'keep' ? 'value' : 'propagate'),
+          },
+          branch: { type: 'any', evaluation: 'lazy' },
+          strictBranch: { type: 'number', evaluation: 'lazy', required: false },
+          items: { type: 'array', elementNullPolicy: 'propagate' },
+          each: { type: 'any', evaluation: 'perElement', over: 'items' },
+          as: { type: 'string', evaluation: 'structural', required: false },
+          nullValueDefault: {
+            type: 'number',
+            evaluation: 'lazy',
+            required: false,
+            replacesNullAt: ['items'],
+          },
+        },
+        evaluate: () => null,
+      })
+      const [operator] = getCatalog(new FigTree({ operators: [probe] })).operators
+      const outcomes = Object.fromEntries(
+        Object.entries(operator.parameters).map(([name, { nullOutcome }]) => [name, nullOutcome])
+      )
+      expect(outcomes).toEqual({
+        mode: 'unset',
+        count: 'error',
+        places: 'unset',
+        nullable: 'propagate',
+        kept: 'value',
+        judged: 'value',
+        chosen: {
+          selector: 'mode',
+          table: [
+            { value: 'keep', policy: 'value' },
+            { value: 'drop', policy: 'propagate' },
+          ],
+        },
+        branch: 'value',
+        strictBranch: 'error',
+        items: 'error',
+        each: 'value',
+        as: 'error',
+        nullValueDefault: 'none',
+      })
+      // The placeholder the outcome replaces, for contrast
+      expect(operator.parameters.places.nullPolicy).toBe('propagate')
+    })
+
+    // The catalog repeats the engine's rules, so this holds them to it: each
+    // package parameter in turn handed a null, by an operator whose body
+    // records what it was given in place of its own
+    describe('matches what the engine does with a null', () => {
+      let underTest = { operator: '', parameter: '' }
+      let received: { has: boolean; value: unknown } | undefined
+      const recording = packageOperators.map((operator) => ({
+        ...operator,
+        evaluate: async (params: Record<string, unknown>, context: OperatorContext) => {
+          if (operator.name !== underTest.operator) return operator.evaluate(params, context)
+          const name = underTest.parameter
+          const { evaluation } = operator.parameters[name]
+          const value = params[name]
+          // A handle is demanded here, while the node is still running
+          received = {
+            has: Object.hasOwn(params, name),
+            value:
+              evaluation === 'lazy'
+                ? await (value as LazyValue).evaluate()
+                : evaluation === 'perElement'
+                  ? await (value as PerElement).evaluate(0)
+                  : value,
+          }
+          return 'ran'
+        },
+      }))
+      // A null from a node rather than a literal, as data would give it
+      const nothing = defineOperator({
+        name: 'nothing',
+        category: 'other',
+        parameters: {},
+        evaluate: () => null,
+      })
+      const engine = new FigTree({ operators: [recording, nothing] })
+
+      const observe = async (node: Record<string, unknown>, parameter: CatalogParameter) => {
+        received = undefined
+        try {
+          const result = await engine.evaluate(node)
+          if (received === undefined) return result === null ? 'propagate' : `gave ${result}`
+          const { has, value } = received as { has: boolean; value: unknown }
+          // A judged position receives the null as false
+          if (value === null || (parameter.truthiness && value === false)) return 'value'
+          if (!has || isDeepStrictEqual(value, parameter.default)) return 'unset'
+          return `received ${JSON.stringify(value)}`
+        } catch (error) {
+          const { code, message } = error as FigTreeError
+          return code === 'type-check' || code === 'invalid-as'
+            ? 'error'
+            : `threw ${code}: ${message}`
+        }
+      }
+
+      const cases = catalog.operators.flatMap((operator) =>
+        Object.entries(operator.parameters)
+          .filter(([, parameter]) => parameter.replacesNullAt === undefined)
+          .map(([name, parameter]) => [`${operator.name}.${name}`, operator, name, parameter])
+      ) as [string, CatalogOperator, string, CatalogParameter][]
+
+      test.each(cases)('%s', async (_, operator, name, parameter) => {
+        underTest = { operator: operator.name, parameter: name }
+        // A structural parameter takes only a literal
+        const missing = parameter.evaluation === 'structural' ? null : { operator: 'nothing' }
+        const node = { ...startingNode(operator), [name]: missing }
+        const { nullOutcome } = parameter
+        if (typeof nullOutcome === 'string') {
+          expect(await observe(node, parameter)).toBe(nullOutcome)
+          return
+        }
+        for (const { value, policy } of nullOutcome.table)
+          expect({
+            [nullOutcome.selector]: value,
+            outcome: await observe({ ...node, [nullOutcome.selector]: value }, parameter),
+          }).toEqual({ [nullOutcome.selector]: value, outcome: policy })
       })
     })
   })

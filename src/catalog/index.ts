@@ -29,6 +29,7 @@ import type {
   TypeSeeds,
 } from '../catalogTypes'
 import type { FigTree } from '../FigTree'
+import type { ParameterInfo } from '../introspect'
 import type { OperatorCategory } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
 
@@ -706,6 +707,39 @@ const seedOf = (display: FragmentMetadata, parameter: string, type: ExpectedType
   return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
 }
 
+/**
+ * What a `null` at the parameter does (`CatalogParameter.nullOutcome`), in
+ * the order the engine meets it: the compiler first, which owns an
+ * iterator's `as` binding, then parameter resolution
+ * (src/evaluate/params.ts). Its null-naming test is the engine's
+ * `typeNamesNull`, repeated since this module imports no engine code;
+ * test/catalog.test.ts holds every package parameter's outcome to what the
+ * engine does with a `null` there.
+ */
+const nullOutcomeOf = (
+  name: string,
+  parameter: ParameterInfo,
+  parameters: Record<string, ParameterInfo>
+): CatalogParameter['nullOutcome'] => {
+  const { type, evaluation } = parameter
+  if (parameter.replacesNullAt) return 'none'
+  // A binding name must be a literal string, so a null there is a compile
+  // error (invalid-as)
+  if (
+    name === 'as' &&
+    evaluation === 'structural' &&
+    Object.values(parameters).some((sibling) => sibling.evaluation === 'perElement')
+  )
+    return 'error'
+  // A handle is checked when the body demands it, with no default to fall
+  // back on; every other delivery is resolved before the body runs
+  if (![type].flat().some((member) => member === 'null' || member === 'any'))
+    return parameter.required || evaluation === 'lazy' || evaluation === 'perElement'
+      ? 'error'
+      : 'unset'
+  return evaluation === 'eager' || evaluation === 'structural' ? parameter.nullPolicy : 'value'
+}
+
 /** `from`'s own entries written onto `onto`, except any set to `undefined`. */
 const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T } | undefined) => {
   for (const [key, value] of Object.entries(from ?? {})) if (value !== undefined) onto[key] = value
@@ -761,7 +795,11 @@ export const getCatalog = (
     if (listing.description !== undefined) operator.description = listing.description
     if (listing.docUrl !== undefined) operator.docUrl = listing.docUrl
     for (const [key, parameter] of Object.entries(parameters)) {
-      const entry: CatalogParameter = { ...parameter, seed: seedOf(listing, key, parameter.type) }
+      const entry: CatalogParameter = {
+        ...parameter,
+        nullOutcome: nullOutcomeOf(key, parameter, parameters),
+        seed: seedOf(listing, key, parameter.type),
+      }
       const description = own(listing.parameterDescriptions, key)
       if (description !== undefined) entry.description = description
       operator.parameters[key] = entry
