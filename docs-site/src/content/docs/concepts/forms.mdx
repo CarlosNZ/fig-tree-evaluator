@@ -101,9 +101,29 @@ Modifiers go in the same object too, which is where the two forms differ most. S
 
 ## Converting
 
-In the playgrounds on this site, the **Shorthand** and **Full** buttons rewrite the whole expression in one form. Try them on this one:
+FigTree offers a few helper functions for converting between forms. This could be useful if, say, you store expressions in canonical form but want to show them to people as shorthand (or vice versa):
 
-{/* TO-DO: decide whether to fix the widget's form label (formOf in PlaygroundWidget.tsx), which calls named shorthand and `$get` "Mixed forms". Decided after the page is written. */}
+```ts
+import { toCanonical, toShorthand, toGet, toReference } from 'fig-tree-evaluator/format'
+
+// Whole expressions, to either form. These take your FigTree instance,
+// which knows each operator's parameters
+toCanonical({ $plus: [1, 2, 3] }, fig)
+  // => { operator: 'plus', values: [1, 2, 3] }
+toShorthand({ operator: 'plus', values: [1, 2, 3] }, fig)
+  // => { $plus: [1, 2, 3] }
+
+// A reference stays a reference in both forms. To swap one for its
+// get node, and back:
+toGet('$data.user.name') // => { operator: 'get', path: 'user.name' }
+toReference({ $get: 'user.name' }) // => '$d.user.name'
+```
+
+[Converting forms](/tooling/format/) has their options, such as named parameters rather than positional ones.
+
+In the playgrounds on this site, open the editor and hover over the top right of a node to see these conversions offered, such as **To shorthand** and **To full**. There's also a `{}` button beside each reference, which turns it into a full `get` node, and **To reference** turns it back.
+
+Have a play with this one:
 
 <Playground
   client:visible
@@ -123,20 +143,5 @@ In the playgrounds on this site, the **Shorthand** and **Full** buttons rewrite 
     { order: { subtotal: 72, weightKg: 2 } }
   `}
 />
-
-References such as `$data.order.subtotal` stay as they are in both forms. Their long form is a [`get` node](/concepts/data/#the-get-operator), which the editor converts one at a time.
-
-In your own code, `toCanonical` and `toShorthand` do the same. Each takes your FigTree instance too, since how a node is read depends on which operators it has, and the order of their parameters:
-
-```ts
-import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
-
-const full = toCanonical({ $plus: [1, 2, 3] }, fig)
-// => { operator: 'plus', values: [1, 2, 3] }
-
-toShorthand(full, fig) // => { $plus: [1, 2, 3] }
-```
-
-[Converting forms](/tooling/format/) has their options, such as named parameters rather than positional ones.
 
 [^internal]: In fact, this is close to the structure FigTree compiles an expression into internally, whichever form it was written in: one object per node, with its parameters by name, plus what the engine needs to run it ([Compile, check, evaluate](/under-the-hood/model/#compile)).
