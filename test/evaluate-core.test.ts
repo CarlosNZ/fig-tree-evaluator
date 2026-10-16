@@ -118,7 +118,7 @@ describe('a sparse array compiles as its undefined elements do (#178)', () => {
     // eslint-disable-next-line no-sparse-arrays
     expect(await core.evaluate({ $and: [true, , '$data.x'] }, { data: { x: true } })).toBe(false)
     // eslint-disable-next-line no-sparse-arrays
-    expect(await core.evaluate({ $firstOf: [, , '$data.x'] }, { data: { x: 2 } })).toBe(2)
+    expect(await core.evaluate({ $firstNonNull: [, , '$data.x'] }, { data: { x: 2 } })).toBe(2)
   })
 })
 

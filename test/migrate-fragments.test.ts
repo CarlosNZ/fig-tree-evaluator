@@ -262,7 +262,7 @@ describe('definitions', () => {
           expression: {
             operator: 'plus',
             values: ['$vars.n', 1],
-            vars: { n: { operator: 'firstOf', values: ['$params.n', '$data.x'] } },
+            vars: { n: { operator: 'firstNonNull', values: ['$params.n', '$data.x'] } },
           },
           parameters: { n: { type: 'any', required: false } },
         },
@@ -290,7 +290,7 @@ describe('definitions', () => {
           expression: {
             operator: 'plus',
             values: ['$vars.n', 1],
-            vars: { n: { operator: 'firstOf', values: ['$params.n', '$data.x'] } },
+            vars: { n: { operator: 'firstNonNull', values: ['$params.n', '$data.x'] } },
           },
           parameters: { n: { type: 'number', required: false } },
         },
@@ -307,7 +307,7 @@ describe('definitions', () => {
             values: ['$vars.b', 1],
             vars: {
               b: {
-                operator: 'firstOf',
+                operator: 'firstNonNull',
                 values: [
                   '$params.b',
                   {

@@ -193,12 +193,12 @@ describe('buildString — the rendering ledger', () => {
     expect(await ev({ $buildString: ['%1 %2', true, 4.5] })).toBe('true 4.5')
   })
 
-  test('a null template propagates, and firstOf composes over it', async () => {
+  test('a null template propagates, and firstNonNull composes over it', async () => {
     expect(await ev({ $buildString: ['$data.missing', 'x'] }, data)).toBeNull()
     expect(
       await ev(
         {
-          $firstOf: [
+          $firstNonNull: [
             { $buildString: ['$data.i18n.greeting', '$data.user.first'] },
             { $buildString: ['Hello, %1!', '$data.user.first'] },
           ],

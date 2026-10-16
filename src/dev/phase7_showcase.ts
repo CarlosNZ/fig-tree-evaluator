@@ -121,8 +121,8 @@ const main = async () => {
   await show('a value is never re-scanned, so data cannot expand into tokens', {
     $buildString: { template: 'Bio: {{bio}}', substitutions: { bio: 'call me {{$d.user.email}}' } },
   })
-  await show('a dynamic template propagates null, and firstOf composes over it', {
-    $firstOf: [
+  await show('a dynamic template propagates null, and firstNonNull composes over it', {
+    $firstNonNull: [
       { $buildString: ['$data.i18n.greeting', '$data.user.first'] },
       { $buildString: ['Hello, %1!', '$data.user.first'] },
     ],

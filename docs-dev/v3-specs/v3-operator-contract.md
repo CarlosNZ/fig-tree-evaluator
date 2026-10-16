@@ -103,7 +103,7 @@ No field describes the operator. Its description, and its parameters', is presen
 
 | Category     | Core operators                                                                                  |
 | ------------ | ----------------------------------------------------------------------------------------------- |
-| `logic`      | `and` `or` `not` `if` `match` `firstOf`                                                         |
+| `logic`      | `and` `or` `not` `if` `match` `firstNonNull`                                                    |
 | `comparison` | `equal` `notEqual` `greaterThan` `greaterThanOrEqual` `lessThan` `lessThanOrEqual`              |
 | `math`       | `plus` `subtract` `multiply` `divide` `modulo` `power` `round` `floor` `ceil` `abs` `min` `max` |
 | `string`     | `buildString` `split` `join` `lower` `upper` `trim` `regex`                                     |
@@ -139,7 +139,7 @@ One field, one mode per parameter. Names provisional — this table is the secti
 | `'eager'` (default) | the resolved value                        | evaluated with the node's other eager parameters, concurrently; type/null layers already applied                                                                                    | most parameters                                                                                                                                    |
 | `'race'`            | a settlement stream (§ Runtime interface) | all elements start concurrently; settlements delivered in completion order; body resolution cancels the in-flight remainder (ledger #7)                                             | `and.values` / `or.values`; the decider iterators reuse the machinery via `perElement`                                                             |
 | `'lazy'`            | `LazyValue`                               | evaluated on demand, at most once, memoized (rejection included), in the node's own scope (ledger #1)                                                                               | `if.then`/`else`, `match.default`, `find.noMatchDefault`, `get.default`, `regex.noMatchDefault`, `sql.noRowDefault`, every `replacesNullAt` holder |
-| `'lazyElements'`    | `LazyValue[]`                             | each element individually lazy; sequencing and early stop are the body demanding elements in declared order and simply not demanding more (ledger #2)                               | `firstOf.values`                                                                                                                                   |
+| `'lazyElements'`    | `LazyValue[]`                             | each element individually lazy; sequencing and early stop are the body demanding elements in declared order and simply not demanding more (ledger #2)                               | `firstNonNull.values`                                                                                                                              |
 | `'lazyEntries'`     | `Record<string, LazyValue>`               | static data keys, individually-lazy values — the `vars` machinery family (ledger #3)                                                                                                | `match.branches` (literal-map mode)                                                                                                                |
 | `'perElement'`      | `PerElement` handle                       | evaluated once per element of the `over` sibling, on demand, memoized per index, each in a fresh child scope binding `$element`/`$index` (or the node's `as` renaming) (ledger #12) | the iterators' `each`                                                                                                                              |
 | `'structural'`      | the literal value, verbatim               | compile-time data, never evaluated; a dynamic value is a grammar error                                                                                                              | `as`                                                                                                                                               |
@@ -458,12 +458,12 @@ evaluate: async ({ values }) => {
 }
 ```
 
-**`lazyElements` — `firstOf`** (sequencing is the body demanding elements in order; a backup candidate never starts):
+**`lazyElements` — `firstNonNull`** (sequencing is the body demanding elements in order; a backup candidate never starts):
 
 ```ts
 evaluate: async ({ values }) => {
   for (const candidate of values) {
-    const v = await candidate.evaluate() // a failure fails the node — firstOf skips nulls, not errors
+    const v = await candidate.evaluate() // a failure fails the node — firstNonNull skips nulls, not errors
     if (v !== null) return v
   }
   return null // all-null and empty alike: absence in, absence out

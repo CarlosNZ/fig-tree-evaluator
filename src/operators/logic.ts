@@ -76,8 +76,8 @@ export const match = declareOperator({
   },
 })
 
-export const firstOf = declareOperator({
-  name: 'firstOf',
+export const firstNonNull = declareOperator({
+  name: 'firstNonNull',
   category: 'logic',
   parameters: {
     values: {
@@ -91,7 +91,7 @@ export const firstOf = declareOperator({
     for (const candidate of values) {
       // Sequencing is semantics, not optimization: a backup request must
       // not fire when the primary answered. A candidate that *fails* fails
-      // the node — firstOf skips nulls, not errors
+      // the node — firstNonNull skips nulls, not errors
       const value = await candidate.evaluate()
       if (value !== null) return value
     }

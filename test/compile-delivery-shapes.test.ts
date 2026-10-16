@@ -36,7 +36,10 @@ const allCodes = (input: unknown) => fig.validate(input).issues.map((issue) => i
 
 describe('a literal array at an element-addressable parameter', () => {
   test('compiles to one node per element, not to a skeleton', () => {
-    const values = param({ $firstOf: ['$data.nickname', 'Anonymous'] }, 'values') as ElementsNode
+    const values = param(
+      { $firstNonNull: ['$data.nickname', 'Anonymous'] },
+      'values'
+    ) as ElementsNode
     expect(values.kind).toBe('elements')
     expect(values.nodes.map((n) => n.kind)).toEqual(['reference', 'constant'])
   })
@@ -45,7 +48,7 @@ describe('a literal array at an element-addressable parameter', () => {
     // As a skeleton this element would dissolve into the enclosing shape,
     // leaving a hole at ['values', 1, 'name'] and no element-1 node at all
     const values = param(
-      { $firstOf: ['a', { name: '$data.n' }, '$data.b'] },
+      { $firstNonNull: ['a', { name: '$data.n' }, '$data.b'] },
       'values'
     ) as ElementsNode
     expect(values.nodes).toHaveLength(3)
@@ -59,9 +62,9 @@ describe('a literal array at an element-addressable parameter', () => {
   })
 
   test('the canonical face and the shorthand face agree', () => {
-    const shorthand = param({ $firstOf: ['$data.a', 1] }, 'values') as ElementsNode
+    const shorthand = param({ $firstNonNull: ['$data.a', 1] }, 'values') as ElementsNode
     const canonical = param(
-      { operator: 'firstOf', values: ['$data.a', 1] },
+      { operator: 'firstNonNull', values: ['$data.a', 1] },
       'values'
     ) as ElementsNode
     expect(canonical.kind).toBe(shorthand.kind)
@@ -71,7 +74,7 @@ describe('a literal array at an element-addressable parameter', () => {
 
 describe('what stays a plain constant', () => {
   test('an all-constant array — so validate hooks still see the literal', () => {
-    expect(param({ $firstOf: ['a', 'b'] }, 'values').kind).toBe('constant')
+    expect(param({ $firstNonNull: ['a', 'b'] }, 'values').kind).toBe('constant')
     expect(param({ $or: [true, false] }, 'values').kind).toBe('constant')
   })
 
@@ -83,7 +86,7 @@ describe('what stays a plain constant', () => {
 
   test('a dynamic value is left whole for the runtime degeneration rule', () => {
     expect(param({ $or: '$data.checks' }, 'values').kind).toBe('reference')
-    expect(param({ $firstOf: { $plus: [1, 2] } }, 'values').kind).toBe('operator')
+    expect(param({ $firstNonNull: { $plus: [1, 2] } }, 'values').kind).toBe('operator')
   })
 })
 
@@ -177,7 +180,7 @@ describe('counts and depth', () => {
   test('nodeCount does not count the new shapes — they are structure', () => {
     // one operator + one reference, exactly as the `plus` equivalent
     expect(compile({ $plus: [1, '$data.x'] }).nodeCount).toBe(2)
-    expect(compile({ $firstOf: [1, '$data.x'] }).nodeCount).toBe(2)
+    expect(compile({ $firstNonNull: [1, '$data.x'] }).nodeCount).toBe(2)
     expect(compile({ $or: [1, '$data.x'] }).nodeCount).toBe(2)
     expect(compile({ $match: { value: 1, branches: { a: '$data.x' } } }).nodeCount).toBe(2)
   })
@@ -186,8 +189,8 @@ describe('counts and depth', () => {
     expect(compile({ $plus: [1, '$data.x'] }).maxDepth).toBe(
       compile({ operator: 'plus', values: [1, '$data.x'] }).maxDepth
     )
-    expect(compile({ $firstOf: [1, '$data.x'] }).maxDepth).toBe(
-      compile({ operator: 'firstOf', values: [1, '$data.x'] }).maxDepth
+    expect(compile({ $firstNonNull: [1, '$data.x'] }).maxDepth).toBe(
+      compile({ operator: 'firstNonNull', values: [1, '$data.x'] }).maxDepth
     )
   })
 })
@@ -196,7 +199,7 @@ describe('counts and depth', () => {
 
 describe('static scope checking descends into the new shapes', () => {
   test('an unresolved var inside an element is reported', () => {
-    expect(allCodes({ $firstOf: ['$vars.nope', 'fallback'] })).toContain('unresolved-var')
+    expect(allCodes({ $firstNonNull: ['$vars.nope', 'fallback'] })).toContain('unresolved-var')
     expect(allCodes({ $or: ['$data.a', '$vars.nope'] })).toContain('unresolved-var')
   })
 
@@ -209,7 +212,7 @@ describe('static scope checking descends into the new shapes', () => {
   test('a var referenced only from inside an element counts as referenced', () => {
     const issues = allCodes({
       vars: { base: '$data.b' },
-      operator: 'firstOf',
+      operator: 'firstNonNull',
       values: ['$vars.base', 'fallback'],
     })
     expect(issues).not.toContain('unreferenced-var')
@@ -221,8 +224,8 @@ describe('static scope checking descends into the new shapes', () => {
     // its own memoized promise rather than failing
     expect(
       allCodes({
-        vars: { a: { $firstOf: ['$vars.a', 1] } },
-        operator: 'firstOf',
+        vars: { a: { $firstNonNull: ['$vars.a', 1] } },
+        operator: 'firstNonNull',
         values: ['$vars.a'],
       })
     ).toContain('var-cycle')

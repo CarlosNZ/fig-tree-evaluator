@@ -20,7 +20,7 @@ import type { TraceEvent } from './runtimeInterface'
  *
  * `skipped` is the one that is not about failure: it marks a subtree that
  * was statically present and never demanded — the untaken `if` branch, an
- * undemanded `firstOf` candidate, a var nothing referenced, a `fallback`
+ * undemanded `firstNonNull` candidate, a var nothing referenced, a `fallback`
  * that never fired. Laziness made visible, which is half of what trace is
  * for. `cancelled` is its opposite: work that started and was then
  * abandoned, by a sibling resolving early or by the kill switch.

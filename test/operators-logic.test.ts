@@ -1,5 +1,5 @@
 /**
- * Chunk 5.2 — `if`, `match` and `firstOf` (batch 1 in
+ * Chunk 5.2 — `if`, `match` and `firstNonNull` (batch 1 in
  * docs-dev/v3-specs/v3-operator-parameters.md; register rows 1, 5, 6, 7, 8
  * in docs-dev/v3-specs/v3-cases-for-review.md).
  *
@@ -173,26 +173,26 @@ describe('match', () => {
   })
 })
 
-// ── firstOf ─────────────────────────────────────────────────────────
+// ── firstNonNull ─────────────────────────────────────────────────────────
 
-describe('firstOf', () => {
+describe('firstNonNull', () => {
   test('returns the first candidate that is not null', async () => {
     expect(
-      await ev({ $firstOf: ['$data.nickname', '$data.name', 'Anonymous'] }, { name: 'Ada' })
+      await ev({ $firstNonNull: ['$data.nickname', '$data.name', 'Anonymous'] }, { name: 'Ada' })
     ).toBe('Ada')
   })
 
   test('skips only null — "", 0 and false are answers', async () => {
-    expect(await ev({ $firstOf: ['', 'backup'] })).toBe('')
-    expect(await ev({ $firstOf: [0, 'backup'] })).toBe(0)
-    expect(await ev({ $firstOf: [false, 'backup'] })).toBe(false)
+    expect(await ev({ $firstNonNull: ['', 'backup'] })).toBe('')
+    expect(await ev({ $firstNonNull: [0, 'backup'] })).toBe(0)
+    expect(await ev({ $firstNonNull: [false, 'backup'] })).toBe(false)
   })
 
   test('later candidates never evaluate — the whole point', async () => {
     const { calls, fig } = tracked()
-    expect(await fig.evaluate({ $firstOf: [{ $track: 'primary' }, { $track: 'backup' }] })).toBe(
-      'primary'
-    )
+    expect(
+      await fig.evaluate({ $firstNonNull: [{ $track: 'primary' }, { $track: 'backup' }] })
+    ).toBe('primary')
     expect(calls).toEqual(['primary'])
   })
 
@@ -200,28 +200,30 @@ describe('firstOf', () => {
     const { calls, fig } = tracked()
     expect(
       await fig.evaluate({
-        $firstOf: [{ $track: null }, { $track: null }, { $track: 'third' }],
+        $firstNonNull: [{ $track: null }, { $track: null }, { $track: 'third' }],
       })
     ).toBe('third')
     expect(calls).toEqual([null, null, 'third'])
   })
 
   test('all candidates null, or none at all, is null (row 5)', async () => {
-    expect(await ev({ $firstOf: ['$data.a', '$data.b'] })).toBe(null)
-    expect(await ev({ operator: 'firstOf', values: [] })).toBe(null)
-    expect(await ev({ operator: 'firstOf', values: '$data.empty' }, { empty: [] })).toBe(null)
+    expect(await ev({ $firstNonNull: ['$data.a', '$data.b'] })).toBe(null)
+    expect(await ev({ operator: 'firstNonNull', values: [] })).toBe(null)
+    expect(await ev({ operator: 'firstNonNull', values: '$data.empty' }, { empty: [] })).toBe(null)
   })
 
   test('a failing candidate fails the node — it skips nulls, not errors (row 6)', async () => {
-    expect((await failure({ $firstOf: [{ $divide: [1, 0] }, 'backup'] })).code).toBe(
+    expect((await failure({ $firstNonNull: [{ $divide: [1, 0] }, 'backup'] })).code).toBe(
       'non-finite-result'
     )
     // The recorded idiom: demote a risky candidate with its own fallback
-    expect(await ev({ $firstOf: [{ $divide: [1, 0], fallback: null }, 'backup'] })).toBe('backup')
+    expect(await ev({ $firstNonNull: [{ $divide: [1, 0], fallback: null }, 'backup'] })).toBe(
+      'backup'
+    )
   })
 
   test('a literal empty list warns as a dead expression', () => {
-    const issues = fig.validate({ operator: 'firstOf', values: [] }).issues
+    const issues = fig.validate({ operator: 'firstNonNull', values: [] }).issues
     expect(issues.map((issue) => issue.severity)).toContain('warning')
   })
 })
@@ -230,7 +232,7 @@ describe('firstOf', () => {
 
 describe('and / or', () => {
   test('return actual booleans, never an operand', async () => {
-    // JS-style value-selecting `or` is not carried over — that is firstOf
+    // JS-style value-selecting `or` is not carried over — that is firstNonNull
     expect(await ev({ $or: ['', 'something'] })).toBe(true)
     expect(await ev({ $and: ['a', 'b'] })).toBe(true)
   })

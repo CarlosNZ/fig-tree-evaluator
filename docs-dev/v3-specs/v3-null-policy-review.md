@@ -88,7 +88,7 @@ Round-2 clarifications: a null `condition` is falsy → the `else` branch (or `n
 Suggested default: **already present — `default`**.
 Default behaviour: no branch matches (a null `value` included) → the `default` value; no `default` supplied → runtime failure (#7 — a genuine error, so `fallback` legitimately catches it).
 
-### `firstOf` (no alias)
+### `firstNonNull` (no alias)
 
 | Parameter | Type (incl. null)        | Default | Null policy (current)                                                                                     |
 | --------- | ------------------------ | ------- | --------------------------------------------------------------------------------------------------------- |
@@ -112,7 +112,7 @@ Suggested default: none — equality is total; there is no absence or failure ce
 | `values`  | `array` — exactly 2, elements `number` \| `string` \| `null` (homogeneous) | _(req)_ | param: reject (#8); elements: `propagate` — a null operand resolves the node to `null` (#10: `>=` on two nulls is `null`, not `true`) |
 
 Suggested default: **`nullValueDefault`** _(adopted round 2 — promoted from extension-candidate; expected everyday setting: `0`)_.
-Default behaviour: a null operand is replaced by this value before comparison — `{ $greaterThan: { values: ['$data.age', 18], nullValueDefault: 0 } }` states the treat-missing-as claim at the site without `firstOf` ceremony. Bonus: with it set the node is total (an actual boolean), so `$not`-wrapping _that_ node becomes safe — a per-site defusal of #9.
+Default behaviour: a null operand is replaced by this value before comparison — `{ $greaterThan: { values: ['$data.age', 18], nullValueDefault: 0 } }` states the treat-missing-as claim at the site without `firstNonNull` ceremony. Bonus: with it set the node is total (an actual boolean), so `$not`-wrapping _that_ node becomes safe — a per-site defusal of #9.
 
 ### `plus` (alias: `+`)
 
@@ -122,7 +122,7 @@ Default behaviour: a null operand is replaced by this value before comparison �
 | `expect`  | `'number'` \| `'string'` \| `'array'` \| `'object'`                                    | — (mode inferred) | unset                                                                            |
 
 Suggested default: **`nullValueDefault`** _(adopted round 2 — per-value by name: a whole-null `values` array stays #8's type error)_.
-Default behaviour: any operand that evaluates to `null` is replaced by this value before mode dispatch and the fold — `{ $plus: { values: '$data.scores', nullValueDefault: 0 } }` sums with missing scores as 0. Presence-sensitive: unset → element-wise propagate as drafted. Rides `operatorDefaults` for a host-wide stance. Directly answers #3's "firstOf ceremony" dissent inside fixed points 1–2 (#3 confirmed at the group review, with its future flip to reject reserved in the register's Open items).
+Default behaviour: any operand that evaluates to `null` is replaced by this value before mode dispatch and the fold — `{ $plus: { values: '$data.scores', nullValueDefault: 0 } }` sums with missing scores as 0. Presence-sensitive: unset → element-wise propagate as drafted. Rides `operatorDefaults` for a host-wide stance. Directly answers #3's "firstNonNull ceremony" dissent inside fixed points 1–2 (#3 confirmed at the group review, with its future flip to reject reserved in the register's Open items).
 (Empty input stays as drafted: unmoded → error, `fallback`-catchable — a genuine error, consistent with fallback-means-failure; `expect` pins the identity for the empty case, #11.)
 
 ### `subtract` (alias: `-`) / `divide` (alias: `/`) / `modulo` (no alias)
@@ -346,7 +346,7 @@ All suggestions are presence-sensitive or default-`null`, so the unadorned draft
 
 ## Rows worth a second look
 
-1. **Resolved**: the address-string asymmetry — `buildString.template`, `regex.pattern` and `get.path` propagate null while `http.url`, `graphQL.query` and `sql.query` reject it — was confirmed deliberately at Phase-7 implementation (Carl, September 2026). **All three keep `propagate`.** The boundary reads as stated (an aborted render costs nothing; a request fired at a manufactured address acts on the world), the `firstOf`-over-a-dynamic-template idiom in batch 4 depends on a null `template` propagating, and propagate is the reversible direction: it can be tightened later, where a reject relaxes only by breaking callers. The doubt recorded against `regex.pattern` specifically — authored machinery rather than data — stands as the reason to revisit if field experience shows a silently-nulled node misleading anyone.
+1. **Resolved**: the address-string asymmetry — `buildString.template`, `regex.pattern` and `get.path` propagate null while `http.url`, `graphQL.query` and `sql.query` reject it — was confirmed deliberately at Phase-7 implementation (Carl, September 2026). **All three keep `propagate`.** The boundary reads as stated (an aborted render costs nothing; a request fired at a manufactured address acts on the world), the `firstNonNull`-over-a-dynamic-template idiom in batch 4 depends on a null `template` propagating, and propagate is the reversible direction: it can be tightened later, where a reject relaxes only by breaking callers. The doubt recorded against `regex.pattern` specifically — authored machinery rather than data — stands as the reason to revisit if field experience shows a silently-nulled node misleading anyone.
 2. **Resolved**: #24 flipped to reject at the group review — the iterators' `input` is plain `array`, `nullInputDefault` is the declared softener, and container parameters are uniform (whole-null always a type error). One seam recorded in the register's Open items: `length` still propagates null, no longer the iterators' twin.
 3. **`not.value`** (#9): if the pending flip to `propagate` happens, nothing changes in the type column (`any` already names null) — only the policy word moves. The is-unset idiom breaks either way; #9 is unaffected by this sheet's rule.
 4. **`http.body`**: the batch-8 table types it `any`, but #27's ruling depends on its type _excluding_ null (whole-null = unset = no body). Restated above as "JSON value excl. null" — the pass table should say so too, or under rule (b) this cell contradicts itself.
@@ -378,7 +378,7 @@ The trade is real and is paid knowingly in four places above, three of them miti
 
 - **#9, the `not` trap** — `{ $not: { $greaterThan: ['$data.age', 18] } }` with `age` missing reads `true`. Resolved by keeping `value` and answering the trap with a `validate()` lint plus docs guidance; under a marker it is fixed structurally (`not(Missing)` propagates, `not(null)` affirms).
 - **Row 3's open reservation** (with row 13 attached) exists _because_ one policy word cannot say "a missing operand propagates, an authored `null` is an error". Under a marker those are two independent cells and the parked decision dissolves.
-- **`firstOf` skips `null`**, so it cannot skip-missing-while-keeping-a-stored-null. Same root.
+- **`firstNonNull` skips `null`**, so it cannot skip-missing-while-keeping-a-stored-null. Same root.
 - **#24's flip** (iterator `input` null → type error, softened by `nullInputDefault`) forced both readings into one cell; a marker would have separated "the collection is absent" from "the collection is an authored `null`".
 
 ### Revisit conditions

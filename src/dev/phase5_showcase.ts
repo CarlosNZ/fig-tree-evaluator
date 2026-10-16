@@ -97,7 +97,7 @@ const main = async () => {
     fallback: '$vars.safe',
   })
 
-  section('if / match / firstOf — the branch not taken')
+  section('if / match / firstNonNull — the branch not taken')
   await show('only the chosen branch runs', {
     $if: [true, { $work: 'taken' }, { $work: 'skipped' }],
   })
@@ -111,15 +111,15 @@ const main = async () => {
   await show('match: the default is lazy too', {
     $match: ['zzz', { a: { $work: 'a' } }, { $work: 'the-default' }],
   })
-  await show('firstOf: the backup request never fires', {
-    $firstOf: [{ $work: 'primary' }, { $work: 'backup' }],
+  await show('firstNonNull: the backup request never fires', {
+    $firstNonNull: [{ $work: 'primary' }, { $work: 'backup' }],
   })
-  await show('firstOf skips only null — "" is an answer', { $firstOf: ['', 'backup'] })
-  await show('firstOf: a failing candidate fails the node', {
-    $firstOf: [{ $work: ['risky', 0, true] }, 'backup'],
+  await show('firstNonNull skips only null — "" is an answer', { $firstNonNull: ['', 'backup'] })
+  await show('firstNonNull: a failing candidate fails the node', {
+    $firstNonNull: [{ $work: ['risky', 0, true] }, 'backup'],
   })
   await show('…demote it to an absence with its own fallback', {
-    $firstOf: [{ operator: 'work', label: 'risky', fail: true, fallback: null }, 'backup'],
+    $firstNonNull: [{ operator: 'work', label: 'risky', fail: true, fallback: null }, 'backup'],
   })
 
   section('and / or — parallel, with early resolution and cancellation')

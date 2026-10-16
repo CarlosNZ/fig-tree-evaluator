@@ -83,7 +83,7 @@ type Truthy<P> = P extends { type: 'array' }
  *
  * The container-lazy modes deliver `LazyValue<unknown>`, not
  * `LazyValue<Delivered<P>>`: the declared type describes the *container*
- * (`array`, `object`), so `Delivered<P>` would type every `firstOf`
+ * (`array`, `object`), so `Delivered<P>` would type every `firstNonNull`
  * candidate as an array. The language has no element-type declaration to
  * do better with — adding one would be the honest fix, and a separate one.
  *
