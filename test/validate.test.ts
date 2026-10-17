@@ -152,6 +152,34 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
     })
   })
 
+  test('a $ key on a node or among its arguments is an unrecognized node, not an unknown key', () => {
+    // No parameter name starts with `$`, so each of these was meant as a node
+    const cases: [unknown, (string | number)[], FigTree?][] = [
+      [{ $not: { $greaterThn: [1, 2] } }, ['$not', '$greaterThn']],
+      [{ operator: 'not', value: true, $greaterThn: 1 }, ['$greaterThn']],
+      [{ $greet: { $greaterThn: [1, 2] } }, ['$greet', '$greaterThn'], withFragments],
+      [
+        { fragment: 'greet', parameters: { $greaterThn: 1 } },
+        ['parameters', '$greaterThn'],
+        withFragments,
+      ],
+      [{ fragment: 'greet', $greaterThn: 1 }, ['$greaterThn'], withFragments],
+      [{ operator: 'literal', value: 1, $greaterThn: 1 }, ['$greaterThn']],
+    ]
+    for (const [expression, path, figTree] of cases) {
+      const issues = (figTree ?? fig).validate(expression).issues
+      expect(issues.filter((found) => found.code === 'unknown-node-key')).toEqual([])
+      expect(issue(expression, 'unrecognized-identifier', figTree)).toMatchObject({
+        severity: 'error',
+        path,
+        suggestion: '$greaterThan',
+      })
+    }
+    expect(issue({ $not: { $zzzzzz: 1 } }, 'unrecognized-identifier')).not.toHaveProperty(
+      'suggestion'
+    )
+  })
+
   test('nothing close enough: no suggestion, and no field', () => {
     const unknown = issue({ operator: 'if', condition: true, somethingElse: 1 }, 'unknown-node-key')
     expect(unknown?.parameter).toBe('somethingElse')
