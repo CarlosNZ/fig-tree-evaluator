@@ -35,5 +35,12 @@ bench/real-world/*.json
 # Generated: browser bundles of the benches
 bench/browser/dist
 
-# Lockfile
+# The docs site's build output and Astro's generated types
+docs-site/dist
+docs-site/.astro
+# Prettier parses MDX as MDX 1, and rewrites MDX 2+ JSX blocks (code fences
+# inside <Tabs>, for one) into something that no longer renders
+docs-site/**/*.mdx
+
+# Lockfiles (the root's and the docs site's)
 pnpm-lock.yaml
