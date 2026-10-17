@@ -7,7 +7,9 @@
  * string that does not contain `.`, `[` or `]` and does not start with `$`.
  * No style is imposed (spaces, kebab-case and unicode are all legal); the
  * excluded characters keep path-drilling unambiguous and the `$` sigil's two
- * jobs clean.
+ * jobs clean. `as` names add one requirement, checked by the compiler: they
+ * must start with a letter or `_`, since each is read as the token after a
+ * `$`, where the namespaces sit.
  *
  * Reservation is a separate, additional check with two scopes: parameter
  * names may not use a reserved *node key*; registration names (operators,
