@@ -68,9 +68,7 @@ A reference can go anywhere a value can: as an operator's parameter, inside a pl
   `}
 />
 
-{/* TO-DO: once #249 is decided, say whether such strings get a validate() warning */}
-
-A string is a reference only when it _starts_ with `$data` or `$d`, or one of the other kinds of reference [below](#every-reference). Any other string is plain text, even one starting with `$`, such as `'$5.00'`.
+A string is a reference only when it _starts_ with `$data` or `$d`, or one of the other kinds of reference [below](#every-reference). Any other string is plain text, even one starting with `$`, such as `'$5.00'`. Validation does warn about a `$` string that looks like a reference, such as `'$dat.price'` or `'$USD'`, in case it's a typo; wrap one in [`literal`](/reference/operators/#op-literal) if you mean it as text.
 
 ## The `get` operator
 
