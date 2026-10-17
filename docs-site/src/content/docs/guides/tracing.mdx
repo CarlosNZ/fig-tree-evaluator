@@ -1,6 +1,6 @@
 ---
-title: Tracing
-description: Recording what happened at every node of an evaluation
+title: Tracing and debugging
+description: Recording what happened at every node of an evaluation, and seeing how an expression compiled
 sidebar:
   order: 7
 ---
@@ -30,3 +30,7 @@ A failing evaluation still throws, and its error carries the trace so far as `er
 ## Cost
 
 A trace holds values by reference, so keeping one keeps every value it recorded, whole API responses included.
+
+## Inspecting a compiled expression
+
+`inspect()`, the compiler's view of an expression: how each part was read, before anything runs. Its report follows the compiler and is outside semver.

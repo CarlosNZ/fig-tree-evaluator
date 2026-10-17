@@ -21,7 +21,7 @@ An issue's shape: its severity, code, message and path to the node.
 
 ## Static errors
 
-An expression with a static error never runs: `evaluate()` throws before anything is evaluated, and no fallback catches it. Why: strict where it can be, and forgiving where it has to be.
+How evaluation works already defines static errors and gives the why, so this section links back for those and adds only the side-by-side examples below: what the check can know before running, and what it has to leave to runtime.
 
 {/* NOTE (from How evaluation works): examples side by side of a static error and a failure that can only be known at runtime, including how the check carries an operator's result type into its parent's parameter: `{ $upper: { $length: … } }` is a static error, since `length` always returns a number, while `{ $upper: { $plus: … } }` is left to runtime, since `plus` can return a string. Before writing this, check whether a node inside an array parameter is covered: `{ $multiply: [2, { $upper: 'x' }] }` passes validation. */}
 
@@ -32,7 +32,3 @@ An expression with a static error never runs: `evaluate()` throws before anythin
 ## Is there anything to evaluate?
 
 `isEvaluable()`: whether a value holds anything for FigTree to do, such as a config object that may or may not contain operator nodes.
-
-## Inspecting a compiled expression
-
-`inspect()`, the compiler's view of an expression, for debugging. Its report follows the compiler and is outside semver.

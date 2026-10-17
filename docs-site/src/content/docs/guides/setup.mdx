@@ -25,15 +25,15 @@ One option shape in two places: on the instance, and as `evaluate()`'s second ar
 
 ## Choosing operators
 
-The `operators` option. Omitted, it is `coreOperators`; given, it lists the whole registry, so a host can leave operators out or add its own. Links to Custom operators and to HTTP and SQL.
+The `operators` option. Omitted, it is `coreOperators`; given, it lists the whole registry, so a host can leave operators out (such as the I/O operators, for expressions from a source that shouldn't reach the network) or add its own. Links to Custom operators and to HTTP and SQL.
 
-## Evaluating the same expression often
+## Defaults for an operator
 
-`compile()` for an expression evaluated many times, and the compile cache behind `evaluate()`. Links to Caching.
+`operatorDefaults`: constant values for an operator's optional parameters, a static `fallback` (a constant, or one that reads only `$error`) or `noCache`, applied to every use of that operator. A node's own values override them, except `noCache`, which nothing turns back on. Fallbacks and errors and Caching link here.
 
 ## Limits
 
-`maxDepth`, `maxNodes`, `timeout` and `signal`, for expressions from sources you don't fully control.
+`maxDepth`, `maxNodes`, and the evaluation-wide `timeout` and `signal`, for expressions from sources you don't fully control. The `timeout` is a deadline for the whole evaluation, fallbacks included, and has no default. Links to Guarantees for why an evaluation is bounded.
 
 ## TypeScript
 

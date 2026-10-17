@@ -11,13 +11,11 @@ import { Aside } from '@astrojs/starlight/components'
   This page is a skeleton. Each heading notes what it will cover.
 </Aside>
 
-## When a node fails
+{/* NOTE: How evaluation works ("When evaluation fails") and Iteration ("When an element fails") already teach what a fallback is, that the nearest one catches a failure, that it's evaluated only when needed, and putting one inside `each`. Open with a short recap that links back, not a second explanation. */}
 
-Runtime failures (a type check, a missing path under `strictDataPaths`, a failed request) and how they travel up the tree.
+## Fallbacks in brief
 
-## `fallback`
-
-Any node can carry a `fallback`, the value used when that node or anything beneath it fails. The fallback is itself an expression.
+A recap with links: runtime failures (a type check, a missing path under `strictDataPaths`, a failed request) travel up to the nearest `fallback`, which is itself an expression.
 
 ## `$error`
 
@@ -25,7 +23,7 @@ Reading the failure inside a fallback: its code, message and the operator it cam
 
 ## Instance-wide fallbacks
 
-A default `fallback` for every use of an operator, through `operatorDefaults`.
+A default `fallback` for every use of an operator, through `operatorDefaults` (links to Setting up FigTree).
 
 ## Errors that reach the host
 

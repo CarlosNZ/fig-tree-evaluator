@@ -1,6 +1,6 @@
 ---
-title: Caching
-description: The compile cache, the result cache, and controlling what is stored
+title: Compiling and caching
+description: Compiling an expression once, the compile and result caches, and controlling what is stored
 sidebar:
   order: 6
 ---
@@ -10,6 +10,10 @@ import { Aside } from '@astrojs/starlight/components'
 <Aside type="caution" title="Placeholder">
   This page is a skeleton. Each heading notes what it will cover.
 </Aside>
+
+## Compiling once
+
+`compile()` for an expression evaluated many times: the `CompiledExpression` it returns, and when holding one beats letting `evaluate()` find it in the compile cache.
 
 ## Two caches
 
@@ -21,11 +25,11 @@ The compile cache, which holds each expression's compiled form, and the result c
 
 ## Turning caching off
 
-`noCache` on a node, or for every use of an operator through `operatorDefaults`.
+`noCache` on a node, or for every use of an operator through `operatorDefaults` (links to Setting up FigTree).
 
 ## Clearing the cache
 
-`clearCache()`, and how instances made with `with()` keep their caches apart.
+`clearCache()` empties the result cache, never the compile cache. An instance made with `with()` shares the original's compile cache but has a result cache of its own, so clearing one doesn't touch the other.
 
 ## A shared store
 
