@@ -265,6 +265,20 @@ test('a token naming an Object.prototype member is no namespace', () => {
   }
 })
 
+test('an unrecognized $ string warns only when it could be a reference', () => {
+  const warns = ['$dat.price', '$total', '$USD', '$_x', '$data-price', '$élan', '$.price', '$[0]']
+  for (const raw of warns) {
+    const artifact = compile(raw)
+    expect(artifact.root).toMatchObject({ kind: 'constant', value: raw })
+    expect(issueCodes(artifact)).toEqual(['unrecognized-identifier'])
+  }
+  for (const raw of ['$%1', '$5.00', '$ 5', '$€', '$', '$$x', '$-1']) {
+    const artifact = compile(raw)
+    expect(artifact.root).toMatchObject({ kind: 'constant', value: raw })
+    expect(issueCodes(artifact)).toEqual([])
+  }
+})
+
 test('the v2 children key fails as an ordinary unknown key — no tombstone', () => {
   const artifact = compile({ operator: 'plus', children: [1, 2] })
   const codes = issueCodes(artifact, 'error')
