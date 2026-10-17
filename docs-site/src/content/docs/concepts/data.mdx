@@ -158,6 +158,21 @@ await fig.evaluate(
 ) // => null
 ```
 
+Strict mode is part of the instance, so you can't turn it on for a single evaluation. If some of your data is checked and some isn't (records you stored yourself, say, and input straight from a form), make a strict copy with `with()`. It shares the original's operators and compile cache, so it costs almost nothing:
+
+```ts title="two-modes.ts"
+import { FigTree } from 'fig-tree-evaluator'
+declare const expression: string
+declare const record: Record<string, unknown>
+declare const formInput: Record<string, unknown>
+// ---cut---
+const fig = new FigTree()
+const strict = fig.with({ strictDataPaths: true })
+
+await strict.evaluate(expression, { data: record }) // a missing path throws
+await fig.evaluate(expression, { data: formInput }) // a missing path gives null
+```
+
 ## Path syntax
 
 For the most part, paths are written as you'd write them in JavaScript, so `$d.user.name`, `$data.items[0].price` and `$data.flags["key.with.dots"]` are all valid paths, and `.0` works as well as `[0]`. There are a couple of extensions, though:
