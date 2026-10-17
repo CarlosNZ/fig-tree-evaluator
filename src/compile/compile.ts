@@ -724,6 +724,41 @@ const compileNoCache = (
     )
 }
 
+/**
+ * A `$` key that names nothing. Every `$` key in an authored expression
+ * invokes, so an unknown one is an error, and `$`-keyed data is written
+ * inside `literal`. That holds on a node and among its named arguments
+ * too, since no parameter name starts with `$`. The one exception is a
+ * branch label (`labels`), compared against runtime values, so only
+ * warned. Reported at the key, so a rename fix knows which key to
+ * replace; the suggestion replaces the key as written, sigil and all.
+ */
+const emitStrayInvocationKey = (
+  state: WalkState,
+  key: string,
+  path: LinkedPath,
+  order: number,
+  labels = false
+) => {
+  const nearest = nearestName(key.slice(1), allInvocationNames(state))
+  const suggestion = nearest === undefined ? undefined : `$${nearest}`
+  const hint =
+    suggestion !== undefined
+      ? didYouMean(suggestion)
+      : labels
+        ? ''
+        : " — data with a '$' key goes inside 'literal'"
+  emit(
+    state,
+    labels ? 'warning' : 'error',
+    ErrorCodes.unrecognizedIdentifier,
+    `'${key}' is not a registered operator or fragment${labels ? ', so it is a plain key' : ''}${hint}`,
+    path,
+    order,
+    { suggestion }
+  )
+}
+
 /** Queue a named parameter (canonical node key or named-payload key). */
 const collectNamedParam = (
   state: WalkState,
@@ -734,6 +769,10 @@ const collectNamedParam = (
   path: LinkedPath,
   order: number
 ) => {
+  if (key.startsWith('$')) {
+    emitStrayInvocationKey(state, key, path, order)
+    return
+  }
   if (node.entry.definition.parameters[key] === undefined) {
     const suggestion = nearestName(key, Object.keys(node.entry.definition.parameters))
     emit(
@@ -1572,6 +1611,7 @@ const walkLiteral = (
         extendPath(path, key),
         order
       )
+    else if (key.startsWith('$')) emitStrayInvocationKey(state, key, extendPath(path, key), order)
     else
       emit(
         state,
@@ -1614,6 +1654,7 @@ const walkFragmentCanonical = (
   walkModifiers(state, node, raw, 'fragment', depth, (key, value) => {
     if (key === 'parameters')
       compileFragmentParameters(state, node, value, extendPath(path, key), depth, order)
+    else if (key.startsWith('$')) emitStrayInvocationKey(state, key, extendPath(path, key), order)
     else
       emit(
         state,
@@ -1721,6 +1762,10 @@ const compileFragmentParameters = (
     for (const key in value) {
       const argument = value[key]
       if (key === '//' || argument === undefined) continue
+      if (key.startsWith('$')) {
+        emitStrayInvocationKey(state, key, extendPath(path, key), order)
+        continue
+      }
       parameters[key] = walk(state, argument, extendPath(path, key), depth + 1)
     }
     node.parameters = parameters
@@ -1836,30 +1881,10 @@ const collectPlainObject = (
       changed = true
       continue
     }
-    if (key.startsWith('$')) {
-      // No recognized keys here (walkObject dispatched those). Every `$`
-      // key in an authored expression invokes, so an unknown one is an
-      // error, and `$`-keyed data is written inside `literal`. Reported at
-      // the key, so a rename fix knows which key to replace; the order is
-      // the containing object's. The suggestion replaces the key as
-      // written, sigil and all
-      const suggestion = nearestName(key.slice(1), allInvocationNames(state))
-      const hint =
-        suggestion !== undefined
-          ? didYouMean(`$${suggestion}`)
-          : labels
-            ? ''
-            : " — data with a '$' key goes inside 'literal'"
-      emit(
-        state,
-        labels ? 'warning' : 'error',
-        ErrorCodes.unrecognizedIdentifier,
-        `'${key}' is not a registered operator or fragment${labels ? ', so it is a plain key' : ''}${hint}`,
-        extendPath(path, key),
-        order,
-        { suggestion: suggestion === undefined ? undefined : `$${suggestion}` }
-      )
-    }
+    // No recognized keys here (walkObject dispatched those); the order is
+    // the containing object's
+    if (key.startsWith('$'))
+      emitStrayInvocationKey(state, key, extendPath(path, key), order, labels)
     entries.push({
       key,
       rawChild: value,

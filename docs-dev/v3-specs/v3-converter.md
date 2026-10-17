@@ -1278,8 +1278,8 @@ Measured against the Phase-14 build (September 2026), by validating and evaluati
 | `children`                                 | `{ operator: '+', children: [1, 2] }`                                                                           | `unknown-node-key` at `children`         |
 | a v2 parameter name or property alias      | `valueIfTrue`, `testString`, `matchExpression`, `properties`, `returnNode`; `values` on `-`, `/`, `!`, `length` | `unknown-node-key` at the key            |
 | a v2 modifier or v2-only parameter         | `outputType`, `type`, `strict`, `nullEqualsUndefined`                                                           | `unknown-node-key` at the key            |
-| an alias definition                        | `{ operator: '+', $x: 5, values: ['$x', 1] }`                                                                   | `unknown-node-key` at `$x`               |
-| a `$`-prefixed fragment argument           | `{ fragment: 'f', $country: 'NZ' }`, `{ $f: { $country: 'NZ' } }`                                               | `unknown-node-key` at the key            |
+| an alias definition                        | `{ operator: '+', $x: 5, values: ['$x', 1] }`                                                                   | `unrecognized-identifier` at `$x`        |
+| a `$`-prefixed fragment argument           | `{ fragment: 'f', $country: 'NZ' }`, `{ $f: { $country: 'NZ' } }`                                               | `unrecognized-identifier` at the key     |
 | a v2 positional payload of the wrong arity | `{ $get: [url, [], 'flag'] }`, `{ '$!': [a, b] }`, `{ '$-': [5, 2, 1] }`                                        | `positional-arity`                       |
 | a reused name, in a form v3 rejects        | `{ operator: 'convert', value: 5 }`, `{ operator: 'get', url: … }`                                              | `missing-required` or `unknown-node-key` |
 | a custom-function call with named `input`  | `{ $fn: { input: { … } } }`                                                                                     | `unknown-node-key` at `input`            |
