@@ -83,6 +83,8 @@ Several operators have symbolic aliases, such as `+` for `plus` and `=` for `equ
 
 The HTTP and SQL operators join these when your app gives FigTree a client to use ([HTTP and SQL](/guides/http-and-sql/)), and you can add operators of your own ([Writing an operator](/custom-operators/writing/)).
 
+Your app can also register **fragments**: named, reusable expressions, called with a `$` key just like an operator, such as `{ $greet: { name: '$data.user.name' } }`. [Fragments](/guides/fragments/) shows how to define them.
+
 <Callout kind="caution" title="Every key prefixed with $ is checked">
 
 A key prefixed with `$` is always read as an operator, and checked before anything runs. A name FigTree doesn't know is an error, as is any other mistake in a node's shape, such as a parameter the operator doesn't have; [Checking expressions](/guides/validation/) shows how to find them as you write.

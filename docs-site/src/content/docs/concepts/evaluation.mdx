@@ -223,6 +223,8 @@ The nearest fallback above a failure is the one that catches it, and a fallback 
 
 A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong. [Fallbacks and errors](/guides/fallbacks/) has the full story.
 
+Your app can also set a _default_ fallback for any operator, which takes effect on every node that doesn't set its own ([Setting up FigTree](/guides/setup/#defaults-for-an-operator)).
+
 {/* TO-DO: update this footnote when #248 (NaN in the data) is decided */}
 
 [^truthiness]: This is JavaScript's rule. JavaScript's other falsy values, `undefined` and `NaN`, don't come up, because FigTree never produces them: a missing value is `null`, and arithmetic that would give `NaN` fails instead.
