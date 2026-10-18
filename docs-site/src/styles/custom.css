@@ -131,6 +131,17 @@
   text-decoration: none;
 }
 
+/* ── Code blocks ────────────────────────────────────────────────────────── */
+
+/* A twoslash popup's type is a code block of its own, so it hangs its lines
+   too: a negative text-indent, offset by an equal padding. The plugin forces
+   that padding to zero (`!important` in a layer, which nothing unlayered can
+   override), leaving every line shifted left and cut off, so a margin stands
+   in for it */
+.expressive-code .twoslash-popup-code-type .ec-line .code {
+  margin-inline-start: var(--ecIndent, 0ch);
+}
+
 /* ── Callouts (Callout.astro) ───────────────────────────────────────────── */
 
 /* A code block in a callout lets the callout's colour through */
