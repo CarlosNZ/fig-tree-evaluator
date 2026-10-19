@@ -5,34 +5,260 @@ sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import Playground from '../../../components/playground/Playground.tsx'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+[How evaluation works](/concepts/evaluation/#when-evaluation-fails) introduced fallbacks. In short:
 
-{/* NOTE: How evaluation works ("When evaluation fails") and Iteration ("When an element fails") already teach what a fallback is, that the nearest one catches a failure, that it's evaluated only when needed, and putting one inside `each`. Open with a short recap that links back, not a second explanation. */}
+- A runtime failure, such as a parameter of the wrong type, a failed request, or a division by zero, travels up the tree to the nearest node that specifies a `fallback`, which returns the fallback's value instead. With no fallback above it, `evaluate()` throws a `FigTreeError`.
+- A fallback is an expression in its own right, so it can read other data, try a backup request, and have a fallback of its own.
 
-## Fallbacks in brief
+In this example, the shipping cost has a fallback, and the whole total has another — which one you get depends on where the failure happens:
 
-A recap with links: runtime failures (a type check, a missing path under `strictDataPaths`, a failed request) travel up to the nearest `fallback`, which is itself an expression.
+<Playground
+  client:visible
+  id="nearest-fallback"
+  collapse={3}
+  expression={`
+    {
+      $plus: [
+        { $multiply: ['$data.price', '$data.quantity'] },
+        {
+          $multiply: ['$data.weightKg', '$data.ratePerKg'],
+          fallback: 15, // A flat rate, when shipping can't be worked out
+        },
+      ],
+      fallback: 'Price on request',
+    }
+  `}
+  data={`
+    {
+      // Give ratePerKg a number to see the real shipping cost,
+      // or make price 'TBC', and the outer fallback takes over
+      price: 24.5,
+      quantity: 2,
+      weightKg: 1.2,
+      ratePerKg: 'TBC',
+    }
+  `}
+/>
 
-## `$error`
+## Reading the failure with `$error`
 
-Reading the failure inside a fallback: its code, message and the operator it came from.
+Normally, the specifics of the error are opaque to the caller of the expression — the end user sees the fallback value, but has no idea what went wrong — they just see a dropdown with no options, or a string with some missing values in it. However, there is a way to pass some of the actual error information to the evaluation result — the `$error` object.
+
+Inside a fallback, `$error` (or `$err` for short) holds the failure that fallback caught:
+
+<Expression
+  code={`
+    {
+      $multiply: ['$data.price', '$data.quantity'],
+      fallback: '$error',
+    }
+  `}
+  data={`
+    { price: 4.5, quantity: 'two' }
+  `}
+/>
+
+Its fields are:
+
+- **`code`:** what kind of failure it was, as a stable string, such as `'type-check'` or `'http-status'`. [`ErrorCodes`](/api/errors/#errorcodes) lists them all.
+- **`message`:** what went wrong, written for a developer. Its wording can change between versions, so never test against it.
+- **`path`:** where the failing node is in the expression, as an array of keys and indices.
+- **`operator`:** the operator that failed. A failure in a reference, such as a missing path under `strictDataPaths`, has none.
+- **`errorData`:** extra detail from the operator, where it has some, such as the status and response of a failed request.
+- **`fragment`** and **`fragmentPath`**: for a failure inside a [fragment](/guides/fragments/), which fragment, and where in its body.
+
+To do something different for each kind of failure, branch on its `code`:
+
+<Expression
+  title="Average order value"
+  code={`
+    {
+      $divide: ['$data.revenue', '$data.orders'],
+      fallback: {
+        $match: {
+          value: '$error.code',
+          branches: {
+            'non-finite-result': 'No orders yet',
+            'type-check': 'Order data is incomplete',
+          },
+          default: 'Something went wrong',
+        },
+      },
+    }
+  `}
+  data={`
+    // Change orders to 'unknown' to see the other branch
+    { revenue: 0, orders: 0 }
+  `}
+/>
+
+A failed request puts its status, URL and response in `errorData`:
+
+<Expression
+  title="User lookup"
+  code={`
+    {
+      $http: { $buildString: 'https://jsonplaceholder.typicode.com/users/{{$data.userId}}' },
+      fallback: {
+        $buildString: ['User lookup failed (%1)', '$error.errorData.status'],
+      },
+    }
+  `}
+  data={`
+    // Change to 1 to fetch a real user
+    { userId: 999 }
+  `}
+/>
+
+<Callout kind="note" title="Missing fields are null">
+  Reading a field the failure doesn't have, such as `errorData` on a type check, gives `null`, even with `strictDataPaths` on.
+</Callout>
+
+## When a fallback fails
+
+A fallback can fail as well. When it does, its node fails with the fallback's error, which travels on up to the next fallback, or out to your app. In this example, the fallback tries last month's average instead, but there were no orders then either:
+
+<Expression
+  throws
+  title="Fallback fails too"
+  code={`
+    {
+      $divide: ['$data.total', '$data.count'],
+      fallback: {
+        $divide: ['$data.lastMonthTotal', '$data.lastMonthCount'],
+        // Uncomment to give the fallback a fallback of its own
+        // fallback: 'No orders yet',
+      },
+    }
+  `}
+  data={`
+    {
+      total: 0,
+      count: 0,
+      // Give last month some orders, and the fallback works
+      lastMonthTotal: 0,
+      lastMonthCount: 0,
+    }
+  `}
+/>
+
+There's one exception: a fallback that reads `$error` is there to report the failure, and failing itself would defeat the point, so if it fails, its node returns `null` instead:
+
+<Expression
+  title="Reporting fallback fails"
+  code={`
+    {
+      $divide: ['$data.total', '$data.count'],
+      fallback: {
+        $if: [
+          { $equal: ['$error.code', 'non-finite-result'] },
+          // Fails as well, so the node returns null
+          { $divide: ['$data.lastMonthTotal', '$data.lastMonthCount'] },
+          'Average unavailable',
+        ],
+      },
+    }
+  `}
+  data={`
+    {
+      total: 0,
+      count: 0,
+      lastMonthTotal: 0,
+      lastMonthCount: 0,
+    }
+  `}
+/>
 
 ## Instance-wide fallbacks
 
-A default `fallback` for every use of an operator, through `operatorDefaults` (links to Setting up FigTree).
+A `fallback` in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator) applies to every node of that operator that doesn't set its own. It must be a plain value, never an expression, but it _can_ read `$error`, so setting one in development can be handy:
 
-## Errors that reach the host
-
-`FigTreeError`, `isFigTreeError()` and `ErrorCodes`: what a thrown error carries, and telling one code from another.
+```ts title="defaults.ts"
+import { FigTree, FetchClient, coreOperators, httpOperators } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators(new FetchClient())],
+  // Every failed request shows its error in place -- a useful dev aid
+  operatorDefaults: { http: { fallback: '$error' } },
+})
+```
 
 ## Errors no fallback catches
 
-Static errors, and limits such as `timeout`. Links to Checking expressions.
+Some errors won't be caught by a fallback, by design — errors that should be handled during authoring, or are due to defined resource limits or manual cancellation, must be dealt with separately:
 
-## Finding the gaps
+- **Static errors:** mistakes in the expression itself, such as an unknown operator or a misspelt parameter. `evaluate()` throws before anything runs, so no fallback is in play yet. [Checking expressions](/guides/validation/#static-errors) lists them all, and shows how to find them while the expression is being written.
+- **Limits and cancelling:** the evaluation's `timeout` running out, or your app aborting the evaluation's `signal` ([Setting up FigTree](/guides/setup/#limits)). Everything stops, fallbacks included: no fallback starts after the deadline, so a slow backup request can't drag it out.
 
-Checking which failures an expression's fallbacks cover, with `fallbackCoverage` from `./authoring`. Links to Tooling.
+<Callout kind="note" title="A request's own timeout">
+  The `http` and `sql` operators' own `timeout` parameter limits a single request. Going over it is an ordinary failure, with the code `'request-timeout'`, which the node's fallback catches ([HTTP and SQL](/guides/http-and-sql/#timeouts-and-cancellation)).
+</Callout>
+
+### Timeout shielding
+
+There's one way an expression can soften a global `timeout`: give the node at the top a fallback that's a plain value. When time runs out, the evaluation then returns that fallback instead of throwing.
+
+A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads, such as `{ status: 'unavailable', reason: '$error.code' }`. A default fallback from `operatorDefaults` counts too.
+
+An expression doesn't have to be a single node, though. It can be a plain object or array with nodes inside it, such as a whole config ([Expressions and nodes](/concepts/expressions/)). Then each of those nodes needs a plain fallback of its own. When time runs out, each one that finished gives its real value, and each one still running gives its fallback:
+
+```ts title="shielding.ts"
+const dashboard = {
+  user: {
+    $http: 'https://jsonplaceholder.typicode.com/users/1',
+    fallback: null,
+  },
+  posts: {
+    $http: 'https://jsonplaceholder.typicode.com/posts?userId=1',
+    fallback: [],
+  },
+}
+
+// If the posts are still loading after 2 seconds
+await fig.evaluate(dashboard, { timeout: 2000 })
+// => { user: { id: 1, name: 'Leanne Graham', … }, posts: [] }
+```
+
+It's all or nothing. If any of them has no fallback, or one that needs evaluating, such as a backup request, a timeout throws as usual, even if the others had finished. That way, whether an expression is shielded is something you can tell from the expression alone.
+
+Cancelling with `signal` is never shielded: your app asked to stop, so nothing is waiting for a result.
+
+## Errors that reach the host
+
+Anything no fallback catches makes `evaluate()` throw a [`FigTreeError`](/api/errors/#figtreeerror), whether it's a runtime failure, a static error, a timeout or a cancellation. It has the same fields as `$error`, along with:
+
+- **`cause`:** when a fallback failed, the failure it was trying to catch.
+- **`issues`:** for a static error, every issue [`validate()`](/guides/validation/#issues) would report.
+- **`trace`:** with tracing on, the trace up to the failure ([Tracing and debugging](/guides/tracing/#tracing-a-failure)).
+
+Two imports from `fig-tree-evaluator` can help in your error handling: the `isFigTreeError()` function tells FigTree's errors apart from anything else your code might throw, and narrows the caught value's type, and the `ErrorCodes` object has every code as a named constant to compare against:
+
+```ts title="errors.ts"
+declare const expression: object
+declare function showNotice(text: string): void
+// ---cut---
+import { isFigTreeError, ErrorCodes } from 'fig-tree-evaluator'
+
+try {
+  const settings = await fig.evaluate(expression)
+} catch (error) {
+  if (!isFigTreeError(error)) throw error
+  if (error.code === ErrorCodes.timeout) showNotice('Still loading, try again shortly')
+  else console.error(error.prettyPrint())
+}
+```
+
+`prettyPrint()` puts the code, operator, path and message together, for a log:
+
+```txt
+non-finite-result (operator: divide) at $round[0]
+divide – produced a non-finite number (Infinity)
+```
+
+<Callout kind="tip" title="Covering the whole expression">
+  A fallback only covers its own node and what's inside it, so a failure elsewhere in the tree can still reach your app. To make sure none does, give the node at the top a plain-value fallback (or each node, when the expression is a plain object or array). Then a runtime failure or a timeout never makes `evaluate()` throw; only a static error or cancelling can. To find exactly which failures aren't covered, see [`fallbackCoverage()`](/tooling/authoring/).
+</Callout>

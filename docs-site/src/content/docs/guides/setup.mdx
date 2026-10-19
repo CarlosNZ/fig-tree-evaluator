@@ -193,4 +193,4 @@ const pending = fig.evaluate(expression, { signal: controller.signal })
 controller.abort()
 ```
 
-[^shielding]: With one exception: when every outermost node in an expression has a `fallback` that's a plain value, a `timeout` gives those fallbacks in place of whatever it cut off, rather than throwing. [Errors no fallback catches](/guides/fallbacks/#errors-no-fallback-catches) has the details.
+[^shielding]: With one exception: an expression can give a plain-value `fallback` in place of whatever a `timeout` cut off, rather than throwing. [Timeout shielding](/guides/fallbacks/#timeout-shielding) has the details.

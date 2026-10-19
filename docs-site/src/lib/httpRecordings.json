@@ -25,5 +25,10 @@
         "bs": "harness real-time e-markets"
       }
     }
+  },
+  "GET https://jsonplaceholder.typicode.com/users/999": {
+    "status": 404,
+    "statusText": "Not Found",
+    "json": {}
   }
 }

@@ -19,6 +19,9 @@ Every way an expression can fail, split into failures a fallback catches and fai
 
 `uncovered` and `covered` findings, their paths and codes, and `may` versus `always`.
 
+{/* NOTE (from Fallbacks and errors): a worked example, checked against the build. `await fallbackCoverage(fig, { $round: [{ $divide: ['$data.total', '$data.count'] }, 2] })` gives three `uncovered` findings, all at `path: ['$round', 0]` with `operator: 'divide'` and `certainty: 'may'`: `type-check` on `parameter: 'value'` and on `'by'` ("may receive something other than number | null"), and `non-finite-result` on `'by'` ("non-finite-result when 'by' is 0"); `covered: []`. Put `fallback: 0` on the `divide` and all three move to `covered`, each with `coveredBy: ['$round', 0]`. Each finding: `path` (where the failure starts; for a fragment body, the call), `code`, `message`, `certainty` ('always' whenever the node is reached, 'may' for some inputs), `operator`, `parameter`, `fragment`/`fragmentPath`; a covered one adds `coveredBy` (+ `coveredByFragmentPath`) and `givesNull: true` when the catching fallback reads `$error` and would itself fail (its node gives null). An expression with a static error reports every static error as uncovered and walks nothing. Under the instance's own `timeout`, it reports each node that leaves the expression unshielded (no static fallback), wherever anything in the expression can wait. It's async, and runs under the instance's options. Fallbacks and errors links here from its "Covering the whole expression" tip, and has no section of its own on it. Types: src/authoringTypes.ts; spec: docs-dev/v3-specs/v3-fallback-coverage.md. */}
+
+
 ## Custom operators
 
 Describing how a custom operator can fail, so the analysis covers it.
