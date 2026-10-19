@@ -15,6 +15,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 The `trace` option, on the instance or per call, and the `{ result, trace }` that `evaluate()` returns with it.
 
+{/* NOTE (from Setting up FigTree): the TypeScript side. `evaluate()`'s return type follows `trace`: `unknown` normally, `EvaluationResult` (`{ result, trace }`) when `trace: true` is on the constructor's options or the call's (`ResultShape` in src/options.ts; the instance's type parameter is inferred from the constructor). `updateOptions({ trace })` and `with({ trace })` change the runtime shape but can't change the type, so a TypeScript host that switches tracing on and off should pass `trace` per call, which types correctly. Options hoisted into a variable before the call widen `true` to `boolean` and lose this. The API reference's Constructor entry covers the type parameter itself. */}
+
 ## The trace tree
 
 A `TraceNode` for each node evaluated, with its result or failure, and one for each element an iterator visits.

@@ -15,6 +15,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 Instance options, per-call options, and the options that can only be set on the instance (`operators`, `fragments`).
 
+{/* NOTE (from Setting up FigTree): a one-line pointer back to the "Options change existing expressions" caution in Setting up FigTree ("Changing options"): changing an instance option on a running system changes what stored expressions give. Most worth repeating beside `operatorDefaults`, `strictDataPaths` and `operators`, whose changes alter results (or make a stored expression fail) with nothing in the expression to show it. */}
+
 ## `data`
 
 ## `operators`
@@ -31,6 +33,8 @@ Instance options, per-call options, and the options that can only be set on the 
 
 ## `maxDepth` and `maxNodes`
 
+{/* NOTE (from Setting up FigTree): say precisely what each counts. `maxDepth` is the expression's nesting depth with plain objects and arrays included, not only nodes: `{ a: { b: { c: { d: 1 } } } }` measures 4. `maxNodes` counts evaluable nodes only: operators, fragment calls and references (so `'$data.x'` counts), never constants or plain containers, and nothing inside `literal`. Both count through fragment calls: `maxNodes` adds a fragment body's count at each call site (two calls count it twice), while `maxDepth` takes the deepest path through the call. Both are checked before anything runs, and also by `validate()` (codes `max-depth` and `max-nodes`). Neither has a default. Source: "Counts" in docs-dev/v3-specs/v3-artifact-obligations.md, and src/validation.ts. */}
+
 ## `timeout` and `signal`
 
 ## `cache`
@@ -40,3 +44,5 @@ Instance options, per-call options, and the options that can only be set on the 
 ## Merge rules
 
 How an update or a per-call option combines with what's already set, and removing a value with `null`.
+
+{/* NOTE (from Setting up FigTree): state the merge rules explicitly, with examples. `updateOptions()` and `with()` merge by key at the top level, and again one level down inside `http`, `graphQL`, `cache`, `fragments` and `operatorDefaults`; anything deeper replaces whole. So `http: { headers: {…} }` keeps `baseEndpoint` but replaces the whole `headers` object (an `X-App` header set earlier is gone), and `operatorDefaults: { join: {…} }` replaces `join`'s whole entry while other operators' entries stay. Arrays always replace, as do `data` and `operators`. `null` removes a value at either level (`{ timeout: null }`, `{ http: { baseEndpoint: null } }`), but deeper down it's a value: `operatorDefaults: { join: { fallback: null } }` sets a null fallback. `undefined` is ignored. Per-call options never merge: each replaces the instance's value for that call, `data` included. Setting up FigTree ("Changing options") describes the merge only loosely ("options that hold a set of entries … merged in one at a time"), so link back there. The rule table is in "Merge semantics" in docs-dev/v3-specs/v3-api.md. */}
