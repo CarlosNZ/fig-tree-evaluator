@@ -14,6 +14,10 @@ In order to meet this promise, your FigTree instance provides some authoring-tim
 
 If you're authoring expressions by hand, you'd want to validate them via CLI script, or on import to your app. If providing a GUI editor, you'd integrate this validation into the UI.
 
+<Callout kind="danger" title="Never store a static error">
+  A static error should never reach a stored expression. An expression with one fails every time it's evaluated, and they're easy to catch if you `validate()` at authoring time.
+</Callout>
+
 ## Validating before you store
 
 `validate()` finds all the [static errors](#static-errors) in an expression, along with warnings about likely slips. These are the same checks `evaluate()` makes before it runs anything, but `validate()` only reports what it finds — nothing is evaluated. It needs no data, never throws because of what's in the expression, and is synchronous.

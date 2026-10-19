@@ -191,7 +191,7 @@ const fig = new FigTree({
 
 Some errors won't be caught by a fallback, by design — errors that should be handled during authoring, or are due to defined resource limits or manual cancellation, must be dealt with separately:
 
-- **Static errors:** mistakes in the expression itself, such as an unknown operator or a misspelt parameter. `evaluate()` throws before anything runs, so no fallback is in play yet. [Checking expressions](/guides/validation/#static-errors) lists them all, and shows how to find them while the expression is being written.
+- **Static errors:** mistakes in the expression itself, such as an unknown operator or a misspelt parameter. `evaluate()` throws before anything runs, so no fallback is in play yet. [Checking expressions](/guides/validation/#static-errors) lists them all, and shows how to find them while the expression is being written. _Static errors should never make it into production._
 - **Limits and cancelling:** the evaluation's `timeout` running out, or your app aborting the evaluation's `signal` ([Setting up FigTree](/guides/setup/#limits)). Everything stops, fallbacks included: no fallback starts after the deadline, so a slow backup request can't drag it out.
 
 <Callout kind="note" title="A request's own timeout">

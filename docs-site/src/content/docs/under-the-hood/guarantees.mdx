@@ -27,6 +27,8 @@ Neither the expression nor the data is written to. Results may share structure w
 
 However malformed an expression, checking it reports every problem as an issue rather than stopping at the first.
 
+{/* NOTE (from Fallbacks and errors): a section for the error-partition contract, perhaps "A validated expression only fails at runtime". Every error is one of three kinds: static (found by validate(), before anything runs, never caught by a fallback), runtime (always goes through the fallback process) or the kill switch (timeout, signal; only timeout shielding shapes it). The promise: if validate() passes, no error the expression later produces can bypass its fallbacks, and one that does is a FigTree bug. Pairs with the "Never store a static error" danger callout on Checking expressions. Source: "`fallback` semantics" in docs-dev/v3-specs/v3-api.md. */}
+
 ## Evaluation is bounded
 
 `maxDepth`, `maxNodes` and `timeout` put limits on what any expression can cost.
