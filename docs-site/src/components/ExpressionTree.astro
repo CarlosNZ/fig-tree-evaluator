@@ -28,6 +28,7 @@
  */
 import JSON5 from 'json5'
 import { figTree } from '../lib/figTree'
+import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
 import { playgroundHref } from '../lib/playgroundLink'
@@ -62,7 +63,7 @@ const shorthandKey = (value: Record<string, unknown>) => {
 }
 
 const evaluate = async (value: unknown) =>
-  toJson5(await figTree.evaluate(value as never, data ? { data } : undefined))
+  toJson5(await trackMissing(() => figTree.evaluate(value as never, data ? { data } : undefined)))
 
 const walk = async (value: unknown, name?: string): Promise<Item> => {
   if (isPlainObject(value)) {

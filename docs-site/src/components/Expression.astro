@@ -18,6 +18,7 @@ import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
 import { isFigTreeError } from 'fig-tree-evaluator'
 import { figTree } from '../lib/figTree'
+import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
 import { playgroundHref } from '../lib/playgroundLink'
@@ -68,9 +69,13 @@ let outcome:
   | { ok: true; result: unknown }
   | { ok: false; stage: Stage; code: string; message: string }
 try {
-  outcome = { ok: true, result: await figTree.evaluate(expression, data ? { data } : undefined) }
+  outcome = {
+    ok: true,
+    result: await trackMissing(() => figTree.evaluate(expression, data ? { data } : undefined)),
+  }
 } catch (error) {
-  if (!isFigTreeError(error)) throw error
+  if (!isFigTreeError(error))
+    throw new Error(`${where}\n\n${(error as Error).message}`, { cause: error })
   const stage = error.issues === undefined ? 'runtime' : 'static'
   outcome = { ok: false, stage, code: error.code, message: error.message }
 }
