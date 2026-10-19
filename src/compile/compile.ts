@@ -495,7 +495,7 @@ const walkString = (
         state,
         'warning',
         ErrorCodes.unrecognizedIdentifier,
-        `'${raw}' matches no reference namespace and will pass through as data — wrap it in 'literal' to mark it as data`,
+        `'${raw}' matches no reference namespace, so it's kept as a plain string — wrap it in 'literal' to remove this warning`,
         path,
         order
       )
