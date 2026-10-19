@@ -5,30 +5,225 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+As mentioned in [How evaluation works](/concepts/evaluation/#compiled-first-then-run), FigTree is _strict where it can be, and forgiving where it has to be_; in other words, fail loudly before an expression runs if possible (so you can catch it during authoring), but handle runtime issues gracefully when possible.
+
+In order to meet this promise, your FigTree instance provides some authoring-time validation and inspection methods to show you what's wrong and help you fix it.
+
+If you're authoring expressions by hand, you'd want to validate them via CLI script, or on import to your app. If providing a GUI editor, you'd integrate this validation into the UI.
 
 ## Validating before you store
 
-`validate()` reports issues without evaluating anything: unknown operators, malformed nodes, literal parameters of the wrong type.
+`validate()` finds all the [static errors](#static-errors) in an expression, along with warnings about likely slips. These are the same checks `evaluate()` makes before it runs anything, but `validate()` only reports what it finds — nothing is evaluated. It needs no data, never throws because of what's in the expression, and is synchronous.
+
+It returns whether the expression is `valid`, and a list of `issues`:
+
+```ts title="validate.ts"
+fig.validate({
+  $if: {
+    condition: '$data.isMember',
+    thn: 'Member price', // Oops, typo
+    else: 'Standard price',
+  },
+})
+// => {
+//      valid: false,
+//      issues: [
+//        {
+//          severity: 'error',
+//          code: 'unknown-node-key',
+//          message: "'thn' is not a parameter of 'if' — did you mean 'then'?",
+//          path: ['$if', 'thn'],
+//          operator: 'if',
+//          parameter: 'thn',
+//          suggestion: 'then',
+//        },
+//        {
+//          severity: 'error',
+//          code: 'missing-required',
+//          message: "'if' requires 'then'",
+//          path: [],
+//          operator: 'if',
+//          parameter: 'then',
+//        },
+//      ],
+//    }
+```
+
+<Callout kind="note" title="Seeing the compiled form">
+  To see how FigTree read an expression, not just what's wrong with it, the standalone [`inspect()`](/guides/tracing/#inspecting-a-compiled-expression) function shows the compiled form, with the same issues alongside.
+</Callout>
 
 ## Issues
 
-An issue's shape: its severity, code, message and path to the node.
+Each **issue** is one problem found in the expression, with:
+
+- **`severity`:** `'error'` or `'warning'`.
+- **`code`:** what kind of problem it is, as a stable string to test against, such as `'unknown-node-key'`. [`ErrorCodes`](/api/errors/#errorcodes) lists every code.
+- **`message`:** what's wrong, written for a person, with a "did you mean" where there's a close match.
+- **`path`:** where the problem is, as an array of keys and indices, such as `['$if', 'thn']` in the example above. An issue about a whole node, such as a missing parameter, points at the node itself, which here is the root, `[]`.
+- **`operator`**, **`fragment`** and **`parameter`**: the operator or fragment the issue is about, and which of its parameters, where there is one.
+- **`suggestion`:** the "did you mean" on its own, written as a drop-in replacement for what was written (`'then'`, or `'$greaterThan'` for a shorthand key).
+
+### Errors and warnings
+
+An issue with severity `'error'` is something `evaluate()` would refuse to run. `valid` is `false` exactly when there's at least one, and evaluating the same expression throws a `FigTreeError` with the first error's `code` and `message`, and the whole list in `error.issues`.
+
+A `'warning'` is something that's allowed, but probably a slip. Warnings never stop an expression from running, and `evaluate()` doesn't report them, so `validate()` is the place to look:
+
+```ts title="warning.ts"
+fig.validate({ $buildString: ['Hello, %1', '$dta.name'] })
+// => {
+//      valid: true,
+//      issues: [
+//        {
+//          severity: 'warning',
+//          code: 'unrecognized-identifier',
+//          message: "'$dta.name' matches no reference namespace, so it's kept as a plain string — wrap it in 'literal' to remove this warning",
+//          path: ['$buildString', 1],
+//        },
+//      ],
+//    }
+```
 
 ## Static errors
 
-How evaluation works already defines static errors and gives the why, so this section links back for those and adds only the side-by-side examples below: what the check can know before running, and what it has to leave to runtime.
+Every error `validate()` reports is a static error, found before anything runs, so a `fallback` never catches it. These are all of them:
 
-{/* NOTE (from How evaluation works): examples side by side of a static error and a failure that can only be known at runtime, including how the check carries an operator's result type into its parent's parameter: `{ $upper: { $length: … } }` is a static error, since `length` always returns a number, while `{ $upper: { $plus: … } }` is left to runtime, since `plus` can return a string. Before writing this, check whether a node inside an array parameter is covered: `{ $multiply: [2, { $upper: 'x' }] }` passes validation. */}
+- **An unknown operator or fragment:**
+  - `{ $flibble: [1, 2] }` — FigTree doesn't recognize `$flibble`
+  - `{ $graeterThan: [10, 9] }` — a near-miss, comes with a suggestion
+  - `{ title: 'Sale', $colour: 'red' }` — also reports a `$`-prefixed key in plain data, which should be inside `literal`
+- **A malformed node:**
+  - `{ $plus: [1, 2], colour: 'red' }` — `colour` isn't a modifier, so it can't sit beside an operator
+  - `{ $plus: [1, 2], $minus: [3, 1] }` — two operators in one node
+- **Parameters that don't match the operator:**
+  - `{ $if: { condition: true, thn: 'Yes', else: 'No' } }` — `if` has no parameter `thn`
+  - `{ $round: { decimals: 2 } }` — the required `value` is left out, so there's nothing to round
+  - `{ $not: [true, false] }` — `not` takes only one value
+
+  A fragment call is checked the same way, against the parameters the fragment declares.
+
+- **A value of the wrong type:**
+  - `{ $round: { value: '3.14159', decimals: 2 } }` — `value` has to be a number, not a string
+  - `{ $convert: { value: '12', to: 'numbr' } }` — `to` has to be one of the types `convert` knows
+  - `{ $plus: [1, 'two'] }` — `plus` needs its values all the same type
+  - `{ $round: { value: { $greaterThan: ['$data.age', 18] } } }` — `greaterThan` always gives `true` or `false`, which can never be rounded ([more below](#never-or-might))
+- **A reference that can't be resolved:**
+  - `{ $multiply: ['$data.price', '$vars.rate'] }` — no `rate` is declared in a `vars` block above it
+  - `{ $upper: '$element' }` — `$element` and `$index` only exist inside an iterator's `each`
+  - `{ $upper: '$params.name' }` — `$params` only exists inside a fragment
+  - `{ $length: '$vars' }` — `$vars` needs a variable's name after it
+  - `{ $map: { input: [1, 2], each: '$index.x' } }` — `$index` is a number, so there's no path into it
+- **A broken `vars` block or `as` name:**
+  - `vars: [1, 2]` — a `vars` block has to be an object
+  - `vars: { 'tax.rate': 0.15 }` — a variable's name can't contain `.`, `[` or `]`
+  - `vars: { a: '$vars.b', b: '$vars.a' }` — variables that depend on each other in a loop
+  - `as: '$data.name'` — an `as` name must be a plain string, not a reference or expression
+  - `as: 'data'` — clashes with the reserved name `data`
+- **An operator's own checks:**
+  - `{ $regex: ['abc', '[a-'] }` — the regular expression doesn't compile
+  - `{ $get: 'items[0' }` — the path can't be read
+  - `{ $min: [] }` — an empty list has no minimum
+
+  [Custom operators](/custom-operators/validate/) can add checks of their own.
+
+- **Going over a size limit:** an expression nested deeper than the instance's `maxDepth`, or with more nodes than its `maxNodes` ([Setting up FigTree](/guides/setup/#limits)).
+
+<span id="never-or-might"></span>Static error checks only rule out what could _never_ work. Whether a node's result fits where it's used is decided from what that operator can return — here, `length` always gives a number, so this is a static error:
+
+<Expression
+  throws
+  title="Can never work"
+  code={`
+    { $upper: { $length: '$data.name' } }
+  `}
+  data={`
+    { name: 'Aroha' }
+  `}
+/>
+
+But `plus` _can_ return a string, so this one is left to run, and works or fails depending on the data:
+
+<Expression
+  throws
+  title="Might work"
+  code={`
+    { $upper: { $plus: ['$data.country', '$data.region'] } }
+  `}
+  data={`
+    // Make these both strings, and it works.
+    // Both numbers, and it fails at a different node
+    { country: 'nz', region: 9 }
+  `}
+/>
+
+## Checking against sample data
+
+A misspelt `$data` path isn't an error, since a missing value is just `null` ([Missing values](/concepts/data/#missing-values)). Give `validate()` some sample data, and it warns about every `$data` path the sample doesn't have:
+
+```ts title="sample.ts"
+fig.validate(
+  { $plus: ['$data.subtotal', '$data.shiping'] },
+  { data: { subtotal: 120, shipping: 5.5 } }
+)
+// => {
+//      valid: true,
+//      issues: [
+//        {
+//          severity: 'warning',
+//          code: 'missing-data-path',
+//          message: "'$data.shiping' is absent from the supplied sample data",
+//          path: ['$plus', 1],
+//        },
+//      ],
+//    }
+```
 
 ## What an expression reads
 
-`getDependencies()`: the data paths, fragment parameters and other references an expression uses, and when that set can't be known statically.
+FigTree's `getDependencies()` method lists the `$data` paths an expression reads, and the operators and fragments it uses, including those inside the fragments it calls:
+
+```ts title="dependencies.ts"
+fig.getDependencies({
+  $if: [
+    { $greaterThan: ['$data.customer.age', 65] },
+    '$data.prices.senior',
+    { $get: { path: { $buildString: ['prices.%1', '$data.customer.tier'] } } },
+  ],
+})
+// => {
+//      data: {
+//        paths: ['customer.age', 'customer.tier', 'prices.senior'],
+//        dynamic: true,
+//      },
+//      params: { names: [], dynamic: false },
+//      operators: ['if', 'greaterThan', 'get', 'buildString'],
+//      fragments: [],
+//    }
+```
+
+`dynamic: true` means the list of paths isn't complete, because a path is computed as the expression runs, as the `get` here does. The paths that are known are still listed, but anything relying on the list, such as deciding when to evaluate again, should treat the expression as reading everything.
+
+It's useful, for example, for:
+
+- **Re-evaluating only when something it reads changes,** such as an expression that decides whether a form field is shown, which can wait until one of the fields it depends on is edited.
+- **Finding out what an expression needs before running it,** such as whether it makes network requests: `operators.includes('http')`.
 
 ## Is there anything to evaluate?
 
-`isEvaluable()`: whether a value holds anything for FigTree to do, such as a config object that may or may not contain operator nodes.
+`isEvaluable()` says whether a value holds anything for FigTree to do: a node, or a reference. It's for values that may or may not be expressions, such as a settings object where some values are fixed and others are evaluated:
+
+```ts title="evaluable.ts"
+fig.isEvaluable({ title: 'Welcome', colour: 'blue' }) // => false
+fig.isEvaluable({
+  title: 'Welcome',
+  colour: { $if: ['$data.darkMode', 'white', 'black'] },
+}) // => true
+fig.isEvaluable({ title: '$data.user.name' }) // => true
+fig.isEvaluable({ price: '$5.00' }) // => false
+```
+
+It's the same test `evaluate()` makes as it compiles: a value with nothing to evaluate comes back as it is, without anything running.

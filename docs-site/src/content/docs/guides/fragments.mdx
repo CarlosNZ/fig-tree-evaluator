@@ -33,6 +33,8 @@ The call node's forms, and how a call is checked against the fragment's paramete
 
 Fragments are set at construction or with `updateOptions()`, never per call, and an update merges with the existing set.
 
+{/* NOTE (from Checking expressions): checking a fragment body before registering it, as a fragment editor does. `validate(body, { params: ['country', 'amount'] })` checks the body as registration would, with its `$params` references resolved against those names: an undeclared one is `unresolved-param` ("the fragment declares no parameter 'z'"), and `params: []` is a body that declares nothing. Without `params`, every `$params` reference is the outside-a-body error. It's `validate()`-only: `evaluate()` and `compile()` refuse it. `getDependencies(body).params` gives `{ names, dynamic }`, the parameter names the body reads (the first key of each path: `$params.country.code` reads `country`), for adding a declaration for each; it doesn't follow calls into other fragments' bodies. Registration still throws for anything wrong with the declarations themselves. */}
+
 ## Presenting fragments in an editor
 
 A fragment's `metadata` and `samples`, read by `getCatalog` and by editors. Links to Tooling.

@@ -27,6 +27,8 @@ Compile an expression once, for repeated evaluation. Returns a `CompiledExpressi
 
 Check an expression without evaluating it.
 
+{/* NOTE (from Checking expressions): the sample-data check (`validate(expression, { data })`) warns at each place a missing path is read, so a path read three times gives three warnings; a read inside a fragment body is reported at the call, naming the fragment. The data is used for this check only: nothing is evaluated. Issue order: the size-limit errors first, then the expression's own issues in tree order, then the sample-data warnings. */}
+
 ## `getDependencies()`
 
 What an expression reads.
