@@ -37,6 +37,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
   - Before: "An object in an expression with a `$` key is read as a node."
   - After: "An object in an expression that has a key prefixed with `$` is read as a node."
+- **The people who write expressions are "configuration authors".** Never phrase a scenario so it implies end users write them.
+  - Before: "When the expressions you evaluate come from somewhere you don't fully control, such as a form where your users write their own rules"
+  - After: "…so that one a configuration author has inadvertently made too large or too slow can't hold things up"
 - **The concept's name in prose, the syntax only in code.** Prose says what a thing is; code formatting is for what you type.
   - Before: "A var's name can be any string…", "the `get` operator reads vars too"
   - After: "A variable's name can be any string…", "reads variables too", with `vars` and `$vars` kept for the syntax
@@ -57,6 +60,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Each reason in a list says why it helps, in terms the reader can picture.** Drop a weak one rather than pad the list.
   - Before: "**A program builds expressions:** every node has the same shape, whatever its operator.", and a third bullet, "**A tool reads expressions without your FigTree instance:** …"
   - After: "**You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying expression tree, so it maps cleanly onto the UI components that represent the tree.", and the third bullet cut
+  - The same goes for a use case offered as motivation: a thin one is worse than none.
+  - Cut: "…to offer a smaller set in an editor where people with less experience write rules", as the reason to leave operators out
 - **Name the actual difference, not an abstraction of it, and drop qualifiers that don't bear on the point.**
   - Before: "There are two ways, and they differ in what counts as a gap"
   - After: "There are two ways, and they differ in how they treat a value stored as `null`"
@@ -80,6 +85,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Frame a design choice by what it gives the reader, not what it costs.** Wording that reads as a shortcoming makes the library sound like it's apologising.
   - Before: "evaluation is always asynchronous, even when there's nothing to wait for"
   - After: "evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one"
+  - Lead with what's available, not with the constraint that comes with it.
+  - Before: "The `operators` option is the instance's whole set of operators, so giving it replaces the core operators rather than adding to them. List `coreOperators` in it to keep them…"
+  - After: "The core operators are included by default. The package also has these, which you can add:", then the list
 - **Define by what the reader sees, and never use a term inside its own definition.** Name each option, then say what it looks like.
   - Before: "**An array** gives them in order, for operators that have a positional form."
   - After: "**Positional:** an array, where each value's position says which parameter it is."
@@ -99,6 +107,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## What to leave out
 
+- **No signposting sentences.** Headings already say what's coming, and a sentence that only points ahead or back is left an orphan.
+  - Cut: "The sections below cover these.", after the first example on Setting up FigTree
+  - Cut: "Every other option belongs to the instance, and passing one here is an error. [Data references] has more on… and [Options] says which options go where."
 - **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt. The same goes for a restriction the reader would only meet by trying something unusual, when the error they'd get explains itself: it's obvious to someone heading that way, and confusing to everyone else.
   - Cut: "There's no setting to make FigTree look deeper or shallower: it always looks all the way down. Nodes are found once, when FigTree first reads the expression, and never in the data it's evaluated with, so a value in your data that happens to look like a node is never run."
   - Cut: a "No .length" callout on Data references, when nothing on the page suggested a path could read `.length`
@@ -136,6 +147,14 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 
 ## Structure
 
+- **On a guide page, an option's prose says what it's for and when you'd use it.** Its rules go in a callout, and its precise edge rules go to the reference.
+  - Before: "`operatorDefaults` gives a value to every use of an operator, keyed by the operator's name. A node that sets its own value overrides it. It can set:", then three technical bullets
+  - After: "Operator parameters (and modifiers) can have instance-wide defaults, if that makes sense for your system…", two use cases, and the rules in a "Two important things to remember" callout
+  - Before: "`maxDepth` limits how deeply an expression nests, counting its plain objects and arrays as well as its nodes"
+  - After: "`maxDepth` limits how deep an expression tree can go", with the counting rules left to the Options reference
+- **Group things by what they are, not by what they sit next to.**
+  - Before: `signal` in the Time bullet of Limits, beside `timeout`
+  - After: a section of its own, "Cancelling an evaluation": it's the host deciding to stop, not a limit on the expression
 - **Lists for options that each need a description,** nested where the options fall into groups.
   - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, values named once and read anywhere below (…); `noCache` (…); and `//`, a comment (…)."
   - After: one bullet per modifier, each with its description and link
@@ -156,6 +175,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Lead with what the reader will use. Introduce an optional feature by when they'd need it, and say plainly when they won't.**
   - Before: "Each node can be written two ways. Shorthand is for writing by hand; canonical spells everything out, which suits programs and editors."
   - After: "The examples on this site are written in _shorthand_ … Each node also has a _canonical_ form … You won't need it when writing expressions by hand, but it's useful when, for example:"
+  - Among several options, name the one the reader will reach for most, and show only that one.
+  - After: "Of these, `data` is the one you'd reach for most…", with the example cut down to `{ data: formData }`
 - **Where the site's UI demonstrates a library feature, lead with the feature, and present the UI as a way to try it.**
   - Before: "The playgrounds on this site convert for you: the **Shorthand** and **Full** buttons…", then "In your own code, `toCanonical` and `toShorthand` do the same."
   - After: "FigTree offers a few helper functions for converting between forms…", the snippet, then "In the playgrounds on this site, open the editor and hover…"
@@ -196,6 +217,15 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: `path: 'mi'` beside the table first, then the same example with only the `path` line computed
   - Before: `{ $get: { path: ['items', 0, 'key.with.dots'] } }`, though an array path needs no quoting
   - After: `{ $get: { path: ['items', 0, 'price'] } }`
+  - A pattern repeated through an example reads as a rule.
+  - Before: three `updateOptions()` calls, each setting one option, which suggests one option at a time
+  - After: the first call sets `http` and `strictDataPaths` together
+- **In host code, show where each name comes from, and name it for what it does.** A reader can't see a declaration hidden above the cut.
+  - Before: `operators: [coreOperators, httpOperators(new FetchClient()), shippingQuote]`, with `shippingQuote` declared out of sight
+  - After: `import { formatNumber } from './operators/formatNumber'`, under `// A custom operator, written with defineOperator()`
+- **An example finishes what the prose just described.** If the text mentions a step, the example shows it.
+  - Before: the first example on Setting up FigTree ended at the constructor, though the intro says an instance is "called with `evaluate()`"
+  - After: it ends with `await fig.evaluate(expression) // => 92`
 - **In host code, a call that doesn't fit on a line puts each argument on its own line,** and the expression stays on one line where it fits. Where the example is about a parameter, use the named form.
   - Before: `await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null`
   - After: `{ $get: { path: 'customer.email', default: null } }` and `{ data }` each on a line of their own inside `fig.evaluate(` … `) // => null`
@@ -205,6 +235,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Comments in an example point at what to notice or try, for the point the example makes.** They say what happens, in plain words, not the name of a category. Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
   - Before: `// Passed on: plus doesn't run`
   - After: `// Can't be worked out without the shipping cost, so gives null`
+  - Compressed notation isn't plain words.
+  - Before: `controller.abort() // pending throws: aborted`
+  - After: `// When it's time to cancel` above `controller.abort()`, with the outcome left to the prose
   - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
   - Example: `// Comment out, and export reads the outer NZD`, on an inner `vars` block that hides an outer one
   - Example: `// Oops, typo -- fix me`, on the misspelt reference in an example that throws
