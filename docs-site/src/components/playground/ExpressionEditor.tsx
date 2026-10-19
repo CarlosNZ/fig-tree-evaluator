@@ -17,12 +17,16 @@ interface Props {
  * example sits in an `.fds-editable` container with an `.fds-editor-link`.
  * The island renders nothing until the link is clicked, then opens the
  * editor as a full-size overlay over the page; closing it leaves the example
- * as it was, with focus back on the link.
+ * as it was, with focus back on the link. The overlay has room for more of
+ * the tree than a page's widget, so one more level starts open.
  *
  * The link keeps its address, so a click that means something else (a new
  * tab, a copied link) still follows it, into the Playground page. While the
  * editor's code loads, the link shows that it's on its way.
  */
+/** The editor's own default is 2. */
+const OVERLAY_COLLAPSE = 3
+
 export default function ExpressionEditor({ title, expression, data, caption }: Props) {
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -59,6 +63,7 @@ export default function ExpressionEditor({ title, expression, data, caption }: P
           expression={expression}
           data={data}
           caption={caption}
+          collapse={OVERLAY_COLLAPSE}
           onOpen={() => loading(false)}
           onClose={close}
         />
