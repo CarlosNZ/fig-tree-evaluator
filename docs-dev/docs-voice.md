@@ -38,6 +38,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **FigTree's design principle has one wording: _strict where it can be, and forgiving where it has to be_,** as the README puts it. Use it as written wherever the principle comes up, so it reads as a slogan rather than a paraphrase.
   - Before: "Strict when checked, forgiving when run" (a heading in Why FigTree is shaped this way)
   - After: "Strict where it can be, and forgiving where it has to be"
+  - Don't over-use it: the pages already written use it enough. Offer it to Carl as a suggestion where it seems to fit, never write it in unasked, and don't build an intro's framing around it. A plain statement of what the cases share does the job.
+  - Before: a stand-in opening "Errors no fallback catches" with "FigTree is _strict where it can be, and forgiving where it has to be_, and these are the strict cases:"
+  - After: "Some errors won't be caught by a fallback, by design — errors that should be handled during authoring, or are due to defined resource limits or manual cancellation, must be dealt with separately:"
 - **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
   - Before: "An object in an expression with a `$` key is read as a node."
   - After: "An object in an expression that has a key prefixed with `$` is read as a node."
@@ -71,6 +74,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "There are two ways, and they differ in how they treat a value stored as `null`"
   - Before: "an optional field left blank"
   - After: "a form field left blank"
+  - Cut: "…where `$error.code` is `'timeout'`", beside an example of a fallback that reads it
+  - Added: "a _global_ `timeout`", to tell it apart from the per-request timeout just described
 - **An operator _returns_ its result.** Say what an operator produces with "returns", not "gives".
   - Before: "decided from what that operator can give"; "But `plus` can give a string"
   - After: "decided from what that operator can return"; "But `plus` _can_ return a string"
@@ -113,6 +118,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Define by what the reader sees, and never use a term inside its own definition.** Name each option, then say what it looks like.
   - Before: "**An array** gives them in order, for operators that have a positional form."
   - After: "**Positional:** an array, where each value's position says which parameter it is."
+- **Give the idea behind a rule before its letter.**
+  - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
+  - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
 
 ## Punctuation and formatting
 
@@ -157,6 +165,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said "the first element, in the array's order"
   - Cut: "When nothing matches, `find` gives `null`…", after the empty-input list had shown `find: null`
   - Cut: "Both exist only inside `each`…", in a section that opened with "Inside `each`"
+  - Cut: "A fallback only runs when its node fails.", a bullet straight after one that already implied it
+  - Before: "That can be handy while you're working on your expressions: a failed request shows its error in the result…", after the `$error` section had shown exactly that
+  - After: "…so setting one in development can be handy:", keeping only the _when_
 - **A parameter many operators share is explained once, in one place,** not on each concept page that meets one of them.
   - Cut: the `nullInputDefault` example on Iteration, and its `operatorDefaults` line; the family of default parameters gets one explanation, on the operator reference
 - **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea; the one place that warns against it does so loudly.
@@ -166,6 +177,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
   - Before: "A few more operators work this way: `and` and `or` …, and `map`, `filter` and the other iterating operators…"
   - After: "Other operators work this way too: `and` and `or`, for example, …"
+  - A feature with its own page gets a callout here, not a section.
+  - Before: a "Finding the gaps" section on Fallbacks and errors, with a `fallbackCoverage()` snippet and its report
+  - After: a "Covering the whole expression" tip, ending with a link to `fallbackCoverage()` on its Tooling page
 - **Only what the reader can place here.** Cut what an earlier page already covered, and allusions to features they haven't met. A closing pointer teases the one thing they'll want next. This isn't strict: a feature from a later page is fine where it makes an important point and is clear enough to follow without it, as the `map` example on Variables is. A bare API name that means nothing yet is better described by what it does.
   - Cut: "(The `http` operator is there when your app gives FigTree an HTTP client …)", already covered in Expressions and nodes
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
@@ -198,6 +212,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Example: Variables opens with **The problem**, an expression repeating the same request three times, then **The solution**, the same expression with one variable
   - Before: "A reference's path is fixed when the expression is written. When the path itself depends on the data, … `get` takes it as a parameter"
   - After: "A `$data` reference is really just a convenient way to write a `get` operator … Most of the time, it's all you need, but there are a few cases where you need to write it the long way:", then the cases as bullets
+  - Don't build on a shape the examples haven't shown. Start from the one they have, and bring the new one in as an extension.
+  - Before: "If every outermost node in it has a fallback that's a plain value…", when every example so far had a single node at the top
+  - After: "give the node at the top a fallback that's a plain value", then "An expression doesn't have to be a single node, though. It can be a plain object or array with nodes inside it…", leading into the example
 - **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
   - Before: "Paths" third on Data references: "A path is read left to right, each step going one level deeper:", then every kind of step
   - After: "Path syntax" just before the summary table: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", then `[*]` and array paths
@@ -230,6 +247,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: a "Same paths as $data" note callout
   - Before: "To see how FigTree read an expression… [`inspect()`]… shows the compiled form", as a paragraph after the first example
   - After: the same sentence in a "Seeing the compiled form" note callout
+- **A guide page on an idea Concepts introduced opens with the recap itself,** with no intro paragraph and no heading. It links back once, to where the idea was introduced, not to every page that touched it.
+  - Before: an intro sentence, then "## Fallbacks in brief", then "[How evaluation works] introduced fallbacks, and [Iteration] put one inside `each`. In short:"
+  - After: the page opens "[How evaluation works] introduced fallbacks. In short:"
+- **A guide page's headings tend to say what the section does,** rather than only name the API it's about. A guideline, not a rule: a bare name is fine where it reads better.
+  - Before: "## `$error`"
+  - After: "## Reading the failure with `$error`"
 
 ## Examples
 
@@ -254,9 +277,18 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - A pattern repeated through an example reads as a rule.
   - Before: three `updateOptions()` calls, each setting one option, which suggests one option at a time
   - After: the first call sets `http` and `strictDataPaths` together
+  - Keep only the moving parts the point needs. A branch that does something interesting of its own pulls the eye.
+  - Before: an `$if` fallback whose else branch was `'$error.message'`, in an example about the fallback's `$divide` failing
+  - After: `'Average unavailable'`, with `// Fails as well, so the node returns null` on the `$divide`
+- **An example in passing works under the default setup.** One that needs an option set first is convoluted where it's only there to illustrate.
+  - Before: "such as a value of the wrong type, a missing path under `strictDataPaths` or a failed request"
+  - After: "such as a parameter of the wrong type, a failed request, or a division by zero"
 - **In host code, show where each name comes from, and name it for what it does.** A reader can't see a declaration hidden above the cut.
   - Before: `operators: [coreOperators, httpOperators(new FetchClient()), shippingQuote]`, with `shippingQuote` declared out of sight
   - After: `import { formatNumber } from './operators/formatNumber'`, under `// A custom operator, written with defineOperator()`
+  - The import goes below the cut, so it shows, and the prose says what kind of thing a name is and where it's imported from, where it hasn't come up before.
+  - Before: "`isFigTreeError()` tells FigTree's errors apart…", with its import hidden above the cut
+  - After: "Two imports from `fig-tree-evaluator` can help in your error handling: the `isFigTreeError()` function … and the `ErrorCodes` object …", with the import visible
 - **An example finishes what the prose just described.** If the text mentions a step, the example shows it.
   - Before: the first example on Setting up FigTree ended at the constructor, though the intro says an instance is "called with `evaluate()`"
   - After: it ends with `await fig.evaluate(expression) // => 92`
@@ -276,6 +308,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Example: `// Comment out, and export reads the outer NZD`, on an inner `vars` block that hides an outer one
   - Example: `// Oops, typo -- fix me`, on the misspelt reference in an example that throws
   - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
+  - The same works in the expression itself: `// Uncomment to give the fallback a fallback of its own` above `// fallback: 'No orders yet',`
   - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
   - After: no comment, since the prose already carries the point
 - **Start an example in the state that makes the point,** and let the comment say how to reach the others. Beside a contrasting example, this puts the two outcomes side by side.
