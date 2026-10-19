@@ -22,6 +22,11 @@ export interface PlaygroundProps {
   expression: string
   /** The starting evaluation data, as JSON5 source. */
   data?: string
+  /**
+   * How many levels of the tree start open; deeper ones start collapsed.
+   * The editor's own default if not given.
+   */
+  collapse?: number
   /** Load an example from the page URL, if one is there, in place of the above. */
   readFromUrl?: boolean
   /**

@@ -285,6 +285,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       setExpression={replaceExpression}
       evaluationData={data}
       rootName="expression"
+      collapse={props.collapse}
       jsonParse={JSON5.parse}
       theme={editorStyles}
       editorTheme={editorColours}
