@@ -110,7 +110,7 @@ Every error `validate()` reports is a static error, found before anything runs, 
   - `{ $round: { value: '3.14159', decimals: 2 } }` — `value` has to be a number, not a string
   - `{ $convert: { value: '12', to: 'numbr' } }` — `to` has to be one of the types `convert` knows
   - `{ $plus: [1, 'two'] }` — `plus` needs its values all the same type
-  - `{ $round: { value: { $greaterThan: ['$data.age', 18] } } }` — `greaterThan` always gives `true` or `false`, which can never be rounded ([more below](#never-or-might))
+  - `{ $round: { value: { $greaterThan: ['$data.age', 18] } } }` — `greaterThan` always returns `true` or `false`, which can never be rounded ([more below](#never-or-might))
 - **A reference that can't be resolved:**
   - `{ $multiply: ['$data.price', '$vars.rate'] }` — no `rate` is declared in a `vars` block above it
   - `{ $upper: '$element' }` — `$element` and `$index` only exist inside an iterator's `each`
@@ -132,7 +132,7 @@ Every error `validate()` reports is a static error, found before anything runs, 
 
 - **Going over a size limit:** an expression nested deeper than the instance's `maxDepth`, or with more nodes than its `maxNodes` ([Setting up FigTree](/guides/setup/#limits)).
 
-<span id="never-or-might"></span>Static error checks only rule out what could _never_ work. Whether a node's result fits where it's used is decided from what that operator can return — here, `length` always gives a number, so this is a static error:
+<span id="never-or-might"></span>Static error checks only rule out what could _never_ work. Whether a node's result fits where it's used is decided from what that operator can return — here, `length` always returns a number, so this is a static error:
 
 <Expression
   throws

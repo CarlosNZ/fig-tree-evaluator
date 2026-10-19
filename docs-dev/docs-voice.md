@@ -13,6 +13,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "FigTree has 40-ish built-in operators"
   - Before: "Where an operator needs a yes or no"
   - After: "Where an operator needs true or false"
+  - Before: "a settings object where some values are fixed and others are worked out"; "because a path is worked out as the expression runs"
+  - After: "…and others are evaluated"; "because a path is computed as the expression runs"
   - A relaxed phrase beats strict parallel wording.
   - Before: `// and the same again, with the forms mixed`, matching the "is the same as" comments above it
   - After: `// You can mix and match freely`; and "Have a play with this one"
@@ -25,6 +27,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "for values that _stay the same_ from one evaluation to the next … for what _changes_ every time"
   - Before: `// Missing and null are both passed over`
   - After: `// Missing AND null are both passed over`
+  - Before: "But `plus` can give a string", after "The check only rules out what could _never_ work"
+  - After: "But `plus` _can_ return a string"
   - Parallel options each get their own bullet, even where two would share one, so the contrast lines up.
   - Before: "**`some`** and **`every`**: `true` if any element's result is truthy, or if every one is."
   - After: "**`some`**: `true` if _any_ element's result is truthy." and "**`every`**: `true` if _every_ element's result is truthy."
@@ -67,12 +71,30 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "There are two ways, and they differ in how they treat a value stored as `null`"
   - Before: "an optional field left blank"
   - After: "a form field left blank"
+- **An operator _returns_ its result.** Say what an operator produces with "returns", not "gives".
+  - Before: "decided from what that operator can give"; "But `plus` can give a string"
+  - After: "decided from what that operator can return"; "But `plus` _can_ return a string"
+- **Anchor a term to what it belongs to,** so a section still reads clearly to someone who lands on it from a link or a search.
+  - Before: "FigTree provides a suite of authoring-time validation tools"
+  - After: "your FigTree instance provides some authoring-time validation and inspection methods"
+  - Before: "`getDependencies()` lists the `$data` paths…"
+  - After: "FigTree's `getDependencies()` method lists the `$data` paths…"
+  - Before: "An **error** is something `evaluate()` would refuse to run."
+  - After: "An issue with severity `'error'` is something `evaluate()` would refuse to run."
+- **"These", "this" and "here" point at what's right beside them.** Pointing ahead is fine as the last words before the example or list they mean. Anywhere else, name the thing. An example given its own paragraph opens with "In this example", not "Here".
+  - Before: "Every error `validate()` reports is one of these. Each is a static error, found before anything runs…", with the list after the second sentence
+  - After: "Every error `validate()` reports is a static error, found before anything runs… These are all of them:"
+  - Kept: "here, `length` always returns a number, so this is a static error:", straight before the example
+  - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
+  - After: a new paragraph for the example, opening "In this example, the outer one is named. …"
 - **Show a simple thing simply.** An example in passing does more than a sentence spelling it out.
   - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
   - Where describing a shape would get convoluted, show it first, and describe it only as far as the example needs.
   - Before: "Everything is described in full: each node has an operator property, and associated parameter properties in the same object, along with any modifiers."
   - After: "…which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:", then `{ operator: 'plus', values: [4, 5, 6] } // => 15`
+  - Before: "`path`: where the problem is, as the keys and indices from the root of the expression as it was written"
+  - After: "`path`: where the problem is, as an array of keys and indices, such as `['$if', 'thn']` in the example above"
 - **One word, once a sentence.** Where a word repeats, rephrase so it appears once.
   - Before: "You pass this data to FigTree when evaluating an expression and it becomes accessible inside the expression via `$data` references."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references … read from it."
@@ -105,6 +127,10 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "a bare `$data` gives the whole data object"
   - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
 
+- **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
+  - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
+  - After: "([Missing values](/concepts/data/#missing-values))", chosen over its sub-section "When missing is a mistake"
+
 ## What to leave out
 
 - **No signposting sentences.** Headings already say what's coming, and a sentence that only points ahead or back is left an orphan.
@@ -121,6 +147,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - So a concept page shows one static error in an example, never the full list of them, and never the warnings: readers meet those when they happen, with a message that explains itself.
   - Cut: "The same goes for:" and four bullets of `as` and `$index` errors, on Iteration
   - Cut: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", on Iteration and Variables, which also leaned on "flags", a term the reader hadn't met
+  - Kept: the full list of static errors on Checking expressions, a guide page whose job is to list them
+  - Cut: "A node with a static error counts too, so a misspelt operator is reported when the value is evaluated, rather than passed over as plain data.", on `isEvaluable()`
+- **Say who a feature is for once, not beside every detail.** Once the page has said that an editor or a CI script would use something, the details don't repeat it.
+  - Cut: "so an editor can highlight the right part of it", on an issue's `path`
+  - Cut: "so an editor can offer it as a fix", on its `suggestion`
+  - Cut: "so it's quick enough to run on every keystroke in an editor", on `validate()`
 - **Don't restate what a definition already gives.** Once a bullet or a rule has said it, its consequences don't need a sentence of their own.
   - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said "the first element, in the array's order"
   - Cut: "When nothing matches, `find` gives `null`…", after the empty-input list had shown `find: null`
@@ -169,7 +201,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
   - Before: "Paths" third on Data references: "A path is read left to right, each step going one level deeper:", then every kind of step
   - After: "Path syntax" just before the summary table: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", then `[*]` and array paths
-- **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for. Introduce the example with "In this example", not "Here".
+- **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for.
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
 - **Lead with what the reader will use. Introduce an optional feature by when they'd need it, and say plainly when they won't.**
@@ -196,6 +228,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Example: the truthiness rule, as a blockquote
   - Before: "A reference reads into a var with the same path syntax as `$data` (Data references)…", in the paragraph flow
   - After: a "Same paths as $data" note callout
+  - Before: "To see how FigTree read an expression… [`inspect()`]… shows the compiled form", as a paragraph after the first example
+  - After: the same sentence in a "Seeing the compiled form" note callout
 
 ## Examples
 
@@ -244,3 +278,6 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
   - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
   - After: no comment, since the prose already carries the point
+- **Start an example in the state that makes the point,** and let the comment say how to reach the others. Beside a contrasting example, this puts the two outcomes side by side.
+  - Before: data that works, with `// Make both numbers, and it fails, but only when it runs`, below a static error
+  - After: data that fails at runtime, with `// Make these both strings, and it works.` and `// Both numbers, and it fails at a different node`, so the Static error and Runtime error badges sit one above the other
