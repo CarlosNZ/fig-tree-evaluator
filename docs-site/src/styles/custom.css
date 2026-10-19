@@ -114,6 +114,29 @@
   margin-top: min(1em, 2rem);
 }
 
+/*
+ * Lists of grouped items, where an item's heading has a sub-list beneath it
+ * (the static errors on Checking expressions). Markdown wraps each heading
+ * in a paragraph, so Starlight spaces the sub-list from it, and the items
+ * from each other, as it would separate paragraphs. A sub-list sits under
+ * its heading as closely as its own items sit together, and the groups are
+ * spaced a little less. Lists without sub-lists keep Starlight's spacing.
+ */
+.sl-markdown-content li > p + :is(ul, ol):not(:where(.not-content *)) {
+  margin-top: 0.25rem;
+}
+
+.sl-markdown-content li > :is(ul, ol) + p:not(:where(.not-content *)) {
+  margin-top: 0.5rem;
+}
+
+.sl-markdown-content
+  :is(ul, ol):has(> li > p + :is(ul, ol))
+  > li
+  > :last-child:not(:where(.not-content *)) {
+  margin-bottom: 0.75rem;
+}
+
 /* ── Footnotes ──────────────────────────────────────────────────────────── */
 
 .sl-markdown-content .footnotes {
