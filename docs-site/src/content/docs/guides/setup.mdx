@@ -83,15 +83,16 @@ fig.getOptions()
 //    }
 ```
 
-To keep the original as it is, `with()` makes a new instance with the update applied. It shares the original's operators and compiled expressions, so it costs almost nothing, which makes it a good fit for a variant you need beside the original, such as the strict copy in [Data references](/concepts/data/#when-missing-is-a-mistake), or an instance per customer, with that customer's credentials, which shouldn't be available on the main instance:
+To keep the original as it is, `with()` makes a new instance with the update applied. It shares the original's operators and compiled expressions, so it costs almost nothing, which makes it a good fit for a variant you need beside the original, such as the strict copy in [Data references](/concepts/data/#when-missing-is-a-mistake), or an instance whose requests are made as a separate service account rather than as the signed-in user:
 
-```ts title="tenants.ts"
+```ts title="admin.ts"
 import { FigTree } from 'fig-tree-evaluator'
 declare const fig: FigTree
-declare const tenant: { apiToken: string }
+declare const serviceToken: string
 // ---cut---
-const tenantFig = fig.with({
-  http: { headers: { Authorization: `Bearer ${tenant.apiToken}` } },
+// Requests from this instance are made as the service account
+const adminFig = fig.with({
+  http: { headers: { Authorization: `Bearer ${serviceToken}` } },
 })
 ```
 
