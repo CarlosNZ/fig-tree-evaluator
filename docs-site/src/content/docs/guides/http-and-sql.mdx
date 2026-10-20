@@ -1,42 +1,395 @@
 ---
 title: HTTP and SQL
-description: Registering the I/O operators with a client of your choice
+description: 'Pull live data from APIs and databases into your expressions: choosing a client, making requests and queries, and handling failures, timeouts and caching'
 sidebar:
   order: 5
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+FigTree ships with three operators that can access external resources, which open up a world of possibilities to your configuration logic: `http`, `graphQL`, and `sql`. However, they're not enabled by default since they require a bit more configuration, and can potentially be abused — so they need to be explicitly allowed.
 
-{/* NOTE (from Iteration): a big Danger callout (`<Callout kind="danger">`) recommending against using FigTree for mutations. Every I/O node is treated as an idempotent read (the read contract, src/operators/io.ts): the engine starts requests in parallel, cancels them when an answer arrives early (`and`/`or`, `find`/`some`/`every`), caches and re-evaluates them — so a request may be sent, cancelled, sent twice or skipped. `method` admits `get` and `post` only, but a POST that changes something, or a SQL write, is reachable and isn't policed. The enforcement that works is on the host's side, such as a read-only database role on the connection. */}
+<Callout kind="danger" title="Reads only">
+  It is strongly recommended that you don't use FigTree's I/O operators to run mutations or any operations that change external state, since FigTree treats every request as a read: it may send one twice, cancel it partway, or skip it entirely. However, enforcing this is the host's responsibility, done through the clients you provide (e.g. a SQL client with a user with `SELECT`-only permissions).
+</Callout>
 
-## I/O is opt-in
+## Adding the I/O operators
 
-The `http`, `graphQL` and `sql` operators aren't in `coreOperators`. An instance has them only once `httpOperators(client)` or `sqlOperators(connection)` is in its `operators` option, and no client is bundled unless you import it.
+FigTree comes with four clients, each a thin wrapper around a library you may already use:
 
-## HTTP clients
+- **`FetchClient`**: the `fetch` built into browsers, Node, Deno and Bun: `new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`.
+- **`AxiosClient`**: [Axios](https://axios-http.com), passed in as the `axios` import itself: `new AxiosClient(axios)`.
+- **`PostgresConnection`**: a [node-postgres](https://node-postgres.com) `Client` or `Pool`.
+- **`SQLiteConnection`**: a database opened with the [sqlite](https://www.npmjs.com/package/sqlite) package.
 
-`FetchClient` and `AxiosClient`, wrapping a `fetch` or an Axios instance.
+The libraries themselves aren't bundled, so you install the one you use and pass it in. `httpOperators()` takes an HTTP client and gives you `http` and `graphQL`, and `sqlOperators()` takes a database connection and gives you `sql`. List them in the `operators` option, along with `coreOperators`:
 
-## The `http` and `graphQL` options
+```ts title="fig.ts"
+// @filename: pg.d.ts
+declare module 'pg' {
+  import type { PgClientLike } from 'fig-tree-evaluator'
+  const pg: { Pool: new (config?: object) => PgClientLike }
+  export default pg
+}
+// @filename: fig.ts
+// ---cut---
+import pg from 'pg'
+import {
+  FigTree,
+  coreOperators,
+  httpOperators,
+  sqlOperators,
+  FetchClient,
+  PostgresConnection,
+} from 'fig-tree-evaluator'
 
-Base endpoints and headers set on the instance or per call.
+// Connects using the PG* environment variables
+const pool = new pg.Pool()
 
-## SQL connections
+export const fig = new FigTree({
+  operators: [
+    coreOperators,
+    httpOperators(new FetchClient()),
+    sqlOperators(new PostgresConnection(pool)),
+  ],
+})
+```
 
-`PostgresConnection` and `SQLiteConnection`, wrapping a node-postgres client or a SQLite database.
+With no client, `httpOperators()` uses a `FetchClient`. An expression that uses an operator that hasn't been registered gives a [static error](/guides/validation/#static-errors).
 
-## Writing your own client
+## Making HTTP requests
 
-The `HttpClient` and `SqlConnection` interfaces, and `httpFailure()` / `sqlFailure()` for reporting failures the operators understand.
+At its simplest, `http` takes a URL and returns the response's JSON. `returnPath` picks out the part you want, with the same [path syntax](/concepts/data/#path-syntax) as a `$data` reference:
+
+<Expression
+  code={`
+    {
+      $http: {
+        url: 'https://jsonplaceholder.typicode.com/users/1',
+        returnPath: 'company.name',
+      },
+    }
+  `}
+/>
+
+Query string parameters go in `query`, and FigTree encodes them for you. A parameter that's `null` is left out, which suits an optional filter:
+
+<Expression
+  title="User search"
+  code={`
+    {
+      $http: {
+        url: 'https://jsonplaceholder.typicode.com/users',
+        query: { username: '$data.username' },
+        returnPath: '[*].name',
+      },
+    }
+  `}
+  data={`
+    {
+      // Set to null, and every user is returned
+      username: 'Antonette',
+    }
+  `}
+/>
+
+`method` is `'get'` by default. Set it to `'post'` for an endpoint that expects a POST, such as the bulk lookup on [postcodes.io](https://postcodes.io), which takes a list of UK postcodes. The `body` is sent as JSON, and can be built like any other value in an expression:
+
+<Expression
+  title="Delivery addresses"
+  code={`
+    {
+      $http: {
+        url: 'https://api.postcodes.io/postcodes',
+        method: 'post',
+        body: { postcodes: '$data.postcodes' },
+        returnPath: 'result[*].result.country',
+      },
+    }
+  `}
+  data={`
+    {
+      // Add a Belfast postcode, such as 'BT1 5GS'
+      postcodes: ['SW1A 1AA', 'EH1 1YZ', 'CF10 1EP'],
+    }
+  `}
+/>
+
+## GraphQL queries
+
+`graphQL` sends a GraphQL query,[^post] with any `variables` it needs, and returns the `data` from the response:
+
+<Expression
+  title="Country details"
+  code={`
+    {
+      $graphQL: {
+        query: 'query ($name: String) { countries(filter: { name: { eq: $name } }) { capital currency } }',
+        variables: { name: '$data.country' },
+        url: 'https://countries.trevorblades.com/graphql',
+        returnPath: 'countries[0]',
+      },
+    }
+  `}
+  data={`
+    {
+      // Try another country, such as 'Japan'
+      country: 'New Zealand',
+    }
+  `}
+/>
+
+Most apps use a single GraphQL endpoint, which you can set once on the instance ([below](#base-endpoints-and-shared-headers)), so the expressions can leave `url` out.
+
+## Base endpoints and shared headers
+
+An app's expressions often make their requests to the same API. The instance's `http` option sets what they share: a `baseEndpoint` that relative URLs are joined to, and `headers` sent with every request. The `graphQL` option does the same for GraphQL, with its own `endpoint` and `headers`:
+
+```ts title="fig.ts"
+import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
+declare const apiToken: string
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators()],
+  http: {
+    baseEndpoint: 'https://api.example.com/v2',
+    headers: { Authorization: `Bearer ${apiToken}` },
+  },
+  graphQL: { endpoint: 'https://api.example.com/graphql' },
+})
+
+// Sent to https://api.example.com/v2/products/42, with the Authorization header
+const price = { $http: { url: 'products/42', returnPath: 'price' } }
+```
+
+A URL that starts with `http://` or `https://` is used as written, and anything else is joined to the base. An empty `url` is the base itself.
+
+A node's own `headers` are added to the instance's, and a header set in both takes the node's value. A GraphQL request gets the `http` headers, then the `graphQL` ones, then the node's. To leave out a header the instance sets, such as a token that a public endpoint shouldn't receive, set it to `null`:
+
+```ts title="public.ts"
+const forecast = {
+  $http: {
+    url: 'https://weather.example.com/forecast',
+    headers: { Authorization: null },
+  },
+}
+```
+
+<Callout kind="caution" title="Header names are matched exactly">
+
+FigTree doesn't treat `authorization` and `Authorization` as the same header, though servers do. So `headers: { authorization: null }` doesn't remove an `Authorization` header set on the instance: both are sent. Pick one spelling for each header, and keep to it.
+
+</Callout>
+
+## SQL queries
+
+`sql` runs a query and returns its rows as objects. Values from the expression go in `values`, which the database driver binds to the query's placeholders, so a value can't change the query, whatever it contains.
+
+These examples use the [Northwind](https://github.com/pthom/northwind_psql) sample database on Postgres. This site has no database to run them on, so they're shown as code:
+
+```ts title="products.ts"
+await fig.evaluate(
+  {
+    $sql: {
+      query:
+        'SELECT product_name, unit_price FROM products WHERE category_id = $1 AND unit_price < $2 ORDER BY unit_price DESC LIMIT 3',
+      values: ['$data.categoryId', '$data.maxPrice'],
+    },
+  },
+  { data: { categoryId: 1, maxPrice: 20 } }
+)
+// => [
+//      { product_name: 'Chang', unit_price: 19 },
+//      { product_name: 'Chai', unit_price: 18 },
+//      { product_name: 'Steeleye Stout', unit_price: 18 },
+//    ]
+```
+
+In the positional form, the values follow the query one after another, not in an array of their own: `{ $sql: ['SELECT … WHERE category_id = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice'] }`. Postgres binds values by position only, while SQLite also takes an object of named values, such as `{ ':city': 'London' }` for a query with `:city` in it.
+
+Often you want less than a list of rows. `shape` says what to return:
+
+- **`'rows'`** (the default): every row, as an object.
+- **`'firstRow'`**: the first row.
+- **`'column'`**: each row's value, as an array, for a query that selects a single column.
+- **`'firstValue'`**: the first row's value, for a query that selects a single column.
+
+When there's no row, `'firstRow'` and `'firstValue'` return `noRowDefault` instead, which is `null` unless you give one:
+
+```ts title="customer.ts"
+await fig.evaluate(
+  {
+    $sql: {
+      query: 'SELECT company_name FROM customers WHERE customer_id = $1',
+      values: ['$data.customerId'],
+      shape: 'firstValue',
+      noRowDefault: 'Unknown customer',
+    },
+  },
+  // An ID with no customer gives 'Unknown customer'
+  { data: { customerId: 'ALFKI' } }
+)
+// => 'Alfreds Futterkiste'
+```
+
+## When a request fails
+
+A failed request fails its node like anything else, so a fallback can catch it, and read what went wrong from [`$error`](/guides/fallbacks/#reading-the-failure-with-error). Each kind of failure has its own `code`, and most put extra detail in `errorData`:
+
+- **`'http-status'`**: the server answered with an error status, such as 404. `errorData` has the `status`, `statusText`, `url` and `response`, the body parsed as JSON where it can be.
+- **`'invalid-response'`**: a successful response that isn't JSON, or a GraphQL response with neither `data` nor `errors`. `errorData` has the `url` and the `response`.
+- **`'graphql-errors'`**: a GraphQL response with errors in it, even if it has some `data` as well. `errorData.errors` is the response's array of errors.
+- **`'sql-error'`**: the database refused the query. `errorData` has the `driver` (`'postgres'` or `'sqlite'`), and usually a `driverCode`, the database's own code for the error, such as Postgres's `'42703'` for an unknown column.
+- **`'request-timeout'`**: the node's own `timeout` ran out ([below](#timeouts-and-cancellation)).
+- **`'request-failure'`**: anything else, such as the server being unreachable. It has a `message`, but no `errorData`.
+
+<Callout kind="note" title="Safe to log">
+  A header's value never appears in a failure, or in a [trace](/guides/tracing/), since headers are where credentials usually go. A long response that isn't JSON, such as a proxy's error page, is cut to its first 500 characters.
+</Callout>
 
 ## Timeouts and cancellation
 
-The I/O operators' own `timeout` parameter, for one request or query, and setting a timeout on the client itself. Axios and node-postgres set none by default. The evaluation-wide `timeout` and `signal` are in Setting up FigTree ("Limits"), linked rather than repeated.
+A slow server can hold up the whole expression. The `timeout` parameter on `http`, `graphQL` and `sql` limits how long that one request can take, in milliseconds. Running out is an ordinary failure, so the node's fallback catches it:
+
+```ts title="forecast.ts"
+const forecast = {
+  $http: {
+    url: 'https://weather.example.com/forecast',
+    timeout: 2000,
+  },
+  fallback: 'Forecast unavailable',
+}
+```
+
+This is separate from the instance's `timeout`, which gives up on the whole evaluation, fallbacks included ([Limits](/guides/setup/#limits)).
+
+When a request is no longer wanted, because a timeout ran out, the evaluation was cancelled, or an `and` or `find` already had its answer, FigTree cancels it through the client. The HTTP clients abort the request. The SQL drivers can't stop a query that's already running, so the node still fails on time, but the query carries on in the database until it's done. A limit on the connection itself stops it there, and node-postgres sets none by default:
+
+```ts title="db.ts"
+// @filename: pg.d.ts
+declare module 'pg' {
+  import type { PgClientLike } from 'fig-tree-evaluator'
+  const pg: { Pool: new (config?: object) => PgClientLike }
+  export default pg
+}
+// @filename: db.ts
+// ---cut---
+import pg from 'pg'
+
+// The database stops any query that runs longer than 10 seconds
+const pool = new pg.Pool({ statement_timeout: 10_000 })
+```
 
 ## Caching responses
 
-The I/O operators' results are cached by default. Links to Caching.
+FigTree caches responses, so an expression evaluated again within 30 minutes gets the same response without sending the request again. Two requests count as the same when everything sent is the same: the method, URL, headers and body. The same goes for a query's text and values. `returnPath` and `timeout` aren't sent, so two nodes that read different parts of one response share it. Failures are never cached, so a failed request is tried again next time.
+
+[Compiling and caching](/guides/caching/) shows how to keep responses for longer or shorter, and how to turn caching off for a node.
+
+The cache only holds responses that have _arrived_, though. Two nodes evaluated at the same time each send their request, since neither has finished. Here, the `name` and `email` come from the same URL, but it's requested twice:
+
+<Expression
+  title="Two requests"
+  code={`
+    {
+      $buildString: [
+        'Send the quote to %1 at %2',
+        { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'name' } },
+        { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'email' } },
+      ],
+      // Only so every run sends its requests, rather than reusing an earlier one's
+      noCache: true,
+    }
+  `}
+  caption="Open your browser's dev tools at the Network tab, and run this: the URL is requested twice."
+/>
+
+Putting the request in a [variable](/concepts/variables/) sends it once:
+
+<Expression
+  title="One request"
+  code={`
+    {
+      vars: { customer: { $http: 'https://jsonplaceholder.typicode.com/users/1' } },
+      $buildString: 'Send the quote to {{$vars.customer.name}} at {{$vars.customer.email}}',
+      // Only so every run sends its requests, rather than reusing an earlier one's
+      noCache: true,
+    }
+  `}
+  caption="Run this with the Network tab open: one request, read twice."
+/>
+
+
+## Writing your own client
+
+For anything the bundled clients don't cover, such as another database, or a [different HTTP library](https://github.com/sindresorhus/got), you can write a client of your own. (If you only need to change how requests are sent, such as retrying failed ones, pass your own `fetch` to `FetchClient` instead: it still handles the response, and its failures, for you.) Each kind is an object with one method:
+
+```ts title="Types"
+interface HttpClient {
+  request(request: HttpRequest): Promise<unknown>
+}
+
+interface HttpRequest {
+  // The full URL, with the base joined and the query string added
+  url: string
+  method: 'get' | 'post'
+  // The instance's headers merged with the node's
+  headers: Record<string, string>
+  // To be sent as JSON
+  body?: unknown
+  // Aborts when the response is no longer wanted. Pass it on to whatever
+  // sends the request
+  signal: AbortSignal
+}
+
+interface SqlConnection {
+  query(request: SqlRequest): Promise<Record<string, unknown>[]>
+}
+
+interface SqlRequest {
+  // The query, as written in the expression
+  text: string
+  values?: unknown[] | Record<string, unknown>
+  signal?: AbortSignal
+}
+```
+
+FigTree builds the request, so a client only sends it, and returns what came back: the parsed JSON for HTTP (`null` for an empty response), and the rows, as objects, for SQL.
+
+To report a failure the operators can describe, throw one with `httpFailure()` or `sqlFailure()`, both imported from `fig-tree-evaluator`. `httpFailure()` takes the `status`, `statusText`, `url` and `response`, and makes an `'http-status'` failure. `sqlFailure()` takes the driver's name and its error, and makes a `'sql-error'`. Anything else a client throws reaches a fallback as `'request-failure'`, with only its message.
+
+Here's a connection for MySQL, through the [mysql2](https://sidorares.github.io/node-mysql2/docs) package:
+
+```ts title="mysql.ts"
+// @filename: mysql2.d.ts
+declare module 'mysql2/promise' {
+  interface Pool {
+    execute(sql: string, values?: unknown): Promise<[unknown, unknown]>
+  }
+  const mysql: { createPool(uri: string): Pool }
+  export default mysql
+}
+// @filename: mysql.ts
+// ---cut---
+import mysql from 'mysql2/promise'
+import { sqlFailure, type SqlConnection } from 'fig-tree-evaluator'
+
+// A database user with SELECT permission only
+const pool = mysql.createPool('mysql://reader@localhost/shop')
+
+export const mysqlConnection: SqlConnection = {
+  query: async ({ text, values }) => {
+    try {
+      const [rows] = await pool.execute(text, values)
+      return rows as Record<string, unknown>[]
+    } catch (error) {
+      throw sqlFailure('mysql', error)
+    }
+  },
+}
+```
+
+Register it like the bundled ones, with `sqlOperators(mysqlConnection)`.
+
+[^post]: A GraphQL request is just an HTTP POST, with the query and its variables as a JSON body, which `graphQL` sends through the same client as `http`. So everything this page says about `http`, from shared headers to failures and caching, applies to it too.
