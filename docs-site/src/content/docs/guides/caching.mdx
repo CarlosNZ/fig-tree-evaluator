@@ -11,6 +11,7 @@ import Expression from '../../../components/Expression.astro'
 FigTree caches the results of operators that are inherently slow: HTTP requests and SQL queries. Evaluate the same expression several times in a row, and only the first evaluation waits for them. The rest are answered from the cache, almost instantly.
 
 <Expression
+  action="clearCache"
   title="A slow server"
   code={`
     {
@@ -22,10 +23,10 @@ FigTree caches the results of operators that are inherently slow: HTTP requests 
       },
     }
   `}
-  caption="The first result takes a couple of seconds. Press Evaluate on the node to run it again: the answer is back straight away."
+  caption="The first result takes a couple of seconds. Press Evaluate on the node to run it again: the answer is back straight away. Press Clear cache, and the next run waits again."
 />
 
-FigTree also keeps a separate [compile cache](#compiling-once). Before running an expression, FigTree reads and checks it, and the compile cache holds the result, so an expression evaluated again goes straight to running. It's fully automatic, so there's nothing you need to do with it, but it gives a small speed-up when the same large expression is evaluated many times.
+FigTree also keeps a separate [compile cache](#compiling-once), of the expressions it has already prepared to run. It's fully automatic, so there's nothing you need to do with it, but it gives a small speed-up when the same large expression is evaluated many times.
 
 ## How long results are kept
 
@@ -53,6 +54,7 @@ Only `http`, `graphQL` and `sql` cache their results, along with any [custom ope
 Some data has to be fresh every time, such as a stock level, or anything that changes on every request. This example fetches a random user from [randomuser.me](https://randomuser.me), and since the response is cached, it's the same user however many times you run it:
 
 <Expression
+  action="clearCache"
   title="A random user"
   code={`
     {
@@ -66,7 +68,7 @@ Some data has to be fresh every time, such as a stock level, or anything that ch
       $buildString: 'Kia ora, {{$vars.user.name.first}} from {{$vars.user.location.country}}!',
     }
   `}
-  caption="Press Evaluate on the node a few times: the same user. Then uncomment noCache, and try again."
+  caption="Press Evaluate on the node a few times: the same user. Press Clear cache, and the next run meets someone new. Or uncomment noCache, and every run does."
 />
 
 `noCache: true` on a node means it neither reads the cache nor writes to it, and the same goes for everything beneath it: its parameters, its variables and its `fallback`, and the body of a [fragment](/guides/fragments/) it calls. It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.
@@ -157,11 +159,9 @@ A store never breaks an evaluation: if one of its methods throws, FigTree carrie
 
 ## Compiling once
 
-{/* STAND-IN: Carl to rewrite */}
+Before an expression runs, FigTree [compiles](/concepts/evaluation/#compiled-first-then-run) it: it works out which parts are nodes, [validates them](/guides/validation/#validating-before-you-store), and builds it into a compiled structure ready for efficient evaluation. This structure goes in the _compile cache_, so the next time you evaluate that expression (or an identical copy of it), FigTree goes straight to running it.
 
-Before an expression runs, FigTree [compiles](/concepts/evaluation/#compiled-first-then-run) it: it works out which parts are nodes, and checks them. The compiled form goes in the compile cache, so the next time you evaluate that expression, or an identical copy of it, FigTree goes straight to running it.
-
-For an expression your app evaluates over and over, `compile()` hands you the compiled form to hold on to. Its `evaluate()` takes the same per-call options as the instance's:
+You can pre-compile expressions yourself, if that suits your application's workflow, using the `compile()` method, which returns a compiled expression you can simply call `evaluate()` on.
 
 ```ts title="shipping.ts"
 declare const shippingRule: object
