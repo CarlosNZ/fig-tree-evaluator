@@ -83,7 +83,7 @@ docs-site/
         EvaluationToast.tsx   the tree editor's evaluation toasts
         ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
-    lib/                    the shared FigTree instance and catalog, JSON5, link encoding, notes, tree layout
+    lib/                    the shared FigTree instance and catalog, the SQLite database, JSON5, link encoding, notes, tree layout
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
 ```
 
@@ -112,6 +112,8 @@ Set `throws` on an example that shows an error. "Open in editor" opens the examp
 `readFromUrl` makes a widget load the example that an "open in editor" link's address carries; the Playground page's widget has it. On the page a widget keeps to the content column, with a shrunken preview of the tree beside the code; "Expand editor" opens both editors full size. `collapse={3}` opens the tree one level deeper than the editor's default of 2, where there's room for it.
 
 **HTTP requests** in examples go to [JSONPlaceholder](https://jsonplaceholder.typicode.com), which needs no key and allows cross-origin requests. In the browser they're real requests. At build time they're replayed from `src/lib/httpRecordings.json` (generated, never hand-edited), so the build stays offline; a request with no recording fails the build, even one whose failure a fallback in the example catches. After adding or changing an example's request, run `pnpm record:http`, which builds the site against the real API and rewrites the recordings with every response the build asked for.
+
+**SQL queries** in examples run against a few tables of Northwind (`categories`, `suppliers`, `products`, `customers`) in an in-memory SQLite, through [sql.js](https://sql.js.org): for real in the browser, and at build time too, so their results are checked like any other. The data is `src/lib/northwind.sql`, plain SQL that can be edited by hand. `src/lib/sqlite.ts` holds sql.js and the data, and the site's connection imports it only on the first query, so no page loads it until an example runs one. Each page load starts from a fresh copy.
 
 **Reference entries:** `<OperatorReference all />` is the operators page, every operator by category. Any other page can show a few: `<OperatorReference names={['plus', 'if']} />`, with `showCategory` to label each one's category.
 

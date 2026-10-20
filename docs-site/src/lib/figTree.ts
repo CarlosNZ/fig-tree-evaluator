@@ -3,6 +3,7 @@ import {
   FigTree,
   coreOperators,
   httpOperators,
+  sqlFailure,
   sqlOperators,
   type SqlConnection,
 } from 'fig-tree-evaluator'
@@ -10,13 +11,17 @@ import { siteFetch } from './http'
 import { fragments } from './fragments'
 
 /**
- * The site has no database, but the operator reference lists every operator
- * a host can register, so `sql` is registered against a connection that
- * refuses every query.
+ * The site's database, Northwind in SQLite (./sqlite.ts). It's imported on
+ * the first query, so a page loads none of it until an example runs one.
  */
-const noDatabase: SqlConnection = {
-  query: async () => {
-    throw new Error("this site has no database, so 'sql' can't run here")
+const siteDatabase: SqlConnection = {
+  query: async (request) => {
+    try {
+      const { query } = await import('./sqlite')
+      return await query(request)
+    } catch (error) {
+      throw sqlFailure('sqlite', error)
+    }
   },
 }
 
@@ -31,7 +36,7 @@ const noDatabase: SqlConnection = {
  * network tab.
  */
 export const figTree = new FigTree({
-  operators: [coreOperators, httpOperators(new FetchClient(siteFetch)), sqlOperators(noDatabase)],
+  operators: [coreOperators, httpOperators(new FetchClient(siteFetch)), sqlOperators(siteDatabase)],
   cache: { maxTime: 3 },
 })
 
