@@ -1,6 +1,6 @@
 ---
 name: write-page
-description: Write or flesh out one page of the v3 docs site (docs-site/src/content/docs/) with Carl, in six stages — skeleton and facts agreed in chat, Carl writes the intro, Claude drafts the body and tidies it, Carl leads a paragraph-by-paragraph edit pass, then his rewrites are distilled into the voice guide. Use when Carl asks to write, draft or flesh out a docs-site page.
+description: Write or flesh out one page of the v3 docs site (docs-site/src/content/docs/) with Carl, in six stages — skeleton and facts agreed in chat, Carl writes the intro, Claude drafts the body and tidies it, Carl leads a paragraph-by-paragraph edit pass, then his rewrites are distilled into the voice guide. API reference pages (api/) skip the first two stages and follow an entry template. Use when Carl asks to write, draft or flesh out a docs-site page.
 argument-hint: <page, e.g. concepts/expressions>
 ---
 
@@ -92,3 +92,33 @@ From the diff, propose additions to `docs-dev/docs-voice.md` in chat:
 - Note when an edit confirms or contradicts an existing entry, and propose revising that entry rather than adding a near-duplicate.
 
 Write them to the voice guide once Carl agrees.
+
+## Reference pages
+
+The API reference pages (`api/`) are looked up rather than read in order: a reader arrives at one heading from a link or a search, wants the exact answer, and leaves. They follow the stages above with these changes.
+
+- **No stage 1 or 2.** Go straight to a draft of the whole page, opener included. The facts work moves into the draft: check every statement against the types and the code, not just the specs.
+- **Hand the draft over with its facts.** Besides the usual summary, list the less obvious facts the page states, each with its source (file or spec section), and flag any you couldn't settle.
+- **Stages 4 to 6 as usual.** Tidy, then Carl's edit pass, then voice-guide additions. Rules that apply only to reference pages go under their own heading in the voice guide.
+
+Every entry follows the same template, so a reader knows where to look. Leave out a part that has nothing to say.
+
+- **Heading:** the bare API name. Keep the slug of any heading other pages already link to (search `docs-site/src/content/docs` for `/api/<page>/#`).
+- **Signature:** a short `ts` block, in its readable form rather than every generic, type-checked like every other block so its types show on hover. The wrapper twoslash needs stays hidden between the cut lines:
+
+  ```ts
+  import type { CallOptions } from 'fig-tree-evaluator'
+  declare class FigTree {
+  // ---cut---
+  evaluate(expression: unknown, options?: CallOptions): Promise<unknown>
+  // ---cut-after---
+  }
+  ```
+- **What it does:** one sentence.
+- **Parameters** and **Returns:** a table where there are several parameters, a sentence where there's one.
+- **Throws:** the error codes, linked to their entries on the Errors page.
+- **Details:** the edge rules, all of them, stated plainly. Guides choose what matters; the reference is complete.
+- **Example:** only where behaviour needs showing, and kept small. Often a host-code block rather than an expression.
+- **See also:** the guide section that explains when and why you'd use it.
+
+The voice stays plain and relaxed, but with little framing prose: the guides do the explaining, and the reference links back to them.
