@@ -48,6 +48,9 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "sharp"
-    ]
+    ],
+    "patchedDependencies": {
+      "expressive-code-twoslash@0.6.1": "patches/expressive-code-twoslash@0.6.1.patch"
+    }
   }
 }

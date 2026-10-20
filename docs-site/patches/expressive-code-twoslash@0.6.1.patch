@@ -1,0 +1,34 @@
+diff --git a/dist/index.js b/dist/index.js
+index 493cdc0b8eae78fb25c5c9164b1b1f0ef50bd08d..752ca477b6b5f1633395f04e79bec6ed5f82bdc2 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -688,7 +688,8 @@ const getBaseTwoslasher = (opts, TwoslasherMap) => {
+ 	const key = "twoslash";
+ 	const twoslasher = TwoslasherMap.get(key);
+ 	if (!twoslasher) {
+-		const instance = async () => (await import("@ec-ts/twoslash")).createTwoslasher(opts);
++		let created;
++		const instance = () => created ??= import("@ec-ts/twoslash").then((m) => m.createTwoslasher(opts));
+ 		TwoslasherMap.set(key, instance);
+ 		return instance;
+ 	}
+@@ -701,7 +702,8 @@ const getVueTwoslasher = (opts, TwoslasherMap) => {
+ 	const key = "twoslash-vue";
+ 	const twoslasher = TwoslasherMap.get(key);
+ 	if (!twoslasher) try {
+-		const instance = async () => (await import("@ec-ts/twoslash-vue")).createTwoslasher(opts);
++		let created;
++		const instance = () => created ??= import("@ec-ts/twoslash-vue").then((m) => m.createTwoslasher(opts));
+ 		TwoslasherMap.set(key, instance);
+ 		return instance;
+ 	} catch (error) {
+@@ -717,7 +719,8 @@ const getEslintTwoslasher = (opts, TwoslasherMap) => {
+ 	const key = "eslint";
+ 	const twoslasher = TwoslasherMap.get(key);
+ 	if (!twoslasher) try {
+-		const instance = async () => (await import("twoslash-eslint")).createTwoslasher(opts);
++		let created;
++		const instance = () => created ??= import("twoslash-eslint").then((m) => m.createTwoslasher(opts));
+ 		TwoslasherMap.set(key, instance);
+ 		return instance;
+ 	} catch (error) {
