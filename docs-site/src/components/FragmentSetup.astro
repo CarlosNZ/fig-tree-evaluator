@@ -1,0 +1,46 @@
+---
+/**
+ * Host code registering some of the Fragments page's fragments: a `ts` block
+ * whose definitions are their sources in lib/fragments.ts, the same ones the
+ * page's examples evaluate with, so what the page shows is what ran. Like
+ * any `ts` block, it's type-checked when the site is built.
+ */
+import { Code } from '@astrojs/starlight/components'
+import { fragmentSources } from '../lib/fragments'
+
+interface Props {
+  /** The fragments to show, in order. */
+  names: string[]
+  /** A label for the code block. */
+  title?: string
+  /** Register the HTTP operators too, for fragments that send requests. */
+  http?: boolean
+}
+
+const { names, title = 'fragments.ts', http = false } = Astro.props
+
+const indent = (text: string, by: string) => text.replace(/\n/g, `\n${by}`)
+const definitions = names.map((name) => {
+  const source = fragmentSources[name]
+  if (source === undefined)
+    throw new Error(`<FragmentSetup>: no fragment '${name}' in lib/fragments.ts`)
+  return `    ${name}: ${indent(source, '    ')},`
+})
+
+const setup = http
+  ? `import { FigTree, FetchClient, coreOperators, httpOperators } from 'fig-tree-evaluator'
+
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators(new FetchClient())],`
+  : `import { FigTree } from 'fig-tree-evaluator'
+
+const fig = new FigTree({`
+
+const code = `${setup}
+  fragments: {
+${definitions.join('\n')}
+  },
+})`
+---
+
+<Code code={code} lang="ts" title={title} />

@@ -17,7 +17,7 @@
 import { Code } from '@astrojs/starlight/components'
 import JSON5 from 'json5'
 import { isFigTreeError } from 'fig-tree-evaluator'
-import { figTree } from '../lib/figTree'
+import { exampleFigTree } from '../lib/figTree'
 import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
@@ -29,6 +29,8 @@ interface Props {
   code: string
   /** The evaluation data, as JSON5 source. */
   data?: string
+  /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
+  fragments?: boolean
   /** A label for the expression's code block. */
   title?: string
   /** The example demonstrates an error rather than a result. */
@@ -39,7 +41,8 @@ interface Props {
   caption?: string
 }
 
-const { title = 'Expression', throws = false, editor = true, caption } = Astro.props
+const { title = 'Expression', throws = false, editor = true, fragments, caption } = Astro.props
+const figTree = exampleFigTree(fragments)
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 
@@ -84,7 +87,7 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const href = editor ? playgroundHref({ expression: code, data: dataSource }) : null
+const href = editor ? playgroundHref({ expression: code, data: dataSource, fragments }) : null
 ---
 
 <div class="fds-editable not-content">
@@ -116,6 +119,7 @@ const href = editor ? playgroundHref({ expression: code, data: dataSource }) : n
         title={title}
         expression={code}
         data={dataSource}
+        fragments={fragments}
         caption={caption}
       />
     )

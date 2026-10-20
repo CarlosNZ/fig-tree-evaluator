@@ -1,4 +1,18 @@
 {
+  "GET https://countriesnow.space/api/v0.1/countries/currency/q?country=New+Zealand": {
+    "status": 200,
+    "statusText": "OK",
+    "json": {
+      "error": false,
+      "msg": "New Zealand and currency retrieved",
+      "data": {
+        "name": "New Zealand",
+        "currency": "NZD",
+        "iso2": "NZ",
+        "iso3": "NZL"
+      }
+    }
+  },
   "GET https://jsonplaceholder.typicode.com/users/1": {
     "status": 200,
     "statusText": "OK",

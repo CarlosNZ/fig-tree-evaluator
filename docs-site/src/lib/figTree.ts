@@ -7,6 +7,7 @@ import {
   type SqlConnection,
 } from 'fig-tree-evaluator'
 import { siteFetch } from './http'
+import { fragments } from './fragments'
 
 /**
  * The site has no database, but the operator reference lists every operator
@@ -33,3 +34,10 @@ export const figTree = new FigTree({
   operators: [coreOperators, httpOperators(new FetchClient(siteFetch)), sqlOperators(noDatabase)],
   cache: { maxTime: 3 },
 })
+
+/** The same instance with the Fragments page's fragments registered. */
+export const figTreeWithFragments = figTree.with({ fragments })
+
+/** The instance an example evaluates with: with fragments only if it asks. */
+export const exampleFigTree = (withFragments = false): FigTree =>
+  withFragments ? figTreeWithFragments : figTree

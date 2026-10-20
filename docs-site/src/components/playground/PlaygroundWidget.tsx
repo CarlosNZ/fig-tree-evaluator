@@ -3,7 +3,7 @@ import JSON5 from 'json5'
 import { deepEqual, isFigTreeError } from 'fig-tree-evaluator'
 import { FigTreeEditor, type Evaluation, type SetExpressionOptions } from 'fig-tree-editor-react'
 import 'fig-tree-editor-react/style.css'
-import { figTree } from '../../lib/figTree'
+import { exampleFigTree } from '../../lib/figTree'
 import { parseJson5, toJson5 } from '../../lib/json5'
 import { inlineMarkdown } from '../../lib/inlineMarkdown'
 import { readPlaygroundSeed } from '../../lib/playgroundLink'
@@ -92,6 +92,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   )
   const initialText = seed?.expression ?? props.expression
   const initialData = seed ? (seed.data ?? '{}') : (props.data ?? '{}')
+  const figTree = exampleFigTree(seed ? seed.fragments : props.fragments)
 
   const initial = useMemo(() => parseJson5(initialText), [initialText])
   const [text, setText] = useState(initialText)

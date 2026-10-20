@@ -22,6 +22,8 @@ export interface PlaygroundProps {
   expression: string
   /** The starting evaluation data, as JSON5 source. */
   data?: string
+  /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
+  fragments?: boolean
   /**
    * How many levels of the tree start open; deeper ones start collapsed.
    * The editor's own default if not given.

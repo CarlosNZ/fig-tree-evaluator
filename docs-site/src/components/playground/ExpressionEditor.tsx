@@ -7,6 +7,8 @@ interface Props {
   /** The expression and its data, as JSON5 source. */
   expression: string
   data?: string
+  /** Evaluate with the Fragments page's fragments registered. */
+  fragments?: boolean
   /** What to do or notice in the editor, at the foot of the overlay. */
   caption?: string
 }
@@ -27,7 +29,7 @@ interface Props {
 /** The editor's own default is 2. */
 const OVERLAY_COLLAPSE = 3
 
-export default function ExpressionEditor({ title, expression, data, caption }: Props) {
+export default function ExpressionEditor({ title, expression, data, fragments, caption }: Props) {
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
 
@@ -62,6 +64,7 @@ export default function ExpressionEditor({ title, expression, data, caption }: P
           title={title}
           expression={expression}
           data={data}
+          fragments={fragments}
           caption={caption}
           collapse={OVERLAY_COLLAPSE}
           onOpen={() => loading(false)}
