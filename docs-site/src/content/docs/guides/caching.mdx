@@ -8,7 +8,7 @@ sidebar:
 import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 
-FigTree caches the results of operators that are inherently slow: HTTP requests and SQL queries. Evaluate the same expression several times in a row, and only the first evaluation waits for them. The rest are answered from the cache, almost instantly.
+FigTree caches the results of operators that are inherently slow: HTTP requests and SQL queries. Evaluate the same expression several times in a row, and only the first evaluation waits for them. The rest are answered from the **result cache**, almost instantly.
 
 <Expression
   action="clearCache"
@@ -26,11 +26,11 @@ FigTree caches the results of operators that are inherently slow: HTTP requests 
   caption="The first result takes a couple of seconds. Press Evaluate on the node to run it again: the answer is back straight away. Press Clear cache, and the next run waits again."
 />
 
-FigTree also keeps a separate [compile cache](#compiling-once), of the expressions it has already prepared to run. It's fully automatic, so there's nothing you need to do with it, but it gives a small speed-up when the same large expression is evaluated many times.
+FigTree also keeps a separate [**compile cache**](#compiling-once) of the expressions it has already prepared to run. It's fully automatic, so there's nothing you need to do with it, but it gives a small speed-up when the same large expression is evaluated many times.
 
 ## How long results are kept
 
-A result is kept for 30 minutes from when it was stored, however often it's read in that time. After that, the next evaluation sends the request again. The cache holds 50 results, and when it's full, the one used least recently makes way for the next.
+By default, a result is kept for 30 minutes from when it was stored, however often it's read in that time. After that, the next evaluation sends the request again. The cache holds 50 results, and when it's full, the one used least recently makes way for the next.
 
 The `cache` option changes both:
 
@@ -40,8 +40,9 @@ import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
 const fig = new FigTree({
   operators: [coreOperators, httpOperators()],
   cache: {
-    // In seconds: Infinity keeps each result until it makes way for another
+    // In seconds, or Infinity to keep each result until it makes way for another
     maxTime: 300,
+    // The number of results kept -- must be a whole number
     maxSize: 200,
   },
 })
@@ -51,7 +52,7 @@ Only `http`, `graphQL` and `sql` cache their results, along with any [custom ope
 
 ## Turning caching off
 
-Some data has to be fresh every time, such as a stock level, or anything that changes on every request. This example fetches a random user from [randomuser.me](https://randomuser.me), and since the response is cached, it's the same user however many times you run it:
+Some data has to be fresh every time, such as a stock level, or anything that changes on every request. This example fetches a random user from [randomuser.me](https://randomuser.me). Since the response is cached, it's the same user however many times you run it:
 
 <Expression
   action="clearCache"
@@ -71,7 +72,7 @@ Some data has to be fresh every time, such as a stock level, or anything that ch
   caption="Press Evaluate on the node a few times: the same user. Press Clear cache, and the next run meets someone new. Or uncomment noCache, and every run does."
 />
 
-`noCache: true` on a node means it neither reads the cache nor writes to it, and the same goes for everything beneath it: its parameters, its variables and its `fallback`, and the body of a [fragment](/guides/fragments/) it calls. It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.
+`noCache: true` on a node means it neither reads the cache nor writes to it, and the same goes for everything beneath it: its parameters, its variables and its `fallback`, and the body of a [fragment](/guides/fragments/) it calls.
 
 To turn caching off for every use of an operator, set `noCache` in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator):
 
@@ -103,7 +104,9 @@ fig.clearCache()
 
 It takes effect straight away: even a request that's still in flight when you call it won't be stored. It only empties the results, never the compile cache.
 
-An instance made with [`with()`](/guides/setup/#changing-options) starts with an empty cache of its own, so clearing either one leaves the other alone.
+<Callout kind="note" title="Every instance has its own cache">
+  Every new FigTree instance, including one made with [`with()`](/guides/setup/#changing-options), starts with an empty cache of its own, so clearing one leaves the others alone.
+</Callout>
 
 ## Using your own store
 
@@ -159,7 +162,7 @@ A store never breaks an evaluation: if one of its methods throws, FigTree carrie
 
 ## Compiling once
 
-Before an expression runs, FigTree [compiles](/concepts/evaluation/#compiled-first-then-run) it: it works out which parts are nodes, [validates them](/guides/validation/#validating-before-you-store), and builds it into a compiled structure ready for efficient evaluation. This structure goes in the _compile cache_, so the next time you evaluate that expression (or an identical copy of it), FigTree goes straight to running it.
+Before an expression runs, FigTree [compiles](/concepts/evaluation/#compiled-first-then-run) it: it works out which parts are nodes, [validates them](/guides/validation/#validating-before-you-store), and builds it into a compiled structure ready for efficient evaluation. This structure goes in the **compile cache**, so the next time you evaluate that expression (or an identical copy of it), FigTree goes straight to running it.
 
 You can pre-compile expressions yourself, if that suits your application's workflow, using the `compile()` method, which returns a compiled expression you can simply call `evaluate()` on.
 
