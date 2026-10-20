@@ -32,7 +32,11 @@ export const fragmentSources: Record<string, string> = {
     ],
   },
   parameters: {
-    orders: { type: 'array' },
+    orders: {
+      type: 'array',
+      // Each order needs a numeric amount
+      constraints: { elementShape: { amount: { type: 'number' } } },
+    },
   },
   description: "The average of a list of orders' amounts, rounded to the cent",
 }`,
