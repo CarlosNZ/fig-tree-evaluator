@@ -4,7 +4,12 @@
  * query string holds it and the hash names the widget, so following the link
  * scrolls to the widget, which reads the query when it mounts.
  */
-export type PlaygroundSeed = { expression: string; data?: string; fragments?: boolean }
+export type PlaygroundSeed = {
+  expression: string
+  data?: string
+  fragments?: boolean
+  noCache?: boolean
+}
 
 const PARAM = 'example'
 

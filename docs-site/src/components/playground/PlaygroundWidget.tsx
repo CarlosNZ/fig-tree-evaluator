@@ -92,7 +92,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   )
   const initialText = seed?.expression ?? props.expression
   const initialData = seed ? (seed.data ?? '{}') : (props.data ?? '{}')
-  const figTree = exampleFigTree(seed ? seed.fragments : props.fragments)
+  const figTree = exampleFigTree(seed ?? props)
 
   const initial = useMemo(() => parseJson5(initialText), [initialText])
   const [text, setText] = useState(initialText)

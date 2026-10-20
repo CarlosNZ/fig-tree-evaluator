@@ -295,16 +295,16 @@ FigTree caches responses, so an expression evaluated again within 30 minutes get
 The cache only holds responses that have _arrived_, though. Two nodes evaluated at the same time each send their request, since neither has finished. Here, the `name` and `email` come from the same URL, but it's requested twice:
 
 <Expression
+  noCache
   title="Two requests"
   code={`
     {
+      // Caching is OFF for this example, so every run sends a new request
       $buildString: [
         'Send the quote to %1 at %2',
         { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'name' } },
         { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'email' } },
       ],
-      // Only so every run sends its requests, rather than reusing an earlier one's
-      noCache: true,
     }
   `}
   caption="Open your browser's dev tools at the Network tab, and run this: the URL is requested twice."
@@ -313,13 +313,13 @@ The cache only holds responses that have _arrived_, though. Two nodes evaluated 
 Putting the request in a [variable](/concepts/variables/) sends it once:
 
 <Expression
+  noCache
   title="One request"
   code={`
     {
+      // Caching is OFF for this example, so every run sends a new request
       vars: { customer: { $http: 'https://jsonplaceholder.typicode.com/users/1' } },
       $buildString: 'Send the quote to {{$vars.customer.name}} at {{$vars.customer.email}}',
-      // Only so every run sends its requests, rather than reusing an earlier one's
-      noCache: true,
     }
   `}
   caption="Run this with the Network tab open: one request, read twice."

@@ -11,9 +11,11 @@ import Expression from '../../../components/Expression.astro'
 **The problem**: You have an expression like this that needs to check a slow API call's value multiple times[^cache]:
 
 <Expression
+  noCache
   title="A customer quote"
   code={`
     {
+      // Caching is OFF for this example, so every run sends a new request
       inServiceArea: {
         $equal: [
           { $http: { url: 'https://jsonplaceholder.typicode.com/users/1', returnPath: 'address.city' } },
@@ -40,6 +42,7 @@ What if you could just evaluate (and write) the API result once, then re-use it 
 Declare variables in a `vars` block on any object in the expression, and read them with `$vars` references (or `$v` for short) anywhere inside that object ([Scope](#scope)). Here's the same expression, with that API call written once:
 
 <Expression
+  noCache
   title="A customer quote"
   code={`
     {
@@ -160,6 +163,7 @@ Variables benefit from [lazy evaluation](/concepts/evaluation/#lazy-parameters) 
 So a variable that nothing reads costs nothing. That makes it safe to declare a slow request that only one branch needs:
 
 <Expression
+  noCache
   code={`
     {
       vars: {

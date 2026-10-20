@@ -31,6 +31,8 @@ interface Props {
   data?: string
   /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
   fragments?: boolean
+  /** Evaluate with nothing cached, so every run sends its requests. */
+  noCache?: boolean
   /** A label for the expression's code block. */
   title?: string
   /** The example demonstrates an error rather than a result. */
@@ -41,8 +43,9 @@ interface Props {
   caption?: string
 }
 
-const { title = 'Expression', throws = false, editor = true, fragments, caption } = Astro.props
-const figTree = exampleFigTree(fragments)
+const { title = 'Expression', throws = false, editor = true, fragments, noCache, caption } =
+  Astro.props
+const figTree = exampleFigTree({ fragments, noCache })
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 
@@ -87,7 +90,7 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const href = editor ? playgroundHref({ expression: code, data: dataSource, fragments }) : null
+const href = editor ? playgroundHref({ expression: code, data: dataSource, fragments, noCache }) : null
 ---
 
 <div class="fds-editable not-content">
@@ -120,6 +123,7 @@ const href = editor ? playgroundHref({ expression: code, data: dataSource, fragm
         expression={code}
         data={dataSource}
         fragments={fragments}
+        noCache={noCache}
         caption={caption}
       />
     )

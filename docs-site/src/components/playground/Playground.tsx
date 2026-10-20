@@ -24,6 +24,8 @@ export interface PlaygroundProps {
   data?: string
   /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
   fragments?: boolean
+  /** Evaluate with nothing cached, so every run sends its requests. */
+  noCache?: boolean
   /**
    * How many levels of the tree start open; deeper ones start collapsed.
    * The editor's own default if not given.

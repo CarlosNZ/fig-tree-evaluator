@@ -30,19 +30,42 @@ const siteDatabase: SqlConnection = {
  * examples, and in the browser for the widgets, so both give the same answer.
  * HTTP requests are real in the browser and recorded at build time
  * (./http.ts).
- *
- * Results are cached for 3 seconds rather than the default 30 minutes, so a
- * reader who runs an HTTP example again sees its requests sent again in the
- * network tab.
  */
 export const figTree = new FigTree({
   operators: [coreOperators, httpOperators(new FetchClient(siteFetch)), sqlOperators(siteDatabase)],
-  cache: { maxTime: 3 },
 })
 
 /** The same instance with the Fragments page's fragments registered. */
 export const figTreeWithFragments = figTree.with({ fragments })
 
-/** The instance an example evaluates with: with fragments only if it asks. */
-export const exampleFigTree = (withFragments = false): FigTree =>
-  withFragments ? figTreeWithFragments : figTree
+/**
+ * Turns off caching for every operator that caches, for the examples whose
+ * point is the requests they send: a reader who runs one again sees its
+ * requests sent again in the network tab.
+ */
+const noCache = {
+  operatorDefaults: {
+    http: { noCache: true },
+    graphQL: { noCache: true },
+    sql: { noCache: true },
+  },
+} as const
+
+const uncached = {
+  figTree: figTree.with(noCache),
+  figTreeWithFragments: figTreeWithFragments.with(noCache),
+}
+
+/** What an example asks of the instance it evaluates with. */
+export interface ExampleSetup {
+  /** The Fragments page's fragments registered (./fragments.ts). */
+  fragments?: boolean
+  /** Nothing cached, so every run sends its requests. */
+  noCache?: boolean
+}
+
+/** The instance an example evaluates with. */
+export const exampleFigTree = ({ fragments, noCache }: ExampleSetup = {}): FigTree => {
+  const set = noCache ? uncached : { figTree, figTreeWithFragments }
+  return fragments ? set.figTreeWithFragments : set.figTree
+}

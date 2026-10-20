@@ -9,6 +9,8 @@ interface Props {
   data?: string
   /** Evaluate with the Fragments page's fragments registered. */
   fragments?: boolean
+  /** Evaluate with nothing cached, so every run sends its requests. */
+  noCache?: boolean
   /** What to do or notice in the editor, at the foot of the overlay. */
   caption?: string
 }
@@ -29,7 +31,14 @@ interface Props {
 /** The editor's own default is 2. */
 const OVERLAY_COLLAPSE = 3
 
-export default function ExpressionEditor({ title, expression, data, fragments, caption }: Props) {
+export default function ExpressionEditor({
+  title,
+  expression,
+  data,
+  fragments,
+  noCache,
+  caption,
+}: Props) {
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
 
@@ -65,6 +74,7 @@ export default function ExpressionEditor({ title, expression, data, fragments, c
           expression={expression}
           data={data}
           fragments={fragments}
+          noCache={noCache}
           caption={caption}
           collapse={OVERLAY_COLLAPSE}
           onOpen={() => loading(false)}

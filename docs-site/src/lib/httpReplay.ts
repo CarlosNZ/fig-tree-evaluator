@@ -65,6 +65,17 @@ const replay = async (url: string, init: Init) => {
   return new Response(body, { status: hit.status, statusText: hit.statusText })
 }
 
+/**
+ * httpbin.org echoes the caller's IP address as `origin`, which would put
+ * the recording machine's address in a committed file. No example reads it.
+ */
+const withoutCallerIp = (url: string, json: unknown): unknown => {
+  if (!url.startsWith('https://httpbin.org/') || typeof json !== 'object' || json === null)
+    return json
+  const { origin: _origin, ...rest } = json as Record<string, unknown>
+  return rest
+}
+
 // Starts empty, so a recording no example asks for any more is dropped
 const recorded: Record<string, Recording> = {}
 
@@ -74,7 +85,7 @@ const record = async (url: string, init: Init) => {
   const { status, statusText } = response
   let entry: Recording
   try {
-    entry = { status, statusText, json: JSON.parse(text) }
+    entry = { status, statusText, json: withoutCallerIp(url, JSON.parse(text)) }
   } catch {
     entry = { status, statusText, text }
   }
