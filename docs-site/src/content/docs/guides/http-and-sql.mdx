@@ -186,25 +186,26 @@ FigTree doesn't treat `authorization` and `Authorization` as the same header, th
 
 `sql` runs a query and returns its rows as objects. Values from the expression go in `values`, which the database driver binds to the query's placeholders, so a value can't change the query, whatever it contains.
 
-These examples use the [Northwind](https://github.com/pthom/northwind_psql) sample database on Postgres. This site has no database to run them on, so they're shown as code:
+These examples run against a few tables of the [Northwind](https://github.com/pthom/northwind_psql) sample database, in SQLite: `categories`, `suppliers`, `products` and `customers`. Open one in the editor to write queries of your own.
 
-```ts title="products.ts"
-await fig.evaluate(
-  {
-    $sql: {
-      query:
-        'SELECT product_name, unit_price FROM products WHERE category_id = $1 AND unit_price < $2 ORDER BY unit_price DESC LIMIT 3',
-      values: ['$data.categoryId', '$data.maxPrice'],
-    },
-  },
-  { data: { categoryId: 1, maxPrice: 20 } }
-)
-// => [
-//      { product_name: 'Chang', unit_price: 19 },
-//      { product_name: 'Chai', unit_price: 18 },
-//      { product_name: 'Steeleye Stout', unit_price: 18 },
-//    ]
-```
+<Expression
+  title="Products"
+  code={`
+    {
+      $sql: {
+        query: 'SELECT product_name, unit_price FROM products WHERE category_id = $1 AND unit_price < $2 ORDER BY unit_price DESC LIMIT 3',
+        values: ['$data.categoryId', '$data.maxPrice'],
+      },
+    }
+  `}
+  data={`
+    {
+      // Try category 2, the condiments
+      categoryId: 1,
+      maxPrice: 20,
+    }
+  `}
+/>
 
 In the positional form, the values follow the query one after another, not in an array of their own: `{ $sql: ['SELECT … WHERE category_id = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice'] }`. Postgres binds values by position only, while SQLite also takes an object of named values, such as `{ ':city': 'London' }` for a query with `:city` in it.
 
@@ -217,21 +218,25 @@ Often you want less than a list of rows. `shape` says what to return:
 
 When there's no row, `'firstRow'` and `'firstValue'` return `noRowDefault` instead, which is `null` unless you give one:
 
-```ts title="customer.ts"
-await fig.evaluate(
-  {
-    $sql: {
-      query: 'SELECT company_name FROM customers WHERE customer_id = $1',
-      values: ['$data.customerId'],
-      shape: 'firstValue',
-      noRowDefault: 'Unknown customer',
-    },
-  },
-  // An ID with no customer gives 'Unknown customer'
-  { data: { customerId: 'ALFKI' } }
-)
-// => 'Alfreds Futterkiste'
-```
+<Expression
+  title="Customer name"
+  code={`
+    {
+      $sql: {
+        query: 'SELECT company_name FROM customers WHERE customer_id = $1',
+        values: ['$data.customerId'],
+        shape: 'firstValue',
+        noRowDefault: 'Unknown customer',
+      },
+    }
+  `}
+  data={`
+    {
+      // Try an ID with no customer, such as 'NOONE'
+      customerId: 'ALFKI',
+    }
+  `}
+/>
 
 ## When a request fails
 
