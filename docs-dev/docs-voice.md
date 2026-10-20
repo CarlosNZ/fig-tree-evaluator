@@ -50,6 +50,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **The concept's name in prose, the syntax only in code.** Prose says what a thing is; code formatting is for what you type.
   - Before: "A var's name can be any string…", "the `get` operator reads vars too"
   - After: "A variable's name can be any string…", "reads variables too", with `vars` and `$vars` kept for the syntax
+  - Before: a "priceWithTax" calculation
+  - After: a repetitive "Price with tax" calculation
 - **Describe the effect, not the mechanism.** How FigTree achieves something is implementation detail; what the reader sees is the point.
   - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
   - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
@@ -86,12 +88,14 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "FigTree's `getDependencies()` method lists the `$data` paths…"
   - Before: "An **error** is something `evaluate()` would refuse to run."
   - After: "An issue with severity `'error'` is something `evaluate()` would refuse to run."
-- **"These", "this" and "here" point at what's right beside them.** Pointing ahead is fine as the last words before the example or list they mean. Anywhere else, name the thing. An example given its own paragraph opens with "In this example", not "Here".
+- **"These", "this" and "here" point at what's right beside them.** Pointing ahead is fine as the last words before the example or list they mean. Anywhere else, name the thing. An example given its own paragraph opens with "In this example", or, in a lead-in paragraph just before it, "Here". "We" is fine for walking through what an example does.
   - Before: "Every error `validate()` reports is one of these. Each is a static error, found before anything runs…", with the list after the second sentence
   - After: "Every error `validate()` reports is a static error, found before anything runs… These are all of them:"
   - Kept: "here, `length` always returns a number, so this is a static error:", straight before the example
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: a new paragraph for the example, opening "In this example, the outer one is named. …"
+  - Before: "In this example, two variables each call a fragment, and the `if` reads them both…"
+  - After: "Here we define two variables which each call a fragment, so the `if` doesn't repeat them…", straight before the example
 - **Show a simple thing simply.** An example in passing does more than a sentence spelling it out.
   - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
@@ -138,6 +142,10 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
   - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
   - After: "([Missing values](/concepts/data/#missing-values))", chosen over its sub-section "When missing is a mistake"
+- **Link an API or concept to where it's explained, at its first mention on the page, and to the section rather than the page.**
+  - Added: [`updateOptions()`](/guides/setup/#changing-options) on Fragments, and its `constraints` bullet's link to "Types and constraints"
+  - Before: `[canonical form](/concepts/forms/)`
+  - After: `[canonical form](/concepts/forms/#the-canonical-form)`
 
 ## What to leave out
 
@@ -150,6 +158,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
+  - The same goes for design advice the reader only needs once they're doing it: they'll work it out as they build, and won't think of it before.
+  - Cut: "A fallback in the body applies wherever the fragment is called, … and one on the call applies only there.", on Fragments
+  - Cut, on Fragments: the ban on fragments calling themselves, a misspelt `defualt` being an error, extra argument keys being ignored (an example comment already shows it), and "Neither check covers the declarations themselves"
   - Nor state what already follows from rules the reader has.
   - Cut: "`operator` takes an alias too, such as `'+'`, but never the `$`. And `literal` is written `{ operator: 'literal', value: … }`.", on Shorthand and canonical forms: `literal` is just another operator, and nothing suggested an alias wouldn't work
   - So a concept page shows one static error in an example, never the full list of them, and never the warnings: readers meet those when they happen, with a message that explains itself.
@@ -172,6 +183,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: the `nullInputDefault` example on Iteration, and its `operatorDefaults` line; the family of default parameters gets one explanation, on the operator reference
 - **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea; the one place that warns against it does so loudly.
   - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
+- **Never give a reason that isn't the real one.** If a feature is missing because it hasn't been built, say it isn't there and stop. A weak justification invites the reader to argue with it.
+  - Cut: "A fragment's parameters are yours to change, and a call that relied on their order would quietly pass the wrong values once they moved.", after "a fragment has no positional or single-value form"
 - **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete stays short, and is marked as examples (see Wording).
   - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
@@ -218,6 +231,15 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
   - Before: "Paths" third on Data references: "A path is read left to right, each step going one level deeper:", then every kind of step
   - After: "Path syntax" just before the summary table: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", then `[*]` and array paths
+  - The same goes beyond syntax: bring in a variant through the thing it resembles, and name only the difference, rather than listing everything it does.
+  - Before: "The check covers:", then three bullets of specific checks
+  - After: "Registration runs all the checks `validate()` runs on an expression, as well as some of its own, such as…"
+  - Before: "A fragment editor can check a body as it's written… Give `validate()` the names of the parameters the fragment will declare, and it checks the body as registration would"
+  - After: "Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected"
+  - And a set of outcomes by its kind: "any error will be a runtime error", for "a missing required parameter or a value of the wrong type is a runtime error"
+- **Show a shape as its type, not described in prose,** where some keys are typed and others are convention, which prose blurs. Comments in the type carry only what the type can't say, and the lead-in names the keys to look for.
+  - Before: bullets describing `metadata`'s keys and `samples`, ending "any other keys in `metadata` are yours to use"
+  - After: "two more keys, `metadata` and `samples`, …", then a `Types` block of `FragmentDefinition` and `FragmentMetadata`, with `// Any other keys are your own: metadata allows them, and getCatalog() ignores them`
 - **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for.
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
@@ -253,6 +275,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **A guide page's headings tend to say what the section does,** rather than only name the API it's about. A guideline, not a rule: a bare name is fine where it reads better.
   - Before: "## `$error`"
   - After: "## Reading the failure with `$error`"
+  - A heading can also name the confusion the section heads off.
+  - Before: "### Fragments and variables"
+  - After: "### Fragments vs variables", since new users tend to think the two are much the same thing
 
 ## Examples
 
@@ -266,6 +291,11 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Show a parameter by name before a shortcut hides it.** Where the prose has just named the parameters, the first example uses those names, and a comment marks the switch to the positional form.
   - Before: all five iterators positional, straight after a sentence naming `input` and `each`
   - After: `map` with `input` and `each` named, then `// The same two parameters, by position: [input, each]` above the other four
+  - Before: `$if: ['$vars.currency', …]`, after prose naming the `if`'s `condition`, `then` and `else`
+  - After: `$if: { condition: …, then: …, else: … }`
+- **An example that illustrates a type shows every field, with custom ones marked.**
+  - Before: `metadata` with `displayName`, the colours and `owner`
+  - After: every `FragmentMetadata` key, `docUrl` and `seeds` included, with `// A key of your own` above `owner`
 - **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
   - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
