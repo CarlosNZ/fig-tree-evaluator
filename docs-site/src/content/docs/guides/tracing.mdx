@@ -5,34 +5,250 @@ sidebar:
   order: 7
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+When an expression gives an answer you didn't expect, the result alone won't tell you why. A **trace** is a record of the whole evaluation, showing things such as which branch ran, what each reference read, which fallbacks stepped in, and what was actually sent over the network. It's a tool for development and debugging, not something to leave on in production, since it holds on to every value it records. When it's off, it costs nothing.
+
+Open this example in the editor to see a visual representation of the trace.
+
+<Expression
+  title="Why no rating?"
+  code={`
+    {
+      vars: {
+        // 0 / 0 isn't a number, so the fallback steps in
+        average: {
+          $divide: ['$data.ratings.total', '$data.ratings.count'],
+          fallback: null,
+        },
+      },
+      $if: {
+        condition: { $notEqual: ['$vars.average', null] },
+        then: { $buildString: ['Rated %1 out of 5', { $round: ['$vars.average', 1] }] },
+        else: 'No ratings yet',
+      },
+    }
+  `}
+  data={`
+    {
+      ratings: { total: 0, count: 0 },
+      // Uncomment for a product with some ratings
+      // ratings: { total: 41, count: 9 },
+    }
+  `}
+  caption="Press the $if button at the top of the tree, and each part is coloured by how it ran: orange where a fallback was used (the division), green where it returned a value, and dimmed where it never ran (the then branch). Hover over any part for more details."
+/>
+
+To understand the internal structure of a compiled expression, there's also [`inspect()`](#inspecting-a-compiled-expression), which shows what FigTree builds before it runs the evaluation.
 
 ## Turning tracing on
 
-The `trace` option, on the instance or per call, and the `{ result, trace }` that `evaluate()` returns with it.
+Pass `trace: true` to `evaluate()`, and instead of the bare result it returns an object with two keys: the `result`, and the `trace`.
 
-{/* NOTE (from Setting up FigTree): the TypeScript side. `evaluate()`'s return type follows `trace`: `unknown` normally, `EvaluationResult` (`{ result, trace }`) when `trace: true` is on the constructor's options or the call's (`ResultShape` in src/options.ts; the instance's type parameter is inferred from the constructor). `updateOptions({ trace })` and `with({ trace })` change the runtime shape but can't change the type, so a TypeScript host that switches tracing on and off should pass `trace` per call, which types correctly. Options hoisted into a variable before the call widen `true` to `boolean` and lose this. The API reference's Constructor entry covers the type parameter itself. */}
+```ts title="debug.ts"
+import { FigTree } from 'fig-tree-evaluator'
+declare const expression: object
+// ---cut---
+// Pass { trace: true } here to trace every evaluation
+const fig = new FigTree()
+
+// Just the result, as usual
+const price = await fig.evaluate(expression)
+
+// The same result, and a record of how it was worked out
+const { result, trace } = await fig.evaluate(expression, { trace: true })
+```
+
+Tracing changes nothing about how the expression actually runs.
+
+<Callout kind="note" title="In TypeScript">
+  We don't recommend turning tracing on with [`updateOptions()`](/guides/setup/#changing-options) or `with()`, since TypeScript can't see the change, and still expects `evaluate()` to return the bare result. Pass `trace: true` to the constructor or the call instead.
+</Callout>
 
 ## The trace tree
 
-A `TraceNode` for each node evaluated, with its result or failure, and one for each element an iterator visits.
+A trace has the same shape as the expression: an entry for each node that ran, with an entry for each of its parameters beneath it. In this example, the `if` took its `then` branch, so its `else` is there too, but marked as skipped:
+
+<Expression
+  trace
+  title="Member price"
+  code={`
+    {
+      $if: {
+        condition: '$data.isMember',
+        then: '$data.memberPrice',
+        else: '$data.price',
+      },
+    }
+  `}
+  data={`{ isMember: true, price: 100, memberPrice: 90 }`}
+/>
+
+Each entry is a `TraceNode`:
+
+```ts title="Types"
+import type { FigTreeError, Issue, TraceEvent } from 'fig-tree-evaluator'
+// ---cut---
+interface TraceNode {
+  // Where the node is in the expression, as it was written
+  path: (string | number)[]
+  // Inside a fragment's body: the fragment, whose body the path starts from
+  source?: { fragment: string }
+  // 'skeleton' is a plain object or array with nodes inside it
+  kind: 'operator' | 'fragment' | 'reference' | 'literal' | 'skeleton'
+  // The operator's name, never an alias
+  operator?: string
+  // A reference, as it was written
+  ref?: string
+  // The variable this node is the definition of
+  var?: string
+  // See status explanations below
+  status: 'value' | 'fallback' | 'failed' | 'skipped' | 'cancelled'
+  value?: unknown
+  error?: FigTreeError
+  events?: TraceEvent[]
+  children?: TraceNode[]
+  // In milliseconds
+  elapsed?: number
+  // The root only: the warnings validate() gives for the expression
+  warnings?: Issue[]
+}
+```
+
+Its `status` says what became of it:
+
+- **`value`:** it returned `value`.
+- **`fallback`:** it failed, and its fallback returned `value` in its place. `error` is the failure the fallback caught.
+- **`failed`:** it failed with `error`, and no fallback caught it.
+- **`skipped`:** nothing needed it, so it never ran, such as the branch an `if` didn't take, a fallback that wasn't needed, or a variable nothing read.
+- **`cancelled`:** it started, but its result stopped being wanted before it finished, such as when another operand of an `or` had already returned `true`, or the evaluation timed out.
+
+A node that runs more than once has an entry each time. Inside an [iterator](/concepts/iteration/), that's one entry per element, all with the same `path`. In this example, the second order has no items, so its average fails, and the fallback steps in:
+
+<Expression
+  trace
+  title="Average item price"
+  code={`
+    {
+      $map: {
+        input: '$data.orders',
+        each: {
+          $divide: ['$element.total', '$element.items'],
+          fallback: 0,
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      orders: [
+        { total: 90, items: 3 },
+        { total: 0, items: 0 },
+      ],
+    }
+  `}
+/>
 
 ## Events
 
-What a node records along the way: cache hits, requests and queries, a fallback taking over.
+Some nodes record more than their result, as a list of `events` on their entry:
+
+- **`cache`:** whether the result came from the [cache](/guides/caching/) (`hit: true`), or had to be fetched.
+- **`request`:** an HTTP or GraphQL request, as it was sent: its method, its URL, and the _names_ of its headers. Their values are never recorded, since that's where credentials usually go.
+- **`query`:** a SQL query's text, as it was sent. The values sent with it are never recorded.
+- **`render`:** a token in a `buildString` template, or a value in `join`, that rendered as something other than its plain value, with `rendered` saying what happened instead:
+  - **`'empty'`:** its value was missing, so it rendered as nothing, as in `'Hi !'`.
+  - **`'placeholder'`:** its value was an object or array, so it rendered as a placeholder, such as `<object>`.
+  - **`'literal'`:** nothing fills it, so it shows as written, as in `'Hi {{name}}!'`.
+  - **`'gap-closed'`:** it was empty, and `closeGaps` removed the space beside it.
+- **`key-overwrite`:** `buildObject` was given the same key twice, and the later one won.
+- **`shielded-fallback`:** a timeout cut the node off, and [timeout shielding](/guides/fallbacks/#timeout-shielding) filled in its fallback. The result can't tell you this happened, so the trace is the only place it shows.
+
+This example looks up a user by name, and writes a line about them, which doesn't come out quite right. Its trace has a `request` event, and some `render` events:
+
+<Expression
+  trace
+  noCache
+  title="Looking up a user"
+  code={`
+    {
+      vars: {
+        user: {
+          $http: {
+            url: 'https://jsonplaceholder.typicode.com/users',
+            query: { username: '$data.username' },
+            returnPath: '[0]',
+          },
+        },
+      },
+      $buildString: {
+        template: '{{$vars.user.name}} {{$vars.user.nickname}} lives in {{$vars.user.address}}',
+        closeGaps: true,
+      },
+    }
+  `}
+  data={`{ username: 'Antonette' }`}
+/>
+
+A [custom operator](/custom-operators/evaluate/#trace-events) can record events of its own.
 
 ## Tracing a failure
 
-A failing evaluation still throws, and its error carries the trace so far as `error.trace`.
+With tracing on, an error has a `trace` of its own: everything up to the failure, with the node the error came from marked `failed`, and each node above it too, since the failure reached them:
 
-## Cost
+<Expression
+  trace
+  throws
+  title="An order with no items"
+  code={`
+    {
+      $round: [{ $divide: ['$data.order.total', '$data.order.items'] }, 2],
+    }
+  `}
+  data={`{ order: { total: 0, items: 0 } }`}
+/>
 
-A trace holds values by reference, so keeping one keeps every value it recorded, whole API responses included.
+In your own code, read it from the error you catch:
+
+```ts title="debug.ts"
+declare const expression: object
+// ---cut---
+import { isFigTreeError } from 'fig-tree-evaluator'
+
+try {
+  await fig.evaluate(expression, { trace: true })
+} catch (error) {
+  // The whole tree, however deep it goes
+  if (isFigTreeError(error) && error.trace) console.dir(error.trace, { depth: null })
+}
+```
+
+A [static error](/guides/validation/#static-errors) has no trace, since FigTree refuses the expression before any of it runs. Its `issues` say what's wrong.
 
 ## Inspecting a compiled expression
 
-`inspect()`, the compiler's view of an expression: how each part was read, before anything runs. Its report follows the compiler and is outside semver.
+A trace shows how an expression _ran_. To see how FigTree _read_ it, before anything runs, [compile it](/guides/caching/#compiling-once) and pass the result to `inspect()`, a standalone function:
+
+```ts title="inspect.ts"
+declare const shippingRule: object
+// ---cut---
+import { inspect } from 'fig-tree-evaluator'
+
+const report = inspect(fig.compile(shippingRule))
+
+console.log(JSON.stringify(report, null, 2))
+```
+
+The report is plain JSON. Its main parts are:
+
+- **`canonicalForm`:** the expression as the compiler built it, in [canonical form](/concepts/forms/#the-canonical-form), one object per node: each operator with its parameters by name, each reference, and each fixed value, with the parts that are evaluated marked apart from the parts that never change.
+- **`issues`:** what [`validate()`](/guides/validation/#issues) would report.
+- **`dependencies`:** the data it reads, and the operators and fragments it uses.
+- **`nodeCount`** and **`maxDepth`:** the numbers the [`maxNodes` and `maxDepth` limits](/guides/setup/#limits) are checked against.
+- **`timeoutShielded`:** whether the expression is [shielded](/guides/fallbacks/#timeout-shielding) from a timeout.
+- **`options`:** the options it was compiled with. The `data`, header values and `signal` are replaced with placeholders, so a report is safe to paste into a bug report.
+
+<Callout kind="caution" title="A development tool">
+  `inspect()` is a development tool, for understanding the internal structure of a compiled expression. That structure can change subtly between versions, so the shape of its report isn't covered by [semver](https://semver.org), and custom tools that work with FigTree shouldn't rely on it. The report's `version` says which version of FigTree made it.
+</Callout>

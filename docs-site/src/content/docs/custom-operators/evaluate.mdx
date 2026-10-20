@@ -31,6 +31,8 @@ Throwing `OperatorFailure` with a code and details, and how a failure reaches a 
 
 Recording events in the trace from inside a body.
 
+{/* NOTE (from Tracing and debugging): a body records an event with `context.trace.note(event)`, where an event is any object with a string `type` and whatever else it wants to carry (`TraceEvent` in src/runtimeInterface.ts). It lands in the `events` of the node's trace entry. When tracing is off, `note` does nothing, so a body calls it unconditionally and pays nothing. Pick a `type` that won't collide with the core ones (`cache`, `request`, `query`, `render`, `key-overwrite`, `shielded-fallback`; `KnownTraceEvent` in src/trace.ts). Say here, too, that because any operator can add its own types, code that reads a trace (a debug panel, a logger) should pass over an event type it doesn't recognise: Tracing and debugging's Events section only says custom operators can record events, and links here. Keep the advice on values: a trace is something hosts log, so don't put secrets in an event (the core events record header names but never values, and SQL text but never its bound values). */}
+
 ## Matching core behaviour
 
 The engine-parity helpers, so a custom operator compares, renders and resolves paths exactly as the core operators do.

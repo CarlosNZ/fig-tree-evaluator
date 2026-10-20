@@ -19,6 +19,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 Evaluate an expression, with per-call options. Returns the result, or `{ result, trace }` under `trace`.
 
+{/* NOTE (from Tracing and debugging): the return type in full. It's `unknown` for the bare result, and `EvaluationResult` (`{ result, trace }`) when `trace: true` is in the constructor's options or the call's, with a per-call `trace: false` turning an instance's off again (`ResultShape` in src/options.ts). `updateOptions({ trace })` and `with({ trace })` change the runtime shape but not the type. Options held in a variable before the call widen `true` to `boolean`, and the type falls back to `unknown`. Tracing and debugging only says not to turn tracing on with `updateOptions()` or `with()`, and to pass `trace: true` to the constructor or the call. Source: "The TypeScript story" in docs-dev/v3-specs/v3-evaluator-methods.md. */}
+
 ## `compile()`
 
 Compile an expression once, for repeated evaluation. Returns a `CompiledExpression`.
