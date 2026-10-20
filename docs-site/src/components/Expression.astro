@@ -23,6 +23,7 @@ import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
 import { playgroundHref } from '../lib/playgroundLink'
 import ExpressionEditor from './playground/ExpressionEditor.tsx'
+import type { ExampleActionName } from './playground/exampleActions'
 
 interface Props {
   /** The expression, as JSON5 source. Comments are kept in the display. */
@@ -33,6 +34,8 @@ interface Props {
   fragments?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
+  /** An extra button in the editor's toolbar (playground/exampleActions.tsx). */
+  action?: ExampleActionName
   /** A label for the expression's code block. */
   title?: string
   /** The example demonstrates an error rather than a result. */
@@ -43,8 +46,15 @@ interface Props {
   caption?: string
 }
 
-const { title = 'Expression', throws = false, editor = true, fragments, noCache, caption } =
-  Astro.props
+const {
+  title = 'Expression',
+  throws = false,
+  editor = true,
+  fragments,
+  noCache,
+  action,
+  caption,
+} = Astro.props
 const figTree = exampleFigTree({ fragments, noCache })
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
@@ -90,7 +100,13 @@ if (outcome.ok && throws)
 if (!outcome.ok && !throws)
   throw new Error(`${where}\n\nThis example threw ${outcome.code}: ${outcome.message}`)
 
-const href = editor ? playgroundHref({ expression: code, data: dataSource, fragments, noCache }) : null
+const href = editor ? playgroundHref({
+      expression: code,
+      data: dataSource,
+      fragments,
+      noCache,
+      action,
+    }) : null
 ---
 
 <div class="fds-editable not-content">
@@ -124,6 +140,7 @@ const href = editor ? playgroundHref({ expression: code, data: dataSource, fragm
         data={dataSource}
         fragments={fragments}
         noCache={noCache}
+        action={action}
         caption={caption}
       />
     )

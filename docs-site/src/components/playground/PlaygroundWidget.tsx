@@ -11,6 +11,7 @@ import { Json5Editor, hasComments } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
 import { ResultValue } from './ResultValue'
 import type { PlaygroundProps } from './Playground'
+import { exampleActions } from './exampleActions'
 
 /** The editor's own colours that need a dark-mode variant (custom.css). */
 const editorColours = {
@@ -27,6 +28,8 @@ const INPUT_DELAY = 300
 const EVALUATE_DELAY = 50
 /** An Evaluate in the tree that takes longer than this shows a running toast. */
 const RUNNING_TOAST_DELAY = 300
+/** How long an example's action button says it's done, once pressed. */
+const ACTION_DONE_TIME = 1500
 
 /**
  * The tree editor's layer of json-edit-react's theme. Its container is
@@ -262,6 +265,31 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
   const title = <div className="fds-widget-title">{props.title ?? 'Playground'}</div>
 
+  // The example's own button, if it has one, saying for a moment that it
+  // did its job
+  const action = (seed ?? props).action
+  const [actionDone, setActionDone] = useState(false)
+  const actionTimer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(actionTimer.current), [])
+  const actionButton = action && (
+    <button
+      className="fds-widget-action fds-widget-action--primary"
+      onClick={() => {
+        exampleActions[action].run(figTree)
+        setActionDone(true)
+        clearTimeout(actionTimer.current)
+        actionTimer.current = setTimeout(() => setActionDone(false), ACTION_DONE_TIME)
+      }}
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        {exampleActions[action].icon}
+      </svg>
+      <span aria-live="polite">
+        {actionDone ? exampleActions[action].doneLabel : exampleActions[action].label}
+      </span>
+    </button>
+  )
+
   const resetButton = (
     <button className="fds-widget-action" disabled={!edited} onClick={reset}>
       <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -340,6 +368,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     >
       <div className="fds-widget-toolbar">
         {title}
+        {actionButton}
         {resetButton}
         <button className="fds-widget-action" onClick={() => overlay.current?.close()}>
           <svg viewBox="0 0 16 16" aria-hidden="true">
@@ -376,6 +405,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     <div className="fds-widget" ref={container}>
       <div className="fds-widget-toolbar">
         {title}
+        {actionButton}
         {resetButton}
         <button className="fds-widget-action" onClick={() => setExpanded(true)}>
           <svg viewBox="0 0 16 16" aria-hidden="true">

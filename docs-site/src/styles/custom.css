@@ -778,6 +778,19 @@
   border-color: var(--sl-color-text-accent);
 }
 
+/* An example's own action, filled with the accent so it stands out */
+.fds-widget-action--primary {
+  border-color: var(--sl-color-accent);
+  background: var(--sl-color-accent);
+  color: var(--sl-color-black);
+}
+
+.fds-widget-action--primary:hover:enabled {
+  border-color: var(--sl-color-accent-high);
+  background: var(--sl-color-accent-high);
+  color: var(--sl-color-black);
+}
+
 .fds-widget-action:disabled {
   cursor: default;
   opacity: 0.5;

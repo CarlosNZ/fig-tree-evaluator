@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { dedent } from '../../lib/dedent'
+import type { ExampleActionName } from './exampleActions'
 
 /**
  * The island an MDX page mounts, with `client:visible`. It renders only a
@@ -26,6 +27,8 @@ export interface PlaygroundProps {
   fragments?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
+  /** An extra button in the toolbar, beside Reset (./exampleActions.tsx). */
+  action?: ExampleActionName
   /**
    * How many levels of the tree start open; deeper ones start collapsed.
    * The editor's own default if not given.

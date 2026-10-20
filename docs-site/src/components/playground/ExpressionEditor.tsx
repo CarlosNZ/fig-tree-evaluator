@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Playground from './Playground'
+import type { ExampleActionName } from './exampleActions'
 
 interface Props {
   /** The example's title. */
@@ -11,6 +12,8 @@ interface Props {
   fragments?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
+  /** An extra button in the toolbar (./exampleActions.tsx). */
+  action?: ExampleActionName
   /** What to do or notice in the editor, at the foot of the overlay. */
   caption?: string
 }
@@ -37,6 +40,7 @@ export default function ExpressionEditor({
   data,
   fragments,
   noCache,
+  action,
   caption,
 }: Props) {
   const anchor = useRef<HTMLDivElement>(null)
@@ -75,6 +79,7 @@ export default function ExpressionEditor({
           data={data}
           fragments={fragments}
           noCache={noCache}
+          action={action}
           caption={caption}
           collapse={OVERLAY_COLLAPSE}
           onOpen={() => loading(false)}

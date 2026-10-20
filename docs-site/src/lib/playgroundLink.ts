@@ -1,3 +1,5 @@
+import type { ExampleActionName } from '../components/playground/exampleActions'
+
 /**
  * An example's source text carried in a URL, so an "open in editor" link can
  * load it into the Playground page's widget with its comments intact. The
@@ -9,6 +11,7 @@ export type PlaygroundSeed = {
   data?: string
   fragments?: boolean
   noCache?: boolean
+  action?: ExampleActionName
 }
 
 const PARAM = 'example'
