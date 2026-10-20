@@ -168,9 +168,34 @@ const href = editor ? playgroundHref({
     // After the island, which hydrates when it comes into view: below a long
     // trace, it wouldn't have by the time its link above was clicked
     traced !== undefined && (
-      <div class="fds-expression-trace">
+      <div class="fds-expression-trace" data-collapsed>
         <Code code={traced} lang="json5" title="Trace" />
+        <button class="fds-trace-toggle" type="button" aria-expanded="false" hidden>
+          Show full trace
+        </button>
       </div>
     )
   }
 </div>
+
+<script>
+  // A trace starts cut down to a few lines, fading out, with a button to
+  // show it all. One short enough to fit shows whole, with no button.
+  for (const trace of document.querySelectorAll<HTMLElement>('.fds-expression-trace')) {
+    const code = trace.querySelector('pre')!
+    const button = trace.querySelector<HTMLButtonElement>('.fds-trace-toggle')!
+    // A pixel's grace, for rounding
+    if (code.scrollHeight <= code.clientHeight + 1) {
+      trace.removeAttribute('data-collapsed')
+      continue
+    }
+    button.hidden = false
+    button.addEventListener('click', () => {
+      const collapsed = trace.toggleAttribute('data-collapsed')
+      button.textContent = collapsed ? 'Show full trace' : 'Collapse'
+      button.setAttribute('aria-expanded', String(!collapsed))
+      // Collapsing a long trace leaves the reader below it, so bring it back
+      if (collapsed) trace.scrollIntoView({ block: 'nearest' })
+    })
+  }
+</script>

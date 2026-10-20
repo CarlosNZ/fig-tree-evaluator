@@ -208,6 +208,28 @@
   margin-top: 0.5rem;
 }
 
+/* About a dozen lines of it, fading out, until it's shown in full */
+.fds-expression-trace[data-collapsed] .expressive-code pre {
+  max-height: 18rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, black calc(100% - 4rem), transparent);
+}
+
+.fds-trace-toggle {
+  margin-top: 0.4rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--sl-color-text-accent);
+  font-size: var(--sl-text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fds-trace-toggle:hover {
+  text-decoration: underline;
+}
+
 :is(.fds-expression, .fds-tree-figure) figcaption a {
   color: var(--sl-color-text-accent);
   text-decoration: none;
