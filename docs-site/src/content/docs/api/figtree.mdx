@@ -5,58 +5,463 @@ sidebar:
   order: 1
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import { version } from 'fig-tree-evaluator'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Every expression is evaluated by an instance of the `FigTree` class, which holds the [operators](/guides/setup/#choosing-operators), [fragments](/guides/fragments/) and [options](/api/options/) it evaluates with, and its two caches: the [result cache](/guides/caching/) and the [compile cache](/guides/caching/#compiling-once). [Setting up FigTree](/guides/setup/) walks through creating and configuring one.
+
+| Member                                                               | Returns                            | What it does                                      |
+| -------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------- |
+| [`new FigTree()`](#constructor)                                      | `FigTree`                          | Creates an instance                               |
+| [`evaluate()`](#evaluate)                                            | `Promise`                          | Evaluates an expression                           |
+| [`compile()`](#compile)                                              | `CompiledExpression`               | Compiles an expression                            |
+| [`validate()`](#validate)                                            | `ValidationResult`                 | Checks an expression without evaluating it        |
+| [`getDependencies()`](#getdependencies)                              | `Dependencies`                     | Lists what an expression reads and uses           |
+| [`isEvaluable()`](#isevaluable)                                      | `boolean`                          | Says whether a value holds anything to evaluate   |
+| [`updateOptions()`](#updateoptions)                                  | `void`                             | Changes the instance's options                    |
+| [`with()`](#with)                                                    | `FigTree`                          | Makes a new instance, with some options changed   |
+| [`getOptions()`](#getoptions)                                        | `EvaluationOptions`                | The options set on the instance                   |
+| [`getOperators()`, `getFragments()`](#getoperators-and-getfragments) | `OperatorInfo[]`, `FragmentInfo[]` | Data about the registered operators and fragments |
+| [`clearCache()`](#clearcache)                                        | `void`                             | Empties the result cache                          |
+| [`version`](#version)                                                | `string`                           | The package version in use                        |
+
+Every method except `evaluate()` is synchronous.
+
+Any error FigTree throws is a [`FigTreeError`](/api/errors/#figtreeerror), even one that started inside a custom operator, so each entry here lists only the error codes.
 
 ## Constructor
 
-`new FigTree(options?)`, and its type parameter.
+```ts
+import type { FigTreeOptions } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+constructor(options?: FigTreeOptions)
+// ---cut-after---
+}
+```
+
+`new FigTree(options)` creates an instance with the given options.
+
+**Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the [core operators](/reference/operators/) and nothing else.
+
+**Throws:** `invalid-options` when an option is invalid. The error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options.
+
+**Details:** everything is checked here, before the instance exists: each operator, each `operatorDefaults` entry against the operators, each fragment body, and the `timeout`, `signal` and `cache` options.
+
+```ts title="construct.ts"
+import { FigTree, isFigTreeError } from 'fig-tree-evaluator'
+// ---cut---
+try {
+  new FigTree({ operatorDefaults: { dvide: { fallback: null } } })
+} catch (error) {
+  if (isFigTreeError(error)) console.log(error.issues)
+  // => [
+  //      {
+  //        severity: 'error',
+  //        code: 'unknown-operator',
+  //        message: "'dvide' names no registered operator",
+  //        path: ['operatorDefaults', 'dvide'],
+  //      },
+  //    ]
+}
+```
+
+**See also:** [Creating an instance](/guides/setup/#creating-an-instance)
 
 ## `evaluate()`
 
-Evaluate an expression, with per-call options. Returns the result, or `{ result, trace }` under `trace`.
+```ts
+import type { CallOptions, EvaluationResult } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+evaluate(expression: unknown, options?: CallOptions): Promise<unknown>
+// With trace in effect
+evaluate(expression: unknown, options?: CallOptions): Promise<EvaluationResult>
+// ---cut-after---
+}
+```
 
-{/* NOTE (from Tracing and debugging): the return type in full. It's `unknown` for the bare result, and `EvaluationResult` (`{ result, trace }`) when `trace: true` is in the constructor's options or the call's, with a per-call `trace: false` turning an instance's off again (`ResultShape` in src/options.ts). `updateOptions({ trace })` and `with({ trace })` change the runtime shape but not the type. Options held in a variable before the call widen `true` to `boolean`, and the type falls back to `unknown`. Tracing and debugging only says not to turn tracing on with `updateOptions()` or `with()`, and to pass `trace: true` to the constructor or the call. Source: "The TypeScript story" in docs-dev/v3-specs/v3-evaluator-methods.md. */}
+Evaluates an expression, and returns its result.
+
+**Parameters:**
+
+| Parameter    | Description                                                                                                                         |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `expression` | Any JSON value. Nodes and references anywhere inside it are evaluated, and everything else is returned as it is                     |
+| `options`    | `data`, `signal`, `timeout` and `trace`, for this evaluation only. Each one given replaces the instance's value, and the rest stay |
+
+**Returns:** a promise of the result. With `trace` in effect, from the constructor's options or the call's, it's an `EvaluationResult` instead: `{ result, trace }`, where `trace` is the [trace tree](/guides/tracing/#the-trace-tree).
+
+**Throws:** `evaluate()` rejects, and never throws synchronously:
+
+- **A static error:** the first one in the expression, with its own code, and every issue the compiler found in `error.issues`. A size limit, `max-depth` or `max-nodes`, is a static error too.
+- **A runtime failure no fallback catches:** the first one, with its own code.
+- **`timeout`:** the evaluation ran past its `timeout`, unless [timeout shielding](/guides/fallbacks/#timeout-shielding) answered it.
+- **`aborted`:** its `signal` was aborted.
+- **`invalid-options`:** the call passed an option other than the four, or a `timeout` or `signal` that isn't valid.
+
+**Details:**
+
+- A value with nothing to evaluate comes back as it is: the same object, not a copy.
+- The result can share objects with the expression, with the data, and with cached results, so treat it as read-only. Changing it can change what later evaluations return.
+- The compile cache recognises an expression by the object itself, so don't mutate an expression after evaluating it ([Compiling once](/guides/caching/#compiling-once)).
+- Per-call `data` replaces the instance's `data` whole, and is read by reference, never copied.
+- A per-call option set to `undefined` counts as not given, so `{ data: undefined }` evaluates with the instance's `data`. Unlike in `updateOptions()`, `null` doesn't remove an option: a `null` `timeout` or `signal` is `invalid-options`, and `data: null` evaluates with no data.
+- When no fallback catches a runtime failure, the evaluation stops there: work still in progress elsewhere in the expression, such as a request, is cancelled.
+
+In TypeScript, the type `evaluate()` returns is `EvaluationResult` when `trace: true` is in the constructor's options or the call's, and `unknown` otherwise. That's why an instance's type includes its options, as in `FigTree<{ trace: true }>`. Here, the second call's `trace: false` overrides the instance's:
+
+```ts title="types.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({ trace: true })
+
+const traced = await fig.evaluate({ $plus: [1, 2] })
+//    ^?
+
+const bare = await fig.evaluate({ $plus: [1, 2] }, { trace: false })
+//    ^?
+```
+
+Options put in a variable before the call need `as const` for the type to follow their `trace`, as in `const options = { trace: true } as const`.
+
+**See also:** [Options for a single evaluation](/guides/setup/#options-for-a-single-evaluation), [Errors that reach the host](/guides/fallbacks/#errors-that-reach-the-host), [Turning tracing on](/guides/tracing/#turning-tracing-on)
 
 ## `compile()`
 
-Compile an expression once, for repeated evaluation. Returns a `CompiledExpression`.
+```ts
+import type { CompiledExpression } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+compile(expression: unknown): CompiledExpression
+// ---cut-after---
+}
+```
+
+Compiles an expression, ready to check or evaluate.
+
+**Parameters:** `expression`, the same as `evaluate()` takes.
+
+**Returns:** a [`CompiledExpression`](/api/compiled-expression/), with its own `evaluate()`, the `issues` the compiler found, and `hasErrors`.
+
+**Throws:** never. A static error is reported in the compiled expression's `issues`, and thrown by its `evaluate()`.
+
+**Details:**
+
+- It shares the compile cache with `evaluate()`, so compiling an expression that's already been evaluated costs nothing, and evaluating one that's been compiled doesn't compile it again.
+- The compiled expression keeps the instance's options and operators as they were when it was compiled — a later `updateOptions()` doesn't reach it.
+- It shares the instance's result cache.
+
+**See also:** [Compiling once](/guides/caching/#compiling-once)
 
 ## `validate()`
 
-Check an expression without evaluating it.
+```ts
+import type { ValidateOptions, ValidationResult } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+validate(expression: unknown, options?: ValidateOptions): ValidationResult
+// ---cut-after---
+}
+```
 
-{/* NOTE (from Checking expressions): the sample-data check (`validate(expression, { data })`) warns at each place a missing path is read, so a path read three times gives three warnings; a read inside a fragment body is reported at the call, naming the fragment. The data is used for this check only: nothing is evaluated. Issue order: the size-limit errors first, then the expression's own issues in tree order, then the sample-data warnings. */}
+Checks an expression for static errors and warnings, without evaluating it.
+
+**Parameters:**
+
+| Parameter        | Description                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `expression`     | The expression to check                                                                                     |
+| `options.data`   | Sample data: each `$data` path the expression reads is checked against it                                   |
+| `options.params` | The parameter names of a fragment body being checked, so its `$params` references are checked against them |
+
+The other per-call options, `signal`, `timeout` and `trace`, are accepted, but have no effect.
+
+**Returns:** a [`ValidationResult`](/api/errors/#issue-and-validationresult), `{ valid, issues }`. `valid` is `false` exactly when at least one issue has severity `'error'`.
+
+**Throws:** `invalid-options`, only when the options are wrong: an option other than the per-call ones and `params`, a `params` that isn't an array of strings, or a `timeout` or `signal` that isn't valid. A problem in the expression, however serious, is reported in `issues` instead.
+
+**Details:**
+
+- It makes the same checks `evaluate()` makes before running anything, and, when given `data`, checks the expression's `$data` paths against it. Nothing is evaluated.
+- `maxDepth` and `maxNodes` are read from the instance, and going over either is an error.
+- Issues are listed in this order: the size-limit errors, then the expression's own issues, in the order they appear in it, then the warnings from checking `data`.
+- The check against `data` covers the paths known before anything runs, not computed ones. It warns at each place a missing path is read, so a path read three times gives three warnings. A read inside a fragment's body is reported at the call, naming the fragment.
+- With `params`, a `$params` reference naming an undeclared parameter is an `unresolved-param` error, with the nearest declared name as its `suggestion`. `params: []` is a body that declares no parameters. Without `params`, every `$params` reference is an error, as it is in any expression outside a fragment.
+- Warnings never stop an evaluation, and `evaluate()` doesn't report them.
+- It compiles the expression afresh every time, and never reads or fills the compile cache.
+
+**See also:** [Checking expressions](/guides/validation/), [Validating a fragment during authoring](/guides/fragments/#validating-a-fragment-during-authoring)
 
 ## `getDependencies()`
 
-What an expression reads.
+```ts
+import type { Dependencies } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+getDependencies(expression: unknown): Dependencies
+// ---cut-after---
+}
+```
+
+Lists the data an expression reads, and the operators and fragments it uses.
+
+**Returns:**
+
+```ts title="Types"
+interface Dependencies {
+  data: {
+    // Each $data path read, without the $data
+    paths: string[]
+    // true when a path is computed as the expression runs
+    dynamic: boolean
+  }
+  // For a fragment body only
+  params: {
+    // Each parameter a $params reference reads
+    names: string[]
+    // true when the parameters read can't be listed
+    dynamic: boolean
+  }
+  // Operators used, by name, never alias
+  operators: string[]
+  // Fragments called
+  fragments: string[]
+}
+```
+
+**Throws:** never. A malformed expression reports whatever could be read from it.
+
+**Details:**
+
+- `data.paths` includes every `$data` reference, and every `get` with a fixed path. Each path is listed once, in [path syntax](/concepts/data/#path-syntax), with a projection as written (`orders[*].total`), and a key containing a dot in brackets (`["first.last"]`).
+- Paths are sorted so a path comes just before the paths inside it, with indices in number order: `orders`, `orders[2]`, `orders[10]`, `orders[10].total`, `user`.
+- `data.dynamic` is `true` when a `get` path is computed, when the expression reads the whole of `$data`, or when a fragment call's arguments are [passed as one object](/guides/fragments/#passing-the-arguments-as-one-object). The paths that are known are still listed.
+- `params.names` lists each parameter by the first key a reference reads: `$params.country.code` reads `country`. `params.dynamic` is `true` for a bare `$params`, a computed `get` path from `$params`, or `$params[*]`.
+- `data`, `operators` and `fragments` include what each called fragment's body uses, and the fragments it calls in turn. `params` is only the expression's own `$params` references, since a body's references read its own parameters.
+- `operators` and `fragments` are in the order they're found in the expression.
+- It compiles the expression afresh every time, and never reads or fills the compile cache.
+
+**See also:** [What an expression reads](/guides/validation/#what-an-expression-reads)
 
 ## `isEvaluable()`
 
-Whether an expression holds anything to evaluate.
+```ts
+declare class FigTree {
+// ---cut---
+isEvaluable(expression: unknown): boolean
+// ---cut-after---
+}
+```
+
+Says whether a value holds anything for FigTree to evaluate.
+
+**Returns:** `true` when the value holds a node or a reference anywhere inside it, or has a static error, since a malformed node is still an expression, just a broken one. `false` otherwise, including for a value whose only special content is a `//` comment.
+
+**Throws:** never.
+
+```ts title="evaluable.ts"
+fig.isEvaluable('$data.user.name') // => true
+fig.isEvaluable('Welcome') // => false
+fig.isEvaluable({ title: 'Welcome', colour: 'blue' }) // => false
+fig.isEvaluable({ '//': 'Shown on the home page', title: 'Welcome' }) // => false
+fig.isEvaluable({ $flibble: 1 }) // => true, since an unknown operator is a static error
+```
+
+**See also:** [Is there anything to evaluate?](/guides/validation/#is-there-anything-to-evaluate)
 
 ## `updateOptions()`
 
-Merge an update into the instance's options.
+```ts
+import type { OptionsUpdate } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+updateOptions(update: OptionsUpdate): void
+// ---cut-after---
+}
+```
+
+Changes the instance's options, by merging an update into them.
+
+**Parameters:** `update`, any of the instance's [options](/api/options/). An option given replaces the one the instance has, except where it's merged by the [merge rules](/api/options/#merge-rules), and `null` removes one.
+
+**Throws:** `invalid-options`, as the [constructor](#constructor) does. An update that throws changes nothing.
+
+**Details:**
+
+- Changing `operators`, `fragments` or `operatorDefaults` checks the whole set again, so an update can fail because of something it didn't name, such as an `operatorDefaults` entry for an operator the update removes, or a fragment that calls one it removes. It also empties the compile cache. Changing any other option keeps it.
+- The result cache is kept, but an operator or fragment redefined under the same name never returns the results cached for its old definition.
+- [Compiled expressions](#compile) made before the update keep the options they were compiled with.
+- TypeScript can't see a change to `trace` made here, so the type `evaluate()` returns stays as it was ([`evaluate()`](#evaluate)).
+
+**See also:** [Changing options](/guides/setup/#changing-options)
 
 ## `with()`
 
-A new instance with an update applied.
+```ts
+import type { OptionsUpdate } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+with(update: OptionsUpdate): FigTree
+// ---cut-after---
+}
+```
+
+Makes a new FigTree instance, with the original's options and an update applied, leaving the original instance as is.
+
+**Parameters:** `update`, the same as [`updateOptions()`](#updateoptions) takes.
+
+**Returns:** the new FigTree instance.
+
+**Throws:** `invalid-options`, as `updateOptions()` does, before anything is created.
+
+**Details:**
+
+- The two instances are independent from the start: an `updateOptions()` or `clearCache()` on either never reaches the other.
+- An update that doesn't change `operators`, `fragments` or `operatorDefaults` shares the original's operators, fragments and compiled expressions, so it costs very little. One that does builds and checks its own.
+- The new instance has a result cache of its own, empty to start with, set up from the merged `cache` option. A `store` that both instances' options name is shared, as it would be between any two instances.
+- TypeScript can't see a change to `trace` made here, so the new instance's `evaluate()` returns the same type as the original's.
+
+**See also:** [Changing options](/guides/setup/#changing-options)
 
 ## `getOptions()`
 
-The instance's evaluation options.
+```ts
+import type { EvaluationOptions } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+getOptions(): EvaluationOptions
+// ---cut-after---
+}
+```
+
+Returns the options set on the instance.
+
+**Details:**
+
+- Options are reported as they were set, with no defaults filled in, so an option never explicitly set is absent.
+- `operators` and `fragments` are left out. [`getOperators()` and `getFragments()`](#getoperators-and-getfragments) report them.
+- Treat what it returns as read-only, since mutating it can change the instance's options.
+
+**See also:** [Changing options](/guides/setup/#changing-options)
 
 ## `getOperators()` and `getFragments()`
 
-The registered operators and fragments, as plain data.
+```ts
+import type { OperatorInfo, FragmentInfo } from 'fig-tree-evaluator'
+declare class FigTree {
+// ---cut---
+getOperators(): OperatorInfo[]
+getFragments(): FragmentInfo[]
+// ---cut-after---
+}
+```
 
-{/* NOTE (from Fragments): `getFragments()` reports each registered fragment, without its body: `name`, `description`, `metadata` exactly as written, its `parameters` with `required` and any `default` filled in, `returns` (inferred at registration from the body's root), `dependencies` (what the body reads and calls, rolled up through nested calls), `caches`, and `warnings`. The warnings matter most: they're the body's warning-severity issues from registration, which nothing else reports, since registration throws only on errors and a calling expression's `validate()` never repeats a body's warnings. `samples` is never reported. Types: `FragmentInfo` in src/introspect.ts. The Fragments page doesn't mention `getFragments()`, so its "Fragments in an editor" section has no link here; Tooling's "Introspection on the instance" is the other place it's planned. */}
+Detailed data about the registered operators and fragments, in the order they were registered.
+
+**Returns:** a fresh array on every call. For each operator, its declaration as the instance uses it, with every default filled in, and with what `operatorDefaults` sets reported beside the definition's own values:
+
+```ts title="Types"
+import type {
+  OperatorCategory,
+  ExpectedType,
+  ValidatedParameter,
+} from 'fig-tree-evaluator'
+// ---cut---
+interface OperatorInfo {
+  name: string
+  alias?: string
+  category: OperatorCategory
+  metadata?: Record<string, unknown>
+  parameters: Record<string, ParameterInfo>
+  positionalParams?: string[]
+  // The parameter that takes the rest of a positional list
+  restParam: string | null
+  // The parameter that sets a per-request timeout
+  timeoutParam: string | null
+  // Whether its results are cached, by its definition
+  cache: boolean
+  returns: ExpectedType
+  // Whether its definition has a validate hook
+  hasValidate: boolean
+  // From operatorDefaults, where it sets them
+  hostNoCache?: true
+  hostFallback?: unknown
+}
+
+// Each parameter's declaration, as Declaring parameters describes
+interface ParameterInfo extends ValidatedParameter {
+  // From operatorDefaults, where it sets one
+  hostDefault?: unknown
+}
+```
+
+For each fragment, everything but its body:
+
+```ts title="Types"
+import type {
+  Dependencies,
+  ExpectedType,
+  FragmentMetadata,
+  FragmentParameter,
+  Issue,
+} from 'fig-tree-evaluator'
+// ---cut---
+interface FragmentInfo {
+  name: string
+  description?: string
+  // As written
+  metadata?: FragmentMetadata & Record<string, unknown>
+  // With required and any default filled in
+  parameters: Record<string, FragmentParameter>
+  // The type the body returns, from its root
+  returns: ExpectedType
+  // The body's warnings, from when it was registered
+  warnings: Issue[]
+  // What the body reads and uses, as getDependencies() reports it
+  dependencies: Dependencies
+  // Whether the body can reach a node whose result is cached
+  caches: boolean
+}
+```
+
+**Details:**
+
+- `hostDefault` and `hostFallback` are present only where `operatorDefaults` sets them, and `null` is a value they can have, so test whether the key is there, not what its value is. They never replace the definition's own `default`, so a tool can tell the two apart.
+- An operator's results are cached on this instance when `cache` is `true` and `hostNoCache` isn't.
+- A fragment's `returns` is worked out when it's registered, from the root of its body: an operator's declared `returns`, a called fragment's `returns`, a constant's own type, `array` or `object` for a container, and `any` for a reference.
+- A fragment's `warnings` are reported nowhere else: registration throws only on errors, and `validate()` on an expression that calls the fragment doesn't repeat them.
+- A fragment's `samples` are never reported.
+
+**See also:** [Declaring parameters](/custom-operators/parameters/#declaring-parameters), [Fragments in an editor](/guides/fragments/#fragments-in-an-editor)
 
 ## `clearCache()`
 
-Empty the result store.
+```ts
+declare class FigTree {
+// ---cut---
+clearCache(): void
+// ---cut-after---
+}
+```
+
+Empties the instance's result cache.
+
+**Details:**
+
+- It takes effect straight away: even a request still in flight when it's called won't be stored.
+- The compile cache is left as it is.
+- With a [store of your own](/guides/caching/#using-your-own-store), it calls the store's `clear()`, which empties it for every instance that shares it.
+
+**See also:** [Clearing the cache](/guides/caching/#clearing-the-cache)
+
+## `version`
+
+```ts
+declare class FigTree {
+// ---cut---
+readonly version: string
+// ---cut-after---
+}
+```
+
+The version of `fig-tree-evaluator` the instance comes from, such as <code>{`'${version}'`}</code>. It's the same as the exported [`version`](/api/exports/#version).
