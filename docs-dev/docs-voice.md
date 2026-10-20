@@ -61,6 +61,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Where the reader has something to do, say what they do.
   - Before: "The playgrounds on this site convert for you"
   - After: "In the playgrounds on this site, open the editor and hover over the top right of a node"
+  - Before: "On an instance that doesn't list them, the I/O operators don't exist at all, so an expression that uses one has a static error, which `validate()` reports before anything runs."
+  - After: "An expression that uses an operator that hasn't been registered gives a static error."
 - **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
@@ -71,6 +73,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "**You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying expression tree, so it maps cleanly onto the UI components that represent the tree.", and the third bullet cut
   - The same goes for a use case offered as motivation: a thin one is worse than none.
   - Cut: "…to offer a smaller set in an editor where people with less experience write rules", as the reason to leave operators out
+  - A scenario has to match how the feature is really used.
+  - Cut: "For credentials that differ by customer, an instance per customer made with `with()` keeps them apart", on HTTP and SQL; on Setting up FigTree, the same example became an instance that makes its requests as a service account rather than as the signed-in user
 - **Name the actual difference, not an abstraction of it, and drop qualifiers that don't bear on the point.**
   - Before: "There are two ways, and they differ in what counts as a gap"
   - After: "There are two ways, and they differ in how they treat a value stored as `null`"
@@ -78,6 +82,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "a form field left blank"
   - Cut: "…where `$error.code` is `'timeout'`", beside an example of a fallback that reads it
   - Added: "a _global_ `timeout`", to tell it apart from the per-request timeout just described
+- **When saying when to use an option, give the reason the reader would actually decide by,** not a side effect of it.
+  - Before: "Set it to `'post'` for an API that takes its question as a body"
+  - After: "Set it to `'post'` for an endpoint that expects a POST"
 - **An operator _returns_ its result.** Say what an operator produces with "returns", not "gives".
   - Before: "decided from what that operator can give"; "But `plus` can give a string"
   - After: "decided from what that operator can return"; "But `plus` _can_ return a string"
@@ -158,6 +165,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
+  - But where a mistake fails confusingly, or not at all, a short warning stays.
+  - Kept: "the values follow the query one after another, not in an array of their own", on `sql`'s positional form, since the array form gets past `validate()` and fails in the database, or quietly matches nothing
   - The same goes for design advice the reader only needs once they're doing it: they'll work it out as they build, and won't think of it before.
   - Cut: "A fallback in the body applies wherever the fragment is called, … and one on the call applies only there.", on Fragments
   - Cut, on Fragments: the ban on fragments calling themselves, a misspelt `defualt` being an error, extra argument keys being ignored (an example comment already shows it), and "Neither check covers the declarations themselves"
@@ -203,6 +212,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Example: what "node" means in graph theory, as a footnote to "trees have nodes (as well as plain values at the leaves)"
   - Before: two bullets in the `[*]` callout on Iteration, the second one only about `strictDataPaths`
   - After: the one difference in the callout, and `strictDataPaths` in a footnote
+  - Added: a footnote saying a GraphQL request is just an HTTP POST, sent through the same client as `http`, which explains why the `http` headers, failures and caching all apply to `graphQL`
 
 ## Structure
 
@@ -285,6 +295,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Examples: a GST price that rounds to `$92.56`, a stored MongoDB query, a notification config
   - Before: `'Hi %1'` against `'Hi there'`; `'Stock level known'` against `'No stock level'`
   - After: `'Call %1'` against `'No phone number on file'`; `'$0'` against `'Price data missing'`
+  - Inputs are ones a casual reader can supply without looking anything up, from the domains FigTree configs live in, such as forms, countries and customers.
+  - Before: `{ country: 'NZ' }`, a query by country code; an OSV vulnerability lookup as the POST example
+  - After: `country: 'New Zealand'`, a query by name; a lookup of delivery addresses' postcodes
 - **Put each named parameter on its own line,** so the names stand out beside the operator.
   - Before: `named: { $if: { condition: '$data.isMember', then: 'Member price', else: 'Standard price' } }`
   - After: `condition`, `then` and `else` each on a line of their own inside `$if`
@@ -310,6 +323,11 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Keep only the moving parts the point needs. A branch that does something interesting of its own pulls the eye.
   - Before: an `$if` fallback whose else branch was `'$error.message'`, in an example about the fallback's `$divide` failing
   - After: `'Average unavailable'`, with `// Fails as well, so the node returns null` on the `$divide`
+  - A setting the example needs only for the demo gets a comment saying so, so it can't be mistaken for the cause of what the example shows.
+  - Added: `// Only so every run sends its requests, rather than reusing an earlier one's` above `noCache: true`, in an example showing one URL requested twice
+- **A list-shaped thing gets at least two items in its example, so its structure shows.** With one, the reader can't tell it's a list.
+  - Before: one placeholder: `['SELECT … = $1', '$data.categoryId']`
+  - After: two: `['SELECT … = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice']`
 - **An example in passing works under the default setup.** One that needs an option set first is convoluted where it's only there to illustrate.
   - Before: "such as a value of the wrong type, a missing path under `strictDataPaths` or a failed request"
   - After: "such as a parameter of the wrong type, a failed request, or a division by zero"
@@ -319,6 +337,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - The import goes below the cut, so it shows, and the prose says what kind of thing a name is and where it's imported from, where it hasn't come up before.
   - Before: "`isFigTreeError()` tells FigTree's errors apart…", with its import hidden above the cut
   - After: "Two imports from `fig-tree-evaluator` can help in your error handling: the `isFigTreeError()` function … and the `ErrorCodes` object …", with the import visible
+  - A placeholder name says what the thing is, and the plain form comes before the variant.
+  - Before: "or one you pass it, as `new FetchClient(myFetch)`"
+  - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"
 - **An example finishes what the prose just described.** If the text mentions a step, the example shows it.
   - Before: the first example on Setting up FigTree ended at the constructor, though the intro says an instance is "called with `evaluate()`"
   - After: it ends with `await fig.evaluate(expression) // => 92`
