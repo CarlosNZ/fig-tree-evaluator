@@ -203,6 +203,11 @@
   color: var(--sl-color-gray-3);
 }
 
+/* An example's trace, below its figure (Expression.astro) */
+.fds-expression-trace {
+  margin-top: 0.5rem;
+}
+
 :is(.fds-expression, .fds-tree-figure) figcaption a {
   color: var(--sl-color-text-accent);
   text-decoration: none;
@@ -1032,6 +1037,15 @@
 .fds-widget-pane--tree {
   padding: 0 0.25rem 0.5rem;
   background: var(--fds-tree-bg);
+}
+
+/* The tree, put away while an example's trace is showing in its place */
+.fds-widget-pane[hidden] {
+  display: none;
+}
+
+.fds-widget-pane--stale .fds-cm {
+  opacity: 0.55;
 }
 
 /*

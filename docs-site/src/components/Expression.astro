@@ -8,6 +8,11 @@
  * show a failure sets `throws`, and then shows the error instead; the build
  * fails if an example's outcome doesn't match what it says, either way.
  *
+ * An example that sets `trace` is evaluated with tracing on, and shows the
+ * trace below its result or error (lib/trace.ts), computed at build time
+ * like the result. Its editor has a Show trace button, unless the example
+ * names another action.
+ *
  * "Open in editor" opens the example in a full-size editor over the page
  * (ExpressionEditor.tsx), with `caption` at its foot if given. Its address
  * loads the example into the Playground page instead, for a new tab or a
@@ -21,6 +26,7 @@ import { exampleFigTree } from '../lib/figTree'
 import { trackMissing } from '../lib/httpReplay'
 import { dedent } from '../lib/dedent'
 import { toJson5 } from '../lib/json5'
+import { showTrace } from '../lib/trace'
 import { playgroundHref } from '../lib/playgroundLink'
 import ExpressionEditor from './playground/ExpressionEditor.tsx'
 import type { ExampleActionName } from './playground/exampleActions'
@@ -40,6 +46,8 @@ interface Props {
   title?: string
   /** The example demonstrates an error rather than a result. */
   throws?: boolean
+  /** Evaluate with tracing on, and show the trace, with a Show trace button in its editor. */
+  trace?: boolean
   /** `false` for no "Open in editor" at all. */
   editor?: boolean
   /** What to do or notice in the editor, at the foot of its overlay. */
@@ -49,12 +57,13 @@ interface Props {
 const {
   title = 'Expression',
   throws = false,
+  trace = false,
   editor = true,
   fragments,
   noCache,
-  action,
   caption,
 } = Astro.props
+const action: ExampleActionName | undefined = Astro.props.action ?? (trace ? 'showTrace' : undefined)
 const figTree = exampleFigTree({ fragments, noCache })
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
@@ -84,16 +93,26 @@ const stages: Record<Stage, { label: string; gloss: string }> = {
 let outcome:
   | { ok: true; result: unknown }
   | { ok: false; stage: Stage; code: string; message: string }
+// The trace, where the example asks for one and the evaluation left one: a
+// static error has none, since nothing ran
+let traced: string | undefined
+const options: { data?: Record<string, unknown> } = data ? { data } : {}
 try {
-  outcome = {
-    ok: true,
-    result: await trackMissing(() => figTree.evaluate(expression, data ? { data } : undefined)),
+  if (trace) {
+    const evaluation = await trackMissing(() =>
+      figTree.evaluate(expression, { ...options, trace: true })
+    )
+    outcome = { ok: true, result: evaluation.result }
+    traced = showTrace(evaluation.trace)
+  } else {
+    outcome = { ok: true, result: await trackMissing(() => figTree.evaluate(expression, options)) }
   }
 } catch (error) {
   if (!isFigTreeError(error))
     throw new Error(`${where}\n\n${(error as Error).message}`, { cause: error })
   const stage = error.issues === undefined ? 'runtime' : 'static'
   outcome = { ok: false, stage, code: error.code, message: error.message }
+  if (trace && error.trace !== undefined) traced = showTrace(error.trace)
 }
 if (outcome.ok && throws)
   throw new Error(`${where}\n\nThis example says it throws, but it evaluated to:\n${toJson5(outcome.result)}`)
@@ -143,6 +162,15 @@ const href = editor ? playgroundHref({
         action={action}
         caption={caption}
       />
+    )
+  }
+  {
+    // After the island, which hydrates when it comes into view: below a long
+    // trace, it wouldn't have by the time its link above was clicked
+    traced !== undefined && (
+      <div class="fds-expression-trace">
+        <Code code={traced} lang="json5" title="Trace" />
+      </div>
     )
   }
 </div>

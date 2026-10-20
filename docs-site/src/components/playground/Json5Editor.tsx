@@ -92,10 +92,13 @@ export const hasComments = (text: string): boolean => {
 interface Props {
   /** The pane's text. A value that differs from what the pane shows replaces it. */
   value: string
-  onChange: (text: string) => void
+  /** Typing reports here; a read-only pane has nothing to report. */
+  onChange?: (text: string) => void
   label: string
   /** Whether the pane shows line numbers (it does by default). */
   lineNumbers?: boolean
+  /** Shows `value` without letting it be edited, such as a trace. */
+  readOnly?: boolean
 }
 
 /**
@@ -104,7 +107,13 @@ interface Props {
  * document and changes nothing, so the cursor stays put. Only a `value` the
  * parent produced some other way is written into the document.
  */
-export const Json5Editor = ({ value, onChange, label, lineNumbers = true }: Props) => {
+export const Json5Editor = ({
+  value,
+  onChange,
+  label,
+  lineNumbers = true,
+  readOnly = false,
+}: Props) => {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
   const onChangeRef = useRef(onChange)
@@ -123,9 +132,10 @@ export const Json5Editor = ({ value, onChange, label, lineNumbers = true }: Prop
           EditorView.lineWrapping,
           hangingIndent,
           EditorView.contentAttributes.of({ 'aria-label': label }),
+          EditorState.readOnly.of(readOnly),
           EditorView.updateListener.of((update) => {
             const echo = update.transactions.some((tr) => tr.annotation(fromParent))
-            if (update.docChanged && !echo) onChangeRef.current(update.state.doc.toString())
+            if (update.docChanged && !echo) onChangeRef.current?.(update.state.doc.toString())
           }),
         ],
       }),

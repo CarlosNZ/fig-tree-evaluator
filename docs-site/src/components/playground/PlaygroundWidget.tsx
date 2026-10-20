@@ -11,7 +11,8 @@ import { Json5Editor, hasComments } from './Json5Editor'
 import { EvaluationToast, type ToastState } from './EvaluationToast'
 import { ResultValue } from './ResultValue'
 import type { PlaygroundProps } from './Playground'
-import { exampleActions } from './exampleActions'
+import { exampleAction } from './exampleActions'
+import { showTrace } from '../../lib/trace'
 
 /** The editor's own colours that need a dark-mode variant (custom.css). */
 const editorColours = {
@@ -49,9 +50,10 @@ const editorStyles = {
   iconCollection: 'var(--fds-tree-chevron)',
 }
 
+/** `trace` is there for an example that shows its trace (exampleActions.tsx). */
 type Outcome =
-  | { status: 'done'; value: unknown }
-  | { status: 'failed'; code: string; message: string }
+  | { status: 'done'; value: unknown; trace?: string }
+  | { status: 'failed'; code: string; message: string; trace?: string }
   | { status: 'blocked'; reason: string }
 
 const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
@@ -87,6 +89,11 @@ const useNarrow = (element: React.RefObject<HTMLElement | null>) => {
  * step, marked `autoUpdate`) never does: half-typed text that happens to
  * parse would otherwise be rewritten under the cursor. Regenerated text has
  * no comments, so an edit in the tree that drops them says so.
+ *
+ * An example whose action shows its trace evaluates with tracing on, and the
+ * button swaps the tree for the trace, shown as the static example's Trace
+ * block shows it. The tree stays mounted while it's hidden, so it's as it was
+ * when the trace is put away.
  */
 export default function PlaygroundWidget(props: PlaygroundProps) {
   const seed = useMemo(
@@ -96,6 +103,9 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   const initialText = seed?.expression ?? props.expression
   const initialData = seed ? (seed.data ?? '{}') : (props.data ?? '{}')
   const figTree = exampleFigTree(seed ?? props)
+  const action = (seed ?? props).action
+  const actionSpec = action === undefined ? undefined : exampleAction(action)
+  const traces = actionSpec !== undefined && 'view' in actionSpec
 
   const initial = useMemo(() => parseJson5(initialText), [initialText])
   const [text, setText] = useState(initialText)
@@ -232,11 +242,20 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
     setStale(true)
     const timer = setTimeout(async () => {
       try {
-        settle({ status: 'done', value: await figTree.evaluate(expression, { data }) })
+        if (traces) {
+          const { result, trace } = await figTree.evaluate(expression, { data, trace: true })
+          settle({ status: 'done', value: result, trace: showTrace(trace) })
+        } else settle({ status: 'done', value: await figTree.evaluate(expression, { data }) })
       } catch (error) {
         settle(
           isFigTreeError(error)
-            ? { status: 'failed', code: error.code, message: error.message }
+            ? {
+                status: 'failed',
+                code: error.code,
+                message: error.message,
+                // A static error has none: nothing ran
+                ...(error.trace && { trace: showTrace(error.trace) }),
+              }
             : { status: 'failed', code: 'Error', message: String(error) }
         )
       }
@@ -265,30 +284,43 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
   const title = <div className="fds-widget-title">{props.title ?? 'Playground'}</div>
 
-  // The example's own button, if it has one, saying for a moment that it
-  // did its job
-  const action = (seed ?? props).action
+  // The example's own button, if it has one: one that does something says
+  // for a moment that it did its job, and one that shows a view says whether
+  // it's showing
   const [actionDone, setActionDone] = useState(false)
+  const [viewing, setViewing] = useState(false)
   const actionTimer = useRef<ReturnType<typeof setTimeout>>()
   useEffect(() => () => clearTimeout(actionTimer.current), [])
-  const actionButton = action && (
-    <button
-      className="fds-widget-action fds-widget-action--primary"
-      onClick={() => {
-        exampleActions[action].run(figTree)
-        setActionDone(true)
-        clearTimeout(actionTimer.current)
-        actionTimer.current = setTimeout(() => setActionDone(false), ACTION_DONE_TIME)
-      }}
-    >
-      <svg viewBox="0 0 16 16" aria-hidden="true">
-        {exampleActions[action].icon}
-      </svg>
-      <span aria-live="polite">
-        {actionDone ? exampleActions[action].doneLabel : exampleActions[action].label}
-      </span>
-    </button>
+  const actionIcon = actionSpec && (
+    <svg viewBox="0 0 16 16" aria-hidden="true">
+      {actionSpec.icon}
+    </svg>
   )
+  const actionButton =
+    actionSpec &&
+    ('run' in actionSpec ? (
+      <button
+        className="fds-widget-action fds-widget-action--primary"
+        onClick={() => {
+          actionSpec.run(figTree)
+          setActionDone(true)
+          clearTimeout(actionTimer.current)
+          actionTimer.current = setTimeout(() => setActionDone(false), ACTION_DONE_TIME)
+        }}
+      >
+        {actionIcon}
+        <span aria-live="polite">{actionDone ? actionSpec.doneLabel : actionSpec.label}</span>
+      </button>
+    ) : (
+      <button
+        className="fds-widget-action fds-widget-action--primary"
+        aria-pressed={viewing}
+        onClick={() => setViewing((on) => !on)}
+      >
+        {actionIcon}
+        {viewing ? actionSpec.activeLabel : actionSpec.label}
+      </button>
+    ))
 
   const resetButton = (
     <button className="fds-widget-action" disabled={!edited} onClick={reset}>
@@ -323,6 +355,16 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       minWidth="100%"
       maxWidth="100%"
     />
+  )
+
+  const tracePane = viewing && (
+    <div
+      className={`fds-widget-pane fds-widget-pane--trace${stale || inputPending ? ' fds-widget-pane--stale' : ''}`}
+      aria-live="polite"
+    >
+      <div className="fds-widget-pane-label">Trace</div>
+      <TraceView outcome={outcome} />
+    </div>
   )
 
   const noticeBar = notice && <div className="fds-widget-notice">{notice}</div>
@@ -380,10 +422,11 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
       <div className="fds-widget-panes">
         {textPane}
         <div className="fds-widget-tree-cell">
-          <div className="fds-widget-pane fds-widget-pane--tree">
+          <div className="fds-widget-pane fds-widget-pane--tree" hidden={viewing}>
             <div className="fds-widget-pane-label">Editor</div>
             {treeEditor}
           </div>
+          {tracePane}
           <EvaluationToast toast={toast} onClose={() => setToast(null)} />
         </div>
       </div>
@@ -417,7 +460,8 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
 
       <div className={inlinePanes}>
         {textPane}
-        {!narrow && <TreePreview onOpen={() => setExpanded(true)}>{treeEditor}</TreePreview>}
+        {tracePane ||
+          (!narrow && <TreePreview onOpen={() => setExpanded(true)}>{treeEditor}</TreePreview>)}
       </div>
 
       {noticeBar}
@@ -488,6 +532,20 @@ const TreePreview = ({ onOpen, children }: { onOpen: () => void; children: React
       <span className="fds-widget-preview-hint">Open editor</span>
     </div>
   )
+}
+
+/** The trace, or why there isn't one. */
+const TraceView = ({ outcome }: { outcome: Outcome | null }) => {
+  if (!outcome) return <div className="fds-widget-result-message">Evaluating…</div>
+  if (outcome.status === 'blocked')
+    return <div className="fds-widget-result-message">{outcome.reason}</div>
+  if (outcome.trace === undefined)
+    return (
+      <div className="fds-widget-result-message">
+        No trace: a static error stops the expression before any of it runs
+      </div>
+    )
+  return <Json5Editor value={outcome.trace} label="Trace (JSON5)" readOnly />
 }
 
 const ResultView = ({ outcome }: { outcome: Outcome | null }) => {
