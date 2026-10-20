@@ -19,6 +19,8 @@ Names, aliases, `required` and `default`.
 
 The type vocabulary, literal types, and constraints such as ranges and patterns.
 
+{/* NOTE (from Fragments): constraints apply to arrays only, so "ranges and patterns" above is wrong. There are three (`Constraints` in src/typeCheck.ts): `length`, the array's exact length; `homogeneous`, every element one basic type from an allowed list; and `elementShape`, every element an object of the given shape (each entry a `TypeDeclaration`: `type`, `required` (default true), nested `constraints`; extra keys on an element are allowed). Fragment parameters take the same `constraints`, and the Fragments page links its `constraints` bullet to this section. Its `averageOrder` example declares `orders` with `constraints: { elementShape: { amount: { type: 'number' } } }`: an order without an `amount` fails at the call with `type-check` ("parameter 'orders': expected property "amount", received missing"). */}
+
 ## Null policy
 
 What happens when a parameter is `null`: propagate it as the result, or pass it to the body. The conditional form.

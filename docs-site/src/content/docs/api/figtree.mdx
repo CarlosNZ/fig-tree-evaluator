@@ -53,6 +53,8 @@ The instance's evaluation options.
 
 The registered operators and fragments, as plain data.
 
+{/* NOTE (from Fragments): `getFragments()` reports each registered fragment, without its body: `name`, `description`, `metadata` exactly as written, its `parameters` with `required` and any `default` filled in, `returns` (inferred at registration from the body's root), `dependencies` (what the body reads and calls, rolled up through nested calls), `caches`, and `warnings`. The warnings matter most: they're the body's warning-severity issues from registration, which nothing else reports, since registration throws only on errors and a calling expression's `validate()` never repeats a body's warnings. `samples` is never reported. Types: `FragmentInfo` in src/introspect.ts. The Fragments page doesn't mention `getFragments()`, so its "Fragments in an editor" section has no link here; Tooling's "Introspection on the instance" is the other place it's planned. */}
+
 ## `clearCache()`
 
 Empty the result store.
