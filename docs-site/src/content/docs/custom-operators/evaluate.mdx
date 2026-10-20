@@ -21,6 +21,8 @@ What `OperatorContext` gives a body: the evaluation's options, data, and the mea
 
 {/* NOTE (from Iteration): `context.signal` aborts when the node's result is no longer wanted — `and` / `or` or `find` / `some` / `every` answered early, the evaluation timed out, or the caller aborted. A body doing slow async work should check it (or pass it to whatever it awaits, as the HTTP and SQL clients do). JavaScript can't interrupt code already running, so a slow synchronous body runs to completion and its result is discarded. Concepts (Evaluation, Iteration) say only that work not yet started never runs and requests in progress are cancelled. */}
 
+{/* NOTE (from Caching and compiling): caching for a custom operator. Its definition declares `cache: true`, and its body wraps the slow part in `context.cache.memo(key, fn)`, choosing a key that covers everything the result depends on, options included (`context.cache.memo(params, () => compute(params))` for a result that depends on its parameters alone). The engine hands a body the live `memo` only where the node is caching, and a passthrough everywhere else, so a body never asks whether it may cache. A `cache: true` operator that never calls `memo` caches nothing, and `memo` on an operator without `cache: true` stores nothing. The engine namespaces keys by operator name and definition fingerprint, runs a key it can't serialize (a function, a class instance, a `Map`) uncached, never caches a failure, and records hits and misses in the trace. The Caching and compiling page ("How long results are kept") links here. Source: "Caching" in docs-dev/v3-specs/v3-operator-contract.md, src/evaluate/memo.ts. */}
+
 ## Failing
 
 Throwing `OperatorFailure` with a code and details, and how a failure reaches a fallback.

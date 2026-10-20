@@ -13,6 +13,28 @@
       }
     }
   },
+  "GET https://httpbin.org/delay/2?message=Worth+the+wait": {
+    "status": 200,
+    "statusText": "OK",
+    "json": {
+      "args": {
+        "message": "Worth the wait"
+      },
+      "data": "",
+      "files": {},
+      "form": {},
+      "headers": {
+        "Accept": "application/json",
+        "Accept-Encoding": "br, gzip, deflate",
+        "Accept-Language": "*",
+        "Host": "httpbin.org",
+        "Sec-Fetch-Mode": "cors",
+        "User-Agent": "node",
+        "X-Amzn-Trace-Id": "Root=1-6ad71649-42d60f4a0ea43e3c7d6f3ffa"
+      },
+      "url": "https://httpbin.org/delay/2?message=Worth+the+wait"
+    }
+  },
   "GET https://jsonplaceholder.typicode.com/users/1": {
     "status": 200,
     "statusText": "OK",
@@ -73,6 +95,76 @@
         }
       }
     ]
+  },
+  "GET https://randomuser.me/api/": {
+    "status": 200,
+    "statusText": "OK",
+    "json": {
+      "results": [
+        {
+          "gender": "male",
+          "name": {
+            "title": "Mr",
+            "first": "Jamie",
+            "last": "Garza"
+          },
+          "location": {
+            "street": {
+              "number": 9519,
+              "name": "W Gray St"
+            },
+            "city": "Bernalillo",
+            "state": "Pennsylvania",
+            "country": "United States",
+            "postcode": 22142,
+            "coordinates": {
+              "latitude": "89.4955",
+              "longitude": "-87.6790"
+            },
+            "timezone": {
+              "offset": "+5:45",
+              "description": "Kathmandu"
+            }
+          },
+          "email": "jamie.garza@example.com",
+          "login": {
+            "uuid": "74bfe1c2-8097-41c9-862c-e24d06f220dd",
+            "username": "bigpeacock937",
+            "password": "gareth",
+            "salt": "GbKDeVKb",
+            "md5": "f41c5eaaeced8b48aa2a42b4a75c201b",
+            "sha1": "65dabc19dd6028e02116eb142beabd783007a2d5",
+            "sha256": "00e5f29b0bb316d00cc743ef8bf2a3d3b8d246d3ae80b0454cedb1b7cc70daa3"
+          },
+          "dob": {
+            "date": "1954-01-25T23:47:12.694Z",
+            "age": 72
+          },
+          "registered": {
+            "date": "2008-02-06T05:36:00.687Z",
+            "age": 18
+          },
+          "phone": "(239) 310-8804",
+          "cell": "(467) 664-4218",
+          "id": {
+            "name": "SSN",
+            "value": "463-47-6815"
+          },
+          "picture": {
+            "large": "https://randomuser.me/api/portraits/men/81.jpg",
+            "medium": "https://randomuser.me/api/portraits/med/men/81.jpg",
+            "thumbnail": "https://randomuser.me/api/portraits/thumb/men/81.jpg"
+          },
+          "nat": "US"
+        }
+      ],
+      "info": {
+        "seed": "c31612e6b5d84811",
+        "results": 1,
+        "page": 1,
+        "version": "1.4"
+      }
+    }
   },
   "POST https://api.postcodes.io/postcodes {\"postcodes\":[\"SW1A 1AA\",\"EH1 1YZ\",\"CF10 1EP\"]}": {
     "status": 200,

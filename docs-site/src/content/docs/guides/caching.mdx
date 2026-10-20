@@ -1,36 +1,201 @@
 ---
-title: Compiling and caching
-description: Compiling an expression once, the compile and result caches, and controlling what is stored
+title: Caching and compiling
+description: How long the results of slow operators are kept, turning caching off, and compiling an expression once
 sidebar:
   order: 6
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+FigTree caches the results of operators that are inherently slow: HTTP requests and SQL queries. Evaluate the same expression several times in a row, and only the first evaluation waits for them. The rest are answered from the cache, almost instantly.
 
-## Compiling once
+<Expression
+  title="A slow server"
+  code={`
+    {
+      // httpbin.org waits 2 seconds before answering
+      $http: {
+        url: 'https://httpbin.org/delay/2',
+        query: { message: 'Worth the wait' },
+        returnPath: 'args.message',
+      },
+    }
+  `}
+  caption="The first result takes a couple of seconds. Press Evaluate on the node to run it again: the answer is back straight away."
+/>
 
-`compile()` for an expression evaluated many times: the `CompiledExpression` it returns, and when holding one beats letting `evaluate()` find it in the compile cache.
+FigTree also keeps a separate [compile cache](#compiling-once). Before running an expression, FigTree reads and checks it, and the compile cache holds the result, so an expression evaluated again goes straight to running. It's fully automatic, so there's nothing you need to do with it, but it gives a small speed-up when the same large expression is evaluated many times.
 
-## Two caches
+## How long results are kept
 
-The compile cache, which holds each expression's compiled form, and the result cache, which holds the results of operators whose definitions ask for it (the I/O operators among them).
+A result is kept for 30 minutes from when it was stored, however often it's read in that time. After that, the next evaluation sends the request again. The cache holds 50 results, and when it's full, the one used least recently makes way for the next.
 
-## The `cache` option
+The `cache` option changes both:
 
-`maxSize` and `maxTime`, and passing your own `store`.
+```ts title="fig.ts"
+import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, httpOperators()],
+  cache: {
+    // In seconds: Infinity keeps each result until it makes way for another
+    maxTime: 300,
+    maxSize: 200,
+  },
+})
+```
+
+Only `http`, `graphQL` and `sql` cache their results, along with any [custom operator](/custom-operators/evaluate/#the-context) written to. A failed request is never cached, so it's tried again next time. [Caching responses](/guides/http-and-sql/#caching-responses) has the rules for when two requests count as the same.
 
 ## Turning caching off
 
-`noCache` on a node, or for every use of an operator through `operatorDefaults` (links to Setting up FigTree).
+Some data has to be fresh every time, such as a stock level, or anything that changes on every request. This example fetches a random user from [randomuser.me](https://randomuser.me), and since the response is cached, it's the same user however many times you run it:
+
+<Expression
+  title="A random user"
+  code={`
+    {
+      vars: {
+        user: {
+          $http: { url: 'https://randomuser.me/api/', returnPath: 'results[0]' },
+          // Uncomment to meet someone new every time
+          // noCache: true,
+        },
+      },
+      $buildString: 'Kia ora, {{$vars.user.name.first}} from {{$vars.user.location.country}}!',
+    }
+  `}
+  caption="Press Evaluate on the node a few times: the same user. Then uncomment noCache, and try again."
+/>
+
+`noCache: true` on a node means it neither reads the cache nor writes to it, and the same goes for everything beneath it: its parameters, its variables and its `fallback`, and the body of a [fragment](/guides/fragments/) it calls. It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.
+
+To turn caching off for every use of an operator, set `noCache` in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator):
+
+```ts title="fig.ts"
+import { FigTree, coreOperators, sqlOperators, type SqlConnection } from 'fig-tree-evaluator'
+declare const connection: SqlConnection
+// ---cut---
+const fig = new FigTree({
+  operators: [coreOperators, sqlOperators(connection)],
+  // Every query goes to the database
+  operatorDefaults: { sql: { noCache: true } },
+})
+```
+
+Either way, caching stays off: nothing in an expression can turn it back on.
 
 ## Clearing the cache
 
-`clearCache()` empties the result cache, never the compile cache. An instance made with `with()` shares the original's compile cache but has a result cache of its own, so clearing one doesn't touch the other.
+When you know the data behind a cached result has changed, such as after your app writes to the database its queries read, `clearCache()` empties the cache, so the next evaluation fetches everything afresh:
 
-## A shared store
+```ts title="prices.ts"
+declare const pool: { query(text: string, values: unknown[]): Promise<unknown> }
+declare const price: number
+declare const productId: number
+// ---cut---
+await pool.query('UPDATE products SET unit_price = $1 WHERE product_id = $2', [price, productId])
+fig.clearCache()
+```
 
-The `CacheStore` interface, for a cache that outlives the process or is shared between instances.
+It takes effect straight away: even a request that's still in flight when you call it won't be stored. It only empties the results, never the compile cache.
+
+An instance made with [`with()`](/guides/setup/#changing-options) starts with an empty cache of its own, so clearing either one leaves the other alone.
+
+## Using your own store
+
+Each instance keeps its results in memory, in a store of its own. To share one cache between instances or processes, or keep it across restarts, give the `cache` option a `store` of your own, with four methods:
+
+```ts title="Types"
+interface CacheStore {
+  get(key: string): unknown | Promise<unknown>
+  set(key: string, value: unknown): void
+  delete(key: string): void
+  clear(): void
+}
+```
+
+A plain `new Map()` fits, though it never lets anything go. Your store keeps its own limits, so `maxSize` doesn't apply to it, but `maxTime` still does: FigTree stores each result with its expiry, and ignores one that's run out.
+
+Here's a store on [Redis](https://redis.io), through the [node-redis](https://github.com/redis/node-redis) package:
+
+```ts title="redisStore.ts"
+// @filename: redis.d.ts
+declare module 'redis' {
+  interface RedisClient {
+    get(key: string): Promise<string | null>
+    set(key: string, value: string, options?: { EX: number }): Promise<unknown>
+    del(key: string): Promise<number>
+    flushDb(): Promise<unknown>
+  }
+  export function createClient(options?: { database?: number }): {
+    connect(): Promise<RedisClient>
+  }
+}
+// @filename: redisStore.ts
+// ---cut---
+import { createClient } from 'redis'
+import type { CacheStore } from 'fig-tree-evaluator'
+
+// A database of its own, so clear() can empty all of it
+const redis = await createClient({ database: 3 }).connect()
+
+export const redisStore: CacheStore = {
+  get: async (key) => {
+    const value = await redis.get(key)
+    return value === null ? undefined : JSON.parse(value)
+  },
+  // Redis lets each entry go when FigTree would stop reading it anyway
+  set: (key, value) => void redis.set(key, JSON.stringify(value), { EX: 1800 }),
+  delete: (key) => void redis.del(key),
+  clear: () => void redis.flushDb(),
+}
+```
+
+A store never breaks an evaluation: if one of its methods throws, FigTree carries on without the cache.
+
+## Compiling once
+
+{/* STAND-IN: Carl to rewrite */}
+
+Before an expression runs, FigTree [compiles](/concepts/evaluation/#compiled-first-then-run) it: it works out which parts are nodes, and checks them. The compiled form goes in the compile cache, so the next time you evaluate that expression, or an identical copy of it, FigTree goes straight to running it.
+
+For an expression your app evaluates over and over, `compile()` hands you the compiled form to hold on to. Its `evaluate()` takes the same per-call options as the instance's:
+
+```ts title="shipping.ts"
+declare const shippingRule: object
+declare const order: object
+// ---cut---
+// Compiled once, when the module loads
+const shippingCost = fig.compile(shippingRule)
+
+const cost = await shippingCost.evaluate({ data: { order } })
+```
+
+What you get beyond what the compile cache already gives you:
+
+- **Checks up front:** `hasErrors`, and the `issues` behind it, say what the compiler found before the expression ever runs, so your app can refuse a broken rule when it loads. [Checking expressions](/guides/validation/) has what they report.
+- **What it reads:** `getDependencies()` lists the data the expression reads, and the operators and fragments it uses.
+- **A fixed snapshot:** it keeps the instance's options and operators as they were when it was compiled. A later [`updateOptions()`](/guides/setup/#changing-options) doesn't reach it, so compile again to pick one up.
+
+It shares the instance's result cache, though, so a request one of them has made is cached for both.
+
+<Callout kind="caution" title="Don't change an expression in place">
+
+The compile cache recognises an expression it has seen before by the object itself, so if you change the object after evaluating it, FigTree still runs what it compiled the first time. To change an expression, make a new one:
+
+```ts title="discount.ts"
+let discount = { $multiply: ['$data.price', 0.9] }
+await fig.evaluate(discount, { data: { price: 100 } }) // => 90
+
+// Wrong: still 90, from the compile cache
+discount.$multiply[1] = 0.8
+await fig.evaluate(discount, { data: { price: 100 } }) // => 90
+
+// Right: a new object
+discount = { $multiply: ['$data.price', 0.8] }
+await fig.evaluate(discount, { data: { price: 100 } }) // => 80
+```
+
+</Callout>

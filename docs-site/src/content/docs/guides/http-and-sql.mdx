@@ -290,7 +290,7 @@ const pool = new pg.Pool({ statement_timeout: 10_000 })
 
 FigTree caches responses, so an expression evaluated again within 30 minutes gets the same response without sending the request again. Two requests count as the same when everything sent is the same: the method, URL, headers and body. The same goes for a query's text and values. `returnPath` and `timeout` aren't sent, so two nodes that read different parts of one response share it. Failures are never cached, so a failed request is tried again next time.
 
-[Compiling and caching](/guides/caching/) shows how to keep responses for longer or shorter, and how to turn caching off for a node.
+[Caching and compiling](/guides/caching/) shows how to keep responses for longer or shorter, and how to turn caching off for a node.
 
 The cache only holds responses that have _arrived_, though. Two nodes evaluated at the same time each send their request, since neither has finished. Here, the `name` and `email` come from the same URL, but it's requested twice:
 
