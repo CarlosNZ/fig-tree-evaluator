@@ -22,6 +22,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "the answer you'd expect from JavaScript: … `find`: `null`"
   - After: "`find`: `null` (where JavaScript gives `undefined`)"
 - **Bold a key term where it's introduced:** **FigTree expression**, **parameters**, **modifiers**.
+  - Example: **result cache** and **compile cache**, in the opening paragraphs of Caching and compiling
 - **Emphasise the contrast.** Where parallel items differ by a word or two, italicise those words. In a code comment, which can't, capitals do the same job.
   - Before: "for values that stay the same from one evaluation to the next … for what changes every time"
   - After: "for values that _stay the same_ from one evaluation to the next … for what _changes_ every time"
@@ -132,6 +133,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Give the idea behind a rule before its letter.**
   - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
   - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
+- **State the general rule, and fold in the case that prompted it.** Where a point is true of a whole class, say it of the class, with the case as one member, or the reader may take the case for an exception.
+  - Before: "An instance made with `with()` starts with an empty cache of its own, so clearing either one leaves the other alone."
+  - After: "Every new FigTree instance, including one made with `with()`, starts with an empty cache of its own, so clearing one leaves the others alone."
+- **Mark a default as a default,** where the reader can change it, before the section shows how.
+  - Before: "A result is kept for 30 minutes from when it was stored…"
+  - After: "By default, a result is kept for 30 minutes from when it was stored…"
 
 ## Punctuation and formatting
 
@@ -145,6 +152,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "a bare `'$data'` gives the whole data object"
   - After: "a bare `$data` gives the whole data object"
   - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
+- **Split a sentence rather than stack its commas.** Where the second half opens with a clause of its own, make it a sentence of its own.
+  - Before: "This example fetches a random user from randomuser.me, and since the response is cached, it's the same user however many times you run it:"
+  - After: "This example fetches a random user from randomuser.me. Since the response is cached, it's the same user however many times you run it:"
 
 - **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
   - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
@@ -165,6 +175,7 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
+  - Cut: "It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.", after the paragraph on what `noCache` covers
   - But where a mistake fails confusingly, or not at all, a short warning stays.
   - Kept: "the values follow the query one after another, not in an array of their own", on `sql`'s positional form, since the array form gets past `validate()` and fails in the database, or quietly matches nothing
   - The same goes for design advice the reader only needs once they're doing it: they'll work it out as they build, and won't think of it before.
@@ -279,6 +290,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: a "Same paths as $data" note callout
   - Before: "To see how FigTree read an expression… [`inspect()`]… shows the compiled form", as a paragraph after the first example
   - After: the same sentence in a "Seeing the compiled form" note callout
+  - Before: "An instance made with `with()` starts with an empty cache of its own…", a paragraph in Clearing the cache
+  - After: the same point in an "Every instance has its own cache" note callout
 - **A guide page on an idea Concepts introduced opens with the recap itself,** with no intro paragraph and no heading. It links back once, to where the idea was introduced, not to every page that touched it.
   - Before: an intro sentence, then "## Fallbacks in brief", then "[How evaluation works] introduced fallbacks, and [Iteration] put one inside `each`. In short:"
   - After: the page opens "[How evaluation works] introduced fallbacks. In short:"
@@ -312,6 +325,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
   - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
+- **One comment per key in a config example.** Each sits on the key it describes and states that key's limits; a single comment above several keys reads as covering them all.
+  - Before: `// In seconds: Infinity keeps each result until it makes way for another`, above both `maxTime` and `maxSize`
+  - After: `// In seconds, or Infinity to keep each result until it makes way for another` on `maxTime`, and `// The number of results kept -- must be a whole number` on `maxSize`
 - **One example, one idea.** Don't combine two features where one could be mistaken for the normal form of the other, and leave out a detail that hints at a problem the example doesn't have.
   - Before: one `get` example with `path: '$data.user.language'` beside a `from` table, which reads as though a path beside `from` starts with `$data`
   - After: `path: 'mi'` beside the table first, then the same example with only the `path` line computed
@@ -323,8 +339,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Keep only the moving parts the point needs. A branch that does something interesting of its own pulls the eye.
   - Before: an `$if` fallback whose else branch was `'$error.message'`, in an example about the fallback's `$divide` failing
   - After: `'Average unavailable'`, with `// Fails as well, so the node returns null` on the `$divide`
-  - A setting the example needs only for the demo gets a comment saying so, so it can't be mistaken for the cause of what the example shows.
-  - Added: `// Only so every run sends its requests, rather than reusing an earlier one's` above `noCache: true`, in an example showing one URL requested twice
+  - A setting the example needs only for the demo stays out of the expression, but a comment says it's in force, so it can't be mistaken for the cause of what the example shows.
+  - Before: `// Only so every run sends its requests, rather than reusing an earlier one's` above `noCache: true`, in an example showing one URL requested twice
+  - After: `noCache: true` gone from the expression, the example set to run uncached, and `// Caching is OFF for this example, so every run sends a new request` at its top
 - **A list-shaped thing gets at least two items in its example, so its structure shows.** With one, the reader can't tell it's a list.
   - Before: one placeholder: `['SELECT … = $1', '$data.categoryId']`
   - After: two: `['SELECT … = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice']`
