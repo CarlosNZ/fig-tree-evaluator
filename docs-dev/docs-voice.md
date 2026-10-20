@@ -64,6 +64,14 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "In the playgrounds on this site, open the editor and hover over the top right of a node"
   - Before: "On an instance that doesn't list them, the I/O operators don't exist at all, so an expression that uses one has a static error, which `validate()` reports before anything runs."
   - After: "An expression that uses an operator that hasn't been registered gives a static error."
+  - An instruction names the exact control, and says how to read what the reader will see.
+  - Before: "Press Evaluate on the outer node, and the tree marks how it ran…"
+  - After: "Press the $if button at the top of the tree, and each part is coloured by how it ran: orange where a fallback was used (the division), green where it returned a value, and dimmed where it never ran (the then branch)."
+  - An example whose point is in the editor says so on the page, not only in its caption, which shows only inside the editor.
+  - Added: "Open this example in the editor to see a visual representation of the trace."
+- **Where a limitation has a simple workaround, give the recommendation and a one-clause reason, not the mechanism behind it.** "We" is fine for a recommendation.
+  - Before: "The type `evaluate()` returns follows `trace`: `unknown` for the bare result, and `EvaluationResult` … `updateOptions()` and `with()` change what's returned, but not its type… in a variable declared first, `true` widens to `boolean`, and the type is lost."
+  - After: "We don't recommend turning tracing on with `updateOptions()` or `with()`, since TypeScript can't see the change, and still expects `evaluate()` to return the bare result. Pass `trace: true` to the constructor or the call instead."
 - **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
@@ -89,6 +97,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **An operator _returns_ its result.** Say what an operator produces with "returns", not "gives".
   - Before: "decided from what that operator can give"; "But `plus` can give a string"
   - After: "decided from what that operator can return"; "But `plus` _can_ return a string"
+- **Nodes _fail_; evaluations _throw_.** A node's failure becomes a throw only when no fallback catches it, so keep the two verbs apart.
+  - Before (proposed in an edit pass): "with the node that threw marked `failed`"
+  - After: "with the node the error came from marked `failed`"
 - **Anchor a term to what it belongs to,** so a section still reads clearly to someone who lands on it from a link or a search.
   - Before: "FigTree provides a suite of authoring-time validation tools"
   - After: "your FigTree instance provides some authoring-time validation and inspection methods"
@@ -176,6 +187,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: "The `vars` block itself is left out of the result."
   - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
   - Cut: "It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.", after the paragraph on what `noCache` covers
+  - The same goes for detail the reader will see for themselves once they meet it.
+  - Cut: "Children are always listed in the same order, whatever order they finished in, so two traces of the same expression line up."
+  - Cut: a paragraph on how variables and fragments appear in a trace, which the type block's comments already covered
   - But where a mistake fails confusingly, or not at all, a short warning stays.
   - Kept: "the values follow the query one after another, not in an array of their own", on `sql`'s positional form, since the array form gets past `validate()` and fails in the database, or quietly matches nothing
   - The same goes for design advice the reader only needs once they're doing it: they'll work it out as they build, and won't think of it before.
@@ -192,6 +206,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: "so an editor can highlight the right part of it", on an issue's `path`
   - Cut: "so an editor can offer it as a fix", on its `suggestion`
   - Cut: "so it's quick enough to run on every keystroke in an editor", on `validate()`
+- **Give a tool's purpose in the intro, with the reason as one clause, rather than in a warning callout later.**
+  - Before: a "A trace keeps what it records" caution: "A trace holds every value it records by reference… Tracing is for finding out what happened, not for logging every evaluation in production."
+  - After, in the opening paragraph: "It's a tool for development and debugging, not something to leave on in production, since it holds on to every value it records."
 - **Don't restate what a definition already gives.** Once a bullet or a rule has said it, its consequences don't need a sentence of their own.
   - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said "the first element, in the array's order"
   - Cut: "When nothing matches, `find` gives `null`…", after the empty-input list had shown `find: null`
@@ -295,6 +312,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **A guide page on an idea Concepts introduced opens with the recap itself,** with no intro paragraph and no heading. It links back once, to where the idea was introduced, not to every page that touched it.
   - Before: an intro sentence, then "## Fallbacks in brief", then "[How evaluation works] introduced fallbacks, and [Iteration] put one inside `each`. In short:"
   - After: the page opens "[How evaluation works] introduced fallbacks. In short:"
+- **On a page that covers more than one distinct thing, the intro mentions each, so a reader who stops at the top knows they're there.** A secondary one gets its own short paragraph after the opening example. A single-topic page needs nothing of the kind: the text's natural flow covers it.
+  - Example: the **compile cache**, in a paragraph after the opening example of Caching and compiling
+  - Added, after the opening example of Tracing and debugging: "To understand the internal structure of a compiled expression, there's also `inspect()`, which shows what FigTree builds before it runs the evaluation."
 - **A guide page's headings tend to say what the section does,** rather than only name the API it's about. A guideline, not a rule: a bare name is fine where it reads better.
   - Before: "## `$error`"
   - After: "## Reading the failure with `$error`"
@@ -357,9 +377,18 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - A placeholder name says what the thing is, and the plain form comes before the variant.
   - Before: "or one you pass it, as `new FetchClient(myFetch)`"
   - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"
+  - Where a real call does the job, use it rather than a made-up helper.
+  - Before: `showTrace(error.trace)`, with `showTrace` declared out of sight
+  - After: `console.dir(error.trace, { depth: null })`
 - **An example finishes what the prose just described.** If the text mentions a step, the example shows it.
   - Before: the first example on Setting up FigTree ended at the constructor, though the intro says an instance is "called with `evaluate()`"
   - After: it ends with `await fig.evaluate(expression) // => 92`
+- **Before an example, name what to look for, and let the example show it.** Don't narrate its output in the lead-in.
+  - Before: "Its trace has the request as it was sent, with the name from the data in its query string, and a `render` event for each token that rendered as something other than its plain value:"
+  - After: "Its trace has a `request` event, and some `render` events:"
+- **An alternative setting goes in the snippet as a comment, where it would be written, rather than in a sentence after it.**
+  - Before: "Tracing can also be turned on for the whole instance, with `new FigTree({ trace: true })`."
+  - After: `// Pass { trace: true } here to trace every evaluation`, above `const fig = new FigTree()`
 - **In host code, a call that doesn't fit on a line puts each argument on its own line,** and the expression stays on one line where it fits. Where the example is about a parameter, use the named form.
   - Before: `await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null`
   - After: `{ $get: { path: 'customer.email', default: null } }` and `{ data }` each on a line of their own inside `fig.evaluate(` … `) // => null`
