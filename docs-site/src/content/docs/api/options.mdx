@@ -5,44 +5,418 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+A FigTree instance takes its options in the constructor, `new FigTree(options)`, and changes them with [`updateOptions()`](/api/figtree/#updateoptions) or [`with()`](/api/figtree/#with), which merge each change into the options already set ([Merge rules](#merge-rules)). Four of them can also be given to a single evaluation, replacing the instance's value for that call. [Setting up FigTree](/guides/setup/) walks through the ones you'll use most.
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+| Option                                           | Per call | Default                | What it does                                               |
+| ------------------------------------------------ | -------- | ---------------------- | ---------------------------------------------------------- |
+| [`data`](#data)                                  | Yes      | None                   | The values `$data` references read                         |
+| [`operators`](#operators)                        | No       | Core only              | The operators the instance can evaluate                    |
+| [`fragments`](#fragments)                        | No       | None                   | Named expressions, called like operators                   |
+| [`operatorDefaults`](#operatordefaults)          | No       | None                   | Instance-wide parameter values and fallbacks, per operator |
+| [`http`, `graphQL`](#http-and-graphql)           | No       | None                   | Defaults for HTTP and GraphQL requests                     |
+| [`strictDataPaths`](#strictdatapaths)            | No       | `false`                | Makes a missing path a failure, rather than `null`         |
+| [`maxDepth`, `maxNodes`](#maxdepth-and-maxnodes) | No       | None                   | Limits on an expression's size                             |
+| [`timeout`](#timeout)                            | Yes      | None                   | Gives up on an evaluation that takes too long              |
+| [`signal`](#signal)                              | Yes      | None                   | Cancels an evaluation                                      |
+| [`cache`](#cache)                                | No       | 50 results, 30 minutes | How the result cache keeps results                         |
+| [`trace`](#trace)                                | Yes      | `false`                | Returns a trace of the evaluation, with the result         |
 
-## Where options go
+An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, listing every problem in its `issues`, and an invalid per-call option makes `evaluate()` reject the same way. So each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
 
-Instance options, per-call options, and the options that can only be set on the instance (`operators`, `fragments`).
-
-{/* NOTE (from Setting up FigTree): a one-line pointer back to the "Options change existing expressions" caution in Setting up FigTree ("Changing options"): changing an instance option on a running system changes what stored expressions give. Most worth repeating beside `operatorDefaults`, `strictDataPaths` and `operators`, whose changes alter results (or make a stored expression fail) with nothing in the expression to show it. */}
+An instance's options apply to every expression it evaluates, including ones already stored, so changing one on a running system can change what those expressions give ([Changing options](/guides/setup/#changing-options)).
 
 ## `data`
 
+```ts
+interface FigTreeOptions {
+// ---cut---
+data?: Record<string, unknown>
+// ---cut-after---
+}
+```
+
+The values that `$data` references, and `get` without a `from`, read.
+
+**Default:** none, so a bare `$data` reference returns `{}`, and every path in it is missing.
+
+**Per call:** yes, replacing the instance's `data` whole.
+
+**Details:**
+
+- To read both a call's `data` and the instance's, put them in one object, as in the example below.
+- In `updateOptions()` and `with()`, it's replaced whole too.
+- Per call, `data: undefined` evaluates with the instance's `data`, and `data: null` with none.
+
+```ts title="data.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const settings = { currency: 'NZD', gstRate: 0.15 }
+const fig = new FigTree({ data: settings })
+
+// The call's data replaces the instance's, so gstRate is missing
+await fig.evaluate('$data.gstRate', { data: { price: 80 } }) // => null
+
+// To read both, put them in one object
+await fig.evaluate('$data.gstRate', { data: { ...settings, price: 80 } }) // => 0.15
+```
+
+**See also:** [The data object](/concepts/data/#the-data-object), [Options for a single evaluation](/guides/setup/#options-for-a-single-evaluation)
+
 ## `operators`
+
+```ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+interface FigTreeOptions {
+// ---cut---
+operators?: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
+// ---cut-after---
+}
+```
+
+The operators the instance can evaluate.
+
+**Default:** `[coreOperators]`: every operator on the [Operators](/reference/operators/) page except the I/O ones, `http`, `graphQL` and `sql`.
+
+**Per call:** no.
+
+**Throws:** `invalid-options` when:
+
+- it isn't an array, or an array inside it holds another array
+- an entry wasn't made by `defineOperator()` or one of the package's own sets, `coreOperators`, `httpOperators()` and `sqlOperators()`. A factory left uncalled, such as `httpOperators` without its brackets, has a message of its own.
+- two operators share a name or an alias, or a fragment has an operator's name or alias, each a `duplicate-operator` issue. The same operator listed twice counts, so `[coreOperators, coreOperators]` is an error.
+
+**Details:**
+
+- Setting `operators`, whether in the constructor, `updateOptions()` or `with()`, replaces the whole set, core operators included, so to keep them, list `coreOperators` alongside your own: `[coreOperators, httpOperators()]`. In an update, `null` restores the core operators.
+- An update that changes `operators` checks the whole registry again, so it fails if an `operatorDefaults` entry or a fragment uses an operator it removes.
+- Arrays inside it are flattened one level, so a set such as `coreOperators` or `httpOperators()` can go in without being spread.
+- To replace a core operator with your own, leave it out of the core set: `[coreOperators.filter((op) => op.name !== 'upper'), myUpper]`. {/* TO-DO: show the operator-selection helper from #258 here once it lands, in place of the filter. */}
+
+**See also:** [Choosing operators](/guides/setup/#choosing-operators), [Registering](/custom-operators/writing/#registering)
 
 ## `fragments`
 
+```ts
+import type { FragmentDefinition } from 'fig-tree-evaluator'
+interface FigTreeOptions {
+// ---cut---
+fragments?: Record<string, FragmentDefinition>
+// ---cut-after---
+}
+```
+
+Named expressions, each called like an operator, by its key.
+
+**Default:** none.
+
+**Per call:** no.
+
+**Throws:** `invalid-options` when a fragment:
+
+- has a static error in its body, anything [`validate()`](/api/figtree/#validate) would report as an error
+- has a `$params` reference to a parameter it doesn't declare
+- declares a `default` that doesn't match its parameter's `type`
+- has an operator's name or alias (`duplicate-operator`)
+- calls a fragment that isn't registered
+- calls itself, directly or through other fragments (`fragment-cycle`)
+
+**Details:**
+
+- In `updateOptions()` and `with()`, fragments are merged by name: a new name is added, a name already registered is replaced whole, and `null` removes one. The whole set is checked again, as the constructor checks it.
+- [`getOptions()`](/api/figtree/#getoptions) leaves fragments out. [`getFragments()`](/api/figtree/#getoperators-and-getfragments) reports them, along with each body's warnings.
+
+**See also:** [Defining and registering fragments](/guides/fragments/#defining-and-registering-fragments), [Adding, replacing and removing fragments](/guides/fragments/#adding-replacing-and-removing-fragments)
+
 ## `operatorDefaults`
+
+```ts
+interface FigTreeOptions {
+// ---cut---
+operatorDefaults?: {
+  [operator: string]: {
+    fallback?: unknown
+    noCache?: true
+    [parameter: string]: unknown
+  }
+}
+// ---cut-after---
+}
+```
+
+Instance-wide values for an operator's optional parameters, and for its `fallback` and `noCache` modifiers, keyed by the operator's name.
+
+**Default:** none.
+
+**Per call:** no.
+
+**Throws:** `invalid-options` when an entry:
+
+- names no registered operator (`unknown-operator`), or names one by its alias rather than its name
+- isn't a plain object
+- names a parameter the operator doesn't declare, or one that's required
+- gives a parameter a value that doesn't match its type (`type-check`)
+- gives a `fallback` that would need evaluating, such as a node or a `$data` reference
+- sets `noCache` to anything but `true`, or sets it on an operator whose results are never cached
+
+**Details:**
+
+- Every value is used as written, and never evaluated: `join: { delimiter: '$data.separator' }` joins with the text `'$data.separator'`, not the value of the data reference. The one exception is a `fallback`'s [`$error`](/guides/fallbacks/#reading-the-failure-with-error) references, filled in from the failure it catches.
+- A node's own value, for a parameter or a modifier, takes precedence over the one in `operatorDefaults`. Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching for every node of that operator, and nothing in an expression can turn it back on.
+- In `updateOptions()` and `with()`, entries are merged by operator: an entry replaces that operator's whole entry, and `null` removes it.
+- [`getOperators()`](/api/figtree/#getoperators-and-getfragments) reports these values beside the definition's own, as `hostDefault`, `hostFallback` and `hostNoCache`.
+- **Caution:** changing a default on a running system changes the results of stored expressions that use the operator, with nothing in them to show it.
+
+**See also:** [Defaults for an operator](/guides/setup/#defaults-for-an-operator), [Instance-wide fallbacks](/guides/fallbacks/#instance-wide-fallbacks), [Turning caching off](/guides/caching/#turning-caching-off)
 
 ## `http` and `graphQL`
 
+```ts
+interface FigTreeOptions {
+// ---cut---
+http?: { baseEndpoint?: string; headers?: Record<string, string> }
+graphQL?: { endpoint?: string; headers?: Record<string, string> }
+// ---cut-after---
+}
+```
+
+Defaults for requests from the `http` and `graphQL` operators: a base that relative URLs are joined to, an endpoint for GraphQL queries, and headers to send with every request.
+
+**Default:** none.
+
+**Per call:** no.
+
+**Details:**
+
+- A `url` that starts with `http://` or `https://` is used as written, and any other is joined to `http.baseEndpoint`, with one `/` between them. An empty `url` is the base itself. A relative `url` with no `baseEndpoint` set makes the node fail.
+- `graphQL.endpoint` is used by a `graphQL` node with no `url`, and is joined to `http.baseEndpoint` the same way when it's relative. A node with neither fails.
+- A request's headers are merged from `http.headers`, then the node's own `headers`, each one overriding the one before. A `graphQL` request adds `graphQL.headers` between the two. A node's header set to `null` leaves that header out.
+- Header names are matched exactly, so `authorization` and `Authorization` are two different headers.
+- Every request sends `Accept: application/json`, and one with a body also sends `Content-Type: application/json`. Either can be replaced or removed the same way as any other header.
+- For security reasons, a header's value never appears in a failure or a trace.
+- In `updateOptions()` and `with()`, each block is merged by key, so giving `headers` replaces the whole `headers` object, and `null` removes `baseEndpoint` or `endpoint`.
+
+**See also:** [Base endpoints and shared headers](/guides/http-and-sql/#base-endpoints-and-shared-headers)
+
 ## `strictDataPaths`
 
-{/* NOTE (from Data references): the option covers drilling into every namespace, not only `$data`: a miss inside `$vars`, `$element` or `$params` fails too, but a miss inside `$error` is always `null`. A `[*]` projection still gives `null` for an element where the rest of the path is missing. A `get` with a `default` (even `default: null`) is the per-place opt-out, and `firstNonNull` can't fill a gap under it, since the reference fails first. The failure's code is `missing-data-path`. It's instance-only, never per call: a host with both kinds of data keeps a strict copy made with `fig.with({ strictDataPaths: true })`, which shares the registry and compile cache (#252). */}
+```ts
+interface FigTreeOptions {
+// ---cut---
+strictDataPaths?: boolean
+// ---cut-after---
+}
+```
+
+If set to `true`, a reference to a missing path fails, with the code `missing-data-path`, rather than returning `null`.
+
+**Default:** `false`.
+
+**Per call:** no.
+
+**Details:**
+
+- A missing path is a runtime failure, so a `fallback` catches it. A `get` with a `default`, even `default: null`, doesn't fail at all: its `default` is used, as it is when `strictDataPaths` is off.
+- `firstNonNull` can't stand in for a missing path, since the reference inside it fails before `firstNonNull` sees it.
+- `strictDataPaths` covers every path into a value: inside `$data`, `$vars`, `$element` and `$params`. A path inside `$error` is the exception, and always gives `null` when it's missing.
+- A data value that is actually `null` doesn't count as missing.
+- In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to the `[*]` is strict. An element missing the rest of the path gives `null` in its place, even when every element is missing it, so a misspelling after the `[*]` isn't caught.
+- `validate()` warns about a path missing from its sample data whether or not `strictDataPaths` is on.
+- To evaluate some data strictly and some not, make a strict copy with `fig.with({ strictDataPaths: true })`, which shares the original's operators and compile cache.
+- **Caution:** changing it on a running system changes what stored expressions give wherever they read a missing path, which can lead to unexpected and untested results.
+
+**See also:** [When missing is a mistake](/concepts/data/#when-missing-is-a-mistake)
 
 ## `maxDepth` and `maxNodes`
 
-{/* NOTE (from Setting up FigTree): say precisely what each counts. `maxDepth` is the expression's nesting depth with plain objects and arrays included, not only nodes: `{ a: { b: { c: { d: 1 } } } }` measures 4. `maxNodes` counts evaluable nodes only: operators, fragment calls and references (so `'$data.x'` counts), never constants or plain containers, and nothing inside `literal`. Both count through fragment calls: `maxNodes` adds a fragment body's count at each call site (two calls count it twice), while `maxDepth` takes the deepest path through the call. Both are checked before anything runs, and also by `validate()` (codes `max-depth` and `max-nodes`). Neither has a default. Source: "Counts" in docs-dev/v3-specs/v3-artifact-obligations.md, and src/validation.ts. */}
+```ts
+interface FigTreeOptions {
+// ---cut---
+maxDepth?: number
+maxNodes?: number
+// ---cut-after---
+}
+```
 
-## `timeout` and `signal`
+Limits on an expression's size: how deeply it nests, and how many nodes it holds.
+
+**Default:** none, though the engine has a hard depth limit of 500 levels, whatever `maxDepth` is set to.
+
+**Per call:** no.
+
+**Throws:** `evaluate()` throws `max-depth` or `max-nodes` before anything runs. Both are static errors, so no fallback catches them, and `validate()` reports them as errors.
+
+**Details:**
+
+- `maxDepth` counts every level of nesting, plain objects and arrays as well as nodes, including in an expression with nothing to evaluate. It's measured on the [canonical form](/concepts/forms/#the-canonical-form), so an expression measures the same in either form.
+- `maxNodes` counts [evaluable nodes](/guides/validation/#is-there-anything-to-evaluate): operators, fragment calls and references, so `'$data.price'` counts as one. Fixed values and plain objects and arrays don't count.
+- Nothing inside a `literal` counts towards either limit, or towards the engine's 500-level one.
+- Both count through fragment calls. `maxNodes` adds a fragment body's nodes at each call, so two calls count it twice. `maxDepth` takes the deepest path through the call.
+- Going over the engine's 500-level limit is the static error `depth-ceiling`, where going over `maxDepth` is `max-depth`.
+
+```ts title="sizes.ts"
+// Depth 4, and no nodes
+const settings = { theme: { header: { colours: { background: 'teal' } } } }
+
+// Depth 2 (the node, and its array), and 2 nodes (the plus, and the reference)
+const total = { $plus: ['$data.price', 5] }
+```
+
+**See also:** [Limits](/guides/setup/#limits)
+
+## `timeout`
+
+```ts
+interface FigTreeOptions {
+// ---cut---
+timeout?: number
+// ---cut-after---
+}
+```
+
+Gives up on an evaluation that takes longer than this many milliseconds, fallbacks included.
+
+**Default:** none, so an evaluation waits as long as its requests do.
+
+**Per call:** yes.
+
+**Throws:** `invalid-options` unless it's a positive, finite number. An evaluation that runs out of time throws `timeout`.
+
+**Details:**
+
+- A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give the expression a plain-value fallback at the top ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
+- Requests still in progress when time runs out are cancelled.
+- A call can replace the instance's `timeout`, but not remove it: per call, `timeout: null` is `invalid-options`. In `updateOptions()` and `with()`, `null` removes it.
+- It's separate from the `timeout` parameter of `http`, `graphQL` and `sql`, which limits one request, and whose failure, `request-timeout`, a fallback catches.
+
+**See also:** [Limits](/guides/setup/#limits), [Timeouts and cancellation](/guides/http-and-sql/#timeouts-and-cancellation)
+
+## `signal`
+
+```ts
+interface FigTreeOptions {
+// ---cut---
+signal?: AbortSignal
+// ---cut-after---
+}
+```
+
+An `AbortSignal` that cancels the evaluation when it's aborted.
+
+**Default:** none.
+
+**Per call:** yes.
+
+**Throws:** `invalid-options` when it isn't an `AbortSignal`. An evaluation whose signal is aborted throws `aborted`.
+
+**Details:**
+
+- Requests still in progress are cancelled.
+- No fallback catches it, and timeout shielding never applies.
+- A call's `signal` replaces the instance's, so during that call, aborting the instance's has no effect.
+- Once an instance's `signal` is aborted, every evaluation on it throws `aborted`, until `updateOptions()` replaces or removes it. A value with nothing to evaluate still comes back as it is.
+
+**See also:** [Cancelling an evaluation](/guides/setup/#cancelling-an-evaluation), [Timeouts and cancellation](/guides/http-and-sql/#timeouts-and-cancellation)
 
 ## `cache`
 
+```ts
+import type { CacheStore } from 'fig-tree-evaluator'
+interface FigTreeOptions {
+// ---cut---
+cache?: { store?: CacheStore; maxSize?: number; maxTime?: number }
+// ---cut-after---
+}
+```
+
+How the result cache keeps results: where, how many, and for how long.
+
+**Default:** a store in memory, holding up to 50 results (`maxSize`) for 30 minutes each (`maxTime: 1800`).
+
+**Per call:** no.
+
+**Throws:** `invalid-options` when:
+
+- it isn't an object
+- `store` doesn't have all four methods: `get`, `set`, `delete` and `clear`
+- `maxSize` isn't a whole number of at least 1
+- `maxTime` isn't a positive number of seconds, or `Infinity`
+
+**Details:**
+
+- `maxTime` counts from when a result was stored, however often it's read. `Infinity` keeps each result until it makes way for another under `maxSize`.
+- `maxSize` applies only to the built-in store. When it's full, the result used least recently makes way.
+- A `store` of your own keeps its own limits, so `maxSize` doesn't apply to it, but `maxTime` does. If one of its methods throws, the evaluation carries on without the cache.
+- Which operators cache their results is up to their definitions: `http`, `graphQL` and `sql` do. There's no option to turn all caching off. `noCache` in [`operatorDefaults`](#operatordefaults) turns it off for one operator.
+- In `updateOptions()`, the block is merged by key, and the results already stored are kept. A new `maxTime` applies to results stored after the change, and a new `store` starts empty. `null` restores the defaults, for the option as a whole, or per key.
+- An instance made with `with()` has a result cache of its own, empty to start with. A `store` that both instances' options name is shared.
+
+**See also:** [How long results are kept](/guides/caching/#how-long-results-are-kept), [Using your own store](/guides/caching/#using-your-own-store)
+
 ## `trace`
+
+```ts
+interface FigTreeOptions {
+// ---cut---
+trace?: boolean
+// ---cut-after---
+}
+```
+
+Makes `evaluate()` return `{ result, trace }`: the result, and a record of how the evaluation ran.
+
+**Default:** `false`.
+
+**Per call:** yes, in either direction: a call's `trace: false` turns off the instance's.
+
+**Details:**
+
+- It changes nothing about how the expression runs. A traced evaluation that fails throws as usual, and the error's `trace` property holds the trace up to the failure.
+- Pass `trace` to the constructor or the call, where TypeScript can see it and type what `evaluate()` returns to match ([Turning tracing on](/guides/tracing/#turning-tracing-on)).
+
+**See also:** [Tracing and debugging](/guides/tracing/)
 
 ## Merge rules
 
-How an update or a per-call option combines with what's already set, and removing a value with `null`.
+`updateOptions()` and `with()` merge an update into the options already set:
 
-{/* NOTE (from Setting up FigTree): state the merge rules explicitly, with examples. `updateOptions()` and `with()` merge by key at the top level, and again one level down inside `http`, `graphQL`, `cache`, `fragments` and `operatorDefaults`; anything deeper replaces whole. So `http: { headers: {…} }` keeps `baseEndpoint` but replaces the whole `headers` object (an `X-App` header set earlier is gone), and `operatorDefaults: { join: {…} }` replaces `join`'s whole entry while other operators' entries stay. Arrays always replace, as do `data` and `operators`. `null` removes a value at either level (`{ timeout: null }`, `{ http: { baseEndpoint: null } }`), but deeper down it's a value: `operatorDefaults: { join: { fallback: null } }` sets a null fallback. `undefined` is ignored. Per-call options never merge: each replaces the instance's value for that call, `data` included. Setting up FigTree ("Changing options") describes the merge only loosely ("options that hold a set of entries … merged in one at a time"), so link back there. The rule table is in "Merge semantics" in docs-dev/v3-specs/v3-api.md. */}
+- **Top level:** merged, so an option the update doesn't name is kept.
+- **One level down:** merged again inside `http`, `graphQL`, `cache`, `fragments` and `operatorDefaults`.
+- **Deeper:** replaced whole, such as `http.headers`, or one operator's entry in `operatorDefaults`.
+- **Replaced whole at the top level:** `data` and `operators`, as well as `signal`, `timeout` and every other value that isn't a plain object.
+- **`undefined`:** ignored at either level, so `{ timeout: config.timeout }` with nothing configured keeps the `timeout` already set.
+- **`null`:** removes a value at either level, and an option removed is back to its default. Deeper down, `null` is a value: `operatorDefaults: { join: { fallback: null } }` sets a `null` fallback. In the constructor, `null` is the same as leaving the option out.
+
+```ts title="merge.ts"
+import { FigTree } from 'fig-tree-evaluator'
+// ---cut---
+const fig = new FigTree({
+  http: { baseEndpoint: 'https://api.example.com', headers: { 'X-App': 'shop' } },
+  operatorDefaults: { join: { delimiter: ', ' }, divide: { fallback: null } },
+})
+
+fig.updateOptions({
+  // Merged into http, so baseEndpoint stays, but headers is replaced whole
+  http: { headers: { Authorization: 'Bearer abc123' } },
+  // Merged into operatorDefaults, so divide stays, but join's entry is replaced whole
+  operatorDefaults: { join: { nullValueDefault: '' } },
+})
+
+fig.getOptions()
+// => {
+//      http: {
+//        baseEndpoint: 'https://api.example.com',
+//        headers: { Authorization: 'Bearer abc123' },
+//      },
+//      operatorDefaults: {
+//        join: { nullValueDefault: '' },
+//        divide: { fallback: null },
+//      },
+//    }
+
+// Removes baseEndpoint, and keeps headers
+fig.updateOptions({ http: { baseEndpoint: null } })
+```
+
+A call's options never merge: each one given replaces the instance's for that evaluation, `data` included, and `undefined` counts as not given. Per call, `null` is a value rather than a removal: `data: null` evaluates with no data, and a `null` `timeout` or `signal` is `invalid-options`. Any option other than `data`, `signal`, `timeout` and `trace` is `invalid-options` too.
+
+**See also:** [Changing options](/guides/setup/#changing-options)
