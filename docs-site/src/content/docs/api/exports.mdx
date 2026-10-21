@@ -1,34 +1,822 @@
 ---
 title: Other exports
-description: 'The rest of the root entry: helpers, constants and types'
+description: 'The rest of the root entry, from the operator sets and engine helpers to every public type, and the four subpaths'
 sidebar:
   order: 5
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import { version } from 'fig-tree-evaluator'
+import Callout from '../../../components/Callout.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Besides the [`FigTree` class](/api/figtree/) and the [errors](/api/errors/), `fig-tree-evaluator` exports the core operators, the I/O operators with their HTTP and database clients, the helpers for writing operators of your own, an inspector for compiled expressions, and every public type. The tools for authoring and migration, such as the v2 converter, are in four [subpaths](#subpaths), each with its own import path, such as `fig-tree-evaluator/format`.
 
-## `version`
+<Callout kind="note" title="Only what you use">
+  Every export here is tree-shakeable, subpaths included, so your bundler leaves out anything that neither your code nor FigTree itself uses. Importing `FigTree` and `coreOperators` won't bring in the I/O clients or `inspect()`, for example.
+</Callout>
 
-## `coreOperators` and `OPERATOR_CATEGORIES`
+```ts title="imports.ts"
+// The main entry: the FigTree class, operators, helpers and every type
+import { FigTree, coreOperators, httpOperators } from 'fig-tree-evaluator'
 
-## Engine-parity helpers
+// Each subpath has its own import path
+import { getCatalog } from 'fig-tree-evaluator/catalog'
+import { toCanonical, toShorthand } from 'fig-tree-evaluator/format'
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+import { migrateV2Expression } from 'fig-tree-evaluator/migrate'
 
-`isTruthy`, `compareValues`, `renderText`, `parsePath`, `resolvePath`, `deepEqual` and their constants: the engine's own behaviour, for custom operators. Links to Custom operators.
+// Types always come from the main entry, even a subpath's
+import type { Catalog, MigrationResult } from 'fig-tree-evaluator'
+```
+
+| Export                                                                                                  | Kind      | What it is                                          |
+| ------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------- |
+| [`coreOperators`](#coreoperators)                                                                       | Array     | The core operators, ready to register               |
+| [`httpOperators()`](#httpoperators), [`sqlOperators()`](#sqloperators)                                  | Functions | The I/O operators, for a client                     |
+| [`FetchClient`](#fetchclient), [`AxiosClient`](#axiosclient)                                            | Classes   | HTTP clients                                        |
+| [`PostgresConnection`](#postgresconnection), [`SQLiteConnection`](#sqliteconnection)                    | Classes   | Database connections                                |
+| [`httpFailure()`](#httpfailure), [`sqlFailure()`](#sqlfailure)                                          | Functions | The failures a client of your own throws            |
+| [`defineOperator()`](#defineoperator)                                                                   | Function  | Checks an operator definition                       |
+| [`OperatorFailure`](#operatorfailure)                                                                   | Class     | The error an operator throws to fail with a code    |
+| [`isOperatorFailure()`](#isoperatorfailure)                                                             | Function  | Whether a value is an `OperatorFailure`             |
+| [`EvaluationData`](#evaluationdata)                                                                     | Symbol    | A parameter default that stands for the data        |
+| [`OPERATOR_CATEGORIES`](#operator_categories)                                                           | Array     | Every operator category                             |
+| [`isTruthy()`](#istruthy)                                                                               | Function  | FigTree's truthiness                                |
+| [`compareValues()`](#comparevalues)                                                                     | Function  | FigTree's ordering                                  |
+| [`renderText()`](#rendertext-array-and-object), [`ARRAY`](#rendertext-array-and-object), [`OBJECT`](#rendertext-array-and-object) | Function, strings | FigTree's conversion of a value to text |
+| [`parsePath()`](#parsepath-and-wildcard), [`WILDCARD`](#parsepath-and-wildcard)                         | Function, symbol | FigTree's path syntax, as segments           |
+| [`resolvePath()`](#resolvepath)                                                                         | Function  | Reads a path from a value                           |
+| [`deepEqual()`](#deepequal)                                                                             | Function  | FigTree's equality                                  |
+| [`inspect()`](#inspect)                                                                                 | Function  | Reports how FigTree read a compiled expression      |
+| [`version`](#version)                                                                                   | String    | The package version in use                          |
+| [Types](#types)                                                                                         | Types     | Every public type, by area                          |
+
+## `coreOperators`
+
+```ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+const coreOperators: ValidatedOperatorDefinition[]
+// ---cut-after---
+}
+```
+
+The 40 core operators, ready to register.
+
+**Details:**
+
+- It holds every operator on the [Operators](/reference/operators/) page except the I/O ones: `http`, `graphQL` and `sql`.
+- `literal` isn't in it, since FigTree's compiler handles `literal` itself. Every instance understands it, whatever its operators.
+- An instance created without `operators` has these. The [`operators`](/api/options/#operators) option takes the array as it is, alongside other sets and your own operators.
+
+**See also:** [Choosing operators](/guides/setup/#choosing-operators)
 
 ## The I/O toolkit
 
-`httpOperators`, `sqlOperators`, the clients and connections, and `httpFailure` / `sqlFailure`. Links to HTTP and SQL.
+The `http`, `graphQL` and `sql` operators, and the clients they send their requests through. None is registered until you add it to the [`operators`](/api/options/#operators) option. [HTTP and SQL](/guides/http-and-sql/) covers setting them up and using them.
+
+### `httpOperators()`
+
+```ts
+import type { HttpClient, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function httpOperators(client?: HttpClient): ValidatedOperatorDefinition[]
+// ---cut-after---
+}
+```
+
+The `http` and `graphQL` operators, sending their requests through the client given.
+
+**Parameters:** `client`, a [`FetchClient`](#fetchclient), an [`AxiosClient`](#axiosclient) or a [client of your own](/guides/http-and-sql/#writing-your-own-client). Without one, it's a `new FetchClient()`.
+
+**Returns:** the two operators, ready for the `operators` option.
+
+**Throws:** an `OperatorFailure` when there's no `client` given and no global `fetch`.
+
+**See also:** [Adding the I/O operators](/guides/http-and-sql/#adding-the-io-operators)
+
+### `sqlOperators()`
+
+```ts
+import type { SqlConnection, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function sqlOperators(connection: SqlConnection): ValidatedOperatorDefinition[]
+// ---cut-after---
+}
+```
+
+The `sql` operator, running its queries through the connection given.
+
+**Parameters:** `connection`, a [`PostgresConnection`](#postgresconnection), an [`SQLiteConnection`](#sqliteconnection) or a [connection of your own](/guides/http-and-sql/#writing-your-own-client).
+
+**Returns:** the one operator, in an array, ready for the `operators` option.
+
+**See also:** [SQL queries](/guides/http-and-sql/#sql-queries)
+
+### `FetchClient`
+
+```ts
+import type { FetchLike, HttpRequest } from 'fig-tree-evaluator'
+declare class FetchClient {
+// ---cut---
+constructor(fetch?: FetchLike)
+request(request: HttpRequest): Promise<unknown>
+// ---cut-after---
+}
+```
+
+An HTTP client that sends requests with `fetch`.
+
+**Parameters:** `fetch`, the `fetch` function to send requests with, such as one wrapped to retry failed requests. Without one, it uses the runtime's global `fetch`, as browsers, Node, Deno and Bun all have.
+
+**Throws:** an `OperatorFailure` when there's no `fetch` given and no global one.
+
+**Details:**
+
+- A body is sent as JSON, and the response is parsed as JSON. An empty response is `null`.
+- A response with an error status fails with `http-status`, and one that isn't JSON with `invalid-response`.
+
+### `AxiosClient`
+
+```ts
+import type { AxiosLike, HttpRequest } from 'fig-tree-evaluator'
+declare class AxiosClient {
+// ---cut---
+constructor(axios: AxiosLike)
+request(request: HttpRequest): Promise<unknown>
+// ---cut-after---
+}
+```
+
+An HTTP client that sends requests with [Axios](https://axios-http.com).
+
+**Parameters:** `axios`, the `axios` import itself.
+
+**Throws:** an `OperatorFailure` when `axios` isn't an Axios function.
+
+**Details:** a response with an error status fails with `http-status`, as it does with `FetchClient`, and an empty response is `null`.
+
+### `PostgresConnection`
+
+```ts
+import type { PgClientLike, SqlRequest } from 'fig-tree-evaluator'
+declare class PostgresConnection {
+// ---cut---
+constructor(client: PgClientLike)
+query(request: SqlRequest): Promise<Record<string, unknown>[]>
+// ---cut-after---
+}
+```
+
+A database connection that runs queries with [node-postgres](https://node-postgres.com).
+
+**Parameters:** `client`, a connected node-postgres `Client` or `Pool`.
+
+**Throws:** an `OperatorFailure` when `client` has no `query()` method.
+
+**Details:**
+
+- Values are bound by position only, to `$1`, `$2` and so on. An object of named values fails with `sql-error`.
+- An error from the database fails with `sql-error`, with `driver: 'postgres'`, and Postgres's own error code as `driverCode`.
+- When a query is cancelled, the node stops waiting for it, but node-postgres can't stop the query itself, so it runs to the end in the database.
+
+### `SQLiteConnection`
+
+```ts
+import type { SqliteDatabaseLike, SqlRequest } from 'fig-tree-evaluator'
+declare class SQLiteConnection {
+// ---cut---
+constructor(db: SqliteDatabaseLike)
+query(request: SqlRequest): Promise<Record<string, unknown>[]>
+// ---cut-after---
+}
+```
+
+A database connection that runs queries with the [sqlite](https://www.npmjs.com/package/sqlite) package.
+
+**Parameters:** `db`, a database opened with `sqlite`.
+
+**Throws:** an `OperatorFailure` when `db` has no `all()` method.
+
+**Details:**
+
+- Values can be bound by position, or by name with an object, such as `{ ':city': 'London' }`.
+- An error from the database fails with `sql-error`, with `driver: 'sqlite'`.
+- When a query is cancelled, the node stops waiting for it, but SQLite can't stop the query itself, so it runs to the end.
+
+### `httpFailure()`
+
+```ts
+import type { HttpFailureInfo, OperatorFailure } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function httpFailure(info: HttpFailureInfo): OperatorFailure
+// ---cut-after---
+}
+```
+
+The failure an HTTP client of your own throws for a response with an error status.
+
+**Parameters:** `info`, the response's `status`, `statusText`, `url` and `response`, its body: parsed where it's JSON, and as text where it isn't.
+
+**Returns:** an `OperatorFailure` with the code `http-status`, and the four fields as its `errorData`. A text `response` longer than 500 characters is cut short.
+
+**Details:** headers have no place in it, so a header's value can never reach a fallback, a log or a trace.
+
+**See also:** [Writing your own client](/guides/http-and-sql/#writing-your-own-client)
+
+### `sqlFailure()`
+
+```ts
+import type { OperatorFailure } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function sqlFailure(driver: string, error: unknown): OperatorFailure
+// ---cut-after---
+}
+```
+
+The failure a database connection of your own throws for an error from the database.
+
+**Parameters:**
+
+| Parameter | Description                                          |
+| --------- | ---------------------------------------------------- |
+| `driver`  | The database's name, such as `'mysql'`               |
+| `error`   | What the database driver threw                       |
+
+**Returns:** an `OperatorFailure` with the code `sql-error`. Its message is the driver's name and the error's message, as in `mysql: Unknown column 'nmae'`. Its `errorData` has the `driver`, and the error's `code` as `driverCode`, and its `table`, `column` and `constraint`, wherever the error has them as strings.
+
+**Details:** nothing else is copied from the error, so detail that can quote a row's values, such as Postgres's `detail`, never reaches a fallback or a log.
+
+**See also:** [Writing your own client](/guides/http-and-sql/#writing-your-own-client)
+
+## Custom operators
+
+These exports are for writing operators of your own, which [Writing an operator](/custom-operators/writing/) walks through.
+
+### `defineOperator()`
+
+```ts
+import type { OperatorDefinition, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function defineOperator(definition: OperatorDefinition): ValidatedOperatorDefinition
+// ---cut-after---
+}
+```
+
+Checks an operator definition, and returns it ready to register.
+
+**Parameters:** `definition`, the operator's [definition](/custom-operators/writing/#the-definition).
+
+**Returns:** the definition, checked, with every default filled in, ready for the [`operators`](/api/options/#operators) option.
+
+**Throws:** `invalid-definition`, listing every problem found in the error's `issues`, each with its own code, such as `reserved-name` or `invalid-null-policy` ([Registration and options](/api/errors/#registration-and-options)).
+
+**Details:**
+
+- In TypeScript, the `params` the `evaluate` body receives are typed from the parameter declarations ([Typed `params`](/custom-operators/parameters/#typed-params)).
+- Given a definition it has already returned, it returns that same definition.
+
+**See also:** [`defineOperator()`](/custom-operators/writing/#defineoperator)
+
+### `OperatorFailure`
+
+```ts
+import type { FallbackErrorCode, OperatorFailureInit } from 'fig-tree-evaluator'
+declare class OperatorFailure extends Error {
+// ---cut---
+constructor(message: string, init?: OperatorFailureInit)
+code?: FallbackErrorCode
+errorData?: Record<string, unknown>
+// ---cut-after---
+}
+```
+
+The error an operator's `evaluate` body throws to fail with a code of its own.
+
+**Parameters:**
+
+| Parameter        | Description                                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `message`        | What went wrong. FigTree puts the operator's name in front of it, as in `shippingQuote – no rate for 'NZ'` |
+| `init.code`      | The failure's code: one from [`ErrorCodes`](/api/errors/#errorcodes), or one of your own                    |
+| `init.errorData` | Any detail a fallback might need, such as a status or an ID                                                 |
+
+**Details:**
+
+- FigTree turns it into a [`FigTreeError`](/api/errors/#figtreeerror) at the failed node, with the same `code` and `errorData`. Without a `code`, the code is `operator-failure`, as it is for a plain `Error`.
+- A fallback catches it like any other runtime failure, and reads its `code` and `errorData` through [`$error`](/guides/fallbacks/#reading-the-failure-with-error).
+
+**See also:** [Failing](/custom-operators/evaluate/#failing)
+
+### `isOperatorFailure()`
+
+```ts
+import type { OperatorFailure } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function isOperatorFailure(input: unknown): input is OperatorFailure
+// ---cut-after---
+}
+```
+
+Whether a value is an `OperatorFailure`, narrowing its type in TypeScript.
+
+**Returns:** `true` for an `OperatorFailure`, and `false` for anything else. It's the same test as `input instanceof OperatorFailure`.
+
+### `EvaluationData`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+const EvaluationData: unique symbol
+// ---cut-after---
+}
+```
+
+A parameter `default` that stands for the evaluation's data.
+
+**Details:**
+
+- When a node leaves the parameter out, the body receives the evaluation's `data` object in its place. That's how `get` reads from the data when it has no `from`.
+- It's allowed only as a parameter's `default`. Anywhere else in a definition, `defineOperator()` throws `invalid-definition`.
+- [`getOperators()`](/api/figtree/#getoperators-and-getfragments) reports the default as the symbol itself, which `JSON.stringify()` leaves out.
+
+**See also:** [Declaring parameters](/custom-operators/parameters/#declaring-parameters)
+
+### `OPERATOR_CATEGORIES`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+const OPERATOR_CATEGORIES: readonly ['logic', 'comparison', 'math', 'string', 'array', 'data', 'io', 'other']
+// ---cut-after---
+}
+```
+
+Every category an operator can belong to.
+
+**Details:**
+
+- An operator definition's `category` must be one of these. Its type, `OperatorCategory`, is one of the strings in the array.
+- The `./catalog` subpath gives each one a display name, a description, colours and an order ([`getCatalog()`](/tooling/catalog/#getcatalog)).
+
+**See also:** [The definition](/custom-operators/writing/#the-definition)
+
+## Engine-parity helpers
+
+The functions FigTree's own operators use, so a custom operator can behave exactly as the core ones do. [Matching core behaviour](/custom-operators/evaluate/#matching-core-behaviour) says when you'd want them.
+
+### `isTruthy()`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+function isTruthy(value: unknown): boolean
+// ---cut-after---
+}
+```
+
+Whether a value counts as true, by FigTree's [truthiness](/concepts/evaluation/#types-and-truthiness) rule.
+
+**Returns:** `false` for `false`, `null`, `0` and `''`, and `true` for anything else, including `[]`, `{}` and `NaN`.
+
+**Details:** it's the rule `if`, `and`, `or`, `not`, `filter`, `find`, `some` and `every` apply, and `convert` to `'boolean'`, after it reads `'true'` and `'false'` as booleans. A parameter declared with `truthiness: true` gets it without calling this.
+
+### `compareValues()`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+function compareValues(a: number | string, b: number | string): -1 | 0 | 1
+// ---cut-after---
+}
+```
+
+Compares two numbers, or two strings, as `greaterThan`, `lessThan`, `min` and `max` do.
+
+**Returns:** `-1` when `a` comes first, `1` when `b` does, and `0` when they're equal, so it can be passed straight to `Array.prototype.sort()`.
+
+**Details:**
+
+- Strings are compared by Unicode code point, the same in every locale. So uppercase letters come before lowercase (`'B'` before `'a'`), accented letters after `'z'`, and `'10'` before `'2'`.
+- A number and a string are compared as two strings.
+
+### `renderText()`, `ARRAY` and `OBJECT`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+function renderText(value: unknown): string
+const ARRAY: '<array>'
+const OBJECT: '<object>'
+// ---cut-after---
+}
+```
+
+Converts a value to text, as `buildString` and `join` do.
+
+**Returns:**
+
+| Value          | Text                                                 |
+| -------------- | ---------------------------------------------------- |
+| A string       | Itself                                               |
+| A number       | `String(value)`, as in `'4.5'`                       |
+| A boolean      | `'true'` or `'false'`                                |
+| `null`         | `''`                                                 |
+| An array       | `ARRAY`, the placeholder `'<array>'`                 |
+| Anything else  | `OBJECT`, the placeholder `'<object>'`               |
+
+**Details:** it never throws. `convert` to `'string'` uses the same rows for a string, a number and a boolean, but differs for the others: `null` stays `null`, and an array or object is a failure.
+
+### `parsePath()` and `WILDCARD`
+
+```ts
+import type { PathSegment } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function parsePath(path: string): PathSegment[]
+const WILDCARD: unique symbol
+// ---cut-after---
+}
+```
+
+Splits a path written in [path syntax](/concepts/data/#path-syntax) into its segments.
+
+**Returns:** an array of segments: a string for each key, a number for each index in brackets, and `WILDCARD` for each `[*]`. So `'orders[*].items[0]["unit.price"]'` gives `['orders', WILDCARD, 'items', 0, 'unit.price']`.
+
+**Throws:** a plain `Error` for a path it can't read, such as `'items[x]'`.
+
+**Details:**
+
+- A key written after a dot stays a string, even when it's a number: `'items.0'` gives `['items', '0']`. [`resolvePath()`](#resolvepath) reads it as an index against an array.
+- `''` gives `[]`, and empty keys are skipped, so `'a..b'` gives `['a', 'b']`.
+- In brackets, a quoted key can use single or double quotes, and a backslash escapes the next character.
+- The segments' type is `PathSegment`, which is `string | number | Wildcard`.
+
+### `resolvePath()`
+
+```ts
+import type { PathSegment, ResolveResult } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function resolvePath(source: unknown, path: string | PathSegment[]): ResolveResult
+// ---cut-after---
+}
+```
+
+Reads a path from a value, as `$data` references and `get` do.
+
+**Parameters:**
+
+| Parameter | Description                                                                                                 |
+| --------- | ----------------------------------------------------------------------------------------------------------- |
+| `source`  | The value to read from                                                                                      |
+| `path`    | A path in path syntax, or an array of segments, such as [`parsePath()`](#parsepath-and-wildcard) returns. In an array, each string is a key exactly as written |
+
+**Returns:** `{ found: true, value }` when the path exists, and `{ found: false, value: undefined }` when it doesn't, so a value that's actually `null` is told apart from a missing one.
+
+**Throws:** a plain `Error` for a string path [`parsePath()`](#parsepath-and-wildcard) can't read.
+
+**Details:**
+
+- Only an object's own properties are read, so `'name.length'` and `'settings.toString'` are missing.
+- A digit-only key reads an array by index, so `'items.0'` and `'items[0]'` are the same.
+- `[*]` reads the rest of the path from each element of an array, and returns the results as an array, with `null` wherever it's missing. On anything other than an array, it's missing.
+- An empty path, `''` or `[]`, returns the whole `source`.
+- It never fails on a missing path, whatever `strictDataPaths` says. A missing path is `null` in an expression, or a failure under `strictDataPaths`, and that's up to the caller.
+
+### `deepEqual()`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+function deepEqual(a: unknown, b: unknown): boolean
+// ---cut-after---
+}
+```
+
+Whether two values are equal, as `equal` and `notEqual` decide it.
+
+**Details:**
+
+- Objects are equal when they have the same keys with equal values, in any order, and arrays when they have equal elements in the same order.
+- Values of different types are never equal, so `1` and `'1'` aren't, and it never throws.
+- `NaN` equals `NaN`.
+- Dates are compared by their time, regular expressions by their source and flags, `Map`s and `Set`s by their contents, and binary data byte by byte.
+- It's [dequal](https://github.com/lukeed/dequal) 2.0.3, by Luke Edwards, built into FigTree so the package has no dependencies. Anything not covered here is compared as dequal compares it.
 
 ## `inspect()`
 
+```ts
+import type { CallOptions, CompiledExpression, InspectReport } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function inspect(compiled: CompiledExpression, options?: CallOptions): InspectReport
+// ---cut-after---
+}
+```
+
+Reports how FigTree read a compiled expression.
+
+**Parameters:**
+
+| Parameter  | Description                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| `compiled` | What [`compile()`](/api/figtree/#compile) returned                                                           |
+| `options`  | The per-call options. Only `data` makes a difference: the report's `issues` include the warnings from checking the expression's `$data` paths against it, as [`validate()`](/api/figtree/#validate) does |
+
+**Returns:** the report, as plain JSON:
+
+| Property          | Description                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `version`         | The version of FigTree that made the report                                                                         |
+| `expression`      | The expression, as it was written                                                                                   |
+| `options`         | The options it was compiled with, only those set. `data` is replaced by a count of its keys, header values by `'[redacted]'`, and `signal` and a cache `store` by `'[supplied]'` |
+| `canonicalForm`   | The expression as the compiler built it, one object per node                                                        |
+| `issues`          | What `validate()` reports for it                                                                                    |
+| `timeoutShielded` | Whether a [timeout](/guides/fallbacks/#timeout-shielding) returns a value rather than throwing                      |
+| `nodeCount`       | The number of nodes, counted as [`maxNodes`](/api/options/#maxdepth-and-maxnodes) counts them                       |
+| `maxDepth`        | How deep the expression goes, measured as [`maxDepth`](/api/options/#maxdepth-and-maxnodes) measures it             |
+| `dependencies`    | The `$data` paths it reads, and the operators and fragments it uses                                                 |
+| `own`             | `nodeCount`, `maxDepth` and `dependencies` again, without what called fragments' bodies add                        |
+
+**Throws:** a `TypeError` when `compiled` isn't a compiled expression.
+
+**Details:**
+
+- Nothing is evaluated, and the compiled expression is left as it is.
+- A compiled expression made before an `updateOptions()` is reported with the options it was compiled with.
+- The report's shape follows FigTree's compiler, so it can change in any release, and isn't covered by semver.
+
+**See also:** [Inspecting a compiled expression](/guides/tracing/#inspecting-a-compiled-expression)
+
+## `version`
+
+```ts
+declare namespace FigTree {
+// ---cut---
+const version: string
+// ---cut-after---
+}
+```
+
+The version of `fig-tree-evaluator` in use, such as <code>{`'${version}'`}</code>. It's the same as an instance's [`version`](/api/figtree/#version).
+
 ## Types
 
-An index of the exported types, grouped by the area they belong to.
+Every public type is exported from `fig-tree-evaluator`, including those for the subpaths, so `import type` always comes from the root. They're listed here by area, each with where it's described.
+
+### The instance
+
+| Type                                                                         | Describes                                                       |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [`FigTreeOptions`](/api/options/)                                            | What the constructor takes                                      |
+| [`CallOptions`](/api/figtree/#evaluate)                                      | The per-call options: `data`, `signal`, `timeout` and `trace`   |
+| [`ValidateOptions`](/api/figtree/#validate)                                  | What `validate()` takes: the per-call options and `params`      |
+| [`OptionsUpdate`](/api/figtree/#updateoptions)                               | What `updateOptions()` and `with()` take                        |
+| [`EvaluationOptions`](/api/figtree/#getoptions)                              | What `getOptions()` returns                                     |
+| [`EvaluationResult`](/api/figtree/#evaluate)                                 | What `evaluate()` returns with `trace` in effect                |
+| [`CompiledExpression`](/api/compiled-expression/)                            | What `compile()` returns                                        |
+| [`Dependencies`](/api/figtree/#getdependencies)                              | What `getDependencies()` returns                                |
+| [`OperatorInfo`](/api/figtree/#getoperators-and-getfragments)                | An operator, as `getOperators()` reports it                     |
+| [`ParameterInfo`](/api/figtree/#getoperators-and-getfragments)               | One of its parameters                                           |
+| [`FragmentInfo`](/api/figtree/#getoperators-and-getfragments)                | A fragment, as `getFragments()` reports it                      |
+| [`FragmentParameter`](/api/figtree/#getoperators-and-getfragments)           | One of its parameters                                           |
+| [`FragmentDefinition`](/guides/fragments/#defining-and-registering-fragments) | A fragment, as registered                                      |
+| [`FragmentParameterDeclaration`](/guides/fragments/#declaring-parameters)    | One of its parameters, as declared                              |
+| [`CacheStore`](/guides/caching/#using-your-own-store)                        | A store of your own for the result cache                        |
+| `ResultShape`, `Merge`, `NoOptions`, `OnlyCallOptions`                       | How TypeScript works out what `evaluate()` returns from the options in effect |
+
+### Errors and checking
+
+| Type                                                         | Describes                                              |
+| ------------------------------------------------------------ | ------------------------------------------------------ |
+| `FigTreeErrorInit`                                           | What `new FigTreeError()` takes                        |
+| [`FallbackError`](/api/errors/#fallbackerror)                | What `$error` holds in a fallback                      |
+| [`FigTreeErrorCode`](/api/errors/#errorcodes)                | Any code a `FigTreeError` or an `Issue` can have       |
+| [`FallbackErrorCode`](/api/errors/#errorcodes)               | Any code a fallback can catch                          |
+| [`Issue`](/api/errors/#issue-and-validationresult)           | One problem found by checking                          |
+| [`ValidationResult`](/api/errors/#issue-and-validationresult) | What `validate()` returns                             |
+| [`Severity`](/api/errors/#issue-and-validationresult)        | `'error'` or `'warning'`                               |
+
+### Tracing
+
+| Type                                                              | Describes                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------- |
+| [`TraceNode`](/guides/tracing/#the-trace-tree)                    | One entry in a trace tree                         |
+| [`TraceKind`](/guides/tracing/#the-trace-tree)                    | What an entry is: an operator, a reference, …     |
+| [`TraceStatus`](/guides/tracing/#the-trace-tree)                  | What became of it: a value, a failure, …          |
+| [`KnownTraceEvent`](/guides/tracing/#events)                      | Any event FigTree's own operators record          |
+| `CacheTraceEvent`, `RequestTraceEvent`, `QueryTraceEvent`, `RenderTraceEvent`, `KeyOverwriteTraceEvent`, `ShieldedFallbackTraceEvent` | Each of those events, by its `type` ([Events](/guides/tracing/#events)) |
+
+### Operator definitions
+
+| Type                                                                  | Describes                                                          |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [`OperatorDefinition`](/custom-operators/writing/#the-definition)     | What `defineOperator()` takes                                      |
+| [`ValidatedOperatorDefinition`](#defineoperator)                      | What `defineOperator()` returns, and what `operators` takes        |
+| [`ParameterDeclaration`](/custom-operators/parameters/#declaring-parameters), `ParameterDeclarations` | One parameter's declaration, and a definition's set of them |
+| [`ValidatedParameter`](/custom-operators/parameters/#declaring-parameters) | A parameter's declaration, with every default filled in       |
+| [`OperatorCategory`](#operator_categories)                            | One of `OPERATOR_CATEGORIES`                                       |
+| [`EvaluationMode`](/custom-operators/parameters/#evaluation-modes)    | How a parameter's value is delivered to the body                   |
+| [`NullPolicy`](/custom-operators/parameters/#null-policy), `NullPolicyValue`, `ConditionalNullPolicy`, `CompiledNullPolicy` | What a `null` does at a parameter, as declared and as reported |
+| [`OperatorEvaluate`](/custom-operators/evaluate/)                     | The `evaluate` body                                                |
+| [`OperatorValidate`](/custom-operators/validate/#the-validate-hook)   | The `validate` hook                                                |
+| [`ValidateFinding`](/custom-operators/validate/#findings)             | What the hook reports                                              |
+| [`ValidateHelpers`](/custom-operators/validate/#helpers)              | The helpers the hook is given                                      |
+| [`OperatorAnalysis`](/tooling/authoring/#custom-operators), `FailureRule`, `FailureTest`, `DeclaredOutput` | What `fallbackCoverage()` can assume about an operator |
+
+### Types and constraints
+
+| Type                                                                      | Describes                                              |
+| ------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [`BasicType`](/custom-operators/parameters/#types-and-constraints)        | One type name, such as `'string'` or `'integer'`       |
+| [`LiteralType`](/custom-operators/parameters/#types-and-constraints)      | A fixed set of allowed values                          |
+| [`ExpectedType`](/custom-operators/parameters/#types-and-constraints)     | A type as declared: a name, a list of names, or a literal set |
+| [`Constraints`](/custom-operators/parameters/#types-and-constraints)      | The rules an array parameter can add                   |
+| [`TypeDeclaration`](/custom-operators/parameters/#types-and-constraints)  | A type with its constraints, and whether it's required |
+| `TypeCheckResult`                                                         | What the `checkType()` helper returns                  |
+
+### Operator bodies
+
+| Type                                                                      | Describes                                                   |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`OperatorContext`](/custom-operators/evaluate/#the-context)              | The body's second argument                                  |
+| [`ResolvedParams`](/custom-operators/parameters/#typed-params), `ParamValue`, `TypeOf` | The body's `params`, typed from the declarations |
+| [`LazyValue`](/custom-operators/parameters/#evaluation-modes), `PerElement`, `Settlement`, `SettlementStream` | What the body receives for a parameter that isn't evaluated up front |
+| [`TraceEvent`](/custom-operators/evaluate/#trace-events)                  | An event the body records in the trace                      |
+| [`OperatorFailureInit`](#operatorfailure)                                 | What `new OperatorFailure()` takes                          |
+
+### Engine-parity helpers
+
+| Type                                                  | Describes                                       |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| [`PathSegment`](#parsepath-and-wildcard)              | One segment of a parsed path                    |
+| [`Wildcard`](#parsepath-and-wildcard)                 | The type of `WILDCARD`                          |
+| [`ResolveResult`](#resolvepath)                       | What `resolvePath()` returns                    |
+
+### I/O
+
+| Type                                                                         | Describes                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------- |
+| [`HttpClient`](/guides/http-and-sql/#writing-your-own-client), [`HttpRequest`](/guides/http-and-sql/#writing-your-own-client) | An HTTP client, and the request it's given |
+| [`SqlConnection`](/guides/http-and-sql/#writing-your-own-client), [`SqlRequest`](/guides/http-and-sql/#writing-your-own-client) | A database connection, and the query it's given |
+| [`HttpFailureInfo`](#httpfailure)                                            | What `httpFailure()` takes                        |
+| [`FetchLike`](#fetchclient), `FetchResponseLike`                             | What `FetchClient` needs of `fetch`               |
+| [`AxiosLike`](#axiosclient), `AxiosErrorLike`                                | What `AxiosClient` needs of Axios                 |
+| [`PgClientLike`](#postgresconnection)                                        | What `PostgresConnection` needs of node-postgres  |
+| [`SqliteDatabaseLike`](#sqliteconnection)                                    | What `SQLiteConnection` needs of sqlite           |
+
+### `inspect()`
+
+| Type                                   | Describes                                             |
+| -------------------------------------- | ----------------------------------------------------- |
+| [`InspectReport`](#inspect)            | What `inspect()` returns                              |
+| `InspectNode`                          | One node of its `canonicalForm`                       |
+| `InspectIssue`                         | One of its `issues`                                   |
+| `InspectDependencies`                  | Its `dependencies`                                    |
+
+### Tooling and migration
+
+| Type                                                                          | Describes                                                   |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [`Catalog`](/tooling/catalog/#getcatalog), `CatalogCategory`, `CatalogOperator`, `CatalogParameter`, `CatalogFragment`, `CatalogFragmentParameter` | What `getCatalog()` returns, and its parts |
+| [`OperatorListing`](/tooling/catalog/#the-listings), `OperatorListingMap`, `CategoryListing`, `CategoryListingMap` | How operators and categories are presented |
+| [`FragmentMetadata`](/guides/fragments/#fragments-in-an-editor)               | How a fragment is presented                                 |
+| [`NullOutcome`](/tooling/catalog/#getcatalog)                                 | What a `null` does at a parameter, in the catalog           |
+| [`TypeSeeds`](/tooling/catalog/#type-seeds)                                   | A starting value for each type                              |
+| [`Registry`](/tooling/format/#tocanonical-and-toshorthand)                    | What the conversions read from an instance                  |
+| [`Spelling`](/tooling/format/#tocanonical-and-toshorthand), `NameOptions`, `CanonicalOptions`, `ShorthandOptions` | The conversions' options |
+| [`ObjectClass`](/tooling/format/#reading-primitives), `PositionalShape`, `PositionalLayout`, `ReferenceRecognition`, `ReferenceScope`, `ReferenceNamespace` | What the reading primitives take and return |
+| [`FallbackCoverage`](/tooling/authoring/#reading-the-report), `CoverageFinding`, `CoveredFinding` | What `fallbackCoverage()` returns |
+| [`FallbackCoverageOptions`](/tooling/authoring/#fallbackcoverage)             | What `fallbackCoverage()` takes                             |
+| [`MigrationResult`](/migrating/converter/#the-report), `FragmentMigrationResult`, `MigrationIssue` | What the converter returns     |
+| [`V2Options`](/migrating/converter/#migratev2expression)                      | The v2 options the converter reads                          |
 
 ## Subpaths
 
-The four tooling subpaths and the migration converter, each with its own section.
+Four subpaths hold the tools around FigTree, for editors, analysis and migration. Each has its own import path, such as `fig-tree-evaluator/format`. [Building tools](/tooling/overview/) says what each is for.
+
+### `fig-tree-evaluator/catalog`
+
+```ts
+import type { Catalog, CategoryListingMap, FigTree, OperatorListingMap, TypeSeeds } from 'fig-tree-evaluator'
+declare namespace Catalog {
+// ---cut---
+function getCatalog(
+  fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
+  ...listings: OperatorListingMap[]
+): Catalog
+const operatorListings: OperatorListingMap
+const categoryListings: CategoryListingMap
+const typeSeeds: TypeSeeds
+// ---cut-after---
+}
+```
+
+Display names, descriptions and colours for operators, categories and fragments.
+
+| Export             | What it is                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `getCatalog()`     | An instance's operators and fragments, with how each is presented, and the categories, with listings given for custom operators merged over the package's own |
+| `operatorListings` | How each of the package's operators is presented: its display name, description, colours, documentation link, and its parameters' descriptions and starting values |
+| `categoryListings` | How each category is presented, and its order                                                                   |
+| `typeSeeds`        | A starting value for each type, for an editor adding a parameter                                                |
+
+**See also:** [Operator metadata](/tooling/catalog/)
+
+### `fig-tree-evaluator/format`
+
+```ts
+import type {
+  CanonicalOptions,
+  ExpectedType,
+  NameOptions,
+  ObjectClass,
+  PositionalLayout,
+  PositionalShape,
+  ReferenceRecognition,
+  ReferenceScope,
+  Registry,
+  ShorthandOptions,
+} from 'fig-tree-evaluator'
+declare namespace Format {
+// ---cut---
+function toCanonical(expression: unknown, fig: Registry, options?: CanonicalOptions): unknown
+function toShorthand(expression: unknown, fig: Registry, options?: ShorthandOptions): unknown
+function toGet(reference: unknown, options?: NameOptions): Record<string, unknown> | null
+function toReference(node: unknown, options?: NameOptions): string | null
+
+function classifyObject(raw: Record<string, unknown>, recognizes: (name: string) => boolean): ObjectClass
+function positionalLayout(shape: PositionalShape, length: number): PositionalLayout | null
+function singlePositionalTarget(shape: PositionalShape): string | null
+function recognizeReference(value: string, scope?: ReferenceScope): ReferenceRecognition
+function typesIntersect(a: ExpectedType, b: ExpectedType): boolean
+// ---cut-after---
+}
+```
+
+Converting expressions between shorthand and canonical form, and reading them as FigTree's compiler does.
+
+| Export                     | What it is                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------- |
+| `toCanonical()`            | Every node in an expression, in canonical form                                              |
+| `toShorthand()`            | Every node in an expression, in shorthand form                                              |
+| `toGet()`                  | A reference string, such as `'$data.user.name'`, as a `get` node, or `null` for any other value |
+| `toReference()`            | A `get` node as a reference string, or `null` where it can't be written as one              |
+| `classifyObject()`         | Whether an object is a node, and which kind, or plain data                                  |
+| `positionalLayout()`       | Which parameters an array of positional values fills                                        |
+| `singlePositionalTarget()` | Which parameter a single value, not in an array, fills                                      |
+| `recognizeReference()`     | Whether a string is a reference, and to what                                                |
+| `typesIntersect()`         | Whether two declared types have any value in common                                         |
+
+`toCanonical()` and `toShorthand()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `malformed-node` at a node the compiler can't read.
+
+**See also:** [Converting forms](/tooling/format/), [Shorthand and canonical forms](/concepts/forms/)
+
+### `fig-tree-evaluator/authoring`
+
+```ts
+import type { FallbackCoverage, FallbackCoverageOptions, FigTree } from 'fig-tree-evaluator'
+declare namespace Authoring {
+// ---cut---
+function fallbackCoverage(
+  fig: FigTree,
+  expression: unknown,
+  options?: FallbackCoverageOptions
+): Promise<FallbackCoverage>
+// ---cut-after---
+}
+```
+
+Static analyses for authoring tools. `fallbackCoverage()` reports where each node of an expression can fail, and which fallback, if any, catches it, under the instance's own options.
+
+**See also:** [Static analysis](/tooling/authoring/), [Covering the whole expression](/guides/fallbacks/)
+
+### `fig-tree-evaluator/migrate`
+
+```ts
+import type { FragmentMigrationResult, MigrationResult, V2Options } from 'fig-tree-evaluator'
+declare namespace Migrate {
+// ---cut---
+function migrateV2Expression(expression: unknown, options?: V2Options): MigrationResult
+function migrateV2Fragments(options: V2Options): FragmentMigrationResult
+// ---cut-after---
+}
+```
+
+The converter, which rewrites v2 expressions and fragments as v3.
+
+| Export                  | What it is                                                                 |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `migrateV2Expression()` | One v2 expression, as v3, with an issue for anything it couldn't convert exactly |
+| `migrateV2Fragments()`  | The fragments in a v2 instance's options, as v3 fragment definitions       |
+
+Neither one throws. Whatever can't be converted exactly comes back as the closest safe v3, with an issue saying so.
+
+**See also:** [The converter](/migrating/converter/)
