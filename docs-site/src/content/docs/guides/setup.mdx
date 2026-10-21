@@ -127,7 +127,40 @@ const fig = new FigTree({
 })
 ```
 
-{/* TO-DO: show replacing a core operator with your own version, using the operator-selection helper from #258 once it lands. Until then, it's `[coreOperators.filter((op) => op.name !== 'upper'), myUpper]`, since registering two operators under one name is an error. */}
+To replace a core operator with a version of your own, such as an `upper` that follows the user's locale, use `operatorSet()`. Give it your operators, as you'd list them in the `operators` option, and then what to change:
+
+```ts title="operators.ts"
+// @filename: operators/localeUpper.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const localeUpper: ValidatedOperatorDefinition
+// @filename: fig.ts
+// ---cut---
+import { FigTree, coreOperators, operatorSet } from 'fig-tree-evaluator'
+// Your own upper, written with defineOperator()
+import { localeUpper } from './operators/localeUpper'
+
+const fig = new FigTree({
+  operators: operatorSet(coreOperators, { replace: localeUpper }),
+})
+```
+
+`operatorSet()` can also choose which operators to keep: `only` keeps just the ones it names, and `except` leaves out the ones it names. Each takes an operator's name, or a whole category, such as `{ category: 'math' }`:
+
+```ts
+import { coreOperators, operatorSet } from 'fig-tree-evaluator'
+
+// A small calculator: the maths and comparison operators, and if
+operatorSet(coreOperators, {
+  only: [{ category: 'math' }, { category: 'comparison' }, 'if'],
+})
+
+// No regex, and no string operators except buildString
+operatorSet(coreOperators, {
+  except: ['regex', { category: 'string', except: 'buildString' }],
+})
+```
+
+Every name is checked, so a misspelt `'uper'` is an error rather than an operator quietly left in.
 
 Fragments, the reusable named expressions you call just like operators, are registered on the instance too, in the `fragments` option ([Fragments](/guides/fragments/)).
 

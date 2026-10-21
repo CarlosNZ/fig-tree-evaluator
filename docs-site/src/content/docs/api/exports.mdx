@@ -8,7 +8,7 @@ sidebar:
 import { version } from 'fig-tree-evaluator'
 import Callout from '../../../components/Callout.astro'
 
-Besides the [`FigTree` class](/api/figtree/) and the [errors](/api/errors/), `fig-tree-evaluator` exports the core operators, the I/O operators with their HTTP and database clients, the helpers for writing operators of your own, an inspector for compiled expressions, and every public type. The tools for authoring and migration, such as the v2 converter, are in four [subpaths](#subpaths), each with its own import path, such as `fig-tree-evaluator/format`.
+Besides the [`FigTree` class](/api/figtree/) and the [errors](/api/errors/), `fig-tree-evaluator` exports the core operators, the I/O operators with their HTTP and database clients, the helpers for registering operators and writing operators of your own, an inspector for compiled expressions, and every public type. The tools for authoring and migration, such as the v2 converter, are in four [subpaths](#subpaths), each with its own import path, such as `fig-tree-evaluator/format`.
 
 <Callout kind="note" title="Only what you use">
   Every export here is tree-shakeable, subpaths included, so your bundler leaves out anything that neither your code nor FigTree itself uses. Importing `FigTree` and `coreOperators` won't bring in the I/O clients or `inspect()`, for example.
@@ -35,6 +35,7 @@ import type { Catalog, MigrationResult } from 'fig-tree-evaluator'
 | [`FetchClient`](#fetchclient), [`AxiosClient`](#axiosclient)                                            | Classes   | HTTP clients                                        |
 | [`PostgresConnection`](#postgresconnection), [`SQLiteConnection`](#sqliteconnection)                    | Classes   | Database connections                                |
 | [`httpFailure()`](#httpfailure), [`sqlFailure()`](#sqlfailure)                                          | Functions | The failures a client of your own throws            |
+| [`operatorSet()`](#operatorset)                                                                         | Function  | Selects and replaces operators                      |
 | [`defineOperator()`](#defineoperator)                                                                   | Function  | Checks an operator definition                       |
 | [`OperatorFailure`](#operatorfailure)                                                                   | Class     | The error an operator throws to fail with a code    |
 | [`isOperatorFailure()`](#isoperatorfailure)                                                             | Function  | Whether a value is an `OperatorFailure`             |
@@ -255,7 +256,54 @@ The failure a database connection of your own throws for an error from the datab
 
 ## Custom operators
 
-These exports are for writing operators of your own, which [Writing an operator](/custom-operators/writing/) walks through.
+These exports are for registering operators and writing operators of your own, which [Writing an operator](/custom-operators/writing/) walks through.
+
+### `operatorSet()`
+
+```ts
+import type { OperatorEntry, OperatorSetOptions, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function operatorSet(
+  ...args: [...operators: OperatorEntry[], options: OperatorSetOptions]
+): ValidatedOperatorDefinition[]
+// ---cut-after---
+}
+```
+
+Selects operators from one or more sets, and replaces operators with your own.
+
+**Parameters:**
+
+- `operators`: what the [`operators`](/api/options/#operators) option takes, as separate arguments, such as `coreOperators`, `httpOperators()` and operators of your own.
+- `options`, last and required:
+  - **`only`:** the operators to keep. Without it, every operator is kept.
+  - **`except`:** the operators to leave out of those kept.
+  - **`replace`:** operators of your own, each taking the place of the operator with the same `name`.
+
+`only` and `except` each take a name, such as `'regex'`, a category, such as `{ category: 'string' }`, or an array of them. A category can leave some of its own operators out: `{ category: 'string', except: 'buildString' }`.
+
+**Returns:** a new array of the selected operators, ready for the `operators` option, with each replacement where its original was.
+
+**Throws:** `invalid-options` when:
+
+- a name matches no operator given (an `unknown-operator` issue), or is an alias rather than a name
+- a category isn't one, or has no operators given
+- a selector has nothing to select, such as a category whose `except` leaves none of it, or an `except` naming an operator that `only` didn't keep
+- a replacement's name matches no operator given (`unknown-operator`), or the operator it replaces was left out
+- two replacements, or two operators given, share a name (`duplicate-operator`)
+- an operator given isn't one the `operators` option would take
+- the last argument isn't the options object, or there's nothing before it
+- nothing is left
+
+**Details:**
+
+- The options apply in a fixed order, whatever order they're written in: `only`, then `except`, then `replace`. So a category sees the original operator, not its replacement.
+- A replacement brings its own alias, or none. A `plus` without `alias: '+'` retires `'+'`, so an expression that uses it gives a static error.
+- `only` applies to every operator given, your own included. To keep one whatever the selection, list it beside the call: `[operatorSet(coreOperators, { only: … }), formatNumber]`.
+- An empty array selects nothing, so `except: []` leaves everything in, which suits a list that comes from configuration.
+
+**See also:** [Choosing operators](/guides/setup/#choosing-operators)
 
 ### `defineOperator()`
 
@@ -620,6 +668,9 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | --------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | [`OperatorDefinition`](/custom-operators/writing/#the-definition)     | What `defineOperator()` takes                                      |
 | [`ValidatedOperatorDefinition`](#defineoperator)                      | What `defineOperator()` returns, and what `operators` takes        |
+| [`OperatorEntry`](/api/options/#operators)                            | One entry of the `operators` option: an operator, or an array of them |
+| [`OperatorSelector`](#operatorset)                                    | An operator name or a category, as `only` and `except` take them   |
+| [`OperatorSetOptions`](#operatorset)                                  | What `operatorSet()` takes last                                    |
 | [`ParameterDeclaration`](/custom-operators/parameters/#declaring-parameters), `ParameterDeclarations` | One parameter's declaration, and a definition's set of them |
 | [`ValidatedParameter`](/custom-operators/parameters/#declaring-parameters) | A parameter's declaration, with every default filled in       |
 | [`OperatorCategory`](#operator_categories)                            | One of `OPERATOR_CATEGORIES`                                       |

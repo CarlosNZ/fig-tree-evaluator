@@ -90,7 +90,7 @@ The operators the instance can evaluate.
 - Setting `operators`, whether in the constructor, `updateOptions()` or `with()`, replaces the whole set, core operators included, so to keep them, list `coreOperators` alongside your own: `[coreOperators, httpOperators()]`. In an update, `null` restores the core operators.
 - An update that changes `operators` checks the whole registry again, so it fails if an `operatorDefaults` entry or a fragment uses an operator it removes.
 - Arrays inside it are flattened one level, so a set such as `coreOperators` or `httpOperators()` can go in without being spread.
-- To replace a core operator with your own, leave it out of the core set: `[coreOperators.filter((op) => op.name !== 'upper'), myUpper]`. {/* TO-DO: show the operator-selection helper from #258 here once it lands, in place of the filter. */}
+- To replace a core operator with your own, or leave some out, use [`operatorSet()`](/api/exports/#operatorset): `operatorSet(coreOperators, { replace: localeUpper })`.
 
 **See also:** [Choosing operators](/guides/setup/#choosing-operators), [Registering](/custom-operators/writing/#registering)
 
