@@ -1,0 +1,27 @@
+A fractional `exponent` takes a root, such as `0.5` for a square root, and a negative one divides, so `{ $power: [2, -1] }` returns `0.5`.
+
+<Expression
+  title="A deposit growing with compound interest"
+  code={`
+    {
+      $round: [
+        {
+          $multiply: [
+            '$data.deposit',
+            { $power: [{ $plus: [1, '$data.interestRate'] }, '$data.years'] },
+          ],
+        },
+        2,
+      ],
+    }
+  `}
+  data={`
+    {
+      deposit: 1000,
+      interestRate: 0.05,
+      years: 10,
+    }
+  `}
+/>
+
+A result too large to hold fails, as does a negative `base` with a fractional `exponent`, even where there's a real answer, such as the cube root of `-8`.

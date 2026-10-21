@@ -1,0 +1,16 @@
+---
+description: 'Every FigTree instance understands it, whatever its operators.'
+---
+
+In shorthand, the value goes straight after the key, whatever it is, so an array is returned as an array rather than read as positional parameters: `{ $literal: ['$data.price', 2] }` returns `['$data.price', 2]`.
+
+<Expression
+  title="A stored database query, passed on as it is"
+  code={`
+    {
+      collection: 'orders',
+      // Keys prefixed with $ that belong to the database, not FigTree
+      filter: { $literal: { status: { $in: ['open', 'pending'] } } },
+    }
+  `}
+/>

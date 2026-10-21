@@ -672,6 +672,27 @@
   scroll-margin-top: 3.5rem;
 }
 
+/*
+ * The reference is `not-content`, which turns off Starlight's styles for
+ * page text, so its prose (descriptions, notes and the Description column)
+ * takes back the page's inline code and links. Code in the other columns,
+ * and in a note's examples, keeps the reference's own plain style.
+ */
+:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) code {
+  background-color: var(--sl-color-bg-inline-code);
+  margin-block: -0.125rem;
+  padding: 0.125rem 0.375rem;
+  font-size: var(--sl-text-code-sm);
+}
+
+:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) a {
+  color: var(--sl-color-text-accent);
+}
+
+:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) a:hover {
+  color: var(--sl-color-white);
+}
+
 /* The docs' own longer notes on an operator (src/content/operator-notes/) */
 .fds-op-notes {
   margin: 0 0 1.25rem;
@@ -726,15 +747,47 @@
   text-underline-offset: 0.2em;
 }
 
+/* A column heading's link to the operators page's key, set as a footnote */
+.fds-op-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  margin-left: 0.25em;
+  position: relative;
+  top: -0.4em;
+  border: 1px solid color-mix(in srgb, var(--sl-color-gray-4), var(--sl-color-gray-5));
+  border-radius: 50%;
+  font-size: 0.8em;
+  line-height: 1;
+  font-weight: 600;
+  color: var(--sl-color-gray-3);
+  text-decoration: none;
+}
+
+.fds-op-key:hover {
+  color: var(--sl-color-text-accent);
+  border-color: currentColor;
+}
+
+/* The operators page's key to the Null column: each label on one line */
+.fds-null-key td:first-child {
+  white-space: nowrap;
+}
+
+/* A parameter's evaluation tag, beside its name */
 .fds-op-tag {
   display: inline-block;
+  margin-left: 0.4rem;
   cursor: help;
-  margin-left: 0.35rem;
+  white-space: nowrap;
   font-size: var(--sl-text-xs);
-  padding: 0 0.35rem;
-  border-radius: 0.25rem;
-  border: 1px solid var(--sl-color-hairline);
-  color: var(--sl-color-gray-3);
+  line-height: 1.5;
+  padding: 0 0.45rem;
+  border-radius: 999px;
+  background: var(--sl-color-accent-low);
+  color: var(--sl-color-text-accent);
 }
 
 .fds-op-hint,

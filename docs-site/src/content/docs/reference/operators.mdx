@@ -1,22 +1,101 @@
 ---
 title: Operators
-description: Every operator FigTree provides, by category, rendered from the operators' own definitions
+description: Every operator FigTree provides, by category
 sidebar:
   order: 1
 ---
 
+import Expression from '../../../components/Expression.astro'
 import OperatorReference from '../../../components/OperatorReference.astro'
 
-Every core operator, grouped by category. Each entry is rendered from the operator's own definition when the site is built, so its names, parameters, types, defaults and null policies are always the ones the code has.
+Every operator FigTree provides, grouped by category: the core operators, and the I/O operators (`http`, `graphQL` and `sql`), which are added with `httpOperators()` and `sqlOperators()` ([Choosing operators](/guides/setup/#choosing-operators)).
 
-{/* NOTE (from Options): the intro says "Every core operator", but the page also lists the I/O operators (`http`, `graphQL`, `sql`) under their own category, which aren't core: they're added with `httpOperators()` and `sqlOperators()`. Reword the intro to say so. Other pages (Options, The FigTree class, Setting up FigTree) describe the core set as "every operator on the Operators page except the I/O ones", since the page has no anchor for the core set as a whole. */}
-
-{/* NOTE (from How evaluation works): the evaluation tags beside parameters (OperatorEntry.astro, `evaluationTags`) need restyling. Each item should be its own tag box, so "lazy, per entry" becomes two tags, `lazy` and `per entry`, and the tags as a whole need some styling love. */}
+[How to read this page](#how-to-read-this-page), below the index, explains each operator's columns and tags, including what the Null column means.
 
 {/* NOTE (from How evaluation works): an idea to consider: filters on this page, such as by category, by evaluation tag (`lazy` and the rest), and perhaps by null policy or return type. */}
 
-{/* NOTE (from How evaluation works): the Null column prints each parameter's stored nullPolicy, which is wrong wherever none applies (#250). Once #250 exposes the effective outcome, show it with reader-facing labels and tooltips, matching the four outcomes in How evaluation works: `passed on` (and `passed on (each)`), `value`, `default`, `error`, and `—` for lazy parameters. */}
+<OperatorReference index />
 
-{/* NOTE (from Iteration): a short intro on the one parameter pattern many operators share, a value to use in place of the usual answer, its name saying when it applies: `nullValueDefault` (a `null` among the values: the four comparisons, `plus`, `multiply`, `min`, `max`, `buildString`, `join`), `nullInputDefault` (a `null` input: `map`, `filter`, `find`, `some`, `every`; typically `[]`, so a missing list reads as empty), `noMatchDefault` (no match: `regex`, `find`; a matched `null` is still returned as `null`), and `default` (`get`: a missing path; `match`: no branch matches, where without one it fails). The two null ones are used only in place of `null`, before the type check, so any other wrong type still fails. `operatorDefaults` sets any of them host-wide, such as `{ map: { nullInputDefault: [] } }`. Iteration only says a `null` input fails; Evaluation's "Null handling" may want a one-line pointer here too. */}
+## How to read this page
+
+Each operator has its name and alias, a description, a table with a row for each parameter, and below that, its positional form (where it has one) and return type. The table's columns are:
+
+- **Parameter:** the parameter's name, as written in a node's named parameters. A tag beside the name marks a parameter that isn't evaluated before the operator runs ([Lazy parameters](/concepts/evaluation/#lazy-parameters)):
+  - **lazy:** evaluated only if the operator needs it, and at most once.
+  - **lazy per entry:** the parameter is an object whose entries are each lazy: only the one the operator chooses is evaluated, as with `match`'s branches.
+  - **lazy in order:** the parameter is an array whose elements are each lazy, evaluated one at a time, each only if it's reached, as with `firstNonNull`'s values.
+  - **per element:** evaluated once for every element of the input, which may be many times or none.
+  - **stops early:** every element starts at once and, as soon as one decides the answer, the rest are stopped.
+  - **literal only:** never evaluated, so it has to be written out in the expression, as an iterator's `as` name is.
+- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match'`, are the only ones allowed.
+- **Presence:** whether the parameter can be left out:
+  - **required:** it has to be given, and leaving it out is an error.
+  - **optional:** it can be left out, and has no default value.
+  - **default:** it can be left out, and the value shown after it is used instead, such as `default 0`.
+- **Null:** what a `null` at this parameter does ([below](#what-a-null-does)).
+
+**Positional form** shows the order of the parameters when they're given as an array, and **Returns** is the type of value the operator returns.
+
+### What a null does
+
+Each parameter has its own rule for a `null` it receives, its null policy ([Null handling](/concepts/evaluation/#null-handling)). The Null column shows it as one of these:
+
+<div class="fds-null-key">
+
+| Null      | A `null` here…                                                                                                                 |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| passed on | makes the whole node return `null`, and the operator doesn't run                                                               |
+| value     | is used like any other value: `equal` compares it, `firstNonNull` skips it, a condition reads it as false                      |
+| default   | counts as leaving the parameter out, so its default applies                                                                    |
+| error     | is a type error                                                                                                                |
+| —         | is the same as not giving the parameter at all (see [Defaults for null, missing and no match](#defaults-for-null-missing-and-no-match)) |
+
+</div>
+
+A parameter that takes an array or object can have two rules: **(each)** for a `null` element, and **(whole)** for a `null` in place of the whole array or object. In `plus`, for example, a `null` among the values is passed on, but `values: null` is an error.
+
+## Defaults for null, missing and no match
+
+Several operators have an optional parameter that gives them a value to use when they'd otherwise have nothing to work with. Its name says when it applies:
+
+- **`nullValueDefault`**: replaces a `null` among the values, so the operator runs with the replacement instead of passing the `null` on. It's on `plus`, `multiply`, `min`, `max` and the four ordered comparisons (`greaterThan` and the rest), and on `join` and `buildString`, where it's written in place of the empty text a `null` would give.
+- **`nullInputDefault`**: used as the array to iterate over when the `input` parameter is `null`, on the iterating operators (`map`, `filter`, `find`, `some` and `every`). You'd commonly set it to `[]`, so a missing list reads as empty rather than failing.
+- **`noMatchDefault`**: the answer when nothing matches, in place of `null`, on `find` and on `regex` in `extract` mode.
+- **`default`**: on `get`, the answer when the path is missing (a path whose value is `null` isn't missing, so it still returns `null`); on `match`, the branch taken when none matches, where without one the node fails.
+
+Here, the data has no bonus points and no orders:
+
+<Expression
+  code={`
+    {
+      // No bonus points on file means none
+      points: {
+        $plus: {
+          values: ['$data.points', '$data.bonusPoints'],
+          nullValueDefault: 0,
+        },
+      },
+      // No orders yet, so none are open
+      openOrders: {
+        $filter: {
+          input: '$data.orders',
+          each: { $equal: ['$element.status', 'open'] },
+          nullInputDefault: [],
+        },
+      },
+    }
+  `}
+  caption="Both keys read data that isn't there, and each default stands in for it."
+  data={`
+    // Uncomment bonusPoints and orders to see both values change
+    {
+      points: 120,
+      // bonusPoints: 30,
+      // orders: [{ id: 1, status: 'open' }, { id: 2, status: 'shipped' }],
+    }
+  `}
+/>
+
+Like any parameter, these can be set for every use of an operator with [`operatorDefaults`](/guides/setup/#defaults-for-an-operator), so that, for example, every `map` treats a missing list as empty: `{ map: { nullInputDefault: [] } }`.
 
 <OperatorReference all />

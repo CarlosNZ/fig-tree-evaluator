@@ -1,0 +1,20 @@
+A number exactly halfway rounds away from zero, so `2.5` rounds to `3` and `-2.5` to `-3` (where JavaScript's `Math.round` gives `-2`). Rounding is exact for the number as written: `1.005` rounds to `1.01` (where JavaScript's `toFixed` gives `1.00`).
+
+<Expression
+  title="Rounding to cents, and to the nearest thousand"
+  code={`
+    {
+      price: { $round: ['$data.price', 2] },
+      // Negative decimals round to the left of the point
+      visitors: { $round: ['$data.visitors', -3] },
+    }
+  `}
+  data={`
+    {
+      price: 92.555,
+      visitors: 12480,
+    }
+  `}
+/>
+
+FigTree's arithmetic uses binary floating-point numbers, so a result can be a tiny bit off, as with `{ $plus: [0.1, 0.2] }`, which returns `0.30000000000000004`. Round a result before showing it, especially an amount of money.

@@ -1,0 +1,18 @@
+Dividing by zero fails, with the code `non-finite-result`, so where the divisor could be zero, give the node a fallback:
+
+<Expression
+  title="An average that may have nothing to average"
+  code={`
+    {
+      $divide: ['$data.total', '$data.orderCount'],
+      fallback: 'No orders yet',
+    }
+  `}
+  data={`
+    // Set orderCount to 0, and the fallback is used
+    {
+      total: 240,
+      orderCount: 3,
+    }
+  `}
+/>

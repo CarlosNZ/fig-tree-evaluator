@@ -1,0 +1,41 @@
+`plus` adds whatever kind of values it's given, as long as they're all the same kind:
+
+- **Numbers** are added up.
+- **Strings** are joined into one.
+- **Arrays** are joined into one array. Only the outer arrays are joined, so an array inside one stays as it is.
+- **Objects** are merged into one, with a later object's keys replacing an earlier one's. A key holding an object is replaced whole, not merged.
+
+<Expression
+  title="One operator, four kinds of addition"
+  code={`
+    {
+      // A whole array from the data, added up
+      total: { $plus: '$data.prices' },
+      greeting: { $plus: ['Kia ora, ', '$data.name'] },
+      tags: { $plus: ['$data.productTags', '$data.customerTags'] },
+      // The user's settings replace the defaults
+      settings: { $plus: ['$data.defaults', '$data.userSettings'] },
+    }
+  `}
+  data={`
+    {
+      prices: [12.5, 8, 4.25],
+      name: 'Ana',
+      productTags: ['sale', 'new'],
+      customerTags: ['vip'],
+      defaults: { theme: 'light', currency: 'NZD' },
+      userSettings: { theme: 'dark' },
+    }
+  `}
+/>
+
+An empty list of values has no sum, since there's no telling which kind it should be, so it fails. Give `expect`, and an empty list returns that kind's empty value instead: `0`, `''`, `[]` or `{}`.
+
+```js
+// An error
+{ $plus: [] }
+
+// These are fine
+{ $plus: { values: [], expect: 'number' } } // => 0
+{ $plus: { values: [], expect: 'string' } } // => ''
+```

@@ -8,10 +8,12 @@
  * or replace a description, and add longer notes below it
  * (src/lib/operatorNotes.ts).
  *
- * Two forms. `all` is the operators page: every operator, under a heading per
- * category that stays pinned while its operators scroll beneath it, with an
- * index of them all first. `names` is a short list of chosen operators for
- * any other page, which can show each one's category as a pill.
+ * Three forms. `index` is the operators page's index: every operator's name,
+ * by category, each linking to its entry. `all` is the page's entries: every
+ * operator, under a heading per category that stays pinned while its
+ * operators scroll beneath it. The page puts its own sections between the
+ * two. `names` is a short list of chosen operators for any other page, which
+ * can show each one's category as a pill.
  */
 import { render } from 'astro:content'
 import { figTree } from '../lib/figTree'
@@ -21,7 +23,11 @@ import OperatorEntry from './OperatorEntry.astro'
 
 type Props =
   | {
-      /** Every operator, by category: the operators page. */
+      /** Every operator's name, by category: the operators page's index. */
+      index: true
+    }
+  | {
+      /** Every operator, by category: the operators page's entries. */
       all: true
     }
   | {
@@ -65,19 +71,21 @@ const list =
       )
     : null
 const showCategory = 'names' in Astro.props && Astro.props.showCategory === true
+
+const index = 'index' in Astro.props ? operatorGroups() : null
 ---
 
 <div class="fds-reference not-content">
   {
-    groups && (
+    index && (
       <nav class="fds-ref-index" aria-label="Operators by category">
-        {groups.map(({ category, entries }) => (
+        {index.map(({ category, operators }) => (
           <div class="fds-ref-index-group" style={`--fds-category:${category.backgroundColor}`}>
             <a class="fds-ref-index-category" href={`#${categoryId(category.name)}`}>
               {category.displayName}
             </a>
             <ul>
-              {entries.map(({ op }) => (
+              {operators.map((op) => (
                 <li>
                   <a href={`#op-${op.name}`}>
                     <code>{op.name}</code>
@@ -104,7 +112,11 @@ const showCategory = 'names' in Astro.props && Astro.props.showCategory === true
     ))
   }
   {list?.map((entry) => <OperatorEntry {...entry} showCategory={showCategory} />)}
-  <p class="fds-reference-note">
-    Generated from fig-tree-evaluator {figTree.version}'s operator definitions.
-  </p>
+  {
+    !index && (
+      <p class="fds-reference-note">
+        Generated from fig-tree-evaluator {figTree.version}'s operator definitions.
+      </p>
+    )
+  }
 </div>
