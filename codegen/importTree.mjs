@@ -58,6 +58,7 @@ const TREE = [
     row(
       'FigTree',
       row('inspect'),
+      row('operatorSet'),
       row('defineOperator'),
       row('httpOperators, FetchClient'),
       row('sqlOperators, PostgresConnection'),

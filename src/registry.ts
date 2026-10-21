@@ -14,10 +14,10 @@
  * must carry it — from `defineOperator()`, or from `buildOperator` for the
  * package's own definitions, which are checked in CI and at build instead —
  * and is trusted wholesale: there is no second validation path here.
- * Cross-registry work only: one-level flattening, name/alias collision
- * checks across the one namespace ("no silent precedence" — identity
- * duplicates included), the alias map, and `operatorDefaults` resolution
- * against operator metadata.
+ * Cross-registry work only: one-level flattening (src/operatorEntries.ts,
+ * which `operatorSet()` shares), name/alias collision checks across the one
+ * namespace ("no silent precedence" — identity duplicates included), the
+ * alias map, and `operatorDefaults` resolution against operator metadata.
  *
  * Internal machinery behind `new FigTree()` — not barrel surface.
  */
@@ -25,7 +25,8 @@ import { ErrorCodes } from './errorCodes'
 import { issuesError, type Issue } from './issues'
 import { isPlainObject } from './utils'
 import { checkDeclaredConstraints, checkType } from './typeCheck'
-import { isValidatedOperator, type ValidatedOperatorDefinition } from './operatorDefinition'
+import type { OperatorEntry, ValidatedOperatorDefinition } from './operatorDefinition'
+import { forEachOperatorEntry } from './operatorEntries'
 import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
 import { probeStaticFallback } from './compile/probe'
 import type { StaticFallback } from './compile/artifact'
@@ -72,7 +73,7 @@ export interface OperatorRegistry {
 }
 
 export interface RegistryInput {
-  operators: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
+  operators: readonly OperatorEntry[]
   operatorDefaults?: Record<string, Record<string, unknown>>
   fragments?: Record<string, FragmentDefinition>
 }
@@ -119,53 +120,25 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
     return true
   }
 
-  const register = (entry: unknown, path: Path) => {
-    if (typeof entry === 'function') {
-      addIssue(
-        ErrorCodes.invalidOptions,
-        `operators[${path[1]}]${path.length > 2 ? `[${path[2]}]` : ''} is a function — factories must be called: httpOperators(client)`,
-        path
-      )
-      return
-    }
-    if (!isValidatedOperator(entry)) {
-      addIssue(
-        ErrorCodes.invalidOptions,
-        'every operators entry must be built with defineOperator() — a plain definition object is not accepted',
-        path
-      )
-      return
-    }
-    const { name, alias } = entry
+  const register = (definition: ValidatedOperatorDefinition, path: Path) => {
+    const { name, alias } = definition
     const nameOk = claim(name, path, name)
     const aliasOk = alias === undefined || claim(alias, path, name)
     if (!nameOk || !aliasOk) return
 
-    operators.set(name, { definition: entry })
+    operators.set(name, { definition })
     if (alias !== undefined) aliases.set(alias, name)
   }
 
-  if (!Array.isArray(input.operators)) {
+  if (!Array.isArray(input.operators))
     addIssue(ErrorCodes.invalidOptions, "'operators' must be an array", ['operators'])
-  } else {
-    input.operators.forEach((element, i) => {
-      if (Array.isArray(element)) {
-        // One-level flattening only: an array inside this array must hold
-        // definitions, not further arrays
-        element.forEach((entry, j) => {
-          if (Array.isArray(entry))
-            addIssue(
-              ErrorCodes.invalidOptions,
-              "'operators' is flattened one level only — arrays may not nest deeper",
-              ['operators', i, j]
-            )
-          else register(entry, ['operators', i, j])
-        })
-      } else {
-        register(element, ['operators', i])
-      }
-    })
-  }
+  else
+    forEachOperatorEntry(
+      input.operators,
+      { prefix: ['operators'], name: 'operators' },
+      addIssue,
+      register
+    )
 
   if (input.operatorDefaults !== undefined)
     validateOperatorDefaults(input.operatorDefaults, operators, aliases, addIssue)

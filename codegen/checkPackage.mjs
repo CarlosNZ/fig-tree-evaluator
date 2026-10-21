@@ -8,17 +8,17 @@
  *     under its own.
  *  2. Tree-shaking: a consumer importing only `{ FigTree, coreOperators }`,
  *     bundled from build/ with esbuild, carries none of the I/O toolkit, the
- *     inspector, `defineOperator()`'s checks or any subpath; one importing
- *     only `{ isTruthy, parsePath }` carries none of those, the engine or
- *     the core operators. esbuild rather than rollup, because rollup infers
- *     purity of its own and would pass a build whose `/*#__PURE__*\/`
- *     annotations had stopped matching, as esbuild and webpack would
- *     not. Absence is found
- *     by marker strings — string literals, because minification renames
- *     identifiers, so a scan for `FetchClient` would pass with the class
- *     present. Each marker is first found in a bundle of everything its
- *     entry exports, so a reworded message fails the check instead of
- *     passing it trivially. Markers are ASCII: esbuild escapes the rest.
+ *     inspector, `operatorSet()`, `defineOperator()`'s checks or any
+ *     subpath; one importing only `{ isTruthy, parsePath }` carries none of
+ *     those, the engine or the core operators. esbuild rather than rollup,
+ *     because rollup infers purity of its own and would pass a build whose
+ *     `/*#__PURE__*\/` annotations had stopped matching, as esbuild and
+ *     webpack would not. Absence is found by marker strings — string
+ *     literals, because minification renames identifiers, so a scan for
+ *     `FetchClient` would pass with the class present. Each marker is first
+ *     found in a bundle of everything its entry exports, so a reworded
+ *     message fails the check instead of passing it trivially. Markers are
+ *     ASCII: esbuild escapes the rest.
  *  3. The packed package: `pnpm pack`, installed into a temporary directory,
  *     where every entry imports by name as ESM, `require()`s from CommonJS
  *     (Node >= 22.12's require(esm)), and typechecks from TypeScript through
@@ -63,6 +63,7 @@ const ROOT_MARKERS = [
     ],
   },
   { part: 'the inspector', markers: ['inspect() takes a CompiledExpression'] },
+  { part: 'operatorSet()', markers: ['the selection leaves no operators'] },
   { part: "defineOperator()'s checks", markers: ['a definition must be a plain object'] },
 ]
 

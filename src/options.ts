@@ -8,7 +8,7 @@
  */
 import type { CacheStore } from './types'
 import type { TraceNode } from './FigTreeError'
-import type { ValidatedOperatorDefinition } from './operatorDefinition'
+import type { OperatorEntry } from './operatorDefinition'
 import type { FragmentDefinition } from './fragments'
 
 /**
@@ -79,7 +79,7 @@ export interface FigTreeOptions {
    * construction error). Omitted defaults to `coreOperators` only (Phase 4);
    * supplying it states the registry exhaustively.
    */
-  operators?: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
+  operators?: readonly OperatorEntry[]
   /**
    * Instance-level parameter defaults plus the `fallback` / `noCache`
    * modifier pseudo-keys. Constants only; required parameters may not be
