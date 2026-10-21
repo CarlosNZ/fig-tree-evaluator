@@ -146,6 +146,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Lead with what's available, not with the constraint that comes with it.
   - Before: "The `operators` option is the instance's whole set of operators, so giving it replaces the core operators rather than adding to them. List `coreOperators` in it to keep them…"
   - After: "The core operators are included by default. The package also has these, which you can add:", then the list
+  - Where something stays fixed by design, say what stays fixed, not how to get round it.
+  - Before: "A later `updateOptions()` doesn't reach it, so compile again to pick one up.", on a compiled expression
+  - After: "Calling `updateOptions()` on the instance afterwards doesn't affect the compiled expression.", since the fixed options are the point of compiling
 - **Define by what the reader sees, and never use a term inside its own definition.** Name each option, then say what it looks like.
   - Before: "**An array** gives them in order, for operators that have a positional form."
   - After: "**Positional:** an array, where each value's position says which parameter it is."
@@ -179,6 +182,10 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **When a case follows from the rule, say "since", not "the exception is".**
   - Before (proposed in an edit pass): "The exception is `noCache`: …"
   - After: "Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching…"
+- **A connective says how the points really relate:** "so" only for a consequence, "But" for a limit on what came before. Where two points don't follow from each other, a "so" between them leaves the reader hunting for the link.
+  - Cut: "`CompiledExpression` is exported as a type only, so `compile()` is the only way to make one, and there's no `instanceof` check for it."
+  - Cut: "It's the same array on every read, so treat it as read-only."
+  - Added: "But if `updateOptions()` redefines an operator or fragment, the instance and the compiled expression each get only the results cached under their own definition of it.", after the sentence saying the result cache is shared
 - **Don't pick a word that implies more than is true.**
   - Before: "A value stored as `null`…"
   - After: "A data value that is actually `null`…", since it doesn't have to be stored
@@ -491,6 +498,9 @@ The API reference pages are looked up rather than read in order, and follow the 
   - Cut: "An evaluation already running keeps the options it started with", and "References to `$vars`, `$element`, `$index` and `$error` are never listed"
   - Cut: "It's read by reference, never copied, and FigTree never changes it.", on `data`
   - Cut: "Each operator is set separately: a default on `equal` doesn't reach `notEqual`."
+  - Cut: a reason for a member to exist: "A compiled expression can't be serialized… To store one or send it elsewhere, store its `expression`"
+  - Cut: "so treat it as read-only", on an array, and "it never compiles the expression again", on `getDependencies()`
+  - Cut: what a held compiled expression keeps in memory
   - The same goes for precise detail too small to matter in practice.
   - Cut: "The clock starts once the evaluation starts running, after the checks made before it runs.", since the checks take milliseconds against timeouts of seconds
 - **Explain a technical detail where the reader meets it.**
@@ -519,3 +529,10 @@ The API reference pages are looked up rather than read in order, and follow the 
 - **Spell out what something isn't, where that's the trap.**
   - Before: "joins with the text `$data.separator`"
   - After: "joins with the text `'$data.separator'`, not the value of the data reference"
+- **An entry that mirrors another links to it and lists only the differences.** The same goes for a point the site already makes elsewhere.
+  - Before: `evaluate()` on CompiledExpression with its own Parameters, Returns, a five-item Throws list and two Details bullets, nearly all of it as on `fig.evaluate()`
+  - After: "It works as `fig.evaluate()` does, with the same per-call options, return values and errors, but with the options, operators and fragments the expression was compiled with"
+  - Cut: a bullet on how the type `evaluate()` returns follows `trace`, made already on the FigTree class page
+- **A type's opener says what it is, in terms the reader already knows,** not only where it comes from. Its examples lead with what bears on the type's main job.
+  - Before: "A `CompiledExpression` is what `fig.compile()` returns: one expression, compiled by a FigTree instance, with what the compiler found in it, ready to evaluate."
+  - After: "…an expression that's been checked and built into a structure much like its canonical form, with each node mapped to its operator alongside its named parameters. It also holds what the compiler learned _about_ the expression, such as which parts need evaluating and which are fixed, so it's primed for evaluation, along with the validation issues it found."
