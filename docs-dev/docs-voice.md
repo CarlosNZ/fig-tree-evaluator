@@ -150,6 +150,15 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Mark a default as a default,** where the reader can change it, before the section shows how.
   - Before: "A result is kept for 30 minutes from when it was stored…"
   - After: "By default, a result is kept for 30 minutes from when it was stored…"
+- **Lead with what happens, not a "never … because" opener,** which reads two ways: as never happening at all, or as never happening for that reason.
+  - Before: "**Throws:** never because of what's in the expression, however broken. It throws `invalid-options` when…"
+  - After: "**Throws:** `invalid-options`, only when the options are wrong: … A problem in the expression, however serious, is reported in `issues` instead."
+- **Name what does the action.**
+  - Before: "When a runtime failure isn't caught"
+  - After: "When no fallback catches a runtime failure"
+- **Where two of a kind are in play, name each by its role.**
+  - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
+  - After: "with the original's options and an update applied, leaving the original instance as is"
 
 ## Punctuation and formatting
 
@@ -241,6 +250,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: two bullets in the `[*]` callout on Iteration, the second one only about `strictDataPaths`
   - After: the one difference in the callout, and `strictDataPaths` in a footnote
   - Added: a footnote saying a GraphQL request is just an HTTP POST, sent through the same client as `http`, which explains why the `http` headers, failures and caching all apply to `graphQL`
+- **Never coin a name for a check.** Describe it by its input, which the reader has just seen.
+  - Before: "plus the sample-data check", on `validate()`
+  - After: "and, when given `data`, checks the expression's `$data` paths against it"
+- **Prose doesn't spell out a detail the example just below shows.**
+  - Before: "…each with its own `code` and a `path` into the options, such as a `duplicate-operator` at `['operators', 1, 0]`, or a `type-check` inside a fragment body at `['fragments', 'banner', 'expression', '$plus']`", above an example showing a path
+  - After: "…each with its own `code`, such as `duplicate-operator`, and a `path` into the options"
 
 ## Structure
 
@@ -411,3 +426,37 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Start an example in the state that makes the point,** and let the comment say how to reach the others. Beside a contrasting example, this puts the two outcomes side by side.
   - Before: data that works, with `// Make both numbers, and it fails, but only when it runs`, below a static error
   - After: data that fails at runtime, with `// Make these both strings, and it works.` and `// Both numbers, and it fails at a different node`, so the Static error and Runtime error badges sit one above the other
+- **A `// =>` comment that adds a reason opens it with "since",** so it can't be read as part of the result.
+  - Before: `fig.isEvaluable({ $flibble: 1 }) // => true, with a static error`
+  - After: `// => true, since an unknown operator is a static error`
+- **A list of cases starts with the plain one.**
+  - Added: `fig.isEvaluable({ title: 'Welcome', colour: 'blue' }) // => false`, before the case with a `//` comment
+
+## Reference pages
+
+The API reference pages are looked up rather than read in order, and follow the entry template in the `/write-page` skill. These rules are theirs alone; everything above applies to them too, except where a rule here says otherwise.
+
+- **Reference pages use the correct technical term. Guide pages stay casual.** On a reference page the precise word is the right one, even where a guide would choose a plainer one.
+  - Before: "Method", "nothing", "don't change an expression object"
+  - After: "Member", `void`, "don't mutate an expression", since "change" also covers swapping one object for another
+  - Kept, on a guide page: "Don't change an expression in place", on Caching and compiling
+- **A member's one-line description says what it does, not one use of it.**
+  - Before: "Compiles an expression once, to evaluate it any number of times."
+  - After: "Compiles an expression, ready to check or evaluate."
+- **Every member gets a row in the summary table,** the constructor and properties included.
+  - Added: `new FigTree()` and `version` rows, under a "Member" heading
+- **What's true of every entry is said once, above them all,** not in each entry.
+  - Before: "rejects, and never throws synchronously, with a [`FigTreeError`]", in `evaluate()`'s Throws
+  - After: "Any error FigTree throws is a `FigTreeError`, even one that started inside a custom operator, so each entry here lists only the error codes.", below the summary table
+- **Leave out what something is for, and behaviour anyone would assume.** The guides cover the why, and stating the obvious plants a doubt.
+  - Cut: "and is there for code handed an instance from elsewhere, such as an editor whose own copy of the package may differ", on `version`
+  - Cut: "An evaluation already running keeps the options it started with", and "References to `$vars`, `$element`, `$index` and `$error` are never listed"
+- **Explain a technical detail where the reader meets it.**
+  - Before: a Constructor bullet on the class's type parameter, `FigTree<InstanceOpts>`
+  - After: a clause in `evaluate()`'s TypeScript paragraph: "That's why an instance's type includes its options, as in `FigTree<{ trace: true }>`"
+- **What a method returns about a thing is "data about" it, never the thing.**
+  - Before: "The instance's registered operators and fragments, as plain data"; "its definition as the instance uses it"
+  - After: "Detailed data about the registered operators and fragments"; "its declaration as the instance uses it"
+- **Where a return type depends on an option, show one signature per shape,** not a union.
+  - Before: `evaluate(…): Promise<unknown>`, with the `EvaluationResult` case only in the prose
+  - After: a second signature, `Promise<EvaluationResult>`, under `// With trace in effect`

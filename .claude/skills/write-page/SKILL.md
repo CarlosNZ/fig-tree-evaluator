@@ -101,7 +101,7 @@ The API reference pages (`api/`) are looked up rather than read in order: a read
 - **Hand the draft over with its facts.** Besides the usual summary, list the less obvious facts the page states, each with its source (file or spec section), and flag any you couldn't settle.
 - **Stages 4 to 6 as usual.** Tidy, then Carl's edit pass, then voice-guide additions. Rules that apply only to reference pages go under their own heading in the voice guide.
 
-Every entry follows the same template, so a reader knows where to look. Leave out a part that has nothing to say.
+Every entry follows the same template, so a reader knows where to look. Leave out a part that has nothing to say, and write a part with only one thing to say as a sentence after its label, not a one-item list.
 
 - **Heading:** the bare API name. Keep the slug of any heading other pages already link to (search `docs-site/src/content/docs` for `/api/<page>/#`).
 - **Signature:** a short `ts` block, in its readable form rather than every generic, type-checked like every other block so its types show on hover. The wrapper twoslash needs stays hidden between the cut lines:
@@ -114,6 +114,8 @@ Every entry follows the same template, so a reader knows where to look. Leave ou
   // ---cut-after---
   }
   ```
+
+  Where the return type depends on an option, give one signature per shape, the later ones under a comment saying when they apply (`// With trace in effect`).
 - **What it does:** one sentence.
 - **Parameters** and **Returns:** a table where there are several parameters, a sentence where there's one.
 - **Throws:** the error codes, linked to their entries on the Errors page.
