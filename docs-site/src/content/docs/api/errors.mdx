@@ -5,22 +5,273 @@ sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+FigTree reports a problem in one of two ways. When an evaluation can't return a result, it throws a `FigTreeError`. When an expression is checked, by [`validate()`](/api/figtree/#validate) or [`compile()`](/api/figtree/#compile), each problem found is an `Issue`. Both carry a `code` from the same set, listed in `ErrorCodes`. [Fallbacks and errors](/guides/fallbacks/) covers handling failures, and [Checking expressions](/guides/validation/) covers finding them before anything runs.
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+| Export                                                     | Kind     | What it is                          |
+| ---------------------------------------------------------- | -------- | ----------------------------------- |
+| [`FigTreeError`](#figtreeerror)                            | Class    | The error FigTree throws            |
+| [`isFigTreeError()`](#isfigtreeerror)                      | Function | Whether a value is a `FigTreeError` |
+| [`FallbackError`](#fallbackerror)                          | Type     | What `$error` holds in a fallback   |
+| [`ErrorCodes`](#errorcodes)                                | Object   | Every error code, by name           |
+| [`Issue`](#issue-and-validationresult), [`ValidationResult`](#issue-and-validationresult) | Types    | What checking an expression reports |
 
 ## `FigTreeError`
 
-Its properties: code, message, path, operator, and `trace` when tracing.
+```ts
+import type { FigTreeErrorCode, Issue, TraceNode } from 'fig-tree-evaluator'
+declare class FigTreeError extends Error {
+// ---cut---
+code: FigTreeErrorCode
+message: string
+path: (string | number)[]
+operator?: string
+fragment?: string
+fragmentPath?: (string | number)[]
+errorData?: Record<string, unknown>
+cause?: unknown
+related?: FigTreeError[]
+issues?: Issue[]
+trace?: TraceNode
+prettyPrint(): string
+// ---cut-after---
+}
+```
+
+The error FigTree throws, whatever went wrong: a static error, a runtime failure no fallback catches, a timeout, a cancellation, or an invalid option or operator definition.
+
+**Properties:**
+
+| Property                     | Description                                                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `code`                       | What kind of error it is, as a stable string from [`ErrorCodes`](#errorcodes), or a custom operator's own code                                                                       |
+| `message`                    | What went wrong, written for a developer. Its wording can change between versions, so test `code` instead                                                                           |
+| `path`                       | Where the error is, as an array of keys and indices from the root of the expression as it was written. `[]` is the root                                                            |
+| `operator`                   | The operator that failed, by its name, never its alias. Absent for a failure in a reference, and wherever no operator was involved                                                  |
+| `fragment`, `fragmentPath`   | For a failure inside a fragment's body, which fragment, and where in its definition, such as `['expression', '$divide', 0]`. `path` then points at the call                         |
+| `errorData`                  | Extra detail from the operator, where it has some, such as a failed request's status and response                                                                                   |
+| `cause`                      | When a fallback failed, the failure it was trying to catch. A fallback that reads `$error` returns `null` instead of failing, so it never sets one                                  |
+| `related`                    | When an `and`, `or`, `some` or `every` failed because more than one of its values did, the failures after the first. The error itself is the first, by position                     |
+| `issues`                     | For a static error, every issue the compiler found, warnings included. For an invalid option or definition, every problem found, with the exceptions below                       |
+| `trace`                      | With tracing on, the [trace](/guides/tracing/#tracing-a-failure) up to the failure                                                                                                  |
+| `prettyPrint()`              | The error as text formatted for a log: the code, operator and location on one line, then the message, then `errorData` as JSON, where there is any                                           |
+
+**Details:**
+
+- A runtime failure's `message` starts with the operator's name, as in `divide – produced a non-finite number (Infinity)`.
+- When a custom operator throws a plain `Error`, the `FigTreeError` has the code `operator-failure` and the `Error`'s message. An [`OperatorFailure`](/custom-operators/evaluate/#failing) keeps its own `code` and `errorData`.
+- A static error's `code`, `message`, `path` and `operator` are those of the first error in its `issues`. It never has a `trace`, since nothing ran.
+- An error from the constructor, `updateOptions()`, `with()` or `defineOperator()` has the code `invalid-options` or `invalid-definition`, and lists each problem in `issues` with a code of its own and a `path` into the options or the definition. Its `message` is the first issue's, with a count of the rest, such as `(+ 1 more issue)`. An invalid `timeout`, `signal` or `cache`, or an invalid per-call option, is reported on its own instead, with `path: []` and no `issues`.
+- `timeout` and `aborted` have `path: []` and no `operator`. A timeout's `message` gives the time limit. An abort's doesn't carry the signal's `reason`.
+- Where fragments call fragments, `fragment` and `fragmentPath` name the innermost body, and `path` the outermost call, in the expression you evaluated.
+
+**Example:** for a failure inside a fragment, `prettyPrint()` gives both ends of the location, the place in the fragment's definition and the call:
+
+```txt
+empty-aggregate (operator: plus) in fragment 'averageOrder' at expression.$round[0].$divide[0], called from summary.average
+plus – the sum of nothing — the values array is empty; pin the mode with 'expect' to get its identity
+```
+
+**See also:** [Errors that reach the host](/guides/fallbacks/#errors-that-reach-the-host)
 
 ## `isFigTreeError()`
 
+```ts
+import type { FigTreeError } from 'fig-tree-evaluator'
+declare namespace FigTree {
+// ---cut---
+function isFigTreeError(input: unknown): input is FigTreeError
+// ---cut-after---
+}
+```
+
+Whether a value is a `FigTreeError`, narrowing its type in TypeScript.
+
+**Returns:** `true` for a `FigTreeError`, and `false` for anything else. It's the same test as `input instanceof FigTreeError`.
+
+**See also:** [Errors that reach the host](/guides/fallbacks/#errors-that-reach-the-host)
+
+## `FallbackError`
+
+```ts
+import type { FallbackErrorCode } from 'fig-tree-evaluator'
+// ---cut---
+interface FallbackError {
+  code: FallbackErrorCode
+  message: string
+  path: (string | number)[]
+  operator?: string
+  fragment?: string
+  fragmentPath?: (string | number)[]
+  errorData?: Record<string, unknown>
+}
+```
+
+What `$error` holds inside a fallback: the failure that fallback caught, as a plain object.
+
+Its fields are those of the [`FigTreeError`](#figtreeerror) it was made from, without `cause`, `related`, `issues`, `trace` or `prettyPrint()`.
+
+**Details:**
+
+- `code` is one of the codes [caught by a fallback](#caught-by-a-fallback), a custom operator's own code, or `timeout`, which a fallback only meets through [timeout shielding](/guides/fallbacks/#timeout-shielding).
+- A field the failure doesn't have, such as `errorData` on a type check, reads as `null`, even with `strictDataPaths` on.
+- It's located as your app would see the failure, even when the fallback that caught it is inside a fragment's body: `path` is the call, and `fragmentPath` the place in the body.
+- A timeout answered by shielding has the `path` of the node it cut off, and its `operator` where that node is an operator node, but no `errorData`.
+
+**See also:** [Reading the failure with `$error`](/guides/fallbacks/#reading-the-failure-with-error)
+
 ## `ErrorCodes`
 
-Every code, what raises it, and whether a fallback can catch it.
+```ts
+import { ErrorCodes } from 'fig-tree-evaluator'
+// ---cut---
+ErrorCodes.typeCheck // => 'type-check'
+```
+
+Every error code FigTree uses, as a named constant.
+
+**Details:**
+
+- The codes are shared by `FigTreeError`, `Issue`, `$error` and `OperatorFailure`, so a problem has the same code whether it's found before the expression runs or while it runs. For example, a string where a number is needed is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime).
+- Each constant's name is its code in camel case, as in `ErrorCodes.typeCheck`, except for three: `graphQLErrors` (`'graphql-errors'`), `maxDepthExceeded` (`'max-depth'`) and `maxNodesExceeded` (`'max-nodes'`). The [full definition](https://github.com/CarlosNZ/fig-tree-evaluator/blob/v3.0-dev/src/errorCodes.ts) is in the source.
+- Two types name the codes: `FigTreeErrorCode`, any code a `FigTreeError` or an `Issue` can have, and `FallbackErrorCode`, any code a fallback can receive. Both accept any string as well, for custom operators' own codes, while editors still suggest the known ones.
+
+_A code that turns up in more than one group below is listed in the first, with the others noted._
+
+### Caught by a fallback
+
+Runtime failures. A fallback catches each of these, and with none to catch it, `evaluate()` throws it.
+
+| Code                | Raised by                                                                                                                                                                                                      |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type-check`        | A computed value of the wrong type for its parameter, or outside its constraints. Also a static error for a value written into the expression, and a [registration issue](#registration-and-options) for a default of the wrong type |
+| `operator-failure`  | An operator failing without a code of its own, such as `convert` given text that isn't a number, or a custom operator throwing a plain `Error`                                                                 |
+| `request-timeout`   | A request's own `timeout` parameter running out, on `http`, `graphQL` or `sql`                                                                                                                                  |
+| `http-status`       | A response with an error status, such as 404. `errorData` has the `status`, `statusText`, `url` and `response`                                                                                                 |
+| `invalid-response`  | A successful response that isn't JSON, or a GraphQL response with neither `data` nor `errors`. `errorData` has the `url` and `response`                                                                         |
+| `graphql-errors`    | A GraphQL response with errors in it. `errorData.errors` is its array of errors                                                                                                                                |
+| `sql-error`         | The database refusing a query. `errorData` has the `driver`, and usually a `driverCode`                                                                                                                         |
+| `request-failure`   | Anything else a client throws, such as the server being unreachable. No `errorData`                                                                                                                             |
+| `non-finite-result` | A number result that's `NaN` or infinite, such as `{ $divide: [1, 0] }`                                                                                                                                         |
+| `empty-aggregate`   | An empty list computed for an operator that has no answer for one, such as `min`, or `plus` without `expect`. An empty list written into the expression is an `operator-validate` static error instead          |
+| `missing-data-path` | A missing path under `strictDataPaths`, in a reference or a `get`. Also the warning `validate()` gives for a path missing from its sample data                                                                  |
+| `missing-required`  | A fragment call that [passes its arguments as one object](/guides/fragments/#passing-the-arguments-as-one-object) leaving out a required one. Also the static error for any other missing required parameter |
+| `escaped-handle`    | A custom operator returning a lazy parameter without evaluating it: a bug in the operator                                                                                                                      |
+
+A custom operator's own codes, thrown with `OperatorFailure`, reach a fallback in the same way.
+
+### Timeout and cancellation
+
+These stop the whole evaluation: no fallback starts once either happens. To return a value in place of a timeout, give each outermost node in the expression a plain-value fallback ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
+
+| Code      | Raised by                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `timeout` | The evaluation's `timeout` running out                                                                                          |
+| `aborted` | The evaluation's `signal` being aborted                                                                                         |
+
+### Static errors
+
+Problems in the expression itself. `validate()` reports them all, and `evaluate()` throws the first before anything runs, so no fallback catches them.
+
+| Code                      | Raised by                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `malformed-node`          | A node of the wrong shape, such as a key that isn't a modifier beside an operator (`{ $plus: [1, 2], colour: 'red' }`), two operators in one node, or both `operator` and `fragment` in a canonical node |
+| `unknown-operator`        | A canonical node's `operator` naming no registered operator. Also a registration issue, for an `operatorDefaults` key naming none                                                        |
+| `unknown-fragment`        | A canonical node's `fragment` naming no registered fragment                                                                                                                               |
+| `unknown-node-key`        | A parameter the operator or fragment doesn't have, such as `thn` in an `$if`                                                                                                              |
+| `unrecognized-identifier` | A key prefixed with `$` that names no operator or fragment, such as `$flibble`. Also a warning for a string that starts with `$` but names no reference, such as `'$dta.name'`, and for a `match` branch label that starts with `$` |
+| `positional-arity`        | More values in the positional form than the operator takes, such as `{ $not: [true, false] }`                                                                                           |
+| `returns-mismatch`        | A node whose result can never fit where it's used, such as a `greaterThan` as `round`'s `value`                                                                                           |
+| `invalid-vars`            | A `vars` block that isn't an object                                                                                                                                                       |
+| `var-cycle`               | Variables that depend on each other in a loop                                                                                                                                             |
+| `unresolved-var`          | A `$vars` reference to a variable no `vars` block above it declares                                                                                                                       |
+| `bare-vars`               | `$vars` with no variable's name after it                                                                                                                                                  |
+| `unresolved-binding`      | `$element` or `$index` outside an iterator's `each`                                                                                                                                       |
+| `unresolved-param`        | `$params` outside a fragment's body, or naming a parameter the fragment doesn't declare                                                                                                   |
+| `invalid-reference`       | A reference its namespace doesn't allow, such as a path into `$index`                                                                                                                     |
+| `invalid-as`              | An iterator's `as` that's computed, a reserved name such as `'data'`, or the same as an enclosing iterator's                                                                              |
+| `operator-validate`       | An operator's own check on what's written, such as a regular expression that doesn't compile, a `get` path that can't be read, or `{ $min: [] }`. A custom operator's check can make it a warning instead |
+| `max-depth`               | An expression nested deeper than the instance's `maxDepth`                                                                                                                                |
+| `max-nodes`               | An expression with more nodes than the instance's `maxNodes`                                                                                                                              |
+| `depth-ceiling`           | An expression nested deeper than 500 levels, FigTree's own limit, whatever `maxDepth` is                                                                                                  |
+
+`type-check`, `missing-required` and `invalid-name` (for a variable's name) are static errors too.
+
+### Warnings
+
+Things that are allowed, but probably a slip. `validate()` reports them, and they never stop an evaluation.
+
+| Code                    | Raised by                                                                                                                         |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `useless-modifier`      | A modifier that has no effect, such as a `fallback` on `literal`, or `noCache` on a node where nothing beneath it is cached      |
+| `unreferenced-var`      | A variable nothing reads                                                                                                          |
+| `shadowed-var`          | A variable with the same name as one in an enclosing `vars` block                                                                 |
+| `dead-binding`          | An iterator whose `each` reads neither the element nor the index                                                                  |
+| `fallback-mismatch`     | A fallback value its node's place can never take, such as `'n/a'` where a number is needed                                       |
+| `unbound-token`         | A `buildString` token with nothing to fill it, such as `%2` with one substitution                                                 |
+| `unused-substitution`   | A `buildString` substitution the template never uses                                                                              |
+| `inert-reference-token` | A `{{$data…}}` token in a `buildString` template whose substitutions are an array or computed, where it isn't recognized          |
+
+`unrecognized-identifier`, `missing-data-path` and `operator-validate` can be warnings too.
+
+### Registration and options
+
+Problems with the instance's options or an operator's definition. Each problem is an issue in the error thrown, with its own code.
+
+| Code                  | Raised by                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `invalid-options`     | The code of every error the constructor, `updateOptions()` and `with()` throw, and of an invalid per-call option. Also an issue a more specific code doesn't cover, such as `operators` not being an array |
+| `invalid-definition`  | The code of every error `defineOperator()` throws. Also an issue a more specific code doesn't cover                                        |
+| `invalid-name`        | An operator, parameter or fragment name containing `.`, `[` or `]`. Also a static error for a variable's name                 |
+| `reserved-name`       | A name FigTree keeps for itself, such as an operator named `data` or a parameter named `fallback`                              |
+| `invalid-null-policy` | A parameter's `nullPolicy` that can't apply to it                                                                              |
+| `duplicate-operator`  | Two operators with the same name or alias                                                                                      |
+| `fragment-cycle`      | A fragment that calls itself, directly or through others                                                                       |
+
+A fragment's body is checked when it's registered, so its static errors come in the same `issues`, each with a `path` into the options, such as `['fragments', 'banner', 'expression', '$plus']`.
 
 ## `Issue` and `ValidationResult`
 
-What `validate()` and a compiled expression's `issues` report.
+```ts
+import type { FigTreeErrorCode, Severity } from 'fig-tree-evaluator'
+// ---cut---
+interface Issue {
+  severity: Severity
+  code: FigTreeErrorCode
+  message: string
+  path: (string | number)[]
+  operator?: string
+  fragment?: string
+  parameter?: string
+  suggestion?: string
+}
+
+interface ValidationResult {
+  valid: boolean
+  issues: Issue[]
+}
+```
+
+An `Issue` is one problem found in an expression, or in the options or a definition. A `ValidationResult` is what [`validate()`](/api/figtree/#validate) returns.
+
+**Properties:**
+
+| Property     | Description                                                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `severity`   | `'error'` for a [static error](#static-errors), which stops an evaluation, or `'warning'` for a [warning](#warnings), which doesn't                                       |
+| `code`       | What kind of problem it is, from [`ErrorCodes`](#errorcodes)                                                                                        |
+| `message`    | What's wrong, written for a person, with a "did you mean" where there's a close match. Its wording can change between versions                      |
+| `path`       | Where the problem is, as an array of keys and indices into the expression, or into the options or definition for a registration issue. An issue about a whole node points at the node |
+| `operator`   | The operator the issue is about, where there is one                                                                                                 |
+| `fragment`   | The fragment a call is to, where the issue is about a fragment call                                                                                 |
+| `parameter`  | The parameter the issue is about, where there is one                                                                                                |
+| `suggestion` | The "did you mean" on its own, as a drop-in replacement for what was written, such as `'then'`, or `'$greaterThan'` for a shorthand key             |
+| `valid`      | On a `ValidationResult`, `false` exactly when `issues` holds at least one error                                                                     |
+| `issues`     | On a `ValidationResult`, every issue found, or `[]`                                                                                                 |
+
+**Details:**
+
+- Issues have the same shape wherever they appear: in a `ValidationResult`, in a compiled expression's [`issues`](/api/compiled-expression/#issues), and in a thrown error's `issues`.
+- An issue's `fragment` is about the call, unlike a `FigTreeError`'s, which marks a failure inside the body. A static problem inside a body is found when the fragment is registered, so it's never reported at a call.
+- [`validate()`](/api/figtree/#validate) gives the order it lists issues in.
+
+**See also:** [Issues](/guides/validation/#issues), [Static errors](/guides/validation/#static-errors)

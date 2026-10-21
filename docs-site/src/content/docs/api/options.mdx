@@ -13,15 +13,15 @@ A FigTree instance takes its options in the constructor, `new FigTree(options)`,
 | [`operators`](#operators)                        | No       | Core only              | The operators the instance can evaluate                    |
 | [`fragments`](#fragments)                        | No       | None                   | Named expressions, called like operators                   |
 | [`operatorDefaults`](#operatordefaults)          | No       | None                   | Instance-wide parameter values and fallbacks, per operator |
-| [`http`, `graphQL`](#http-and-graphql)           | No       | None                   | Defaults for HTTP and GraphQL requests                     |
+| [`http`](#http-and-graphql), [`graphQL`](#http-and-graphql)           | No       | None                   | Defaults for HTTP and GraphQL requests                     |
 | [`strictDataPaths`](#strictdatapaths)            | No       | `false`                | Makes a missing path a failure, rather than `null`         |
-| [`maxDepth`, `maxNodes`](#maxdepth-and-maxnodes) | No       | None                   | Limits on an expression's size                             |
+| [`maxDepth`](#maxdepth-and-maxnodes), [`maxNodes`](#maxdepth-and-maxnodes) | No       | None                   | Limits on an expression's size                             |
 | [`timeout`](#timeout)                            | Yes      | None                   | Gives up on an evaluation that takes too long              |
 | [`signal`](#signal)                              | Yes      | None                   | Cancels an evaluation                                      |
 | [`cache`](#cache)                                | No       | 50 results, 30 minutes | How the result cache keeps results                         |
 | [`trace`](#trace)                                | Yes      | `false`                | Returns a trace of the evaluation, with the result         |
 
-An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, listing every problem in its `issues`, and an invalid per-call option makes `evaluate()` reject the same way. So each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
+An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, and an invalid per-call option makes `evaluate()` reject the same way. Problems with `operators`, `fragments` and `operatorDefaults` are all listed in the error's `issues`, and any other invalid option is reported on its own. So each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
 
 An instance's options apply to every expression it evaluates, including ones already stored, so changing one on a running system can change what those expressions give ([Changing options](/guides/setup/#changing-options)).
 
@@ -283,7 +283,7 @@ Gives up on an evaluation that takes longer than this many milliseconds, fallbac
 
 **Details:**
 
-- A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give the expression a plain-value fallback at the top ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
+- A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give each outermost node in the expression a plain-value fallback ([Timeout shielding](/guides/fallbacks/#timeout-shielding)).
 - Requests still in progress when time runs out are cancelled.
 - A call can replace the instance's `timeout`, but not remove it: per call, `timeout: null` is `invalid-options`. In `updateOptions()` and `with()`, `null` removes it.
 - It's separate from the `timeout` parameter of `http`, `graphQL` and `sql`, which limits one request, and whose failure, `request-timeout`, a fallback catches.

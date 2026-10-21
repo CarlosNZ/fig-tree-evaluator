@@ -175,7 +175,7 @@ In this example, the outer one is named. The inner iterator's `input` is inside 
 
 ## Stopping early
 
-`find`, `some` and `every` don't always need every element's result. `some` has its answer at the first truthy result, `every` at the first falsy one, and `find` at its first match. Like [`and` and `or`](/concepts/evaluation/#lazy-parameters), they answer as soon as they can, and abandon the rest: any part not yet started never runs, and requests still in progress are cancelled.
+`find`, `some` and `every` don't always need every element's result. `some` has its answer at the first truthy result, `every` at the first falsy one, and `find` at its first match. Like [`and`](/concepts/evaluation/#lazy-parameters) and [`or`](/concepts/evaluation/#lazy-parameters), they answer as soon as they can, and abandon the rest: any part not yet started never runs, and requests still in progress are cancelled.
 
 Elements are evaluated in parallel, though, so they all start before the answer is known. If `each` sends a request, for example, one is sent for every element, even if the first one is enough for `some` to answer.
 

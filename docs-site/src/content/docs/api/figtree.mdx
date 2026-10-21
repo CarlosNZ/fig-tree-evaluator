@@ -20,7 +20,7 @@ Every expression is evaluated by an instance of the `FigTree` class, which holds
 | [`updateOptions()`](#updateoptions)                                  | `void`                             | Changes the instance's options                    |
 | [`with()`](#with)                                                    | `FigTree`                          | Makes a new instance, with some options changed   |
 | [`getOptions()`](#getoptions)                                        | `EvaluationOptions`                | The options set on the instance                   |
-| [`getOperators()`, `getFragments()`](#getoperators-and-getfragments) | `OperatorInfo[]`, `FragmentInfo[]` | Data about the registered operators and fragments |
+| [`getOperators()`](#getoperators-and-getfragments), [`getFragments()`](#getoperators-and-getfragments) | `OperatorInfo[]`, `FragmentInfo[]` | Data about the registered operators and fragments |
 | [`clearCache()`](#clearcache)                                        | `void`                             | Empties the result cache                          |
 | [`version`](#version)                                                | `string`                           | The package version in use                        |
 
@@ -43,7 +43,7 @@ constructor(options?: FigTreeOptions)
 
 **Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the core operators: every operator on the [Operators](/reference/operators/) page except the I/O ones, `http`, `graphQL` and `sql`.
 
-**Throws:** `invalid-options` when an option is invalid. The error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options.
+**Throws:** `invalid-options` when an option is invalid. For `operators`, `fragments` and `operatorDefaults`, the error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. An invalid `timeout`, `signal` or `cache` is reported on its own, with no `issues`.
 
 **Details:** everything is checked here, before the instance exists: each operator, each `operatorDefaults` entry against the operators, each fragment body, and the `timeout`, `signal` and `cache` options.
 
@@ -339,7 +339,7 @@ Returns the options set on the instance.
 **Details:**
 
 - Options are reported as they were set, with no defaults filled in, so an option never explicitly set is absent.
-- `operators` and `fragments` are left out. [`getOperators()` and `getFragments()`](#getoperators-and-getfragments) report them.
+- `operators` and `fragments` are left out. [`getOperators()`](#getoperators-and-getfragments) and [`getFragments()`](#getoperators-and-getfragments) report them.
 - Treat what it returns as read-only, since mutating it can change the instance's options.
 
 **See also:** [Changing options](/guides/setup/#changing-options)
