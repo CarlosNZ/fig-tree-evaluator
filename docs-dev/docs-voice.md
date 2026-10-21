@@ -167,6 +167,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Where there's a way round the rule, present it as how to get what the reader wants, not as an exception to a "no".
   - Before: "No fallback catches a timeout, and none starts once time has run out. The one exception is timeout shielding."
   - After: "A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give the expression a plain-value fallback at the top"
+  - Before: "No fallback catches these: everything stops.", above the `timeout` and `aborted` codes on Errors
+  - After: "These stop the whole evaluation: no fallback starts once either happens. To return a value in place of a timeout, give each outermost node in the expression a plain-value fallback"
 - **Name what does the action.**
   - Before: "When a runtime failure isn't caught"
   - After: "When no fallback catches a runtime failure"
@@ -202,6 +204,11 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Before: "merged by key"
   - After: "merged"
   - Kept: "merged by name" and "merged by operator", which say what the keys are
+  - The same goes for a spec's statements: one that only matters to the library's own design is cut.
+  - Cut: "`ErrorCodes` is the only list of the codes at runtime."
+- **Label the cases in an example with the site's own terms.** Where an example contrasts two cases, name each in plain words, with the term the reader meets elsewhere in brackets.
+  - Before: "`type-check` for a string written where a number is needed, and for one computed there"
+  - After: "For example, a string where a number is needed is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime)."
 
 ## Punctuation and formatting
 
@@ -224,6 +231,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: "([Missing values](/concepts/data/#missing-values))", chosen over its sub-section "When missing is a mistake"
   - That's for a pointer in brackets. A term linked in running text keeps its own words.
   - Kept: "In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to…"; "counts [evaluable nodes](/guides/validation/#is-there-anything-to-evaluate)"
+- **One name, one link.** Where a link would cover two names, give each its own link, so the comma or "and" between them stays plain text, rather than reading as a stray piece of link beside the code formatting.
+  - Before: "[`Issue`, `ValidationResult`](#issue-and-validationresult)"; "Like [`and` and `or`](/concepts/evaluation/#lazy-parameters)"
+  - After: "[`Issue`](#issue-and-validationresult), [`ValidationResult`](#issue-and-validationresult)"; "Like [`and`](…) and [`or`](…)"
 - **Link an API or concept to where it's explained, at its first mention on the page, and to the section rather than the page.**
   - Added: [`updateOptions()`](/guides/setup/#changing-options) on Fragments, and its `constraints` bullet's link to "Types and constraints"
   - Before: `[canonical form](/concepts/forms/)`
@@ -485,6 +495,8 @@ The API reference pages are looked up rather than read in order, and follow the 
   - Before: "Method", "nothing", "don't change an expression object"
   - After: "Member", `void`, "don't mutate an expression", since "change" also covers swapping one object for another
   - Kept, on a guide page: "Don't change an expression in place", on Caching and compiling
+  - Before: "give the expression a plain-value fallback at the top"
+  - After: "give each outermost node in the expression a plain-value fallback"
 - **A member's one-line description says what it does, not one use of it.**
   - Before: "Compiles an expression once, to evaluate it any number of times."
   - After: "Compiles an expression, ready to check or evaluate."
@@ -536,3 +548,9 @@ The API reference pages are looked up rather than read in order, and follow the 
 - **A type's opener says what it is, in terms the reader already knows,** not only where it comes from. Its examples lead with what bears on the type's main job.
   - Before: "A `CompiledExpression` is what `fig.compile()` returns: one expression, compiled by a FigTree instance, with what the compiler found in it, ready to evaluate."
   - After: "…an expression that's been checked and built into a structure much like its canonical form, with each node mapped to its operator alongside its named parameters. It also holds what the compiler learned _about_ the expression, such as which parts need evaluating and which are fixed, so it's primed for evaluation, along with the validation issues it found."
+- **Show what makes each exception an exception.** Give one example of the rule, then pair each exception with what the rule would have predicted, and link to the source where the full list lives.
+  - Before: "Each constant's name is its code in camel case, except `graphQLErrors`, `maxDepthExceeded` and `maxNodesExceeded`."
+  - After: "Each constant's name is its code in camel case, as in `ErrorCodes.typeCheck`, except for three: `graphQLErrors` (`'graphql-errors'`), `maxDepthExceeded` (`'max-depth'`) and `maxNodesExceeded` (`'max-nodes'`). The [full definition](…) is in the source."
+- **A note about what follows isn't a Details bullet.** It goes in an italic paragraph of its own, just before what it describes.
+  - Before: "- A code that turns up in more than one group below is listed in the first, with the others noted.", as the last Details bullet
+  - After: "_A code that turns up in more than one group below is listed in the first, with the others noted._", standing alone above the first group
