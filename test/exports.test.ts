@@ -14,6 +14,7 @@ const SPEC_VALUE_EXPORTS = [
   'FigTree',
   'defineOperator',
   'coreOperators',
+  'operatorSet',
   'httpOperators',
   'sqlOperators',
   'FetchClient',

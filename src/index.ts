@@ -63,6 +63,10 @@ export type {
 // mint, so a plain object can never pass for a checked definition.
 export { defineOperator } from './defineOperator'
 export { coreOperators } from './operators'
+// Selects from operator sets and replaces operators by name; imported by
+// nothing in the engine.
+export { operatorSet } from './operatorSet'
+export type { OperatorSelector, OperatorSetOptions } from './operatorSet'
 export { EvaluationData, OPERATOR_CATEGORIES } from './operatorDefinition'
 export type {
   OperatorDefinition,
@@ -71,6 +75,7 @@ export type {
   ValidatedOperatorDefinition,
   ValidatedParameter,
   OperatorCategory,
+  OperatorEntry,
   EvaluationMode,
   NullPolicy,
   NullPolicyValue,

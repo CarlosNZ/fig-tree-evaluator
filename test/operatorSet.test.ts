@@ -3,10 +3,10 @@
  * name (docs-dev/v3-specs/v3-operator-set.md): the selection order, the
  * replacement rules, and every row of its Checks table.
  */
-import { operatorSet } from '../src/operatorSet'
 import {
   FigTree,
   coreOperators,
+  operatorSet,
   defineOperator,
   isFigTreeError,
   ErrorCodes,
