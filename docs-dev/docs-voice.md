@@ -59,6 +59,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Where the reader has something to write, tell them what to write.
   - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
   - After: "Give it `from: '$vars'`, and start the path with the variable's name"
+  - That goes double where a phrase could be read two ways.
+  - Before: "in subpaths, each imported on its own", which could mean every export needs its own import line
+  - After: "in four subpaths, each with its own import path, such as `fig-tree-evaluator/format`"
   - Where the reader has something to do, say what they do.
   - Before: "The playgrounds on this site convert for you"
   - After: "In the playgrounds on this site, open the editor and hover over the top right of a node"
@@ -209,6 +212,14 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Label the cases in an example with the site's own terms.** Where an example contrasts two cases, name each in plain words, with the term the reader meets elsewhere in brackets.
   - Before: "`type-check` for a string written where a number is needed, and for one computed there"
   - After: "For example, a string where a number is needed is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime)."
+- **Give a sentence a real subject, never "What …".** A "what" clause standing in for the subject, or as a whole fragment, reads as childish: name the thing. A short description in a table cell, such as "What `compile()` returns", is fine.
+  - Before: "What most apps never need, such as the v2 converter, is in subpaths"; "What you need to write an operator of your own."
+  - After: "The tools for authoring and migration, such as the v2 converter, are in four subpaths"; "These exports are for writing operators of your own, which…"
+  - Before: "**Throws:** without a `client`, on a runtime with no global `fetch`, what `new FetchClient()` throws."
+  - After: "**Throws:** an `OperatorFailure` when there's no `client` given and no global `fetch`."
+- **The items in a list are distinct, and each stands on its own.** None contains another, and none can be read as explaining the one before it.
+  - Before: "exports the operator sets, what you need to write operators of your own, the I/O operators and their clients", where the I/O operators are one of the sets, and the second item reads as a gloss on the first
+  - After: "exports the core operators, the I/O operators with their HTTP and database clients, the helpers for writing operators of your own"
 
 ## Punctuation and formatting
 
@@ -225,6 +236,12 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Split a sentence rather than stack its commas.** Where the second half opens with a clause of its own, make it a sentence of its own.
   - Before: "This example fetches a random user from randomuser.me, and since the response is cached, it's the same user however many times you run it:"
   - After: "This example fetches a random user from randomuser.me. Since the response is cached, it's the same user however many times you run it:"
+- **Where a list spells out a group just named, introduce it with a colon,** or with brackets where the sentence already has a colon. After a comma, the group's name reads as one more item.
+  - Before: "every operator on the Operators page except the I/O ones, `http`, `graphQL` and `sql`"
+  - After: "…except the I/O ones: `http`, `graphQL` and `sql`"
+- **An article follows how a word is said,** so "an SQL…", read as "ess-cue-ell".
+  - Before: "a `SQLiteConnection`"
+  - After: "an `SQLiteConnection`"
 
 - **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
   - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
@@ -286,6 +303,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
 - **Never give a reason that isn't the real one.** If a feature is missing because it hasn't been built, say it isn't there and stop. A weak justification invites the reader to argue with it.
   - Cut: "A fragment's parameters are yours to change, and a call that relied on their order would quietly pass the wrong values once they moved.", after "a fragment has no positional or single-value form"
+  - The same goes for a reason that's true, but implies it's the only one.
+  - Cut: "the root never imports them, so an app that doesn't import one doesn't carry it", on the subpaths, since the root entry is tree-shaken too
 - **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete stays short, and is marked as examples (see Wording).
   - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
   - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
@@ -362,6 +381,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Most common first.** Options, bullets and an example's keys go in the order the reader will most often need them.
   - Before: `firstOf`, then `get`'s `default`; `get`'s uses as a computed path, a `default`, a `from`
   - After: `default` first in both
+  - On a reference page, entries go in the order readers reach for them, not the order of the spec or the page's skeleton.
+  - Before: `version` first, then `coreOperators`, with the I/O toolkit after the engine-parity helpers, on Other exports
+  - After: `coreOperators`, the I/O toolkit, custom operators, the parity helpers, `inspect()`, then `version`
 - **Each point goes in the section whose question it answers,** even when an earlier section's example happens to show it.
   - Before: "A var can also read the others declared beside it", in the `vars` section
   - After: "A variable's own definition sees the same scope, so it can read the variables declared beside it…", in Scope
