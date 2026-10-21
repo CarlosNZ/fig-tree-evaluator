@@ -32,5 +32,18 @@ export default defineEcConfig({
         },
       },
     }),
+    // A `// ---cut-after---` line is cut from its own start, so the line
+    // break before it survives as an empty last line. Runs after twoslash
+    // has replaced the block's text in preprocessCode
+    {
+      name: 'trim-trailing-empty-line',
+      hooks: {
+        postprocessAnalyzedCode({ codeBlock }) {
+          const lines = codeBlock.getLines()
+          const last = lines.length - 1
+          if (last > 0 && lines[last].text.trim() === '') codeBlock.deleteLine(last)
+        },
+      },
+    },
   ],
 })
