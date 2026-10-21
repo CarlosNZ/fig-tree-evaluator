@@ -101,6 +101,46 @@ describe('buildRegistry — the brand is the entry ticket', () => {
     expect(error.message).toMatch(/factories must be called/)
   })
 
+  it('reports every flattening problem in entry order, interleaved with collisions', () => {
+    const factory = () => [makeOp('http')]
+    const error = buildInvalid({
+      operators: [
+        makeOp('alpha'),
+        [factory as never, makeOp('alpha'), [makeOp('beta')] as never],
+        validDefinition() as never,
+        factory as never,
+      ],
+    })
+    expect(error.issues?.map(({ code, message, path }) => ({ code, message, path }))).toEqual([
+      {
+        code: ErrorCodes.invalidOptions,
+        message: 'operators[1][0] is a function — factories must be called: httpOperators(client)',
+        path: ['operators', 1, 0],
+      },
+      {
+        code: ErrorCodes.duplicateOperator,
+        message: "'alpha' is already registered (by 'alpha') — one namespace, no silent precedence",
+        path: ['operators', 1, 1],
+      },
+      {
+        code: ErrorCodes.invalidOptions,
+        message: "'operators' is flattened one level only — arrays may not nest deeper",
+        path: ['operators', 1, 2],
+      },
+      {
+        code: ErrorCodes.invalidOptions,
+        message:
+          'every operators entry must be built with defineOperator() — a plain definition object is not accepted',
+        path: ['operators', 2],
+      },
+      {
+        code: ErrorCodes.invalidOptions,
+        message: 'operators[3] is a function — factories must be called: httpOperators(client)',
+        path: ['operators', 3],
+      },
+    ])
+  })
+
   it('never re-validates a branded definition (the brand is trusted)', () => {
     // A branded definition registers even where re-running validation would
     // be observable — buildRegistry adds no second validation path
