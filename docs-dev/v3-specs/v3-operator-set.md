@@ -1,6 +1,6 @@
 # FigTree v3 — `operatorSet()`: selecting and replacing operators
 
-_The design record for [#258](https://github.com/CarlosNZ/fig-tree-evaluator/issues/258), agreed in discussion (Carl, October 2026). **Agreed, not yet built.** It extends "Operator registration" in the Options area of [v3-api.md](v3-api.md), and is kept in its own file to spare that one more page._
+_The design record for [#258](https://github.com/CarlosNZ/fig-tree-evaluator/issues/258), agreed in discussion (Carl, October 2026). **Agreed, and built in [#264](https://github.com/CarlosNZ/fig-tree-evaluator/pull/264).** It extends "Operator registration" in the Options area of [v3-api.md](v3-api.md), and is kept in its own file to spare that one more page._
 
 ## Purpose
 
@@ -115,7 +115,7 @@ How the checks read:
 
 - **Paths.** An issue in the options has a path into the options object (`['except', 1]`); an issue in the input, a path by argument index (`[1]`, `[1, 3]`), which messages write as `arguments[1][3]`.
 - **Suggestions.** An alias, a mistyped name and a mistyped category set the issue's `suggestion`: the canonical name, or the nearest name or category within two edits.
-- **No follow-on issues.** Once a selector in `only` or `except` has reported a problem, the checks that read the selection are skipped: `except` against what `only` kept, a replacement for a removed operator, and the empty result. They would only report the same mistake again, so `only: 'uper'` is reported once. The empty-result check is skipped whenever anything else is reported.
+- **No follow-on issues.** Once a selector in `only` or `except` has reported a problem, the checks that read the selection are skipped: `except` against what `only` kept, a replacement for a removed operator, and the empty result. They would only report the same mistake again, so `only: 'uper'` is reported once. The empty-result check is skipped whenever anything else is reported. A problem in the input doesn't turn these off: an unknown name beside a broken input entry may be a real typo, and the thrown message leads with the input's problem anyway.
 - **A call that cannot be read** — no arguments, or a last argument that is not the options object — throws at once with its one issue, since nothing after it means anything.
 - **An option set to `undefined` is absent**, so `except: tenant.disabledOperators` works when there are none.
 
@@ -139,5 +139,4 @@ The **root entry**. It is used alongside `coreOperators`, which is root, so a su
 
 ## Follow-ups at implementation
 
-- `src/index.ts`, `test/exports.test.ts`, and [docs-dev/imports.md](../imports.md) (its row and cost).
-- The public docs: the TO-DO in "Choosing operators" on `v3.0-docs` to show replacing a core operator, and the README's operator-registration section.
+- The public docs, on `v3.0-docs`: the TO-DO in "Choosing operators", the TO-DO in the `operators` entry on Options, and an `operatorSet()` entry on Other exports. Drafts are in a comment on [#264](https://github.com/CarlosNZ/fig-tree-evaluator/pull/264).

@@ -291,7 +291,7 @@ export interface ValidatedOperatorDefinition {
  * such as `coreOperators` or `httpOperators(client)`. The option is
  * flattened one level, so arrays nest no deeper.
  */
-export type OperatorEntry = ValidatedOperatorDefinition | ValidatedOperatorDefinition[]
+export type OperatorEntry = ValidatedOperatorDefinition | readonly ValidatedOperatorDefinition[]
 
 /** A declaration with its name, as the resolver iterates them. */
 export type DeclarationEntry = readonly [name: string, declared: ValidatedParameter]

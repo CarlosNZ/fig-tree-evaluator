@@ -79,7 +79,7 @@ export interface FigTreeOptions {
    * construction error). Omitted defaults to `coreOperators` only (Phase 4);
    * supplying it states the registry exhaustively.
    */
-  operators?: OperatorEntry[]
+  operators?: readonly OperatorEntry[]
   /**
    * Instance-level parameter defaults plus the `fallback` / `noCache`
    * modifier pseudo-keys. Constants only; required parameters may not be

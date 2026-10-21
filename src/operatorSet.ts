@@ -22,7 +22,8 @@ import {
   type ValidatedOperatorDefinition,
 } from './operatorDefinition'
 import { checkOperatorEntry, forEachOperatorEntry } from './operatorEntries'
-import { didYouMean, isPlainObject, nearestName } from './utils'
+import { isPlainDataObject } from './plainData'
+import { didYouMean, nearestName } from './utils'
 
 type Path = (string | number)[]
 
@@ -31,15 +32,16 @@ type Path = (string | number)[]
  * plugin operator named like a category is never ambiguous. A category
  * selector's `except` names operators of that category to leave out.
  */
-export type OperatorSelector = string | { category: OperatorCategory; except?: string | string[] }
+export type OperatorSelector =
+  string | { category: OperatorCategory; except?: string | readonly string[] }
 
 export interface OperatorSetOptions {
   /** Keep just the operators these select. Without it, everything is kept. */
-  only?: OperatorSelector | OperatorSelector[]
+  only?: OperatorSelector | readonly OperatorSelector[]
   /** Remove the operators these select from what `only` kept. */
-  except?: OperatorSelector | OperatorSelector[]
+  except?: OperatorSelector | readonly OperatorSelector[]
   /** Swap each in for the operator with its `name`, at that position. */
-  replace?: ValidatedOperatorDefinition | ValidatedOperatorDefinition[]
+  replace?: ValidatedOperatorDefinition | readonly ValidatedOperatorDefinition[]
 }
 
 const OPTION_KEYS = ['only', 'except', 'replace']
@@ -84,7 +86,7 @@ export const operatorSet = (
   const noInput = 'operatorSet() needs at least one operator before its options'
   if (args.length === 0) refuse(noInput, [])
   if (
-    isPlainObject(options) &&
+    isPlainDataObject(options) &&
     !isValidatedOperator(options) &&
     'name' in options &&
     'evaluate' in options
@@ -93,7 +95,7 @@ export const operatorSet = (
       "the last argument has 'name' and 'evaluate' — if it is an operator, build it with defineOperator(); the options object comes last",
       [last]
     )
-  if (!isPlainObject(options) || isValidatedOperator(options))
+  if (!isPlainDataObject(options) || isValidatedOperator(options))
     refuse('the last argument must be the options object', [last])
   if (args.length === 1) refuse(noInput, [])
   const { only, except, replace } = options as Record<string, unknown>
@@ -240,7 +242,7 @@ export const operatorSet = (
       return name === undefined ? undefined : new Set([name])
     }
     if (
-      !isPlainObject(selector) ||
+      !isPlainDataObject(selector) ||
       typeof selector.category !== 'string' ||
       Object.keys(selector).some((key) => key !== 'category' && key !== 'except')
     ) {
