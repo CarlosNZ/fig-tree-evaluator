@@ -11,7 +11,7 @@ Expressions are evaluated by a **FigTree instance**, configured with your prefer
 
 ## Creating an instance
 
-`new FigTree()` gives an instance with the [core operators](/reference/operators/) and nothing else, which is enough for every example in the Concepts pages. Anything more goes in its options:
+`new FigTree()` gives an instance with the core operators (all the [Operators](/reference/operators/) except the I/O ones) and nothing else, which is enough for every example in the Concepts pages. Anything more goes in its options:
 
 ```ts title="fig.ts"
 import { FigTree } from 'fig-tree-evaluator'
@@ -104,7 +104,7 @@ An instance's options apply to every expression it evaluates, including ones alr
 
 ## Choosing operators
 
-The [core operators](/reference/operators/) are included by default. The package also has these, which you can add:
+The core operators are included by default. The package also has these, which you can add:
 
 - **`httpOperators`**: `http` and `graphQL`, which send requests through a client you provide ([HTTP and SQL](/guides/http-and-sql/)).
 - **`sqlOperators`**: `sql`, which runs queries through a database connection you provide ([HTTP and SQL](/guides/http-and-sql/)).
