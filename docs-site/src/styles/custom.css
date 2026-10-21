@@ -115,6 +115,16 @@
 }
 
 /*
+ * A table's first column names what each row is about, such as an option or
+ * an error code. Code there never wraps, so a name like `operator-failure`
+ * isn't broken at its hyphen, and the column takes the width of its longest
+ * name, rather than leaving that width to the description beside it.
+ */
+.sl-markdown-content td:first-child code:not(:where(.not-content *)) {
+  white-space: nowrap;
+}
+
+/*
  * Lists of grouped items, where an item's heading has a sub-list beneath it
  * (the static errors on Checking expressions). Markdown wraps each heading
  * in a paragraph, so Starlight spaces the sub-list from it, and the items
