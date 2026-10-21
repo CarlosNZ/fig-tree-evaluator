@@ -25,7 +25,7 @@ import { ErrorCodes } from './errorCodes'
 import { issuesError, type Issue } from './issues'
 import { isPlainObject } from './utils'
 import { checkDeclaredConstraints, checkType } from './typeCheck'
-import type { ValidatedOperatorDefinition } from './operatorDefinition'
+import type { OperatorEntry, ValidatedOperatorDefinition } from './operatorDefinition'
 import { forEachOperatorEntry } from './operatorEntries'
 import { registerFragments, type FragmentDefinition, type FragmentEntry } from './fragments'
 import { probeStaticFallback } from './compile/probe'
@@ -73,7 +73,7 @@ export interface OperatorRegistry {
 }
 
 export interface RegistryInput {
-  operators: (ValidatedOperatorDefinition | ValidatedOperatorDefinition[])[]
+  operators: OperatorEntry[]
   operatorDefaults?: Record<string, Record<string, unknown>>
   fragments?: Record<string, FragmentDefinition>
 }
@@ -132,7 +132,13 @@ export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
 
   if (!Array.isArray(input.operators))
     addIssue(ErrorCodes.invalidOptions, "'operators' must be an array", ['operators'])
-  else forEachOperatorEntry(input.operators, ['operators'], addIssue, register)
+  else
+    forEachOperatorEntry(
+      input.operators,
+      { prefix: ['operators'], name: 'operators' },
+      addIssue,
+      register
+    )
 
   if (input.operatorDefaults !== undefined)
     validateOperatorDefaults(input.operatorDefaults, operators, aliases, addIssue)

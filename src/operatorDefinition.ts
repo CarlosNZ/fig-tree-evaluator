@@ -286,6 +286,13 @@ export interface ValidatedOperatorDefinition {
   returns: ExpectedType
 }
 
+/**
+ * One entry of the `operators` option: a definition, or an array of them,
+ * such as `coreOperators` or `httpOperators(client)`. The option is
+ * flattened one level, so arrays nest no deeper.
+ */
+export type OperatorEntry = ValidatedOperatorDefinition | ValidatedOperatorDefinition[]
+
 /** A declaration with its name, as the resolver iterates them. */
 export type DeclarationEntry = readonly [name: string, declared: ValidatedParameter]
 

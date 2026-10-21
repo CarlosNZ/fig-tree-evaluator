@@ -124,13 +124,13 @@ describe('buildRegistry — the brand is the entry ticket', () => {
       },
       {
         code: ErrorCodes.invalidOptions,
-        message: "'operators' is flattened one level only — arrays may not nest deeper",
+        message: 'operators[1][2] nests too deep — arrays are flattened one level only',
         path: ['operators', 1, 2],
       },
       {
         code: ErrorCodes.invalidOptions,
         message:
-          'every operators entry must be built with defineOperator() — a plain definition object is not accepted',
+          'operators[2] must be built with defineOperator() — a plain definition object is not accepted',
         path: ['operators', 2],
       },
       {
