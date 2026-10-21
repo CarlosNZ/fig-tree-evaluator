@@ -41,7 +41,7 @@ constructor(options?: FigTreeOptions)
 
 `new FigTree(options)` creates an instance with the given options.
 
-**Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the core operators: every operator on the [Operators](/reference/operators/) page except the I/O ones, `http`, `graphQL` and `sql`.
+**Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the core operators: every operator on the [Operators](/reference/operators/) page except the I/O ones (`http`, `graphQL` and `sql`).
 
 **Throws:** `invalid-options` when an option is invalid. For `operators`, `fragments` and `operatorDefaults`, the error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. An invalid `timeout`, `signal` or `cache` is reported on its own, with no `issues`.
 
