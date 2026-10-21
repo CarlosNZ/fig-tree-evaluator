@@ -72,6 +72,9 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Where a limitation has a simple workaround, give the recommendation and a one-clause reason, not the mechanism behind it.** "We" is fine for a recommendation.
   - Before: "The type `evaluate()` returns follows `trace`: `unknown` for the bare result, and `EvaluationResult` … `updateOptions()` and `with()` change what's returned, but not its type… in a variable declared first, `true` widens to `boolean`, and the type is lost."
   - After: "We don't recommend turning tracing on with `updateOptions()` or `with()`, since TypeScript can't see the change, and still expects `evaluate()` to return the bare result. Pass `trace: true` to the constructor or the call instead."
+  - The same goes on a reference page: don't describe the route a guide recommends against, even as a limitation.
+  - Before: "the type `evaluate()` returns follows `trace` in the constructor's options or the call's, but not a change made with `updateOptions()` or `with()`", in the Options reference
+  - After: "Pass `trace` to the constructor or the call, where TypeScript can see it and type what `evaluate()` returns to match"
 - **Be concrete: say who it helps, and what's at stake.**
   - Before: "The _canonical_ form … names everything, and is the one tools work with."
   - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
@@ -115,6 +118,11 @@ Entries are revised rather than duplicated when a later edit refines or contradi
   - After: a new paragraph for the example, opening "In this example, the outer one is named. …"
   - Before: "In this example, two variables each call a fragment, and the `if` reads them both…"
   - After: "Here we define two variables which each call a fragment, so the `if` doesn't repeat them…", straight before the example
+  - A bullet opens with the thing's name, not "It" or "this default", since bullets get moved around, and a word like "default" can mean more than one thing.
+  - Before: "It covers every path into a value", which ended up straight after a `firstNonNull` bullet
+  - After: "`strictDataPaths` covers every path into a value"
+  - Before: "takes precedence over this default", where "default" could mean the parameter's own
+  - After: "takes precedence over the one in `operatorDefaults`"
 - **Show a simple thing simply.** An example in passing does more than a sentence spelling it out.
   - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
   - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
@@ -153,12 +161,40 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Lead with what happens, not a "never … because" opener,** which reads two ways: as never happening at all, or as never happening for that reason.
   - Before: "**Throws:** never because of what's in the expression, however broken. It throws `invalid-options` when…"
   - After: "**Throws:** `invalid-options`, only when the options are wrong: … A problem in the expression, however serious, is reported in `issues` instead."
+  - Where there's a way round the rule, present it as how to get what the reader wants, not as an exception to a "no".
+  - Before: "No fallback catches a timeout, and none starts once time has run out. The one exception is timeout shielding."
+  - After: "A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give the expression a plain-value fallback at the top"
 - **Name what does the action.**
   - Before: "When a runtime failure isn't caught"
   - After: "When no fallback catches a runtime failure"
 - **Where two of a kind are in play, name each by its role.**
   - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
   - After: "with the original's options and an update applied, leaving the original instance as is"
+- **A summary of several things has to be true of each of them.**
+  - Before: "What every request … shares: a base for relative URLs, a GraphQL endpoint, and headers", where only the headers are shared
+  - After: "Defaults for requests from the `http` and `graphQL` operators: a base that relative URLs are joined to, an endpoint for GraphQL queries, and headers to send with every request"
+- **Name the operation, not "are" or "is".**
+  - Before: "An `http` request's headers are `http.headers`, then the node's own `headers`."
+  - After: "A request's headers are merged from `http.headers`, then the node's own `headers`, each one overriding the one before."
+- **When a case follows from the rule, say "since", not "the exception is".**
+  - Before (proposed in an edit pass): "The exception is `noCache`: …"
+  - After: "Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching…"
+- **Don't pick a word that implies more than is true.**
+  - Before: "A value stored as `null`…"
+  - After: "A data value that is actually `null`…", since it doesn't have to be stored
+- **Name what the reader would otherwise have to do, rather than a vague "as it is".**
+  - Before: "a set such as `coreOperators` goes in as it is"
+  - After: "can go in without being spread"
+- **Where there's a real reason, give it in a clause.** The counterpart to "Never give a reason that isn't the real one".
+  - Before: "A header's value never appears in a failure or a trace."
+  - After: "For security reasons, a header's value never appears in a failure or a trace."
+- **Use the feature's own name in a summary, not a description of it.**
+  - Before: "Returns a record of the evaluation with its result"
+  - After: "Returns a trace of the evaluation, with the result"
+- **Don't carry a spec's term into the docs where a plain word says the same.**
+  - Before: "merged by key"
+  - After: "merged"
+  - Kept: "merged by name" and "merged by operator", which say what the keys are
 
 ## Punctuation and formatting
 
@@ -179,6 +215,8 @@ Entries are revised rather than duplicated when a later edit refines or contradi
 - **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
   - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
   - After: "([Missing values](/concepts/data/#missing-values))", chosen over its sub-section "When missing is a mistake"
+  - That's for a pointer in brackets. A term linked in running text keeps its own words.
+  - Kept: "In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to…"; "counts [evaluable nodes](/guides/validation/#is-there-anything-to-evaluate)"
 - **Link an API or concept to where it's explained, at its first mention on the page, and to the section rather than the page.**
   - Added: [`updateOptions()`](/guides/setup/#changing-options) on Fragments, and its `constraints` bullet's link to "Types and constraints"
   - Before: `[canonical form](/concepts/forms/)`
@@ -451,6 +489,10 @@ The API reference pages are looked up rather than read in order, and follow the 
 - **Leave out what something is for, and behaviour anyone would assume.** The guides cover the why, and stating the obvious plants a doubt.
   - Cut: "and is there for code handed an instance from elsewhere, such as an editor whose own copy of the package may differ", on `version`
   - Cut: "An evaluation already running keeps the options it started with", and "References to `$vars`, `$element`, `$index` and `$error` are never listed"
+  - Cut: "It's read by reference, never copied, and FigTree never changes it.", on `data`
+  - Cut: "Each operator is set separately: a default on `equal` doesn't reach `notEqual`."
+  - The same goes for precise detail too small to matter in practice.
+  - Cut: "The clock starts once the evaluation starts running, after the checks made before it runs.", since the checks take milliseconds against timeouts of seconds
 - **Explain a technical detail where the reader meets it.**
   - Before: a Constructor bullet on the class's type parameter, `FigTree<InstanceOpts>`
   - After: a clause in `evaluate()`'s TypeScript paragraph: "That's why an instance's type includes its options, as in `FigTree<{ trace: true }>`"
@@ -460,3 +502,20 @@ The API reference pages are looked up rather than read in order, and follow the 
 - **Where a return type depends on an option, show one signature per shape,** not a union.
   - Before: `evaluate(…): Promise<unknown>`, with the `EvaluationResult` case only in the prose
   - After: a second signature, `Promise<EvaluationResult>`, under `// With trace in effect`
+- **Every section is reachable from the opener or the summary table.**
+  - Added: "…which merge each change into the options already set ([Merge rules](#merge-rules))", in the opener of Options
+- **A warning in a Details list gets a bold "Caution:" label, not a callout,** and matching warnings get matching labels.
+  - Before: "- Changing a default on a running system changes the results…"
+  - After: "- **Caution:** changing a default on a running system…", and the same on `strictDataPaths`
+- **A point that repeats another bullet's phrase is folded into it,** with the bullets reordered so related points sit together.
+  - Before: "replaces the core operators" in the first bullet, and "it's replaced whole, never merged" in the fourth
+  - After: one bullet: "Setting `operators`, whether in the constructor, `updateOptions()` or `with()`, replaces the whole set…"
+- **A signature that won't fit on a line is laid out the way the source declares it.**
+  - Before: `operatorDefaults?: Record<string, { fallback?: unknown; noCache?: true; [parameter: string]: unknown }>`
+  - After: the nested `[operator: string]: { … }` form, one key per line
+- **A boolean option's description says what `true` does.**
+  - Before: "Makes a reference to a missing path fail…"
+  - After: "If set to `true`, a reference to a missing path fails…"
+- **Spell out what something isn't, where that's the trap.**
+  - Before: "joins with the text `$data.separator`"
+  - After: "joins with the text `'$data.separator'`, not the value of the data reference"
