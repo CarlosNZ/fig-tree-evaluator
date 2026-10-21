@@ -1,28 +1,117 @@
 ---
 title: CompiledExpression
-description: The handle compile() returns, for evaluating one expression many times
+description: 'What compile() returns: an expression compiled and checked, ready to evaluate'
 sidebar:
   order: 3
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+A `CompiledExpression` is what [`fig.compile()`](/api/figtree/#compile) returns: an expression that's been checked and built into a structure much like its [canonical form](/concepts/forms/#the-canonical-form), with each node mapped to its operator alongside its named parameters. It also holds what the compiler learned _about_ the expression, such as which parts need evaluating and which are fixed, so it's primed for evaluation, along with the validation issues it found.
 
-## Properties
+It keeps the instance's options, operators and fragments as they were when it was compiled, and shares its result cache ([Lifetime](#lifetime)).
 
-`expression`, `issues` and `hasErrors`.
+| Member                                  | Returns        | What it does                                      |
+| --------------------------------------- | -------------- | ------------------------------------------------- |
+| [`expression`](#expression)             | `unknown`      | The original expression it was compiled from      |
+| [`issues`](#issues)                     | `Issue[]`      | The static errors and warnings the compiler found |
+| [`hasErrors`](#haserrors)               | `boolean`      | Whether `issues` holds an error                   |
+| [`evaluate()`](#evaluate)               | `Promise`      | Evaluates the compiled expression                 |
+| [`getDependencies()`](#getdependencies) | `Dependencies` | Lists what it reads and uses                      |
+
+Every member except `evaluate()` is synchronous.
+
+## `expression`
+
+```ts
+declare class CompiledExpression {
+// ---cut---
+readonly expression: unknown
+// ---cut-after---
+}
+```
+
+The expression it was compiled from: the object passed to `compile()`, not a copy.
+
+## `issues`
+
+```ts
+import type { Issue } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+readonly issues: readonly Issue[]
+// ---cut-after---
+}
+```
+
+The static errors and warnings the compiler found, each an [`Issue`](/api/errors/#issue-and-validationresult), in the order they appear in the expression.
+
+**Details:** it's the list [`validate()`](/api/figtree/#validate) gives for the same expression, without the size-limit errors, `max-depth` and `max-nodes`, which `evaluate()` checks on every call, and without the warnings from checking `data`.
+
+**See also:** [Issues](/guides/validation/#issues)
+
+## `hasErrors`
+
+```ts
+declare class CompiledExpression {
+// ---cut---
+readonly hasErrors: boolean
+// ---cut-after---
+}
+```
+
+`true` when `issues` holds at least one issue with severity `'error'` (a [static error](/guides/validation/#static-errors)), and `false` otherwise.
+
+**Details:**
+
+- When it's `true`, `evaluate()` will throw.
+- When it's `false`, `evaluate()` can still throw a size-limit error, `max-depth` or `max-nodes`, since those aren't in `issues`.
 
 ## `evaluate()`
 
-Evaluate the compiled expression, with per-call options.
+```ts
+import type { CallOptions, EvaluationResult } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+evaluate(options?: CallOptions): Promise<unknown>
+// With trace in effect
+evaluate(options?: CallOptions): Promise<EvaluationResult>
+// ---cut-after---
+}
+```
+
+Evaluates the compiled expression, and returns its result.
+
+It works as [`fig.evaluate()`](/api/figtree/#evaluate) does, with the same per-call options, return values and errors, but with the options, operators and fragments the expression was compiled with ([Lifetime](#lifetime)).
+
+**See also:** [Compiling once](/guides/caching/#compiling-once), [Options for a single evaluation](/guides/setup/#options-for-a-single-evaluation)
 
 ## `getDependencies()`
 
-What the compiled expression reads.
+```ts
+import type { Dependencies } from 'fig-tree-evaluator'
+declare class CompiledExpression {
+// ---cut---
+getDependencies(): Dependencies
+// ---cut-after---
+}
+```
+
+Lists the data the compiled expression reads, and the operators and fragments it uses.
+
+It works as [`fig.getDependencies()`](/api/figtree/#getdependencies) does, and returns the same `Dependencies`, but with the fragments the expression was compiled with ([Lifetime](#lifetime)).
+
+**See also:** [What an expression reads](/guides/validation/#what-an-expression-reads)
 
 ## Lifetime
 
-What a handle holds on to, and how it relates to its instance's options and caches.
+A compiled expression belongs to the instance that compiled it, and keeps some parts of it and shares others:
+
+- **Options, operators and fragments:** kept as they were when it was compiled, `data`, `timeout`, `trace` and the size limits included. Calling [`updateOptions()`](/api/figtree/#updateoptions) on the instance afterwards doesn't affect the compiled expression.
+- **The result cache:** shared with the instance, so a result either one caches is there for both, and the instance's [`clearCache()`](/api/figtree/#clearcache) empties it for both. But if `updateOptions()` redefines an operator or fragment, the instance and the compiled expression each get only the results cached under their own definition of it.
+
+<Callout kind="caution" title="Don't mutate an expression after compiling it">
+  The compiled expression keeps running the expression as it was, and a later `compile()` or `evaluate()` of the same object gets that same compiled form from the compile cache ([Compiling once](/guides/caching/#compiling-once)).
+</Callout>
+
+**See also:** [`inspect()`](/api/exports/#inspect), which shows how FigTree read a compiled expression

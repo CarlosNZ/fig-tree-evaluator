@@ -180,7 +180,7 @@ What you get beyond what the compile cache already gives you:
 
 - **Checks up front:** `hasErrors`, and the `issues` behind it, say what the compiler found before the expression ever runs, so your app can refuse a broken rule when it loads. [Checking expressions](/guides/validation/) has what they report.
 - **What it reads:** `getDependencies()` lists the data the expression reads, and the operators and fragments it uses.
-- **A fixed snapshot:** it keeps the instance's options and operators as they were when it was compiled. A later [`updateOptions()`](/guides/setup/#changing-options) doesn't reach it, so compile again to pick one up.
+- **A fixed snapshot:** it keeps the instance's options and operators as they were when it was compiled. Calling [`updateOptions()`](/guides/setup/#changing-options) on the instance afterwards doesn't affect it.
 
 It shares the instance's result cache, though, so a request one of them has made is cached for both.
 
