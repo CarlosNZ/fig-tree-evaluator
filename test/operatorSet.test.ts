@@ -12,6 +12,7 @@ import {
   ErrorCodes,
   type FigTreeError,
   type OperatorCategory,
+  type OperatorSelector,
   type ValidatedOperatorDefinition,
 } from '../src'
 
@@ -364,6 +365,17 @@ const checks: {
     path: [1],
     message: 'the last argument must be the options object',
   },
+  ...[
+    { kind: 'a Date', value: new Date() },
+    { kind: 'a Map', value: new Map() },
+    { kind: 'a Promise (a forgotten await)', value: Promise.resolve({}) },
+  ].map(({ kind, value }) => ({
+    id: `a last argument that is ${kind}, not a plain object`,
+    call: () => (operatorSet as (...args: unknown[]) => unknown)(coreOperators, value),
+    code: ErrorCodes.invalidOptions,
+    path: [1],
+    message: 'the last argument must be the options object',
+  })),
   {
     id: 'a last argument that looks like an unbuilt definition',
     call: () =>
@@ -508,5 +520,22 @@ describe('operatorSet — types', () => {
       operatorSet(coreOperators, { only: { category: 'maths' } })
     }
     expect(typeOnly).toBeInstanceOf(Function)
+  })
+
+  it('accepts read-only arrays, as configuration often holds them', async () => {
+    const tenant: { disabledOperators: readonly string[] } = { disabledOperators: ['regex'] }
+    const input: readonly ValidatedOperatorDefinition[] = coreOperators
+    const only: readonly OperatorSelector[] = [{ category: 'string', except: ['trim'] as const }]
+    const replacements: readonly ValidatedOperatorDefinition[] = [myUpper]
+
+    const result = operatorSet(input, { except: tenant.disabledOperators, replace: replacements })
+    expect(names(result)).toEqual(coreNames.filter((name) => name !== 'regex'))
+    expect(names(operatorSet(input, { only }))).toEqual(
+      inCategory('string').filter((name) => name !== 'trim')
+    )
+
+    const operators = [input, myNewOperator] as const
+    const fig = new FigTree({ operators })
+    expect(await fig.evaluate({ $myNewOperator: {} })).toBe('myNewOperator')
   })
 })

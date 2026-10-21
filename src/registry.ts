@@ -73,7 +73,7 @@ export interface OperatorRegistry {
 }
 
 export interface RegistryInput {
-  operators: OperatorEntry[]
+  operators: readonly OperatorEntry[]
   operatorDefaults?: Record<string, Record<string, unknown>>
   fragments?: Record<string, FragmentDefinition>
 }
