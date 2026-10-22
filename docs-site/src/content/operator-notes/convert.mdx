@@ -1,0 +1,24 @@
+| `to` | Converts | Fails on |
+| --- | --- | --- |
+| `'number'` | a number, unchanged; `true` and `false` to `1` and `0`; text that's a number, such as `'3.5'` | other text, such as `'1,000'` or `''`; arrays and objects |
+| `'string'` | numbers, and `true` and `false`, to text | arrays and objects: use [`buildString`](#op-buildString) or [`join`](#op-join) |
+| `'boolean'` | `'true'` and `'false'`; anything else by [truthiness](/concepts/evaluation/#types-and-truthiness) | nothing |
+| `'array'` | an array, unchanged; anything else into an array of its own, so `5` becomes `[5]` | nothing |
+
+To a boolean, only `'true'` and `'false'` are read as words, so `'no'` and `'0'` convert to `true`, as any other non-empty text does.
+
+<Expression
+  title="Form values, which arrive as text"
+  code={`
+    {
+      quantity: { $convert: ['$data.quantity', 'number'] },
+      subscribe: { $convert: ['$data.subscribe', 'boolean'] },
+    }
+  `}
+  data={`
+    {
+      quantity: '3',
+      subscribe: 'false',
+    }
+  `}
+/>

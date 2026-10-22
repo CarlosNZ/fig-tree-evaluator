@@ -708,9 +708,9 @@
  * code and links. Code in a note's examples keeps the examples' own style.
  */
 :is(
-  .fds-ref-category-notes > :is(p, ul, ol),
+  .fds-ref-category-notes > :is(p, ul, ol, table),
   .fds-op-description,
-  .fds-op-notes > :is(p, ul, ol),
+  .fds-op-notes > :is(p, ul, ol, table),
   .fds-op-params td,
   .fds-op-meta p
 ) {
@@ -759,21 +759,29 @@
   overflow-x: auto;
 }
 
-.fds-op-params {
+.fds-op-params,
+:is(.fds-op-notes, .fds-ref-category-notes) > table {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--sl-text-sm);
 }
 
+/* A note's own table, such as convert's, set like the parameter tables */
+:is(.fds-op-notes, .fds-ref-category-notes) > table {
+  margin: 0.75rem 0;
+}
+
 .fds-op-params th,
-.fds-op-params td {
+.fds-op-params td,
+:is(.fds-op-notes, .fds-ref-category-notes) > table :is(th, td) {
   text-align: left;
   vertical-align: top;
   padding: 0.35rem 0.6rem;
   border-bottom: 1px solid var(--sl-color-hairline);
 }
 
-.fds-op-params th {
+.fds-op-params th,
+:is(.fds-op-notes, .fds-ref-category-notes) > table th {
   font-weight: 600;
   color: var(--sl-color-gray-2);
   white-space: nowrap;
