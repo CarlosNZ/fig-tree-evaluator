@@ -585,14 +585,14 @@ export const operatorListings: OperatorListingMap = {
   convert: {
     displayName: 'Convert type',
     description:
-      'Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess',
+      "Convert a value to a number, string, boolean or array — a value that can't be converted is an error",
     docUrl: DOCS,
     backgroundColor: '#dddfe3',
     textColor: '#272a30',
     seeds: { value: '42' },
     parameterDescriptions: {
-      value: 'The value to convert; null propagates except for boolean, where it is false',
-      to: 'The target type',
+      value: 'The value to convert',
+      to: 'The type to convert to',
     },
   },
 
