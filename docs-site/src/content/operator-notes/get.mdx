@@ -1,5 +1,3 @@
 ---
-description:
-  replace: "Read a value at a path, from the evaluation data or another source you supply. It does what a `'$data.user.name'` string does, but its path can be computed, and it can fall back to a `default` when the path is missing."
-  against: e7a3e7b7
+description: "`'$data.order.id'` is the same as `{ $get: 'order.id' }`. [The `get` operator](/concepts/data/#the-get-operator) shows when you'd write it the long way: using a dynamic path expression, reading from different data, or supplying a `default` for missing values."
 ---

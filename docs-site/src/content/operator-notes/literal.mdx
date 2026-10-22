@@ -2,15 +2,28 @@
 description: 'Every FigTree instance understands it, whatever its operators.'
 ---
 
-In shorthand, the value goes straight after the key, whatever it is, so an array is returned as an array rather than read as positional parameters: `{ $literal: ['$data.price', 2] }` returns `['$data.price', 2]`.
+Use `literal` for any part of an expression that FigTree would otherwise read as expression syntax:
+
+- **Keys prefixed with `$`:** read as operators, so a stored database query's `$in` is an error.
+- **An `operator` or `fragment` key:** marks a node in its [canonical form](/concepts/forms/#the-canonical-form).
+- **A `vars` or `//` key:** read as a block of variables, or a comment, and left out of the result.
+- **A string starting with a reference:** read as the reference, so `'$data.price'` gives the price, not the text.
 
 <Expression
-  title="A stored database query, passed on as it is"
+  title="Data that looks like FigTree syntax, kept as written"
   code={`
     {
-      collection: 'orders',
-      // Keys prefixed with $ that belong to the database, not FigTree
+      // A stored database query, for the database rather than FigTree
       filter: { $literal: { status: { $in: ['open', 'pending'] } } },
+      // A phone plan, whose provider happens to be called operator
+      phone: { $literal: { operator: 'Kōwhai Mobile', plan: 'Prepay' } },
+      // Help text that shows a reference, rather than reading it
+      hint: { $literal: '$data.price' },
+    }
+  `}
+  data={`
+    {
+      price: 9.5,
     }
   `}
 />
