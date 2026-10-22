@@ -91,21 +91,21 @@ export const operatorListings: OperatorListingMap = {
   // ── Logic & control ────────────────────────────────────────────────────
   and: {
     displayName: 'Logical AND',
-    description: 'True when every value is truthy — operands run in parallel',
+    description: 'True when every value is truthy',
     docUrl: DOCS,
     backgroundColor: '#d6d0f0',
     textColor: '#26183f',
     seeds: { values: [true, true] },
-    parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
+    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
   },
   or: {
     displayName: 'Logical OR',
-    description: 'True when any value is truthy — operands run in parallel',
+    description: 'True when any value is truthy',
     docUrl: DOCS,
     backgroundColor: '#cabfeb',
     textColor: '#26183f',
     seeds: { values: [true, false] },
-    parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
+    parameterDescriptions: { values: 'The values to test, by FigTree truthiness' },
   },
   not: {
     displayName: 'Logical NOT (!)',
@@ -114,9 +114,7 @@ export const operatorListings: OperatorListingMap = {
     backgroundColor: '#c0aee5',
     textColor: '#26183f',
     seeds: { value: true },
-    parameterDescriptions: {
-      value: 'Judged by FigTree truthiness; null is falsy, so not(null) is true',
-    },
+    parameterDescriptions: { value: 'The value to test, by FigTree truthiness' },
   },
   if: {
     displayName: 'Conditional (?)',
@@ -130,14 +128,14 @@ export const operatorListings: OperatorListingMap = {
       else: 'The condition is false',
     },
     parameterDescriptions: {
-      condition: 'Judged by FigTree truthiness; null is falsy',
+      condition: 'The value to test, by FigTree truthiness',
       then: 'The value when the condition holds',
-      else: 'The value when it does not; omitted means null',
+      else: 'The value when it does not',
     },
   },
   match: {
     displayName: 'Match',
-    description: 'Dispatch on a value — only the matching branch evaluates',
+    description: 'Choose a branch by a value — only the matching branch evaluates',
     docUrl: DOCS,
     backgroundColor: '#d4bfeb',
     textColor: '#26183f',
@@ -147,9 +145,9 @@ export const operatorListings: OperatorListingMap = {
       default: 'No match',
     },
     parameterDescriptions: {
-      value: 'Matched against branch keys by its canonical string form',
-      branches: 'A literal map of branches, or an expression computing one',
-      default: 'The branch taken when none matches; absent means failure',
+      value: 'The value to look up among the branch keys, compared as text',
+      branches: 'The branches, each keyed by a value to match',
+      default: 'The branch taken when none matches; without one, the node fails',
     },
   },
   firstNonNull: {
