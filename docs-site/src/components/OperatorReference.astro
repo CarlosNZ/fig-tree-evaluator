@@ -9,12 +9,13 @@
  * (src/lib/operatorNotes.ts).
  *
  * Three forms. `index` is the operators page's index: every operator's name,
- * by category, each linking to its entry. `all` is the page's entries: every
- * operator, under a heading per category that stays pinned while its
- * operators scroll beneath it, with the category's own note, where it has
- * one, before its first operator. The page puts its own sections between the
- * two. `names` is a short list of chosen operators for any other page, which
- * can show each one's category as a pill.
+ * by category, each linking to its entry. `all` is the page's entries, which
+ * the page places after its own sections: every operator, under a heading
+ * per category that stays pinned while its operators scroll beneath it.
+ * Under the heading, and not pinned with it, are a row of links to the
+ * category's operators and the category's own note, where it has one.
+ * `names` is a short list of chosen operators for any other page, which can
+ * show each one's category as a pill.
  */
 import { render } from 'astro:content'
 import { figTree } from '../lib/figTree'
@@ -112,6 +113,19 @@ const index = 'index' in Astro.props ? operatorGroups() : null
         <h2 class="fds-ref-category-header" id={categoryId(category.name)}>
           {category.displayName}
         </h2>
+        {entries.length > 1 && (
+          <nav class="fds-ref-category-index" aria-label={`${category.displayName} operators`}>
+            <ul>
+              {entries.map(({ op }) => (
+                <li>
+                  <a href={`#op-${op.name}`}>
+                    <code>{op.name}</code>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
         {Notes && (
           <div class="fds-ref-category-notes">
             <Notes components={{ Expression }} />

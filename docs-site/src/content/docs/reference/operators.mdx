@@ -18,7 +18,7 @@ Every operator FigTree provides, grouped by category: the core operators, and th
 
 ## How to read this page
 
-Each operator has its name and alias, a description, a table with a row for each parameter, and below that, its positional form (where it has one) and return type. The table's columns are:
+Each operator has its name and alias, a description, a table with a row for each parameter, and below that, its positional and single-value forms (where it has them) and return type. The table's columns are:
 
 - **Parameter:** the parameter's name, as written in a node's named parameters. A tag beside the name marks a parameter that isn't evaluated before the operator runs ([Lazy parameters](/concepts/evaluation/#lazy-parameters)):
   - **lazy:** evaluated only if the operator needs it, and at most once.
@@ -27,14 +27,14 @@ Each operator has its name and alias, a description, a table with a row for each
   - **per element:** evaluated once for every element of the input, which may be many times or none.
   - **stops early:** every element starts at once and, as soon as one decides the answer, the rest are stopped.
   - **literal only:** never evaluated, so it has to be written out in the expression, as an iterator's `as` name is.
-- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match'`, are the only ones allowed.
+- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match'`, are the only ones allowed. Where the Null column says **passed on**, `null` is accepted too, but isn't shown in the type, since it's only there to be passed on, never used by the operator.
 - **Presence:** whether the parameter can be left out:
   - **required:** it has to be given, and leaving it out is an error.
   - **optional:** it can be left out, and has no default value.
   - **default:** it can be left out, and the value shown after it is used instead, such as `default 0`.
 - **Null:** what a `null` at this parameter does ([below](#what-a-null-does)).
 
-**Positional form** shows the order of the parameters when they're given as an array, and **Returns** is the type of value the operator returns.
+**Positional form** shows the order of the parameters when they're given as an array. Where it's only a list, such as `plus`'s `[...values]`, the whole list can also be given as one value, such as `'$data.prices'`. **Single value** shows the form that takes just the first parameter, for an operator that needs no other, and **Returns** is the type of value the operator returns.
 
 ### What a null does
 

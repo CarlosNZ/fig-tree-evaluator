@@ -667,6 +667,26 @@
   color: var(--sl-color-white);
 }
 
+/* A row of links to a category's operators, under its heading */
+.fds-ref-category-index ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 1rem;
+  margin: 0 0 1.25rem;
+  padding: 0 0.75rem;
+  list-style: none;
+  font-size: var(--sl-text-sm);
+}
+
+.fds-ref-category-index a {
+  color: var(--sl-color-gray-2);
+  text-decoration: none;
+}
+
+.fds-ref-category-index a:hover {
+  color: var(--sl-color-text-accent);
+}
+
 /* A category's own note, between its heading and its first operator */
 .fds-ref-category-notes {
   margin: 0 0 1.5rem;

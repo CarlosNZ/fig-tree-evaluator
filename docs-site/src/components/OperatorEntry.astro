@@ -41,8 +41,17 @@ const formatType = (type: ExpectedType): string => {
   return String(type)
 }
 
-const paramType = (p: ParameterInfo): string => {
-  const type = formatType(p.type)
+/**
+ * The parameter's type as the reference shows it. Where a `null` is passed
+ * on, the type's `null` only lets it through to be passed on, so it's left
+ * out: the Null column already says what a `null` does.
+ */
+const paramType = (p: CatalogParameter): string => {
+  const type = formatType(
+    p.nullOutcome === 'propagate' && Array.isArray(p.type)
+      ? p.type.filter((member) => member !== 'null')
+      : p.type
+  )
   const homogeneous = p.constraints?.homogeneous
   return homogeneous?.length && type === 'array'
     ? `array[${homogeneous.map(formatType).join(' | ')}]`
@@ -158,6 +167,19 @@ const positionalForm = (() => {
   const args = op.positionalParams.map((p) => (p === op.restParam ? `...${p}` : p))
   return `{ $${op.name}: [${args.join(', ')}] }`
 })()
+
+/**
+ * The single-value shorthand, e.g. `{ $round: value }`, where one value
+ * makes a complete call: every parameter after the first is optional. An
+ * operator whose positional form is only a list has none here, since its
+ * single value is that whole list, which the page's key explains once.
+ */
+const singleValueForm = (() => {
+  const first = op.positionalParams?.[0]
+  if (first === undefined || first === op.restParam) return null
+  const complete = Object.entries(op.parameters).every(([name, p]) => name === first || !p.required)
+  return complete ? `{ $${op.name}: ${first} }` : null
+})()
 ---
 
 <section class="fds-op" id={`op-${op.name}`}>
@@ -253,8 +275,16 @@ const positionalForm = (() => {
     {
       positionalForm && (
         <p>
-          <span class="fds-op-meta-label">Positional form (shorthand):</span>{' '}
+          <span class="fds-op-meta-label">Positional form:</span>{' '}
           <code>{positionalForm}</code>
+        </p>
+      )
+    }
+    {
+      singleValueForm && (
+        <p>
+          <span class="fds-op-meta-label">Single value:</span>{' '}
+          <code>{singleValueForm}</code>
         </p>
       )
     }

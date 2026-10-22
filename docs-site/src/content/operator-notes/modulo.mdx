@@ -1,4 +1,4 @@
-The result takes the sign of `mod`, where JavaScript's `%` takes the sign of `value`: `{ $modulo: [-7, 3] }` returns `2`, where `-7 % 3` gives `-1`. So a count that goes below zero still wraps around, as the days of the week do here:
+This is modulo as mathematics defines it, which JavaScript's `%` isn't: its result takes the sign of the number being divided, so `-7 % 3` gives `-1`, where `{ $modulo: [-7, 3] }` returns `2`. So a count that goes below zero still wraps around, as the days of the week do here:
 
 <Expression
   title="Counting back through the week"

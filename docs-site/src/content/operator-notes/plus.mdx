@@ -11,7 +11,12 @@
     {
       // A whole array from the data, added up
       total: { $plus: '$data.prices' },
-      greeting: { $plus: ['Kia ora, ', '$data.name'] },
+      greeting: {
+        $plus: {
+          values: ['Kia ora, ', '$data.name'],
+          nullValueDefault: 'friend',
+        },
+      },
       tags: { $plus: ['$data.productTags', '$data.customerTags'] },
       // The user's settings replace the defaults
       settings: { $plus: ['$data.defaults', '$data.userSettings'] },
@@ -20,7 +25,8 @@
   data={`
     {
       prices: [12.5, 8, 4.25],
-      name: 'Ana',
+      // Uncomment name to greet Ana by name
+      // name: 'Ana',
       productTags: ['sale', 'new'],
       customerTags: ['vip'],
       defaults: { theme: 'light', currency: 'NZD' },

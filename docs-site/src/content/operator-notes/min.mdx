@@ -1,4 +1,4 @@
-The values must be all numbers or all strings. Give `values` a whole array from your data to find the smallest in it:
+Here, both read a whole list of prices from the data:
 
 <Expression
   title="The cheapest and dearest prices in a list"
@@ -15,4 +15,4 @@ The values must be all numbers or all strings. Give `values` a whole array from 
   `}
 />
 
-Strings are compared character by character, by their Unicode code points. That puts capitals before lower-case letters, and accented letters after both, so `{ $min: ['banana', 'Apple'] }` returns `'Apple'`. It also means numbers stored as text compare as text, so `{ $min: ['10', '9'] }` returns `'10'`. [`convert`](#op-convert) them to numbers first.
+Strings are compared character by character, by their [Unicode code points](https://developer.mozilla.org/en-US/docs/Glossary/Code_point). That puts capitals before lower-case letters, and accented letters after both, so `{ $min: ['banana', 'Apple'] }` returns `'Apple'`. It also means numbers stored as text compare as text, so `{ $min: ['10', '9'] }` returns `'10'` — [`convert`](#op-convert) them to numbers first.
