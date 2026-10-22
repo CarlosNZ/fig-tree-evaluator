@@ -1,0 +1,18 @@
+Values of different types are never equal, so `{ $equal: [1, '1'] }` returns `false`. An object's keys can be in any order, but an array's elements must be in the same order.
+<Expression
+  title="Checking that two email addresses match"
+  code={`
+    {
+      $equal: {
+        values: ['$data.email', '$data.confirmEmail'],
+        caseInsensitive: true,
+      },
+    }
+  `}
+  data={`
+    {
+      email: 'aroha@example.com',
+      confirmEmail: 'Aroha@Example.com',
+    }
+  `}
+/>

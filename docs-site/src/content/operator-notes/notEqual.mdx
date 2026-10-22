@@ -1,0 +1,15 @@
+It returns exactly what `{ $not: { $equal: [...] } }` would, so with more than two values, one that differs is enough: `{ $notEqual: [1, 1, 2] }` returns `true`.
+
+<Expression
+  title="Has the customer changed their address?"
+  code={`
+    { $notEqual: ['$data.savedAddress', '$data.enteredAddress'] }
+  `}
+  data={`
+    {
+      savedAddress: { street: '12 Rata St', city: 'Nelson' },
+      // The same address, with its keys in another order. Try another city
+      enteredAddress: { city: 'Nelson', street: '12 Rata St' },
+    }
+  `}
+/>

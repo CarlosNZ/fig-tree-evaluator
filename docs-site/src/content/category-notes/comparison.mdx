@@ -1,0 +1,18 @@
+`greaterThan`, `greaterThanOrEqual`, `lessThan` and `lessThanOrEqual` compare strings character by character, by their [Unicode code points](https://developer.mozilla.org/en-US/docs/Glossary/Code_point), which puts capitals before lower-case letters, and `'10'` before `'9'`. It also means dates written as `'YYYY-MM-DD'` compare correctly as text:
+
+<Expression
+  code={`
+    {
+      beforeDeadline: { $lessThan: ['$data.submitted', '$data.deadline'] },
+      adult: { $greaterThanOrEqual: ['$data.age', 18] },
+    }
+  `}
+  data={`
+    {
+      submitted: '2026-10-22',
+      deadline: '2026-10-31',
+      // Try an age of 18
+      age: 17,
+    }
+  `}
+/>
