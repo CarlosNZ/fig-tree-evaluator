@@ -180,11 +180,24 @@ describe('the suggestion field: a drop-in replacement for what was written', () 
     )
   })
 
+  test('an abbreviation: the one name it begins, in either form (#271)', () => {
+    const core = new FigTree()
+    expect(issue({ operator: 'mod', values: [7, 3] }, 'unknown-operator', core)).toMatchObject({
+      suggestion: 'modulo',
+    })
+    expect(issue({ a: { $mod: [7, 3] } }, 'unrecognized-identifier', core)).toMatchObject({
+      suggestion: '$modulo',
+    })
+  })
+
   test('nothing close enough: no suggestion, and no field', () => {
     const unknown = issue({ operator: 'if', condition: true, somethingElse: 1 }, 'unknown-node-key')
     expect(unknown?.parameter).toBe('somethingElse')
     expect(unknown).not.toHaveProperty('suggestion')
     expect(issue({ a: { $zzzzzz: 1 } }, 'unrecognized-identifier')).not.toHaveProperty('suggestion')
+    // A name under 3 characters is near too much to suggest anything (#259)
+    expect(issue({ a: { $up: 'a' } }, 'unrecognized-identifier')).not.toHaveProperty('suggestion')
+    expect(issue({ operator: 'b' }, 'unknown-operator')).not.toHaveProperty('suggestion')
   })
 })
 
