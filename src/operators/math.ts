@@ -182,7 +182,7 @@ const unary = (
 // A finite number rounds to an integer, and a non-finite one never passes
 // the result boundary
 export const floor = unary('floor', Math.floor, 'integer')
-export const ceil = unary('ceil', Math.ceil, 'integer')
+export const ceiling = unary('ceiling', Math.ceil, 'integer')
 export const abs = unary('abs', Math.abs)
 
 const extremum = (name: string, label: string, wins: (comparison: number) => boolean) =>

@@ -19,7 +19,7 @@ The analysis is a walk that gives every node a verdict (it can throw, or it cann
 **Decision.** How strictly the analysis treats numbers is an option of the analysis, not of the evaluator: evaluation is unchanged, and only how strictly the analysis reads it varies. There are two levels, with names to settle:
 
 - **Default: ordinary numbers.** Arithmetic stays in range, except where everyday inputs overflow, which means `power` (`10^400`, `1.05^15000`). Numbers in the evaluation data are finite, since JSON cannot carry NaN or Infinity.
-- **Strict.** Any arithmetic node on numbers the walk cannot pin down may overflow: `plus`, `subtract`, `multiply`, `divide`, `modulo`, `round`. Any number from the data may be NaN or Infinity, so `floor`, `ceil` and `abs` may fail too.
+- **Strict.** Any arithmetic node on numbers the walk cannot pin down may overflow: `plus`, `subtract`, `multiply`, `divide`, `modulo`, `round`. Any number from the data may be NaN or Infinity, so `floor`, `ceiling` and `abs` may fail too.
 
 The declarations do not depend on the setting. Each overflow condition is tagged by how reachable it is, from ordinary inputs (`power`'s) or only from extreme ones (`plus`'s), and the setting picks which count. Non-finite results that are not overflow count at both levels: `divide` or `modulo` by 0, `0^-1`, a negative base with a fractional exponent. So do constants, which are evaluated exactly.
 
@@ -67,7 +67,7 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Decision.** The walk tracks, on each number it knows of, whether it may be NaN or infinite. Under `strict`, a number from the data may be; an operator returning a number may return one if a number it receives may be one; an output declaration carries one through an operator that hands a value on. A node whose result may be one may fail `non-finite-result` at the result boundary, unless a rule already says so, and what passes the boundary is finite. The `overflow` rules stay, for arithmetic on large finite numbers.
 
-**Why.** The rule checker found that under `strict`, `if`, `match`, `get`, `find`, `min`, `max`, `regex`, `convert`, `floor`, `ceil` and `abs` all fail when handed NaN, because the engine refuses a non-finite result at every node. No per-operator rule describes that: it is the engine's check, like a type check. Of the options, flagging every number-returning node under `strict` was simpler but would have listed `{ $length: '$data.s' }`; dropping NaN from `strict` would have left a host passing JS data with no warning.
+**Why.** The rule checker found that under `strict`, `if`, `match`, `get`, `find`, `min`, `max`, `regex`, `convert`, `floor`, `ceiling` and `abs` all fail when handed NaN, because the engine refuses a non-finite result at every node. No per-operator rule describes that: it is the engine's check, like a type check. Of the options, flagging every number-returning node under `strict` was simpler but would have listed `{ $length: '$data.s' }`; dropping NaN from `strict` would have left a host passing JS data with no warning.
 
 ## Value ranges (taken up 2026-10-06, after step 4)
 
@@ -138,7 +138,7 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 - **`strictNumbers`**, a boolean defaulting to false, replaces the `numbers` levels `'ordinary'` and `'strict'`.
 - **The host field is `analysis`**, not `coverage`, and the exported types follow: `OperatorAnalysis`, `FailureTest` and `DeclaredOutput`, beside `FailureRule`.
 - **`fallbackCoverage` loses its `timeout` option.** It reads the instance's options, `timeout` included, so its only option is its own.
-- **`floor` and `ceil` declare `returns: 'integer'`** in their definitions, through the shared `unary` helper, and leave the output table.
+- **`floor` and `ceiling` declare `returns: 'integer'`** in their definitions, through the shared `unary` helper, and leave the output table.
 - **Exactness is a check:** the corpus runner fails a case whose findings differ from its expected ones, and names each difference.
 - **Follow-ups go to issues:** the wording of every message ([#219](https://github.com/CarlosNZ/fig-tree-evaluator/issues/219)); a warning for a fallback that can never fire ([#236](https://github.com/CarlosNZ/fig-tree-evaluator/issues/236)), a data shape ([#235](https://github.com/CarlosNZ/fig-tree-evaluator/issues/235)), and a host iterator asking for an element its input lacks ([#234](https://github.com/CarlosNZ/fig-tree-evaluator/issues/234)); a default whole-evaluation timeout ([#221](https://github.com/CarlosNZ/fig-tree-evaluator/issues/221)).
 

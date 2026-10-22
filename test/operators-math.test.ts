@@ -215,7 +215,7 @@ describe('multiply', () => {
   })
 })
 
-describe('power / round / floor / ceil / abs', () => {
+describe('power / round / floor / ceiling / abs', () => {
   test.each([
     ['power', { $power: [2, 10] }, 1024],
     ['power alias', { '$^': [3, 2] }, 9],
@@ -227,7 +227,7 @@ describe('power / round / floor / ceil / abs', () => {
     ['round works on the decimal representation', { $round: [1.005, 2] }, 1.01],
     ['round negative decimals', { $round: [1234, -2] }, 1200],
     ['floor', { $floor: -3.5 }, -4],
-    ['ceil', { $ceil: -3.5 }, -3],
+    ['ceiling', { $ceiling: -3.5 }, -3],
     ['abs', { $abs: -12 }, 12],
   ])('%s', async (_label, expression, expected) => {
     expect(await ev(expression)).toBe(expected)

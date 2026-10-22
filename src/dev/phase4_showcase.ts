@@ -95,7 +95,7 @@ const main = async () => {
   await show('round ties half away from zero', { $round: [-2.5] })
   await show('round works on the decimal representation', { $round: [1.005, 2] })
   await show('negative decimals round to hundreds', { $round: [1234, -2] })
-  await show('floor / ceil / abs', [{ $floor: -3.5 }, { $ceil: -3.5 }, { $abs: -12 }])
+  await show('floor / ceiling / abs', [{ $floor: -3.5 }, { $ceiling: -3.5 }, { $abs: -12 }])
   await show('max on ISO timestamps (codepoint order)', { $max: ['2024-01-05', '2023-12-31'] })
   await show('min on mixed types fails', { $min: '$data.mixed' }, { data: { mixed: [1, 'a'] } })
 

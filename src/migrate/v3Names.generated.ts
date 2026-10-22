@@ -47,7 +47,7 @@ export const V3_NAMES: Record<string, string> = {
   '^': 'power',
   round: 'round',
   floor: 'floor',
-  ceil: 'ceil',
+  ceiling: 'ceiling',
   abs: 'abs',
   min: 'min',
   max: 'max',

@@ -160,7 +160,7 @@ Suggested default: none.
 
 Suggested default: none — `decimals`' unset behaviour already is the default mechanism.
 
-### `floor` / `ceil` / `abs` (no alias)
+### `floor` / `ceiling` / `abs` (no alias)
 
 | Parameter | Type (incl. null)  | Default | Null policy (current) |
 | --------- | ------------------ | ------- | --------------------- |

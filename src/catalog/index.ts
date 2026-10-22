@@ -324,7 +324,7 @@ export const operatorListings: OperatorListingMap = {
     seeds: { value: 2.7 },
     parameterDescriptions: { value: 'The number to round down' },
   },
-  ceil: {
+  ceiling: {
     displayName: 'Round up',
     description: 'Round up toward positive infinity',
     docUrl: DOCS,
