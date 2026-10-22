@@ -548,8 +548,7 @@ export const operatorListings: OperatorListingMap = {
   // ── Data & objects ─────────────────────────────────────────────────────
   get: {
     displayName: 'Get data',
-    description:
-      'Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference',
+    description: 'Read a value at a path, from $data or from another object',
     docUrl: DOCS,
     backgroundColor: '#f0d1e5',
     textColor: '#3f182a',
@@ -560,18 +559,14 @@ export const operatorListings: OperatorListingMap = {
       default: 'Not found',
     },
     parameterDescriptions: {
-      path: 'Dot and bracket segments, quoted keys and the [*] projection — or an array of segments, taken verbatim',
-      from:
-        'The source the path reads: a value, or a bare namespace ($data, $vars, $params, $element) ' +
-        'whose var or parameter name opens the path — replace, never merge; a null source misses every path',
-      default:
-        'The answer when the path is missing — a stored null passes through unchanged (firstNonNull replaces one); supplying it also opts out of strictDataPaths',
+      path: 'The path to read, written as in a $data reference, or as an array of keys',
+      from: 'What to read from, in place of the data, such as a lookup table or $vars',
+      default: 'What to return when the path is missing, in place of null',
     },
   },
   buildObject: {
     displayName: 'Build object',
-    description:
-      'Assemble an object from computed key/value entries — for keys known only at runtime',
+    description: 'Build an object from key and value pairs, for keys worked out as it runs',
     docUrl: DOCS,
     backgroundColor: '#eac0cc',
     textColor: '#3f182a',
@@ -582,7 +577,7 @@ export const operatorListings: OperatorListingMap = {
       ],
     },
     parameterDescriptions: {
-      entries: 'Objects with a "key" and a "value"; a null value keeps its key',
+      entries: 'The entries, each an object with a key and a value',
     },
   },
 
