@@ -1,0 +1,24 @@
+Branch keys are always text, so `1` matches the key `'1'`, and `true` the key `'true'`. A `null` never matches any branch, so it takes the `default`.
+
+<Expression
+  title="An order status, as a customer would read it"
+  code={`
+    {
+      $match: {
+        value: '$data.status',
+        branches: {
+          pending: 'Being prepared',
+          shipped: 'On its way',
+          delivered: 'Delivered',
+        },
+        default: 'Unknown status',
+      },
+    }
+  `}
+  data={`
+    // Try 'returned', which no branch has
+    {
+      status: 'shipped',
+    }
+  `}
+/>

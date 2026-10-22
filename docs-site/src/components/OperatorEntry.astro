@@ -241,12 +241,14 @@ const singleValueForm = (() => {
           Object.entries(op.parameters).map(([name, p]) => (
             <tr>
               <td>
-                <code>{name}</code>
-                {p.evaluation && p.evaluation !== 'eager' && (
-                  <span class="fds-op-tag" title={evaluationTags[p.evaluation].title}>
-                    {evaluationTags[p.evaluation].label}
-                  </span>
-                )}
+                <span class="fds-op-param">
+                  <code>{name}</code>
+                  {p.evaluation && p.evaluation !== 'eager' && (
+                    <span class="fds-op-tag" title={evaluationTags[p.evaluation].title}>
+                      {evaluationTags[p.evaluation].label}
+                    </span>
+                  )}
+                </span>
               </td>
               <td>
                 <code>{paramType(p)}</code>

@@ -1,23 +1,22 @@
----
-description: "With its alias it can be written positionally, as `{ '$?': [condition, then, else] }`."
-parameters:
-  condition:
-    replace: "Any value, judged by FigTree truthiness. Only `false`, `null`, `0` and `''` are falsy; everything else is truthy, including `[]` and `{}`."
-    against: 7bd1b747
----
-
-Because only the chosen branch is evaluated, the other can safely hold something that would fail:
+For example, a member's price:
 
 <Expression
-  title="The branch not taken never runs"
-  editor={false}
   code={`
     {
       $if: {
-        condition: false,
-        then: { $divide: [1, 0] },
-        else: 'safe',
+        condition: '$data.isMember',
+        then: { $multiply: ['$data.price', 0.9] },
+        else: '$data.price',
       },
     }
   `}
+  data={`
+    // Set isMember to false to pay the full price
+    {
+      price: 80,
+      isMember: true,
+    }
+  `}
 />
+
+For more than two branches, use [`match`](#op-match).

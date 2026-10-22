@@ -813,11 +813,18 @@
   white-space: nowrap;
 }
 
-/* A parameter's evaluation tag, on its own line under the name */
+/*
+ * A parameter's name and evaluation tag: on one line where the column has
+ * room, and the tag under the name, flush left, where it doesn't
+ */
+.fds-op-param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .fds-op-tag {
-  display: block;
-  width: fit-content;
-  margin-top: 0.5rem;
   cursor: help;
   white-space: nowrap;
   font-size: var(--sl-text-xs);
