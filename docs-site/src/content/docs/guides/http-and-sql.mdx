@@ -11,7 +11,7 @@ import Expression from '../../../components/Expression.astro'
 FigTree ships with three operators that can access external resources, which open up a world of possibilities to your configuration logic: `http`, `graphQL`, and `sql`. However, they're not enabled by default since they require a bit more configuration, and can potentially be abused — so they need to be explicitly allowed.
 
 <Callout kind="danger" title="Reads only">
-  It is strongly recommended that you don't use FigTree's I/O operators to run mutations or any operations that change external state, since FigTree treats every request as a read: it may send one twice, cancel it partway, or skip it entirely. However, enforcing this is the host's responsibility, done through the clients you provide (e.g. a SQL client with a user with `SELECT`-only permissions).
+  It is strongly recommended that you don't use FigTree's I/O operators to run mutations or any operations that change external state — FigTree is for evaluating expressions, not running commands. However, enforcing this is the host's responsibility, done through the clients you provide (e.g. an SQL client with a user with `SELECT`-only permissions).
 </Callout>
 
 ## Adding the I/O operators
