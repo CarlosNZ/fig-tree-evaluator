@@ -1,0 +1,7 @@
+`buildString` and `join` turn _any_ value into text:
+
+- `null` becomes empty text
+- numbers and `true` or `false` are written as they are
+- an array or object becomes `<array>` or `<object>`, so pick out the part you want first
+
+The other string operators handle strings only: `{ $lower: 42 }` is a type error, so [`convert`](#op-convert) a number first.

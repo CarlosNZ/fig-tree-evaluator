@@ -1,0 +1,25 @@
+Each `mode` returns something different from the same search:
+
+<Expression
+  title="Three answers from one pattern"
+  code={`
+    {
+      hasNumber: { $regex: ['$data.message', '[0-9]+'] },
+      firstNumber: {
+        $regex: { value: '$data.message', pattern: '[0-9]+', mode: 'extract' },
+      },
+      allNumbers: {
+        $regex: { value: '$data.message', pattern: '[0-9]+', mode: 'match' },
+      },
+    }
+  `}
+  data={`
+    {
+      message: 'Rooms 12 and 14 are free',
+    }
+  `}
+/>
+
+`extract` returns the whole match, never a capture group, so to leave part of the match out, use a lookbehind: `'(?<=#)[0-9]+'` extracts `'123'` from `'Order #123'`.
+
+A backslash in a pattern is written twice, as in `'\\d+'` for a run of digits. In JSON5, a single one is silently dropped, so `'\d+'` would match a run of the letter `d`.

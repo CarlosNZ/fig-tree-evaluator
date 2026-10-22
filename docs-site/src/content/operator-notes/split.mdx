@@ -1,0 +1,1 @@
+Each piece is trimmed by default, so the spaces after the commas are dropped: `{ $split: ['red, green, blue', ','] }` returns `['red', 'green', 'blue']`, not `['red', ' green', ' blue']`. Empty pieces are kept, too, so `{ $split: ['a,,b', ','] }` returns `['a', '', 'b']` — use [`filter`](#op-filter) to remove them if needed.

@@ -1,4 +1,35 @@
----
-parameters:
-  template: "For example, `'Hello %1'` with the substitutions `['Ana']`, or `'Hello {{name}}'` with `{ name: 'Ana' }`."
----
+A template's tokens can be filled in three ways:
+
+- **References:** `{{$data.name}}` pulls straight from the data.
+- **An array of `substitutions`:** fills `%1`, `%2` and so on, in order.
+- **An object of `substitutions`:** fills `{{name}}` tokens by name.
+
+<Expression
+  title="Three ways to fill a template"
+  code={`
+    {
+      greeting: { $buildString: 'Kia ora, {{$data.customer.firstName}}' },
+      progress: { $buildString: ['Order %1 of %2', '$data.done', '$data.total'] },
+      summary: {
+        $buildString: {
+          template: '{{count}} items, totalling \${{total}}',
+          // Values worked out by other nodes
+          substitutions: {
+            count: { $length: '$data.prices' },
+            total: { $plus: '$data.prices' },
+          },
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      customer: { firstName: 'Aroha' },
+      done: 3,
+      total: 5,
+      prices: [12.5, 8, 4.25],
+    }
+  `}
+/>
+
+With `closeGaps`, a value that fills in as empty text takes the space beside it with it, so `'My name is {{first}} {{last}}.'` with no last name gives `'My name is Aroha.'`, not `'My name is Aroha .'`.

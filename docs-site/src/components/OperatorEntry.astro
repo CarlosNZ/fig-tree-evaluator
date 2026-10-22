@@ -58,9 +58,14 @@ const paramType = (p: CatalogParameter): string => {
     : type
 }
 
+/**
+ * A single space reads as an empty string at the column's size, so it's
+ * named as well.
+ */
 const presence = (p: ParameterInfo): string => {
   if (p.required) return 'required'
   if (!('default' in p)) return 'optional'
+  if (p.default === ' ') return `default ' ' (space)`
   return `default ${p.default === EvaluationData ? '$data' : toJson5(p.default)}`
 }
 
