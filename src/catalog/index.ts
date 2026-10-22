@@ -376,7 +376,7 @@ export const operatorListings: OperatorListingMap = {
   // ── Strings ────────────────────────────────────────────────────────────
   buildString: {
     displayName: 'String builder',
-    description: 'Render a template, filling its tokens — the result is always a string',
+    description: 'Build text from a template, filling in its tokens',
     docUrl: DOCS,
     backgroundColor: '#f8d9c9',
     textColor: '#3f2f18',
@@ -384,19 +384,16 @@ export const operatorListings: OperatorListingMap = {
     // is optional and a new node is seeded with its required parameters only
     seeds: { template: 'Hello {{$data.name}}' },
     parameterDescriptions: {
-      template:
-        'The text, with %N or {{name}} tokens; in a literal template, {{$data.x}} is that reference',
-      substitutions:
-        'An array pairs with %N tokens, an object with {{name}} tokens; the mode dispatches on which arrives',
-      trim: 'Trim whitespace from each rendered value, never from the template text',
-      closeGaps: 'A value that renders empty also takes one run of adjacent template whitespace',
-      nullValueDefault: 'Rendered in place of a null value, instead of ""',
+      template: 'The text, with %1, %2… or {{name}} tokens, or references such as {{$data.name}}',
+      substitutions: 'The values for the tokens: an array for %1, %2…, or an object for {{name}}',
+      trim: "Trim whitespace from the ends of each value filled in, but not from the template's own text",
+      closeGaps: 'Where a value fills in as empty text, remove the space beside it too',
+      nullValueDefault: 'Written in place of a null value, which is otherwise empty text',
     },
   },
   split: {
     displayName: 'Split text',
-    description:
-      'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
+    description: 'Divide a string into a list of pieces, at each delimiter',
     docUrl: DOCS,
     backgroundColor: '#f5cbab',
     textColor: '#3f2f18',
@@ -404,27 +401,26 @@ export const operatorListings: OperatorListingMap = {
     seeds: { value: 'Alpha, Bravo, Charlie', delimiter: ',', trim: false },
     parameterDescriptions: {
       value: 'The string to divide',
-      delimiter: 'Split on each occurrence; "" splits into code points',
-      trim: 'Trim whitespace from each piece',
+      delimiter: 'The text to split at; an empty string splits into single characters',
+      trim: 'Trim whitespace from the ends of each piece',
     },
   },
   join: {
     displayName: 'Join text',
-    description: 'Render array elements to text and concatenate them with a delimiter',
+    description: "Join a list's values into one string, with a delimiter between them",
     docUrl: DOCS,
     backgroundColor: '#f3cba0',
     textColor: '#3f2f18',
     seeds: { values: ['Alpha', 'Bravo', 'Charlie'], delimiter: ', ' },
     parameterDescriptions: {
-      values:
-        'Elements of any type, rendered by the stringification table; a null renders "" and still occupies its slot',
-      delimiter: 'Placed between each adjacent pair — shares its contract with split',
-      nullValueDefault: 'Rendered in place of a null element, instead of ""',
+      values: 'The values to join, of any type',
+      delimiter: 'The text to put between each pair of values',
+      nullValueDefault: 'Written in place of a null value, which is otherwise empty text',
     },
   },
   lower: {
     displayName: 'Lower case',
-    description: 'Lowercase a string — Unicode default case mapping, locale-independent',
+    description: 'Convert a string to lower case',
     docUrl: DOCS,
     backgroundColor: '#f7e1bf',
     textColor: '#3f2f18',
@@ -433,7 +429,7 @@ export const operatorListings: OperatorListingMap = {
   },
   upper: {
     displayName: 'Upper case',
-    description: 'Uppercase a string — Unicode default case mapping, locale-independent',
+    description: 'Convert a string to upper case',
     docUrl: DOCS,
     backgroundColor: '#f6e1b4',
     textColor: '#3f2f18',
@@ -442,7 +438,7 @@ export const operatorListings: OperatorListingMap = {
   },
   trim: {
     displayName: 'Trim whitespace',
-    description: 'Strip whitespace (the JS trim set) from both ends of a string',
+    description: 'Remove whitespace from both ends of a string',
     docUrl: DOCS,
     backgroundColor: '#f2dd97',
     textColor: '#3f2f18',
@@ -457,12 +453,11 @@ export const operatorListings: OperatorListingMap = {
     textColor: '#3f2f18',
     seeds: { value: 'test-this', pattern: '^[a-z]{4}-[a-z]{4}$', flags: 'i' },
     parameterDescriptions: {
-      value: 'The subject string',
-      pattern: 'The regular expression source',
-      flags: 'The admitted subset: i, m, s, u',
-      mode: 'test gives a boolean, extract the first matching substring, match every one of them',
-      noMatchDefault:
-        'The extract answer when nothing matches — a matched empty string still passes through',
+      value: 'The string to search',
+      pattern: 'The regular expression, as a string',
+      flags: 'Any of i, m, s and u',
+      mode: "'test' returns true or false, 'extract' the first match, and 'match' every match",
+      noMatchDefault: "What 'extract' returns when nothing matches",
     },
   },
 
