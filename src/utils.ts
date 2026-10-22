@@ -29,11 +29,13 @@ export const isPlainObject = (value: unknown): value is Record<string, unknown> 
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
 /**
- * Levenshtein edit distance, bounded: the exact distance when it is at
- * most `max`, otherwise any value above `max`. Two rows of the usual
- * dynamic-programming table, swapped rather than reallocated, and the
- * walk stops at the first row whose smallest entry already exceeds the
- * bound, since distances only grow down the table. Candidates whose
+ * Edit distance, bounded: the exact distance when it is at most `max`,
+ * otherwise any value above `max`. Levenshtein with one more edit, the
+ * swap of two adjacent characters (`plsu` for `plus`), so the commonest
+ * typo costs one edit rather than two (optimal string alignment). Three
+ * rows of the dynamic-programming table, rotated rather than reallocated,
+ * and the walk stops at the first row whose smallest entry already exceeds
+ * the bound, since distances only grow down the table. Candidates whose
  * lengths differ by more than `max` are rejected before the table starts.
  * Compile raises a did-you-mean on every unrecognized `$` key it meets, so
  * this runs once per such key, however many an expression holds (#215).
@@ -43,6 +45,7 @@ export const editDistanceWithin = (a: string, b: string, max: number): number =>
   const rows = a.length
   const cols = b.length
   if (Math.abs(rows - cols) > max) return max + 1
+  let twoUp: number[] = new Array(cols + 1)
   let prev: number[] = new Array(cols + 1)
   let current: number[] = new Array(cols + 1)
   for (let j = 0; j <= cols; j++) prev[j] = j
@@ -51,37 +54,58 @@ export const editDistanceWithin = (a: string, b: string, max: number): number =>
     let rowMin = i
     const code = a.charCodeAt(i - 1)
     for (let j = 1; j <= cols; j++) {
-      const substitution = prev[j - 1] + (code === b.charCodeAt(j - 1) ? 0 : 1)
-      const distance = Math.min(prev[j] + 1, current[j - 1] + 1, substitution)
+      const other = b.charCodeAt(j - 1)
+      const substitution = prev[j - 1] + (code === other ? 0 : 1)
+      let distance = Math.min(prev[j] + 1, current[j - 1] + 1, substitution)
+      if (
+        i > 1 &&
+        j > 1 &&
+        code === b.charCodeAt(j - 2) &&
+        other === a.charCodeAt(i - 2) &&
+        twoUp[j - 2] + 1 < distance
+      )
+        distance = twoUp[j - 2] + 1
       current[j] = distance
       if (distance < rowMin) rowMin = distance
     }
     if (rowMin > max) return max + 1
-    const swap = prev
+    const recycled = twoUp
+    twoUp = prev
     prev = current
-    current = swap
+    current = recycled
   }
   return prev[cols]
 }
 
 /**
- * The nearest candidate within edit distance 2, for did-you-mean hints;
- * undefined when nothing is close enough. The first of equally near
- * candidates wins, so each distance is computed only as far as it has to
- * beat the best so far.
+ * The did-you-mean for a name none of `candidates` matched. The one
+ * candidate the name begins, so an abbreviation finds its full name
+ * (`mod`, `modulo`); otherwise the one nearest it, within an edit for a
+ * name of 3 to 5 characters and two for a longer one. Nothing for a name
+ * under 3 characters, which is that near to too much, nor when two
+ * candidates are equally near: a suggestion names the name meant, not one
+ * of several. Each distance is computed only as far as the nearest so far.
  */
 export const nearestName = (name: string, candidates: Iterable<string>): string | undefined => {
-  let best: string | undefined
-  let bestDistance = 3
+  if (name.length < 3) return undefined
+  let completion: string | undefined
+  let completions = 0
+  let nearest: string | undefined
+  let nearestDistance = name.length < 6 ? 1 : 2
+  let tied = false
   for (const candidate of candidates) {
-    const distance = editDistanceWithin(name, candidate, bestDistance - 1)
-    if (distance < bestDistance) {
-      best = candidate
-      bestDistance = distance
-      if (distance === 0) break
+    if (candidate.startsWith(name)) {
+      completion = candidate
+      completions++
     }
+    const distance = editDistanceWithin(name, candidate, nearestDistance)
+    if (distance > nearestDistance) continue
+    tied = nearest !== undefined && distance === nearestDistance
+    nearest = candidate
+    nearestDistance = distance
   }
-  return best
+  if (completions === 1) return completion
+  return tied ? undefined : nearest
 }
 
 /** The message tail offering a `nearestName` suggestion, or nothing. */
