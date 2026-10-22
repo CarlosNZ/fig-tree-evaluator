@@ -4,17 +4,17 @@ _Working document, companion to [v3-api.md](v3-api.md) (same protocol: **Draft**
 
 ## Status overview
 
-| Batch                         | Operators                                                                                                  | Status     |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
-| 0 — Cross-cutting conventions | _(applies to every pass)_                                                                                  | **Draft**  |
-| 1 — Logic & control           | `and`, `or`, `not`, `if`, `match`, `firstNonNull`                                                          | **Draft**  |
-| 2 — Comparison                | `equal`, `notEqual`, `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`                    | **Draft**  |
-| 3 — Arithmetic & math         | `plus`, `subtract`, `multiply`, `divide`, `modulo`, `power`, `round`, `floor`, `ceil`, `min`, `max`, `abs` | **Draft**  |
-| 4 — String                    | `buildString`, `split`, `join`, `lower`, `upper`, `trim`, `regex` (`substring` cut in review)              | **Agreed** |
-| 5 — Arrays & iteration        | `length`, `map`, `filter`, `find`, `some`, `every`                                                         | **Agreed** |
-| 6 — Data & objects            | `get`, `buildObject`                                                                                       | **Agreed** |
-| 7 — Special                   | `literal`, `convert`                                                                                       | **Draft**  |
-| 8 — I/O                       | `http`, `graphQL`, `sql`                                                                                   | **Draft**  |
+| Batch                         | Operators                                                                                                     | Status     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- |
+| 0 — Cross-cutting conventions | _(applies to every pass)_                                                                                     | **Draft**  |
+| 1 — Logic & control           | `and`, `or`, `not`, `if`, `match`, `firstNonNull`                                                             | **Draft**  |
+| 2 — Comparison                | `equal`, `notEqual`, `greaterThan`, `greaterThanOrEqual`, `lessThan`, `lessThanOrEqual`                       | **Draft**  |
+| 3 — Arithmetic & math         | `plus`, `subtract`, `multiply`, `divide`, `modulo`, `power`, `round`, `floor`, `ceiling`, `min`, `max`, `abs` | **Draft**  |
+| 4 — String                    | `buildString`, `split`, `join`, `lower`, `upper`, `trim`, `regex` (`substring` cut in review)                 | **Agreed** |
+| 5 — Arrays & iteration        | `length`, `map`, `filter`, `find`, `some`, `every`                                                            | **Agreed** |
+| 6 — Data & objects            | `get`, `buildObject`                                                                                          | **Agreed** |
+| 7 — Special                   | `literal`, `convert`                                                                                          | **Draft**  |
+| 8 — I/O                       | `http`, `graphQL`, `sql`                                                                                      | **Draft**  |
 
 _Batches 5–8 are drafted in [Part 2](v3-operator-parameters-2.md); this table remains the single status overview for both parts._
 
@@ -385,13 +385,13 @@ One pass for the three non-commutative binaries: identical shape, one operation 
 - **Ties round half away from zero**: `round(2.5)` → `3`, `round(-2.5)` → `-3` — the school rule, sign-symmetric, what a config author means by "round". Deliberately _not_ JS `Math.round`'s half-toward-+∞ (`Math.round(-2.5)` → `-2`), a parity nobody expects — and no v2 continuity exists to defend it, since v2 had no rounding operator. Implementation constraint, recorded in the implementation notes: rounding must operate on the decimal representation, not naive scale-and-round float arithmetic, so `round(1.005, 2)` is `1.01`, not `1`.
 - Positional: `['value', 'decimals']` — `{ $round: [3.14159, 2] }` → `3.14`; `{ $round: 3.7 }` → `4` (single payload → `value`). New in v3.
 
-### `floor` / `ceil` / `abs`
+### `floor` / `ceiling` / `abs`
 
 | Parameter | Type     | Required | Default | Null policy | Evaluation |
 | --------- | -------- | -------- | ------- | ----------- | ---------- |
 | `value`   | `number` | ✓        | —       | `propagate` | eager      |
 
-- `floor` toward −∞, `ceil` toward +∞ — by definition, recorded so nobody expects truncation: `floor(-3.5)` → `-4`, `ceil(-3.5)` → `-3`. Truncation-toward-zero deliberately gets no operator until a use case earns one.
+- `floor` toward −∞, `ceiling` toward +∞ — by definition, recorded so nobody expects truncation: `floor(-3.5)` → `-4`, `ceiling(-3.5)` → `-3`. Truncation-toward-zero deliberately gets no operator until a use case earns one.
 - No `decimals` on the pair — scaled flooring is rare, `round` covers the everyday scaled case, and an optional parameter is non-breaking to add later.
 - `abs`: absolute value; nothing to decide.
 - Positional: `['value']` each. All three new in v3.
@@ -418,7 +418,7 @@ plus(values…, expect?)                    // expect, nullValueDefault: named f
                                           // (multiply, min, max: nullValueDefault too)
 subtract(value, minus)   divide(value, by)   modulo(value, mod)
 multiply(values…)     power(base, exponent)
-round(value, decimals?)   floor(value)   ceil(value)   abs(value)
+round(value, decimals?)   floor(value)   ceiling(value)   abs(value)
 min(values…)   max(values…)
 ```
 
@@ -519,7 +519,7 @@ Batch-wide ground rules for the remainder, stated once: everything is **pure** a
 
 ### `lower` / `upper` / `trim`
 
-One pass for the three unary normalizers — the `floor`/`ceil`/`abs` template: identical shape, one transform apiece.
+One pass for the three unary normalizers — the `floor`/`ceiling`/`abs` template: identical shape, one transform apiece.
 
 | Parameter | Type     | Required | Default | Null policy | Evaluation |
 | --------- | -------- | -------- | ------- | ----------- | ---------- |

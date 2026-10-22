@@ -4,18 +4,25 @@
  */
 import { editDistanceWithin, nearestName } from '../src/utils'
 
-/** The textbook unbounded distance, as the oracle. */
+/** The textbook unbounded distance, adjacent swaps included, as the oracle. */
 const editDistance = (a: string, b: string): number => {
-  let prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  const table = [Array.from({ length: b.length + 1 }, (_, j) => j)]
   for (let i = 1; i <= a.length; i++) {
-    const current = [i]
-    for (let j = 1; j <= b.length; j++)
-      current.push(
-        Math.min(prev[j] + 1, current[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    const row = [i]
+    for (let j = 1; j <= b.length; j++) {
+      row.push(
+        Math.min(
+          table[i - 1][j] + 1,
+          row[j - 1] + 1,
+          table[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        )
       )
-    prev = current
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1])
+        row[j] = Math.min(row[j], table[i - 2][j - 2] + 1)
+    }
+    table.push(row)
   }
-  return prev[b.length]
+  return table[a.length][b.length]
 }
 
 const names = ['plus', 'minus', 'and', 'or', 'equal', 'notEqual', 'buildString', 'get', 'set']
@@ -23,6 +30,7 @@ const probes = [
   '',
   'plus',
   'plsu',
+  'lpsu',
   'pluss',
   'lus',
   'add',
@@ -52,26 +60,59 @@ describe('editDistanceWithin', () => {
   test('identical strings are distance 0 under any bound', () => {
     expect(editDistanceWithin('plus', 'plus', 0)).toBe(0)
   })
+
+  test('a swap of two adjacent characters is one edit', () => {
+    expect(editDistanceWithin('plsu', 'plus', 2)).toBe(1)
+    expect(editDistanceWithin('lpsu', 'plus', 2)).toBe(2)
+  })
 })
 
 describe('nearestName', () => {
-  test('picks the candidate at the smallest distance under 3', () => {
+  test('picks the nearest candidate: within 1 edit at 3 to 5 characters, 2 above', () => {
     expect(nearestName('plsu', names)).toBe('plus')
-    expect(nearestName('buildSting', names)).toBe('buildString')
     expect(nearestName('ste', names)).toBe('set')
+    expect(nearestName('buildSting', names)).toBe('buildString')
+    expect(nearestName('notEqaul', names)).toBe('notEqual')
+    // Two edits from 'plus' and 'equal', too far for names of 4 and 5
+    expect(nearestName('plsa', names)).toBeUndefined()
+    expect(nearestName('eqxxl', names)).toBeUndefined()
   })
 
-  test('answers nothing when every candidate is 3 or more away', () => {
+  test('answers nothing when every candidate is too far', () => {
     expect(nearestName('xyzzy', names)).toBeUndefined()
   })
 
-  test('the first of equally near candidates wins', () => {
-    // 'ad' is one edit from both 'and' and 'add'
-    expect(nearestName('ad', ['and', 'add'])).toBe('and')
-    expect(nearestName('ad', ['add', 'and'])).toBe('add')
+  test('answers nothing for a name under 3 characters (#259)', () => {
+    const symbols = ['!', '+', '-', '*', '/', '?', '=', '!=', 'or', 'and']
+    for (const name of ['b', 'x', 'up', '=>']) expect(nearestName(name, symbols)).toBeUndefined()
+  })
+
+  test('answers nothing when two candidates are equally near', () => {
+    expect(nearestName('cat', ['bat', 'cot'])).toBeUndefined()
+    expect(nearestName('cat', ['bat', 'cot', 'cart'])).toBeUndefined()
+  })
+
+  test('a nearer candidate settles an earlier tie', () => {
+    expect(nearestName('cats', ['bats', 'cuts', 'cats'])).toBe('cats')
+  })
+
+  test('the one candidate a name begins is its suggestion, however far (#271)', () => {
+    const math = ['and', 'not', 'min', 'max', 'plus', 'subtract', 'multiply', 'divide', 'modulo']
+    expect(nearestName('mod', math)).toBe('modulo')
+    expect(nearestName('sub', math)).toBe('subtract')
+    expect(nearestName('mult', math)).toBe('multiply')
+    expect(nearestName('div', math)).toBe('divide')
+  })
+
+  test('a name several candidates begin falls back to edit distance', () => {
+    const comparisons = ['lessThan', 'lessThanOrEqual', 'buildString', 'buildObject']
+    expect(nearestName('lessTha', comparisons)).toBe('lessThan')
+    expect(nearestName('build', comparisons)).toBeUndefined()
+    expect(nearestName('buildS', comparisons)).toBe('buildString')
   })
 
   test('an exact match wins over an earlier near miss', () => {
     expect(nearestName('plus', ['plsu', 'plus'])).toBe('plus')
+    expect(nearestName('not', ['notEqual', 'not'])).toBe('not')
   })
 })

@@ -101,16 +101,16 @@ No field describes the operator. Its description, and its parameters', is presen
 
 **Ruled (Carl, September 2026, at Phase-13 planning): required on every definition, from a closed set of eight.** The motivating consumer is an operator dropdown that wants sections; the engine never reads the field. Required rather than optional-with-a-default because a silent fallback produces exactly the uncategorized entries the field exists to prevent — an author who genuinely doesn't fit picks `other` deliberately.
 
-| Category     | Core operators                                                                                  |
-| ------------ | ----------------------------------------------------------------------------------------------- |
-| `logic`      | `and` `or` `not` `if` `match` `firstNonNull`                                                    |
-| `comparison` | `equal` `notEqual` `greaterThan` `greaterThanOrEqual` `lessThan` `lessThanOrEqual`              |
-| `math`       | `plus` `subtract` `multiply` `divide` `modulo` `power` `round` `floor` `ceil` `abs` `min` `max` |
-| `string`     | `buildString` `split` `join` `lower` `upper` `trim` `regex`                                     |
-| `array`      | `length` `map` `filter` `find` `some` `every`                                                   |
-| `data`       | `get` `buildObject`                                                                             |
-| `io`         | `http` `graphQL` `sql`                                                                          |
-| `other`      | `convert`, and any custom operator that fits none of the above                                  |
+| Category     | Core operators                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| `logic`      | `and` `or` `not` `if` `match` `firstNonNull`                                                       |
+| `comparison` | `equal` `notEqual` `greaterThan` `greaterThanOrEqual` `lessThan` `lessThanOrEqual`                 |
+| `math`       | `plus` `subtract` `multiply` `divide` `modulo` `power` `round` `floor` `ceiling` `abs` `min` `max` |
+| `string`     | `buildString` `split` `join` `lower` `upper` `trim` `regex`                                        |
+| `array`      | `length` `map` `filter` `find` `some` `every`                                                      |
+| `data`       | `get` `buildObject`                                                                                |
+| `io`         | `http` `graphQL` `sql`                                                                             |
+| `other`      | `convert`, and any custom operator that fits none of the above                                     |
 
 The vocabulary is the canonical list's own grouping, with two decisions recorded: `length` stays with `array` although it also measures strings, matching the file it lives in and the parameter pass that specified it; and `convert` takes `other` rather than a category of one. A custom operator may declare any of the eight — `other` is the escape hatch, not a quarantine for third-party definitions. An unrecognized value is a registration error, like any other malformed definition field.
 

@@ -356,7 +356,7 @@ The timeout is the instance's (see "Options"). A static fallback here means one 
 
 ## Known limits
 
-- **Ranges come from a few operators only.** `divide`, `modulo`, `power`, `round`, `floor` and `ceil` declare no arithmetic, so `{ $divide: [<a length>, 2] }` is any number, and a length has no upper bound. Over an array whose length is not known, a sum or product is bounded by its elements' sign alone.
+- **Ranges come from a few operators only.** `divide`, `modulo`, `power`, `round`, `floor` and `ceiling` declare no arithmetic, so `{ $divide: [<a length>, 2] }` is any number, and a length has no upper bound. Over an array whose length is not known, a sum or product is bounded by its elements' sign alone.
 - **`plus` with `expect: 'number'` has no range:** `{ typeNamedBy: 'expect' }` adds every number, for the empty case's identity.
 - **Under `strictNumbers`, an overflow rule counts whatever the ranges:** `{ $plus: [<a length>, 1] }` may overflow, although its operands are bounded.
 - **Undeclared host operators** are external, so may always fail: `{ $twice: 2 }` is listed.
@@ -386,4 +386,4 @@ Built in nine steps, each kept sound so it could land on its own. The corpus mea
 6. **Value ranges.** Bounds in what the walk knows, the range forms of the output vocabulary and their arithmetic, the core operators' ranges, and the tests reading them (see "Value ranges").
 7. **Per-element walks.** Where an iterator's `input` is known exactly, its `each` walked once per element, with `$element` and `$index` bound to that element, so a run sees what each element gives. Findings merged across the elements' walks, `always` only where every element a run reached says so.
 8. **Timeouts.** The all-or-nothing rule and the no-I/O case.
-9. **Close-out.** The public names settled: `strictNumbers` for the numbers option, and `analysis` for the host field. `fallbackCoverage`'s `timeout` option removed, so the analysis reads the instance's. `floor` and `ceil` declare `returns: 'integer'` in their definitions, which leaves the output table. Exactness made a check the corpus fails on. v3-authoring.md's section replaced by a pointer to this spec, docs-dev/imports.md updated, the cases page regenerated, #217 closed. The README and CHANGELOG are left to v3's release.
+9. **Close-out.** The public names settled: `strictNumbers` for the numbers option, and `analysis` for the host field. `fallbackCoverage`'s `timeout` option removed, so the analysis reads the instance's. `floor` and `ceiling` declare `returns: 'integer'` in their definitions, which leaves the output table. Exactness made a check the corpus fails on. v3-authoring.md's section replaced by a pointer to this spec, docs-dev/imports.md updated, the cases page regenerated, #217 closed. The README and CHANGELOG are left to v3's release.

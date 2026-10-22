@@ -46,7 +46,7 @@ describe('an undeclared name is an error with the in-body message', () => {
       expect.objectContaining({
         code: ErrorCodes.unresolvedParam,
         path: ['b'],
-        message: "'$params.z': the fragment declares no parameter 'z' — did you mean 'x'?",
+        message: "'$params.z': the fragment declares no parameter 'z'",
       }),
     ])
   })
