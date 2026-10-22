@@ -601,7 +601,7 @@ export const operatorListings: OperatorListingMap = {
   // expire every request
   http: {
     displayName: 'HTTP request',
-    description: 'One HTTP request — GET or POST — returning the parsed JSON response',
+    description: 'Send an HTTP request, and return its JSON response',
     docUrl: DOCS,
     backgroundColor: '#eeedd2',
     textColor: '#3a3f18',
@@ -611,20 +611,18 @@ export const operatorListings: OperatorListingMap = {
       timeout: 5000,
     },
     parameterDescriptions: {
-      url: 'A full http(s) URL is used verbatim; anything else — including an empty string — joins http.baseEndpoint',
-      method: 'Lowercase; the mutating verbs are deliberately absent — an expression is a read',
-      query: 'Query-string pairs; a null value omits its pair, a composite one is an error',
-      body: 'The JSON payload; a whole-null body means NO body, while nulls inside one are JSON nulls',
-      headers:
-        'Merged over the http.headers option per key; a null value removes an inherited pair',
-      returnPath: 'Dot/bracket path or segments array applied to the response; a miss is null',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      url: "The URL to request; one without http:// or https:// is joined to the instance's base endpoint",
+      method: 'The request method',
+      query: 'Query string parameters; any whose value is null are omitted',
+      body: 'The body to send as JSON, for a POST',
+      headers: "Headers to send, added to the instance's; any set to null are omitted",
+      returnPath: 'The part of the response to return, as a path like a $data reference',
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
   graphQL: {
     displayName: 'GraphQL query',
-    description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
+    description: "Send a GraphQL query, and return the response's data",
     docUrl: DOCS,
     backgroundColor: '#e3e8c2',
     textColor: '#3a3f18',
@@ -636,33 +634,27 @@ export const operatorListings: OperatorListingMap = {
       timeout: 5000,
     },
     parameterDescriptions: {
-      query: 'The GraphQL document — the protocol’s own word, as sql.query is',
-      variables:
-        'Query variables; a null value is CARRIED as JSON null, a nullable argument being meaningful GraphQL',
-      url: 'Per-node endpoint override; unset means the graphQL.endpoint option',
-      headers: 'Merged over http.headers then graphQL.headers; a null value removes a pair',
-      returnPath: 'Dot/bracket path or segments array applied to the response; a miss is null',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      query: 'The GraphQL query',
+      variables: "The query's variables",
+      url: "The endpoint, in place of the instance's",
+      headers: "Headers to send, added to the instance's; any set to null are omitted",
+      returnPath: 'The part of the response to return, as a path like a $data reference',
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
   sql: {
     displayName: 'SQL query',
-    description:
-      'One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side',
+    description: 'Run an SQL query, and return its rows',
     docUrl: DOCS,
     backgroundColor: '#d2e2b1',
     textColor: '#3a3f18',
     seeds: { query: 'SELECT contact_name FROM customers LIMIT 5', timeout: 5000 },
     parameterDescriptions: {
-      query: 'SQL text with the driver’s own placeholders — FigTree never parses SQL',
-      values: 'Bind values — positional as an array, named as an object; a null binds SQL NULL',
-      shape:
-        'rows: every row object; firstRow: the first; column: one column’s values; firstValue: one scalar',
-      noRowDefault:
-        'The answer when firstRow / firstValue find no row — never for rows / column, never on failure',
-      timeout:
-        'Per-request deadline in ms; expiry is an ordinary failure this node’s fallback catches',
+      query: "The query, with placeholders in the database's own style, such as $1",
+      values: "The values for the query's placeholders",
+      shape: "What to return: every row, the first row, one column's values, or the first value",
+      noRowDefault: "What 'firstRow' or 'firstValue' return when there's no row",
+      timeout: 'The longest the request can take, in milliseconds',
     },
   },
 
