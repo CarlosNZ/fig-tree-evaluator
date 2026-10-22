@@ -11,14 +11,16 @@
  * Three forms. `index` is the operators page's index: every operator's name,
  * by category, each linking to its entry. `all` is the page's entries: every
  * operator, under a heading per category that stays pinned while its
- * operators scroll beneath it. The page puts its own sections between the
+ * operators scroll beneath it, with the category's own note, where it has
+ * one, before its first operator. The page puts its own sections between the
  * two. `names` is a short list of chosen operators for any other page, which
  * can show each one's category as a pill.
  */
 import { render } from 'astro:content'
 import { figTree } from '../lib/figTree'
 import { catalog, categoryId, operatorGroups, type CatalogOperator } from '../lib/operatorCatalog'
-import { loadOperatorNotes } from '../lib/operatorNotes'
+import { loadCategoryNotes, loadOperatorNotes } from '../lib/operatorNotes'
+import Expression from './Expression.astro'
 import OperatorEntry from './OperatorEntry.astro'
 
 type Props =
@@ -38,6 +40,7 @@ type Props =
     }
 
 const notes = await loadOperatorNotes(catalog)
+const categoryNotes = await loadCategoryNotes(catalog)
 
 /** What an entry needs beside the operator: its category, note and notes body. */
 const withNotes = async (op: CatalogOperator) => {
@@ -53,10 +56,14 @@ const withNotes = async (op: CatalogOperator) => {
 const groups =
   'all' in Astro.props
     ? await Promise.all(
-        operatorGroups().map(async ({ category, operators }) => ({
-          category,
-          entries: await Promise.all(operators.map(withNotes)),
-        }))
+        operatorGroups().map(async ({ category, operators }) => {
+          const note = categoryNotes.get(category.name)
+          return {
+            category,
+            Notes: note?.body?.trim() ? (await render(note)).Content : null,
+            entries: await Promise.all(operators.map(withNotes)),
+          }
+        })
       )
     : null
 
@@ -99,12 +106,17 @@ const index = 'index' in Astro.props ? operatorGroups() : null
     )
   }
   {
-    groups?.map(({ category, entries }) => (
+    groups?.map(({ category, Notes, entries }) => (
       <section class="fds-ref-category" style={`--fds-category:${category.backgroundColor}`}>
         {/* The id is the heading's, which the page's contents list tracks */}
         <h2 class="fds-ref-category-header" id={categoryId(category.name)}>
           {category.displayName}
         </h2>
+        {Notes && (
+          <div class="fds-ref-category-notes">
+            <Notes components={{ Expression }} />
+          </div>
+        )}
         {entries.map((entry) => (
           <OperatorEntry {...entry} />
         ))}

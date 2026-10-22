@@ -667,6 +667,15 @@
   color: var(--sl-color-white);
 }
 
+/* A category's own note, between its heading and its first operator */
+.fds-ref-category-notes {
+  margin: 0 0 1.5rem;
+}
+
+.fds-ref-category-notes > :is(p, ul, ol) {
+  margin: 0.6rem 0;
+}
+
 /* A link to an operator lands it below its category's pinned heading */
 .fds-ref-category .fds-op {
   scroll-margin-top: 3.5rem;
@@ -674,23 +683,31 @@
 
 /*
  * The reference is `not-content`, which turns off Starlight's styles for
- * page text, so its prose (descriptions, notes and the Description column)
- * takes back the page's inline code and links. Code in the other columns,
- * and in a note's examples, keeps the reference's own plain style.
+ * page text, so its prose (category notes, descriptions and operator notes),
+ * its parameter tables and the lines below them take back the page's inline
+ * code and links. Code in a note's examples keeps the examples' own style.
  */
-:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) code {
-  background-color: var(--sl-color-bg-inline-code);
-  margin-block: -0.125rem;
-  padding: 0.125rem 0.375rem;
-  font-size: var(--sl-text-code-sm);
-}
+:is(
+  .fds-ref-category-notes > :is(p, ul, ol),
+  .fds-op-description,
+  .fds-op-notes > :is(p, ul, ol),
+  .fds-op-params td,
+  .fds-op-meta p
+) {
+  & code {
+    background-color: var(--sl-color-bg-inline-code);
+    margin-block: -0.125rem;
+    padding: 0.125rem 0.375rem;
+    font-size: var(--sl-text-code-sm);
+  }
 
-:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) a {
-  color: var(--sl-color-text-accent);
-}
+  & a {
+    color: var(--sl-color-text-accent);
+  }
 
-:is(.fds-op-description, .fds-op-notes > :is(p, ul, ol), .fds-op-params td:last-child) a:hover {
-  color: var(--sl-color-white);
+  & a:hover {
+    color: var(--sl-color-white);
+  }
 }
 
 /* The docs' own longer notes on an operator (src/content/operator-notes/) */
@@ -776,10 +793,11 @@
   white-space: nowrap;
 }
 
-/* A parameter's evaluation tag, beside its name */
+/* A parameter's evaluation tag, on its own line under the name */
 .fds-op-tag {
-  display: inline-block;
-  margin-left: 0.4rem;
+  display: block;
+  width: fit-content;
+  margin-top: 0.5rem;
   cursor: help;
   white-space: nowrap;
   font-size: var(--sl-text-xs);

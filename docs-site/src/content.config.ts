@@ -27,4 +27,15 @@ export const collections = {
       })
       .strict(),
   }),
+  // The docs' notes on a whole category of operators, shown under its
+  // heading on the operators page, one file per category, named by the
+  // category's name (src/lib/operatorNotes.ts)
+  categoryNotes: defineCollection({
+    loader: glob({
+      pattern: '*.mdx',
+      base: './src/content/category-notes',
+      generateId: ({ entry }) => entry.replace(/\.mdx$/, ''),
+    }),
+    schema: z.object({}).strict(),
+  }),
 }

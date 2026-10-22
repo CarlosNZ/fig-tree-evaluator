@@ -86,3 +86,25 @@ export const loadOperatorNotes = async (catalog: Catalog): Promise<Map<string, N
   if (problems.length > 0) throw new Error(`Operator notes:\n\n${problems.join('\n\n')}`)
   return new Map(notes.map((note) => [note.id, note]))
 }
+
+/**
+ * Every category note (src/content/category-notes/<category>.mdx): what
+ * applies to all or most of a category's operators, shown under its heading.
+ * Each must name one of the catalog's categories, or the build stops.
+ */
+export const loadCategoryNotes = async (
+  catalog: Catalog
+): Promise<Map<string, CollectionEntry<'categoryNotes'>>> => {
+  const notes = await getCollection('categoryNotes')
+  const unknown = notes.filter((note) => !catalog.categories.some((c) => c.name === note.id))
+  if (unknown.length > 0)
+    throw new Error(
+      `Category notes:\n\n${unknown
+        .map(
+          (note) =>
+            `src/content/category-notes/${note.id}.mdx: there's no category named '${note.id}'`
+        )
+        .join('\n\n')}`
+    )
+  return new Map(notes.map((note) => [note.id, note]))
+}
