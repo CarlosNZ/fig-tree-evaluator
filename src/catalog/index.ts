@@ -248,9 +248,8 @@ export const operatorListings: OperatorListingMap = {
     textColor: '#193e1e',
     seeds: { values: [1, 2, 3] },
     parameterDescriptions: {
-      values: 'The values to add: all numbers, all strings, all arrays or all objects',
-      expect:
-        "The type every value must be; with it, an empty list returns that type's empty value",
+      values: 'The values to add, all of the same type',
+      expect: 'The type the values must be — needed when the list could be empty',
       nullValueDefault: 'Replaces any null operand before the addition',
     },
   },
@@ -289,17 +288,20 @@ export const operatorListings: OperatorListingMap = {
   },
   modulo: {
     displayName: 'Modulo',
-    description:
-      'The remainder after dividing value by mod — it takes the sign of mod, so -7 modulo 3 is 2',
+    description: 'The remainder after dividing one number by another, with the sign of the divisor',
     docUrl: DOCS,
     backgroundColor: '#c3e7c6',
     textColor: '#193e1e',
     seeds: { value: 10, mod: 3 },
-    parameterDescriptions: { value: 'The number to divide', mod: 'The number to divide by' },
+    parameterDescriptions: {
+      value: 'The number to divide',
+      mod: 'The number to divide by (the modulus)',
+    },
   },
   power: {
     displayName: 'Power (^)',
-    description: 'Raise a base to an exponent — overflow and complex results fail',
+    description:
+      "Raise a base to an exponent — overflow, and results that aren't real numbers, fail",
     docUrl: DOCS,
     backgroundColor: '#acddb1',
     textColor: '#193e1e',
@@ -308,15 +310,15 @@ export const operatorListings: OperatorListingMap = {
   },
   round: {
     displayName: 'Round',
-    description:
-      'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
+    description: 'Round to a number of decimal places — halfway values round away from zero',
     docUrl: DOCS,
     backgroundColor: '#d4edd8',
     textColor: '#193e1e',
     seeds: { value: 3.14159, decimals: 2 },
     parameterDescriptions: {
       value: 'The number to round',
-      decimals: 'Decimal places to keep; negative values round to powers of ten',
+      decimals:
+        'Decimal places to keep; a negative number rounds to tens (-1), hundreds (-2) and so on',
     },
   },
   floor: {
