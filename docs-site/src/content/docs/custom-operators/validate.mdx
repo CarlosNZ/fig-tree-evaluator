@@ -1,8 +1,8 @@
 ---
 title: Static checks
-description: 'The validate hook: catching bad literal parameters before anything runs'
+description: 'The validate hook and returns: catching mistakes before anything runs'
 sidebar:
-  order: 4
+  order: 5
 ---
 
 import { Aside } from '@astrojs/starlight/components'
@@ -26,3 +26,7 @@ The toolbox the hook receives.
 ## When it runs
 
 At `validate()`, `compile()` and the first `evaluate()` of an expression, and never for parameters only known at runtime.
+
+## Declaring what it returns
+
+`returns`, and the check it drives: a node whose declared result can't fit the parameter it feeds is an error when the expression is compiled. `returns` never includes `null`, and the engine never checks a body's result against it.

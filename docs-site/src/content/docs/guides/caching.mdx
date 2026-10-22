@@ -48,7 +48,7 @@ const fig = new FigTree({
 })
 ```
 
-Only `http`, `graphQL` and `sql` cache their results, along with any [custom operator](/custom-operators/evaluate/#the-context) written to. A failed request is never cached, so it's tried again next time. [Caching responses](/guides/http-and-sql/#caching-responses) has the rules for when two requests count as the same.
+Only `http`, `graphQL` and `sql` cache their results, along with any [custom operator](/custom-operators/evaluate/#caching) written to. A failed request is never cached, so it's tried again next time. [Caching responses](/guides/http-and-sql/#caching-responses) has the rules for when two requests count as the same.
 
 ## Turning caching off
 

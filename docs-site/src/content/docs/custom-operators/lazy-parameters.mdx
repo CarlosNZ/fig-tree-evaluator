@@ -1,0 +1,36 @@
+---
+title: Lazy and per-element parameters
+description: 'Parameters the body evaluates itself: on demand, per element, or as a race'
+sidebar:
+  order: 4
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## When a parameter isn't evaluated up front
+
+What the non-eager modes are for (conditionals, iterators, short-circuiting), and the checks still applied when the body evaluates a value. `nullPolicy: 'propagate'` has no effect on these parameters, and a value that arrives dynamically (from data, say) is already resolved.
+
+## `lazy`
+
+A `LazyValue`: evaluated when the body asks, at most once.
+
+## `lazyElements` and `lazyEntries`
+
+An array, or an object, of `LazyValue`s, each evaluated on its own: stopping early is the body not asking for more.
+
+## `perElement`
+
+A `PerElement` handle over the `over` sibling: each index evaluated in its own scope binding `$element` and `$index`, renamed by a `structural` `as` parameter. `settle()` for every index at once.
+
+## `race`
+
+A settlement stream: every element started at once, settlements delivered as they complete. Failures are delivered, not thrown; with no element deciding the result, the body raises the lowest-index failure with the others attached as `related`. Returning cancels the rest.
+
+## `structural`
+
+The literal value as written, never evaluated; a dynamic value is an error when the expression is compiled.

@@ -17,7 +17,7 @@ A complete, small example from definition to evaluation.
 
 ## The definition
 
-The parts of a definition: `name`, `alias`, `category`, `parameters`, `positionalParams`, `returns`, and the `evaluate` body.
+Every field of a definition, each in a line or two with a link to where it's covered: `name`, `alias`, `category`, `parameters` and `positionalParams` ([Parameters](/custom-operators/parameters/)), the `evaluate` body ([The evaluate body](/custom-operators/evaluate/)), `cache` and `timeoutParam` (The evaluate body), `validate` and `returns` ([Static checks](/custom-operators/validate/)), `analysis` ([Authoring](/tooling/authoring/#custom-operators)) and `metadata` (covered here: the engine never reads it, and `getOperators()` returns it as written).
 
 ## `defineOperator()`
 
@@ -25,8 +25,8 @@ What it checks, and why every registered operator must go through it.
 
 ## Registering
 
-Adding it to the `operators` option alongside `coreOperators`, and replacing or leaving out core operators.
+Adding it to the `operators` option alongside `coreOperators`. Kept short: choosing and leaving out operators, `operatorSet` included, is covered in [Choosing operators](/guides/setup/#choosing-operators).
 
 ## What the engine does for you
 
-Type checks, null handling, defaults, truthiness and `fallback` all happen before or after the body runs, so the body holds only the operator's own logic.
+Type checks, null handling, defaults, truthiness and `fallback` all happen before or after the body runs, so the body holds only the operator's own logic. The checks on what the body returns: `undefined` becomes `null`, a result that isn't a finite number fails (`non-finite-result`), and returning a lazy handle instead of its value is an error.
