@@ -258,6 +258,15 @@ describe('canonicalForm', () => {
     expect(canonicalForm).toMatchObject({ shape: { list: [1, '<hole>'] } })
   })
 
+  test('the substitutions a template desugars into sit at the template (#261)', () => {
+    const { canonicalForm } = report({ $buildString: 'Hi {{$data.name}}' })
+    if (canonicalForm.kind !== 'operator') throw new Error('unreachable')
+    expect(canonicalForm.params.substitutions).toMatchObject({
+      kind: 'skeleton',
+      path: ['$buildString'],
+    })
+  })
+
   test('operatorDefaults show as the keys they apply; noCache as authored', () => {
     const { canonicalForm } = report(
       { $join: ['a', '$data.b'], noCache: true },

@@ -1026,15 +1026,19 @@ const compileTemplate = (state: WalkState, node: OperatorNode) => {
   }
   if (holes.length === 0) return
 
-  node.params.substitutions = growSubstitutions(state, node, supplied, holes)
+  node.params.substitutions = growSubstitutions(state, supplied, holes, template.path)
 }
 
-/** The authored map plus the desugared references, as one skeleton. */
+/**
+ * The authored map plus the desugared references, as one skeleton. With no
+ * `substitutions` written, the skeleton is located at the template, where
+ * its tokens are: a path in the input, as every trace entry's must be.
+ */
 const growSubstitutions = (
   state: WalkState,
-  node: OperatorNode,
   supplied: CompiledNode | undefined,
-  injected: SkeletonHole[]
+  injected: SkeletonHole[],
+  templatePath: LinkedPath
 ): SkeletonNode => {
   // The walk built the skeleton node this compile, and splicing copies
   // before it writes, so neither half needs a copy here
@@ -1046,7 +1050,7 @@ const growSubstitutions = (
     kind: 'skeleton',
     skeleton: supplied?.kind === 'constant' ? supplied.value : {},
     holes: injected,
-    path: supplied?.path ?? extendPath(node.path, 'substitutions'),
+    path: supplied?.path ?? templatePath,
     order: supplied?.order ?? state.order++,
   }
 }
