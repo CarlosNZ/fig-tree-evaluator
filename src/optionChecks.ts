@@ -15,7 +15,7 @@
  */
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
-import type { FigTreeOptions } from './options'
+import type { CallOptions, FigTreeOptions } from './options'
 import { isPlainDataObject } from './plainData'
 import type { CacheStore } from './types'
 import { didYouMean, nearestName } from './utils'
@@ -60,7 +60,7 @@ const headers: Check = [
         typeof header === 'number' ||
         typeof header === 'boolean'
     ),
-  'an object of strings, numbers or booleans',
+  'an object of strings, numbers, booleans or nulls',
 ]
 
 /**
@@ -140,28 +140,79 @@ export const optionIssues = (options: object): Issue[] => {
   return issues
 }
 
+/**
+ * The path is built only for an issue or a block to descend into: the
+ * call's own options are checked on every evaluation, and a clean key
+ * should cost no more than its rule.
+ */
 const checkBlock = (block: object, rules: Rules, path: string[], issues: Issue[]): void => {
   for (const [key, value] of Object.entries(block)) {
     if (value === undefined) continue
-    const at = [...path, key]
-    const name = `'${at.join('.')}'`
     const rule = Object.hasOwn(rules, key) ? rules[key] : undefined
-    if (rule === undefined) {
-      const suggestion = nearestName(key, Object.keys(rules))
-      issues.push({
-        ...error(`${name} is not an option${didYouMean(suggestion)}`, at),
-        ...(suggestion !== undefined ? { suggestion } : {}),
-      })
-    } else if (Array.isArray(rule)) {
-      if (!rule[0](value)) issues.push(error(`${name} must be ${rule[1]}`, at))
-    } else if (!isPlainDataObject(value)) issues.push(error(`${name} must be an object`, at))
-    else checkBlock(value, rule, at, issues)
+    if (rule === undefined) issues.push(unknownKeyIssue(key, Object.keys(rules), [...path, key]))
+    else if (Array.isArray(rule)) {
+      if (!rule[0](value)) issues.push(error(`must be ${rule[1]}`, [...path, key]))
+    } else if (!isPlainDataObject(value)) issues.push(error('must be an object', [...path, key]))
+    else checkBlock(value, rule, [...path, key], issues)
   }
 }
 
-const error = (message: string, path: string[]): Issue => ({
+/**
+ * The request-scoped options — the whole of what a call may supply
+ * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
+ * The keys of `CallOptions`, spelled out because a type has no runtime
+ * form. The `satisfies` holds the two in step in both directions: a
+ * `Record` over the type's keys must name every one of them, and an excess
+ * key is refused, so a key added to `CallOptions` and not here (or the
+ * reverse) fails the build.
+ */
+const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
+  keyof CallOptions,
+  unknown
+>
+
+/**
+ * The problem with one of a call's own options, or nothing. Each is a
+ * single value with a rule of its own, so the call's loop over its keys
+ * checks them as it goes, with no second walk and nothing allocated for a
+ * clean call.
+ *
+ * A key that is an option but not a per-call one is refused by naming the
+ * request-scoped set, since the caller's next question is what IS
+ * allowed. `cache` is the one that might have been expected to work — the
+ * store is instance-lived, so a per-call block could only ever be
+ * ignored, and refusing is the reversible direction: honouring it later
+ * is additive, where quietly ignoring it and then honouring it would
+ * change the meaning of expressions already in the field. A key that is
+ * no option at all is refused as one, its did-you-mean drawn from the
+ * per-call keys alone, since suggesting an instance option would only
+ * lead to the refusal above.
+ */
+export const callOptionIssue = (key: string, value: unknown): Issue | undefined => {
+  if (Object.hasOwn(CALL_OPTION_KEYS, key)) {
+    const [test, expects] = OPTION_RULES[key as keyof CallOptions]
+    return test(value) ? undefined : error(`must be ${expects}`, [key])
+  }
+  if (Object.hasOwn(OPTION_RULES, key))
+    return error(
+      'is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()',
+      [key]
+    )
+  return unknownKeyIssue(key, Object.keys(CALL_OPTION_KEYS), [key])
+}
+
+const unknownKeyIssue = (key: string, known: string[], path: string[]): Issue => {
+  const suggestion = nearestName(key, known)
+  return {
+    ...error(`is not an option${didYouMean(suggestion)}`, path),
+    ...(suggestion !== undefined ? { suggestion } : {}),
+  }
+}
+
+/** An issue about the option at `path`, its message led by the option. */
+const error = (problem: string, path: string[]): Issue => ({
   severity: 'error',
   code: ErrorCodes.invalidOptions,
-  message,
+  message: `'${path.join('.')}' ${problem}`,
   path,
 })

@@ -82,10 +82,14 @@ export interface RegistryInput {
 const MODIFIER_KEYS = ['fallback', 'noCache']
 
 /**
- * `issues` holds what was already found wrong with the rest of the options
- * (src/optionChecks.ts), so the one throw reports those too.
+ * `priorIssues` holds what was already found wrong with the rest of the
+ * options (src/optionChecks.ts), so the one throw reports those too.
  */
-export const buildRegistry = (input: RegistryInput, issues: Issue[] = []): OperatorRegistry => {
+export const buildRegistry = (
+  input: RegistryInput,
+  priorIssues: readonly Issue[] = []
+): OperatorRegistry => {
+  const issues = [...priorIssues]
   const addIssue = (code: string, message: string, path: Path, operator?: string) => {
     issues.push({
       severity: 'error',

@@ -71,19 +71,19 @@ describe('http and graphQL', () => {
       'string headers',
       { http: { headers: 'Bearer x' } },
       ['http', 'headers'],
-      "'http.headers' must be an object of strings, numbers or booleans",
+      "'http.headers' must be an object of strings, numbers, booleans or nulls",
     ],
     [
       'array headers',
       { http: { headers: ['Bearer x'] } },
       ['http', 'headers'],
-      "'http.headers' must be an object of strings, numbers or booleans",
+      "'http.headers' must be an object of strings, numbers, booleans or nulls",
     ],
     [
       'an object header value',
       { http: { headers: { Authorization: { token: 'x' } } } },
       ['http', 'headers'],
-      "'http.headers' must be an object of strings, numbers or booleans",
+      "'http.headers' must be an object of strings, numbers, booleans or nulls",
     ],
     ['a string graphQL block', { graphQL: 'x' }, ['graphQL'], "'graphQL' must be an object"],
     [
@@ -96,7 +96,7 @@ describe('http and graphQL', () => {
       'string graphQL headers',
       { graphQL: { headers: 'x' } },
       ['graphQL', 'headers'],
-      "'graphQL.headers' must be an object of strings, numbers or booleans",
+      "'graphQL.headers' must be an object of strings, numbers, booleans or nulls",
     ],
   ])('%s is refused', (_label, options, path, message) => {
     const error = thrown(construct(options))
@@ -147,6 +147,46 @@ describe('trace and strictDataPaths take a boolean', () => {
     )
     expect(error.code).toBe('invalid-options')
     expect(error.message).toBe("'trace' must be true or false")
+  })
+
+  it.each([
+    [
+      'a misspelt per-call key',
+      'tracee',
+      "'tracee' is not an option — did you mean 'trace'?",
+      'trace',
+    ],
+    // Suggesting `maxDepth` would only lead to the refusal below
+    ['a misspelt instance key', 'maxdepth', "'maxdepth' is not an option", undefined],
+    [
+      'an instance option',
+      'maxDepth',
+      "'maxDepth' is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()",
+      undefined,
+    ],
+  ])('%s is refused per call', async (_label, key, message, suggestion) => {
+    const error = await rejection<FigTreeError>(
+      new FigTree().evaluate({ $plus: [1] }, { [key]: 5 } as never)
+    )
+    expect(error.code).toBe('invalid-options')
+    expect(error.message).toBe(message)
+    expect(error.path).toEqual([key])
+    expect(error.issues?.[0].suggestion).toBe(suggestion)
+  })
+
+  it("a call's problems are reported in one throw", async () => {
+    const error = await rejection<FigTreeError>(
+      new FigTree().evaluate({ $plus: [1] }, {
+        timeout: -1,
+        data: {},
+        trace: 'yes',
+        maxDepth: 3,
+      } as never)
+    )
+    expect(error.issues?.map((issue) => issue.path)).toEqual([['timeout'], ['trace'], ['maxDepth']])
+    expect(error.message).toBe(
+      "'timeout' must be a positive number of milliseconds (+ 2 more issues)"
+    )
   })
 })
 
