@@ -12,7 +12,7 @@
  * are asserted here as the record of what was chosen. Timings are not:
  * `elapsed` is read for presence only.
  */
-import { FigTree, ErrorCodes, coreOperators, httpOperators } from '../src'
+import { FigTree, ErrorCodes, coreOperators, httpOperators, resolvePath } from '../src'
 import type { EvaluationResult, FigTreeError, TraceNode } from '../src'
 import type { FragmentDefinition, ValidatedOperatorDefinition } from '../src'
 import { boomOp, latencyOp, sleepOp } from './fixtures/evalOperators'
@@ -346,6 +346,60 @@ describe('a hole the shielded deadline cut off is traced as a caught failure', (
     const trace = await traceOf(fig, { a: { $slow: {} } })
     expect(at(trace, ['a'])).toMatchObject(answeredBy('late'))
     expect(at(trace, ['a', 'fallback'])).toBeUndefined()
+  })
+})
+
+// ── Paths ───────────────────────────────────────────────────────────
+
+describe("every entry's path resolves in the input", () => {
+  // A body entry's path is in its fragment's body, not the input, so
+  // `source` marks it out
+  const unresolved = async (expression: unknown) => {
+    const fig = new FigTree({
+      operators: [coreOperators, boomOp()],
+      fragments: {
+        double: {
+          expression: { $plus: ['$params.n', '$params.n'] },
+          parameters: { n: { type: 'number' } },
+        },
+      },
+    })
+    const trace = await traceOf(fig, expression, { data: { name: 'Ana', list: [1, 2] } })
+    return flatten(trace)
+      .filter((entry) => entry.source === undefined)
+      .filter((entry) => !resolvePath(expression, entry.path).found)
+      .map((entry) => ({ kind: entry.kind, path: entry.path }))
+  }
+
+  it.each<[string, unknown]>([
+    ['a positional template', { $buildString: 'Hi {{$data.name}}' }],
+    ['a named template', { greeting: { $buildString: { template: 'Hi {{$data.name}}' } } }],
+    ['a canonical template', { operator: 'buildString', template: 'Hi {{$data.name}}' }],
+    [
+      'a template beside authored substitutions',
+      { $buildString: { template: '{{$data.name}}{{mark}}', substitutions: { mark: '!' } } },
+    ],
+    ['positional arguments', { $plus: [1, { $plus: [2, '$data.list[0]'] }] }],
+    ['a plain-object root', { a: '$data.name', b: { c: [1, '$data.list'] } }],
+    ['an iterator', { $map: { input: '$data.list', each: { $plus: ['$element', 1] } } }],
+    ['vars', { vars: { x: { $plus: [1, 2] } }, a: '$vars.x' }],
+    ['an untaken branch', { $if: [true, 'yes', { $plus: [1, 2] }] }],
+    ['a fallback that fired', { $boom: 'x', fallback: { $plus: [1, 2] } }],
+    ['a fragment call', { out: { $double: { n: 4 } } }],
+  ])('%s', async (_, expression) => {
+    expect(await unresolved(expression)).toEqual([])
+  })
+
+  it('locates the substitutions a template desugars into at the template (#261)', async () => {
+    const trace = await traceOf(
+      setup(),
+      { greeting: { $buildString: { template: 'Hi {{$data.name}}' } } },
+      { data: { name: 'Ana' } }
+    )
+    const skeleton = flatten(trace).find(
+      (entry) => entry.kind === 'skeleton' && entry.path.length > 0
+    )
+    expect(skeleton?.path).toEqual(['greeting', '$buildString', 'template'])
   })
 })
 
