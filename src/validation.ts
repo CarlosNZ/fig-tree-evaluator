@@ -8,8 +8,9 @@
  * One module so that `validate()` and `inspect()` report the same list by
  * construction: both assemble it through `validationIssues`, so neither
  * can reorder or omit a check the other runs. `evaluate()`'s static gate
- * reads the limit checks alone, the sample-data check being a warning,
- * which never gates.
+ * and a compiled expression's `issues` read the limit checks alone,
+ * through `gateIssues`, the sample-data check being a warning, which never
+ * gates.
  */
 import {
   renderDataReference,
@@ -40,16 +41,26 @@ export const limitIssues = (artifact: CompileArtifact, options: EvaluationOption
 }
 
 /**
- * What the static gate reads: the limit checks then the compile stream, in
- * `validate()`'s order, so the first error is the one `evaluate()` throws
- * and the whole list is what the thrown error carries. Empty, without
- * assembling anything, when it could hold no error: the compile set no
- * error flag and no limit is in force. `evaluate()` and `fallbackCoverage`
- * both read it, so they refuse the same expressions by construction.
+ * The limit checks then the compile stream, in `validate()`'s order: the
+ * list the static gate throws with, and a compiled expression's `issues`,
+ * which is that list under the handle's pinned options.
+ */
+export const gateIssues = (artifact: CompileArtifact, options: EvaluationOptions): Issue[] => [
+  ...limitIssues(artifact, options),
+  ...artifact.issues.map((s) => s.issue),
+]
+
+/**
+ * What the static gate reads: `gateIssues`, so the first error is the one
+ * `evaluate()` throws and the whole list is what the thrown error carries.
+ * Empty, without assembling anything, when it could hold no error: the
+ * compile set no error flag and no limit is in force. `evaluate()` and
+ * `fallbackCoverage` both read it, so they refuse the same expressions by
+ * construction.
  */
 export const staticGate = (artifact: CompileArtifact, options: EvaluationOptions): Issue[] =>
   artifact.hasErrors || options.maxDepth !== undefined || options.maxNodes !== undefined
-    ? [...limitIssues(artifact, options), ...artifact.issues.map((s) => s.issue)]
+    ? gateIssues(artifact, options)
     : []
 
 export const depthIssue = (measured: number, limit: number): Issue => ({

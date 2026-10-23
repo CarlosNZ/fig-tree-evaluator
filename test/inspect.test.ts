@@ -525,7 +525,9 @@ describe('issues', () => {
     const fig = build(options)
     const compiled = fig.compile(expression)
     const { issues } = inspect(compiled)
-    expect(issues.filter((issue) => issue.order !== undefined)).toHaveLength(compiled.issues.length)
+    // The handle's issues are the limit errors, then the compile stream
+    const stream = compiled.issues.filter((issue) => issue.code !== ErrorCodes.maxNodesExceeded)
+    expect(issues.filter((issue) => issue.order !== undefined)).toHaveLength(stream.length)
     expect(issues[0]).not.toHaveProperty('order')
     expect(issues[issues.length - 1]).not.toHaveProperty('order')
   })
