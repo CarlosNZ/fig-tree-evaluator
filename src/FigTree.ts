@@ -309,10 +309,15 @@ export class FigTree<Trace extends boolean = false> {
   }
 
   /**
-   * A snapshot, never live internals: mutating what comes back cannot
-   * reach the instance. The registry keys are excluded — `getOperators()`
-   * and `getFragments()` are their richer home, and the closures inside a
-   * definition do not snapshot meaningfully.
+   * A copy two levels deep, the merge rule's depth: replacing a key at the
+   * top level or inside a block such as `http` or `cache` leaves the
+   * instance untouched. Every object below that is the instance's own,
+   * shared by reference (`http.headers`, `data`'s values, the `signal`, a
+   * `cache.store`), so what comes back is read-only: mutating one of those
+   * changes the instance (`copyOptions` gives the reasons). The registry
+   * keys are excluded — `getOperators()` and `getFragments()` are their
+   * richer home, and the closures inside a definition do not snapshot
+   * meaningfully.
    *
    * Options are reported **as supplied**, not as effective: no default is
    * materialized into the result. That is deliberately the opposite of
@@ -328,21 +333,32 @@ export class FigTree<Trace extends boolean = false> {
    * Every registered operator, in registration order ("Introspection:
    * `getOperators()`" in docs-dev/v3-specs/v3-operator-contract.md).
    *
-   * A snapshot, never live definitions: mutating what comes back cannot
-   * reach the registry. The declarative half is reported verbatim and
-   * total — normalization has already filled every documented default, so
-   * this is the effective declaration rather than the authored sparseness
-   * — with any `operatorDefaults` override reported BESIDE the authored
-   * value rather than merged over it, so a tool can tell what the
-   * operator declares from what this host set.
+   * A fresh array of fresh operator and parameter objects on every call,
+   * so reassigning their fields leaves the registry untouched. Below that
+   * the result shares the registry's own objects, so it is read-only: most
+   * are frozen, but a host's `metadata`, object-valued defaults and
+   * `operatorDefaults` values are not, and mutating one changes what this
+   * instance reports and, for a default, what it evaluates
+   * (`operatorSnapshot` gives the reasons).
+   *
+   * The declarative half is reported verbatim and total — normalization
+   * has already filled every documented default, so this is the effective
+   * declaration rather than the authored sparseness — with any
+   * `operatorDefaults` override reported BESIDE the authored value rather
+   * than merged over it, so a tool can tell what the operator declares
+   * from what this host set.
    */
   getOperators(): OperatorInfo[] {
     return operatorSnapshot(this.state.registry)
   }
 
   /**
-   * Every registered fragment, same posture and order ("Introspection &
-   * housekeeping methods" in docs-dev/v3-specs/v3-evaluator-methods.md).
+   * Every registered fragment, in registration order ("Introspection &
+   * housekeeping methods" in docs-dev/v3-specs/v3-evaluator-methods.md),
+   * and read-only below its top tier as `getOperators()` is: fresh arrays
+   * and fragment and parameter objects, but `metadata`, parameter defaults
+   * and the issues in `warnings` are the registry's own.
+   *
    * The body is withheld — a fragment is the host's own registration, and
    * the editor consumes the declaration surface — so the body's warnings
    * and its dependency rollup are reported in its place.

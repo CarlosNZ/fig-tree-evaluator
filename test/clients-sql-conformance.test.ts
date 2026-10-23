@@ -10,10 +10,27 @@
  * belongs to the `sql` operator, which is why nothing here knows about
  * them.
  */
-import { OperatorFailure, PostgresConnection, SQLiteConnection } from '../src'
-import type { PgClientLike, SqlConnection, SqliteDatabaseLike } from '../src'
+import {
+  ErrorCodes,
+  OperatorFailure,
+  PostgresConnection,
+  SQLiteConnection,
+  isFigTreeError,
+} from '../src'
+import type { FigTreeError, PgClientLike, SqlConnection, SqliteDatabaseLike } from '../src'
 import { MockSqlConnection } from './helpers'
 import { rejection } from './helpers/rejection'
+
+/** A constructor's throw, which has to be a `FigTreeError`. */
+const refusal = (construct: () => unknown): FigTreeError => {
+  try {
+    construct()
+  } catch (error) {
+    if (isFigTreeError(error)) return error
+    throw error
+  }
+  throw new Error('expected construction to throw')
+}
 
 const ROWS = [
   { id: 1, name: 'Ada' },
@@ -136,7 +153,11 @@ describe('PostgresConnection', () => {
 
   it('refuses anything that is not a client', () => {
     // @ts-expect-error — the likely mistake: a config object, not a client
-    expect(() => new PostgresConnection({ host: 'localhost' })).toThrow(/node-postgres/)
+    expect(refusal(() => new PostgresConnection({ host: 'localhost' }))).toMatchObject({
+      code: ErrorCodes.invalidOptions,
+      path: [],
+      message: expect.stringMatching(/node-postgres/),
+    })
   })
 })
 
@@ -177,6 +198,10 @@ describe('SQLiteConnection', () => {
   it('refuses anything that is not a database', () => {
     // @ts-expect-error — the likely mistake: the sqlite3 module rather
     // than an open Database
-    expect(() => new SQLiteConnection({ open: () => {} })).toThrow(/sqlite Database/)
+    expect(refusal(() => new SQLiteConnection({ open: () => {} }))).toMatchObject({
+      code: ErrorCodes.invalidOptions,
+      path: [],
+      message: expect.stringMatching(/sqlite Database/),
+    })
   })
 })

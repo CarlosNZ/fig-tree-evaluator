@@ -196,10 +196,12 @@ export const mergeOptions = (instance: FigTreeOptions, update: OptionsUpdate): F
 
 /**
  * A defensive copy at the merge rule's depth: a fresh top level and a
- * fresh copy of every plain data block, so nothing the instance holds is
- * still reachable from the object a caller passed in (or gets back).
+ * fresh copy of every plain data block, so replacing a key at either level,
+ * in the object a caller passed in or in one it gets back, never reaches
+ * the instance.
  *
- * Level three and below is shared by reference, deliberately. A caller's
+ * Level three and below is shared by reference, deliberately, so the
+ * objects there stay reachable from both sides and are read-only. A caller's
  * `data` values are theirs and results may share structure with them, and
  * an `AbortSignal` or a `CacheStore` cannot be cloned at all.
  */

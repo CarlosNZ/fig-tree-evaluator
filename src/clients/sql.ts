@@ -13,7 +13,8 @@
  * `pg` and `sqlite` are never dependencies of this package, so their types
  * are not imported — each wrapper declares the minimum shape it calls.
  */
-import { OperatorFailure } from '../OperatorFailure'
+import { ErrorCodes } from '../errorCodes'
+import { FigTreeError } from '../FigTreeError'
 import type { SqlConnection, SqlRequest } from '../types'
 import { sqlFailure } from './failures'
 
@@ -27,12 +28,19 @@ export interface SqliteDatabaseLike {
   all(sql: string, params?: unknown[] | Record<string, unknown>): Promise<Record<string, unknown>[]>
 }
 
+/**
+ * A constructor's refusal. It runs in the host's setup code, outside any
+ * evaluation, so nothing would wrap an `OperatorFailure` into the
+ * `FigTreeError` the host is promised: it is thrown as one, like the
+ * instance's own options errors.
+ */
+const configError = (message: string) =>
+  new FigTreeError({ code: ErrorCodes.invalidOptions, message, path: [] })
+
 export class PostgresConnection implements SqlConnection {
   constructor(private readonly client: PgClientLike) {
     if (typeof client?.query !== 'function')
-      throw new OperatorFailure(
-        'PostgresConnection(client): pass a connected node-postgres Client or Pool'
-      )
+      throw configError('PostgresConnection(client): pass a connected node-postgres Client or Pool')
   }
 
   query = async (req: SqlRequest): Promise<Record<string, unknown>[]> => {
@@ -64,7 +72,7 @@ export class PostgresConnection implements SqlConnection {
 export class SQLiteConnection implements SqlConnection {
   constructor(private readonly db: SqliteDatabaseLike) {
     if (typeof db?.all !== 'function')
-      throw new OperatorFailure('SQLiteConnection(db): pass an open sqlite Database')
+      throw configError('SQLiteConnection(db): pass an open sqlite Database')
   }
 
   query = async (req: SqlRequest): Promise<Record<string, unknown>[]> => {

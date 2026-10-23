@@ -116,11 +116,11 @@ export const toDependencies = (dependencies: ArtifactDependencies): Dependencies
  * host's override where `operatorDefaults` supplies one.
  *
  * `default` travels as authored, which includes the `EvaluationData`
- * sentinel (`get.from` declares it). That is a symbol: it survives a
- * structured clone and compares by identity against the package's export,
- * but JSON drops symbol-valued keys, so a consumer serializing the
- * snapshot must translate it first or the parameter reads as "optional,
- * no default" on the far side.
+ * sentinel (`get.from` declares it). That is a symbol, which compares by
+ * identity against the package's export but serializes badly both ways: a
+ * structured clone throws on it, and JSON drops symbol-valued keys. So a
+ * consumer serializing the snapshot must translate it first, or the clone
+ * fails, or the parameter reads as "optional, no default" on the far side.
  */
 export interface ParameterInfo extends ValidatedParameter {
   /**
@@ -140,9 +140,10 @@ export interface ParameterInfo extends ValidatedParameter {
  * re-declared, so a field added there is a compile error here until the
  * snapshot carries it. The exclusions are the contract's own: the brand
  * (a snapshot must not satisfy `isValidatedOperator`), the two functions
- * (`validate` travels as a flag, `evaluate` not at all) and the three
+ * (`validate` travels as a flag, `evaluate` not at all), the three
  * engine-internal derivations, `deliversLazily`, `resolution` and the
- * result-key `fingerprint`. `parameters` is re-declared only to widen its
+ * result-key `fingerprint`, and `analysis`, which only `./authoring`
+ * reads, from the registry. `parameters` is re-declared only to widen its
  * value to `ParameterInfo`.
  */
 export interface OperatorInfo extends Omit<
@@ -153,6 +154,7 @@ export interface OperatorInfo extends Omit<
   | 'deliversLazily'
   | 'resolution'
   | 'fingerprint'
+  | 'analysis'
   | 'parameters'
 > {
   parameters: Record<string, ParameterInfo>
@@ -224,12 +226,14 @@ export interface FragmentInfo {
  * the registry — they are synthesized anyway to carry the override keys.
  * Below that, the deep-frozen structures (`type`, compiled policy tables,
  * `constraints`, `replacesNullAt`, `positionalParams`, `returns`) are
- * shared safely, and `metadata` bags and `default` values knowingly: those
- * are host-owned and left unfrozen by `defineOperator()`, copying is
+ * shared safely, as is everything in the package's own artifacts (frozen
+ * through by `buildOperator`), and a host's `metadata` bags, `default`
+ * values and `operatorDefaults` values (`hostDefault`, `hostFallback`)
+ * knowingly: those are host-owned and left unfrozen, copying is
  * unavailable for data that may hold a function, and it would break an
  * identity comparison a host may rely on. So the rule is documented, not
- * enforced — don't mutate a metadata bag or a default value after
- * registering it.
+ * enforced — the snapshot is read-only below its first tier, and a host
+ * doesn't mutate a metadata bag or a default value after registering it.
  */
 export const operatorSnapshot = (registry: OperatorRegistry): OperatorInfo[] =>
   [...registry.operators.values()].map((entry) => {
