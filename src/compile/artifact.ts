@@ -535,6 +535,14 @@ export interface CompileArtifact extends Rollups {
 }
 
 /**
+ * The parameters written on an operator node, literal or dynamic — the
+ * `authored` argument a validate hook receives, from the static check and
+ * from `fallbackCoverage` alike.
+ */
+export const authoredNames = (node: OperatorNode): ReadonlySet<string> =>
+  new Set(Object.keys(node.params))
+
+/**
  * The `as` name this iterator binds under, or null for the default
  * `$element` / `$index` pair. The one definition of the convention the
  * contract's scoping generalization describes — a structural parameter

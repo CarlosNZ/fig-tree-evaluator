@@ -12,6 +12,7 @@
  * its own in the definition's `analysis` field. An operator with neither,
  * the I/O operators included, is external: it may fail whatever its inputs.
  */
+import { authoredNames } from '../compile/artifact'
 import { validateHelpers } from '../compile/helpers'
 import { coreOperators } from '../operators'
 import { isPlainObject } from '../utils'
@@ -236,7 +237,7 @@ const refused = (node: OperatorNode, name: string, inputs: Inputs): Answer => {
     const exact = exactValue(known)
     if (exact !== undefined && !inputs.absent.has(parameter)) literals[parameter] = exact.value
   }
-  const findings = validate(literals, validateHelpers, new Set(Object.keys(node.params)))
+  const findings = validate(literals, validateHelpers, authoredNames(node))
   return findings.some((finding) => finding.severity === 'error' && finding.parameter === name)
     ? 'yes'
     : 'no'

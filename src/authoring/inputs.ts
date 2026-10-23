@@ -8,7 +8,7 @@
  * then the type check and constraints.
  */
 import { isTruthy } from '../primitives/truthiness'
-import { nullMeansUnset, typeNamesNull } from '../typeCheck'
+import { defaultFor, NO_DEFAULT, nullMeansUnset, typeNamesNull } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
@@ -80,11 +80,10 @@ const defaultOf = (
   name: string,
   declared: ValidatedParameter
 ): Known | undefined => {
-  const defaults = node.entry.hostDefaults
-  if (defaults !== undefined && Object.hasOwn(defaults, name)) return exactly(defaults[name])
-  if (!('default' in declared)) return undefined
+  const fallback = defaultFor(node.entry, name, declared)
+  if (fallback === NO_DEFAULT) return undefined
   // The `EvaluationData` sentinel delivers the evaluation data
-  return typeof declared.default === 'symbol' ? ANY : exactly(declared.default)
+  return typeof fallback === 'symbol' ? ANY : exactly(fallback)
 }
 
 /** Whether a container-lazy parameter received its literal container. */

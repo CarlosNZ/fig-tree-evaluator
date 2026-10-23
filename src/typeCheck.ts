@@ -128,6 +128,35 @@ export const typeNamesNumber = (type: ExpectedType): boolean => {
 export const nullMeansUnset = (declared: { required: boolean; type: ExpectedType }): boolean =>
   !declared.required && !typeNamesNull(declared.type)
 
+/**
+ * Whether a parameter's value leaves it unset, so that its default
+ * applies: nothing passed, or a null where null means unset.
+ */
+export const isUnset = (
+  value: unknown,
+  declared: { required: boolean; type: ExpectedType }
+): boolean => value === undefined || (value === null && nullMeansUnset(declared))
+
+/** What `defaultFor` answers for a parameter with no default at all. */
+export const NO_DEFAULT: unique symbol = Symbol('fig-tree:noDefault')
+
+/**
+ * The default chain an unset parameter falls to: the instance's
+ * `operatorDefaults` entry, else the declared default. The runtime, the
+ * validate hook's input and `fallbackCoverage` all read it here, so the
+ * hook sees what the runtime will use. A declared default may be the
+ * `EvaluationData` sentinel, which each caller resolves its own way.
+ */
+export const defaultFor = (
+  entry: { hostDefaults?: Readonly<Record<string, unknown>> },
+  name: string,
+  declared: { default?: unknown }
+): unknown => {
+  const { hostDefaults } = entry
+  if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)) return hostDefaults[name]
+  return 'default' in declared ? declared.default : NO_DEFAULT
+}
+
 const BASIC_TYPES: ReadonlySet<string> = new Set([
   'any',
   'string',
