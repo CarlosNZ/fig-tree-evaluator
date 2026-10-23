@@ -314,6 +314,13 @@ describe('regex — a parameter written for another mode', () => {
     ])
   })
 
+  test('a mode that is none of them gets its type error alone', () => {
+    const issues = fig.validate({
+      $regex: { value: 'a', pattern: 'a', mode: 'foo', replacement: '-' },
+    }).issues
+    expect(issues.map((issue) => [issue.severity, issue.code])).toEqual([['error', 'type-check']])
+  })
+
   test('a dynamic mode may be the right one, so it is silent', () => {
     expect(
       warnings({ $regex: { value: 'a', pattern: 'a', mode: '$data.m', replacement: '-' } })

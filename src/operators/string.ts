@@ -271,6 +271,9 @@ const checkFlags = (flags: string): string | undefined => {
   return `unknown regex flag${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}${hint}`
 }
 
+/** The result modes, for the declaration and for the hook's guard. */
+const REGEX_MODES = ['test', 'extract', 'match', 'replace'] as const
+
 /** The parameters that apply in one mode only, and that mode. */
 const MODE_PARAMETERS = [
   ['noMatchDefault', 'extract'],
@@ -285,7 +288,7 @@ export const regex = declareOperator({
     pattern: { type: ['string', 'null'] },
     flags: { type: 'string', default: '' },
     mode: {
-      type: { literal: ['test', 'extract', 'match', 'replace'] },
+      type: { literal: REGEX_MODES },
       default: 'test',
     },
     // A string, as a match is, so `returns` holds for every mode
@@ -306,9 +309,10 @@ export const regex = declareOperator({
     // A parameter written for another mode does nothing, and the likely
     // slip is the mode itself: left to its 'test' default, a node meant to
     // replace answers a boolean. A dynamic mode may be the right one, so it
-    // stays silent
+    // stays silent, and a mode that is none of them has its own type error
+    const known = (REGEX_MODES as readonly unknown[]).includes(mode)
     for (const [parameter, appliesIn] of MODE_PARAMETERS)
-      if (typeof mode === 'string' && mode !== appliesIn && authored.has(parameter))
+      if (known && mode !== appliesIn && authored.has(parameter))
         findings.push({
           severity: 'warning' as const,
           parameter,
