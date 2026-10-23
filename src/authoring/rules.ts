@@ -224,7 +224,8 @@ const exactValue = (known: Known | undefined): { value: unknown } | undefined =>
 /**
  * Whether the operator's `validate` hook refuses a parameter's value, once
  * it is known exactly. The hook is given every parameter known exactly and
- * none of the others, as the static check gives it the literal ones only.
+ * none of the others, as the static check gives it the values known before
+ * evaluation.
  */
 const refused = (node: OperatorNode, name: string, inputs: Inputs): Answer => {
   const { validate } = node.entry.definition
@@ -235,7 +236,7 @@ const refused = (node: OperatorNode, name: string, inputs: Inputs): Answer => {
     const exact = exactValue(known)
     if (exact !== undefined && !inputs.absent.has(parameter)) literals[parameter] = exact.value
   }
-  const findings = validate(literals, validateHelpers)
+  const findings = validate(literals, validateHelpers, new Set(Object.keys(node.params)))
   return findings.some((finding) => finding.severity === 'error' && finding.parameter === name)
     ? 'yes'
     : 'no'

@@ -6,8 +6,8 @@
  * Hand-migrated from test/v2-working/7_regex.test.ts, which is the
  * thinnest file in the corpus: two boolean tests, converting by a pure
  * rename (`testString` → `value`, the `patternMatch` alias dropped).
- * `mode`, `flags`, `noMatchDefault` and everything about extraction are
- * new in v3 and authored from the pass.
+ * `mode`, `flags`, `noMatchDefault`, `replacement` and everything about
+ * extraction and replacement are new in v3, authored from the pass and #272.
  */
 import { FigTree, FigTreeError } from '../src'
 import { rejection } from './helpers/rejection'
@@ -191,6 +191,147 @@ describe('regex — match', () => {
     const node = { $regex: { value: 'a1b2', pattern: '\\d', mode: 'match' } }
     expect(await ev(node)).toEqual(['1', '2'])
     expect(await ev(node)).toEqual(['1', '2'])
+  })
+})
+
+describe('regex — replace', () => {
+  const replace = (value: unknown, pattern: string, extra: Record<string, unknown> = {}) => ({
+    $regex: { value, pattern, mode: 'replace', ...extra },
+  })
+
+  test('every match is replaced, with no g flag', async () => {
+    expect(await ev(replace('a1b22c333', '\\d+', { replacement: '#' }))).toBe('a#b#c#')
+  })
+
+  test('the default replacement removes every match', async () => {
+    expect(await ev(replace('(021) 555-1234', '[^0-9]'))).toBe('0215551234')
+  })
+
+  test('a null replacement is unset, so it removes them too', async () => {
+    expect(await ev(replace('(021) 555-1234', '[^0-9]', { replacement: null }))).toBe('0215551234')
+  })
+
+  test('no match returns the value unchanged', async () => {
+    expect(await ev(replace('no digits', '\\d', { replacement: '#' }))).toBe('no digits')
+  })
+
+  test('the JS replacement patterns apply: groups, named groups, the match, $$', async () => {
+    const date = '(\\d{4})-(\\d{2})-(\\d{2})'
+    expect(await ev(replace('2026-10-23', date, { replacement: '$3/$2/$1' }))).toBe('23/10/2026')
+    expect(
+      await ev(
+        replace('2026-10', '(?<year>\\d{4})-(?<month>\\d{2})', { replacement: '$<month>/$<year>' })
+      )
+    ).toBe('10/2026')
+    expect(await ev(replace('a1b2', '\\d', { replacement: '[$&]' }))).toBe('a[1]b[2]')
+    expect(await ev(replace('5 and 7', '\\d', { replacement: '$$$&' }))).toBe('$5 and $7')
+  })
+
+  test('…and validate() reads none of them as a mistyped reference (#249)', () => {
+    for (const replacement of ['$1', '$1-$2', '$<year>', '$&', '$$', "$'", '$`'])
+      expect(fig.validate(replace('a', 'a', { replacement })).issues).toEqual([])
+  })
+
+  test('a replacement from the data is a pattern too: $$ writes a dollar', async () => {
+    const node = replace('total: 5', '\\d+', { replacement: '$data.r' })
+    expect(await ev(node, { r: '$&.00' })).toBe('total: 5.00')
+    expect(await ev(node, { r: '$$&' })).toBe('total: $&')
+  })
+
+  test('flags apply', async () => {
+    expect(await ev(replace('Rata ST', '\\bst$', { flags: 'i', replacement: 'Street' }))).toBe(
+      'Rata Street'
+    )
+  })
+
+  test('a fixed text with regex characters in it is written escaped', async () => {
+    expect(await ev(replace('1.5.2', '\\.', { replacement: '-' }))).toBe('1-5-2')
+  })
+
+  test('replacement is a string — never a coercion', async () => {
+    expect(codes(replace('a1', '\\d', { replacement: 0 }))).toContain('type-check')
+    expect((await failure(replace('a1', '\\d', { replacement: '$data.n' }), { n: 0 })).code).toBe(
+      'type-check'
+    )
+  })
+
+  test('the result is a string, so it feeds a string position', async () => {
+    const node = { $upper: replace('a-b', '-', { replacement: ' ' }) }
+    expect(fig.validate(node).issues).toEqual([])
+    expect(await ev(node)).toBe('A B')
+  })
+
+  test('no lastIndex leaks between evaluations — the same node twice agrees', async () => {
+    const node = replace('a1b2', '\\d', { replacement: '#' })
+    expect(await ev(node)).toBe('a#b#')
+    expect(await ev(node)).toBe('a#b#')
+  })
+})
+
+describe('regex — a parameter written for another mode', () => {
+  const warnings = (expression: unknown, figTree: FigTree = fig) =>
+    figTree
+      .validate(expression)
+      .issues.filter((issue) => issue.severity === 'warning')
+      .map((issue) => [issue.code, issue.parameter])
+
+  test('replacement with mode left to its test default warns — the likely slip', async () => {
+    const node = { $regex: { value: '(021) 555', pattern: '[^0-9]', replacement: '' } }
+    expect(warnings(node)).toEqual([['operator-validate', 'replacement']])
+    // A warning, so the node still runs, in the mode it has
+    expect(await ev(node)).toBe(true)
+  })
+
+  test('replacement in extract or match warns', () => {
+    for (const mode of ['extract', 'match'])
+      expect(warnings({ $regex: { value: 'a', pattern: 'a', mode, replacement: '-' } })).toEqual([
+        ['operator-validate', 'replacement'],
+      ])
+  })
+
+  test('noMatchDefault outside extract warns', () => {
+    expect(warnings({ $regex: { value: 'a', pattern: 'a', noMatchDefault: 'none' } })).toEqual([
+      ['operator-validate', 'noMatchDefault'],
+    ])
+    for (const mode of ['match', 'replace'])
+      expect(
+        warnings({ $regex: { value: 'a', pattern: 'a', mode, noMatchDefault: 'none' } })
+      ).toEqual([['operator-validate', 'noMatchDefault']])
+  })
+
+  test('each is quiet in its own mode', () => {
+    expect(
+      warnings({ $regex: { value: 'a', pattern: 'a', mode: 'extract', noMatchDefault: 'none' } })
+    ).toEqual([])
+    expect(
+      warnings({ $regex: { value: 'a', pattern: 'a', mode: 'replace', replacement: '-' } })
+    ).toEqual([])
+  })
+
+  test('a dynamic replacement is written on the node, so it warns too', () => {
+    expect(warnings({ $regex: { value: 'a', pattern: 'a', replacement: '$data.r' } })).toEqual([
+      ['operator-validate', 'replacement'],
+    ])
+  })
+
+  test('a dynamic mode may be the right one, so it is silent', () => {
+    expect(
+      warnings({ $regex: { value: 'a', pattern: 'a', mode: '$data.m', replacement: '-' } })
+    ).toEqual([])
+  })
+
+  test('a host default is not written on the node, so it never warns', () => {
+    const hosted = new FigTree({
+      operatorDefaults: { regex: { replacement: '-', noMatchDefault: 'none' } },
+    })
+    expect(warnings({ $regex: ['a', 'a'] }, hosted)).toEqual([])
+  })
+
+  test("…while a host mode counts as the node's mode", async () => {
+    const replacing = new FigTree({ operatorDefaults: { regex: { mode: 'replace' } } })
+    const node = { $regex: { value: 'a1', pattern: '\\d', replacement: '#' } }
+    expect(warnings(node, replacing)).toEqual([])
+    expect(await replacing.evaluate(node)).toBe('a#')
   })
 })
 

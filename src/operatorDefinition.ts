@@ -111,11 +111,14 @@ export interface ValidateFinding {
  * parameter its `operatorDefaults` entry, else its declared default. A
  * dynamic value is absent, as is the data `EvaluationData` stands for. The
  * `helpers` toolbox is the frozen primitives object of
- * src/compile/helpers.ts (contract Q7).
+ * src/compile/helpers.ts (contract Q7). `authored` names the parameters
+ * written on the node, literal or dynamic, which a defaulted value in
+ * `literalParams` can't tell apart from a written one.
  */
 export type OperatorValidate = (
   literalParams: Record<string, unknown>,
-  helpers: ValidateHelpers
+  helpers: ValidateHelpers,
+  authored: ReadonlySet<string>
 ) => ValidateFinding[]
 
 /** A parameter declaration as authored ("Parameter declarations", contract). */

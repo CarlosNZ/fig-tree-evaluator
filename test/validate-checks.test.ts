@@ -453,10 +453,15 @@ describe("a validate hook reads each parameter's effective value", () => {
       optional: { type: 'string', required: false },
       from: { type: 'any', default: EvaluationData },
     },
-    validate: (literalParams) => [{ severity: 'warning', message: JSON.stringify(literalParams) }],
+    validate: (literalParams, _helpers, authored) => [
+      {
+        severity: 'warning',
+        message: JSON.stringify({ literalParams, authored: [...authored] }),
+      },
+    ],
     evaluate: () => null,
   })
-  const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) => {
+  const delivery = (expression: unknown, operatorDefaults?: Record<string, unknown>) => {
     const figTree = new FigTree({
       operators: [probe],
       ...(operatorDefaults !== undefined ? { operatorDefaults: { probe: operatorDefaults } } : {}),
@@ -464,6 +469,8 @@ describe("a validate hook reads each parameter's effective value", () => {
     const issue = figTree.validate(expression).issues.find((i) => i.code === 'operator-validate')
     return JSON.parse(issue!.message)
   }
+  const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) =>
+    delivery(expression, operatorDefaults).literalParams
 
   test('an unset parameter arrives as its declared default', () => {
     expect(received({ $probe: {} })).toEqual({ mode: 'a', nullable: 'kept' })
@@ -491,6 +498,14 @@ describe("a validate hook reads each parameter's effective value", () => {
     const delivered = received({ $probe: { mode: '$data.m' } })
     expect(Object.hasOwn(delivered, 'mode')).toBe(false)
     expect(Object.hasOwn(delivered, 'from')).toBe(false)
+  })
+
+  test('authored names what the node writes, literal or dynamic, and no default', () => {
+    expect(delivery({ $probe: {} }, { optional: 'x' }).authored).toEqual([])
+    expect(delivery({ $probe: { mode: '$data.m', optional: 'x' } }).authored.sort()).toEqual([
+      'mode',
+      'optional',
+    ])
   })
 })
 

@@ -247,8 +247,8 @@ export const join = declareOperator({
  * stateful and what flips `String.match`'s return shape, and in v3 the
  * result shape is declared by `mode` — a literal union the engine and the
  * editor can read — never smuggled through the content of a string
- * parameter. The global scan `mode: 'match'` needs is the operator's own
- * business, on an instance it builds for the call.
+ * parameter. The global scan `mode: 'match'` and `mode: 'replace'` need is
+ * the operator's own business, on an instance it builds for the call.
  */
 const ADMITTED_FLAGS = 'imsu'
 
@@ -265,9 +265,17 @@ const checkFlags = (flags: string): string | undefined => {
   }
   if (unknown.length === 0) return undefined
   const hint =
-    unknown.includes('g') || unknown.includes('y') ? " — all matches is mode: 'match'" : ''
+    unknown.includes('g') || unknown.includes('y')
+      ? " — mode: 'match' and mode: 'replace' already work on every match"
+      : ''
   return `unknown regex flag${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}${hint}`
 }
+
+/** The parameters that apply in one mode only, and that mode. */
+const MODE_PARAMETERS = [
+  ['noMatchDefault', 'extract'],
+  ['replacement', 'replace'],
+] as const
 
 export const regex = declareOperator({
   name: 'regex',
@@ -277,7 +285,7 @@ export const regex = declareOperator({
     pattern: { type: ['string', 'null'] },
     flags: { type: 'string', default: '' },
     mode: {
-      type: { literal: ['test', 'extract', 'match'] },
+      type: { literal: ['test', 'extract', 'match', 'replace'] },
       default: 'test',
     },
     // A string, as a match is, so `returns` holds for every mode
@@ -287,11 +295,25 @@ export const regex = declareOperator({
       nullPolicy: 'value',
       evaluation: 'lazy',
     },
+    // JS replacement patterns apply (`$1`, `$<name>`, `$&`, `$$`), so a
+    // capture group can be kept; the default removes every match
+    replacement: { type: 'string', default: '' },
   },
   positionalParams: ['value', 'pattern'],
   returns: ['boolean', 'string', 'array', 'null'],
-  validate: ({ pattern, flags }) => {
+  validate: ({ pattern, flags, mode }, _helpers, authored) => {
     const findings = []
+    // A parameter written for another mode does nothing, and the likely
+    // slip is the mode itself: left to its 'test' default, a node meant to
+    // replace answers a boolean. A dynamic mode may be the right one, so it
+    // stays silent
+    for (const [parameter, appliesIn] of MODE_PARAMETERS)
+      if (typeof mode === 'string' && mode !== appliesIn && authored.has(parameter))
+        findings.push({
+          severity: 'warning' as const,
+          parameter,
+          message: `'${parameter}' applies only in mode: '${appliesIn}' — this node's mode is '${mode}'`,
+        })
     const problem = typeof flags === 'string' ? checkFlags(flags) : undefined
     if (problem !== undefined)
       findings.push({ severity: 'error' as const, parameter: 'flags', message: problem })
@@ -313,7 +335,7 @@ export const regex = declareOperator({
     }
     return findings
   },
-  evaluate: ({ value, pattern, flags, mode, noMatchDefault }) => {
+  evaluate: ({ value, pattern, flags, mode, noMatchDefault, replacement }) => {
     const problem = checkFlags(flags)
     if (problem !== undefined) throw new OperatorFailure(problem)
     // Constructed per use, so no global-scan `lastIndex` can ever leak
@@ -336,6 +358,8 @@ export const regex = declareOperator({
       }
       case 'match':
         return [...value.matchAll(compile('g'))].map((found) => found[0])
+      case 'replace':
+        return value.replace(compile('g'), replacement)
     }
   },
 })

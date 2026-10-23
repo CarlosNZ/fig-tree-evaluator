@@ -619,7 +619,7 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
 
   let findings: ReturnType<typeof hook>
   try {
-    findings = hook(literalParams, validateHelpers)
+    findings = hook(literalParams, validateHelpers, new Set(Object.keys(node.params)))
   } catch (error) {
     emit(
       state,

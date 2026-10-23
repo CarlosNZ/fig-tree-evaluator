@@ -331,9 +331,15 @@ Rulings recorded at Phase-2 implementation (Carl, July 2026), refining the list 
 The definition-level **`validate` hook** (ledger #11) is the operator-semantics extension of the same posture, run at compile/`validate()` over the parameter values **known before evaluation**, never at evaluation. Those are the literals on the node and, for a parameter left unset, the value the runtime's defaults pass gives it: the instance's `operatorDefaults` entry, else the declared default. A `null` at a parameter where null means unset counts as unset, and the `EvaluationData` sentinel's data is not known, so `get.from` stays out. A hook therefore reads each parameter's effective value whether it was authored or defaulted: `http`'s GET-with-body error fires on an unset `method`, and `plus`'s empty-literal check sees a host's `expect` ([#272](https://github.com/CarlosNZ/fig-tree-evaluator/issues/272), October 2026):
 
 ```ts
-validate?: (literalParams: Partial<Record<string, unknown>>, helpers) => Issue[]
+validate?: (
+  literalParams: Partial<Record<string, unknown>>,
+  helpers,
+  authored: ReadonlySet<string>
+) => Issue[]
 // Issue: { severity: 'error' | 'warning', message: string, parameter?: string }
 ```
+
+`authored` names the parameters written on the node, literal or dynamic. A defaulted value in `literalParams` looks the same as a written one, so a check about what the author wrote reads `authored`: `regex` warns about a `replacement` written on a node whose mode is not `replace`, which a host's `operatorDefaults` entry for it must never trigger ([#272](https://github.com/CarlosNZ/fig-tree-evaluator/issues/272)).
 
 Holders from the passes: `regex`'s pattern compile and flag check, `get`/`http`'s literal path parse, `join`'s statically-composite elements, the I/O mutation and injection lints, `buildObject`'s duplicate-key warning — and, the one exception, **`buildString`'s token cross-checks and its composite-substitution error, which the compiler emits instead** (Phase 7.2): its template scan is parse work regardless, and the reference-token desugar turns `substitutions` into a skeleton, where a hook seeing constant parameters only would go blind exactly when the checks matter — and, ruled at Phase 4, the **empty-literal-aggregate** check (`plus` unpinned / `min` / `max` → error; `multiply`, `equal`, `notEqual` and the vacuous-identity holders → dead-expression warning), authored per operator through the shared helpers in `src/operators/shared.ts` rather than as a declarative constraint. Known edge: a literal `[]` beside a _dynamic_ `expect` reports the error, since a hook never sees a dynamic value. Dynamic values pass untouched (runtime never lints); the generic layer (types, arity, unions, constraints, dead-expression warnings) runs regardless and the hook never re-implements it. `helpers` is a small toolbox (at minimum the shared primitives above) — shape settled at implementation.
 
