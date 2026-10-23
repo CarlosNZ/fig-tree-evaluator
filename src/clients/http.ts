@@ -15,7 +15,8 @@
  * demand it of every consumer. Each wrapper declares the minimum
  * structural shape it actually calls, which the real import satisfies.
  */
-import { OperatorFailure } from '../OperatorFailure'
+import { ErrorCodes } from '../errorCodes'
+import { FigTreeError } from '../FigTreeError'
 import type { HttpClient, HttpRequest } from '../types'
 import { httpFailure, invalidResponse } from './failures'
 
@@ -62,6 +63,15 @@ export interface AxiosErrorLike {
   response?: { status: number; statusText: string; data: unknown }
 }
 
+/**
+ * A constructor's refusal. It runs in the host's setup code, outside any
+ * evaluation, so nothing would wrap an `OperatorFailure` into the
+ * `FigTreeError` the host is promised: it is thrown as one, like the
+ * instance's own options errors.
+ */
+const configError = (message: string) =>
+  new FigTreeError({ code: ErrorCodes.invalidOptions, message, path: [] })
+
 export class FetchClient implements HttpClient {
   private readonly supplied?: FetchLike
 
@@ -77,7 +87,7 @@ export class FetchClient implements HttpClient {
    */
   constructor(fetchImpl?: FetchLike) {
     if (fetchImpl === undefined && typeof globalThis.fetch !== 'function')
-      throw new OperatorFailure(
+      throw configError(
         'FetchClient(): this runtime has no global fetch — pass one, ' +
           'new FetchClient(myFetch), or use another client such as new AxiosClient(axios)'
       )
@@ -119,9 +129,7 @@ export class FetchClient implements HttpClient {
 export class AxiosClient implements HttpClient {
   constructor(private readonly axios: AxiosLike) {
     if (typeof axios !== 'function' || typeof axios.isAxiosError !== 'function')
-      throw new OperatorFailure(
-        'AxiosClient(axios): pass the axios import itself — new AxiosClient(axios)'
-      )
+      throw configError('AxiosClient(axios): pass the axios import itself — new AxiosClient(axios)')
   }
 
   request = async (req: HttpRequest): Promise<unknown> => {

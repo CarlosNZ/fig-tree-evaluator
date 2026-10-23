@@ -10,10 +10,21 @@
  * or intercepts a module, which is the injected-client design earning its
  * keep against v2's `test/__mocks__/`.
  */
-import { AxiosClient, FetchClient, OperatorFailure } from '../src'
-import type { AxiosLike, FetchLike, HttpClient, HttpRequest } from '../src'
+import { AxiosClient, ErrorCodes, FetchClient, OperatorFailure, isFigTreeError } from '../src'
+import type { AxiosLike, FetchLike, FigTreeError, HttpClient, HttpRequest } from '../src'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
+
+/** A constructor's throw, which has to be a `FigTreeError`. */
+const refusal = (construct: () => unknown): FigTreeError => {
+  try {
+    construct()
+  } catch (error) {
+    if (isFigTreeError(error)) return error
+    throw error
+  }
+  throw new Error('expected construction to throw')
+}
 
 interface Scenario {
   status: number
@@ -199,7 +210,11 @@ describe('FetchClient', () => {
     // @ts-expect-error — emulating a runtime without the global
     delete globalThis.fetch
     try {
-      expect(() => new FetchClient()).toThrow(/no global fetch/)
+      expect(refusal(() => new FetchClient())).toMatchObject({
+        code: ErrorCodes.invalidOptions,
+        path: [],
+        message: expect.stringMatching(/no global fetch/),
+      })
     } finally {
       globalThis.fetch = original
     }
@@ -248,6 +263,10 @@ describe('AxiosClient', () => {
 
   it('refuses anything that is not the axios import', () => {
     // @ts-expect-error — the likely mistake: handing it a client, or a config
-    expect(() => new AxiosClient({})).toThrow(/pass the axios import/)
+    expect(refusal(() => new AxiosClient({}))).toMatchObject({
+      code: ErrorCodes.invalidOptions,
+      path: [],
+      message: expect.stringMatching(/pass the axios import/),
+    })
   })
 })
