@@ -104,6 +104,23 @@ export const emptyAggregateFailure = (what: string, hint?: string): OperatorFail
 export const operandTypeFailure = (message: string): OperatorFailure =>
   new OperatorFailure(message, { code: ErrorCodes.typeCheck })
 
+/** The runtime failure for a number the arithmetic could not represent. */
+export const nonFiniteFailure = (result: number): OperatorFailure =>
+  new OperatorFailure(`produced a non-finite number (${String(result)})`, {
+    code: ErrorCodes.nonFiniteResult,
+  })
+
+/**
+ * An infinite result from finite operands is overflow, or division by zero,
+ * and fails. One carried from an infinite operand is a number like any other.
+ * A NaN result is the engine's result boundary's to refuse.
+ */
+export const overflowChecked = (result: number, operands: readonly number[]): number => {
+  if ((result === Infinity || result === -Infinity) && operands.every(Number.isFinite))
+    throw nonFiniteFailure(result)
+  return result
+}
+
 // ── settlement streams: the two ways a body reads one ───────────────
 
 /**

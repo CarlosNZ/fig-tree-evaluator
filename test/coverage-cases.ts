@@ -1727,12 +1727,24 @@ export const sections: Record<string, CoverageCase[]> = {
       uncovered: [{ at: [], code: 'type-check', parameter: 'value', witness: { n: 'a' } }],
     },
     {
-      name: 'strict numbers: data may be NaN',
+      name: 'strict numbers: a number parameter refuses NaN and carries an infinity',
       expression: { $floor: '$data.n' },
       options: { strictNumbers: true },
+      uncovered: [{ at: [], code: 'type-check', parameter: 'value', witness: { n: 'a' } }],
+    },
+    {
+      name: 'strict numbers: an operator handing a value on hands NaN on',
+      expression: { $if: ['$data.c', '$data.n', 0] },
+      options: { strictNumbers: true },
+    },
+    {
+      name: 'strict numbers: arithmetic on infinities may make NaN',
+      expression: { $subtract: ['$data.a', '$data.b'] },
+      options: { strictNumbers: true },
       uncovered: [
-        { at: [], code: 'type-check', parameter: 'value', witness: { n: 'a' } },
-        { at: [], code: 'non-finite-result', witness: { n: NaN } },
+        { at: [], code: 'type-check', parameter: 'value', witness: { a: 'x', b: 1 } },
+        { at: [], code: 'type-check', parameter: 'minus', witness: { a: 1, b: 'x' } },
+        { at: [], code: 'non-finite-result', witness: { a: Infinity, b: Infinity } },
       ],
     },
   ],

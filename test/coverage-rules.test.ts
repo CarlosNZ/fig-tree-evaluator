@@ -64,12 +64,18 @@ const ARRAYS = [
   [{ key: 'a', value: 1 }],
   [1, 'a'],
 ]
-/** Under `strict`: NaN, which compares equal to anything, and infinities */
+/**
+ * Under `strict`: NaN, which no number check admits, infinities, which
+ * arithmetic carries, and the sums and products that overflow or make NaN
+ */
 const EXTREME_ARRAYS = [
   [NaN, 1],
   [3, NaN, 1],
   [2, Infinity],
   [-Infinity, 1],
+  [1e308, 1e308],
+  [Infinity, -Infinity],
+  [0, Infinity],
 ]
 const OBJECTS = [{}, { a: 1 }, { a: null }, { b: 'x' }]
 /**
@@ -159,8 +165,10 @@ const admits = (known: Known, value: unknown): boolean =>
           !(value < (member.min ?? -Infinity)) &&
           !(value > (member.max ?? Infinity))
         )
-      case 'nonFinite':
-        return typeof value === 'number' && !Number.isFinite(value)
+      case 'nan':
+        return Number.isNaN(value)
+      case 'infinite':
+        return value === Infinity || value === -Infinity
       case 'null':
         return value === null
       case 'opaque':

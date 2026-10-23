@@ -6,7 +6,12 @@
  * and call logs — never engine internals.
  */
 import { defineOperator, OperatorFailure } from '../../src'
-import type { OperatorContext, ParameterDeclaration, ValidatedOperatorDefinition } from '../../src'
+import type {
+  ExpectedType,
+  OperatorContext,
+  ParameterDeclaration,
+  ValidatedOperatorDefinition,
+} from '../../src'
 
 /** Returns its `value` parameter verbatim; null is a value here. */
 export const echoOp = () =>
@@ -50,11 +55,12 @@ export const failOp = () =>
   })
 
 /** Returns whatever raw JS value the test wants to see cross the boundary. */
-export const rawOp = (name: string, produce: () => unknown) =>
+export const rawOp = (name: string, produce: () => unknown, returns?: ExpectedType) =>
   defineOperator({
     name,
     category: 'other',
     parameters: {},
+    ...(returns !== undefined ? { returns } : {}),
     evaluate: produce,
   })
 

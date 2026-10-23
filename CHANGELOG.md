@@ -18,6 +18,7 @@ A ground-up rewrite of the engine. v2 expressions convert to v3 automatically wi
 - An `unresolved-param` issue names the parameter its reference reads as `parameter`, and inside a fragment body carries the nearest declared name as `suggestion`, with a "did you mean", as a call's unknown argument does.
 - `fig.with(update)` returns a new, independent instance with an options update applied, leaving the original untouched — for evaluating a draft (a fragment, say) against a host's instance without changing it.
 - `getCatalog` (`fig-tree-evaluator/catalog`) gives every operator parameter a `nullOutcome`: what a `null` there actually does — passed on, used as a value, unset, or a type error — where the reported `nullPolicy` is only the declaration; a list or object parameter also gets an `elementNullOutcome`, for a `null` element.
+- `NaN` and `±Infinity` from host data ([#269](https://github.com/CarlosNZ/fig-tree-evaluator/issues/269)): an infinity is a number, which the comparisons order and arithmetic carries, and `NaN` fails only where a number is needed (`type-check`), reads as false in a condition, and otherwise passes through as it was found. FigTree itself never makes either: overflow and division by zero fail with `non-finite-result`.
 
 ### Breaking changes
 

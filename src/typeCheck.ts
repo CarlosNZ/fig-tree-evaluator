@@ -20,7 +20,7 @@ import { isPlainObject } from './utils'
 export type BasicType =
   | 'any' // every domain value, INCLUDING null, plus opaque constants
   | 'string'
-  | 'number'
+  | 'number' // NaN excluded; ±Infinity admitted
   | 'boolean'
   | 'array'
   | 'object'
@@ -63,6 +63,7 @@ const OK: TypeCheckResult = { ok: true }
 export const describeType = (value: unknown): string => {
   if (value === null) return 'null'
   if (Array.isArray(value)) return 'array'
+  if (Number.isNaN(value)) return 'NaN'
   return typeof value // 'string' | 'number' | 'boolean' | 'object' | 'function' | 'undefined' | ...
 }
 
@@ -79,7 +80,9 @@ const matchesBasic = (value: unknown, type: BasicType): boolean => {
     case 'string':
       return typeof value === 'string'
     case 'number':
-      return typeof value === 'number'
+      // NaN reaches here only from host data or a JS-authored literal, and
+      // no operator can compute with it; an infinity is a usable number
+      return typeof value === 'number' && !Number.isNaN(value)
     case 'integer':
       return typeof value === 'number' && Number.isInteger(value)
     case 'boolean':
@@ -104,6 +107,16 @@ export const typeNamesNull = (type: ExpectedType): boolean => {
   if (type === 'null' || type === 'any') return true
   if (Array.isArray(type)) return type.includes('null') || type.includes('any')
   return false
+}
+
+/**
+ * Does a declared type name a number? `any` does not: an operator that may
+ * return anything hands values on rather than computing numbers.
+ */
+export const typeNamesNumber = (type: ExpectedType): boolean => {
+  if (isLiteralType(type)) return type.literal.some((value) => typeof value === 'number')
+  const basics: readonly BasicType[] = typeof type === 'string' ? [type] : type
+  return basics.includes('number') || basics.includes('integer')
 }
 
 /**
