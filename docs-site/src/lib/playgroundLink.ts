@@ -10,6 +10,7 @@ export type PlaygroundSeed = {
   expression: string
   data?: string
   fragments?: boolean
+  customOperators?: boolean
   noCache?: boolean
   action?: ExampleActionName
 }

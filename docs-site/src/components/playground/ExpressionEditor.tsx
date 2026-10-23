@@ -10,6 +10,8 @@ interface Props {
   data?: string
   /** Evaluate with the Fragments page's fragments registered. */
   fragments?: boolean
+  /** Evaluate with the Custom operators pages' operators registered. */
+  customOperators?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
   /** An extra button in the toolbar (./exampleActions.tsx). */
@@ -39,6 +41,7 @@ export default function ExpressionEditor({
   expression,
   data,
   fragments,
+  customOperators,
   noCache,
   action,
   caption,
@@ -78,6 +81,7 @@ export default function ExpressionEditor({
           expression={expression}
           data={data}
           fragments={fragments}
+          customOperators={customOperators}
           noCache={noCache}
           action={action}
           caption={caption}

@@ -73,6 +73,7 @@ docs-site/
       Expression.astro        static expression block, evaluated at build time
       ExpressionTree.astro    an expression drawn as a tree, each node's result evaluated at build time
       FragmentSetup.astro     host code registering the Fragments page's fragments, from lib/fragments.ts
+      OperatorSource.astro    a custom operator's definition, shown from its file in lib/operators/
       TreeItem.astro          one entry in that tree, with its children
       OperatorReference.astro reference entries: the operators page, or a chosen few
       OperatorEntry.astro     one operator's entry
@@ -84,6 +85,7 @@ docs-site/
         ResultValue.tsx       how a result is shown
         Json5Editor.tsx       the CodeMirror JSON5 pane
     lib/                    the shared FigTree instance and catalog, the SQLite database, JSON5, link encoding, notes, tree layout
+      operators/            the Custom operators pages' operators, one file each, exactly as the pages show them
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
 ```
 
@@ -100,6 +102,8 @@ docs-site/
   data={`{ ok: true }`}
 />
 ```
+
+`fragments` evaluates an example with the Fragments page's fragments registered (`lib/fragments.ts`), and `customOperators` with the Custom operators pages' operators (`lib/operators/`). Everywhere else, the editors and the operator reference know only the package's own. A page shows an operator's definition with `<OperatorSource name="formatNumber" />`, which renders its file as it is, so the code on the page is the code that ran.
 
 Set `throws` on an example that shows an error. `trace` evaluates the example with tracing on and shows the trace below its result or error, computed at build time like the result, with `elapsed` left out since it differs on every run; its editor gets a Show trace button (`action="showTrace"`), which swaps the tree for the trace. "Open in editor" opens the example in a full-size editor over the page, and `caption` adds a sentence or two at its foot: what to do or notice there. The link's address loads the example into the Playground page instead, for a new tab or a shared link. `editor={false}` leaves the link out, for an example that doesn't suit an editor. `action` adds a button of the example's own to the editor's toolbar, beside Reset, such as `action="clearCache"`; the actions are defined in `src/components/playground/exampleActions.tsx`.
 

@@ -25,6 +25,8 @@ export interface PlaygroundProps {
   data?: string
   /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
   fragments?: boolean
+  /** Evaluate with the Custom operators pages' operators registered (lib/operators/). */
+  customOperators?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
   /** An extra button in the toolbar, beside Reset (./exampleActions.tsx). */

@@ -38,6 +38,8 @@ interface Props {
   data?: string
   /** Evaluate with the Fragments page's fragments registered (lib/fragments.ts). */
   fragments?: boolean
+  /** Evaluate with the Custom operators pages' operators registered (lib/operators/). */
+  customOperators?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
   /** An extra button in the editor's toolbar (playground/exampleActions.tsx). */
@@ -60,11 +62,12 @@ const {
   trace = false,
   editor = true,
   fragments,
+  customOperators,
   noCache,
   caption,
 } = Astro.props
 const action: ExampleActionName | undefined = Astro.props.action ?? (trace ? 'showTrace' : undefined)
-const figTree = exampleFigTree({ fragments, noCache })
+const figTree = exampleFigTree({ fragments, customOperators, noCache })
 const code = dedent(Astro.props.code)
 const dataSource = Astro.props.data === undefined ? undefined : dedent(Astro.props.data)
 
@@ -123,6 +126,7 @@ const href = editor ? playgroundHref({
       expression: code,
       data: dataSource,
       fragments,
+      customOperators,
       noCache,
       action,
     }) : null
@@ -158,6 +162,7 @@ const href = editor ? playgroundHref({
         expression={code}
         data={dataSource}
         fragments={fragments}
+        customOperators={customOperators}
         noCache={noCache}
         action={action}
         caption={caption}
