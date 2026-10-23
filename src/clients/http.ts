@@ -147,7 +147,10 @@ export class AxiosClient implements HttpClient {
         url: req.url,
         method: req.method,
         headers: req.headers,
-        ...(req.body !== undefined ? { data: req.body } : {}),
+        // Serialised here, as FetchClient does: axios sends a string that
+        // parses as JSON unquoted (and trimmed), so a body of `'123'` would
+        // go out as a number. JSON text it is given goes out as it is
+        ...(req.body !== undefined ? { data: JSON.stringify(req.body) } : {}),
         signal: req.signal,
       })
       // axios parses JSON itself, and hands back '' for an empty body —
