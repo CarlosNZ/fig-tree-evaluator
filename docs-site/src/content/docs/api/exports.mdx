@@ -93,7 +93,7 @@ The `http` and `graphQL` operators, sending their requests through the client gi
 
 **Returns:** the two operators, ready for the `operators` option.
 
-**Throws:** an `OperatorFailure` when there's no `client` given and no global `fetch`.
+**Throws:** `invalid-options` when there's no `client` given and no global `fetch`.
 
 **See also:** [Adding the I/O operators](/guides/http-and-sql/#adding-the-io-operators)
 
@@ -132,7 +132,7 @@ An HTTP client that sends requests with `fetch`.
 
 **Parameters:** `fetch`, the `fetch` function to send requests with, such as one wrapped to retry failed requests. Without one, it uses the runtime's global `fetch`, as browsers, Node, Deno and Bun all have.
 
-**Throws:** an `OperatorFailure` when there's no `fetch` given and no global one.
+**Throws:** `invalid-options` when there's no `fetch` given and no global one.
 
 **Details:**
 
@@ -155,7 +155,7 @@ An HTTP client that sends requests with [Axios](https://axios-http.com).
 
 **Parameters:** `axios`, the `axios` import itself.
 
-**Throws:** an `OperatorFailure` when `axios` isn't an Axios function.
+**Throws:** `invalid-options` when `axios` isn't an Axios function.
 
 **Details:** a response with an error status fails with `http-status`, as it does with `FetchClient`, and an empty response is `null`.
 
@@ -175,7 +175,7 @@ A database connection that runs queries with [node-postgres](https://node-postgr
 
 **Parameters:** `client`, a connected node-postgres `Client` or `Pool`.
 
-**Throws:** an `OperatorFailure` when `client` has no `query()` method.
+**Throws:** `invalid-options` when `client` has no `query()` method.
 
 **Details:**
 
@@ -199,7 +199,7 @@ A database connection that runs queries with the [sqlite](https://www.npmjs.com/
 
 **Parameters:** `db`, a database opened with `sqlite`.
 
-**Throws:** an `OperatorFailure` when `db` has no `all()` method.
+**Throws:** `invalid-options` when `db` has no `all()` method.
 
 **Details:**
 

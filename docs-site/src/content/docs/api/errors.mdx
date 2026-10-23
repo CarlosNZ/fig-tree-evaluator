@@ -60,7 +60,7 @@ The error FigTree throws, whatever went wrong: a static error, a runtime failure
 - A runtime failure's `message` starts with the operator's name, as in `divide – produced a non-finite number (Infinity)`.
 - When a custom operator throws a plain `Error`, the `FigTreeError` has the code `operator-failure` and the `Error`'s message. An [`OperatorFailure`](/custom-operators/evaluate/#failing) keeps its own `code` and `errorData`.
 - A static error's `code`, `message`, `path` and `operator` are those of the first error in its `issues`. It never has a `trace`, since nothing ran.
-- An error from the constructor, `updateOptions()`, `with()` or `defineOperator()` has the code `invalid-options` or `invalid-definition`, and lists each problem in `issues` with a code of its own and a `path` into the options or the definition. Its `message` is the first issue's, with a count of the rest, such as `(+ 1 more issue)`. An invalid `timeout`, `signal` or `cache`, or an invalid per-call option, is reported on its own instead, with `path: []` and no `issues`.
+- An error from the constructor, `updateOptions()`, `with()` or `defineOperator()` has the code `invalid-options` or `invalid-definition`, and lists each problem in `issues` with a code of its own and a `path` into the options or the definition. Its `message` is the first issue's, with a count of the rest, such as `(+ 1 more issue)`. An invalid `timeout`, `signal` or `cache`, or an invalid per-call option, is reported on its own instead, with `path: []` and no `issues`. A bundled client's constructor, such as `new FetchClient()`, throws `invalid-options` too when it can't use its argument, with `path: []` and no `issues`.
 - `timeout` and `aborted` have `path: []` and no `operator`. A timeout's `message` gives the time limit. An abort's doesn't carry the signal's `reason`.
 - Where fragments call fragments, `fragment` and `fragmentPath` name the innermost body, and `path` the outermost call, in the expression you evaluated.
 
@@ -219,7 +219,7 @@ Problems with the instance's options or an operator's definition. Each problem i
 
 | Code                  | Raised by                                                                                                                      |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `invalid-options`     | The code of every error the constructor, `updateOptions()` and `with()` throw, and of an invalid per-call option. Also an issue a more specific code doesn't cover, such as `operators` not being an array |
+| `invalid-options`     | The code of every error the constructor, `updateOptions()` and `with()` throw, of an invalid per-call option, and of an argument a bundled client can't use. Also an issue a more specific code doesn't cover, such as `operators` not being an array |
 | `invalid-definition`  | The code of every error `defineOperator()` throws. Also an issue a more specific code doesn't cover                                        |
 | `invalid-name`        | An operator, parameter or fragment name containing `.`, `[` or `]`. Also a static error for a variable's name                 |
 | `reserved-name`       | A name FigTree keeps for itself, such as an operator named `data` or a parameter named `fallback`                              |
