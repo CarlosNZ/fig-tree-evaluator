@@ -122,6 +122,12 @@ describe('plus', () => {
     expect(pinned.issues.some((issue) => issue.severity === 'warning')).toBe(true)
   })
 
+  test('…and an operatorDefaults expect pins it as a literal one does', async () => {
+    const pinnedByHost = new FigTree({ operatorDefaults: { plus: { expect: 'number' } } })
+    expect(pinnedByHost.validate({ $plus: [] }).valid).toBe(true)
+    expect(await pinnedByHost.evaluate({ $plus: [] })).toBe(0)
+  })
+
   test('a null operand propagates; nullValueDefault replaces it (row 3, ledger #18)', async () => {
     expect(await ev({ $plus: ['$data.missing', 5] })).toBe(null)
     expect(await ev({ $plus: { values: ['$data.missing', 5], nullValueDefault: 0 } })).toBe(5)

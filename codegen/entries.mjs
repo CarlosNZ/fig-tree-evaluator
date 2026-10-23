@@ -28,7 +28,7 @@ export const ENTRIES = [
     subpath: './catalog',
     name: 'catalog/index',
     source: 'src/catalog/index.ts',
-    budget: 5_300,
+    budget: 5_400,
     marker: 'String builder',
   },
   {

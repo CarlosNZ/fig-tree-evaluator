@@ -445,7 +445,7 @@ export const operatorListings: OperatorListingMap = {
   },
   regex: {
     displayName: 'Regular expression',
-    description: 'Test, extract or match a string against a regular expression',
+    description: 'Test, extract, match or replace in a string with a regular expression',
     docUrl: DOCS,
     backgroundColor: '#f8f1c9',
     textColor: '#3f2f18',
@@ -454,9 +454,11 @@ export const operatorListings: OperatorListingMap = {
       value: 'The subject string',
       pattern: 'The regular expression source',
       flags: 'The admitted subset: i, m, s, u',
-      mode: 'test gives a boolean, extract the first matching substring, match every one of them',
+      mode: 'test gives a boolean, extract the first matching substring, match every one of them, replace the string with every match replaced',
       noMatchDefault:
         'The extract answer when nothing matches — a matched empty string still passes through',
+      replacement:
+        'What replace puts in place of each match — $1 and $<name> insert a capture group, $& the whole match, $$ a dollar sign; empty removes the matches',
     },
   },
 

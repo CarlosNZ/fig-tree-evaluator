@@ -77,6 +77,7 @@ export const CORE_OUTPUTS: Record<string, DeclaredOutput> = {
       test: 'boolean',
       extract: { oneOf: ['string', { param: 'noMatchDefault' }] },
       match: { arrayOf: 'string' },
+      replace: 'string',
     },
   },
 }
