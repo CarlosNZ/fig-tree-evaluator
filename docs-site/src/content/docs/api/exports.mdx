@@ -431,7 +431,7 @@ function isTruthy(value: unknown): boolean
 
 Whether a value counts as true, by FigTree's [truthiness](/concepts/evaluation/#types-and-truthiness) rule.
 
-**Returns:** `false` for `false`, `null`, `0` and `''`, and `true` for anything else, including `[]`, `{}` and `NaN`.
+**Returns:** `false` for `false`, `null`, `0`, `''` and `NaN`, and `true` for anything else, including `[]` and `{}`.
 
 **Details:** it's the rule `if`, `and`, `or`, `not`, `filter`, `find`, `some` and `every` apply, and `convert` to `'boolean'`, after it reads `'true'` and `'false'` as booleans. A parameter declared with `truthiness: true` gets it without calling this.
 

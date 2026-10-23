@@ -225,6 +225,4 @@ A fallback can do more than stand in with a fixed value, too: with `$error`, it 
 
 Your app can also set a _default_ fallback for any operator, which takes effect on every node that doesn't set its own ([Setting up FigTree](/guides/setup/#defaults-for-an-operator)).
 
-{/* TO-DO: update this footnote when #248 (NaN in the data) is decided */}
-
-[^truthiness]: This is JavaScript's rule. JavaScript's other falsy values, `undefined` and `NaN`, don't come up, because FigTree never produces them: a missing value is `null`, and arithmetic that would give `NaN` fails instead.
+[^truthiness]: This is JavaScript's rule. Of JavaScript's other falsy values, `undefined` never comes up, because a missing value is `null`. `NaN` only comes up when your app's own data holds one (JSON can't), and it counts as false too.
