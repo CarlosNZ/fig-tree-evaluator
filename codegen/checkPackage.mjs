@@ -56,7 +56,7 @@ const ROOT_MARKERS = [
     part: 'the I/O toolkit',
     markers: [
       'FetchClient(): this runtime has no global fetch',
-      'AxiosClient(axios): pass the axios import itself',
+      'AxiosClient(axios): pass the axios import or an instance',
       'PostgresConnection(client): pass a connected',
       'SQLiteConnection(db): pass an open sqlite Database',
       'supply url, or set the graphQL.endpoint option',
