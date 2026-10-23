@@ -19,7 +19,7 @@ FigTree ships with three operators that can access external resources, which ope
 FigTree comes with four clients, each a thin wrapper around a library you may already use:
 
 - **`FetchClient`**: the `fetch` built into browsers, Node, Deno and Bun: `new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`.
-- **`AxiosClient`**: [Axios](https://axios-http.com), passed in as the `axios` import itself: `new AxiosClient(axios)`.
+- **`AxiosClient`**: [Axios](https://axios-http.com), passed in as the `axios` import itself, `new AxiosClient(axios)`, or as an instance you've configured with `axios.create()`.
 - **`PostgresConnection`**: a [node-postgres](https://node-postgres.com) `Client` or `Pool`.
 - **`SQLiteConnection`**: a database opened with the [sqlite](https://www.npmjs.com/package/sqlite) package.
 
@@ -284,6 +284,24 @@ import pg from 'pg'
 
 // The database stops any query that runs longer than 10 seconds
 const pool = new pg.Pool({ statement_timeout: 10_000 })
+```
+
+Axios has no timeout of its own either. To give every request one, pass `AxiosClient` an instance made with `axios.create()`:
+
+```ts title="http.ts"
+// @filename: axios.d.ts
+declare module 'axios' {
+  import type { AxiosLike } from 'fig-tree-evaluator'
+  const axios: AxiosLike & { create: (config?: object) => AxiosLike }
+  export default axios
+}
+// @filename: http.ts
+// ---cut---
+import axios from 'axios'
+import { AxiosClient, httpOperators } from 'fig-tree-evaluator'
+
+// Axios gives up on any request that takes longer than 10 seconds
+const http = httpOperators(new AxiosClient(axios.create({ timeout: 10_000 })))
 ```
 
 ## Caching responses
