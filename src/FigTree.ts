@@ -14,8 +14,8 @@
  * costs a compile and the cache holds only what evaluation asked for.
  * `trace` shapes what comes back rather than how the spine works: with it
  * in effect the method returns an `EvaluationResult` envelope instead of
- * the bare value, and the class is generic over its construction options
- * so the static type follows the effective ones.
+ * the bare value, and the class is generic over its construction `trace`
+ * so the static type follows the effective one.
  *
  * An instance's whole mutable world is one `InstanceState` record, swapped
  * atomically. The registry, the options and (from 8.2) the compile cache are
@@ -37,9 +37,6 @@ import type {
   CallOptions,
   EvaluationOptions,
   FigTreeOptions,
-  Merge,
-  NoOptions,
-  OnlyCallOptions,
   OptionsUpdate,
   ResultShape,
   ValidateOptions,
@@ -191,7 +188,7 @@ const compileWithRegistry = (
  */
 let seed: { state: InstanceState; results: ResultCache } | undefined
 
-export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
+export class FigTree<Trace extends boolean = false> {
   private state: InstanceState
   private readonly results: ResultCache
 
@@ -202,7 +199,9 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    */
   readonly version = version
 
-  constructor(options: InstanceOpts = {} as InstanceOpts) {
+  // `trace` alone is inferred, so the rest of the options get TypeScript's
+  // full excess-property check (`ResultShape`, src/options.ts)
+  constructor(options: FigTreeOptions & { trace?: Trace } = {}) {
     const ready = seed
     seed = undefined
     this.state = ready?.state ?? buildState(null, options)
@@ -214,12 +213,12 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * — which would otherwise construct a default registry only to discard
    * it. Private, so a state record never crosses the public surface.
    */
-  private static fromState<Opts extends FigTreeOptions>(
+  private static fromState<Trace extends boolean>(
     state: InstanceState,
     results: ResultCache
-  ): FigTree<Opts> {
+  ): FigTree<Trace> {
     seed = { state, results }
-    return new FigTree<Opts>()
+    return new FigTree<Trace>()
   }
 
   /**
@@ -288,7 +287,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * flips `trace` should pass it per call, which types correctly, or
    * construct a second instance.
    */
-  with(update: OptionsUpdate = {}): FigTree<InstanceOpts> {
+  with(update: OptionsUpdate = {}): FigTree<Trace> {
     const next = buildState(this.state, update)
     const cache = readCacheConfig(next.options.cache)
     return FigTree.fromState(next, new ResultCache(cache, this.results.generation))
@@ -434,8 +433,9 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * Returns the bare value; the first static error, or the first uncaught
    * runtime failure, rejects the call with a `FigTreeError`. With `trace`
    * in effect it returns the `EvaluationResult` envelope instead, and the
-   * return TYPE follows the effective options — the instance's, overridden
-   * by the call's, in either direction.
+   * return TYPE follows the effective `trace` — the instance's, overridden
+   * by the call's, in either direction: the call's type parameter defaults
+   * to the instance's, so a call that leaves `trace` out keeps it.
    *
    * The call may supply the four request-scoped options only
    * (`CallOptions`); anything else is instance configuration and is
@@ -448,10 +448,10 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * off when `trace` is requested — a skipped compile has no nodes for the
    * trace to echo.
    */
-  evaluate<CallOpts extends CallOptions = NoOptions>(
+  evaluate<CallTrace extends boolean = Trace>(
     expression: unknown,
-    options?: OnlyCallOptions<CallOpts>
-  ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
+    options?: CallOptions & { trace?: CallTrace }
+  ): Promise<ResultShape<CallTrace>> {
     // The conditional shape is a promise to the caller about which of the
     // two the value is; it cannot be produced from inside, where the
     // options are values rather than types, so the assertion happens once
@@ -463,7 +463,7 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
       options,
       () => state.compileCache.resolve(expression),
       () => compileWithRegistry(expression, state.registry)
-    ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
+    ) as Promise<ResultShape<CallTrace>>
   }
 
   /**
@@ -490,9 +490,9 @@ export class FigTree<InstanceOpts extends FigTreeOptions = NoOptions> {
    * serializable thing, and the standalone `inspect(x)` reports what the
    * compiler made of it.
    */
-  compile(expression: unknown): CompiledExpression<InstanceOpts> {
+  compile(expression: unknown): CompiledExpression<Trace> {
     const { state } = this
-    return createHandle<InstanceOpts>(
+    return createHandle<Trace>(
       expression,
       state.compileCache.resolve(expression),
       state.evaluation,
@@ -607,7 +607,7 @@ export const viewHandle: ReadHandle = (value, call) => readHandle?.(value, call)
  * Private state is in `#` fields and the surface is getters and methods,
  * so `JSON.stringify(handle)` is `{}`: nothing about it looks reusable.
  */
-export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions> {
+export class CompiledExpression<Trace extends boolean = false> {
   readonly #expression: unknown
   /** The cache's shared artifact, or the memoized inert verdict. */
   readonly #entry: CacheEntry
@@ -672,16 +672,16 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
   /**
    * The tail half of `FigTree.evaluate()`, under the options pinned at
    * compile time with the call's laid over — the same two levels, the same
-   * per-call set. The return type follows the options the ORIGINATING
+   * per-call set. The return type follows the `trace` the ORIGINATING
    * instance was constructed with, exactly as the instance's own method
    * does — so a handle compiled after `updateOptions({ trace })` carries
    * the same documented mismatch. What a handle adds is that the mismatch
    * cannot appear later: the runtime `trace` is frozen here with everything
    * else, so type and runtime agree for good once they agree at all.
    */
-  evaluate<CallOpts extends CallOptions = NoOptions>(
-    options?: OnlyCallOptions<CallOpts>
-  ): Promise<ResultShape<Merge<InstanceOpts, CallOpts>>> {
+  evaluate<CallTrace extends boolean = Trace>(
+    options?: CallOptions & { trace?: CallTrace }
+  ): Promise<ResultShape<CallTrace>> {
     return evaluateEntry(
       this.#evaluation,
       this.#results,
@@ -689,7 +689,7 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
       options,
       () => this.#entry,
       () => this.#artifact()
-    ) as Promise<ResultShape<Merge<InstanceOpts, CallOpts>>>
+    ) as Promise<ResultShape<CallTrace>>
   }
 
   /** As `FigTree.getDependencies()`, read from the held artifact. */
@@ -712,13 +712,13 @@ export class CompiledExpression<InstanceOpts extends FigTreeOptions = NoOptions>
 }
 
 /** `CompiledExpression`'s constructor, as it is at runtime. */
-type HandleConstructor<InstanceOpts extends FigTreeOptions> = new (
+type HandleConstructor<Trace extends boolean> = new (
   expression: unknown,
   entry: CacheEntry,
   evaluation: EvaluationOptions,
   registry: OperatorRegistry,
   results: ResultCache
-) => CompiledExpression<InstanceOpts>
+) => CompiledExpression<Trace>
 
 /**
  * The one mint of handles, which `compile()` calls. The constructor is
@@ -728,14 +728,14 @@ type HandleConstructor<InstanceOpts extends FigTreeOptions> = new (
  * private one is declared bare. Privacy is TypeScript's alone, so the mint
  * reaches the constructor through a cast.
  */
-const createHandle = <InstanceOpts extends FigTreeOptions>(
+const createHandle = <Trace extends boolean>(
   expression: unknown,
   entry: CacheEntry,
   evaluation: EvaluationOptions,
   registry: OperatorRegistry,
   results: ResultCache
-): CompiledExpression<InstanceOpts> =>
-  new (CompiledExpression as unknown as HandleConstructor<InstanceOpts>)(
+): CompiledExpression<Trace> =>
+  new (CompiledExpression as unknown as HandleConstructor<Trace>)(
     expression,
     entry,
     evaluation,
