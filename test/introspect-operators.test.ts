@@ -256,6 +256,14 @@ describe('copy posture', () => {
     expect(info.parameters.value.default).toBe(seed)
   })
 
+  test("the package's own object defaults are frozen, so no instance can change another's", async () => {
+    const substitutions = find(fig.getOperators(), 'buildString').parameters.substitutions
+    expect(Object.isFrozen(substitutions.default)).toBe(true)
+    expect(() => (substitutions.default as unknown[]).push('changed')).toThrow(TypeError)
+    const result = await new FigTree().evaluate({ operator: 'buildString', template: 'Hi %1' })
+    expect(result).toBe('Hi %1')
+  })
+
   test('the snapshot itself is not frozen, matching getOptions()', () => {
     expect(Object.isFrozen(fig.getOperators())).toBe(false)
     expect(Object.isFrozen(find(fig.getOperators(), 'plus'))).toBe(false)

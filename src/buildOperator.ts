@@ -53,6 +53,11 @@ export const declareOperator = <const P extends ParameterDeclarations>(
  * (test/package-definitions.test.ts, codegen/checkDefinitions.ts). A
  * conditional null policy compiles to its table over the definition's one
  * literal-union parameter, unchecked.
+ *
+ * Unlike a host's, these artifacts are frozen through and through, `default`
+ * values and `metadata` included: they are the package's own, and every
+ * instance in the process shares them, so mutating one through
+ * `getOperators()` would change every instance's evaluation.
  */
 export const buildOperator = (definition: OperatorDefinition): ValidatedOperatorDefinition => {
   const declarations = Object.entries(definition.parameters)
@@ -68,7 +73,7 @@ export const buildOperator = (definition: OperatorDefinition): ValidatedOperator
       table: literal.map((value) => ({ value, policy: nullPolicy(value) as NullPolicyValue })),
     })
   }
-  return assembleOperator(definition, compiledPolicies)
+  return deepFreezePlain(assembleOperator(definition, compiledPolicies))
 }
 
 /**
@@ -249,7 +254,7 @@ const deepFreezeArtifact = (
   return Object.freeze(validated)
 }
 
-const deepFreezePlain = (value: unknown): void => {
+const deepFreezePlain = <T>(value: T): T => {
   if (Array.isArray(value)) {
     value.forEach(deepFreezePlain)
     Object.freeze(value)
@@ -257,4 +262,5 @@ const deepFreezePlain = (value: unknown): void => {
     Object.values(value).forEach(deepFreezePlain)
     Object.freeze(value)
   }
+  return value
 }
