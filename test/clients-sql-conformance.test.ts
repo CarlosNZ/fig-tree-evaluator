@@ -1,9 +1,10 @@
 /**
  * Chunk 9.2 — the `SqlConnection` contract, run over every connection
  * ("The client contracts" in docs-dev/v3-specs/v3-operator-contract.md).
- * The HTTP suite's sibling: one table, several stub drivers, so the
+ * The HTTP suite's sibling: shared tables, several stub drivers, so the
  * wrappers stay equivalent and a host's own wrapper has a specification to
- * satisfy.
+ * satisfy — what each connection returns, and what it hands its driver
+ * (#273).
  *
  * The contract is deliberately one method returning rows as objects. Every
  * reshaping question — `shape`, `noRowDefault`, multi-column rejection —
@@ -17,7 +18,13 @@ import {
   SQLiteConnection,
   isFigTreeError,
 } from '../src'
-import type { FigTreeError, PgClientLike, SqlConnection, SqliteDatabaseLike } from '../src'
+import type {
+  FigTreeError,
+  PgClientLike,
+  SqlConnection,
+  SqlRequest,
+  SqliteDatabaseLike,
+} from '../src'
 import { MockSqlConnection } from './helpers'
 import { rejection } from './helpers/rejection'
 
@@ -40,13 +47,14 @@ const ROWS = [
 /** What each stub driver was handed, for the passthrough assertions. */
 interface Seen {
   text?: string
+  /** Absent when the driver was handed no binds. */
   values?: unknown
 }
 
 const pgStub = (rows: Record<string, unknown>[], seen: Seen = {}): PgClientLike => ({
-  query: async ({ text, values }) => {
-    seen.text = text
-    seen.values = values
+  query: async (config) => {
+    seen.text = config.text
+    if ('values' in config) seen.values = config.values
     return { rows }
   },
 })
@@ -54,58 +62,104 @@ const pgStub = (rows: Record<string, unknown>[], seen: Seen = {}): PgClientLike 
 const sqliteStub = (rows: Record<string, unknown>[], seen: Seen = {}): SqliteDatabaseLike => ({
   all: async (sql, params) => {
     seen.text = sql
-    seen.values = params
+    if (params !== undefined) seen.values = params
     return rows
   },
 })
 
-const CONNECTIONS: { name: string; build: (rows: Record<string, unknown>[]) => SqlConnection }[] = [
-  { name: 'PostgresConnection', build: (rows) => new PostgresConnection(pgStub(rows)) },
-  { name: 'SQLiteConnection', build: (rows) => new SQLiteConnection(sqliteStub(rows)) },
+/**
+ * Every connection, in the same shape: built to answer with some rows, and
+ * able to say what it handed its driver. `MockSqlConnection` has no driver,
+ * so what it was handed comes from its call log.
+ */
+const CONNECTIONS: {
+  name: string
+  build: (rows: Record<string, unknown>[]) => { connection: SqlConnection; sent: () => Seen }
+}[] = [
+  {
+    name: 'PostgresConnection',
+    build: (rows) => {
+      const seen: Seen = {}
+      return { connection: new PostgresConnection(pgStub(rows, seen)), sent: () => seen }
+    },
+  },
+  {
+    name: 'SQLiteConnection',
+    build: (rows) => {
+      const seen: Seen = {}
+      return { connection: new SQLiteConnection(sqliteStub(rows, seen)), sent: () => seen }
+    },
+  },
   {
     name: 'MockSqlConnection',
-    build: (rows) => new MockSqlConnection({ defaultRows: rows }),
+    build: (rows) => {
+      const connection = new MockSqlConnection({ defaultRows: rows })
+      return { connection, sent: () => ({ ...connection.calls[0] }) }
+    },
   },
 ]
 
+/**
+ * One query per row, which every connection must hand its driver
+ * unchanged: the text verbatim, whatever its placeholders, and the binds as
+ * given. Positional binds only, the one form every driver takes.
+ */
+const QUERIES: { name: string; req: SqlRequest }[] = [
+  { name: 'no binds', req: { text: 'SELECT 1' } },
+  {
+    name: 'a bind of every JSON kind',
+    req: {
+      text: 'SELECT * FROM people WHERE a = $1 AND b = $2 AND c = $3 AND d = $4',
+      values: [1, 'ada', null, true],
+    },
+  },
+  {
+    name: 'an object and an array, bound whole',
+    req: { text: 'SELECT $1::jsonb, $2::jsonb', values: [{ a: 1 }, [1, 2]] },
+  },
+  { name: 'an empty bind list', req: { text: 'SELECT 1', values: [] } },
+  {
+    name: 'text with layout, kept as it is',
+    req: { text: '  SELECT *\n  FROM people\n  WHERE id = ?  ', values: [7] },
+  },
+]
+
+describe.each(CONNECTIONS)('$name — the query every connection sends', ({ build }) => {
+  it.each(QUERIES)('$name', async ({ req }) => {
+    const { connection, sent } = build(ROWS)
+    await connection.query(req)
+    expect(sent()).toStrictEqual(req)
+  })
+})
+
 describe.each(CONNECTIONS)('$name — the contract every connection satisfies', ({ build }) => {
   it('returns rows as objects', async () => {
-    expect(await build(ROWS).query({ text: 'SELECT id, name FROM people' })).toEqual(ROWS)
+    expect(await build(ROWS).connection.query({ text: 'SELECT id, name FROM people' })).toEqual(
+      ROWS
+    )
   })
 
   it('returns an empty array for an empty result, never null', async () => {
-    expect(await build([]).query({ text: 'SELECT 1 WHERE false' })).toEqual([])
+    expect(await build([]).connection.query({ text: 'SELECT 1 WHERE false' })).toEqual([])
   })
 
   it('accepts positional binds', async () => {
     expect(
-      await build(ROWS).query({ text: 'SELECT * FROM people WHERE id = $1', values: [1] })
+      await build(ROWS).connection.query({
+        text: 'SELECT * FROM people WHERE id = $1',
+        values: [1],
+      })
     ).toEqual(ROWS)
   })
 
   it('accepts a signal without throwing, whether or not it can honour one', async () => {
-    const connection = build(ROWS)
+    const { connection } = build(ROWS)
     const controller = new AbortController()
     expect(await connection.query({ text: 'SELECT 1', signal: controller.signal })).toEqual(ROWS)
   })
 })
 
 describe('PostgresConnection', () => {
-  it("maps the request onto node-postgres' own vocabulary", async () => {
-    const seen: Seen = {}
-    await new PostgresConnection(pgStub(ROWS, seen)).query({
-      text: 'SELECT * FROM people WHERE id = $1',
-      values: [7],
-    })
-    expect(seen).toEqual({ text: 'SELECT * FROM people WHERE id = $1', values: [7] })
-  })
-
-  it('omits values entirely when the node supplied none', async () => {
-    const seen: Seen = {}
-    await new PostgresConnection(pgStub(ROWS, seen)).query({ text: 'SELECT 1' })
-    expect(seen.values).toBeUndefined()
-  })
-
   it('refuses named binds rather than silently running with none', async () => {
     const failure = await rejection<OperatorFailure>(
       new PostgresConnection(pgStub(ROWS)).query({ text: 'SELECT :id', values: { id: 1 } })
@@ -162,14 +216,7 @@ describe('PostgresConnection', () => {
 })
 
 describe('SQLiteConnection', () => {
-  it('passes both bind forms through, as the driver supports both', async () => {
-    const positional: Seen = {}
-    await new SQLiteConnection(sqliteStub(ROWS, positional)).query({
-      text: 'SELECT * FROM people WHERE id = ?',
-      values: [1],
-    })
-    expect(positional.values).toEqual([1])
-
+  it('passes named binds through too, as the driver supports them', async () => {
     const named: Seen = {}
     await new SQLiteConnection(sqliteStub(ROWS, named)).query({
       text: 'SELECT * FROM people WHERE id = :id',

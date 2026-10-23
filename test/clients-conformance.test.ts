@@ -4,16 +4,27 @@
  * docs-dev/v3-specs/v3-operator-contract.md; open Q8's check, which asks
  * that the mock satisfy the same interface as the real wrappers).
  *
- * One scenario table, several transport adapters. That is what makes this
- * a contract suite rather than three parallel unit suites — and the
- * transports are plain injected stubs, so nothing here touches the network
- * or intercepts a module, which is the injected-client design earning its
- * keep against v2's `test/__mocks__/`.
+ * Two tables, several transport adapters: what each client returns for a
+ * given response, and what it puts on the wire for a given request (#273).
+ * That is what makes this a contract suite rather than three parallel unit
+ * suites — and the transports are injected, so nothing here touches the
+ * network, which is the injected-client design earning its keep against
+ * v2's `test/__mocks__/`.
+ *
+ * `AxiosClient` runs over the real axios with only its transport swapped,
+ * so axios' own request and response transforms are under test, not a
+ * stub's idea of them: those transforms decide how a body goes out, so a
+ * stub that skipped them would hide exactly the difference a request table
+ * exists to find. `jest.requireActual` because `test/__mocks__/axios.ts`
+ * stands in for axios across every suite rooted at `test/`.
  */
+import type { AxiosStatic } from 'axios'
 import { AxiosClient, ErrorCodes, FetchClient, OperatorFailure, isFigTreeError } from '../src'
 import type { AxiosLike, FetchLike, FigTreeError, HttpClient, HttpRequest } from '../src'
 import { MockHttpClient } from './helpers'
 import { rejection } from './helpers/rejection'
+
+const axios = jest.requireActual<{ default: AxiosStatic }>('axios').default
 
 /** A constructor's throw, which has to be a `FigTreeError`. */
 const refusal = (construct: () => unknown): FigTreeError => {
@@ -33,6 +44,16 @@ interface Scenario {
   body: string
 }
 
+/** What a client handed its transport, as that transport would send it. */
+interface Sent {
+  url: string
+  method: string
+  headers: Record<string, string>
+  /** The serialised bytes; absent when the client sent no body. */
+  body?: string
+  signal: AbortSignal
+}
+
 const SECRET = 'Bearer SUPER-SECRET-VALUE'
 
 const request = (over: Partial<HttpRequest> = {}): HttpRequest => ({
@@ -44,11 +65,16 @@ const request = (over: Partial<HttpRequest> = {}): HttpRequest => ({
 })
 
 /** A `fetch` that answers one scenario and records what it was given. */
-const stubFetch = (scenario: Scenario, seen: { init?: unknown; url?: string } = {}): FetchLike =>
-  (async (url, init) => {
-    seen.url = url
-    seen.init = init
-    if (init?.signal?.aborted) throw abortError()
+const stubFetch = (scenario: Scenario, seen: { sent?: Sent } = {}): FetchLike =>
+  (async (url, init = {}) => {
+    seen.sent = {
+      url,
+      method: (init.method ?? 'GET').toUpperCase(),
+      headers: init.headers ?? {},
+      ...('body' in init ? { body: init.body } : {}),
+      signal: init.signal as AbortSignal,
+    }
+    if (init.signal?.aborted) throw abortError()
     return {
       ok: scenario.status >= 200 && scenario.status < 300,
       status: scenario.status,
@@ -58,21 +84,38 @@ const stubFetch = (scenario: Scenario, seen: { init?: unknown; url?: string } = 
     }
   }) as FetchLike
 
-/** An `axios` that answers the same scenario in axios' own vocabulary. */
-const stubAxios = (scenario: Scenario, seen: { config?: unknown } = {}): AxiosLike =>
-  (async (config: Record<string, unknown>) => {
-    seen.config = config
-    if ((config.signal as AbortSignal | undefined)?.aborted) throw abortError()
-    // axios parses JSON itself and hands back the raw text when it cannot
-    const data = parseOrText(scenario.body)
-    if (scenario.status >= 200 && scenario.status < 300)
-      return { data, status: scenario.status, statusText: scenario.statusText }
-    throw {
-      isAxiosError: true,
-      message: `Request failed with status code ${scenario.status}`,
-      config: { url: config.url, headers: config.headers },
-      response: { status: scenario.status, statusText: scenario.statusText, data },
-    }
+/**
+ * The real axios answering the same scenario. Its adapter is the one part
+ * swapped out: it receives the request after axios' transforms, and hands
+ * back raw text for axios to parse and to reject on, as a real transport
+ * does.
+ */
+const realAxios = (scenario: Scenario, seen: { sent?: Sent } = {}): AxiosLike =>
+  axios.create({
+    adapter: async (config) => {
+      seen.sent = {
+        url: config.url as string,
+        method: (config.method as string).toUpperCase(),
+        headers: config.headers.toJSON(true),
+        ...(config.data !== undefined ? { body: config.data } : {}),
+        signal: config.signal as AbortSignal,
+      }
+      const response = {
+        data: scenario.body,
+        status: scenario.status,
+        statusText: scenario.statusText,
+        headers: {},
+        config,
+      }
+      if (config.validateStatus?.(scenario.status) ?? true) return response
+      throw new axios.AxiosError(
+        `Request failed with status code ${scenario.status}`,
+        axios.AxiosError.ERR_BAD_RESPONSE,
+        config,
+        undefined,
+        response
+      )
+    },
   }) as unknown as AxiosLike
 
 const parseOrText = (body: string): unknown => {
@@ -91,40 +134,138 @@ const abortError = () => {
 }
 
 /**
- * Every client, in the same shape. `MockHttpClient` answers from a
- * scripted map rather than a wire, so its adapter translates a scenario
- * into that vocabulary — which is exactly the point: a caller cannot tell
- * the three apart.
+ * The mock's call log, read as the request it would have sent. It logs the
+ * body as given, so the serialisation a real client does happens here, and
+ * the table checks that the log holds the body unchanged.
  */
-const CLIENTS: { name: string; build: (scenario: Scenario) => HttpClient }[] = [
-  { name: 'FetchClient', build: (scenario) => new FetchClient(stubFetch(scenario)) },
-  { name: 'AxiosClient', build: (scenario) => new AxiosClient(stubAxios(scenario)) },
+const loggedRequest = (mock: MockHttpClient): Sent | undefined => {
+  const call = mock.calls[0]
+  if (call === undefined) return undefined
+  return {
+    url: call.url,
+    method: call.method.toUpperCase(),
+    headers: call.headers,
+    ...('body' in call ? { body: JSON.stringify(call.body) } : {}),
+    signal: call.signal,
+  }
+}
+
+/**
+ * Every client, in the same shape: built to answer one scenario, and able
+ * to say what it sent. `MockHttpClient` answers from a scripted map rather
+ * than a wire, so its adapter translates a scenario into that vocabulary,
+ * and reads what it sent from its call log — which is exactly the point: a
+ * caller cannot tell the three apart.
+ */
+const CLIENTS: {
+  name: string
+  build: (scenario: Scenario) => { client: HttpClient; sent: () => Sent | undefined }
+}[] = [
+  {
+    name: 'FetchClient',
+    build: (scenario) => {
+      const seen: { sent?: Sent } = {}
+      return { client: new FetchClient(stubFetch(scenario, seen)), sent: () => seen.sent }
+    },
+  },
+  {
+    name: 'AxiosClient',
+    build: (scenario) => {
+      const seen: { sent?: Sent } = {}
+      return { client: new AxiosClient(realAxios(scenario, seen)), sent: () => seen.sent }
+    },
+  },
   {
     name: 'MockHttpClient',
-    build: (scenario) =>
-      scenario.status >= 200 && scenario.status < 300
-        ? new MockHttpClient({ defaultResponse: parseOrText(scenario.body) || null })
-        : new MockHttpClient({
-            failStatus: scenario.status,
-            failMessage: scenario.statusText,
-            failResponse: parseOrText(scenario.body),
-          }),
+    build: (scenario) => {
+      const client =
+        scenario.status >= 200 && scenario.status < 300
+          ? new MockHttpClient({ defaultResponse: parseOrText(scenario.body) || null })
+          : new MockHttpClient({
+              failStatus: scenario.status,
+              failMessage: scenario.statusText,
+              failResponse: parseOrText(scenario.body),
+            })
+      return { client, sent: () => loggedRequest(client) }
+    },
   },
 ]
 
+const OK: Scenario = { status: 200, statusText: 'OK', body: 'null' }
+
+const JSON_HEADERS = { Authorization: SECRET, 'Content-Type': 'application/json' }
+
+/**
+ * One outgoing request per row, and the body bytes every client must send
+ * for it. `body` is a JSON value, so a string is a JSON string, whatever it
+ * happens to contain.
+ */
+const REQUESTS: { name: string; req: Partial<HttpRequest>; wire: string | undefined }[] = [
+  {
+    name: 'no body',
+    req: { method: 'get', headers: { Authorization: SECRET, Accept: 'application/json' } },
+    wire: undefined,
+  },
+  {
+    name: 'an object, with nested nulls',
+    req: { body: { term: 'ada', tags: ['x', null], meta: { a: null } } },
+    wire: '{"term":"ada","tags":["x",null],"meta":{"a":null}}',
+  },
+  { name: 'an array', req: { body: [1, 'two', null] }, wire: '[1,"two",null]' },
+  { name: 'a string', req: { body: 'hello' }, wire: '"hello"' },
+  { name: 'an empty string', req: { body: '' }, wire: '""' },
+  { name: 'a string of a JSON object', req: { body: '{"a":1}' }, wire: '"{\\"a\\":1}"' },
+  { name: 'a string of a JSON number', req: { body: '123' }, wire: '"123"' },
+  { name: 'a string with outer whitespace', req: { body: ' 123 ' }, wire: '" 123 "' },
+  { name: 'a number', req: { body: 42 }, wire: '42' },
+  { name: 'a boolean', req: { body: false }, wire: 'false' },
+  { name: 'null', req: { body: null }, wire: 'null' },
+  {
+    // The node removed the header with `null`. Which `Content-Type` the
+    // transport then supplies is its own default, not the client's choice
+    name: 'a body without Content-Type',
+    req: { body: { a: 1 }, headers: { Authorization: SECRET } },
+    wire: '{"a":1}',
+  },
+]
+
+describe.each(CLIENTS)('$name — the request every client sends', ({ build }) => {
+  it.each(REQUESTS)('$name', async ({ req, wire }) => {
+    const { client, sent } = build(OK)
+    const full = request({
+      url: 'https://api.test/search?q=ada%20lovelace&page=2',
+      method: 'post',
+      headers: JSON_HEADERS,
+      ...req,
+    })
+    await client.request(full)
+    const { signal, headers, ...rest } = sent() as Sent
+    expect(rest).toStrictEqual({
+      url: full.url,
+      method: full.method.toUpperCase(),
+      ...(wire !== undefined ? { body: wire } : {}),
+    })
+    // Every header the request names arrives with its value. A transport
+    // may add its own besides (axios an `Accept`, say), which are not the
+    // client's to send or withhold
+    expect(headers).toMatchObject(full.headers)
+    expect(signal).toBe(full.signal)
+  })
+})
+
 describe.each(CLIENTS)('$name — the contract every client satisfies', ({ build }) => {
   it('returns the parsed JSON body', async () => {
-    const client = build({ status: 200, statusText: 'OK', body: '{"rate":0.61}' })
+    const { client } = build({ status: 200, statusText: 'OK', body: '{"rate":0.61}' })
     expect(await client.request(request())).toEqual({ rate: 0.61 })
   })
 
   it('returns null for an empty success', async () => {
-    const client = build({ status: 204, statusText: 'No Content', body: '' })
+    const { client } = build({ status: 204, statusText: 'No Content', body: '' })
     expect(await client.request(request())).toBeNull()
   })
 
   it('throws http-status carrying the status and the response payload', async () => {
-    const client = build({ status: 404, statusText: 'Not Found', body: '{"error":"nope"}' })
+    const { client } = build({ status: 404, statusText: 'Not Found', body: '{"error":"nope"}' })
     const failure = await rejection<OperatorFailure>(client.request(request()))
     expect(failure).toBeInstanceOf(OperatorFailure)
     expect(failure.code).toBe('http-status')
@@ -138,7 +279,7 @@ describe.each(CLIENTS)('$name — the contract every client satisfies', ({ build
   })
 
   it('never echoes a header value, anywhere in the failure', async () => {
-    const client = build({ status: 500, statusText: 'Server Error', body: '{"error":"boom"}' })
+    const { client } = build({ status: 500, statusText: 'Server Error', body: '{"error":"boom"}' })
     const failure = await rejection<Error>(client.request(request()))
     // One assertion covering message, errorData and cause at once — and it
     // keeps working when someone adds a field to the payload
@@ -150,7 +291,7 @@ describe.each(CLIENTS)('$name — the contract every client satisfies', ({ build
   })
 
   it('refuses a request whose signal is already aborted', async () => {
-    const client = build({ status: 200, statusText: 'OK', body: '{}' })
+    const { client } = build({ status: 200, statusText: 'OK', body: '{}' })
     const controller = new AbortController()
     controller.abort()
     await expect(client.request(request({ signal: controller.signal }))).rejects.toThrow()
@@ -179,26 +320,6 @@ describe('FetchClient', () => {
   it('treats a whitespace-only success as empty', async () => {
     const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: '   ' }))
     expect(await client.request(request())).toBeNull()
-  })
-
-  it('serializes the body and passes method, headers and signal through', async () => {
-    const seen: { init?: Record<string, unknown>; url?: string } = {}
-    const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen))
-    const signal = new AbortController().signal
-    await client.request(request({ method: 'post', body: { term: 'ada' }, signal }))
-    expect(seen.init).toMatchObject({
-      method: 'POST',
-      body: '{"term":"ada"}',
-      headers: { Authorization: SECRET },
-      signal,
-    })
-  })
-
-  it('sends no body key at all when there is no body', async () => {
-    const seen: { init?: Record<string, unknown> } = {}
-    const client = new FetchClient(stubFetch({ status: 200, statusText: 'OK', body: 'null' }, seen))
-    await client.request(request())
-    expect(seen.init).not.toHaveProperty('body')
   })
 
   it('refuses to construct where there is no fetch to adopt', () => {
@@ -245,7 +366,7 @@ describe('AxiosClient', () => {
 
   it('reads config.url and never the whole config, which carries headers', async () => {
     const client = new AxiosClient(
-      stubAxios({ status: 403, statusText: 'Forbidden', body: '{"error":"denied"}' })
+      realAxios({ status: 403, statusText: 'Forbidden', body: '{"error":"denied"}' })
     )
     const failure = await rejection<OperatorFailure>(client.request(request()))
     expect(failure.errorData).toEqual({

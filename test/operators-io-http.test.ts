@@ -182,6 +182,18 @@ describe('the header chain', () => {
     expect(http.calls[0].headers).not.toHaveProperty('Content-Type')
   })
 
+  it('lets the option drop the content type, and send a number as text', async () => {
+    const http = client()
+    // Typed, unlike withClient's options: null and a number are part of
+    // the option's type, not only its runtime rule
+    await new FigTree({
+      operators: [coreOperators, httpOperators(http)],
+      http: { headers: { 'Content-Type': null, 'X-Version': 2 } },
+    }).evaluate({ $http: { url: 'https://api.test/x', method: 'post', body: { a: 1 } } })
+    expect(http.calls[0].headers).not.toHaveProperty('Content-Type')
+    expect(http.calls[0].headers).toMatchObject({ 'X-Version': '2' })
+  })
+
   it('merges exact-key, without normalising case', async () => {
     const http = client()
     await withClient(http, { http: { headers: { 'x-key': 'lower' } } }).evaluate({
