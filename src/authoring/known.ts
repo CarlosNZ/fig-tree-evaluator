@@ -30,11 +30,12 @@ export type Member =
    */
   | { type: 'boolean' | 'null' | 'opaque' }
   /**
-   * NaN or an infinity: a number the engine refuses as a node's result.
-   * Data can carry one only under `strictNumbers`, the only setting that
-   * reports it
+   * `nan`: NaN, which no number parameter admits, and which the engine
+   * refuses as the result of an operator declared to return a number.
+   * `infinite`: ±Infinity, a number like any other. Data carries either only
+   * under `strictNumbers`, so elsewhere only one known exactly counts
    */
-  | { type: 'nonFinite' }
+  | { type: 'nan' | 'infinite' }
   /**
    * `element` absent: anything. `items`: each element in order, where the
    * array is a literal whose length is known. `minLength`: a least length,
@@ -66,7 +67,8 @@ export const ANY: Known = [
   { type: 'array' },
   { type: 'object' },
   { type: 'opaque' },
-  { type: 'nonFinite' },
+  { type: 'nan' },
+  { type: 'infinite' },
 ]
 
 export const exactly = (value: unknown): Known => [{ exact: value === undefined ? null : value }]
@@ -140,7 +142,13 @@ export const typeOfValue = (value: unknown): Member => {
       return { type: 'string' }
     case 'number':
       return {
-        type: Number.isInteger(value) ? 'integer' : Number.isFinite(value) ? 'number' : 'nonFinite',
+        type: Number.isInteger(value)
+          ? 'integer'
+          : Number.isFinite(value)
+            ? 'number'
+            : Number.isNaN(value)
+              ? 'nan'
+              : 'infinite',
       }
     case 'boolean':
       return { type: 'boolean' }
@@ -345,22 +353,41 @@ export const valuesOf = (known: Known): Known =>
 export const kindOf = (known: Known): Known =>
   union(known.map((member) => ('exact' in member ? typeOfValue(member.exact) : member)))
 
-/** Whether a value may be a number the engine refuses as a result. */
+/** Whether a value may be NaN or an infinity. */
 export const mayBeNonFinite = (known: Known): Answer =>
   any(
     known.map((member): Answer => {
       if ('exact' in member)
         return typeof member.exact === 'number' && !Number.isFinite(member.exact) ? 'yes' : 'no'
-      return member.type === 'nonFinite' ? 'maybe' : 'no'
+      return member.type === 'nan' || member.type === 'infinite' ? 'maybe' : 'no'
     })
   )
 
-/** What is left once the engine has refused a non-finite result. */
-export const finite = (known: Known): Known =>
+/** Whether a value may be NaN. */
+export const mayBeNaN = (known: Known): Answer =>
+  any(
+    known.map((member): Answer => {
+      if ('exact' in member) return Number.isNaN(member.exact) ? 'yes' : 'no'
+      return member.type === 'nan' ? 'maybe' : 'no'
+    })
+  )
+
+const isInfinite = (value: unknown): boolean => value === Infinity || value === -Infinity
+
+/**
+ * Whether a value, or an element of one, may be an infinity: any that may
+ * be under `strictNumbers`, only one known exactly otherwise, since there
+ * the data carries none.
+ */
+export const mayBeInfinite = (known: Known, strictNumbers: boolean): boolean =>
+  [...known, ...elementsOf(known)].some((member) =>
+    'exact' in member ? isInfinite(member.exact) : strictNumbers && member.type === 'infinite'
+  )
+
+/** What is left once the engine has refused a NaN result. */
+export const withoutNaN = (known: Known): Known =>
   known.filter((member) =>
-    'exact' in member
-      ? typeof member.exact !== 'number' || Number.isFinite(member.exact)
-      : member.type !== 'nonFinite'
+    'exact' in member ? !Number.isNaN(member.exact) : member.type !== 'nan'
   )
 
 export const objectOf = (keys: Record<string, Known>): Known => [{ type: 'object', keys }]
@@ -519,7 +546,7 @@ const withoutNumbers = (known: Known): Known =>
   known.filter((member) =>
     'exact' in member
       ? typeof member.exact !== 'number'
-      : !['number', 'integer', 'nonFinite'].includes(member.type)
+      : !['number', 'integer', 'nan', 'infinite'].includes(member.type)
   )
 
 /**
@@ -652,8 +679,9 @@ export const absOf = (known: Known): Known => {
 
 /**
  * The least or greatest of an array's elements (`min`, `max`): for numbers,
- * a span between the elements' own, and anything else as it is. NaN
- * compares equal to anything, so where an element may be one, the answer
+ * a span between the elements' own, and anything else as it is. An
+ * infinity has no span, and NaN compares equal to anything (though no
+ * number check admits one), so where an element may be either, the answer
  * is any of the elements.
  */
 export const extremeOf = (known: Known, which: 'min' | 'max'): Known =>
@@ -723,9 +751,12 @@ const memberFitsType = (
       return basics.includes('integer') || basics.includes('number') ? 'yes' : 'no'
     case 'opaque':
       return basics.includes('object') ? 'maybe' : 'no'
-    case 'nonFinite':
-      // The `number` type admits NaN and the infinities; `integer` does not
+    case 'infinite':
+      // The `number` type admits the infinities; `integer` does not
       return basics.includes('number') ? 'yes' : 'no'
+    case 'nan':
+      // Only `any` admits NaN, answered above
+      return 'no'
     default:
       return basics.includes(member.type) ? 'yes' : 'no'
   }

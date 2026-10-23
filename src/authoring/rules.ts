@@ -19,7 +19,7 @@ import type { FailureTest, FailureRule } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
 import type { ExpectedType } from '../typeCheck'
-import { ANY, any, combine, fits } from './known'
+import { ANY, any, combine, fits, mayBeInfinite } from './known'
 import type { Answer, Known, Member } from './known'
 import type { Inputs } from './inputs'
 import type { Failure } from './findings'
@@ -153,7 +153,8 @@ const testMember = (test: FailureTest, member: Member): Answer => {
         : (member.min ?? -Infinity) >= test.below
           ? 'no'
           : 'maybe'
-    return member.type === 'nonFinite' ? 'maybe' : 'no'
+    // An infinity of either sign
+    return member.type === 'infinite' ? 'maybe' : 'no'
   }
   if ('empty' in test) {
     if ('exact' in member) {
@@ -294,6 +295,9 @@ export interface RuleOptions {
   evaluation: Record<string, unknown>
 }
 
+const infiniteOperand = (inputs: Inputs, strictNumbers: boolean): boolean =>
+  Object.values(inputs.received).some((known) => mayBeInfinite(known, strictNumbers))
+
 /** One rule's answer for a node, or `no` where its gates shut it. */
 export const answerRule = (
   node: OperatorNode,
@@ -301,7 +305,9 @@ export const answerRule = (
   inputs: Inputs,
   options: RuleOptions
 ): Answer => {
-  if (rule.overflow && !options.strictNumbers) return 'no'
+  // Arithmetic on an infinity can make NaN (Infinity - Infinity), which an
+  // overflow rule stands for at either level
+  if (rule.overflow && !options.strictNumbers && !infiniteOperand(inputs, false)) return 'no'
   for (const [key, value] of Object.entries(rule.options ?? {}))
     if ((options.evaluation[key] ?? false) !== value) return 'no'
   const answers = Object.entries(rule.when ?? {}).map(([name, test]) =>
@@ -315,7 +321,9 @@ export const answerRule = (
  * The node's own failures, by its rules: one finding for each rule that can
  * hold, `always` where it must and no null can end the node first. An
  * overflow takes extreme numbers, which a rule cannot ask for, so it is
- * never certain. An external operator may fail whatever its inputs, with
+ * never certain; nor is a non-finite result where an operand may be an
+ * infinity, which the body carries through instead of failing
+ * (`Infinity / 0`). An external operator may fail whatever its inputs, with
  * whatever code its own code throws, which the one `operator-failure`
  * finding stands for.
  */
@@ -336,6 +344,7 @@ export const ownFailures = (
       },
     ]
   const failures: Failure[] = []
+  const carried = infiniteOperand(inputs, options.strictNumbers)
   for (const rule of rules) {
     const answer = answerRule(node, rule, inputs, options)
     if (answer === 'no') continue
@@ -344,7 +353,11 @@ export const ownFailures = (
       code: rule.code,
       message: describeRule(node.name, rule),
       certainty:
-        answer === 'yes' && !rule.may && !rule.overflow && inputs.propagates === 'no'
+        answer === 'yes' &&
+        !rule.may &&
+        !rule.overflow &&
+        !(rule.code === NON_FINITE && carried) &&
+        inputs.propagates === 'no'
           ? 'always'
           : 'may',
       ...(rule.parameter !== undefined ? { parameter: rule.parameter } : {}),

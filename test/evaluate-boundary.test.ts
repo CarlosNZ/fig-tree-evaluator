@@ -23,8 +23,9 @@ const fig = new FigTree({
     boomOp(),
     failOp(),
     rawOp('undef', () => undefined),
-    rawOp('nan', () => NaN),
-    rawOp('inf', () => 1 / 0),
+    rawOp('nan', () => NaN, 'number'),
+    rawOp('nanAny', () => NaN),
+    rawOp('inf', () => 1 / 0, 'number'),
     rawOp('nested', () => ({ deep: undefined, n: NaN })),
     rawOp('handle', () => ({ [LAZY_HANDLE]: true, evaluate: async () => 1 })),
     rawOp('str', () => {
@@ -38,12 +39,16 @@ describe('result normalization', () => {
     expect(await fig.evaluate({ $undef: {} })).toBe(null)
   })
 
-  test('the finite guard fails NaN and ±Infinity results as catchable runtime failures', async () => {
-    expect((await rejection(fig.evaluate({ $nan: {} }))).code).toBe('non-finite-result')
-    const error = await rejection(fig.evaluate({ $inf: {} }))
+  test('a NaN from an operator declared to return a number is a catchable failure', async () => {
+    const error = await rejection(fig.evaluate({ $nan: {} }))
     expect(error.code).toBe('non-finite-result')
-    expect(error.operator).toBe('inf')
-    expect(await fig.evaluate({ $inf: {}, fallback: 0 })).toBe(0)
+    expect(error.operator).toBe('nan')
+    expect(await fig.evaluate({ $nan: {}, fallback: 0 })).toBe(0)
+  })
+
+  test('a NaN from an operator returning any, and an infinity, pass', async () => {
+    expect(await fig.evaluate({ $nanAny: {} })).toBeNaN()
+    expect(await fig.evaluate({ $inf: {} })).toBe(Infinity)
   })
 
   test('the guards apply to the top-level result only', async () => {

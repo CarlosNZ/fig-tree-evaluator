@@ -680,29 +680,65 @@ describe('what a node returns', () => {
   describe('the result boundary, under strict numbers', () => {
     const strict = { strictNumbers: true }
     const nonFinite = { path: [], code: ErrorCodes.nonFiniteResult, certainty: 'may' }
+    // Each takes anything, and declares no failure of its own, so only the
+    // boundary can refuse what it returns
+    const handOn = (name: string, returns: 'number' | 'any') =>
+      defineOperator({
+        name,
+        category: 'other',
+        parameters: { value: { type: 'any' } },
+        positionalParams: ['value'],
+        returns,
+        analysis: { failures: [] },
+        evaluate: ({ value }) => value,
+      })
+    const hosted = new FigTree({
+      operators: [handOn('toNumber', 'number'), handOn('pass', 'any')],
+    })
+    const hostFindings = async (expression: unknown, options?: FallbackCoverageOptions) =>
+      (await fallbackCoverage(hosted, expression, options)).uncovered.map((finding) => ({
+        ...where(finding),
+        certainty: finding.certainty,
+      }))
 
-    test('a number from the data may be NaN, wherever it is returned', async () => {
-      const passed = { $if: ['$data.c', '$data.n', 0] }
-      expect(await findings(passed, strict)).toEqual([nonFinite])
-      expect(await findings(passed)).toEqual([])
-      expect(await findings({ $floor: '$data.n' }, strict)).toEqual([
-        typeCheck([], 'value'),
-        nonFinite,
-      ])
+    test('a NaN from the data is refused only where it must be a number', async () => {
+      expect(await hostFindings({ $toNumber: '$data.n' }, strict)).toEqual([nonFinite])
+      expect(await hostFindings({ $toNumber: '$data.n' })).toEqual([])
+      expect(await hostFindings({ $pass: '$data.n' }, strict)).toEqual([])
+      expect(await findings({ $if: ['$data.c', '$data.n', 0] }, strict)).toEqual([])
     })
 
-    test('a number the walk knows, or one no NaN can reach, is never refused', async () => {
-      expect(await findings({ $if: ['$data.c', 1, 2] }, strict)).toEqual([])
+    test('a NaN known exactly is refused at either level', async () => {
+      expect(await hostFindings({ $toNumber: NaN })).toEqual([
+        { ...nonFinite, certainty: 'always' },
+      ])
+      expect(await hostFindings({ $pass: NaN })).toEqual([])
+    })
+
+    test('a number parameter refuses NaN as a type, and carries an infinity', async () => {
+      expect(await findings({ $floor: '$data.n' }, strict)).toEqual([typeCheck([], 'value')])
       expect(await findings({ $length: '$data.s' }, strict)).toEqual([typeCheck([], 'value')])
     })
 
-    test('what passes the boundary is finite', async () => {
-      // floor may be refused, but what it gives abs is a finite integer
+    test('what passes the boundary is never NaN', async () => {
+      // toNumber may be refused, but what it gives abs is not NaN
       expect(
-        (await findings({ $abs: { $floor: '$data.n', fallback: 0 } }, strict)).filter(
+        (await hostFindings({ $abs: { $toNumber: '$data.n', fallback: 0 } }, strict)).filter(
           (finding) => finding.path.length === 0
         )
       ).toEqual([])
+    })
+
+    test('a failure an infinite operand can carry past is never certain', async () => {
+      const byZero = { path: [], code: ErrorCodes.nonFiniteResult, parameter: 'by' }
+      // A non-negative integer, never null and never infinite
+      const value = { $length: { $buildString: ['%1', '$data.s'] } }
+      expect(await findings({ $divide: [value, 0] })).toEqual([{ ...byZero, certainty: 'always' }])
+      expect(await findings({ $divide: ['$data.n', 0] }, strict)).toEqual([
+        typeCheck([], 'value'),
+        { ...byZero, certainty: 'may' },
+        nonFinite,
+      ])
     })
   })
 })

@@ -3,9 +3,11 @@
  * Operands are numbers, with two deliberate exceptions: `plus`'s mode
  * polymorphism and `min`/`max`'s string ordering. Every scalar parameter
  * propagates null; the aggregates propagate per element with
- * `nullValueDefault` as the declared per-site opt-out (ledger #18). No body
- * polices NaN or Infinity — the engine's finite guard turns any non-finite
- * result into a runtime failure (ledger #10).
+ * `nullValueDefault` as the declared per-site opt-out (ledger #18). The
+ * number type admits the infinities but not NaN. A body that can create an
+ * infinity from finite operands (overflow, division by zero) refuses it with
+ * `overflowChecked`; a NaN result is refused by the engine's result boundary,
+ * as every operator declared to return a number is (ledger #10).
  */
 import { declareOperator } from '../buildOperator'
 import { compareValues, roundDecimal } from '../primitives'
@@ -15,6 +17,7 @@ import {
   emptyAggregateFailure,
   emptyAggregateWarning,
   operandTypeFailure,
+  overflowChecked,
 } from './shared'
 
 type PlusMode = 'number' | 'string' | 'array' | 'object'
@@ -64,8 +67,13 @@ export const plus = declareOperator({
     if (expect !== undefined && mode !== expect)
       throw operandTypeFailure(`all operands must be ${expect}s — received ${mode}`)
     switch (mode) {
-      case 'number':
-        return (values as number[]).reduce((sum, value) => sum + value, 0)
+      case 'number': {
+        const operands = values as number[]
+        return overflowChecked(
+          operands.reduce((sum, value) => sum + value, 0),
+          operands
+        )
+      }
       case 'string':
         return (values as string[]).join('')
       case 'array':
@@ -86,7 +94,7 @@ export const subtract = declareOperator({
   },
   positionalParams: ['value', 'minus'],
   returns: 'number',
-  evaluate: ({ value, minus }) => value - minus,
+  evaluate: ({ value, minus }) => overflowChecked(value - minus, [value, minus]),
 })
 
 export const divide = declareOperator({
@@ -99,7 +107,7 @@ export const divide = declareOperator({
   },
   positionalParams: ['value', 'by'],
   returns: 'number',
-  evaluate: ({ value, by }) => value / by,
+  evaluate: ({ value, by }) => overflowChecked(value / by, [value, by]),
 })
 
 export const modulo = declareOperator({
@@ -134,7 +142,13 @@ export const multiply = declareOperator({
   positionalParams: ['...values'],
   returns: 'number',
   validate: emptyAggregateWarning,
-  evaluate: ({ values }) => (values as number[]).reduce((product, value) => product * value, 1),
+  evaluate: ({ values }) => {
+    const operands = values as number[]
+    return overflowChecked(
+      operands.reduce((product, value) => product * value, 1),
+      operands
+    )
+  },
 })
 
 export const power = declareOperator({
@@ -147,7 +161,7 @@ export const power = declareOperator({
   },
   positionalParams: ['base', 'exponent'],
   returns: 'number',
-  evaluate: ({ base, exponent }) => base ** exponent,
+  evaluate: ({ base, exponent }) => overflowChecked(base ** exponent, [base, exponent]),
 })
 
 export const round = declareOperator({
@@ -179,8 +193,8 @@ const unary = (
     evaluate: ({ value }) => compute(value),
   })
 
-// A finite number rounds to an integer, and a non-finite one never passes
-// the result boundary
+// A finite number rounds to an integer, and an infinite one passes through
+// as it is
 export const floor = unary('floor', Math.floor, 'integer')
 export const ceiling = unary('ceiling', Math.ceil, 'integer')
 export const abs = unary('abs', Math.abs)

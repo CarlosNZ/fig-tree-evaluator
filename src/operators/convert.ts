@@ -10,6 +10,7 @@ import { isTruthy, renderText } from '../primitives'
 import { describeType } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import { OperatorFailure } from '../OperatorFailure'
+import { nonFiniteFailure } from './shared'
 
 const cannot = (value: unknown, to: string) =>
   new OperatorFailure(`cannot convert ${describeType(value)} to ${to}`)
@@ -40,6 +41,8 @@ export const convert = declareOperator({
             throw new OperatorFailure(
               `'${value}' is not a numeric string — use regex to extract a number from text`
             )
+          // '1e400' overflows, and 'Infinity' is the same number spelled out
+          if (!Number.isFinite(parsed)) throw nonFiniteFailure(parsed)
           return parsed
         }
         throw cannot(value, 'number')

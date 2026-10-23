@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 180 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 182 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -1477,14 +1477,31 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✗ **floor** at the root — may fail: `type-check` on `value`. E.g. data `{ n: 'a' }`
 
-**strict numbers: data may be NaN** (analysis options `{ strictNumbers: true }`)
+**strict numbers: a number parameter refuses NaN and carries an infinity** (analysis options `{ strictNumbers: true }`)
 
 ```json5
 { $floor: '$data.n' }
 ```
 
 - ✗ **floor** at the root — may fail: `type-check` on `value`. E.g. data `{ n: 'a' }`
-- ✗ **floor** at the root — may fail: `non-finite-result`. E.g. data `{ n: NaN }`
+
+**strict numbers: an operator handing a value on hands NaN on** (analysis options `{ strictNumbers: true }`)
+
+```json5
+{ $if: ['$data.c', '$data.n', 0] }
+```
+
+- Nothing can throw.
+
+**strict numbers: arithmetic on infinities may make NaN** (analysis options `{ strictNumbers: true }`)
+
+```json5
+{ $subtract: ['$data.a', '$data.b'] }
+```
+
+- ✗ **subtract** at the root — may fail: `type-check` on `value`. E.g. data `{ a: 'x', b: 1 }`
+- ✗ **subtract** at the root — may fail: `type-check` on `minus`. E.g. data `{ a: 1, b: 'x' }`
+- ✗ **subtract** at the root — may fail: `non-finite-result`. E.g. data `{ a: Infinity, b: Infinity }`
 
 ## I/O and timeouts
 

@@ -34,6 +34,7 @@ import { resolveParams } from './params'
 import { fillFallback } from './reference'
 import { pushVars } from './scope'
 import { operatorCaches } from '../registry'
+import { typeNamesNumber } from '../typeCheck'
 import { noop } from '../utils'
 
 export const evaluateOperator = async (
@@ -205,13 +206,19 @@ const fallbackOf = (
 }
 
 /**
- * The result boundary: `undefined` → `null`; the finite-number guard on a
- * number result; the escaped-handle guard. Top-level only — deep-walking a
- * result would break the O(holes) model.
+ * The result boundary: `undefined` → `null`; the NaN guard; the
+ * escaped-handle guard. Top-level only — deep-walking a result would break
+ * the O(holes) model.
+ *
+ * NaN fails only from an operator declared to return a number, which
+ * computed it. Its operands cannot have been NaN, since the number type
+ * excludes it, so one an operator returns as `any` (`if`, `get`) was handed
+ * on from data. The infinities are numbers, and the bodies that could
+ * create one from finite operands refuse it themselves.
  */
 const normalizeResult = (result: unknown, node: OperatorNode): unknown => {
   if (result === undefined) return null
-  if (typeof result === 'number' && !Number.isFinite(result))
+  if (Number.isNaN(result) && typeNamesNumber(node.entry.definition.returns))
     throw nodeFailure(
       node,
       ErrorCodes.nonFiniteResult,

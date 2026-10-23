@@ -9,6 +9,12 @@ describe('isTruthy', () => {
     expect(isTruthy('')).toBe(false)
   })
 
+  it('treats NaN as falsy and the infinities as truthy, as JS does', () => {
+    expect(isTruthy(NaN)).toBe(false)
+    expect(isTruthy(Infinity)).toBe(true)
+    expect(isTruthy(-Infinity)).toBe(true)
+  })
+
   it('treats everything else as truthy, including empty containers', () => {
     expect(isTruthy([])).toBe(true)
     expect(isTruthy({})).toBe(true)

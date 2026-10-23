@@ -169,7 +169,7 @@ describe('failures are never cached', () => {
   })
 
   it('the result boundary runs after the unit, on every read', async () => {
-    // The unit stores what it returned; the non-finite guard belongs to the
+    // The unit stores what it returned; the NaN guard belongs to the
     // operator's return, so it refuses the stored value on each read too
     const store = new RecordingCacheStore()
     let runs = 0
@@ -177,11 +177,12 @@ describe('failures are never cached', () => {
       name: 'nonFinite',
       category: 'other',
       parameters: {},
+      returns: 'number',
       cache: true,
       evaluate: (_params, context) =>
         context.cache.memo('n', async () => {
           runs += 1
-          return Infinity
+          return NaN
         }),
     })
     const f = fig({ operators: [nonFinite], cache: { store } })

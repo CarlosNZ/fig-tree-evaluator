@@ -150,6 +150,12 @@ The declarations do not depend on the setting. Each overflow condition is tagged
 
 **Why.** `evaluate()` refuses such an expression before anything runs, so no fallback is ever reached ([#232](https://github.com/CarlosNZ/fig-tree-evaluator/issues/232)). The walk had re-derived a few static errors, where an enclosing fallback then covered them, ran `if`'s body over a missing `then`, and never saw the rest, `unrecognized-identifier` among them. Walking on with broken nodes treated as opaque was considered and rejected: its runtime findings describe an expression that does not exist yet, and `validate()` already shows the errors while the author fixes them.
 
+## NaN and the infinities apart (Carl, 2026-10-23, at #269)
+
+**Decision.** The engine refuses NaN at the number types and at the result of an operator declared to return a number, and treats an infinity as a number, refusing one only where arithmetic makes it from finite operands ("The value domain" in v3-api.md). The walk follows: its one non-finite member becomes two, `nan`, which fits only `any`, and `infinite`, which fits `number`. The result boundary reports only NaN, only on a node declared to return a number. An operator returning a number may return an infinity where it receives one, and NaN where an `any` parameter may have received one. NaN made from infinities stays with the `overflow` rules, which also count outside `strictNumbers` where an operand is an infinity known exactly. A `non-finite-result` rule is never certain where an operand may be an infinity.
+
+**Why.** It is what the engine does: "Strict numbers at the result boundary" above listed `if`, `match`, `get`, `find`, `floor`, `ceiling` and `abs` as failing when handed NaN, and none of them does now. The NaN made from infinities is the arithmetic's alone, `Infinity - Infinity` or `0 * Infinity`, and the arithmetic is exactly what carries `overflow` rules, so no new rule or test was needed. A test for "finite" was the alternative for `divide`'s `{ by: 0 }`, which `Infinity / 0` satisfies without failing; marking the rule uncertain there kept the vocabulary as it is.
+
 ## Open
 
 All carried to the issues above.

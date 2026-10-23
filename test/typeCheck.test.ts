@@ -30,6 +30,21 @@ describe('checkType — basic tokens', () => {
     expect(checkType('1', 'integer').ok).toBe(false)
   })
 
+  it('number rejects NaN and admits the infinities; integer rejects all three', () => {
+    expect(checkType(NaN, 'number')).toEqual({ ok: false, expected: 'number', actual: 'NaN' })
+    expect(checkType(Infinity, 'number').ok).toBe(true)
+    expect(checkType(-Infinity, 'number').ok).toBe(true)
+    expect(checkType(NaN, 'integer').ok).toBe(false)
+    expect(checkType(Infinity, 'integer').ok).toBe(false)
+    expect(checkType(NaN, ['number', 'null']).ok).toBe(false)
+    expect(checkType(NaN, 'any').ok).toBe(true)
+  })
+
+  it('homogeneous number rejects a NaN element', () => {
+    expect(checkConstraints([1, NaN], { homogeneous: ['number'] }).ok).toBe(false)
+    expect(checkConstraints([1, Infinity], { homogeneous: ['number'] }).ok).toBe(true)
+  })
+
   it('any admits every domain value including null and opaque constants', () => {
     expect(checkType(null, 'any').ok).toBe(true)
     expect(checkType({ a: 1 }, 'any').ok).toBe(true)
@@ -79,6 +94,8 @@ describe('describeType', () => {
     expect(describeType('x')).toBe('string')
     expect(describeType(1)).toBe('number')
     expect(describeType(true)).toBe('boolean')
+    expect(describeType(NaN)).toBe('NaN')
+    expect(describeType(Infinity)).toBe('number')
   })
 })
 

@@ -7,15 +7,17 @@
  * declaration can bound what it returns ("Value ranges"): the arithmetic
  * itself is in ./known.ts, so a declaration names only its operation.
  *
- * Then the result boundary: the engine refuses a NaN or infinite result at
- * every operator node. Under `strictNumbers`, where a number from the data
- * may be one, a node that may return one may fail there, and what
- * passes the boundary is finite either way.
+ * Then the result boundary: the engine refuses a NaN result from an operator
+ * declared to return a number, and nothing else. Under `strictNumbers`,
+ * where a number from the data may be NaN, such a node that may return one
+ * may fail there, and what passes its boundary is never NaN. An infinity
+ * passes every boundary.
  */
 import { coreOperators } from '../operators'
 import type { DeclaredOutput } from '../authoringTypes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition } from '../operatorDefinition'
+import { typeNamesNumber } from '../typeCheck'
 import type { ExpectedType } from '../typeCheck'
 import {
   ANY,
@@ -29,9 +31,9 @@ import {
   exactValues,
   exactly,
   extremeOf,
-  finite,
   fits,
   kindOf,
+  mayBeNaN,
   mayBeNonFinite,
   ofType,
   productOf,
@@ -40,6 +42,7 @@ import {
   union,
   unionOf,
   valuesOf,
+  withoutNaN,
   withoutNull,
 } from './known'
 import type { Known, Member } from './known'
@@ -191,7 +194,8 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
   return firstNonNull(at(declared.firstNonNull))
 }
 
-const NON_FINITE: Known = [{ type: 'nonFinite' }]
+const INFINITE: Known = [{ type: 'infinite' }]
+const NAN: Known = [{ type: 'nan' }]
 
 /**
  * The node's output, and its failure at the result boundary if it can have
@@ -211,19 +215,23 @@ export const operatorOutput = (
     declared !== undefined
       ? evaluate(declared, { definition, inputs, elements, items })
       : ofType(definition.returns)
-  // A number computed from NaN or an infinity is one too: floor, round, a
-  // conversion
-  const fromNonFinite = Object.values(inputs.received).some(
-    (known) => mayBeNonFinite(known) !== 'no'
-  )
-  if (fromNonFinite && fits(output, 'number') !== 'no') output = union(output, NON_FINITE)
+  // A number computed from an infinity may be one too (floor, a sum), and
+  // one from NaN is NaN, which only an `any` parameter can have received (a
+  // conversion). NaN made from infinities (Infinity - Infinity) is the
+  // overflow rules' to report
+  if (fits(output, 'number') !== 'no') {
+    const received = Object.values(inputs.received)
+    if (received.some((known) => mayBeNonFinite(known) !== 'no')) output = union(output, INFINITE)
+    if (received.some((known) => mayBeNaN(known) !== 'no')) output = union(output, NAN)
+  }
   if (inputs.propagates === 'maybe') output = union(output, exactly(null))
   return atBoundary(node, output, strictNumbers, inputs.propagates === 'no')
 }
 
 /**
- * What passes the result boundary, and the failure there if a non-finite
- * number can reach it: certain where nothing else can, and `certain` allows.
+ * What passes the result boundary, and the failure there if a NaN can reach
+ * it: certain where nothing else can, and `certain` allows. Only an
+ * operator declared to return a number refuses one; any other hands it on.
  */
 export const atBoundary = (
   node: OperatorNode,
@@ -231,16 +239,16 @@ export const atBoundary = (
   strictNumbers: boolean,
   certain: boolean
 ): { output: Known; boundary?: Failure } => {
-  const nonFinite = mayBeNonFinite(output)
-  const counted = strictNumbers ? nonFinite : mayBeNonFinite(finiteExcept(output))
-  const passed = finite(output)
+  if (!typeNamesNumber(node.entry.definition.returns)) return { output }
+  const counted = mayBeNaN(strictNumbers ? output : exactOnly(output))
+  const passed = withoutNaN(output)
   if (counted === 'no') return { output: passed }
   return {
     output: passed,
     boundary: {
       path: node.path,
       code: 'non-finite-result',
-      message: `${node.name} – non-finite-result possible: a NaN or infinite number may reach its result`,
+      message: `${node.name} – non-finite-result possible: NaN may reach its result`,
       certainty: passed.length === 0 && certain ? 'always' : 'may',
       operator: node.name,
       order: [node.order],
@@ -249,8 +257,7 @@ export const atBoundary = (
 }
 
 /**
- * Only the non-finite numbers known exactly, a constant passed through,
- * count at the ordinary level: there the data carries none.
+ * Only a NaN known exactly, a constant passed through, counts at the
+ * ordinary level: there the data carries none.
  */
-const finiteExcept = (known: Known): Known =>
-  known.filter((member) => !('type' in member && member.type === 'nonFinite'))
+const exactOnly = (known: Known): Known => known.filter((member) => 'exact' in member)

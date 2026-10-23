@@ -16,6 +16,7 @@ import { FigTreeError, isFigTreeError } from '../FigTreeError'
 import { isOperatorFailure } from '../OperatorFailure'
 import { ErrorCodes } from '../errorCodes'
 import { isTruthy } from '../primitives/truthiness'
+import { typeNamesNumber } from '../typeCheck'
 import type { FigTreeErrorCode } from '../errorCodes'
 import type { OperatorNode } from '../compile/artifact'
 import type { ValidatedOperatorDefinition, ValidatedParameter } from '../operatorDefinition'
@@ -529,7 +530,7 @@ const runOnce = async (
   }
   // The result boundary (`normalizeResult` in src/evaluate/operator.ts)
   if (result === undefined) return { value: null }
-  if (typeof result === 'number' && !Number.isFinite(result))
+  if (Number.isNaN(result) && typeNamesNumber(definition.returns))
     return own(
       ErrorCodes.nonFiniteResult,
       `${node.name} – produced a non-finite number (${String(result)})`
