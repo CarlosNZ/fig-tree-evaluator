@@ -17,6 +17,7 @@ import { checkDeclared, checkType, nullMeansUnset } from '../typeCheck'
 import { typesIntersect } from '../typeIntersection'
 import { staticType } from './staticType'
 import type { Constraints, ExpectedType } from '../typeCheck'
+import { EvaluationData } from '../operatorDefinition'
 import type { EvaluationMode } from '../operatorDefinition'
 import { didYouMean, findCycles, listing, nearestName } from '../utils'
 import { validateHelpers } from './helpers'
@@ -594,11 +595,26 @@ const runValidateHook = (state: CheckState, node: OperatorNode) => {
   const hook = node.entry.definition.validate
   if (hook === undefined) return
 
-  // Literal parameter values only — dynamic values simply aren't present
+  // Every value known before evaluation — dynamic values simply aren't
+  // present. An unset parameter carries what the runtime's defaults pass
+  // will give it (src/evaluate/params.ts), so a hook reads the effective
+  // value whether it was authored, left to a default, or set to a null that
+  // means unset. The data the `EvaluationData` sentinel stands for isn't
+  // known until evaluation, so it stays out
+  const { definition, hostDefaults } = node.entry
   const literalParams: Record<string, unknown> = {}
-  for (const name in node.params) {
+  for (const name in definition.parameters) {
+    const declared = definition.parameters[name]
     const supplied = node.params[name]
-    if (supplied.kind === 'constant') literalParams[name] = supplied.value
+    if (supplied !== undefined && supplied.kind !== 'constant') continue
+    const value = supplied?.value
+    if (!(value === undefined || (value === null && nullMeansUnset(declared)))) {
+      literalParams[name] = value
+    } else if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)) {
+      literalParams[name] = hostDefaults[name]
+    } else if ('default' in declared && declared.default !== EvaluationData) {
+      literalParams[name] = declared.default
+    }
   }
 
   let findings: ReturnType<typeof hook>

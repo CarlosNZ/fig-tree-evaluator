@@ -231,10 +231,24 @@ describe('the body', () => {
     expect(literal.issues[0].message).toMatch(/GET carries no body/)
   })
 
+  it('…and on an implicit one, since method defaults to GET', () => {
+    const implicit = withClient(client()).validate({
+      $http: { url: 'https://api.test/x', body: { a: 1 } },
+    })
+    expect(implicit.valid).toBe(false)
+    expect(implicit.issues[0].message).toMatch(/GET carries no body/)
+  })
+
+  it('…but not on a null body, which is no body (row 27)', async () => {
+    const figTree = withClient(client())
+    const expression = { $http: { url: 'https://api.test/x', method: 'get', body: null } }
+    expect(figTree.validate(expression).valid).toBe(true)
+    expect(await figTree.evaluate(expression)).toEqual({ ok: true })
+  })
+
   it('refuses it at runtime too, which is where a dynamic method lands', async () => {
-    // A hook sees literal values only, so a dynamic `method` is
-    // indistinguishable from an absent one — linting it would refuse a
-    // legal expression. The runtime check is what covers both
+    // A hook never sees a dynamic value, so a dynamic `method` can't be
+    // linted without refusing a legal expression. The runtime check covers it
     const dynamic = await rejection<FigTreeError>(
       withClient(client()).evaluate(
         { $http: { url: 'https://api.test/x', method: '$data.verb', body: { a: 1 } } },

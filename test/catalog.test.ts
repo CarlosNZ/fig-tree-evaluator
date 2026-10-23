@@ -49,6 +49,12 @@ const startingNode = (operator: CatalogOperator) => {
   return node
 }
 
+// A parameter that is valid only beside another one, which the test adds
+// with it: a body is legal on a POST only, and `method` defaults to GET
+const companions: Record<string, Record<string, Record<string, unknown>>> = {
+  http: { body: { method: 'post' } },
+}
+
 const errorsOf = (expression: unknown) =>
   fig.validate(expression).issues.filter((issue) => issue.severity === 'error')
 
@@ -144,6 +150,7 @@ describe('operatorListings', () => {
         (parameter) => {
           const node = {
             ...startingNode(operator),
+            ...companions[operator.name]?.[parameter],
             [parameter]: operator.parameters[parameter].seed,
           }
           expect(errorsOf(node)).toEqual([])
