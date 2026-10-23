@@ -133,7 +133,11 @@ const abortError = () => {
   return error
 }
 
-/** The mock's call log, read as the request it would have sent. */
+/**
+ * The mock's call log, read as the request it would have sent. It logs the
+ * body as given, so the serialisation a real client does happens here, and
+ * the table checks that the log holds the body unchanged.
+ */
 const loggedRequest = (mock: MockHttpClient): Sent | undefined => {
   const call = mock.calls[0]
   if (call === undefined) return undefined
@@ -197,7 +201,11 @@ const JSON_HEADERS = { Authorization: SECRET, 'Content-Type': 'application/json'
  * happens to contain.
  */
 const REQUESTS: { name: string; req: Partial<HttpRequest>; wire: string | undefined }[] = [
-  { name: 'no body', req: { method: 'get' }, wire: undefined },
+  {
+    name: 'no body',
+    req: { method: 'get', headers: { Authorization: SECRET, Accept: 'application/json' } },
+    wire: undefined,
+  },
   {
     name: 'an object, with nested nulls',
     req: { body: { term: 'ada', tags: ['x', null], meta: { a: null } } },

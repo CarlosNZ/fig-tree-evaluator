@@ -54,7 +54,7 @@ export type AxiosLike = (config: {
   url: string
   method: 'get' | 'post'
   headers?: Record<string, string>
-  data?: unknown
+  data?: string
   signal?: AbortSignal
 }) => Promise<{ data: unknown; status: number; statusText: string }>
 
