@@ -243,7 +243,7 @@ Limits on an expression's size: how deeply it nests, and how many nodes it holds
 
 **Per call:** no.
 
-**Throws:** `evaluate()` throws `max-depth` or `max-nodes` before anything runs. Both are static errors, so no fallback catches them, and `validate()` reports them as errors.
+**Throws:** `evaluate()` throws `max-depth` or `max-nodes` before anything runs. Both are static errors, so no fallback catches them, and `validate()` and a compiled expression's [`issues`](/api/compiled-expression/#issues) report them as errors.
 
 **Details:**
 

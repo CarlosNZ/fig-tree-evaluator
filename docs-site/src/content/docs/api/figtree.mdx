@@ -141,7 +141,7 @@ Compiles an expression, ready to check or evaluate.
 
 **Parameters:** `expression`, the same as `evaluate()` takes.
 
-**Returns:** a [`CompiledExpression`](/api/compiled-expression/), with its own `evaluate()`, the `issues` the compiler found, and `hasErrors`.
+**Returns:** a [`CompiledExpression`](/api/compiled-expression/), with its own `evaluate()`, its `issues` and `hasErrors`.
 
 **Throws:** never. A static error is reported in the compiled expression's `issues`, and thrown by its `evaluate()`.
 
