@@ -224,6 +224,18 @@ test('property: probeConstant(x).constant === (compile(x) is an error-free const
   expect(disagreements).toEqual([])
 })
 
+// An inert handle's evaluate() checks maxDepth against the probe's depth,
+// while its issues check the compiled artifact's: the two must agree
+test('property: probeConstant(x).depth === compile(x).maxDepth wherever x is constant', () => {
+  const rand = makeRandom(20261023)
+  const samples = [...corpus, ...Array.from({ length: 600 }, () => randomValue(rand, 0))]
+  const disagreements = samples.filter((sample) => {
+    const probed = probe(sample)
+    return probed.constant && probed.depth !== compile(sample).maxDepth
+  })
+  expect(disagreements).toEqual([])
+})
+
 /** The static fallback the compiler makes of x, where its value is x. */
 const compiledStaticFallback = (input: unknown) => {
   const artifact = compile(input)

@@ -65,7 +65,7 @@ import {
 } from './introspect'
 import { FigTreeError } from './FigTreeError'
 import { ErrorCodes } from './errorCodes'
-import { depthIssue, staticGate, validationIssues } from './validation'
+import { depthIssue, gateIssues, staticGate, validationIssues } from './validation'
 import { coreOperators } from './operators'
 import { version } from './version'
 
@@ -671,18 +671,25 @@ export class CompiledExpression<Trace extends boolean = false> {
   }
 
   /**
-   * What the compiler found: the option-independent stream, grammar and
-   * static checks both. Not `validate()`, which adds the limit and
-   * sample-data checks for given options and data; those run inside
-   * `evaluate()` here, per call.
+   * What `evaluate()`'s static gate finds: the limit checks under the
+   * pinned options, then the compiler's stream, grammar and static checks
+   * both — the list a static error thrown by `evaluate()` carries. The
+   * limits are not per-call options, so the list is fixed for the handle's
+   * life, and it is computed here rather than stored on the artifact,
+   * which the compile cache shares with instances whose limits may differ.
+   * Not `validate()`, which adds the sample-data check against the data
+   * it is given: a handle's data can change with every call.
    */
   get issues(): readonly Issue[] {
-    return (this.#issues ??= this.#artifact().issues.map((s) => s.issue))
+    return (this.#issues ??= gateIssues(this.#artifact(), this.#evaluation))
   }
 
-  /** Whether `issues` holds an error — the static gate's answer. */
+  /**
+   * Whether `issues` holds an error: whether `evaluate()` throws a static
+   * error.
+   */
   get hasErrors(): boolean {
-    return this.#artifact().hasErrors
+    return this.issues.some((issue) => issue.severity === 'error')
   }
 
   /**

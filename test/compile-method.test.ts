@@ -114,10 +114,17 @@ describe('the inert flavour', () => {
     expect(spy.compiles()).toBe(0)
   })
 
-  it('still applies maxDepth to the probe depth', async () => {
+  it('still applies maxDepth to the probe depth, and reports it in issues', async () => {
     const { fig } = rig({ maxDepth: 2 })
-    const handle = fig.compile({ a: { b: { c: { d: 1 } } } })
-    await expect(handle.evaluate()).rejects.toMatchObject({ code: ErrorCodes.maxDepthExceeded })
+    const deep = { a: { b: { c: { d: 1 } } } }
+    const handle = fig.compile(deep)
+    expect(handle.hasErrors).toBe(true)
+    expect(handle.issues.map((issue) => issue.code)).toEqual([ErrorCodes.maxDepthExceeded])
+    expect(handle.issues).toEqual(fig.validate(deep).issues)
+    await expect(handle.evaluate()).rejects.toMatchObject({
+      code: ErrorCodes.maxDepthExceeded,
+      issues: handle.issues,
+    })
   })
 })
 
@@ -220,6 +227,41 @@ describe('the static gate on the handle', () => {
       code: first.code,
       issues: handle.issues,
     })
+  })
+
+  it.each([
+    ['maxDepth', { maxDepth: 2 }, ErrorCodes.maxDepthExceeded],
+    ['maxNodes', { maxNodes: 1 }, ErrorCodes.maxNodesExceeded],
+  ])('reports %s in issues, as evaluate() throws it', async (_, limit, code) => {
+    const { fig } = rig(limit)
+    const handle = fig.compile([[expr('limit-a'), expr('limit-b')]])
+    expect(handle.hasErrors).toBe(true)
+    expect(handle.issues.map((issue) => issue.code)).toEqual([code])
+    await expect(handle.evaluate()).rejects.toMatchObject({ code, issues: handle.issues })
+  })
+
+  it('puts the limit errors ahead of the compile stream', async () => {
+    const { fig } = rig({ maxDepth: 2 })
+    const handle = fig.compile([[[{ operator: 'nosuch', values: [1] }]]])
+    expect(handle.issues[0].code).toBe(ErrorCodes.maxDepthExceeded)
+    expect(handle.issues.length).toBeGreaterThan(1)
+    await expect(handle.evaluate()).rejects.toMatchObject({
+      code: ErrorCodes.maxDepthExceeded,
+      issues: handle.issues,
+    })
+  })
+
+  it("reads its own pinned limits, not the shared artifact's", () => {
+    const { fig, spy } = rig()
+    const source = [[expr('pinned')]]
+    const unlimited = fig.compile(source)
+    const limited = fig.with({ maxDepth: 1 }).compile(source)
+    // One compile: the two handles wrap the same cached artifact
+    expect(spy.compiles()).toBe(1)
+    expect(limited.hasErrors).toBe(true)
+    expect(limited.issues.map((issue) => issue.code)).toEqual([ErrorCodes.maxDepthExceeded])
+    expect(unlimited.hasErrors).toBe(false)
+    expect(unlimited.issues).toEqual([])
   })
 })
 
