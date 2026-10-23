@@ -14,7 +14,7 @@
  * consumer ever sees it. The imports are type-only, so no driver is loaded
  * and no native binding is touched.
  */
-import type { AxiosStatic } from 'axios'
+import type { AxiosInstance, AxiosStatic } from 'axios'
 import type { Client, Pool } from 'pg'
 import type { Database } from 'sqlite'
 import type { AxiosLike, PgClientLike, SqliteDatabaseLike } from '../src'
@@ -24,11 +24,18 @@ const asType = <T>(): T => undefined as unknown as T
 
 test('the real drivers satisfy the shapes the wrappers declare', () => {
   const axios: AxiosLike = asType<AxiosStatic>()
+  const axiosInstance: AxiosLike = asType<AxiosInstance>()
   const pgClient: PgClientLike = asType<Client>()
   const pgPool: PgClientLike = asType<Pool>()
   const sqlite: SqliteDatabaseLike = asType<Database>()
 
   // The assignments above are the assertion; this keeps the runtime honest
   // about what it just proved
-  expect([axios, pgClient, pgPool, sqlite]).toEqual([undefined, undefined, undefined, undefined])
+  expect([axios, axiosInstance, pgClient, pgPool, sqlite]).toEqual([
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ])
 })

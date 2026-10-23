@@ -321,7 +321,6 @@ describe('the bundled clients, through their operators', () => {
       // axios' own errors are Errors, carrying the whole config
       throw Object.assign(new Error('Network Error'), { isAxiosError: true, config })
     }) as unknown as AxiosLike
-    ;(axios as { isAxiosError: unknown }).isAxiosError = () => true
     const fig = new FigTree({
       operators: [coreOperators, httpOperators(new AxiosClient(axios))],
       http: { headers: { Authorization: SECRET } },
@@ -481,8 +480,8 @@ describe('a text response is cut to its first 500 characters', () => {
   const CUT = `${PAGE.slice(0, 500)}… (${PAGE.length} characters)`
 
   /** An axios answering every request with `status` and `data`. */
-  const axiosAnswering = (status: number, data: unknown): AxiosLike => {
-    const axios = (async (config: { url: string }) => {
+  const axiosAnswering = (status: number, data: unknown): AxiosLike =>
+    (async (config: { url: string }) => {
       if (status < 300) return { data, status, statusText: 'OK' }
       throw Object.assign(new Error(`Request failed with status code ${status}`), {
         isAxiosError: true,
@@ -490,10 +489,6 @@ describe('a text response is cut to its first 500 characters', () => {
         response: { status, statusText: 'Bad Gateway', data },
       })
     }) as unknown as AxiosLike
-    ;(axios as { isAxiosError: unknown }).isAxiosError = (error: unknown) =>
-      (error as { isAxiosError?: boolean } | null)?.isAxiosError === true
-    return axios
-  }
 
   /** A fetch answering every request with `status` and the raw `body`. */
   const fetchAnswering =
