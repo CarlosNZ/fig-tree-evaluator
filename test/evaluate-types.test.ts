@@ -3,18 +3,19 @@
  * story" in docs-dev/v3-specs/v3-evaluator-methods.md).
  *
  * Compile-time assertions: `pnpm typecheck` covers the test tree, so a
- * return type that stops following the effective options fails CI. The
- * rule under test is one sentence — the bare value, unless `trace` is
- * `true` in the MERGED options — and the matrix is what keeps the merge
+ * return type that stops following the effective `trace` fails CI. The
+ * rule under test is one sentence — the bare value, unless the effective
+ * `trace` is `true` — and the matrix is what keeps the per-call override
  * honest in both directions.
  *
  * Why there is no `const` type parameter behind any of this: widening
  * applies to a mutable variable declaration, not to inference into a
  * type-parameter position, so a fresh object literal argument keeps
- * `trace: true` as the literal on its own. `const` would additionally
- * infer a readonly tuple for the `operators` array literal, which the
- * declared type does not accept — the last case here is what would
- * catch that.
+ * `trace: true` as the literal on its own.
+ *
+ * Inferring `trace` alone, rather than the options object, is what keeps
+ * the rest of the options under TypeScript's excess-property check (#266);
+ * the misspelling cases at the end hold that.
  */
 import { FigTree, coreOperators } from '../src'
 import type { EvaluationResult } from '../src'
@@ -30,12 +31,17 @@ const plain = new FigTree()
 const tracing = new FigTree({ trace: true })
 const traceOff = new FigTree({ trace: false })
 
+// A host that annotates `FigTree` bare accepts a traced instance, and an
+// explicit `FigTree<true>` is the traced type
+const annotated: FigTree = tracing
+const explicit: FigTree<true> = new FigTree({ trace: true })
+void annotated
+
 /*
  * Asserted at CALL sites throughout, never through `ReturnType`: that
  * helper instantiates a generic method's type parameters with their
- * CONSTRAINTS, so `CallOpts` becomes the whole of `FigTreeOptions` and
- * the merge strips the very keys under test. A call is also what a
- * consumer actually writes.
+ * CONSTRAINTS, so `CallTrace` becomes `boolean` and every call types as
+ * `unknown`. A call is also what a consumer actually writes.
  */
 const instanceLevel = async () => {
   assertType<Equal<Awaited<typeof a>, unknown>>()
@@ -47,7 +53,10 @@ const instanceLevel = async () => {
   assertType<Equal<Awaited<typeof c>, unknown>>()
   const c = traceOff.evaluate({})
 
-  return [a, b, c]
+  assertType<Equal<Awaited<typeof d>, EvaluationResult>>()
+  const d = explicit.evaluate({})
+
+  return [a, b, c, d]
 }
 
 // ── Per-call, and per-call overriding the instance both ways ────────
@@ -79,7 +88,7 @@ const checks = async () => {
   return [a, b, c, d, e, f, g]
 }
 
-// ── The cases a `const` type parameter would have broken ────────────
+// ── Beside a registry ───────────────────────────────────────────────
 
 const withRegistry = new FigTree({
   operators: [coreOperators, echoOp()],
@@ -95,8 +104,8 @@ const registryChecks = async () => {
   assertType<Equal<Awaited<typeof a>, unknown>>()
   const a = withRegistry.evaluate({})
 
-  // An array literal beside `trace`: the combination a `const` type
-  // parameter would have turned into a readonly tuple
+  // An array literal beside `trace`: inference reads `trace` alone and
+  // leaves the array to the declared type
   assertType<Equal<Awaited<typeof b>, EvaluationResult>>()
   const b = tracingWithRegistry.evaluate({})
 
@@ -135,6 +144,32 @@ const limitation = async () => {
   const a = fromVariable.evaluate({})
   return a
 }
+
+// ── Misspelt options (#266) ─────────────────────────────────────────
+
+// Never called: the assertions are the compile errors. A misspelling is
+// caught alone, beside a valid option and inside a nested block, at the
+// constructor and per call
+const misspellings = () => {
+  // @ts-expect-error — not an option
+  void new FigTree({ strictDataPath: true })
+  // @ts-expect-error — not an option, beside one that is
+  void new FigTree({ data: {}, strictDataPath: true })
+  // @ts-expect-error — and beside `trace`, the one key that is inferred
+  void new FigTree({ trace: true, strictDataPath: true })
+  // @ts-expect-error — not a key of the `cache` block
+  void new FigTree({ cache: { maxSize: 5, maxSise: 9 } })
+  // @ts-expect-error — not a key of the `http` block
+  void new FigTree({ data: {}, http: { baseEndpoint: '', header: {} } })
+
+  // @ts-expect-error — not a per-call option, beside one that is
+  void plain.evaluate({}, { data: {}, timeot: 50 })
+  // @ts-expect-error — instance configuration, refused per call
+  void tracing.evaluate({}, { trace: false, maxDepth: 5 })
+  // @ts-expect-error — the handle's per-call options, the same
+  void plain.compile({}).evaluate({ data: {}, timeot: 50 })
+}
+void misspellings
 
 test('the return type follows the effective options', async () => {
   // The runtime half of the same rule, so jest has something to run

@@ -36,18 +36,6 @@ export type EvaluationOptions = Omit<FigTreeOptions, 'operators' | 'fragments'>
 export type CallOptions = Pick<FigTreeOptions, 'data' | 'signal' | 'timeout' | 'trace'>
 
 /**
- * `CallOpts` with every key outside `CallOptions` typed `never`, so a
- * call mixing a legitimate key with a configuration one
- * (`{ data, maxDepth: 5 }`) is a type error and not only a runtime
- * refusal. Excess-property checking alone does not reach a type-parameter
- * position: inference accepts any object literal that overlaps the
- * constraint by one key.
- */
-export type OnlyCallOptions<CallOpts> = CallOpts & {
-  [Key in Exclude<keyof CallOpts, keyof CallOptions>]: never
-}
-
-/**
  * What `validate()` takes: the per-call options, plus `params`, the
  * declared parameter names of a fragment body being validated, which its
  * `$params` references resolve against as they do at registration.
@@ -164,28 +152,23 @@ export interface EvaluationResult {
 }
 
 /**
- * "No options supplied" — the identity of the merge below, and the
- * default for both type parameters. Spelled this way rather than `{}`,
- * which means "any non-nullish value" and is a lint error for saying so.
- */
-export type NoOptions = Record<never, never>
-
-/** Per-call options over instance ones, at the merge rule's top level. */
-export type Merge<Instance, Call> = Omit<Instance, keyof Call> & Call
-
-/**
- * The bare value, unless `trace` is on.
+ * The bare value, unless `trace` is `true`.
  *
- * No `const` type parameter is needed to keep `{ trace: true }` from
- * widening to `boolean` (settled by a spike at Phase-12 planning):
- * widening applies to a mutable variable declaration, not to inference
- * into a type-parameter position, so a fresh object literal argument
- * infers the literal on its own — where `const` would additionally turn
- * the `operators` array literal into a readonly tuple the declared type
- * does not accept. The one case that does widen is a caller hoisting the
- * options into a variable first, which `const` could not have reached
- * either. The other is an instance whose `trace` was changed by
- * `updateOptions()`, which the type parameter cannot follow (see that
- * method's docstring).
+ * The class and `evaluate()` infer `trace` alone as their type parameter,
+ * never the options object whole. An object in a type-parameter position
+ * escapes excess-property checking — inference accepts any literal that
+ * shares one key with the constraint — so a misspelt option beside a
+ * valid one would pass unremarked (#266). With only `trace` inferred, the
+ * rest of each parameter is plain `FigTreeOptions` or `CallOptions`,
+ * checked in full, nested blocks included.
+ *
+ * No `const` type parameter is needed to keep `true` from widening to
+ * `boolean` (settled by a spike at Phase-12 planning): widening applies to
+ * a mutable variable declaration, not to inference into a type-parameter
+ * position, so a fresh object literal argument infers the literal on its
+ * own. The one case that does widen is a caller hoisting the options into
+ * a variable first, which `const` could not have reached either. The other
+ * is an instance whose `trace` was changed by `updateOptions()`, which the
+ * type parameter cannot follow (see that method's docstring).
  */
-export type ResultShape<O> = O extends { trace: true } ? EvaluationResult : unknown
+export type ResultShape<Trace extends boolean> = Trace extends true ? EvaluationResult : unknown

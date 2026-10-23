@@ -17,7 +17,7 @@
 import type { ArtifactDependencies } from '../compile'
 import { viewHandle, type CompiledExpression } from '../FigTree'
 import type { Issue } from '../issues'
-import type { CallOptions, EvaluationOptions, FigTreeOptions } from '../options'
+import type { CallOptions, EvaluationOptions } from '../options'
 import { validationIssues } from '../validation'
 import { version } from '../version'
 import { renderTree, type InspectNode } from './nodes'
@@ -84,8 +84,8 @@ export interface InspectReport {
  * the sample-data check. A handle compiled before an `updateOptions()`
  * reports its own snapshot, as its `evaluate()` answers from it.
  */
-export const inspect = <InstanceOpts extends FigTreeOptions>(
-  compiled: CompiledExpression<InstanceOpts>,
+export const inspect = <Trace extends boolean>(
+  compiled: CompiledExpression<Trace>,
   options?: CallOptions
 ): InspectReport => {
   const view = viewHandle(compiled, options)

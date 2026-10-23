@@ -219,7 +219,7 @@ describe('misuse', () => {
       code: ErrorCodes.invalidOptions,
       message: expect.stringContaining("'params' is not a per-call option"),
     })
-    // @ts-expect-error — OnlyCallOptions types a key outside CallOptions never
+    // @ts-expect-error — a key outside CallOptions
     void fig.evaluate(1, { params: ['x'] }).catch(() => undefined)
   })
 })
