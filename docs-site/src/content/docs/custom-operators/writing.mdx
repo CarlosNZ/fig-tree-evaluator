@@ -1,32 +1,178 @@
 ---
 title: Writing an operator
-description: Defining an operator with defineOperator and registering it
+description: Defining an operator with defineOperator() and registering it
 sidebar:
   order: 1
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import OperatorSource from '../../../components/OperatorSource.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+{/* STAND-IN: Carl to rewrite */}
+
+FigTree's built-in operators cover the general cases, such as maths, text and comparisons. Your app will have operations of its own, such as formatting a number the way your users expect, or looking up a customer, and a **custom operator** adds one to the language, so configuration authors can use it just like the built-in ones.
+
+An operator is written in JavaScript (or TypeScript), as a single definition: the parameters it takes, and a function that does the work. FigTree does everything else, from checking its inputs to catching its failures.
 
 ## A first operator
 
-A complete, small example from definition to evaluation.
+This operator formats a number for a locale, using JavaScript's `Intl.NumberFormat`:
 
-## The definition
+<OperatorSource name="formatNumber" />
 
-Every field of a definition, each in a line or two with a link to where it's covered: `name`, `alias`, `category`, `parameters` and `positionalParams` ([Parameters](/custom-operators/parameters/)), the `evaluate` body ([The evaluate body](/custom-operators/evaluate/)), `cache` and `timeoutParam` (The evaluate body), `validate` and `returns` ([Static checks](/custom-operators/validate/)), `analysis` ([Authoring](/tooling/authoring/#custom-operators)) and `metadata` (covered here: the engine never reads it, and `getOperators()` returns it as written).
+It has two parameters: `value`, the number to format, and `locale`, which defaults to `'en-NZ'`. `positionalParams` lets an expression give them in that order, without their names. `evaluate` is the body: it receives the parameters' values, and returns the result.
 
-## `defineOperator()`
+To use it, register it on your FigTree instance, along with the core operators:
 
-What it checks, and why every registered operator must go through it.
+```ts title="fig.ts"
+// @filename: operators/formatNumber.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const formatNumber: ValidatedOperatorDefinition
+// @filename: fig.ts
+// ---cut---
+import { FigTree, coreOperators } from 'fig-tree-evaluator'
+import { formatNumber } from './operators/formatNumber'
 
-## Registering
+const fig = new FigTree({ operators: [coreOperators, formatNumber] })
 
-Adding it to the `operators` option alongside `coreOperators`. Kept short: choosing and leaving out operators, `operatorSet` included, is covered in [Choosing operators](/guides/setup/#choosing-operators).
+await fig.evaluate({ $formatNumber: [83200000, 'de-DE'] }) // => '83.200.000'
+```
+
+From then on, it works like any other operator, with its parameters given by name or by position, and `$data` references, fallbacks and the rest:
+
+<Expression
+  customOperators
+  title="Formatting a number"
+  code={`
+    {
+      country: '$data.country',
+      population: {
+        $formatNumber: {
+          value: '$data.population',
+          locale: 'de-DE',
+        },
+      },
+      // The same two parameters, by position: [value, locale]
+      populationNZ: { $formatNumber: ['$data.population', 'en-NZ'] },
+    }
+  `}
+  data={`
+    { country: 'Germany', population: 83200000 }
+  `}
+/>
 
 ## What the engine does for you
 
-Type checks, null handling, defaults, truthiness and `fallback` all happen before or after the body runs, so the body holds only the operator's own logic. The checks on what the body returns: `undefined` becomes `null`, a result that isn't a finite number fails (`non-finite-result`), and returning a lazy handle instead of its value is an error.
+{/* STAND-IN: Carl to rewrite */}
+
+The body of `formatNumber` is one line, and it never checks what it's given. It doesn't need to: FigTree handles the parameters before the body runs, and its result afterwards, exactly as it does for its own operators. So a body holds only the operator's own logic.
+
+Before the body runs, FigTree has:
+
+- **Checked the types:** each value against its parameter's declared type. A value of the wrong type is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime).
+- **Handled `null`:** `value`'s type includes `null`, so a `null` there makes the node return `null` without running the body ([Null policy](/custom-operators/parameters/#null-policy)).
+- **Filled in defaults:** a parameter the node leaves out takes the instance's default, if it sets one, such as `operatorDefaults: { formatNumber: { locale: 'de-DE' } }` ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)), and the definition's `default` otherwise.
+- **Judged truthiness:** a parameter that declares `truthiness: true` reaches the body as `true` or `false`, judged as `if` judges its condition.
+
+So Antarctica, which has no permanent population, gets `null` rather than an error from `Intl.NumberFormat`:
+
+<Expression
+  customOperators
+  title="A null value"
+  code={`
+    { $formatNumber: '$data.population' }
+  `}
+  data={`
+    { country: 'Antarctica', population: null }
+  `}
+/>
+
+And a population that isn't a number fails before the body sees it, which a fallback catches like any other failure:
+
+<Expression
+  customOperators
+  throws
+  title="The wrong type"
+  code={`
+    {
+      $formatNumber: '$data.population',
+      // Uncomment to catch the error
+      // fallback: 'Unknown',
+    }
+  `}
+  data={`
+    { country: 'Germany', population: '83 million' }
+  `}
+/>
+
+After the body returns, FigTree checks its result:
+
+- **`undefined`** becomes `null`.
+- **`NaN`** fails the node with `non-finite-result`, from an operator whose `returns` includes `number`. An infinity is a number, and passes, so a body that can make one from finite numbers, as division by zero does, fails itself ([Failing](/custom-operators/evaluate/#failing)).
+- **A lazy handle**, returned in place of the value it stands for, fails the node with `escaped-handle` ([Lazy and per-element parameters](/custom-operators/lazy-parameters/)).
+
+And whatever the body throws fails the node, so a fallback can catch it. A plain `Error` has the code `operator-failure`, with the operator's name in front of its message.
+
+## The definition
+
+A definition is one object. Four of its fields are required: `name`, `category`, `parameters` and `evaluate`.
+
+- **Naming:**
+  - **`name`**: what expressions call it, as in `$formatNumber`. It can be any string that doesn't start with `$` and has no `.`, `[` or `]`, and it's case-sensitive. A few words are reserved: the node keys, such as `fallback` and `vars`, the reference names, such as `data` and its short form `d`, and `literal`.
+  - **`alias`**: one other name for it, under the same rules, as `'+'` is for `plus`.
+  - **`category`**: one of `logic`, `comparison`, `math`, `string`, `array`, `data`, `io`, or `other` for an operator that fits none of them. FigTree never reads it: it's for tools, such as an editor that groups its operators by category.
+- **Inputs:**
+  - **`parameters`**: each parameter by name, with its type, default, and how it's evaluated ([Parameters](/custom-operators/parameters/)). An operator without any has `{}`.
+  - **`positionalParams`**: the parameters' names in order, for the positional shorthand ([Positional parameters](/custom-operators/parameters/#positional-parameters)). Without it, the operator takes its parameters by name only.
+- **The body:**
+  - **`evaluate`**: the function that does the work ([The evaluate body](/custom-operators/evaluate/)).
+  - **`cache`**: `true` for an operator whose results can be cached, such as one that sends a slow request ([Caching](/custom-operators/evaluate/#caching)).
+  - **`timeoutParam`**: the parameter that sets a time limit on the body ([Cancellation](/custom-operators/evaluate/#cancellation)).
+- **Static checks:**
+  - **`returns`**: the type of value it returns, so FigTree can tell before anything runs when its result can't fit where it's used ([Declaring what it returns](/custom-operators/validate/#declaring-what-it-returns)).
+  - **`validate`**: a function that checks the parameter values written into an expression, before anything runs ([The `validate` hook](/custom-operators/validate/#the-validate-hook)).
+  - **`analysis`**: what `fallbackCoverage()` can assume about when the operator fails ([Custom operators](/tooling/authoring/#custom-operators)).
+- **Your own:**
+  - **`metadata`**: anything your own tools need, such as the team that owns the operator. FigTree never reads it, and `getOperators()` returns it as written.
+
+<Callout kind="note" title="No description">
+  A definition has no description. An operator's description, display name and colours go in a catalog listing of their own, so an app that never shows them never ships them ([Presenting your operator](/custom-operators/presenting/)).
+</Callout>
+
+## `defineOperator()`
+
+`defineOperator()` checks a definition, and returns it ready to register. Since it usually runs when its module loads, a mistake in one shows up as soon as your app starts, or your tests run, rather than when an expression first uses the operator.
+
+It reports every problem it finds at once, in one `invalid-definition` error, whose `issues` give each one its own code and a path into the definition:
+
+```ts
+import { defineOperator } from 'fig-tree-evaluator'
+
+const formatNumber = defineOperator({
+  name: 'formatNumber',
+  category: 'string',
+  parameters: {
+    // A null policy, on a type without null
+    value: { type: 'number', nullPolicy: 'value' },
+    locale: { type: 'string', default: 'en-NZ' },
+  },
+  // Oops, typo
+  positionalParams: ['value', 'locales'],
+  returns: 'string',
+  evaluate: ({ value, locale }) => new Intl.NumberFormat(locale).format(value),
+})
+// Throws invalid-definition, with two issues:
+// invalid-null-policy, at ['parameters', 'value', 'nullPolicy']
+// invalid-definition, at ['positionalParams', 1]
+```
+
+The `operators` option takes only definitions that `defineOperator()` has returned. A plain object is an `invalid-options` error, even one with nothing wrong with it, so every operator an instance runs has been checked.
+
+In TypeScript, `defineOperator()` also types the body's `params` from the declarations, so in `formatNumber`, `value` is a `number` and `locale` a `string` ([Typed `params`](/custom-operators/parameters/#typed-params)).
+
+## Registering
+
+An operator is registered in the [`operators`](/api/options/#operators) option, along with `coreOperators`, as in the first example.
+
+Each name and alias has to be unique across the instance's operators and fragments, so an operator named `plus`, or a second `formatNumber`, is a `duplicate-operator` error when the instance is created. To use your own operator in place of a core one, such as an `upper` that follows the user's locale, use `operatorSet()` ([Choosing operators](/guides/setup/#choosing-operators)).
