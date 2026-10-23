@@ -41,7 +41,8 @@ import type {
   ResultShape,
   ValidateOptions,
 } from './options'
-import type { Issue, ValidationResult } from './issues'
+import { issuesError, type Issue, type ValidationResult } from './issues'
+import { callOptionIssue, optionIssues } from './optionChecks'
 import { buildRegistry, type OperatorRegistry } from './registry'
 import {
   CompileCache,
@@ -128,19 +129,24 @@ const buildState = (previous: InstanceState | null, update: OptionsUpdate): Inst
   // instance-owned: `fragments` gets the two-level treatment and
   // `operators`, an array, replaces
   const options = mergeOptions(previous === null ? {} : previous.options, update)
-  checkKillSwitchOptions(options)
+  const issues = optionIssues(options)
   const evaluation = withoutRegistryKeys(options)
-  if (previous !== null && !touchesRegistry(update))
+  if (previous !== null && !touchesRegistry(update)) {
+    if (issues.length > 0) throw issuesError(ErrorCodes.invalidOptions, issues)
     return { options, evaluation, registry: previous.registry, compileCache: previous.compileCache }
+  }
 
-  const registry = buildRegistry({
-    // Omitted `operators` means the core set only — no HTTP, no SQL
-    operators: options.operators ?? [coreOperators],
-    ...(options.operatorDefaults !== undefined
-      ? { operatorDefaults: options.operatorDefaults }
-      : {}),
-    ...(options.fragments !== undefined ? { fragments: options.fragments } : {}),
-  })
+  const registry = buildRegistry(
+    {
+      // Omitted `operators` means the core set only — no HTTP, no SQL
+      operators: options.operators ?? [coreOperators],
+      ...(options.operatorDefaults !== undefined
+        ? { operatorDefaults: options.operatorDefaults }
+        : {}),
+      ...(options.fragments !== undefined ? { fragments: options.fragments } : {}),
+    },
+    issues
+  )
   return {
     options,
     evaluation,
@@ -253,14 +259,10 @@ export class FigTree<Trace extends boolean = false> {
    * construct a second instance.
    */
   updateOptions(options: OptionsUpdate = {}): void {
-    // Both validators run before either mutation, so a rejected update
-    // leaves the instance exactly as it was — the same all-or-nothing
-    // discipline `buildState` already has, extended to cover the second
-    // thing an update can invalidate
-    const next = buildState(this.state, options)
-    const cache = readCacheConfig(next.options.cache)
-    this.state = next
-    this.results.configure(cache)
+    // `buildState` is the one step that can throw, so a rejected update
+    // leaves the instance exactly as it was
+    this.state = buildState(this.state, options)
+    this.results.configure(readCacheConfig(this.state.options.cache))
   }
 
   /**
@@ -289,8 +291,10 @@ export class FigTree<Trace extends boolean = false> {
    */
   with(update: OptionsUpdate = {}): FigTree<Trace> {
     const next = buildState(this.state, update)
-    const cache = readCacheConfig(next.options.cache)
-    return FigTree.fromState(next, new ResultCache(cache, this.results.generation))
+    return FigTree.fromState(
+      next,
+      new ResultCache(readCacheConfig(next.options.cache), this.results.generation)
+    )
   }
 
   /**
@@ -779,20 +783,6 @@ export interface HandleView {
 }
 
 /**
- * The request-scoped options — the whole of what a call may supply
- * ("Per-call options" in the Options area of docs-dev/v3-specs/v3-api.md).
- * The keys of `CallOptions`, spelled out because a type has no runtime
- * form. The `satisfies` holds the two in step in both directions: a
- * `Record` over the type's keys must name every one of them, and an excess
- * key is refused, so a key added to `CallOptions` and not here (or the
- * reverse) fails the build.
- */
-const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies Record<
-  keyof CallOptions,
-  unknown
->
-
-/**
  * The instance's prepared options with a call's laid over them: a flat
  * override, one key at a time, with no merging inside a value — per-call
  * `data` REPLACES the instance block, and is used by reference. Keys set
@@ -806,20 +796,24 @@ const CALL_OPTION_KEYS = { data: 0, signal: 0, timeout: 0, trace: 0 } satisfies 
  */
 const withCallOptions = (instance: EvaluationOptions, call: CallOptions): EvaluationOptions => {
   let merged: Record<string, unknown> | undefined
+  let issues: Issue[] | undefined
   for (const key in call) {
     const value = call[key as keyof CallOptions]
     // Tested before the key is, so `{ maxDepth: config.maxDepth }` with
     // nothing configured is "not supplied" rather than misuse
     if (value === undefined) continue
-    if (!Object.hasOwn(CALL_OPTION_KEYS, key)) throw notPerCallError(key)
+    // The instance's own were checked when they were set; only the call's
+    // values are new
+    const issue = callOptionIssue(key, value)
+    if (issue !== undefined) {
+      ;(issues ??= []).push(issue)
+      continue
+    }
     merged ??= { ...instance }
     merged[key] = value
   }
-  if (merged === undefined) return instance
-  // The instance's own were checked when they were set; only the call's
-  // values are new
-  checkKillSwitchOptions(call)
-  return merged as EvaluationOptions
+  if (issues !== undefined) throw issuesError(ErrorCodes.invalidOptions, issues)
+  return merged === undefined ? instance : (merged as EvaluationOptions)
 }
 
 /**
@@ -835,62 +829,6 @@ const paramNames = (params: unknown): ReadonlySet<string> => {
     })
   return new Set(params)
 }
-
-/**
- * The refusal names the request-scoped set, since the caller's next
- * question is what IS allowed. `cache` is the one that might have been
- * expected to work — the store is instance-lived, so a per-call block
- * could only ever be ignored, and refusing is the reversible direction:
- * honouring it later is additive, where quietly ignoring it and then
- * honouring it would change the meaning of expressions already in the
- * field.
- */
-const notPerCallError = (key: string): FigTreeError =>
-  new FigTreeError({
-    code: ErrorCodes.invalidOptions,
-    message: `'${key}' is not a per-call option — a call may supply data, signal, timeout and trace; configure the rest at construction or via updateOptions()`,
-    path: [],
-  })
-
-/**
- * The two kill-switch options ("Resource limits" in the Options area of
- * docs-dev/v3-specs/v3-api.md), checked wherever options arrive — at
- * construction and `updateOptions()` (loud at registration) and on the
- * call's own options (a per-call override can be wrong too). `undefined`
- * is the one spelling of "no deadline": zero, a negative, a non-finite
- * number or a non-number is refused rather than read as one.
- */
-const checkKillSwitchOptions = (options: FigTreeOptions) => {
-  const { timeout, signal } = options
-  if (
-    timeout !== undefined &&
-    (typeof timeout !== 'number' || !Number.isFinite(timeout) || timeout <= 0)
-  )
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message: "'timeout' must be a positive number of milliseconds",
-      path: [],
-    })
-  if (signal !== undefined && !isAbortSignal(signal))
-    throw new FigTreeError({
-      code: ErrorCodes.invalidOptions,
-      message: "'signal' must be an AbortSignal",
-      path: [],
-    })
-}
-
-/**
- * By shape rather than `instanceof`, like the `cache.store` check: a signal
- * from another realm (an iframe, a `vm` context, a polyfill) works exactly
- * as well, since the engine only ever reads `aborted` and `reason` and
- * subscribes to `abort`.
- */
-const isAbortSignal = (value: unknown): value is AbortSignal =>
-  typeof value === 'object' &&
-  value !== null &&
-  typeof (value as AbortSignal).aborted === 'boolean' &&
-  typeof (value as AbortSignal).addEventListener === 'function' &&
-  typeof (value as AbortSignal).removeEventListener === 'function'
 
 /**
  * One error-severity issue as a `FigTreeError`, carrying the whole stream
