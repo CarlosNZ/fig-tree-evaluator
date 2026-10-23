@@ -28,6 +28,7 @@ const custom = defineOperator({
   cache: true,
   timeoutParam: 'ms',
   returns: 'string',
+  analysis: { failures: [] },
   evaluate: ({ value }) => String(value),
 })
 
@@ -114,6 +115,10 @@ describe('what the snapshot withholds', () => {
     expect('deliversLazily' in info).toBe(false)
   })
 
+  test("analysis does not travel — it is ./authoring's, read from the registry", () => {
+    expect('analysis' in info).toBe(false)
+  })
+
   test('the brand does not travel — a snapshot must not pass the guard', () => {
     expect(isValidatedOperator(info)).toBe(false)
   })
@@ -126,6 +131,32 @@ describe('what the snapshot withholds', () => {
     expect(Object.hasOwn(from, 'default')).toBe(true)
     expect(from.default).toBe(EvaluationData)
     expect('default' in JSON.parse(JSON.stringify(from))).toBe(false)
+  })
+})
+
+describe('the type and the snapshot agree', () => {
+  // A Record over the type's keys, so typecheck fails until a field added
+  // to or dropped from OperatorInfo is added to or dropped from this list
+  const declared: Record<keyof OperatorInfo, true> = {
+    name: true,
+    alias: true,
+    category: true,
+    metadata: true,
+    parameters: true,
+    positionalParams: true,
+    restParam: true,
+    timeoutParam: true,
+    cache: true,
+    returns: true,
+    hasValidate: true,
+    hostNoCache: true,
+    hostFallback: true,
+  }
+
+  test('an entry with every optional field present has exactly the declared keys', () => {
+    const fig = build({ operatorDefaults: { custom: { noCache: true, fallback: null } } })
+    const info = find(fig.getOperators(), 'custom')
+    expect(Object.keys(info).sort()).toEqual(Object.keys(declared).sort())
   })
 })
 
