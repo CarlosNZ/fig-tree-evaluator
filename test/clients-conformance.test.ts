@@ -59,8 +59,8 @@ const stubFetch = (scenario: Scenario, seen: { init?: unknown; url?: string } = 
   }) as FetchLike
 
 /** An `axios` that answers the same scenario in axios' own vocabulary. */
-const stubAxios = (scenario: Scenario, seen: { config?: unknown } = {}): AxiosLike => {
-  const call = (async (config: Record<string, unknown>) => {
+const stubAxios = (scenario: Scenario, seen: { config?: unknown } = {}): AxiosLike =>
+  (async (config: Record<string, unknown>) => {
     seen.config = config
     if ((config.signal as AbortSignal | undefined)?.aborted) throw abortError()
     // axios parses JSON itself and hands back the raw text when it cannot
@@ -74,10 +74,6 @@ const stubAxios = (scenario: Scenario, seen: { config?: unknown } = {}): AxiosLi
       response: { status: scenario.status, statusText: scenario.statusText, data },
     }
   }) as unknown as AxiosLike
-  ;(call as { isAxiosError: unknown }).isAxiosError = (payload: unknown) =>
-    (payload as { isAxiosError?: boolean } | null)?.isAxiosError === true
-  return call
-}
 
 const parseOrText = (body: string): unknown => {
   if (body.trim() === '') return ''
@@ -243,7 +239,6 @@ describe('AxiosClient', () => {
     const call = (async () => {
       throw abortError()
     }) as unknown as AxiosLike
-    ;(call as { isAxiosError: unknown }).isAxiosError = () => false
     const failure = await rejection<Error>(new AxiosClient(call).request(request()))
     expect(failure.name).toBe('AbortError')
   })
@@ -261,7 +256,7 @@ describe('AxiosClient', () => {
     })
   })
 
-  it('refuses anything that is not the axios import', () => {
+  it('refuses anything that is not callable, as axios and its instances are', () => {
     // @ts-expect-error — the likely mistake: handing it a client, or a config
     expect(refusal(() => new AxiosClient({}))).toMatchObject({
       code: ErrorCodes.invalidOptions,

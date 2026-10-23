@@ -45,19 +45,25 @@ export interface FetchResponseLike {
   text(): Promise<string>
 }
 
-/** The axios surface: a callable, plus the one static the wrapper needs. */
-export interface AxiosLike {
-  (config: {
-    url: string
-    method: 'get' | 'post'
-    headers?: Record<string, string>
-    data?: unknown
-    signal?: AbortSignal
-  }): Promise<{ data: unknown; status: number; statusText: string }>
-  isAxiosError(payload: unknown): payload is AxiosErrorLike
-}
+/**
+ * The axios surface: a callable and nothing else, so an instance from
+ * `axios.create()` fits as well as the import. axios attaches its statics,
+ * `isAxiosError` among them, to the default export alone.
+ */
+export type AxiosLike = (config: {
+  url: string
+  method: 'get' | 'post'
+  headers?: Record<string, string>
+  data?: unknown
+  signal?: AbortSignal
+}) => Promise<{ data: unknown; status: number; statusText: string }>
 
+/**
+ * What axios throws. Every `AxiosError` carries its own `isAxiosError`
+ * flag, which is all `axios.isAxiosError()` reads.
+ */
 export interface AxiosErrorLike {
+  isAxiosError: true
   message: string
   config?: { url?: string }
   response?: { status: number; statusText: string; data: unknown }
@@ -128,8 +134,11 @@ export class FetchClient implements HttpClient {
 
 export class AxiosClient implements HttpClient {
   constructor(private readonly axios: AxiosLike) {
-    if (typeof axios !== 'function' || typeof axios.isAxiosError !== 'function')
-      throw configError('AxiosClient(axios): pass the axios import itself — new AxiosClient(axios)')
+    if (typeof axios !== 'function')
+      throw configError(
+        'AxiosClient(axios): pass the axios import or an instance from axios.create() — ' +
+          'new AxiosClient(axios)'
+      )
   }
 
   request = async (req: HttpRequest): Promise<unknown> => {
@@ -145,7 +154,7 @@ export class AxiosClient implements HttpClient {
       // the 204 rule restated in axios' vocabulary
       return response.data === '' || response.data === undefined ? null : response.data
     } catch (error) {
-      if (this.axios.isAxiosError(error) && error.response)
+      if (isAxiosError(error) && error.response)
         throw httpFailure({
           status: error.response.status,
           statusText: error.response.statusText,
@@ -163,6 +172,9 @@ export class AxiosClient implements HttpClient {
     }
   }
 }
+
+const isAxiosError = (error: unknown): error is AxiosErrorLike =>
+  typeof error === 'object' && error !== null && (error as AxiosErrorLike).isAxiosError === true
 
 /** An empty success — a 204, or a 200 with nothing in it — is `null`. */
 const parseBody = (text: string, url: string, status: number): unknown => {
