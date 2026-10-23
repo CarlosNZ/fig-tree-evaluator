@@ -76,6 +76,8 @@ interface FigTreeOptions {
 }
 ```
 
+**Every option's value is checked where it is set** ([#268](https://github.com/CarlosNZ/fig-tree-evaluator/issues/268), Carl, October 2026). Construction, `updateOptions()` and `with()` check the merged options, and a call its own, against one table of rules (src/optionChecks.ts): `maxDepth` and `maxNodes` a whole number, 0 or more; `timeout` a positive, finite number; `signal` an `AbortSignal` by shape; `strictDataPaths` and `trace` booleans; `http`, `graphQL` and `cache` plain objects, with `http.baseEndpoint` an `http(s)` URL or `''`, `graphQL.endpoint` a string, each `headers` a plain object of strings, numbers, booleans or `null`, and `cache` as settled below. A key no rule names is refused at either level, with a did-you-mean, so a misspelt limit in an untyped config cannot read as a limit that is set. `data` takes anything, and the registry options are checked against the registry being built. Every problem is an `invalid-options` issue at its path, collected into one throw with the registry's own. `undefined` is the one spelling of "no limit" (`Infinity` is refused), and `null` still removes, since the checks see the options after the merge has applied it.
+
 ### Operator registration
 
 The `operators` array is the **only** registration mechanism. Factory functions (`httpOperators(client)`, `sqlOperators(connection)`) are plain functions returning operator definitions with their client closed over — the client is wiring, not configuration, and does not appear anywhere in options. Custom operators built with `defineOperator()` enter through the same array.

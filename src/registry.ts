@@ -81,8 +81,11 @@ export interface RegistryInput {
 /** The modifier pseudo-keys an `operatorDefaults` entry may target. */
 const MODIFIER_KEYS = ['fallback', 'noCache']
 
-export const buildRegistry = (input: RegistryInput): OperatorRegistry => {
-  const issues: Issue[] = []
+/**
+ * `issues` holds what was already found wrong with the rest of the options
+ * (src/optionChecks.ts), so the one throw reports those too.
+ */
+export const buildRegistry = (input: RegistryInput, issues: Issue[] = []): OperatorRegistry => {
   const addIssue = (code: string, message: string, path: Path, operator?: string) => {
     issues.push({
       severity: 'error',
