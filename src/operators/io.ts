@@ -233,10 +233,10 @@ export const sqlDefinition = (connection: SqlConnection) =>
 /**
  * The likely intent is a forgotten `method: 'post'`; the message says so.
  *
- * Only a LITERAL `'get'` is linted. A hook sees literal parameter values
- * only, so an absent `method` and a dynamic one are indistinguishable
- * here — and refusing `{ url, method: '$data.verb', body }` would refuse a
- * legal expression. The runtime check catches every case; this one is the
+ * A literal `'get'` is linted, and so is an unset `method`, which the hook
+ * receives as its default. A dynamic `method` never reaches the hook, and
+ * refusing `{ url, method: '$data.verb', body }` would refuse a legal
+ * expression. The runtime check catches every case; this one is the
  * authoring-time half of it.
  */
 const bodyFindings = (method: unknown, body: unknown) =>

@@ -208,16 +208,16 @@ describe('misuse', () => {
     ).toThrow(/not a per-call option/)
   })
 
-  test('evaluate() and compile() refuse params as they refuse any configuration key', async () => {
+  test('evaluate() and compile() refuse params as they refuse any key outside CallOptions', async () => {
     // Widened past the signature, as a JS host would reach it
     const options = { params: ['x'] } as unknown as CallOptions
     await expect(fig.evaluate(1, options)).rejects.toMatchObject({
       code: ErrorCodes.invalidOptions,
-      message: expect.stringContaining("'params' is not a per-call option"),
+      message: "'params' is not an option",
     })
     await expect(fig.compile(1).evaluate(options)).rejects.toMatchObject({
       code: ErrorCodes.invalidOptions,
-      message: expect.stringContaining("'params' is not a per-call option"),
+      message: "'params' is not an option",
     })
     // @ts-expect-error — a key outside CallOptions
     void fig.evaluate(1, { params: ['x'] }).catch(() => undefined)

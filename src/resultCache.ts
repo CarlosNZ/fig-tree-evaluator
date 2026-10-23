@@ -25,9 +25,8 @@
  * degrades to not-caching rather than failing an evaluation. This is the
  * one place in the engine that swallows.
  */
-import { ErrorCodes } from './errorCodes'
-import { FigTreeError } from './FigTreeError'
 import { Lru } from './lru'
+import type { FigTreeOptions } from './options'
 import type { CacheStore } from './types'
 import { noop } from './utils'
 import { isPlainDataObject } from './plainData'
@@ -87,44 +86,14 @@ const isEnvelope = (value: unknown): value is Envelope =>
   typeof (value as Record<string, unknown>).generation === 'number'
 
 /**
- * Validate the `cache` option block, filling the defaults. Total and
- * pure, so it can run before anything mutates: a rejected `updateOptions`
- * must leave the instance exactly as it was.
+ * The `cache` option block with its defaults filled. The block's values
+ * were checked when it was set (src/optionChecks.ts).
  */
-export const readCacheConfig = (block: unknown): ResolvedCacheConfig => {
-  if (block === undefined) return { maxSize: DEFAULT_MAX_SIZE, maxTime: DEFAULT_MAX_TIME }
-  if (!isPlainDataObject(block)) throw configError("'cache' must be an object")
-
-  const { store, maxSize, maxTime } = block as Record<string, unknown>
-  if (store !== undefined && !isCacheStore(store))
-    throw configError("'cache.store' must provide get, set, delete and clear methods")
-  if (maxSize !== undefined && (!Number.isInteger(maxSize) || (maxSize as number) < 1))
-    throw configError("'cache.maxSize' must be a positive integer")
-  // Zero would mean "cache nothing", which `noCache` already says, per
-  // operator or per subtree; admitting it here would give one behaviour
-  // two spellings
-  if (
-    maxTime !== undefined &&
-    (typeof maxTime !== 'number' || maxTime <= 0 || Number.isNaN(maxTime))
-  )
-    throw configError("'cache.maxTime' must be a positive number of seconds, or Infinity")
-
-  return {
-    ...(store !== undefined ? { store: store as CacheStore } : {}),
-    maxSize: (maxSize as number | undefined) ?? DEFAULT_MAX_SIZE,
-    maxTime: (maxTime as number | undefined) ?? DEFAULT_MAX_TIME,
-  }
-}
-
-const isCacheStore = (value: unknown): value is CacheStore =>
-  typeof value === 'object' &&
-  value !== null &&
-  (['get', 'set', 'delete', 'clear'] as const).every(
-    (method) => typeof (value as Record<string, unknown>)[method] === 'function'
-  )
-
-const configError = (message: string) =>
-  new FigTreeError({ code: ErrorCodes.invalidOptions, message, path: [] })
+export const readCacheConfig = (block: FigTreeOptions['cache']): ResolvedCacheConfig => ({
+  ...(block?.store !== undefined ? { store: block.store } : {}),
+  maxSize: block?.maxSize ?? DEFAULT_MAX_SIZE,
+  maxTime: block?.maxTime ?? DEFAULT_MAX_TIME,
+})
 
 export class ResultCache {
   private store: CacheStore

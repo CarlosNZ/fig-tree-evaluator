@@ -48,7 +48,9 @@ import { LAZY_HANDLE, type LazyValue, type PerElement } from '../runtimeInterfac
 import {
   checkDeclared,
   checkType,
-  nullMeansUnset,
+  defaultFor,
+  isUnset,
+  NO_DEFAULT,
   typeNamesNull,
   type ExpectedType,
 } from '../typeCheck'
@@ -72,7 +74,7 @@ export const resolveParams = async (
   node: OperatorNode,
   ctx: EvaluationContext
 ): Promise<ResolvedParameters> => {
-  const { definition, hostDefaults } = node.entry
+  const { definition } = node.entry
   const { entries, whole, perElement } = definition.resolution
 
   // ── Pass 1: start everything ──────────────────────────────────────
@@ -109,11 +111,13 @@ export const resolveParams = async (
           // A holder supplied on the node, else its instance-wide default
           // (the same chain as any parameter; holders carry no metadata
           // default by registration rule)
+          const fallback =
+            supplied === undefined ? defaultFor(node.entry, name, declared) : undefined
           const thunk =
             supplied !== undefined
               ? once(() => evaluateNode(supplied, ctx))
-              : hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)
-                ? once(() => hostDefaults[name])
+              : fallback !== NO_DEFAULT
+                ? once(() => fallback)
                 : undefined
           if (thunk !== undefined)
             for (const target of declared.replacesNullAt) (holders ??= {})[target] = thunk
@@ -173,16 +177,10 @@ export const resolveParams = async (
   for (const [name, declared] of whole) {
     // A handle delivered in pass 1 runs its layers on demand
     if (Object.hasOwn(params, name)) continue
-    const value = resolved[name]
-    const unset = value === undefined || (value === null && nullMeansUnset(declared))
-    if (!unset) continue
-    if (hostDefaults !== undefined && Object.hasOwn(hostDefaults, name)) {
-      resolved[name] = hostDefaults[name]
-    } else if ('default' in declared) {
-      resolved[name] = declared.default === EvaluationData ? ctx.data : declared.default
-    } else {
-      delete resolved[name]
-    }
+    if (!isUnset(resolved[name], declared)) continue
+    const fallback = defaultFor(node.entry, name, declared)
+    if (fallback === NO_DEFAULT) delete resolved[name]
+    else resolved[name] = fallback === EvaluationData ? ctx.data : fallback
   }
 
   // ── Pass 2: the layers ────────────────────────────────────────────

@@ -44,6 +44,14 @@ export type CallOptions = Pick<FigTreeOptions, 'data' | 'signal' | 'timeout' | '
  */
 export type ValidateOptions = CallOptions & { params?: readonly string[] }
 
+/**
+ * Header defaults for the I/O operators, beneath each node's own in the
+ * header chain (`mergeHeaders`, src/operators/ioHelpers.ts). A
+ * number or a boolean is sent as text, and a `null` removes the header,
+ * the operator's own JSON defaults included.
+ */
+type HeaderDefaults = Record<string, string | number | boolean | null>
+
 export interface FigTreeOptions {
   // ── Evaluation environment ──────────────────────────────
   /**
@@ -80,8 +88,8 @@ export interface FigTreeOptions {
   }
 
   // ── I/O configuration ───────────────────────────────────
-  http?: { baseEndpoint?: string; headers?: Record<string, string> }
-  graphQL?: { endpoint?: string; headers?: Record<string, string> }
+  http?: { baseEndpoint?: string; headers?: HeaderDefaults }
+  graphQL?: { endpoint?: string; headers?: HeaderDefaults }
 
   // ── Reference semantics ─────────────────────────────────
   /** Default false: a missing $data path resolves to null; true: throws. */

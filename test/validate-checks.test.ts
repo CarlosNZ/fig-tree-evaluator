@@ -5,7 +5,7 @@
  * later phases). Message wording is never asserted, per the worked-examples
  * rule — codes, severities and paths only.
  */
-import { FigTree } from '../src'
+import { defineOperator, EvaluationData, FigTree } from '../src'
 import type { Issue } from '../src'
 import { compileOps } from './fixtures/compileRegistry'
 
@@ -439,6 +439,73 @@ describe('operator validate hooks', () => {
     expect(
       issuesOf({ $pattern: ['$data.p'] }).filter((i) => i.code === 'operator-validate')
     ).toHaveLength(0)
+  })
+})
+
+describe("a validate hook reads each parameter's effective value", () => {
+  // Reports what its hook received, so each case reads the delivery
+  const probe = defineOperator({
+    name: 'probe',
+    category: 'other',
+    parameters: {
+      mode: { type: { literal: ['a', 'b', 'c'] }, default: 'a' },
+      nullable: { type: ['string', 'null'], default: 'kept' },
+      optional: { type: 'string', required: false },
+      from: { type: 'any', default: EvaluationData },
+    },
+    validate: (literalParams, _helpers, authored) => [
+      {
+        severity: 'warning',
+        message: JSON.stringify({ literalParams, authored: [...authored] }),
+      },
+    ],
+    evaluate: () => null,
+  })
+  const delivery = (expression: unknown, operatorDefaults?: Record<string, unknown>) => {
+    const figTree = new FigTree({
+      operators: [probe],
+      ...(operatorDefaults !== undefined ? { operatorDefaults: { probe: operatorDefaults } } : {}),
+    })
+    const issue = figTree.validate(expression).issues.find((i) => i.code === 'operator-validate')
+    return JSON.parse(issue!.message)
+  }
+  const received = (expression: unknown, operatorDefaults?: Record<string, unknown>) =>
+    delivery(expression, operatorDefaults).literalParams
+
+  test('an unset parameter arrives as its declared default', () => {
+    expect(received({ $probe: {} })).toEqual({ mode: 'a', nullable: 'kept' })
+  })
+
+  test('an authored literal wins over every default', () => {
+    expect(received({ $probe: { mode: 'b', optional: 'x' } }, { mode: 'c' })).toMatchObject({
+      mode: 'b',
+      optional: 'x',
+    })
+  })
+
+  test('an operatorDefaults entry wins over the declared default', () => {
+    expect(received({ $probe: {} }, { mode: 'c' })).toMatchObject({ mode: 'c' })
+  })
+
+  test('a null that means unset arrives as the default; one the type names stays null', () => {
+    expect(received({ $probe: { mode: null, nullable: null } })).toMatchObject({
+      mode: 'a',
+      nullable: null,
+    })
+  })
+
+  test('a dynamic value is absent, and so is the data the sentinel stands for', () => {
+    const delivered = received({ $probe: { mode: '$data.m' } })
+    expect(Object.hasOwn(delivered, 'mode')).toBe(false)
+    expect(Object.hasOwn(delivered, 'from')).toBe(false)
+  })
+
+  test('authored names what the node writes, literal or dynamic, and no default', () => {
+    expect(delivery({ $probe: {} }, { optional: 'x' }).authored).toEqual([])
+    expect(delivery({ $probe: { mode: '$data.m', optional: 'x' } }).authored.sort()).toEqual([
+      'mode',
+      'optional',
+    ])
   })
 })
 

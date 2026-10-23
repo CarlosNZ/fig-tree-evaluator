@@ -52,7 +52,10 @@ export const request = (config: AxiosConfig, routes: Routes = { get, post }) => 
   if (method === 'GET') {
     return routes.get(url, config)
   } else if (method === 'POST') {
-    return routes.post(url, config.data as RequestBody, config)
+    // v3's client sends JSON text and v2's an object; a route reads the
+    // body parsed, as the server it stands in for would
+    const body = typeof config.data === 'string' ? JSON.parse(config.data) : config.data
+    return routes.post(url, body as RequestBody, config)
   }
 
   return Promise.reject(unanswered(`Unmocked axios call: ${method} ${url}`))

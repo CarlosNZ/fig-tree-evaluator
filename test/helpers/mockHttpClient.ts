@@ -18,7 +18,9 @@ export interface MockHttpRequest {
   url: string
   method: 'get' | 'post'
   headers: Record<string, string>
+  /** Absent when the request had none, as a real client sends no body. */
   body?: unknown
+  signal: AbortSignal
 }
 
 const abortError = () => {
@@ -117,7 +119,13 @@ export class MockHttpClient implements HttpClient {
   }
 
   request = async (req: HttpRequest): Promise<unknown> => {
-    this.calls.push({ url: req.url, method: req.method, headers: req.headers, body: req.body })
+    this.calls.push({
+      url: req.url,
+      method: req.method,
+      headers: req.headers,
+      ...(req.body !== undefined ? { body: req.body } : {}),
+      signal: req.signal,
+    })
 
     if (this.latencyMs > 0) await delay(this.latencyMs, req.signal)
     if (req.signal?.aborted) throw abortError()

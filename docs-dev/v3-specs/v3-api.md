@@ -51,8 +51,8 @@ interface FigTreeOptions {
   operatorDefaults?: { [operator: string]: { [param: string]: unknown } }
 
   // ── I/O configuration ──────────────────────────────────
-  http?: { baseEndpoint?: string; headers?: Record<string, string> }
-  graphQL?: { endpoint?: string; headers?: Record<string, string> }
+  http?: { baseEndpoint?: string; headers?: Record<string, string | number | boolean | null> }
+  graphQL?: { endpoint?: string; headers?: Record<string, string | number | boolean | null> } // null removes a header, the operator's JSON defaults included
 
   // ── Reference semantics ────────────────────────────────
   strictDataPaths?: boolean // default false: a missing reference path resolves to null; true: throws
@@ -75,6 +75,8 @@ interface FigTreeOptions {
   trace?: boolean           // default false; annotated intermediate values (shape deferred)
 }
 ```
+
+**Every option's value is checked where it is set** ([#268](https://github.com/CarlosNZ/fig-tree-evaluator/issues/268), Carl, October 2026). Construction, `updateOptions()` and `with()` check the merged options, and a call its own, against one table of rules (src/optionChecks.ts): `maxDepth` and `maxNodes` a whole number, 0 or more; `timeout` a positive, finite number; `signal` an `AbortSignal` by shape; `strictDataPaths` and `trace` booleans; `http`, `graphQL` and `cache` plain objects, with `http.baseEndpoint` an `http(s)` URL or `''`, `graphQL.endpoint` a string, each `headers` a plain object of strings, numbers, booleans or `null`, and `cache` as settled below. A key no rule names is refused at either level, with a did-you-mean, so a misspelt limit in an untyped config cannot read as a limit that is set. Per call, an instance option is refused as not per-call, naming the four that are, and a key that is no option at all is refused as unknown, its did-you-mean drawn from the per-call keys alone. `data` takes anything, and the registry options are checked against the registry being built. Every problem is an `invalid-options` issue at its path, collected into one throw with the registry's own. `undefined` is the one spelling of "no limit" (`Infinity` is refused), and `null` still removes, since the checks see the options after the merge has applied it.
 
 ### Operator registration
 

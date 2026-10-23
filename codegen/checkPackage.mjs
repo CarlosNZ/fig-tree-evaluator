@@ -56,7 +56,7 @@ const ROOT_MARKERS = [
     part: 'the I/O toolkit',
     markers: [
       'FetchClient(): this runtime has no global fetch',
-      'AxiosClient(axios): pass the axios import itself',
+      'AxiosClient(axios): pass the axios import or an instance',
       'PostgresConnection(client): pass a connected',
       'SQLiteConnection(db): pass an open sqlite Database',
       'supply url, or set the graphQL.endpoint option',
@@ -91,10 +91,7 @@ const SMALL_IMPORT_BUDGET = 1_500
 const ENGINE_MARKERS = [
   {
     part: 'the engine',
-    markers: [
-      "'cache.maxSize' must be a positive integer",
-      'the static gate should have refused it',
-    ],
+    markers: ['a whole number, 0 or more', 'the static gate should have refused it'],
   },
   {
     part: 'the core operators',
