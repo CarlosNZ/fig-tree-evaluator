@@ -108,7 +108,7 @@ Evaluates an expression, and returns its result.
 - A per-call option set to `undefined` counts as not given, so `{ data: undefined }` evaluates with the instance's `data`. Unlike in `updateOptions()`, `null` doesn't remove an option: a `null` `timeout` or `signal` is `invalid-options`, and `data: null` evaluates with no data.
 - When no fallback catches a runtime failure, the evaluation stops there: work still in progress elsewhere in the expression, such as a request, is cancelled.
 
-In TypeScript, the type `evaluate()` returns is `EvaluationResult` when `trace: true` is in the constructor's options or the call's, and `unknown` otherwise. That's why an instance's type includes its options, as in `FigTree<{ trace: true }>`. Here, the second call's `trace: false` overrides the instance's:
+In TypeScript, the type `evaluate()` returns is `EvaluationResult` when `trace: true` is in the constructor's options or the call's, and `unknown` otherwise. That's why an instance's type includes its `trace`, as in `FigTree<true>`. Here, the second call's `trace: false` overrides the instance's:
 
 ```ts title="types.ts"
 import { FigTree } from 'fig-tree-evaluator'
