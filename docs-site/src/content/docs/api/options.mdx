@@ -21,7 +21,7 @@ A FigTree instance takes its options in the constructor, `new FigTree(options)`,
 | [`cache`](#cache)                                | No       | 50 results, 30 minutes | How the result cache keeps results                         |
 | [`trace`](#trace)                                | Yes      | `false`                | Returns a trace of the evaluation, with the result         |
 
-An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, and an invalid per-call option makes `evaluate()` reject the same way. Problems with `operators`, `fragments` and `operatorDefaults` are all listed in the error's `issues`, and any other invalid option is reported on its own. So each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
+Every option's value is checked where it's set. An invalid option makes the constructor, `updateOptions()` or `with()` throw a [`FigTreeError`](/api/errors/#figtreeerror) with the code `invalid-options`, and an invalid per-call option makes `evaluate()` reject the same way. Every problem found is listed in the error's `issues`, each with a `path` to the option it's about. A key that isn't an option, such as a misspelt `maxdepth`, is a problem too, with a "did you mean" where there's a close match, so a misspelt option in a config file can't quietly do nothing. Each entry's **Throws** says what makes the option invalid, and what an evaluation throws because of it.
 
 An instance's options apply to every expression it evaluates, including ones already stored, so changing one on a running system can change what those expressions give ([Changing options](/guides/setup/#changing-options)).
 
@@ -173,8 +173,8 @@ Instance-wide values for an operator's optional parameters, and for its `fallbac
 ```ts
 interface FigTreeOptions {
 // ---cut---
-http?: { baseEndpoint?: string; headers?: Record<string, string> }
-graphQL?: { endpoint?: string; headers?: Record<string, string> }
+http?: { baseEndpoint?: string; headers?: Record<string, string | number | boolean | null> }
+graphQL?: { endpoint?: string; headers?: Record<string, string | number | boolean | null> }
 // ---cut-after---
 }
 ```
@@ -185,11 +185,19 @@ Defaults for requests from the `http` and `graphQL` operators: a base that relat
 
 **Per call:** no.
 
+**Throws:** `invalid-options` when:
+
+- either isn't an object
+- `http.baseEndpoint` isn't a URL starting with `http://` or `https://`, or `''`
+- `graphQL.endpoint` isn't a string
+- a `headers` isn't an object, or a header's value isn't a string, number, boolean or `null`
+
 **Details:**
 
 - A `url` that starts with `http://` or `https://` is used as written, and any other is joined to `http.baseEndpoint`, with one `/` between them. An empty `url` is the base itself. A relative `url` with no `baseEndpoint` set makes the node fail.
 - `graphQL.endpoint` is used by a `graphQL` node with no `url`, and is joined to `http.baseEndpoint` the same way when it's relative. A node with neither fails.
-- A request's headers are merged from `http.headers`, then the node's own `headers`, each one overriding the one before. A `graphQL` request adds `graphQL.headers` between the two. A node's header set to `null` leaves that header out.
+- A request's headers are merged from `http.headers`, then the node's own `headers`, each one overriding the one before. A `graphQL` request adds `graphQL.headers` between the two. A header set to `null`, on the instance or on a node, leaves that header out.
+- A header's number or boolean value is sent as text.
 - Header names are matched exactly, so `authorization` and `Authorization` are two different headers.
 - Every request sends `Accept: application/json`, and one with a body also sends `Content-Type: application/json`. Either can be replaced or removed the same way as any other header.
 - For security reasons, a header's value never appears in a failure or a trace.
@@ -212,6 +220,8 @@ If set to `true`, a reference to a missing path fails, with the code `missing-da
 **Default:** `false`.
 
 **Per call:** no.
+
+**Throws:** `invalid-options` unless it's `true` or `false`.
 
 **Details:**
 
@@ -243,7 +253,7 @@ Limits on an expression's size: how deeply it nests, and how many nodes it holds
 
 **Per call:** no.
 
-**Throws:** `evaluate()` throws `max-depth` or `max-nodes` before anything runs. Both are static errors, so no fallback catches them, and `validate()` and a compiled expression's [`issues`](/api/compiled-expression/#issues) report them as errors.
+**Throws:** `invalid-options` unless each is a whole number, 0 or more. There's no value for "no limit", so to lift one, leave it out, or remove it with `null` in `updateOptions()`. `evaluate()` throws `max-depth` or `max-nodes` before anything runs. Both are static errors, so no fallback catches them, and `validate()` and a compiled expression's [`issues`](/api/compiled-expression/#issues) report them as errors.
 
 **Details:**
 
@@ -368,6 +378,8 @@ Makes `evaluate()` return `{ result, trace }`: the result, and a record of how t
 
 **Per call:** yes, in either direction: a call's `trace: false` turns off the instance's.
 
+**Throws:** `invalid-options` unless it's `true` or `false`, per call as well.
+
 **Details:**
 
 - It changes nothing about how the expression runs. A traced evaluation that fails throws as usual, and the error's `trace` property holds the trace up to the failure.
@@ -417,6 +429,6 @@ fig.getOptions()
 fig.updateOptions({ http: { baseEndpoint: null } })
 ```
 
-A call's options never merge: each one given replaces the instance's for that evaluation, `data` included, and `undefined` counts as not given. Per call, `null` is a value rather than a removal: `data: null` evaluates with no data, and a `null` `timeout` or `signal` is `invalid-options`. Any option other than `data`, `signal`, `timeout` and `trace` is `invalid-options` too.
+A call's options never merge: each one given replaces the instance's for that evaluation, `data` included, and `undefined` counts as not given. Per call, `null` is a value rather than a removal: `data: null` evaluates with no data, and a `null` `timeout` or `signal` is `invalid-options`. Any option other than `data`, `signal`, `timeout` and `trace` is `invalid-options` too: an instance option, such as `maxDepth`, is refused with a message naming the four a call can give, and a key that isn't an option at all with a "did you mean".
 
 **See also:** [Changing options](/guides/setup/#changing-options)

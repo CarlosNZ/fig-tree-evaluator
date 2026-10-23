@@ -43,9 +43,9 @@ constructor(options?: FigTreeOptions)
 
 **Parameters:** `options`, the instance's [options](/api/options/), all of them optional. With none, the instance has the core operators: every operator on the [Operators](/reference/operators/) page except the I/O ones (`http`, `graphQL` and `sql`).
 
-**Throws:** `invalid-options` when an option is invalid. For `operators`, `fragments` and `operatorDefaults`, the error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. An invalid `timeout`, `signal` or `cache` is reported on its own, with no `issues`.
+**Throws:** `invalid-options` when an option is invalid. The error's `issues` lists every problem found, each with its own `code`, such as `duplicate-operator`, and a `path` into the options. A key that isn't an option is a problem too, with a "did you mean" where there's a close match.
 
-**Details:** everything is checked here, before the instance exists: each operator, each `operatorDefaults` entry against the operators, each fragment body, and the `timeout`, `signal` and `cache` options.
+**Details:** everything is checked here, before the instance exists: each operator, each `operatorDefaults` entry against the operators, each fragment body, and every other option's value ([Options](/api/options/)).
 
 ```ts title="construct.ts"
 import { FigTree, isFigTreeError } from 'fig-tree-evaluator'
@@ -97,7 +97,7 @@ Evaluates an expression, and returns its result.
 - **A runtime failure no fallback catches:** the first one, with its own code.
 - **`timeout`:** the evaluation ran past its `timeout`, unless [timeout shielding](/guides/fallbacks/#timeout-shielding) answered it.
 - **`aborted`:** its `signal` was aborted.
-- **`invalid-options`:** the call passed an option other than the four, or a `timeout` or `signal` that isn't valid.
+- **`invalid-options`:** the call passed an option other than the four, or a `timeout`, `signal` or `trace` that isn't valid.
 
 **Details:**
 
@@ -178,7 +178,7 @@ The other per-call options, `signal`, `timeout` and `trace`, are accepted, but h
 
 **Returns:** a [`ValidationResult`](/api/errors/#issue-and-validationresult), `{ valid, issues }`. `valid` is `false` exactly when at least one issue has severity `'error'`.
 
-**Throws:** `invalid-options`, only when the options are wrong: an option other than the per-call ones and `params`, a `params` that isn't an array of strings, or a `timeout` or `signal` that isn't valid. A problem in the expression, however serious, is reported in `issues` instead.
+**Throws:** `invalid-options`, only when the options are wrong: an option other than the per-call ones and `params`, a `params` that isn't an array of strings, or a `timeout`, `signal` or `trace` that isn't valid. A problem in the expression, however serious, is reported in `issues` instead.
 
 **Details:**
 

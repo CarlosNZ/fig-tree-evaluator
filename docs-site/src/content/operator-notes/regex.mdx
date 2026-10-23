@@ -1,7 +1,7 @@
 Each `mode` returns something different from the same search:
 
 <Expression
-  title="Three answers from one pattern"
+  title="Four answers from one pattern"
   code={`
     {
       hasNumber: { $regex: ['$data.message', '[0-9]+'] },
@@ -10,6 +10,14 @@ Each `mode` returns something different from the same search:
       },
       allNumbers: {
         $regex: { value: '$data.message', pattern: '[0-9]+', mode: 'match' },
+      },
+      noNumbers: {
+        $regex: {
+          value: '$data.message',
+          pattern: '[0-9]+',
+          mode: 'replace',
+          replacement: '#',
+        },
       },
     }
   `}
@@ -21,5 +29,32 @@ Each `mode` returns something different from the same search:
 />
 
 `extract` returns the whole match, never a capture group, so to leave part of the match out, use a lookbehind: `'(?<=#)[0-9]+'` extracts `'123'` from `'Order #123'`.
+
+`replace` replaces _every_ match, and with no `replacement`, removes them. A `replacement` can keep part of the match: `$1` is the first capture group, `$<name>` a named one, and `$&` the whole match. A `$` on its own in the text is written `$$`.
+
+<Expression
+  title="Tidying with replace"
+  code={`
+    {
+      digits: { $regex: { value: '$data.phone', pattern: '[^0-9]', mode: 'replace' } },
+      isoDate: {
+        $regex: {
+          value: '$data.date',
+          pattern: '([0-9]{2})/([0-9]{2})/([0-9]{4})',
+          mode: 'replace',
+          replacement: '$3-$2-$1',
+        },
+      },
+    }
+  `}
+  data={`
+    {
+      phone: '(021) 555-1234',
+      date: '23/10/2026',
+    }
+  `}
+/>
+
+A `replacement` with `mode` left at its default returns `true` or `false`, so `validate()` warns about one on a node in any other mode, as it does about a `noMatchDefault` outside `extract` mode.
 
 A backslash in a pattern is written twice, as in `'\\d+'` for a run of digits. In JSON5, a single one is silently dropped, so `'\d+'` would match a run of the letter `d`.

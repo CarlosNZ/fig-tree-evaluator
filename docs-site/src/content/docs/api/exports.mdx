@@ -157,7 +157,10 @@ An HTTP client that sends requests with [Axios](https://axios-http.com).
 
 **Throws:** `invalid-options` when `axios` isn't a function.
 
-**Details:** a response with an error status fails with `http-status`, as it does with `FetchClient`, and an empty response is `null`.
+**Details:**
+
+- A body is sent as JSON, as `FetchClient` sends it.
+- A response with an error status fails with `http-status`, as it does with `FetchClient`, and an empty response is `null`.
 
 ### `PostgresConnection`
 

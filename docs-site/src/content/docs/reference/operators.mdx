@@ -27,7 +27,7 @@ Each operator has its name and alias, a description, a table with a row for each
   - **per element:** evaluated once for every element of the input, which may be many times or none.
   - **stops early:** every element starts at once and, as soon as one decides the answer, the rest are stopped.
   - **literal only:** never evaluated, so it has to be written out in the expression, as an iterator's `as` name is.
-- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match'`, are the only ones allowed. Where the Null column says **passed on**, `null` is accepted too, but isn't shown in the type, since it's only there to be passed on, never used by the operator.
+- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match' | 'replace'`, are the only ones allowed. Where the Null column says **passed on**, `null` is accepted too, but isn't shown in the type, since it's only there to be passed on, never used by the operator.
 - **Presence:** whether the parameter can be left out:
   - **required:** it has to be given, and leaving it out is an error.
   - **optional:** it can be left out, and has no default value.
