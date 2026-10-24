@@ -57,6 +57,16 @@ describe('the curated corpus', () => {
       expect(toCanonical(once, corpusFig)).toEqual(once)
     })
 
+    test.each(formatCorpus)(
+      '%s compiles as its input does, non-recursive',
+      (_label, expression) => {
+        const converted = toCanonical(deepFreeze(expression), corpusFig, { recursive: false })
+        expect(compiledShape(converted, corpusRegistry)).toEqual(
+          compiledShape(expression, corpusRegistry)
+        )
+      }
+    )
+
     test.each(formatCorpus)('%s compiles as its input does, respelled', (_label, expression) => {
       for (const names of ['canonical', 'alias'] as const) {
         const converted = toCanonical(expression, corpusFig, {
@@ -89,6 +99,29 @@ describe('the curated corpus', () => {
       const there = toShorthand(expression, corpusFig, off)
       expect(withCallMaps(toCanonical(there, corpusFig))).toEqual(
         withCallMaps(toCanonical(expression, corpusFig))
+      )
+    })
+
+    test.each(formatCorpus)(
+      '%s compiles as its input does, non-recursive',
+      (_label, expression) => {
+        for (const options of [off, { ...off, arguments: 'named' as const }]) {
+          const converted = toShorthand(deepFreeze(expression), corpusFig, {
+            ...options,
+            recursive: false,
+          })
+          expect(compiledShape(converted, corpusRegistry)).toEqual(
+            compiledShape(expression, corpusRegistry)
+          )
+        }
+      }
+    )
+
+    test.each(formatCorpus)('%s round-trips non-recursively', (_label, expression) => {
+      const node = { ...off, recursive: false }
+      const there = toShorthand(expression, corpusFig, node)
+      expect(withCallMaps(toCanonical(there, corpusFig, node))).toEqual(
+        withCallMaps(toCanonical(expression, corpusFig, node))
       )
     })
 

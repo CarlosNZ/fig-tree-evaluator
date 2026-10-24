@@ -290,3 +290,60 @@ describe('comments', () => {
     })
   })
 })
+
+describe('recursive: false', () => {
+  const node = (expression: unknown, options?: CanonicalOptions) =>
+    canonical(expression, { recursive: false, ...options })
+
+  test('converts the node and passes its parameters through as written', () => {
+    const then = { $upper: 'x' }
+    const result = node({ $if: ['$d.flag', then, { $abs: -1 }] }, { referenceNames: 'canonical' })
+    expectForm(result, {
+      operator: 'if',
+      condition: '$d.flag',
+      then: { $upper: 'x' },
+      else: { $abs: -1 },
+    })
+    expect((result as Record<string, unknown>).then).toBe(then)
+  })
+
+  test('a fallback and a vars block pass through', () => {
+    const fallback = { $abs: -2 }
+    const vars = { x: { $abs: -3 } }
+    const result = node({ $abs: -1, fallback, vars }) as Record<string, unknown>
+    expectForm(result, { operator: 'abs', value: -1, fallback, vars })
+    expect(result.fallback).toBe(fallback)
+    expect((result.vars as Record<string, unknown>).x).toBe(vars.x)
+  })
+
+  test('a fragment call’s arguments map is rebuilt, its values passed through', () => {
+    const args = { name: { $upper: 'x' } }
+    const result = node({ $greet: args }) as Record<string, unknown>
+    expectForm(result, { fragment: 'greet', parameters: { name: { $upper: 'x' } } })
+    expect(result.parameters).not.toBe(args)
+    expect((result.parameters as Record<string, unknown>).name).toBe(args.name)
+  })
+
+  test('a reference at the top is still converted', () => {
+    expectForm(node('$d.x', { referencesAsGet: true }), { operator: 'get', path: 'x' })
+    expectForm(node('$d.x', { referenceNames: 'canonical' }), '$data.x')
+  })
+
+  test('a value that isn’t a node comes back with its children untouched', () => {
+    const inner = { $abs: -1 }
+    const object = node({ a: inner, b: '$d.x' }, { referenceNames: 'canonical' })
+    expect(object).toEqual({ a: inner, b: '$d.x' })
+    expect((object as Record<string, unknown>).a).toBe(inner)
+    const array = node([inner]) as unknown[]
+    expect(array).toEqual([inner])
+    expect(array[0]).toBe(inner)
+  })
+
+  test('the node itself is still checked; its children aren’t read', () => {
+    expect(() => node({ $if: [1, 2, 3, 4] })).toThrow(/arguments/)
+    expectForm(node({ $not: { $if: [1, 2, 3, 4] } }), {
+      operator: 'not',
+      value: { $if: [1, 2, 3, 4] },
+    })
+  })
+})

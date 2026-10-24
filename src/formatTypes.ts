@@ -44,6 +44,14 @@ export interface CanonicalOptions extends NameOptions {
    * `false`: an editor sets it when the selected node is itself a reference.
    */
   referencesAsGet?: boolean
+  /**
+   * Whether the conversion descends into the node's children. Default
+   * `true`: every node in the subtree. With `false`, only the value given
+   * is converted, and every parameter value, fragment argument, `fallback`
+   * and `vars` entry is passed through as written, by reference. A value
+   * that isn't a node comes back with its children untouched.
+   */
+  recursive?: boolean
 }
 
 export interface ShorthandOptions extends NameOptions {
@@ -59,4 +67,12 @@ export interface ShorthandOptions extends NameOptions {
    * `//` comment, which a reference can't. Default `true`.
    */
   getAsReference?: boolean
+  /**
+   * Whether the conversion descends into the node's children. Default
+   * `true`: every node in the subtree. With `false`, only the value given
+   * is converted, and every parameter value, fragment argument, `fallback`
+   * and `vars` entry is passed through as written, by reference. A value
+   * that isn't a node comes back with its children untouched.
+   */
+  recursive?: boolean
 }

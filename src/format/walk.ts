@@ -9,7 +9,11 @@
  * named payload is part of its own node's read (src/format/read.ts), so the
  * node's writer places it.
  *
- * The walk never mutates: every container it passes through is rebuilt.
+ * The walk never mutates: every container it passes through is rebuilt. A
+ * non-recursive walk ("Recursion" in the spec) passes through only the value
+ * it is given and the containers that value itself owns, a fragment's
+ * arguments map and a `vars` block, and hands everything below them back by
+ * reference.
  */
 import { DEPTH_CEILING, classifiesAsNode } from '../compile/grammar'
 import { ErrorCodes } from '../errorCodes'
@@ -46,9 +50,14 @@ export class Walk {
   private path: Path = null
   private depth = 0
 
+  /**
+   * `recursive` is the conversion's `recursive` option: with it off, the
+   * walk converts the value it is given and nothing below it.
+   */
   constructor(
     readonly lookup: Lookup,
-    private readonly writer: Writer
+    private readonly writer: Writer,
+    private readonly recursive: boolean = true
   ) {}
 
   /** Stops the conversion at the current node, with the compiler's code. */
@@ -56,8 +65,14 @@ export class Walk {
     throw new FigTreeError({ code, message, path: toArray(this.path) })
   }
 
-  /** Convert a value one level below the current one, at `key`. */
+  /**
+   * Convert a value one level below the current one, at `key`. Every
+   * descent passes through here: a parameter, a fragment argument, a
+   * `fallback`, a `vars` entry. A non-recursive walk returns the value as
+   * written, by reference.
+   */
   child(value: unknown, key: string | number): unknown {
+    if (!this.recursive) return value
     return this.within(key, () => this.value(value))
   }
 

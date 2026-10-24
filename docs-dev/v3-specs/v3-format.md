@@ -1,6 +1,6 @@
 # FigTree v3 — the format utilities
 
-_Status: **Agreed** (September 2026, Claude, from two rounds of discussion with Carl, reviewed by Carl, with the rulings from Phase 16's planning written in). It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md). The reading primitives ("Reading primitives", below) were added for the v3 editor, from [issue #199](https://github.com/CarlosNZ/fig-tree-evaluator/issues/199) and item 2 of [#198](https://github.com/CarlosNZ/fig-tree-evaluator/issues/198)._
+_Status: **Agreed** (September 2026, Claude, from two rounds of discussion with Carl, reviewed by Carl, with the rulings from Phase 16's planning written in). It picks up the design outline in [issue #185](https://github.com/CarlosNZ/fig-tree-evaluator/issues/185) and replaces "Parked: no shorthand round-trip utilities in 3.0" in [v3-migration.md](v3-migration.md). It is built in Phase 16 of [v3-implementation-plan.md](v3-implementation-plan.md). The reading primitives ("Reading primitives", below) were added for the v3 editor, from [issue #199](https://github.com/CarlosNZ/fig-tree-evaluator/issues/199) and item 2 of [#198](https://github.com/CarlosNZ/fig-tree-evaluator/issues/198). The `recursive` option ("Recursion", below) was added in October 2026 for the editor's shorthand toolbar ([#281](https://github.com/CarlosNZ/fig-tree-evaluator/issues/281))._
 
 ## Purpose
 
@@ -14,7 +14,7 @@ The main caller is the v3 GUI editor, built from the current v2 editor ([live](h
 
 Two facts about the editor shape the design:
 
-- **The editor creates nodes in full form.** A new node, or a node whose operator has just changed, is full until the author finishes with it, because the full form is the easiest one to edit parameter by parameter. So in practice an author builds a node and its children, then collapses whatever parts they want shorter. Converting the whole subtree is enough for that, and no "this level only" option is needed. Finer control, such as named forms high in the tree and positional forms lower down, can come later.
+- **The editor creates nodes in full form.** A new node, or a node whose operator has just changed, is full until the author finishes with it, because the full form is the easiest one to edit parameter by parameter. So in practice an author builds a node and its children, then collapses whatever parts they want shorter. Converting the whole subtree is enough for that, and is the default. The one caller that converts a node alone is the editor's toolbar on a shorthand node, which lifts the node to full form, edits it with the full-form controls, and lowers the result back with its children as they were ("Recursion", below; [fig-tree-editor-react#18](https://github.com/CarlosNZ/fig-tree-editor-react/issues/18)).
 - **The editor knows where a node sits.** A function called on a subtree can't tell whether that subtree is inside a `literal` payload or a `//` value, where it would be data rather than expression. The editor can tell, and doesn't offer the affordances there.
 
 A second caller is the converter's output: `toShorthand(migrateV2Expression(x).expression, fig)` gives a migrating host shorthand output at no extra cost.
@@ -52,12 +52,14 @@ interface NameOptions {
 interface CanonicalOptions extends NameOptions {
   operatorNames?: Spelling // default 'preserve'
   referencesAsGet?: boolean // default false
+  recursive?: boolean // default true
 }
 
 interface ShorthandOptions extends NameOptions {
   operatorNames?: Spelling // default 'preserve'
   arguments?: 'positional' | 'named' // default 'positional'
   getAsReference?: boolean // default true
+  recursive?: boolean // default true
 }
 ```
 
@@ -157,6 +159,14 @@ The payload is then the leading values followed by the rest's elements.
 
 **A computed rest.** When the operator has no leading parameters, the rest is the only one supplied, and its value isn't a literal array, the value itself is the payload: `{ $min: '$data.scores' }`, `{ $and: { $map: … } }`. A single value binds unchanged to the rest parameter, which is exactly the node that was converted. The value mustn't be a plain object that isn't a node, which would read back as a named payload. Where there are leading parameters, a computed rest makes the node named.
 
+## Recursion
+
+Both conversions take `recursive`, default `true`: every node in the subtree. With `recursive: false`, the value given is converted and nothing below it. Every parameter value, fragment argument, `fallback` and `vars` entry is passed through as written, by reference: no respelling of the references below the node, no `get` made a reference there, no shorthand child re-rendered. The containers the node itself owns, a fragment's arguments map and a `vars` block, are still rebuilt, so nothing is mutated and the keys keep their order. A value that isn't a node, a plain object, an array or a string that isn't a reference, has nothing to convert and comes back with its children untouched: the conversion doesn't look for the first node below it.
+
+Everything else is as above, restricted to the node: the payload choice and the single-value collapse, the comment that leaves a named payload, key order, the spelling of the node's own name, and the malformed-shape throws, which a child can no longer raise since it isn't read. The payload choice reads the children as written, which is the same decision it makes on them converted: the collapse asks whether the child is an array or a plain object that isn't a node, and a child's conversion never changes that answer (a `get` made a reference and a `get` left a node both stand alone). `toGet` and `toReference` don't walk, so they don't take the option.
+
+**Why.** The editor's toolbar on a shorthand node (fig-tree-editor-react#18) lifts the node to full form, hands it to the controls that edit a full node, and lowers the result back to shorthand, and must leave the children in whatever forms the author gave them. It can't fake that by swapping the children for placeholders before converting, because the single-value collapse depends on what the child is, so the editor would have to copy the rules here. Lowering passes `getAsReference: false`, so that a node switched to `get` stays a node under its toolbar rather than becoming a string; "To reference" is the conversion button's. Lifting a malformed node throws as any conversion does, and the editor catches it as it catches the button's.
+
 ## `toGet` and `toReference`
 
 **`toReference`** accepts a `get` node in any form: `{ operator: 'get', … }`, `{ $get: 'a.b' }`, `{ $get: ['a.b'] }` or `{ $get: { path: 'a.b', from: … } }`. It returns a reference only when all of these hold:
@@ -243,6 +253,7 @@ The compiler is the oracle, so most tests need no data.
 
   One known exception: `{ fragment: 'f' }` goes to `{ $f: {} }`, which comes back as `{ fragment: 'f', parameters: {} }`. The test normalises it.
 
+- **`recursive: false`.** The curated corpus a second time: the node-only conversion compiles as its input does, and `toCanonical(toShorthand(x, nr), nr)` equals `toCanonical(x, nr)`. By example: each kind of child passed through by reference, the arguments map and `vars` block rebuilt, the payload chosen on an unconverted child (a plain object keeps its array, a named shorthand child stays named), a reference at the top still converted and a `get` below it left a node, a non-node at the top returned with its children untouched, a malformed child not read, and lift-then-lower giving each shorthand form back.
 - **Payload choice.** A table of operators by shape — no positional parameters, leading only, rest only, leading plus rest — against supplied sets, covering gaps, empty rests, computed rests and each collapse case.
 - **`getAsReference`, `toGet` and `toReference`.** Evaluation tests with data, including missing paths, with `strictDataPaths` both on and off, and each `from` namespace. A commented `get` stays a node under `toShorthand`, in both argument forms, and keeps its comment. `toReference` still converts it, and drops the comment.
 - **Comments.** Each placement in "Comments" above, including the two-comment array.

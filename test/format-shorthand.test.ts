@@ -5,7 +5,7 @@
  * means what its input meant; these show which payload it picks and where
  * each key lands.
  */
-import { toShorthand } from '../src/format'
+import { toCanonical, toShorthand } from '../src/format'
 import type { Registry, ShorthandOptions } from '../src'
 import { corpusFig } from './fixtures/formatCorpus'
 
@@ -341,5 +341,65 @@ describe('with the core operators', () => {
       const once = shorthand({ $abs: { '//': 'why', value: -1 } })
       expectForm(shorthand(once, { arguments: 'named' }), { '//': 'why', $abs: { value: -1 } })
     })
+  })
+})
+
+describe('recursive: false', () => {
+  const node = (expression: unknown, options?: ShorthandOptions) =>
+    toShorthand(expression, corpusFig, { recursive: false, ...options })
+
+  test('converts the node and passes its parameters through as written', () => {
+    const value = { operator: 'abs', value: -1 }
+    const result = node({ operator: 'not', value }) as Record<string, unknown>
+    expectForm(result, { $not: value })
+    expect(result.$not).toBe(value)
+  })
+
+  test('the payload is chosen on the children as written', () => {
+    // A plain object can't stand alone as the payload: it keeps its array
+    expectForm(node({ operator: 'not', value: { a: 1 } }), { $not: [{ a: 1 }] })
+    // A shorthand child is re-rendered only by a recursive conversion
+    const plus = { operator: 'plus', values: [{ $abs: { value: -1 } }] }
+    expectForm(node(plus), { $plus: [{ $abs: { value: -1 } }] })
+    expectForm(toShorthand(plus, corpusFig), { $plus: [{ $abs: -1 }] })
+  })
+
+  test('a get at the top becomes a reference; one below stays a node', () => {
+    expectForm(node({ operator: 'get', path: 'x' }), '$d.x')
+    const get = { operator: 'get', path: 'x' }
+    expectForm(node({ operator: 'upper', value: get }), { $upper: get })
+  })
+
+  test('a fallback and a vars block pass through', () => {
+    const fallback = { operator: 'abs', value: -2 }
+    const vars = { x: { operator: 'abs', value: -3 } }
+    const result = node({ operator: 'abs', value: -1, fallback, vars }) as Record<string, unknown>
+    expectForm(result, { $abs: -1, fallback, vars })
+    expect(result.fallback).toBe(fallback)
+    expect((result.vars as Record<string, unknown>).x).toBe(vars.x)
+  })
+
+  test('a fragment call’s arguments map is rebuilt, its values passed through', () => {
+    const args = { name: { operator: 'upper', value: 'x' } }
+    const result = node({ fragment: 'greet', parameters: args }) as Record<string, unknown>
+    expectForm(result, { $greet: args })
+    expect(result.$greet).not.toBe(args)
+    expect((result.$greet as Record<string, unknown>).name).toBe(args.name)
+  })
+
+  test.each([
+    ['positional', { $if: ['$d.flag', { $upper: 'x' }, { operator: 'abs', value: -1 }] }, {}],
+    ['single value', { $not: { $abs: -1 } }, {}],
+    ['named', { $round: { value: 1.5, decimals: 0 } }, { arguments: 'named' as const }],
+    ['named, kept by a gap', { $if: { condition: true, else: { $upper: 'n' } } }, {}],
+    ['a fragment call', { $greet: { name: { $upper: 'x' } } }, {}],
+    [
+      'with modifiers',
+      { '//': 'why', $abs: { $abs: -1 }, fallback: { $abs: 0 }, noCache: true },
+      {},
+    ],
+  ])('lifting to canonical and lowering gives the %s form back', (_label, expression, args) => {
+    const lifted = toCanonical(expression, corpusFig, { recursive: false })
+    expectForm(node(lifted, { ...args, getAsReference: false }), expression)
   })
 })
