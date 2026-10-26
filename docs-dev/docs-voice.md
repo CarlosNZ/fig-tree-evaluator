@@ -2,577 +2,314 @@
 
 How the v3 docs site is written, distilled from Carl's rewrites of drafted pages. Each entry is a rule and an example taken from a real edit. It grows a page at a time, through the last stage of the `/write-page` skill ([.claude/skills/write-page/SKILL.md](../.claude/skills/write-page/SKILL.md)).
 
-Entries are revised rather than duplicated when a later edit refines or contradicts them.
+The bold headlines are the checklist: scan them against a draft. The examples calibrate how far each rule goes.
+
+**Adding to it:** an edit that a rule already covers changes nothing here, unless it shows a side of the rule the existing examples don't, and then it replaces the weaker example rather than joining it. A rule keeps one or two examples. A new pattern that overlaps an existing rule is merged into it, so each idea lives in one place.
 
 ## Tone
 
-- **Relaxed and plain, not formal, but never imprecise.** Round a number where the exact figure would go stale, but swap a casual word for the exact one where the casual one is slightly wrong.
-  - Before: "An expression is a value that can work something out."
-  - After: "A **FigTree expression** is a bit of plain JSON, structured as a _tree_, that can work something out."
-  - Before: "FigTree has 40 built-in operators"
-  - After: "FigTree has 40-ish built-in operators"
-  - Before: "Where an operator needs a yes or no"
-  - After: "Where an operator needs true or false"
-  - Before: "a settings object where some values are fixed and others are worked out"; "because a path is worked out as the expression runs"
-  - After: "…and others are evaluated"; "because a path is computed as the expression runs"
-  - A relaxed phrase beats strict parallel wording.
+- **Relaxed and plain, but never imprecise.** Round a figure that would go stale, but swap a casual word for the exact one where the casual one is slightly off. A relaxed phrase beats strict parallel wording.
+  - Before: "FigTree has 40 built-in operators"; "Where an operator needs a yes or no"
+  - After: "FigTree has 40-ish built-in operators"; "Where an operator needs true or false"
   - Before: `// and the same again, with the forms mixed`, matching the "is the same as" comments above it
-  - After: `// You can mix and match freely`; and "Have a play with this one"
-  - When JavaScript is the reference, mark where FigTree differs.
-  - Before: "the answer you'd expect from JavaScript: … `find`: `null`"
+  - After: `// You can mix and match freely`
+- **Where JavaScript is the reference, mark where FigTree differs.**
   - After: "`find`: `null` (where JavaScript gives `undefined`)"
-- **Bold a key term where it's introduced:** **FigTree expression**, **parameters**, **modifiers**.
-  - Example: **result cache** and **compile cache**, in the opening paragraphs of Caching and compiling
-- **Emphasise the contrast.** Where parallel items differ by a word or two, italicise those words. In a code comment, which can't, capitals do the same job.
-  - Before: "for values that stay the same from one evaluation to the next … for what changes every time"
-  - After: "for values that _stay the same_ from one evaluation to the next … for what _changes_ every time"
-  - Before: `// Missing and null are both passed over`
-  - After: `// Missing AND null are both passed over`
-  - Before: "But `plus` can give a string", after "The check only rules out what could _never_ work"
-  - After: "But `plus` _can_ return a string"
-  - Parallel options each get their own bullet, even where two would share one, so the contrast lines up.
+- **Bold a key term where it's introduced:** **FigTree expression**, **parameters**, **result cache**.
+- **Emphasise the contrast.** Where parallel items differ by a word or two, italicise those words; in a code comment, capitals do the same job. Parallel options each get their own bullet, so the contrast lines up.
+  - Before: "for values that stay the same from one evaluation to the next … for what changes every time"; `// Missing and null are both passed over`
+  - After: "for values that _stay the same_ … for what _changes_ every time"; `// Missing AND null are both passed over`
   - Before: "**`some`** and **`every`**: `true` if any element's result is truthy, or if every one is."
   - After: "**`some`**: `true` if _any_ element's result is truthy." and "**`every`**: `true` if _every_ element's result is truthy."
 
-## Wording
+## Fixed terms
 
-- **FigTree's design principle has one wording: _strict where it can be, and forgiving where it has to be_,** as the README puts it. Use it as written wherever the principle comes up, so it reads as a slogan rather than a paraphrase.
-  - Before: "Strict when checked, forgiving when run" (a heading in Why FigTree is shaped this way)
-  - After: "Strict where it can be, and forgiving where it has to be"
-  - Don't over-use it: the pages already written use it enough. Offer it to Carl as a suggestion where it seems to fit, never write it in unasked, and don't build an intro's framing around it. A plain statement of what the cases share does the job.
+- **FigTree's design principle has one wording: _strict where it can be, and forgiving where it has to be_,** as the README puts it, so it reads as a slogan rather than a paraphrase. The pages already use it enough: offer it to Carl as a suggestion where it fits, never write it in unasked, and don't build an intro's framing around it.
   - Before: a stand-in opening "Errors no fallback catches" with "FigTree is _strict where it can be, and forgiving where it has to be_, and these are the strict cases:"
   - After: "Some errors won't be caught by a fallback, by design — errors that should be handled during authoring, or are due to defined resource limits or manual cancellation, must be dealt with separately:"
-- **Say "a key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember from earlier; the long one describes the key wherever it appears.
-  - Before: "An object in an expression with a `$` key is read as a node."
-  - After: "An object in an expression that has a key prefixed with `$` is read as a node."
+- **"A key prefixed with `$`" (or "`$`-prefixed key"), never "`$` key".** The short form leans on a term the reader has to remember.
 - **The people who write expressions are "configuration authors".** Never phrase a scenario so it implies end users write them.
-  - Before: "When the expressions you evaluate come from somewhere you don't fully control, such as a form where your users write their own rules"
-  - After: "…so that one a configuration author has inadvertently made too large or too slow can't hold things up"
-- **The concept's name in prose, the syntax only in code.** Prose says what a thing is; code formatting is for what you type.
-  - Before: "A var's name can be any string…", "the `get` operator reads vars too"
-  - After: "A variable's name can be any string…", "reads variables too", with `vars` and `$vars` kept for the syntax
-  - Before: a "priceWithTax" calculation
-  - After: a repetitive "Price with tax" calculation
-- **Describe the effect, not the mechanism.** How FigTree achieves something is implementation detail; what the reader sees is the point.
-  - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
-  - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
-  - Where the reader has something to write, tell them what to write.
-  - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
-  - After: "Give it `from: '$vars'`, and start the path with the variable's name"
-  - That goes double where a phrase could be read two ways.
-  - Before: "in subpaths, each imported on its own", which could mean every export needs its own import line
-  - After: "in four subpaths, each with its own import path, such as `fig-tree-evaluator/format`"
-  - Where the reader has something to do, say what they do.
-  - Before: "The playgrounds on this site convert for you"
-  - After: "In the playgrounds on this site, open the editor and hover over the top right of a node"
-  - Before: "On an instance that doesn't list them, the I/O operators don't exist at all, so an expression that uses one has a static error, which `validate()` reports before anything runs."
-  - After: "An expression that uses an operator that hasn't been registered gives a static error."
-  - An instruction names the exact control, and says how to read what the reader will see.
-  - Before: "Press Evaluate on the outer node, and the tree marks how it ran…"
-  - After: "Press the $if button at the top of the tree, and each part is coloured by how it ran: orange where a fallback was used (the division), green where it returned a value, and dimmed where it never ran (the then branch)."
-  - An example whose point is in the editor says so on the page, not only in its caption, which shows only inside the editor.
-  - Added: "Open this example in the editor to see a visual representation of the trace."
-- **Where a limitation has a simple workaround, give the recommendation and a one-clause reason, not the mechanism behind it.** "We" is fine for a recommendation.
-  - Before: "The type `evaluate()` returns follows `trace`: `unknown` for the bare result, and `EvaluationResult` … `updateOptions()` and `with()` change what's returned, but not its type… in a variable declared first, `true` widens to `boolean`, and the type is lost."
-  - After: "We don't recommend turning tracing on with `updateOptions()` or `with()`, since TypeScript can't see the change, and still expects `evaluate()` to return the bare result. Pass `trace: true` to the constructor or the call instead."
-  - The same goes on a reference page: don't describe the route a guide recommends against, even as a limitation.
-  - Before: "the type `evaluate()` returns follows `trace` in the constructor's options or the call's, but not a change made with `updateOptions()` or `with()`", in the Options reference
-  - After: "Pass `trace` to the constructor or the call, where TypeScript can see it and type what `evaluate()` returns to match"
-- **Be concrete: say who it helps, and what's at stake.**
-  - Before: "The _canonical_ form … names everything, and is the one tools work with."
-  - After: "The _canonical_ form … names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
-  - Before: "a node that needs two requests sends both at once"
-  - After: "a node that needs two slow network requests sends both at once"
-- **Each reason in a list says why it helps, in terms the reader can picture.** Drop a weak one rather than pad the list.
-  - Before: "**A program builds expressions:** every node has the same shape, whatever its operator.", and a third bullet, "**A tool reads expressions without your FigTree instance:** …"
-  - After: "**You're building a tool, such as a visual editor:** each object in the JSON is exactly one node of the underlying expression tree, so it maps cleanly onto the UI components that represent the tree.", and the third bullet cut
-  - The same goes for a use case offered as motivation: a thin one is worse than none.
-  - Cut: "…to offer a smaller set in an editor where people with less experience write rules", as the reason to leave operators out
-  - A scenario has to match how the feature is really used.
-  - Cut: "For credentials that differ by customer, an instance per customer made with `with()` keeps them apart", on HTTP and SQL; on Setting up FigTree, the same example became an instance that makes its requests as a service account rather than as the signed-in user
-- **Name the actual difference, not an abstraction of it, and drop qualifiers that don't bear on the point.**
-  - Before: "There are two ways, and they differ in what counts as a gap"
-  - After: "There are two ways, and they differ in how they treat a value stored as `null`"
-  - Before: "an optional field left blank"
-  - After: "a form field left blank"
-  - Cut: "…where `$error.code` is `'timeout'`", beside an example of a fallback that reads it
-  - Added: "a _global_ `timeout`", to tell it apart from the per-request timeout just described
-- **When saying when to use an option, give the reason the reader would actually decide by,** not a side effect of it.
-  - Before: "Set it to `'post'` for an API that takes its question as a body"
-  - After: "Set it to `'post'` for an endpoint that expects a POST"
-- **An operator _returns_ its result.** Say what an operator produces with "returns", not "gives".
-  - Before: "decided from what that operator can give"; "But `plus` can give a string"
-  - After: "decided from what that operator can return"; "But `plus` _can_ return a string"
-- **Nodes _fail_; evaluations _throw_.** A node's failure becomes a throw only when no fallback catches it, so keep the two verbs apart.
-  - Before (proposed in an edit pass): "with the node that threw marked `failed`"
+- **An operator _returns_ its result**, never "gives".
+- **Nodes _fail_; evaluations _throw_.** A node's failure becomes a throw only when no fallback catches it.
+  - Before: "with the node that threw marked `failed`"
   - After: "with the node the error came from marked `failed`"
-- **Anchor a term to what it belongs to,** so a section still reads clearly to someone who lands on it from a link or a search.
-  - Before: "FigTree provides a suite of authoring-time validation tools"
-  - After: "your FigTree instance provides some authoring-time validation and inspection methods"
-  - Before: "`getDependencies()` lists the `$data` paths…"
-  - After: "FigTree's `getDependencies()` method lists the `$data` paths…"
-  - Before: "An **error** is something `evaluate()` would refuse to run."
-  - After: "An issue with severity `'error'` is something `evaluate()` would refuse to run."
-- **"These", "this" and "here" point at what's right beside them.** Pointing ahead is fine as the last words before the example or list they mean. Anywhere else, name the thing. An example given its own paragraph opens with "In this example", or, in a lead-in paragraph just before it, "Here". "We" is fine for walking through what an example does.
-  - Before: "Every error `validate()` reports is one of these. Each is a static error, found before anything runs…", with the list after the second sentence
-  - After: "Every error `validate()` reports is a static error, found before anything runs… These are all of them:"
-  - Kept: "here, `length` always returns a number, so this is a static error:", straight before the example
-  - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
-  - After: a new paragraph for the example, opening "In this example, the outer one is named. …"
-  - Before: "In this example, two variables each call a fragment, and the `if` reads them both…"
-  - After: "Here we define two variables which each call a fragment, so the `if` doesn't repeat them…", straight before the example
-  - A bullet opens with the thing's name, not "It" or "this default", since bullets get moved around, and a word like "default" can mean more than one thing.
-  - Before: "It covers every path into a value", which ended up straight after a `firstNonNull` bullet
-  - After: "`strictDataPaths` covers every path into a value"
-  - Before: "takes precedence over this default", where "default" could mean the parameter's own
-  - After: "takes precedence over the one in `operatorDefaults`"
-- **Show a simple thing simply.** An example in passing does more than a sentence spelling it out.
-  - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
-  - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
-  - Where describing a shape would get convoluted, show it first, and describe it only as far as the example needs.
-  - Before: "Everything is described in full: each node has an operator property, and associated parameter properties in the same object, along with any modifiers."
-  - After: "…which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:", then `{ operator: 'plus', values: [4, 5, 6] } // => 15`
-  - Before: "`path`: where the problem is, as the keys and indices from the root of the expression as it was written"
-  - After: "`path`: where the problem is, as an array of keys and indices, such as `['$if', 'thn']` in the example above"
-- **One word, once a sentence.** Where a word repeats, rephrase so it appears once.
-  - Before: "You pass this data to FigTree when evaluating an expression and it becomes accessible inside the expression via `$data` references."
-  - After: "You pass this data to FigTree when evaluating an expression, and `$data` references … read from it."
-  - Before: "With `from`, the path starts inside the `from` value, so it has no `$data`"
-  - After: "Here, the path references the lookup table, so it has no `$data`"
-- **Mark a list of examples before it starts, with "such as" or "for example", never "etc." after it.** A bare colon list reads as the complete set, so keep it for lists that are. In a bullet, terseness wins, and a bare list of examples is fine.
-  - Before: "Real data has gaps: an optional field left blank, a user without a middle name."
-  - After: "Real data has gaps, such as a form field left blank or a user without a middle name."
-  - Kept, in a bullet: "for values that _stay the same_ from one evaluation to the next: app settings, a lookup table, the signed-in user"
-- **Frame a design choice by what it gives the reader, not what it costs.** Wording that reads as a shortcoming makes the library sound like it's apologising.
-  - Before: "evaluation is always asynchronous, even when there's nothing to wait for"
-  - After: "evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one"
-  - Lead with what's available, not with the constraint that comes with it.
-  - Before: "The `operators` option is the instance's whole set of operators, so giving it replaces the core operators rather than adding to them. List `coreOperators` in it to keep them…"
-  - After: "The core operators are included by default. The package also has these, which you can add:", then the list
-  - Where something stays fixed by design, say what stays fixed, not how to get round it.
-  - Before: "A later `updateOptions()` doesn't reach it, so compile again to pick one up.", on a compiled expression
-  - After: "Calling `updateOptions()` on the instance afterwards doesn't affect the compiled expression.", since the fixed options are the point of compiling
-- **Define by what the reader sees, and never use a term inside its own definition.** Name each option, then say what it looks like.
-  - Before: "**An array** gives them in order, for operators that have a positional form."
-  - After: "**Positional:** an array, where each value's position says which parameter it is."
-- **Give the idea behind a rule before its letter.**
-  - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
-  - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
-- **State the general rule, and fold in the case that prompted it.** Where a point is true of a whole class, say it of the class, with the case as one member, or the reader may take the case for an exception.
-  - Before: "An instance made with `with()` starts with an empty cache of its own, so clearing either one leaves the other alone."
-  - After: "Every new FigTree instance, including one made with `with()`, starts with an empty cache of its own, so clearing one leaves the others alone."
-- **Mark a default as a default,** where the reader can change it, before the section shows how.
-  - Before: "A result is kept for 30 minutes from when it was stored…"
-  - After: "By default, a result is kept for 30 minutes from when it was stored…"
-- **Lead with what happens, not a "never … because" opener,** which reads two ways: as never happening at all, or as never happening for that reason.
-  - Before: "**Throws:** never because of what's in the expression, however broken. It throws `invalid-options` when…"
-  - After: "**Throws:** `invalid-options`, only when the options are wrong: … A problem in the expression, however serious, is reported in `issues` instead."
-  - Where there's a way round the rule, present it as how to get what the reader wants, not as an exception to a "no".
-  - Before: "No fallback catches a timeout, and none starts once time has run out. The one exception is timeout shielding."
-  - After: "A timeout stops everything, fallbacks included: none starts once time has run out. To return a value in place of a timeout, give the expression a plain-value fallback at the top"
-  - Before: "No fallback catches these: everything stops.", above the `timeout` and `aborted` codes on Errors
-  - After: "These stop the whole evaluation: no fallback starts once either happens. To return a value in place of a timeout, give each outermost node in the expression a plain-value fallback"
-- **Name what does the action.**
-  - Before: "When a runtime failure isn't caught"
-  - After: "When no fallback catches a runtime failure"
-- **Where two of a kind are in play, name each by its role.**
-  - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
-  - After: "with the original's options and an update applied, leaving the original instance as is"
-- **A summary of several things has to be true of each of them.**
-  - Before: "What every request … shares: a base for relative URLs, a GraphQL endpoint, and headers", where only the headers are shared
-  - After: "Defaults for requests from the `http` and `graphQL` operators: a base that relative URLs are joined to, an endpoint for GraphQL queries, and headers to send with every request"
-- **Name the operation, not "are" or "is".**
-  - Before: "An `http` request's headers are `http.headers`, then the node's own `headers`."
-  - After: "A request's headers are merged from `http.headers`, then the node's own `headers`, each one overriding the one before."
-- **When a case follows from the rule, say "since", not "the exception is".**
-  - Before (proposed in an edit pass): "The exception is `noCache`: …"
-  - After: "Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching…"
-- **A connective says how the points really relate:** "so" only for a consequence, "But" for a limit on what came before. Where two points don't follow from each other, a "so" between them leaves the reader hunting for the link.
-  - Cut: "`CompiledExpression` is exported as a type only, so `compile()` is the only way to make one, and there's no `instanceof` check for it."
-  - Cut: "It's the same array on every read, so treat it as read-only."
-  - Added: "But if `updateOptions()` redefines an operator or fragment, the instance and the compiled expression each get only the results cached under their own definition of it.", after the sentence saying the result cache is shared
+- **The concept's name in prose, the syntax only in code.**
+  - Before: "A var's name can be any string…"
+  - After: "A variable's name can be any string…", with `vars` and `$vars` kept for the syntax
+- **No spec or implementation terms where a plain word or the API name does.** A spec statement that only matters to the library's own design is cut.
+  - Before: "merged by key"; "before the body runs"
+  - After: "merged"; "before calling `evaluate`" (kept: "merged by name", which says what the keys are)
+  - Cut: "`ErrorCodes` is the only list of the codes at runtime."
+- **Never coin a name.** Describe a check by its input, and a summary uses the feature's own name.
+  - Before: "plus the sample-data check"; "Returns a record of the evaluation with its result"
+  - After: "and, when given `data`, checks the expression's `$data` paths against it"; "Returns a trace of the evaluation, with the result"
+- **Label the cases in an example with the site's own terms:** plain words, with the term the reader meets elsewhere in brackets.
+  - After: "a string where a number is needed is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime)."
+
+## Precise wording
+
+- **Name the actual thing, not an abstraction or a vague stand-in.** Say what the difference is, what the operation is (not "is" or "are"), what does the action, and what the reader would otherwise have to do. Drop qualifiers that don't bear on the point, and add the one that does.
+  - Before: "they differ in what counts as a gap"; "a set such as `coreOperators` goes in as it is"
+  - After: "they differ in how they treat a value stored as `null`"; "can go in without being spread"
+  - Before: "An `http` request's headers are `http.headers`, then the node's own `headers`."; "When a runtime failure isn't caught"
+  - After: "…are merged from `http.headers`, then the node's own `headers`, each one overriding the one before."; "When no fallback catches a runtime failure"
+  - Before: "an optional field left blank"; After: "a form field left blank". Added: "a _global_ `timeout`", to tell it apart from the per-request one
 - **Don't pick a word that implies more than is true.**
   - Before: "A value stored as `null`…"
   - After: "A data value that is actually `null`…", since it doesn't have to be stored
-- **Name what the reader would otherwise have to do, rather than a vague "as it is".**
-  - Before: "a set such as `coreOperators` goes in as it is"
-  - After: "can go in without being spread"
-- **Where there's a real reason, give it in a clause.** The counterpart to "Never give a reason that isn't the real one".
-  - Before: "A header's value never appears in a failure or a trace."
-  - After: "For security reasons, a header's value never appears in a failure or a trace."
-- **Use the feature's own name in a summary, not a description of it.**
-  - Before: "Returns a record of the evaluation with its result"
-  - After: "Returns a trace of the evaluation, with the result"
-- **Don't carry a spec's term into the docs where a plain word says the same.**
-  - Before: "merged by key"
-  - After: "merged"
-  - Kept: "merged by name" and "merged by operator", which say what the keys are
-  - The same goes for a spec's statements: one that only matters to the library's own design is cut.
-  - Cut: "`ErrorCodes` is the only list of the codes at runtime."
-- **Label the cases in an example with the site's own terms.** Where an example contrasts two cases, name each in plain words, with the term the reader meets elsewhere in brackets.
-  - Before: "`type-check` for a string written where a number is needed, and for one computed there"
-  - After: "For example, a string where a number is needed is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime)."
-- **Give a sentence a real subject, never "What …".** A "what" clause standing in for the subject, or as a whole fragment, reads as childish: name the thing. A short description in a table cell, such as "What `compile()` returns", is fine.
-  - Before: "What most apps never need, such as the v2 converter, is in subpaths"; "What you need to write an operator of your own."
-  - After: "The tools for authoring and migration, such as the v2 converter, are in four subpaths"; "These exports are for writing operators of your own, which…"
-  - Before: "**Throws:** without a `client`, on a runtime with no global `fetch`, what `new FetchClient()` throws."
-  - After: "**Throws:** an `OperatorFailure` when there's no `client` given and no global `fetch`."
-- **The items in a list are distinct, and each stands on its own.** None contains another, and none can be read as explaining the one before it.
-  - Before: "exports the operator sets, what you need to write operators of your own, the I/O operators and their clients", where the I/O operators are one of the sets, and the second item reads as a gloss on the first
+- **Where two of a kind are in play, name each by its role.**
+  - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
+  - After: "with the original's options and an update applied, leaving the original instance as is"
+- **Anchor a term to what it belongs to,** so a section still reads clearly to someone who lands on it from a link.
+  - Before: "`getDependencies()` lists the `$data` paths…"; "An **error** is something `evaluate()` would refuse to run."
+  - After: "FigTree's `getDependencies()` method lists…"; "An issue with severity `'error'` is something…"
+- **Define by what the reader sees, and never use a term inside its own definition.**
+  - Before: "**An array** gives them in order, for operators that have a positional form."
+  - After: "**Positional:** an array, where each value's position says which parameter it is."
+- **A summary of several things is true of each of them, and a list's items are distinct.** None contains another, and none reads as a gloss on the one before.
+  - Before: "What every request … shares: a base for relative URLs, a GraphQL endpoint, and headers", where only the headers are shared
+  - After: "Defaults for requests from the `http` and `graphQL` operators: a base that relative URLs are joined to, an endpoint for GraphQL queries, and headers to send with every request"
+  - Before: "exports the operator sets, what you need to write operators of your own, the I/O operators and their clients"
   - After: "exports the core operators, the I/O operators with their HTTP and database clients, the helpers for writing operators of your own"
 
-## Punctuation and formatting
+## Sentences
 
-- **No full stop on a one-sentence summary,** such as a page's frontmatter `description`. Full stops only where there's more than one sentence.
-  - Before: `description: The order nodes are evaluated in, and what the engine checks along the way.`
-  - After: `description: 'What the engine does with an expression: the checks before it runs, the order it runs in, and how it treats types, nulls and failures'`
-- **A bullet's headline is bold and capitalised, with the colon inside the bold,** as in "**Passed on:**". Where the label is code alone, the colon goes outside: "**`map`**:". A bullet with a headline ends with a full stop.
-  - Before: "- convenience: Using a descriptive name …"
-  - After: "- **Convenience:** using a descriptive name makes the expression a little more readable."
-- **A reference in prose takes no quotes.** Quotes only where the point is that it's a string.
-  - Before: "a bare `'$data'` gives the whole data object"
-  - After: "a bare `$data` gives the whole data object"
-  - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
-- **Split a sentence rather than stack its commas.** Where the second half opens with a clause of its own, make it a sentence of its own.
+- **One word, once a sentence.** Where a word repeats, rephrase.
+  - Before: "With `from`, the path starts inside the `from` value, so it has no `$data`"
+  - After: "Here, the path references the lookup table, so it has no `$data`"
+- **Split a sentence rather than stack its commas.** Where the second half opens with a clause of its own, make it a sentence.
   - Before: "This example fetches a random user from randomuser.me, and since the response is cached, it's the same user however many times you run it:"
-  - After: "This example fetches a random user from randomuser.me. Since the response is cached, it's the same user however many times you run it:"
-- **Where a list spells out a group just named, introduce it with a colon,** or with brackets where the sentence already has a colon. After a comma, the group's name reads as one more item.
-  - Before: "every operator on the Operators page except the I/O ones, `http`, `graphQL` and `sql`"
-  - After: "…except the I/O ones: `http`, `graphQL` and `sql`"
-- **An article follows how a word is said,** so "an SQL…", read as "ess-cue-ell".
-  - Before: "a `SQLiteConnection`"
-  - After: "an `SQLiteConnection`"
+  - After: "…from randomuser.me. Since the response is cached, it's the same user…"
+- **Give a sentence a real subject, never "What …".** A "what" clause as the subject or a whole fragment reads as childish. A short table-cell description such as "What `compile()` returns" is fine.
+  - Before: "What most apps never need, such as the v2 converter, is in subpaths"
+  - After: "The tools for authoring and migration, such as the v2 converter, are in four subpaths"
+- **A connective says how the points really relate:** "so" only for a consequence, "But" for a limit on what came before, "since" (not "the exception is") for a case that follows from the rule.
+  - Cut: "`CompiledExpression` is exported as a type only, so `compile()` is the only way to make one…"
+  - Before: "The exception is `noCache`: …"
+  - After: "Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching…"
+- **Lead with what happens, not a "never … because" opener,** which reads two ways. Where there's a way round a rule, present it as how to get what the reader wants, not as an exception to a "no".
+  - Before: "**Throws:** never because of what's in the expression, however broken. It throws `invalid-options` when…"
+  - After: "**Throws:** `invalid-options`, only when the options are wrong: … A problem in the expression, however serious, is reported in `issues` instead."
+  - Before: "No fallback catches a timeout, and none starts once time has run out. The one exception is timeout shielding."
+  - After: "A timeout stops everything, fallbacks included… To return a value in place of a timeout, give the expression a plain-value fallback at the top"
+- **"These", "this" and "here" point at what's right beside them.** Pointing ahead is fine as the last words before the list or example meant; anywhere else, name the thing. "We" is fine for walking through an example. A bullet opens with the thing's name, not "It" or "this default", since bullets get moved.
+  - Before: "Every error `validate()` reports is one of these. Each is a static error…", with the list after the second sentence
+  - After: "Every error `validate()` reports is a static error… These are all of them:"
+  - Before: "It covers every path into a value", which ended up straight after a `firstNonNull` bullet
+  - After: "`strictDataPaths` covers every path into a value"
+- **Mark a list of examples before it starts, with "such as" or "for example", never "etc." after it.** A bare colon list reads as the complete set. In a bullet, terseness wins.
+  - Before: "Real data has gaps: an optional field left blank, a user without a middle name."
+  - After: "Real data has gaps, such as a form field left blank or a user without a middle name."
 
-- **Link text is the heading the link lands on,** never a callout title or a paraphrase. Where a section and one of its sub-sections would both do, the section is usually more useful, and reads better.
-  - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))", a callout's title on a link to its section
-  - After: "([Missing values](/concepts/data/#missing-values))", chosen over its sub-section "When missing is a mistake"
-  - That's for a pointer in brackets. A term linked in running text keeps its own words.
-  - Kept: "In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to…"; "counts [evaluable nodes](/guides/validation/#is-there-anything-to-evaluate)"
-- **One name, one link.** Where a link would cover two names, give each its own link, so the comma or "and" between them stays plain text, rather than reading as a stray piece of link beside the code formatting.
-  - Before: "[`Issue`, `ValidationResult`](#issue-and-validationresult)"; "Like [`and` and `or`](/concepts/evaluation/#lazy-parameters)"
-  - After: "[`Issue`](#issue-and-validationresult), [`ValidationResult`](#issue-and-validationresult)"; "Like [`and`](…) and [`or`](…)"
-- **Link an API or concept to where it's explained, at its first mention on the page, and to the section rather than the page.**
-  - Added: [`updateOptions()`](/guides/setup/#changing-options) on Fragments, and its `constraints` bullet's link to "Types and constraints"
-  - Before: `[canonical form](/concepts/forms/)`
-  - After: `[canonical form](/concepts/forms/#the-canonical-form)`
+## What to say
+
+- **Describe the effect, not the mechanism.** Where the reader has something to write or do, say exactly what, especially where a phrase could be read two ways. An instruction names the exact control and says how to read what the reader will see.
+  - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
+  - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
+  - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
+  - After: "Give it `from: '$vars'`, and start the path with the variable's name"
+  - After: "Press the $if button at the top of the tree, and each part is coloured by how it ran: orange where a fallback was used (the division), green where it returned a value, and dimmed where it never ran (the then branch)."
+  - An example whose point is in the editor says so on the page, since its caption only shows inside the editor: "Open this example in the editor to see a visual representation of the trace."
+- **Where a limitation has a simple workaround, give the recommendation and a one-clause reason, not the mechanism.** "We" is fine. A reference page doesn't describe the route a guide recommends against, even as a limitation.
+  - After: "We don't recommend turning tracing on with `updateOptions()` or `with()`, since TypeScript can't see the change, and still expects `evaluate()` to return the bare result. Pass `trace: true` to the constructor or the call instead."
+- **Be concrete: say who it helps, what's at stake, and the reason the reader would actually decide by.** Each reason in a list is one the reader can picture; drop a weak one rather than pad. A thin use case is worse than none, and a scenario has to match how the feature is really used.
+  - Before: "The _canonical_ form … names everything, and is the one tools work with."
+  - After: "…names everything, which makes it easier to work with in a visual editor, like the one in this site's playgrounds."
+  - Before: "Set it to `'post'` for an API that takes its question as a body"
+  - After: "Set it to `'post'` for an endpoint that expects a POST"
+  - Cut: "…to offer a smaller set in an editor where people with less experience write rules", as the reason to leave operators out
+- **Give the real reason in a clause, or none.** If a feature is missing because it hasn't been built, say it isn't there and stop: a weak justification invites argument, and so does a true reason that implies it's the only one.
+  - After: "For security reasons, a header's value never appears in a failure or a trace."
+  - Cut: "A fragment's parameters are yours to change, and a call that relied on their order would quietly pass the wrong values once they moved."
+  - Cut: "the root never imports them, so an app that doesn't import one doesn't carry it", since the root entry is tree-shaken too
+- **Frame a design choice by what it gives the reader, not what it costs.** Lead with what's available, not the constraint that comes with it; where something stays fixed by design, say what stays fixed, not how to get round it.
+  - Before: "evaluation is always asynchronous, even when there's nothing to wait for"
+  - After: "evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one"
+  - Before: "The `operators` option is the instance's whole set of operators, so giving it replaces the core operators rather than adding to them…"
+  - After: "The core operators are included by default. The package also has these, which you can add:"
+- **Give the idea behind a rule before its letter.**
+  - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
+  - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
+- **State the general rule, and fold in the case that prompted it,** or the reader may take the case for an exception.
+  - Before: "An instance made with `with()` starts with an empty cache of its own…"
+  - After: "Every new FigTree instance, including one made with `with()`, starts with an empty cache of its own…"
+- **Mark a default as a default** where the reader can change it: "By default, a result is kept for 30 minutes…"
+- **Show a simple thing simply.** An example in passing does more than a sentence spelling it out. Where describing a shape would get convoluted, show it first.
+  - Before: "So a string like `$data.user.name` gets replaced by the `name` field of the `user` object you gave it."
+  - After: "You pass this data to FigTree when evaluating an expression, and `$data` references, such as `$data.user.name`, read from it."
+  - Before: "`path`: where the problem is, as the keys and indices from the root of the expression as it was written"
+  - After: "`path`: where the problem is, as an array of keys and indices, such as `['$if', 'thn']` in the example above"
 
 ## What to leave out
 
-- **No signposting sentences.** Headings already say what's coming, and a sentence that only points ahead or back is left an orphan.
-  - Cut: "The sections below cover these.", after the first example on Setting up FigTree
-  - Cut: "Every other option belongs to the instance, and passing one here is an error. [Data references] has more on… and [Options] says which options go where."
-- **Don't answer worries the reader doesn't have.** Reassurance about an edge case nobody would wonder about yet only plants the doubt. The same goes for a restriction the reader would only meet by trying something unusual, when the error they'd get explains itself: it's obvious to someone heading that way, and confusing to everyone else.
-  - Cut: "There's no setting to make FigTree look deeper or shallower: it always looks all the way down. Nodes are found once, when FigTree first reads the expression, and never in the data it's evaluated with, so a value in your data that happens to look like a node is never run."
-  - Cut: a "No .length" callout on Data references, when nothing on the page suggested a path could read `.length`
-  - Cut: a "firstOf under strictDataPaths" callout, straight after the paragraph that had already said how to allow a missing value
-  - Cut: "The `vars` block itself is left out of the result."
-  - Cut: "Beside `from: '$vars'`, the path has to be written out. To compute it, put the variable itself in `from`…"
-  - Cut: "It goes on a node, though. On a plain object it's just data, so a request body can have a field of that name.", after the paragraph on what `noCache` covers
-  - The same goes for detail the reader will see for themselves once they meet it.
+- **No signposting sentences.** Headings already say what's coming.
+  - Cut: "The sections below cover these."
+- **Don't answer worries the reader doesn't have.** This covers reassurance about an edge case nobody would wonder about, a restriction met only by trying something unusual when the error explains itself, detail they'll see once they meet it, design advice they'll only need while building, and anything that already follows from rules they have. But where a mistake fails confusingly, or not at all, a short warning stays.
+  - Cut: "There's no setting to make FigTree look deeper or shallower: it always looks all the way down…"
   - Cut: "Children are always listed in the same order, whatever order they finished in, so two traces of the same expression line up."
-  - Cut: a paragraph on how variables and fragments appear in a trace, which the type block's comments already covered
-  - But where a mistake fails confusingly, or not at all, a short warning stays.
-  - Kept: "the values follow the query one after another, not in an array of their own", on `sql`'s positional form, since the array form gets past `validate()` and fails in the database, or quietly matches nothing
-  - The same goes for design advice the reader only needs once they're doing it: they'll work it out as they build, and won't think of it before.
-  - Cut: "A fallback in the body applies wherever the fragment is called, … and one on the call applies only there.", on Fragments
-  - Cut, on Fragments: the ban on fragments calling themselves, a misspelt `defualt` being an error, extra argument keys being ignored (an example comment already shows it), and "Neither check covers the declarations themselves"
-  - Nor state what already follows from rules the reader has.
-  - Cut: "`operator` takes an alias too, such as `'+'`, but never the `$`. And `literal` is written `{ operator: 'literal', value: … }`.", on Shorthand and canonical forms: `literal` is just another operator, and nothing suggested an alias wouldn't work
-  - So a concept page shows one static error in an example, never the full list of them, and never the warnings: readers meet those when they happen, with a message that explains itself.
-  - Cut: "The same goes for:" and four bullets of `as` and `$index` errors, on Iteration
-  - Cut: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", on Iteration and Variables, which also leaned on "flags", a term the reader hadn't met
-  - Kept: the full list of static errors on Checking expressions, a guide page whose job is to list them
-  - Cut: "A node with a static error counts too, so a misspelt operator is reported when the value is evaluated, rather than passed over as plain data.", on `isEvaluable()`
-- **Say who a feature is for once, not beside every detail.** Once the page has said that an editor or a CI script would use something, the details don't repeat it.
-  - Cut: "so an editor can highlight the right part of it", on an issue's `path`
-  - Cut: "so an editor can offer it as a fix", on its `suggestion`
-  - Cut: "so it's quick enough to run on every keystroke in an editor", on `validate()`
-- **Give a tool's purpose in the intro, with the reason as one clause, rather than in a warning callout later.**
-  - Before: a "A trace keeps what it records" caution: "A trace holds every value it records by reference… Tracing is for finding out what happened, not for logging every evaluation in production."
-  - After, in the opening paragraph: "It's a tool for development and debugging, not something to leave on in production, since it holds on to every value it records."
-- **Don't restate what a definition already gives.** Once a bullet or a rule has said it, its consequences don't need a sentence of their own.
-  - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said "the first element, in the array's order"
-  - Cut: "When nothing matches, `find` gives `null`…", after the empty-input list had shown `find: null`
-  - Cut: "Both exist only inside `each`…", in a section that opened with "Inside `each`"
-  - Cut: "A fallback only runs when its node fails.", a bullet straight after one that already implied it
-  - Before: "That can be handy while you're working on your expressions: a failed request shows its error in the result…", after the `$error` section had shown exactly that
-  - After: "…so setting one in development can be handy:", keeping only the _when_
-- **A parameter many operators share is explained once, in one place,** not on each concept page that meets one of them.
-  - Cut: the `nullInputDefault` example on Iteration, and its `operatorDefaults` line; the family of default parameters gets one explanation, on the operator reference
-- **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea; the one place that warns against it does so loudly.
+  - Cut: "`operator` takes an alias too, such as `'+'`, but never the `$`.", where nothing suggested it wouldn't
+  - Kept: "the values follow the query one after another, not in an array of their own", on `sql`, since the array form gets past `validate()` and fails in the database or quietly matches nothing
+  - So a concept page shows one static error in an example, never the full list and never the warnings. A guide whose job is to list them (Checking expressions) lists them.
+- **Don't restate what a definition or an example already gives.** Its consequences don't need a sentence of their own, and prose doesn't spell out a detail the example just below shows.
+  - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said so
+  - Before: "…and a `path` into the options, such as a `duplicate-operator` at `['operators', 1, 0]`…", above an example showing a path
+  - After: "…each with its own `code`, such as `duplicate-operator`, and a `path` into the options"
+- **Say who a feature is for once, not beside every detail.**
+  - Cut: "so an editor can highlight the right part of it", on an issue's `path`, after the page had said editors use issues
+- **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea.
   - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
-- **Never give a reason that isn't the real one.** If a feature is missing because it hasn't been built, say it isn't there and stop. A weak justification invites the reader to argue with it.
-  - Cut: "A fragment's parameters are yours to change, and a call that relied on their order would quietly pass the wrong values once they moved.", after "a fragment has no positional or single-value form"
-  - The same goes for a reason that's true, but implies it's the only one.
-  - Cut: "the root never imports them, so an app that doesn't import one doesn't carry it", on the subpaths, since the root entry is tree-shaken too
-- **On a page that explains an idea, point to the reference rather than embedding it.** A sentence and a small snippet, with a link to the full entry. A list that isn't complete stays short, and is marked as examples (see Wording).
-  - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
-  - After: one sentence on what `if` does, a short canonical/shorthand snippet, and a link to the operator reference
-  - Before: "A few more operators work this way: `and` and `or` …, and `map`, `filter` and the other iterating operators…"
-  - After: "Other operators work this way too: `and` and `or`, for example, …"
-  - A feature with its own page gets a callout here, not a section.
-  - Before: a "Finding the gaps" section on Fallbacks and errors, with a `fallbackCoverage()` snippet and its report
-  - After: a "Covering the whole expression" tip, ending with a link to `fallbackCoverage()` on its Tooling page
-- **Only what the reader can place here.** Cut what an earlier page already covered, and allusions to features they haven't met. A closing pointer teases the one thing they'll want next. This isn't strict: a feature from a later page is fine where it makes an important point and is clear enough to follow without it, as the `map` example on Variables is. A bare API name that means nothing yet is better described by what it does.
-  - Cut: "(The `http` operator is there when your app gives FigTree an HTTP client …)", already covered in Expressions and nodes
+- **Only what the reader can place here.** Cut what an earlier page covered, and allusions to features they haven't met; a bare API name that means nothing yet is better described by what it does. Not strict: a later feature is fine where it makes an important point and is clear without its page.
+  - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
   - After: "A fallback can do more than stand in with a fixed value, too: with `$error`, it can actually read what went wrong."
-  - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
-  - After: "FigTree also flags two things that are allowed, but usually a slip, when you check an expression…", later cut entirely (see "Don't answer worries")
-- **Precise, but uncluttered.** A strictly technical point goes in a footnote rather than the text.
-  - Example: what "node" means in graph theory, as a footnote to "trees have nodes (as well as plain values at the leaves)"
-  - Before: two bullets in the `[*]` callout on Iteration, the second one only about `strictDataPaths`
-  - After: the one difference in the callout, and `strictDataPaths` in a footnote
-  - Added: a footnote saying a GraphQL request is just an HTTP POST, sent through the same client as `http`, which explains why the `http` headers, failures and caching all apply to `graphQL`
-- **Never coin a name for a check.** Describe it by its input, which the reader has just seen.
-  - Before: "plus the sample-data check", on `validate()`
-  - After: "and, when given `data`, checks the expression's `$data` paths against it"
-- **Prose doesn't spell out a detail the example just below shows.**
-  - Before: "…each with its own `code` and a `path` into the options, such as a `duplicate-operator` at `['operators', 1, 0]`, or a `type-check` inside a fragment body at `['fragments', 'banner', 'expression', '$plus']`", above an example showing a path
-  - After: "…each with its own `code`, such as `duplicate-operator`, and a `path` into the options"
+- **Explain a thing once, in its home; elsewhere, point to it.** On a page about an idea, a sentence and a small snippet with a link beat an embedded reference entry. A feature with its own page gets a callout, not a section. A parameter many operators share is explained on the operator reference, not on each page that meets one.
+  - Before: the full `<OperatorReference names={['if']} />` entry in Expressions and nodes
+  - After: one sentence on what `if` does, a short snippet, and a link
+  - Before: a "Finding the gaps" section on Fallbacks and errors, with a `fallbackCoverage()` snippet and its report
+  - After: a "Covering the whole expression" tip, ending with a link to `fallbackCoverage()`
+- **A list that explains an example keeps only what applies to it,** marked as partial.
+  - Before: three bullets on what happens to an `undefined`, a `NaN` and a lazy handle returned by `evaluate`, none of which `formatNumber` can return
+  - After: "Before calling `evaluate`, FigTree has already (among other things):", and "…turns an `undefined` into `null`, for example."
+- **Where a rule's exceptions are obvious from one or two examples, give those, not the full list.** Completeness belongs in the reference.
+  - Before: "A few words are reserved: the node keys, such as `fallback` and `vars`, the reference names, such as `data` and its short form `d`, and `literal`."
+  - After: "…or match a reserved word, such as `data` or `fallback`."
+- **Precise, but uncluttered:** a strictly technical point goes in a footnote.
+  - Example: a footnote saying a GraphQL request is just an HTTP POST, which explains why the `http` headers, failures and caching all apply to `graphQL`
 
 ## Structure
 
-- **On a guide page, an option's prose says what it's for and when you'd use it.** Its rules go in a callout, and its precise edge rules go to the reference.
-  - Before: "`operatorDefaults` gives a value to every use of an operator, keyed by the operator's name. A node that sets its own value overrides it. It can set:", then three technical bullets
-  - After: "Operator parameters (and modifiers) can have instance-wide defaults, if that makes sense for your system…", two use cases, and the rules in a "Two important things to remember" callout
-  - Before: "`maxDepth` limits how deeply an expression nests, counting its plain objects and arrays as well as its nodes"
-  - After: "`maxDepth` limits how deep an expression tree can go", with the counting rules left to the Options reference
-- **Group things by what they are, not by what they sit next to.**
+- **Motivate before you define.** Open with why it matters, or an example of the difference, then name the mechanism. A new mechanism comes in through one the reader already knows, and never builds on a shape the examples haven't shown.
+  - Example: Null handling shows four operators treating the same `null` differently before it says "null policy"
+  - Example: Variables opens with **The problem**, an expression repeating the same request three times, then **The solution**
+  - Before: "If every outermost node in it has a fallback that's a plain value…", when every example so far had a single node at the top
+  - After: "give the node at the top a fallback that's a plain value", then "An expression doesn't have to be a single node, though…"
+- **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, described against what they know. In general, bring in a variant through the thing it resembles, and name only the difference.
+  - After: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", just before the summary table
+  - Before: "Give `validate()` the names of the parameters the fragment will declare, and it checks the body as registration would"
+  - After: "Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument…"
+- **Lead with what the reader will use.** Bring in an optional feature by when they'd need it, and say plainly when they won't. Among several options, show the one they'll reach for most. In a list of fields, an optional one says when it's needed, and an opt-in one says it's the reader's choice.
+  - After: "The examples on this site are written in _shorthand_ … You won't need [the canonical form] when writing expressions by hand, but it's useful when, for example:"
+  - Before: "**`cache`**: `true` for an operator whose results can be cached"
+  - After: "**`cache`**: set to `true` if your operator would benefit from caching its results…"
+- **Most common first,** for options, bullets, an example's keys, precedence (the usual case, then what overrides it) and a reference page's entries.
+  - Before: "takes the instance's default, if it sets one, … and the definition's `default` otherwise"
+  - After: "takes the definition's `default`, unless the instance sets a default of its own"
+- **Each point goes in the section whose question it answers,** grouped by what it is, not by what it sits next to.
   - Before: `signal` in the Time bullet of Limits, beside `timeout`
   - After: a section of its own, "Cancelling an evaluation": it's the host deciding to stop, not a limit on the expression
-- **Lists for options that each need a description,** nested where the options fall into groups.
-  - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, values named once and read anywhere below (…); `noCache` (…); and `//`, a comment (…)."
-  - After: one bullet per modifier, each with its description and link
-  - Example: the ways to give parameters, as **Canonical form** and **Shorthand form**, with the three shorthand forms nested under it
-- **Motivate before you define.** Open with why it matters, or an example of the difference, then name the mechanism. A new mechanism comes in through one the reader already knows, with the cases that need it.
-  - Before: "A failure while running … fails its node. The failure travels up the tree…"
-  - After: "An unhandled runtime error … makes the whole evaluation throw a `FigTreeError`. This is where fallbacks come in…"
-  - Example: Null handling shows four operators treating the same `null` differently before it says "null policy"
-  - Example: Variables opens with **The problem**, an expression repeating the same request three times, then **The solution**, the same expression with one variable
-  - Before: "A reference's path is fixed when the expression is written. When the path itself depends on the data, … `get` takes it as a parameter"
-  - After: "A `$data` reference is really just a convenient way to write a `get` operator … Most of the time, it's all you need, but there are a few cases where you need to write it the long way:", then the cases as bullets
-  - Don't build on a shape the examples haven't shown. Start from the one they have, and bring the new one in as an extension.
-  - Before: "If every outermost node in it has a fallback that's a plain value…", when every example so far had a single node at the top
-  - After: "give the node at the top a fallback that's a plain value", then "An expression doesn't have to be a single node, though. It can be a plain object or array with nodes inside it…", leading into the example
-- **The obvious idea first, the full syntax later.** A syntax the reader can mostly guess goes near the end, as reference, described against what they already know, with only the differences listed.
-  - Before: "Paths" third on Data references: "A path is read left to right, each step going one level deeper:", then every kind of step
-  - After: "Path syntax" just before the summary table: "For the most part, paths are written as you'd write them in JavaScript … There are a couple of extensions, though:", then `[*]` and array paths
-  - The same goes beyond syntax: bring in a variant through the thing it resembles, and name only the difference, rather than listing everything it does.
-  - Before: "The check covers:", then three bullets of specific checks
-  - After: "Registration runs all the checks `validate()` runs on an expression, as well as some of its own, such as…"
-  - Before: "A fragment editor can check a body as it's written… Give `validate()` the names of the parameters the fragment will declare, and it checks the body as registration would"
-  - After: "Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected"
-  - And a set of outcomes by its kind: "any error will be a runtime error", for "a missing required parameter or a value of the wrong type is a runtime error"
-- **Show a shape as its type, not described in prose,** where some keys are typed and others are convention, which prose blurs. Comments in the type carry only what the type can't say, and the lead-in names the keys to look for.
-  - Before: bullets describing `metadata`'s keys and `samples`, ending "any other keys in `metadata` are yours to use"
-  - After: "two more keys, `metadata` and `samples`, …", then a `Types` block of `FragmentDefinition` and `FragmentMetadata`, with `// Any other keys are your own: metadata allows them, and getCatalog() ignores them`
-- **Set the scene before the rule, and give the example its own paragraph.** Open with the situation the paragraph is about, so the rule isn't read before the reader knows what it's for.
+- **Set the scene before the rule, and give an example its own paragraph,** opening "In this example", or "Here" as the last words of a lead-in.
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
-- **Lead with what the reader will use. Introduce an optional feature by when they'd need it, and say plainly when they won't.**
-  - Before: "Each node can be written two ways. Shorthand is for writing by hand; canonical spells everything out, which suits programs and editors."
-  - After: "The examples on this site are written in _shorthand_ … Each node also has a _canonical_ form … You won't need it when writing expressions by hand, but it's useful when, for example:"
-  - Among several options, name the one the reader will reach for most, and show only that one.
-  - After: "Of these, `data` is the one you'd reach for most…", with the example cut down to `{ data: formData }`
-- **Where the site's UI demonstrates a library feature, lead with the feature, and present the UI as a way to try it.**
-  - Before: "The playgrounds on this site convert for you: the **Shorthand** and **Full** buttons…", then "In your own code, `toCanonical` and `toShorthand` do the same."
-  - After: "FigTree offers a few helper functions for converting between forms…", the snippet, then "In the playgrounds on this site, open the editor and hover…"
-- **Most common first.** Options, bullets and an example's keys go in the order the reader will most often need them.
-  - Before: `firstOf`, then `get`'s `default`; `get`'s uses as a computed path, a `default`, a `from`
-  - After: `default` first in both
-  - On a reference page, entries go in the order readers reach for them, not the order of the spec or the page's skeleton.
-  - Before: `version` first, then `coreOperators`, with the I/O toolkit after the engine-parity helpers, on Other exports
-  - After: `coreOperators`, the I/O toolkit, custom operators, the parity helpers, `inspect()`, then `version`
-- **Each point goes in the section whose question it answers,** even when an earlier section's example happens to show it.
-  - Before: "A var can also read the others declared beside it", in the `vars` section
-  - After: "A variable's own definition sees the same scope, so it can read the variables declared beside it…", in Scope
-- **A general remark beside an example reads as a claim about that example.** Cut it, or move it away from an example its surface reading contradicts.
+- **A general remark beside an example reads as a claim about that example.** Cut it, or move it away.
   - Cut: "A variable nothing reads can't fail.", just before an example whose variable is read, and fails
-- **Asides go in callouts, out of the paragraph flow: a tip, a gotcha, a design reason, a reminder of something an earlier page explained.** They also break up a long run of prose. A gotcha callout shows the wrong way and the right way in an example, not just advice. Rarely two in a row, and related ones merged. The rule a section exists to state isn't an aside: it stands apart as a blockquote.
+- **Lists for options that each need a description,** nested where they fall into groups; **a shape as its type**, where some keys are typed and others are convention, with comments carrying only what the type can't say.
+  - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, …; `noCache` (…); and `//`, a comment (…)."
+  - After: one bullet per modifier
+- **On a guide page, an option's prose says what it's for and when you'd use it.** Its rules go in a callout, and its precise edge rules go to the reference.
+  - Before: "`maxDepth` limits how deeply an expression nests, counting its plain objects and arrays as well as its nodes"
+  - After: "`maxDepth` limits how deep an expression tree can go", with the counting rules in the Options reference
+- **Asides go in callouts: a tip, a gotcha, a design reason, a reminder of an earlier page.** They break up long prose. A gotcha shows the wrong way and the right way in an example. Rarely two in a row; merge related ones. The rule a section exists to state isn't an aside: it stands apart as a blockquote. A tool's purpose goes in the intro, not in a warning callout later.
   - Before: "Since `0` counts as false, test numbers explicitly…" in the paragraph
-  - After: a "Zero counts as false" caution, with `bare` against `explicit` on a free item
-  - Before: a Note ("Another way to write a node") directly followed by a Caution ("Data with $ keys"), plus a separate Note in the next section
+  - After: a "Zero counts as false" caution, with `bare` against `explicit`
+  - Before: a Note directly followed by a Caution, plus a separate Note in the next section
   - After: one Caution at the end of Operators, "Every key prefixed with $ is checked", covering both
-  - Example: the truthiness rule, as a blockquote
-  - Before: "A reference reads into a var with the same path syntax as `$data` (Data references)…", in the paragraph flow
-  - After: a "Same paths as $data" note callout
-  - Before: "To see how FigTree read an expression… [`inspect()`]… shows the compiled form", as a paragraph after the first example
-  - After: the same sentence in a "Seeing the compiled form" note callout
-  - Before: "An instance made with `with()` starts with an empty cache of its own…", a paragraph in Clearing the cache
-  - After: the same point in an "Every instance has its own cache" note callout
-- **A guide page on an idea Concepts introduced opens with the recap itself,** with no intro paragraph and no heading. It links back once, to where the idea was introduced, not to every page that touched it.
-  - Before: an intro sentence, then "## Fallbacks in brief", then "[How evaluation works] introduced fallbacks, and [Iteration] put one inside `each`. In short:"
+- **Page openings.** A guide page on an idea Concepts introduced opens with the recap itself, with no intro paragraph or heading, and links back once. A page that covers more than one distinct thing mentions each in its intro, a secondary one in its own short paragraph after the opening example.
   - After: the page opens "[How evaluation works] introduced fallbacks. In short:"
-- **On a page that covers more than one distinct thing, the intro mentions each, so a reader who stops at the top knows they're there.** A secondary one gets its own short paragraph after the opening example. A single-topic page needs nothing of the kind: the text's natural flow covers it.
-  - Example: the **compile cache**, in a paragraph after the opening example of Caching and compiling
-  - Added, after the opening example of Tracing and debugging: "To understand the internal structure of a compiled expression, there's also `inspect()`, which shows what FigTree builds before it runs the evaluation."
-- **A guide page's headings tend to say what the section does,** rather than only name the API it's about. A guideline, not a rule: a bare name is fine where it reads better.
-  - Before: "## `$error`"
-  - After: "## Reading the failure with `$error`"
-  - A heading can also name the confusion the section heads off.
-  - Before: "### Fragments and variables"
-  - After: "### Fragments vs variables", since new users tend to think the two are much the same thing
+  - Added, after the opening example of Tracing and debugging: "To understand the internal structure of a compiled expression, there's also `inspect()`…"
+- **A guide page's headings tend to say what the section does,** or name the confusion it heads off. A guideline: a bare name is fine where it reads better.
+  - Before: "## `$error`"; "### Fragments and variables"
+  - After: "## Reading the failure with `$error`"; "### Fragments vs variables"
+- **Where the site's UI demonstrates a library feature, lead with the feature,** and present the UI as a way to try it.
+  - After: "FigTree offers a few helper functions for converting between forms…", the snippet, then "In the playgrounds on this site, open the editor and hover…"
 
 ## Examples
 
-- **Real-world examples with realistic values,** whose outcomes are things a real expression would produce, and differ visibly. They get readers thinking about their own uses.
-  - Examples: a GST price that rounds to `$92.56`, a stored MongoDB query, a notification config
-  - Before: `'Hi %1'` against `'Hi there'`; `'Stock level known'` against `'No stock level'`
-  - After: `'Call %1'` against `'No phone number on file'`; `'$0'` against `'Price data missing'`
-  - Inputs are ones a casual reader can supply without looking anything up, from the domains FigTree configs live in, such as forms, countries and customers.
-  - Before: `{ country: 'NZ' }`, a query by country code; an OSV vulnerability lookup as the POST example
-  - After: `country: 'New Zealand'`, a query by name; a lookup of delivery addresses' postcodes
-- **Put each named parameter on its own line,** so the names stand out beside the operator.
-  - Before: `named: { $if: { condition: '$data.isMember', then: 'Member price', else: 'Standard price' } }`
-  - After: `condition`, `then` and `else` each on a line of their own inside `$if`
-- **Show a parameter by name before a shortcut hides it.** Where the prose has just named the parameters, the first example uses those names, and a comment marks the switch to the positional form.
-  - Before: all five iterators positional, straight after a sentence naming `input` and `each`
-  - After: `map` with `input` and `each` named, then `// The same two parameters, by position: [input, each]` above the other four
-  - Before: `$if: ['$vars.currency', …]`, after prose naming the `if`'s `condition`, `then` and `else`
-  - After: `$if: { condition: …, then: …, else: … }`
-- **An example that illustrates a type shows every field, with custom ones marked.**
-  - Before: `metadata` with `displayName`, the colours and `owner`
-  - After: every `FragmentMetadata` key, `docUrl` and `seeds` included, with `// A key of your own` above `owner`
-- **A result shown in a code comment is marked with `=>`,** so it reads as what the line gives, not as a remark about it.
-  - Before: `const sum = await fig.evaluate({ $plus: [1, 2] }) // 3`
-  - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`
-- **One comment per key in a config example.** Each sits on the key it describes and states that key's limits; a single comment above several keys reads as covering them all.
-  - Before: `// In seconds: Infinity keeps each result until it makes way for another`, above both `maxTime` and `maxSize`
-  - After: `// In seconds, or Infinity to keep each result until it makes way for another` on `maxTime`, and `// The number of results kept -- must be a whole number` on `maxSize`
-- **One example, one idea.** Don't combine two features where one could be mistaken for the normal form of the other, and leave out a detail that hints at a problem the example doesn't have.
+- **Real-world examples with realistic values,** whose outcomes a real expression would produce, and differ visibly. Inputs are ones a casual reader can supply without looking anything up, from the domains FigTree configs live in, such as forms, countries and customers.
+  - Before: `'Hi %1'` against `'Hi there'`; `{ country: 'NZ' }`
+  - After: `'Call %1'` against `'No phone number on file'`; `country: 'New Zealand'`
+- **One example, one idea.** Keep only the moving parts the point needs. Don't combine two features where one could pass for the normal form of the other, and leave out any detail that hints at a problem the example doesn't have. A pattern repeated through an example reads as a rule.
   - Before: one `get` example with `path: '$data.user.language'` beside a `from` table, which reads as though a path beside `from` starts with `$data`
   - After: `path: 'mi'` beside the table first, then the same example with only the `path` line computed
-  - Before: `{ $get: { path: ['items', 0, 'key.with.dots'] } }`, though an array path needs no quoting
-  - After: `{ $get: { path: ['items', 0, 'price'] } }`
-  - A pattern repeated through an example reads as a rule.
-  - Before: three `updateOptions()` calls, each setting one option, which suggests one option at a time
-  - After: the first call sets `http` and `strictDataPaths` together
-  - Keep only the moving parts the point needs. A branch that does something interesting of its own pulls the eye.
   - Before: an `$if` fallback whose else branch was `'$error.message'`, in an example about the fallback's `$divide` failing
-  - After: `'Average unavailable'`, with `// Fails as well, so the node returns null` on the `$divide`
-  - A setting the example needs only for the demo stays out of the expression, but a comment says it's in force, so it can't be mistaken for the cause of what the example shows.
-  - Before: `// Only so every run sends its requests, rather than reusing an earlier one's` above `noCache: true`, in an example showing one URL requested twice
-  - After: `noCache: true` gone from the expression, the example set to run uncached, and `// Caching is OFF for this example, so every run sends a new request` at its top
-- **A list-shaped thing gets at least two items in its example, so its structure shows.** With one, the reader can't tell it's a list.
-  - Before: one placeholder: `['SELECT … = $1', '$data.categoryId']`
-  - After: two: `['SELECT … = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice']`
-- **An example in passing works under the default setup.** One that needs an option set first is convoluted where it's only there to illustrate.
+  - After: `'Average unavailable'`
+  - A setting needed only for the demo stays out of the expression, but a comment says it's in force: `// Caching is OFF for this example, so every run sends a new request`
+- **Start an example in the state that makes the point,** and let a comment say how to reach the others.
+  - After: data that fails at runtime, with `// Make these both strings, and it works.`, so the Static error and Runtime error badges sit one above the other
+- **An example finishes what the prose just described,** and works under the default setup.
+  - Added: `await fig.evaluate(expression) // => 92` at the end of the first example on Setting up FigTree, whose intro says an instance is "called with `evaluate()`"
   - Before: "such as a value of the wrong type, a missing path under `strictDataPaths` or a failed request"
   - After: "such as a parameter of the wrong type, a failed request, or a division by zero"
-- **In host code, show where each name comes from, and name it for what it does.** A reader can't see a declaration hidden above the cut.
+- **Before an example, name what to look for, and let the example show it.** Where prose explains what an example does, quote the part that causes it and spell out the step from cause to effect.
+  - Before: "Its trace has the request as it was sent, with the name from the data in its query string, and a `render` event for each token…"
+  - After: "Its trace has a `request` event, and some `render` events:"
+  - Before: "`value`'s type includes `null`, so a `null` there makes the node return `null`"
+  - After: "the `value` parameter is declared as `['number', 'null']`, so it accepts `null`, and by default a `null` there is passed on"
+- **Comments point at what to notice or try, for the point the example makes,** in plain words, not category names or compressed notation. Say which value to change and what it shows; where the change adds values, give them as commented-out lines to uncomment. Where the prose already carries the point, no comment.
+  - Before: `// Passed on: plus doesn't run`; `controller.abort() // pending throws: aborted`
+  - After: `// Can't be worked out without the shipping cost, so gives null`; `// When it's time to cancel` above `controller.abort()`
+  - Example: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
+- **A result in a comment is marked `// =>`,** a reason added to it opens with "since", and one that doesn't fit beside its call goes on the next line, indented under it.
+  - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`; `fig.isEvaluable({ $flibble: 1 }) // => true, since an unknown operator is a static error`
+- **One comment per key in a config example,** on the key it describes; a comment above several keys reads as covering them all.
+- **An alternative setting goes in the snippet as a comment, where it would be written,** rather than in a sentence after it.
+  - After: `// Pass { trace: true } here to trace every evaluation`, above `const fig = new FigTree()`
+- **Show the structure.** Each named parameter goes on its own line. A parameter is shown by name before a shortcut hides it, with a comment marking the switch. A list-shaped thing gets at least two items. An example of a type shows every field, with custom ones marked. A list of cases starts with the plain one.
+  - Before: all five iterators positional, straight after a sentence naming `input` and `each`
+  - After: `map` with `input` and `each` named, then `// The same two parameters, by position: [input, each]` above the other four
+  - Before: `['SELECT … = $1', '$data.categoryId']`
+  - After: `['SELECT … = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice']`
+- **In host code, show where each name comes from, and name it for what it does.** The import goes below the cut, and the prose says what kind of thing a new name is. The plain form comes before the variant, and a real call beats a made-up helper. A call that doesn't fit on a line puts each argument on its own line; where the example is about a parameter, use the named form.
   - Before: `operators: [coreOperators, httpOperators(new FetchClient()), shippingQuote]`, with `shippingQuote` declared out of sight
   - After: `import { formatNumber } from './operators/formatNumber'`, under `// A custom operator, written with defineOperator()`
-  - The import goes below the cut, so it shows, and the prose says what kind of thing a name is and where it's imported from, where it hasn't come up before.
-  - Before: "`isFigTreeError()` tells FigTree's errors apart…", with its import hidden above the cut
-  - After: "Two imports from `fig-tree-evaluator` can help in your error handling: the `isFigTreeError()` function … and the `ErrorCodes` object …", with the import visible
-  - A placeholder name says what the thing is, and the plain form comes before the variant.
-  - Before: "or one you pass it, as `new FetchClient(myFetch)`"
-  - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"
-  - Where a real call does the job, use it rather than a made-up helper.
-  - Before: `showTrace(error.trace)`, with `showTrace` declared out of sight
-  - After: `console.dir(error.trace, { depth: null })`
-- **An example finishes what the prose just described.** If the text mentions a step, the example shows it.
-  - Before: the first example on Setting up FigTree ended at the constructor, though the intro says an instance is "called with `evaluate()`"
-  - After: it ends with `await fig.evaluate(expression) // => 92`
-- **Before an example, name what to look for, and let the example show it.** Don't narrate its output in the lead-in.
-  - Before: "Its trace has the request as it was sent, with the name from the data in its query string, and a `render` event for each token that rendered as something other than its plain value:"
-  - After: "Its trace has a `request` event, and some `render` events:"
-- **An alternative setting goes in the snippet as a comment, where it would be written, rather than in a sentence after it.**
-  - Before: "Tracing can also be turned on for the whole instance, with `new FigTree({ trace: true })`."
-  - After: `// Pass { trace: true } here to trace every evaluation`, above `const fig = new FigTree()`
-- **In host code, a call that doesn't fit on a line puts each argument on its own line,** and the expression stays on one line where it fits. Where the example is about a parameter, use the named form.
-  - Before: `await fig.evaluate({ $get: ['customer.email', null] }, { data }) // => null`
-  - After: `{ $get: { path: 'customer.email', default: null } }` and `{ data }` each on a line of their own inside `fig.evaluate(` … `) // => null`
-  - A `// =>` result that doesn't fit beside its call goes on the next line, indented under it.
-  - Before: `toCanonical({ $plus: [1, 2, 3] }, fig) // => { operator: 'plus', values: [1, 2, 3] }`
-  - After: the call on its own line, and `  // => { operator: 'plus', values: [1, 2, 3] }` beneath it
-- **Comments in an example point at what to notice or try, for the point the example makes.** They say what happens, in plain words, not the name of a category. Where changing a value would show the point, say which value to change and what it shows. A comment about a different lesson pulls the reader off this one.
-  - Before: `// Passed on: plus doesn't run`
-  - After: `// Can't be worked out without the shipping cost, so gives null`
-  - Compressed notation isn't plain words.
-  - Before: `controller.abort() // pending throws: aborted`
-  - After: `// When it's time to cancel` above `controller.abort()`, with the outcome left to the prose
-  - Example: `// Add an actual phone number to see the change`, in the data of the truthiness example
-  - Example: `// Comment out, and export reads the outer NZD`, on an inner `vars` block that hides an outer one
-  - Example: `// Oops, typo -- fix me`, on the misspelt reference in an example that throws
-  - Where the change is to add values, give them as commented-out lines to uncomment, so the reader gets realistic values for one keystroke: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
-  - The same works in the expression itself: `// Uncomment to give the fallback a fallback of its own` above `// fallback: 'No orders yet',`
-  - Before: `// Change 'two' to a number, or 1 to a string to fix the error`, on an example about fallbacks not catching static errors
-  - After: no comment, since the prose already carries the point
-- **Start an example in the state that makes the point,** and let the comment say how to reach the others. Beside a contrasting example, this puts the two outcomes side by side.
-  - Before: data that works, with `// Make both numbers, and it fails, but only when it runs`, below a static error
-  - After: data that fails at runtime, with `// Make these both strings, and it works.` and `// Both numbers, and it fails at a different node`, so the Static error and Runtime error badges sit one above the other
-- **A `// =>` comment that adds a reason opens it with "since",** so it can't be read as part of the result.
-  - Before: `fig.isEvaluable({ $flibble: 1 }) // => true, with a static error`
-  - After: `// => true, since an unknown operator is a static error`
-- **A list of cases starts with the plain one.**
-  - Added: `fig.isEvaluable({ title: 'Welcome', colour: 'blue' }) // => false`, before the case with a `//` comment
+  - Before: "or one you pass it, as `new FetchClient(myFetch)`"; `showTrace(error.trace)`
+  - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"; `console.dir(error.trace, { depth: null })`
+
+## Punctuation, formatting and links
+
+- **No full stop on a one-sentence summary,** such as a page's frontmatter `description`.
+- **A bullet's headline is bold and capitalised, with the colon inside the bold,** as in "**Passed on:**", or outside where the label is code alone: "**`map`**:". A bullet with a headline ends with a full stop.
+- **A reference in prose takes no quotes.** Quotes only where the point is that it's a string.
+  - Before: "a bare `'$data'` gives the whole data object"
+  - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
+- **Where a list spells out a group just named, introduce it with a colon,** or brackets where the sentence already has one; after a comma, the group's name reads as one more item.
+  - After: "every operator on the Operators page except the I/O ones: `http`, `graphQL` and `sql`"
+- **An article follows how a word is said:** "an `SQLiteConnection`".
+- **Link an API or concept at its first mention on the page, to the section rather than the page.** A pointer in brackets uses the heading it lands on as its text, never a callout title or a paraphrase, and the section over a sub-section where both would do. A term linked in running text keeps its own words.
+  - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))"
+  - After: "([Missing values](/concepts/data/#missing-values))"
+  - Kept: "In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to…"
+- **One name, one link,** so the comma or "and" between two names stays plain text.
+  - After: "Like [`and`](…) and [`or`](…)"
 
 ## Reference pages
 
 The API reference pages are looked up rather than read in order, and follow the entry template in the `/write-page` skill. These rules are theirs alone; everything above applies to them too, except where a rule here says otherwise.
 
-- **Reference pages use the correct technical term. Guide pages stay casual.** On a reference page the precise word is the right one, even where a guide would choose a plainer one.
+- **Reference pages use the correct technical term. Guide pages stay casual.**
   - Before: "Method", "nothing", "don't change an expression object"
-  - After: "Member", `void`, "don't mutate an expression", since "change" also covers swapping one object for another
-  - Kept, on a guide page: "Don't change an expression in place", on Caching and compiling
-  - Before: "give the expression a plain-value fallback at the top"
-  - After: "give each outermost node in the expression a plain-value fallback"
+  - After: "Member", `void`, "don't mutate an expression", since "change" also covers swapping one object for another; a guide page keeps "Don't change an expression in place"
 - **A member's one-line description says what it does, not one use of it.**
   - Before: "Compiles an expression once, to evaluate it any number of times."
   - After: "Compiles an expression, ready to check or evaluate."
-- **Every member gets a row in the summary table,** the constructor and properties included.
-  - Added: `new FigTree()` and `version` rows, under a "Member" heading
-- **What's true of every entry is said once, above them all,** not in each entry.
-  - Before: "rejects, and never throws synchronously, with a [`FigTreeError`]", in `evaluate()`'s Throws
-  - After: "Any error FigTree throws is a `FigTreeError`, even one that started inside a custom operator, so each entry here lists only the error codes.", below the summary table
-- **Leave out what something is for, and behaviour anyone would assume.** The guides cover the why, and stating the obvious plants a doubt.
-  - Cut: "and is there for code handed an instance from elsewhere, such as an editor whose own copy of the package may differ", on `version`
-  - Cut: "An evaluation already running keeps the options it started with", and "References to `$vars`, `$element`, `$index` and `$error` are never listed"
+- **What a method returns about a thing is "data about" it, never the thing.**
+  - Before: "The instance's registered operators and fragments, as plain data"
+  - After: "Detailed data about the registered operators and fragments"
+- **A boolean option's description says what `true` does:** "If set to `true`, a reference to a missing path fails…"
+- **Spell out what something isn't, where that's the trap.**
+  - After: "joins with the text `'$data.separator'`, not the value of the data reference"
+- **A type's opener says what it is, in terms the reader already knows,** not only where it comes from, and leads with what bears on its main job.
+  - Before: "A `CompiledExpression` is what `fig.compile()` returns: one expression, compiled by a FigTree instance…"
+  - After: "…an expression that's been checked and built into a structure much like its canonical form, with each node mapped to its operator alongside its named parameters…"
+- **Leave out what something is for, behaviour anyone would assume, and detail too small to matter in practice.** The guides cover the why, and stating the obvious plants a doubt.
   - Cut: "It's read by reference, never copied, and FigTree never changes it.", on `data`
   - Cut: "Each operator is set separately: a default on `equal` doesn't reach `notEqual`."
-  - Cut: a reason for a member to exist: "A compiled expression can't be serialized… To store one or send it elsewhere, store its `expression`"
-  - Cut: "so treat it as read-only", on an array, and "it never compiles the expression again", on `getDependencies()`
-  - Cut: what a held compiled expression keeps in memory
-  - The same goes for precise detail too small to matter in practice.
   - Cut: "The clock starts once the evaluation starts running, after the checks made before it runs.", since the checks take milliseconds against timeouts of seconds
+- **Say once what's true of every entry, above them all. An entry that mirrors another links to it and lists only the differences, and a point repeated across bullets is folded into one.**
+  - After: "Any error FigTree throws is a `FigTreeError`, even one that started inside a custom operator, so each entry here lists only the error codes.", below the summary table
+  - After: "It works as `fig.evaluate()` does, with the same per-call options, return values and errors, but with the options, operators and fragments the expression was compiled with"
 - **Explain a technical detail where the reader meets it.**
   - Before: a Constructor bullet on the class's type parameter, `FigTree<InstanceOpts>`
   - After: a clause in `evaluate()`'s TypeScript paragraph: "That's why an instance's type includes its options, as in `FigTree<{ trace: true }>`"
-- **What a method returns about a thing is "data about" it, never the thing.**
-  - Before: "The instance's registered operators and fragments, as plain data"; "its definition as the instance uses it"
-  - After: "Detailed data about the registered operators and fragments"; "its declaration as the instance uses it"
-- **Where a return type depends on an option, show one signature per shape,** not a union.
-  - Before: `evaluate(…): Promise<unknown>`, with the `EvaluationResult` case only in the prose
-  - After: a second signature, `Promise<EvaluationResult>`, under `// With trace in effect`
-- **Every section is reachable from the opener or the summary table.**
-  - Added: "…which merge each change into the options already set ([Merge rules](#merge-rules))", in the opener of Options
-- **A warning in a Details list gets a bold "Caution:" label, not a callout,** and matching warnings get matching labels.
-  - Before: "- Changing a default on a running system changes the results…"
-  - After: "- **Caution:** changing a default on a running system…", and the same on `strictDataPaths`
-- **A point that repeats another bullet's phrase is folded into it,** with the bullets reordered so related points sit together.
-  - Before: "replaces the core operators" in the first bullet, and "it's replaced whole, never merged" in the fourth
-  - After: one bullet: "Setting `operators`, whether in the constructor, `updateOptions()` or `with()`, replaces the whole set…"
-- **A signature that won't fit on a line is laid out the way the source declares it.**
-  - Before: `operatorDefaults?: Record<string, { fallback?: unknown; noCache?: true; [parameter: string]: unknown }>`
-  - After: the nested `[operator: string]: { … }` form, one key per line
-- **A boolean option's description says what `true` does.**
-  - Before: "Makes a reference to a missing path fail…"
-  - After: "If set to `true`, a reference to a missing path fails…"
-- **Spell out what something isn't, where that's the trap.**
-  - Before: "joins with the text `$data.separator`"
-  - After: "joins with the text `'$data.separator'`, not the value of the data reference"
-- **An entry that mirrors another links to it and lists only the differences.** The same goes for a point the site already makes elsewhere.
-  - Before: `evaluate()` on CompiledExpression with its own Parameters, Returns, a five-item Throws list and two Details bullets, nearly all of it as on `fig.evaluate()`
-  - After: "It works as `fig.evaluate()` does, with the same per-call options, return values and errors, but with the options, operators and fragments the expression was compiled with"
-  - Cut: a bullet on how the type `evaluate()` returns follows `trace`, made already on the FigTree class page
-- **A type's opener says what it is, in terms the reader already knows,** not only where it comes from. Its examples lead with what bears on the type's main job.
-  - Before: "A `CompiledExpression` is what `fig.compile()` returns: one expression, compiled by a FigTree instance, with what the compiler found in it, ready to evaluate."
-  - After: "…an expression that's been checked and built into a structure much like its canonical form, with each node mapped to its operator alongside its named parameters. It also holds what the compiler learned _about_ the expression, such as which parts need evaluating and which are fixed, so it's primed for evaluation, along with the validation issues it found."
-- **Show what makes each exception an exception.** Give one example of the rule, then pair each exception with what the rule would have predicted, and link to the source where the full list lives.
-  - Before: "Each constant's name is its code in camel case, except `graphQLErrors`, `maxDepthExceeded` and `maxNodesExceeded`."
-  - After: "Each constant's name is its code in camel case, as in `ErrorCodes.typeCheck`, except for three: `graphQLErrors` (`'graphql-errors'`), `maxDepthExceeded` (`'max-depth'`) and `maxNodesExceeded` (`'max-nodes'`). The [full definition](…) is in the source."
-- **A note about what follows isn't a Details bullet.** It goes in an italic paragraph of its own, just before what it describes.
-  - Before: "- A code that turns up in more than one group below is listed in the first, with the others noted.", as the last Details bullet
-  - After: "_A code that turns up in more than one group below is listed in the first, with the others noted._", standing alone above the first group
+- **Show what makes each exception an exception.** Give one example of the rule, pair each exception with what the rule would have predicted, and link to the full list in the source.
+  - After: "Each constant's name is its code in camel case, as in `ErrorCodes.typeCheck`, except for three: `graphQLErrors` (`'graphql-errors'`), `maxDepthExceeded` (`'max-depth'`) and `maxNodesExceeded` (`'max-nodes'`)."
+- **Layout.** Every member gets a row in the summary table, the constructor and properties included, and every section is reachable from the opener or the table. Where a return type depends on an option, give one signature per shape, not a union. A signature that won't fit on a line is laid out as the source declares it. A warning in a Details list gets a bold "**Caution:**" label, not a callout. A note about what follows goes in an italic paragraph of its own just before it, not in a Details bullet.

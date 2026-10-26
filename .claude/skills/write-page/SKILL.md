@@ -89,7 +89,7 @@ From the diff, propose additions to `docs-dev/docs-voice.md` in chat:
 
 - Only patterns that generalise past this page: phrasings he swaps out, how much he explains, how he addresses the reader, sentence length, what he cuts. Skip one-off content fixes.
 - Each one as a rule plus a short before → after pair taken from the diff.
-- Note when an edit confirms or contradicts an existing entry, and propose revising that entry rather than adding a near-duplicate.
+- Note when an edit confirms or contradicts an existing entry, and propose revising that entry rather than adding a near-duplicate. An edit that only confirms an entry adds nothing, unless it shows a side of the rule the entry's examples don't, and then it replaces the weaker one: an entry keeps one or two examples.
 
 Write them to the voice guide once Carl agrees.
 
