@@ -15,6 +15,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 What the non-eager modes are for (conditionals, iterators, short-circuiting), and the checks still applied when the body evaluates a value. `nullPolicy: 'propagate'` has no effect on these parameters, and a value that arrives dynamically (from data, say) is already resolved.
 
+{/* NOTE (from Writing an operator): returning a handle itself (a `LazyValue`, a `PerElement` handle or a settlement stream) from `evaluate`, rather than the value it stands for, fails the node with `escaped-handle`. It's always a bug: a forgotten `.evaluate()`, as in returning `then` where `await then.evaluate()` was meant. TypeScript flags it too. Source: normalizeResult in src/evaluate/operator.ts. */}
+
 ## `lazy`
 
 A `LazyValue`: evaluated when the body asks, at most once.

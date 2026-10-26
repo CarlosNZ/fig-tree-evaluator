@@ -1,6 +1,6 @@
 ---
-title: The evaluate body
-description: 'Writing the body: its params, its context, and failing well'
+title: The evaluate function
+description: 'Writing an operator''s evaluate function: its params, its context, and failing well'
 sidebar:
   order: 3
 ---
@@ -34,6 +34,8 @@ Declaring `cache: true`, and wrapping the slow part of the body in `context.cach
 ## Failing
 
 Throwing `OperatorFailure` with a code and details, and how a failure reaches a fallback.
+
+{/* NOTE (from Writing an operator): the checks on what `evaluate` returns, which Writing an operator only summarises ("checks the result as well, and turns an `undefined` into `null`"). A `NaN` result fails the node with `non-finite-result`, but only from an operator whose `returns` includes `number`: one returning `any` (like `if` or `get`) passes a `NaN` from the data on unchanged. An infinity is a number, and passes, so an `evaluate` function that can make one from finite numbers, as division by zero does, has to fail itself, as the core arithmetic does. A thrown plain `Error` fails the node with `operator-failure`, with the operator's name in front of its message (`formatNumber – …`). Source: normalizeResult and wrapFailure in src/evaluate/operator.ts; #269 for the infinity ruling. */}
 
 ## Trace events
 
