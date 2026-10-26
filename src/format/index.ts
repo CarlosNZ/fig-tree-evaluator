@@ -14,24 +14,28 @@ import { shorthandWriter } from './shorthand'
 import { Walk } from './walk'
 
 /**
- * Every node in the subtree to canonical form. Throws a `FigTreeError` at a
- * node the compiler can't read.
+ * Every node in the subtree to canonical form, or with `recursive: false`
+ * the value given and nothing below it. Throws a `FigTreeError` at a node
+ * the compiler can't read.
  */
 export const toCanonical = (
   expression: unknown,
   fig: Registry,
   options?: CanonicalOptions
-): unknown => new Walk(buildLookup(fig), canonicalWriter(options)).value(expression)
+): unknown =>
+  new Walk(buildLookup(fig), canonicalWriter(options), options?.recursive ?? true).value(expression)
 
 /**
- * Every node in the subtree to shorthand form. Throws a `FigTreeError` at a
- * node the compiler can't read.
+ * Every node in the subtree to shorthand form, or with `recursive: false`
+ * the value given and nothing below it. Throws a `FigTreeError` at a node
+ * the compiler can't read.
  */
 export const toShorthand = (
   expression: unknown,
   fig: Registry,
   options?: ShorthandOptions
-): unknown => new Walk(buildLookup(fig), shorthandWriter(options)).value(expression)
+): unknown =>
+  new Walk(buildLookup(fig), shorthandWriter(options), options?.recursive ?? true).value(expression)
 
 /** One reference string to a `get` node, or `null` if it has none. */
 export const toGet = (reference: unknown, options?: NameOptions): Record<string, unknown> | null =>
