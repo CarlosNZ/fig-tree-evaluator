@@ -306,3 +306,45 @@ const fig = new FigTree({ missingPathDefault: null })
   older Expressive Code (0.41) than Starlight bundles (0.44), and works with it. Its version is
   pinned, so an update can't change that unnoticed.
 </Aside>
+
+## Code colours
+
+Every colour the code blocks use, in one block per language: keys, strings, numbers, booleans and `null`, comments and punctuation in JSON5, and keywords, function names and types as well in TypeScript.
+
+```json5 title="Every JSON5 colour"
+{
+  // A line comment
+  /* A block comment */
+  unquoted: 'a single-quoted string',
+  'quoted key': "a double-quoted string",
+  numbers: [42, -2.5, 0x1f, 1e3],
+  literals: [true, false, null],
+  node: { $plus: ['$data.count', 2] },
+}
+```
+
+```ts title="Every TypeScript colour"
+// A line comment
+/* A block comment */
+import { FigTree } from 'fig-tree-evaluator'
+
+interface Settings {
+  timeout: number
+  label?: string
+}
+
+type Mode = 'strict' | 'lenient'
+
+export async function isLarge(settings: Settings, mode: Mode): Promise<boolean> {
+  const fig = new FigTree({ timeout: settings.timeout ?? 5000 })
+  const result = await fig.evaluate({ $plus: [1, -2.5, 0x1f] })
+  if (result === null || mode === 'lenient') return false
+  return typeof result === 'number' && result > 3
+}
+```
+
+<Aside type="tip" title="Element: code colours">
+  The colours come from `src/styles/palettes.mjs`, which sets one per role: keys, strings,
+  numbers, other literals, keywords, function names and types, and greys for comments and
+  punctuation. The playground's JSON5 pane uses the same colours.
+</Aside>

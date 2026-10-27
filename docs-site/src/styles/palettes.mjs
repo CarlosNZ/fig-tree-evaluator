@@ -31,7 +31,8 @@ export const PALETTE = 'green'
  * @property {string} text
  * @property {string} key       object keys
  * @property {string} string
- * @property {string} literal   numbers, booleans, null
+ * @property {string} number
+ * @property {string} literal   booleans, null
  * @property {string} keyword
  * @property {string} fn        function names
  * @property {string} type
@@ -49,8 +50,13 @@ export const PALETTE = 'green'
  * @typedef {object} Spec
  * @property {{ h: number, c: number }} gray    the surfaces' hue and chroma
  * @property {{ h: number, c: number }} accent
- * @property {Record<'key' | 'string' | 'literal' | 'keyword' | 'fn' | 'type', number>} syntax
- *   a hue per role
+ * @property {Record<SyntaxRole, number>} syntax  a hue per role
+ * @property {Partial<Record<SyntaxRole, { L: number, h: number }>>} [lightSyntax]
+ *   a light-mode lightness and hue for a role whose colour would come out
+ *   dull on the shared ladder: a dark amber is out of sRGB's reach, and its
+ *   chroma is cut until it fits
+ *
+ * @typedef {'key' | 'string' | 'number' | 'literal' | 'keyword' | 'fn' | 'type'} SyntaxRole
  */
 
 // ── OKLCH → sRGB hex ──────────────────────────────────────────────────────
@@ -128,19 +134,23 @@ const buildMode = (spec, type) => {
   )
   const sL = dark ? 0.78 : 0.47
   const sC = dark ? 0.12 : 0.13
-  const s = spec.syntax
+  const syntax = (/** @type {SyntaxRole} */ role) => {
+    const override = dark ? undefined : spec.lightSyntax?.[role]
+    return override ? oklch(override.L, sC, override.h) : oklch(sL, sC, spec.syntax[role])
+  }
   return {
     grays,
     accent,
     current: { bg: accent[0], text: accent[2] },
     code: {
       text: grays[1],
-      key: oklch(sL, sC, s.key),
-      string: oklch(sL, sC, s.string),
-      literal: oklch(sL, sC, s.literal),
-      keyword: oklch(sL, sC, s.keyword),
-      fn: oklch(sL, sC, s.fn),
-      type: oklch(sL, sC, s.type),
+      key: syntax('key'),
+      string: syntax('string'),
+      number: syntax('number'),
+      literal: syntax('literal'),
+      keyword: syntax('keyword'),
+      fn: syntax('fn'),
+      type: syntax('type'),
       comment: gray(dark ? 0.66 : 0.51, 0.8),
       punct: gray(dark ? 0.74 : 0.44, 0.6),
     },
@@ -153,14 +163,17 @@ const specs = {
   blue: {
     gray: { h: 252, c: 0.028 },
     accent: { h: 250, c: 0.15 },
-    syntax: { key: 250, string: 150, literal: 30, keyword: 305, fn: 210, type: 85 },
+    syntax: { key: 250, string: 150, number: 30, literal: 30, keyword: 305, fn: 210, type: 85 },
   },
   // The logo's green (#3b6c34 at the light accent's lightness), over faintly
   // sage greys
   green: {
     gray: { h: 140, c: 0.015 },
     accent: { h: 140, c: 0.115 },
-    syntax: { key: 165, string: 70, literal: 30, keyword: 320, fn: 235, type: 195 },
+    syntax: { key: 240, string: 70, number: 300, literal: 30, keyword: 345, fn: 285, type: 195 },
+    // Light strings as a burnt orange, since amber at the ladder's lightness
+    // is brown
+    lightSyntax: { string: { L: 0.52, h: 55 } },
   },
 }
 
@@ -186,6 +199,7 @@ const modeVars = ({ grays, accent, current, code }, light) => {
     `--fds-current-text: ${current.text};`,
     `--fds-code-key: ${code.key};`,
     `--fds-code-string: ${code.string};`,
+    `--fds-code-number: ${code.number};`,
     `--fds-code-literal: ${code.literal};`,
     `--fds-code-comment: ${code.comment};`,
     `--fds-code-punct: ${code.punct};`,
@@ -211,7 +225,11 @@ export const paletteCss = () =>
  * grammar and TypeScript. JSON5 scopes an unquoted key `string.key`, but a
  * quoted one only `string.quoted`, which a value's string is too; a quoted
  * key's string is the dictionary's child, where a value's is nested in
- * `dictionary.value` or an array.
+ * `dictionary.value` or an array. The grammar doesn't allow `$` in an
+ * unquoted key, though JSON5 does, and scopes an operator key's `$` as an
+ * illegal character before the key, so it is coloured as the key too. JSON5's
+ * numbers are `constant.dec.numeric` and `constant.hex.numeric`, which
+ * `constant.numeric` doesn't match.
  *
  * @param {'dark' | 'light'} type
  */
@@ -228,12 +246,14 @@ export const codeTheme = (type) => {
         'string.key',
         'meta.structure.dictionary.json5 > string.quoted',
         'meta.structure.dictionary.json5 > string.quoted > punctuation.definition.string',
+        'meta.structure.dictionary.json5 > invalid.illegal.expected-dictionary-separator',
         'meta.object-literal.key',
         'support.type.property-name',
       ],
       c.key,
     ],
-    [['constant', 'constant.numeric', 'constant.language'], c.literal],
+    [['constant', 'constant.language'], c.literal],
+    [['constant.numeric', 'constant.dec.numeric', 'constant.hex.numeric'], c.number],
     [['keyword', 'storage', 'storage.type', 'storage.modifier', 'keyword.control'], c.keyword],
     [['entity.name.function', 'support.function', 'meta.function-call'], c.fn],
     [['entity.name.type', 'entity.name.class', 'support.type', 'support.class'], c.type],

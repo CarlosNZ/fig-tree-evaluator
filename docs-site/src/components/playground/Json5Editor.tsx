@@ -13,7 +13,8 @@ import { json5, json5Language } from 'codemirror-json5'
 const highlighting = HighlightStyle.define([
   { tag: tags.propertyName, color: 'var(--fds-code-key)' },
   { tag: tags.string, color: 'var(--fds-code-string)' },
-  { tag: [tags.number, tags.bool, tags.null], color: 'var(--fds-code-literal)' },
+  { tag: tags.number, color: 'var(--fds-code-number)' },
+  { tag: [tags.bool, tags.null], color: 'var(--fds-code-literal)' },
   { tag: [tags.lineComment, tags.blockComment], color: 'var(--fds-code-comment)' },
   { tag: [tags.brace, tags.squareBracket, tags.separator], color: 'var(--fds-code-punct)' },
 ])
