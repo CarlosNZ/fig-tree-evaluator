@@ -35,6 +35,7 @@ pnpm differential 42 57   # those cases in full: expression, conversion, issues,
 pnpm differential --check # fail on any case that moved from differential/baseline.json (--accept writes it)
 pnpm differential --record-sql  # re-record differential/sqlRecordings.ts from a live Northwind Postgres
 pnpm release [--dry-run]  # prompt for a version, check CHANGELOG, bump, run CI, tag, publish (codegen/release.mjs)
+pnpm build:logo           # rebuild images/logo/ from codegen/logo/ (setup in codegen/logo/README.md)
 pnpm dev [name]           # run src/dev/<name>.ts (default: the gitignored playground); `pnpm dev list` shows them
 pnpm dev phase4_showcase  # the per-phase showcase: a range of expressions with their printed results
 pnpm docs:dev             # the docs site's dev server (docs-site/, http://localhost:4321)

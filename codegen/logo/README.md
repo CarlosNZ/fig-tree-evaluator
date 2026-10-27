@@ -50,8 +50,10 @@ IBM Plex Sans Condensed Regular is read from `.cache/` or, failing that, from th
 ## Build
 
 ```bash
-node codegen/logo/build.mjs
+pnpm build:logo
 ```
+
+This runs `node codegen/logo/build.mjs`.
 
 The build also writes previews to `codegen/logo/preview/`, which git ignores. Each shows a file on the background it's made for (white, GitHub dark or leaf green), filling exactly the file's own canvas so its real edges are visible. The tile is shown clipped to iOS's rounded mask. `preview/sheet.svg` puts them all on one page, with the favicon at its real sizes too.
 
