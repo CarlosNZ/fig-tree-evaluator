@@ -1,5 +1,7 @@
 import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+import { distance } from './distance'
 import { formatNumber } from './formatNumber'
+import { hash } from './hash'
 
 /**
  * The custom operators the Custom operators pages' examples use, one file
@@ -10,4 +12,4 @@ import { formatNumber } from './formatNumber'
  * <Expression> and <Playground>): everywhere else, the site's editors and
  * the operator reference know only the package's own operators.
  */
-export const customOperators: ValidatedOperatorDefinition[] = [formatNumber]
+export const customOperators: ValidatedOperatorDefinition[] = [formatNumber, hash, distance]
