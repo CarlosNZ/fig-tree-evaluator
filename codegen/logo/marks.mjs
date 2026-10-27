@@ -16,7 +16,9 @@ export const COLUMN = 400
 export const BASELINES = [40, 88, 136]
 
 const NODE = { r: 9.5, w: 4.5, gap: 8 }
-const ROOT = { r: 20, w: 8 }
+// `lift` raises the root above the middle line's node, so the middle arm
+// curves down into it
+export const ROOT = { r: 20, w: 8, lift: 0 }
 
 // The outer arms: `leave` is the compass angle each leaves the root at, and
 // `hold` how long it keeps that direction before levelling out into its node,
@@ -35,7 +37,7 @@ export const ARMS = {
 // the middle node. Returns the drawing and its left, top and bottom edges.
 export const lockupGraph = (starts, middles, reach, arms = ARMS) => {
   const nodes = starts.map((x, i) => [x - NODE.gap - NODE.r, middles[i]])
-  const R = [nodes[1][0] - reach, middles[1]]
+  const R = [nodes[1][0] - reach, middles[1] - ROOT.lift]
   // Edges run from the root's rim to each ring's outer edge, so no line enters
   // a ring
   const into = (n) => [n[0] - NODE.r + 0.5, n[1]]
