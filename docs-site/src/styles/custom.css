@@ -94,11 +94,28 @@
   max-width: 48rem;
 }
 
+/*
+ * The hero's image is the logo's icon, sized with the title: a multiple of
+ * the title's font size (Starlight's, in Hero.astro). Above the title it is
+ * 2.5 times; beside it, from 50rem, 3.25 times, which is 13rem beside the
+ * full-size title.
+ */
+:root[data-has-hero] .hero > img {
+  --fds-hero-icon-scale: 2.5;
+  width: calc(
+    var(--fds-hero-icon-scale) * clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl))
+  );
+}
+
 @media (min-width: 50rem) {
-  /* Starlight's layout keeps a column for a hero image, which we don't use */
+  /* The icon beside the title and tagline */
   :root[data-has-hero] .hero {
-    grid-template-columns: 100%;
+    grid-template-columns: 1fr auto;
     padding-block: clamp(1.75rem, calc(0.75rem + 6.5vmin), 6.5rem);
+  }
+
+  :root[data-has-hero] .hero > img {
+    --fds-hero-icon-scale: 3.25;
   }
 }
 
