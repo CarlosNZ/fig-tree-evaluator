@@ -332,6 +332,8 @@ Checks an operator definition, and returns it ready to register.
 - In TypeScript, the `params` the `evaluate` body receives are typed from the parameter declarations ([Typed `params`](/custom-operators/parameters/#typed-params)).
 - Given a definition it has already returned, it returns that same definition.
 
+{/* NOTE (from The evaluate function): the checks on what `evaluate` returns, in full. `undefined` becomes `null`. A `NaN` fails the node with `non-finite-result`, but only from an operator whose `returns` includes `'number'`: one returning `'any'`, such as `get`, passes a `NaN` from the data on unchanged. An infinity is a number, so it passes; `divide` checks for one itself (src/operators/shared.ts, overflowChecked). A returned lazy handle fails with `escaped-handle` (covered on Lazy and per-element parameters). Source: normalizeResult in src/evaluate/operator.ts. */}
+
 **See also:** [`defineOperator()`](/custom-operators/writing/#defineoperator)
 
 ### `OperatorFailure`
@@ -420,7 +422,7 @@ Every category an operator can belong to.
 
 ## Engine-parity helpers
 
-The functions FigTree's own operators use, so a custom operator can behave exactly as the core ones do. [Matching core behaviour](/custom-operators/evaluate/#matching-core-behaviour) says when you'd want them.
+The functions FigTree's own operators use, so a custom operator can behave exactly as the core ones do. [Operator helpers](/custom-operators/evaluate/#operator-helpers) says when you'd want them.
 
 ### `isTruthy()`
 
