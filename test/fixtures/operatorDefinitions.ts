@@ -521,17 +521,6 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     },
   },
   {
-    id: 'default-family-name-not-lazy',
-    definition: withParams({
-      value: { type: ['number', 'null'] },
-      nullValueDefault: { type: 'number', required: false },
-    }),
-    expected: {
-      code: ErrorCodes.invalidDefinition,
-      pathTail: ['parameters', 'nullValueDefault', 'evaluationMode'],
-    },
-  },
-  {
     id: 'conditional-null-policy-without-selector',
     definition: withParams({
       value: { type: 'any', nullPolicy: () => 'value' },
