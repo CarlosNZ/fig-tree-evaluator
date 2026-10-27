@@ -134,7 +134,7 @@ export const runNode = async (
     const outcomes = outcomesOf(child, declared)
     // An `each` walked once comes to the same for every element, as far as
     // the walk knows
-    const once = declared.evaluation === 'perElement' && child.at === undefined
+    const once = declared.evaluationMode === 'perElement' && child.at === undefined
     return { child, outcomes: once && outcomes.length > 1 ? [UNKNOWN] : outcomes }
   })
   const count = () =>
@@ -207,7 +207,7 @@ export const runNode = async (
  * an element is judged for truthiness only.
  */
 const handedBack = (child: Child, declared: ValidatedParameter): Known =>
-  child.at === undefined || declared.evaluation === 'perElement'
+  child.at === undefined || declared.evaluationMode === 'perElement'
     ? vetted(declared, child.result.output)
     : declared.truthiness
       ? ofType('boolean')
@@ -262,7 +262,7 @@ const runOnce = async (
   for (const [child, outcome] of chosen) {
     const declared = parameters[child.param]
     // The engine starts a race's every element before the layers run
-    if (declared.evaluation === 'race') reached.add(child)
+    if (declared.evaluationMode === 'race') reached.add(child)
     if (!inputs.consulted.has(child.param)) continue
     // A holder the layers ask for, with no value to give
     if (!('value' in outcome)) return undefined
@@ -397,7 +397,7 @@ const runOnce = async (
   /** A value that has passed its layers, delivered as its mode has it. */
   const whole = (value: unknown, declared: ValidatedParameter): unknown => {
     const vet = vetElement(declared)
-    switch (declared.evaluation) {
+    switch (declared.evaluationMode) {
       case 'lazyElements':
         return (value as unknown[]).map((element) => handle(() => Promise.resolve(vet(element))))
       case 'race':
@@ -423,18 +423,18 @@ const runOnce = async (
     byParam.set(child.param, [...(byParam.get(child.param) ?? []), child])
   const params: Record<string, unknown> = {}
   for (const [name, declared] of Object.entries(parameters)) {
-    if (declared.evaluation === 'perElement' || declared.replacesNullAt !== undefined) continue
+    if (declared.evaluationMode === 'perElement' || declared.replacesNullAt !== undefined) continue
     const children = byParam.get(name)
     if (children !== undefined) {
       const vet = vetElement(declared)
-      if (declared.evaluation === 'lazy')
+      if (declared.evaluationMode === 'lazy')
         params[name] = handle(() => answer(children[0], vetParameter(name, declared)))
-      else if (declared.evaluation === 'race')
+      else if (declared.evaluationMode === 'race')
         params[name] = stream(
           children.map((child, index) => ({ index, child })),
           vet
         )
-      else if (declared.evaluation === 'lazyElements')
+      else if (declared.evaluationMode === 'lazyElements')
         params[name] = children.map((child) => handle(() => answer(child, vet)))
       else {
         const entries: Record<string, unknown> = {}

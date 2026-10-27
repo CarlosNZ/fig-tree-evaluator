@@ -723,23 +723,25 @@ const nullOutcomeOf = (
   parameter: ParameterInfo,
   parameters: Record<string, ParameterInfo>
 ): CatalogParameter['nullOutcome'] => {
-  const { type, evaluation } = parameter
+  const { type, evaluationMode } = parameter
   if (parameter.replacesNullAt) return 'none'
   // A binding name must be a literal string, so a null there is a compile
   // error (invalid-as)
   if (
     name === 'as' &&
-    evaluation === 'structural' &&
-    Object.values(parameters).some((sibling) => sibling.evaluation === 'perElement')
+    evaluationMode === 'structural' &&
+    Object.values(parameters).some((sibling) => sibling.evaluationMode === 'perElement')
   )
     return 'error'
   // A handle is checked when the body demands it, with no default to fall
   // back on; every other delivery is resolved before the body runs
   if (![type].flat().some((member) => member === 'null' || member === 'any'))
-    return parameter.required || evaluation === 'lazy' || evaluation === 'perElement'
+    return parameter.required || evaluationMode === 'lazy' || evaluationMode === 'perElement'
       ? 'error'
       : 'unset'
-  return evaluation === 'eager' || evaluation === 'structural' ? parameter.nullPolicy : 'value'
+  return evaluationMode === 'eager' || evaluationMode === 'structural'
+    ? parameter.nullPolicy
+    : 'value'
 }
 
 /** `from`'s own entries written onto `onto`, except any set to `undefined`. */

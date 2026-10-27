@@ -19,8 +19,8 @@ export const ifOp = () =>
     category: 'other',
     parameters: {
       condition: { type: 'any', truthiness: true },
-      then: { type: 'any', evaluation: 'lazy' },
-      else: { type: 'any', evaluation: 'lazy', default: null },
+      then: { type: 'any', evaluationMode: 'lazy' },
+      else: { type: 'any', evaluationMode: 'lazy', default: null },
     },
     positionalParams: ['condition', 'then', 'else'],
     evaluate: noop,
@@ -105,8 +105,8 @@ export const mapOp = () =>
     category: 'other',
     parameters: {
       input: { type: 'array' },
-      each: { type: 'any', evaluation: 'perElement', over: 'input' },
-      as: { type: 'string', required: false, evaluation: 'structural' },
+      each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
+      as: { type: 'string', required: false, evaluationMode: 'structural' },
     },
     positionalParams: ['input', 'each'],
     returns: 'array',
@@ -193,7 +193,7 @@ export const orOp = () =>
   defineOperator({
     name: 'or',
     category: 'other',
-    parameters: { values: { type: 'array', truthiness: true, evaluation: 'race' } },
+    parameters: { values: { type: 'array', truthiness: true, evaluationMode: 'race' } },
     positionalParams: ['...values'],
     returns: 'boolean',
     evaluate: noop,
@@ -204,7 +204,7 @@ export const firstNonNullOp = () =>
   defineOperator({
     name: 'firstNonNull',
     category: 'other',
-    parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
+    parameters: { values: { type: 'array', evaluationMode: 'lazyElements' } },
     positionalParams: ['...values'],
     evaluate: noop,
   })
@@ -216,7 +216,7 @@ export const pickOp = () =>
     category: 'other',
     parameters: {
       label: { type: 'string' },
-      values: { type: 'array', evaluation: 'lazyElements' },
+      values: { type: 'array', evaluationMode: 'lazyElements' },
     },
     positionalParams: ['label', '...values'],
     evaluate: noop,
@@ -229,8 +229,8 @@ export const matchOp = () =>
     category: 'other',
     parameters: {
       value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
-      branches: { type: 'object', evaluation: 'lazyEntries' },
-      default: { type: 'any', required: false, evaluation: 'lazy' },
+      branches: { type: 'object', evaluationMode: 'lazyEntries' },
+      default: { type: 'any', required: false, evaluationMode: 'lazy' },
     },
     positionalParams: ['value', 'branches', 'default'],
     evaluate: noop,
@@ -244,7 +244,7 @@ export const getOp = () =>
     parameters: {
       path: { type: ['string', 'array', 'null'] },
       from: { type: 'any', nullPolicy: 'value', default: EvaluationData },
-      default: { type: 'any', required: false, evaluation: 'lazy' },
+      default: { type: 'any', required: false, evaluationMode: 'lazy' },
     },
     positionalParams: ['path', 'default'],
     evaluate: noop,

@@ -220,7 +220,8 @@ const visitOperator = (state: CheckState, node: OperatorNode) => {
   const perElement: [string, CompiledNode][] = []
   for (const name in node.params) {
     const supplied = node.params[name]
-    if (definition.parameters[name]?.evaluation === 'perElement') perElement.push([name, supplied])
+    if (definition.parameters[name]?.evaluationMode === 'perElement')
+      perElement.push([name, supplied])
     else visit(state, supplied)
   }
   if (perElement.length > 0) {
@@ -280,7 +281,7 @@ interface ReceivingDeclaration {
   required: boolean
   constraints?: Constraints
   elementNullPolicy?: unknown
-  evaluation?: EvaluationMode
+  evaluationMode?: EvaluationMode
 }
 
 /**
@@ -319,7 +320,7 @@ const checkSuppliedParam = (
   }
   // 'as' is owned by the walk (invalid-as); other structural params must be
   // literal too
-  if (supplied.kind !== 'constant' && declared.evaluation === 'structural' && name !== 'as') {
+  if (supplied.kind !== 'constant' && declared.evaluationMode === 'structural' && name !== 'as') {
     emit(
       state,
       'error',

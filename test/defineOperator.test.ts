@@ -99,7 +99,7 @@ describe('defineOperator — the validated artifact', () => {
     const value = validated.parameters.value
     expect(value.type).toBe('any')
     expect(value.required).toBe(true)
-    expect(value.evaluation).toBe('eager')
+    expect(value.evaluationMode).toBe('eager')
     expect(value.truthiness).toBe(false)
     expect(value.nullPolicy).toBe('propagate')
   })
@@ -116,8 +116,8 @@ describe('defineOperator — the validated artifact', () => {
     const validated = defineOperator(ifLike())
     expect(validated.alias).toBe('?')
     expect(validated.parameters.condition.truthiness).toBe(true)
-    expect(validated.parameters.then.evaluation).toBe('lazy')
-    expect(validated.parameters.else.evaluation).toBe('lazy')
+    expect(validated.parameters.then.evaluationMode).toBe('lazy')
+    expect(validated.parameters.else.evaluationMode).toBe('lazy')
     expect(validated.parameters.else.required).toBe(false)
     expect(validated.parameters.else.default).toBeNull()
   })
@@ -192,14 +192,14 @@ describe('defineOperator — the `…Default` naming family', () => {
       value: { type: ['number', 'null'] },
       nullValueDefault: { type: 'number', required: false },
     }
-    expect(() => defineOperator(definition)).toThrow(/must declare evaluation: 'lazy'/)
+    expect(() => defineOperator(definition)).toThrow(/must declare evaluationMode: 'lazy'/)
   })
 
   it('accepts a body-read family member — lazy, no replacesNullAt', () => {
     const definition = validDefinition()
     definition.parameters = {
       value: { type: 'number' },
-      noMatchDefault: { type: 'any', required: false, evaluation: 'lazy' },
+      noMatchDefault: { type: 'any', required: false, evaluationMode: 'lazy' },
     }
     expect(() => defineOperator(definition)).not.toThrow()
   })

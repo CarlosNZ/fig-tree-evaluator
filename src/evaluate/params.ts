@@ -96,7 +96,7 @@ export const resolveParams = async (
 
   for (const [name, declared] of entries) {
     const supplied = node.params[name]
-    switch (declared.evaluation) {
+    switch (declared.evaluationMode) {
       case 'eager':
         if (supplied !== undefined) {
           pendingNames.push(name)
@@ -154,7 +154,7 @@ export const resolveParams = async (
         // Every delivery mode is handled above, and this is what keeps
         // that true: an eighth mode added to the union fails the BUILD
         // here rather than reaching a node as a runtime surprise
-        declared.evaluation satisfies never
+        declared.evaluationMode satisfies never
     }
   }
 
@@ -207,7 +207,7 @@ export const resolveParams = async (
     //    branch was ever demanded. The derived reject (layer 5) still
     //    applies: a null container at a degenerating parameter is a type
     //    error
-    const lazily = declared.evaluation !== 'eager' && declared.evaluation !== 'structural'
+    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'structural'
     if (value === null && typeNamesNull(declared.type) && !lazily) {
       if (effectivePolicy(node, declared, resolved) === 'propagate')
         return { params, propagate: true }
@@ -380,13 +380,13 @@ const containerHandles = (
   declared: ValidatedParameter,
   ctx: EvaluationContext
 ): unknown => {
-  if (declared.evaluation === 'lazyElements' && supplied.kind === 'elements')
+  if (declared.evaluationMode === 'lazyElements' && supplied.kind === 'elements')
     return supplied.nodes.map((element, index) =>
       handleOf(async () => vetElement(await evaluateNode(element, ctx, { index }), declared))
     )
-  if (declared.evaluation === 'race' && supplied.kind === 'elements')
+  if (declared.evaluationMode === 'race' && supplied.kind === 'elements')
     return raceStream(supplied.nodes, ctx, (value) => vetElement(value, declared))
-  if (declared.evaluation === 'lazyEntries' && supplied.kind === 'entries') {
+  if (declared.evaluationMode === 'lazyEntries' && supplied.kind === 'entries') {
     // A vars block on the map scopes its branches, as on any plain literal
     const scoped = pushVars(ctx, supplied.vars)
     const entries: Record<string, LazyValue> = {}
@@ -403,7 +403,7 @@ const containerHandles = (
  * handles. A parameter with nothing to owe passes through untouched.
  */
 const wrapDelivery = (value: unknown, declared: ValidatedParameter): unknown => {
-  switch (declared.evaluation) {
+  switch (declared.evaluationMode) {
     case 'lazyElements':
       return (value as unknown[]).map((element) => settledHandle(vetElement(element, declared)))
     case 'race':

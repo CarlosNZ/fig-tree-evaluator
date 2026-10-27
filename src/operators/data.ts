@@ -31,7 +31,7 @@ export const get = declareOperator({
     default: {
       type: 'any',
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
     },
   },
   positionalParams: GET_POSITIONAL,

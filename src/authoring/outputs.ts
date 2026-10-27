@@ -153,8 +153,8 @@ const evaluate = (declared: DeclaredOutput, received: Received): Known => {
     const name = declared.param
     if (Object.hasOwn(received.elements, name)) return received.elements[name]
     const known = at(name)
-    const evaluation = received.definition.parameters[name]?.evaluation ?? 'eager'
-    return CONTAINER_LAZY.has(evaluation) ? union(elementsOf(known), valuesOf(known)) : known
+    const mode = received.definition.parameters[name]?.evaluationMode ?? 'eager'
+    return CONTAINER_LAZY.has(mode) ? union(elementsOf(known), valuesOf(known)) : known
   }
   if ('elementOf' in declared) return elementsOf(at(declared.elementOf))
   if ('kindOf' in declared) return kindOf(elementsOf(at(declared.kindOf)))

@@ -65,7 +65,7 @@ const ordering = (name: string, alias: string, holds: (comparison: number) => bo
       nullValueDefault: {
         type: ['number', 'string'],
         required: false,
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
         replacesNullAt: ['values'],
       },
     },

@@ -175,7 +175,7 @@ describe('replacesNullAt — the engine-side null replacement (ledger #18)', () 
       nullValueDefault: {
         type: 'number',
         required: false,
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
         replacesNullAt: ['target'],
       },
     })
@@ -192,7 +192,7 @@ describe('replacesNullAt — the engine-side null replacement (ledger #18)', () 
       nullValueDefault: {
         type: 'number',
         required: false,
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
         replacesNullAt: ['values'],
       },
     })
@@ -209,7 +209,7 @@ describe('replacesNullAt — the engine-side null replacement (ledger #18)', () 
       nullValueDefault: {
         type: 'number',
         required: false,
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
         replacesNullAt: ['values'],
       },
     })
@@ -332,14 +332,14 @@ describe('delivery modes', () => {
   test('structural parameters arrive as their literal value', async () => {
     const spy = spyOp('struct', {
       input: { type: 'array' },
-      as: { type: 'string', required: false, evaluation: 'structural' },
+      as: { type: 'string', required: false, evaluationMode: 'structural' },
     })
     await figWith([spy]).evaluate({ $struct: { input: [1], as: 'row' } })
     expect(spy.calls).toEqual([{ input: [1], as: 'row' }])
   })
 
   test('a plain lazy parameter arrives as a handle, not a value', async () => {
-    const spy = spyOp('lazyish', { branch: { type: 'any', evaluation: 'lazy' } })
+    const spy = spyOp('lazyish', { branch: { type: 'any', evaluationMode: 'lazy' } })
     await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
     const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
     expect(typeof branch.evaluate).toBe('function')
@@ -349,7 +349,7 @@ describe('delivery modes', () => {
     // The node's abort scope closes when the body settles, so a handle kept
     // past that point evaluates nothing — the runtime half of the rule the
     // escaped-handle guard enforces at the boundary
-    const spy = spyOp('lazyish', { branch: { type: 'any', evaluation: 'lazy' } })
+    const spy = spyOp('lazyish', { branch: { type: 'any', evaluationMode: 'lazy' } })
     await figWith([spy]).evaluate({ $lazyish: { branch: 1 } })
     const branch = spy.calls[0].branch as { evaluate: () => Promise<unknown> }
     await expect(branch.evaluate()).rejects.toThrow(/cancelled/)
@@ -362,7 +362,7 @@ describe('delivery modes', () => {
     // error rather than something a test could reach
     const spy = spyOp('iterish', {
       input: { type: 'array' },
-      each: { type: 'any', evaluation: 'perElement', over: 'input' },
+      each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
     })
     await figWith([spy]).evaluate({ $iterish: { input: ['a', 'b'], each: 1 } })
     const each = spy.calls[0].each as PerElement

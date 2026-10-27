@@ -1268,7 +1268,7 @@ describe('per-element walks', () => {
       category: 'array',
       parameters: {
         input: { type: 'array' },
-        each: { type: 'any', evaluation: 'perElement', over: 'input' },
+        each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
       },
       positionalParams: ['input', 'each'],
       analysis: {},

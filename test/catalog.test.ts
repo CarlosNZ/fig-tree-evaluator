@@ -142,7 +142,7 @@ describe('operatorListings', () => {
     // rest of the node reads, so adding one is a rename for the editor to
     // carry through, not a starting value to check in isolation
     const optional = Object.entries(op.parameters).filter(
-      ([, declared]) => !declared.required && declared.evaluation !== 'structural'
+      ([, declared]) => !declared.required && declared.evaluationMode !== 'structural'
     )
     if (optional.length > 0)
       test.each(optional.map(([parameter]) => parameter))(
@@ -158,7 +158,7 @@ describe('operatorListings', () => {
       )
 
     const structural = Object.entries(op.parameters).filter(
-      ([, declared]) => declared.evaluation === 'structural'
+      ([, declared]) => declared.evaluationMode === 'structural'
     )
     if (structural.length > 0)
       test.each(structural.map(([parameter]) => parameter))(
@@ -436,8 +436,8 @@ describe('getCatalog', () => {
             type: 'any',
             nullPolicy: (mode: string) => (mode === 'keep' ? 'value' : 'propagate'),
           },
-          branch: { type: 'any', evaluation: 'lazy' },
-          strictBranch: { type: 'number', evaluation: 'lazy', required: false },
+          branch: { type: 'any', evaluationMode: 'lazy' },
+          strictBranch: { type: 'number', evaluationMode: 'lazy', required: false },
           items: { type: 'array', elementNullPolicy: 'propagate' },
           entries: { type: 'object', required: false },
           numbers: { type: 'array', constraints: { homogeneous: ['number'] }, required: false },
@@ -447,11 +447,11 @@ describe('getCatalog', () => {
             constraints: { elementShape: { id: { type: 'number' } } },
             required: false,
           },
-          each: { type: 'any', evaluation: 'perElement', over: 'items' },
-          as: { type: 'string', evaluation: 'structural', required: false },
+          each: { type: 'any', evaluationMode: 'perElement', over: 'items' },
+          as: { type: 'string', evaluationMode: 'structural', required: false },
           nullValueDefault: {
             type: 'number',
-            evaluation: 'lazy',
+            evaluationMode: 'lazy',
             required: false,
             replacesNullAt: ['items'],
           },
@@ -516,16 +516,16 @@ describe('getCatalog', () => {
         evaluate: async (params: Record<string, unknown>, context: OperatorContext) => {
           if (operator.name !== underTest.operator) return operator.evaluate(params, context)
           const name = underTest.parameter
-          const { evaluation } = operator.parameters[name]
+          const { evaluationMode } = operator.parameters[name]
           const value = params[name]
           // A handle is demanded here, while the node is still running
           received = {
             has: Object.hasOwn(params, name),
             value: underTest.element
-              ? await probedElement(value, evaluation)
-              : evaluation === 'lazy'
+              ? await probedElement(value, evaluationMode)
+              : evaluationMode === 'lazy'
                 ? await (value as LazyValue).evaluate()
-                : evaluation === 'perElement'
+                : evaluationMode === 'perElement'
                   ? await (value as PerElement).evaluate(0)
                   : value,
           }
@@ -534,8 +534,8 @@ describe('getCatalog', () => {
       }))
       // The element a test puts the null in: an array's last, or an object's
       // `probe` value, through whichever delivery the parameter declares
-      const probedElement = async (value: unknown, evaluation: string): Promise<unknown> => {
-        switch (evaluation) {
+      const probedElement = async (value: unknown, mode: string): Promise<unknown> => {
+        switch (mode) {
           case 'lazyElements':
             return (value as LazyValue[]).at(-1)!.evaluate()
           case 'lazyEntries':
@@ -589,7 +589,7 @@ describe('getCatalog', () => {
       test.each(cases)('%s', async (_, operator, name, parameter) => {
         underTest = { operator: operator.name, parameter: name, element: false }
         // A structural parameter takes only a literal
-        const missing = parameter.evaluation === 'structural' ? null : { operator: 'nothing' }
+        const missing = parameter.evaluationMode === 'structural' ? null : { operator: 'nothing' }
         const node = { ...startingNode(operator), [name]: missing }
         const { nullOutcome } = parameter
         if (typeof nullOutcome === 'string') {

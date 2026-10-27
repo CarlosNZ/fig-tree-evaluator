@@ -13,7 +13,7 @@
  *     the body; `nullPolicy: 'value'` keeps it; a conditional policy keeps
  *     it (either may apply);
  *   - `truthiness: true` → `boolean` (`boolean[]` for an array position);
- *   - `evaluation: 'lazy'` → `LazyValue<T>`, `'perElement'` →
+ *   - `evaluationMode: 'lazy'` → `LazyValue<T>`, `'perElement'` →
  *     `PerElement<T>`, `'lazyElements'` → `LazyValue<T>[]`,
  *     `'lazyEntries'` → `Record<string, LazyValue<T>>`, `'race'` →
  *     `SettlementStream`, `'structural'` → the literal type;
@@ -92,17 +92,17 @@ type Truthy<P> = P extends { type: 'array' }
  * position delivers `PerElement<boolean>` — never `Truthy<P>`, which would
  * read a container type as per-element booleans.
  */
-export type ParamValue<P> = P extends { evaluation: 'structural' }
+export type ParamValue<P> = P extends { evaluationMode: 'structural' }
   ? TypeOf<DeclaredType<P>>
-  : P extends { evaluation: 'race' }
+  : P extends { evaluationMode: 'race' }
     ? SettlementStream
-    : P extends { evaluation: 'lazyElements' }
+    : P extends { evaluationMode: 'lazyElements' }
       ? LazyValue[]
-      : P extends { evaluation: 'lazyEntries' }
+      : P extends { evaluationMode: 'lazyEntries' }
         ? Record<string, LazyValue>
-        : P extends { evaluation: 'perElement' }
+        : P extends { evaluationMode: 'perElement' }
           ? PerElement<P extends { truthiness: true } ? boolean : Delivered<P>>
-          : P extends { evaluation: 'lazy' }
+          : P extends { evaluationMode: 'lazy' }
             ? LazyValue<Delivered<P>>
             : P extends { truthiness: true }
               ? Truthy<P>

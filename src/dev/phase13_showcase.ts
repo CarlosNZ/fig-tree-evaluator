@@ -115,7 +115,7 @@ const parameterLine = (name: string, info: OperatorInfo): string => {
   if (!parameter.required) bits.push('optional')
   if (Object.hasOwn(parameter, 'default')) bits.push(`default ${block(parameter.default)}`)
   if (Object.hasOwn(parameter, 'hostDefault')) bits.push(`host ${block(parameter.hostDefault)}`)
-  if (parameter.evaluation !== 'eager') bits.push(parameter.evaluation)
+  if (parameter.evaluationMode !== 'eager') bits.push(parameter.evaluationMode)
   return `      ${name.padEnd(16)}${bits.join(', ')}`
 }
 

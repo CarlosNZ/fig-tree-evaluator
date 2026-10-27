@@ -19,8 +19,8 @@ const mapish = defineOperator({
   category: 'other',
   parameters: {
     input: { type: 'array' },
-    each: { type: 'any', evaluation: 'perElement', over: 'input' },
-    as: { type: 'string', required: false, evaluation: 'structural' },
+    each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
+    as: { type: 'string', required: false, evaluationMode: 'structural' },
   },
   positionalParams: ['input', 'each'],
   returns: 'array',
