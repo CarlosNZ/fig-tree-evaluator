@@ -42,14 +42,6 @@ import { REST_PREFIX, assembleOperator, type Path } from './buildOperator'
 import { isLiteralType } from './typeIntersection'
 import { checkAnalysis } from './analysisCheck'
 
-/**
- * The `…Default` naming family (contract, Registration & validation). The
- * suffix is a convention for readers, so the check keyed off it reads the
- * name alone; the bare word `default` sits outside the pattern
- * deliberately — `match.default` is an established term.
- */
-const DEFAULT_FAMILY = /[a-z]Default$/
-
 const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'eager',
   'race',
@@ -529,19 +521,6 @@ export function defineOperator(
           paramName
         )
     })
-  }
-
-  // A `…Default`-named parameter left in eager delivery defaults nothing:
-  // it resolves as ordinary data the body ignores, and the node silently
-  // does the un-defaulted thing
-  for (const [paramName, d] of Object.entries(declarations)) {
-    if (!DEFAULT_FAMILY.test(paramName) || d.evaluationMode === 'lazy') continue
-    addIssue(
-      ErrorCodes.invalidDefinition,
-      `'${paramName}' is named for the '…Default' family, so it must declare evaluationMode: 'lazy' — add 'replacesNullAt', read it as a LazyValue in the body, or rename it`,
-      ['parameters', paramName, 'evaluationMode'],
-      paramName
-    )
   }
 
   // Conditional null policies, compiled here so that a failure reports

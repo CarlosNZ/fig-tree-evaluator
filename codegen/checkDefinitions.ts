@@ -1,7 +1,8 @@
 /*
 Runs the package's own operator definitions — the core operators and the
 I/O operators — through `defineOperator()`'s full checks, and fails if any
-is malformed.
+is malformed. They are also held to the `…Default` naming family
+(codegen/defaultFamily.ts), which `defineOperator()` leaves to hosts.
 
 The package builds these with `buildOperator` (src/buildOperator.ts), which
 trusts its input so that a bundle importing only `FigTree` and
@@ -11,10 +12,14 @@ test/package-definitions.test.ts, which also holds each built artifact equal
 to the checked one.
 */
 import { defineOperator } from '../src/defineOperator'
+import { defaultFamilyIssues } from './defaultFamily'
 import { packageDefinitions } from './packageDefinitions'
 
 const definitions = packageDefinitions()
 
 for (const definition of definitions) defineOperator(definition)
+
+const issues = definitions.flatMap(defaultFamilyIssues)
+if (issues.length > 0) throw new Error(issues.join('\n'))
 
 console.log(`Checked ${definitions.length} package operator definitions`)

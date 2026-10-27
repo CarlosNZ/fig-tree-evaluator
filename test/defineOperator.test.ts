@@ -185,28 +185,15 @@ describe('defineOperator — `category`', () => {
   })
 })
 
-describe('defineOperator — the `…Default` naming family', () => {
-  it('rejects a family-named parameter left in eager delivery', () => {
+describe('defineOperator — parameter names', () => {
+  // The `…Default` family is held only over the package's own definitions
+  // (test/package-definitions.test.ts)
+  it('accepts an eager parameter named with the `…Default` suffix', () => {
     const definition = validDefinition()
     definition.parameters = {
-      value: { type: ['number', 'null'] },
-      nullValueDefault: { type: 'number', required: false },
+      address: { type: 'object' },
+      countryDefault: { type: 'string', default: 'NZ' },
     }
-    expect(() => defineOperator(definition)).toThrow(/must declare evaluationMode: 'lazy'/)
-  })
-
-  it('accepts a body-read family member — lazy, no replacesNullAt', () => {
-    const definition = validDefinition()
-    definition.parameters = {
-      value: { type: 'number' },
-      noMatchDefault: { type: 'any', required: false, evaluationMode: 'lazy' },
-    }
-    expect(() => defineOperator(definition)).not.toThrow()
-  })
-
-  it('leaves the bare word `default` outside the pattern (match.default)', () => {
-    const definition = validDefinition()
-    definition.parameters = { value: { type: 'any' }, default: { type: 'any' } }
     expect(() => defineOperator(definition)).not.toThrow()
   })
 })

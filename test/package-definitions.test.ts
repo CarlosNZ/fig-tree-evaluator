@@ -8,7 +8,9 @@
  * are checked instead: each literal as authored goes through
  * `defineOperator()`, which throws on any violation, and the artifact the
  * package ships must equal what that produces — fingerprint and every
- * derived field included. codegen/checkDefinitions.ts repeats the checks in
+ * derived field included. The `…Default` naming family, which
+ * `defineOperator()` leaves to hosts, is checked here over the package's
+ * definitions too. codegen/checkDefinitions.ts repeats both checks in
  * `pnpm build`, which is what `prepublishOnly` runs.
  */
 import { defineOperator } from '../src'
@@ -16,6 +18,9 @@ import { buildOperator } from '../src/buildOperator'
 import { coreDefinitions, coreOperators } from '../src/operators'
 import { graphQLDefinition, httpDefinition, sqlDefinition } from '../src/operators/io'
 import { MockHttpClient, MockSqlConnection } from './helpers'
+import { validDefinition } from './fixtures/operatorDefinitions'
+import { defaultFamilyIssues } from '../codegen/defaultFamily'
+import { packageDefinitions } from '../codegen/packageDefinitions'
 
 describe('core definitions', () => {
   test('one built artifact per authored definition, in the same order', () => {
@@ -41,5 +46,40 @@ describe('I/O definitions', () => {
     ['sql', sqlDefinition(connection)],
   ] as const)('%s passes the checks and builds what defineOperator() builds', (_, definition) => {
     expect(buildOperator(definition)).toStrictEqual(defineOperator(definition))
+  })
+})
+
+describe('the `…Default` naming family', () => {
+  test.each(packageDefinitions().map((definition) => [definition.name, definition] as const))(
+    '%s declares every family-named parameter lazy',
+    (_, definition) => {
+      expect(defaultFamilyIssues(definition)).toEqual([])
+    }
+  )
+
+  test('flags a family-named parameter left in eager delivery', () => {
+    const definition = validDefinition()
+    definition.parameters = {
+      value: { type: ['number', 'null'] },
+      nullValueDefault: { type: 'number', required: false },
+    }
+    expect(defaultFamilyIssues(definition)).toEqual([
+      expect.stringMatching(/'nullValueDefault'.*must declare evaluationMode: 'lazy'/),
+    ])
+  })
+
+  test('accepts a body-read family member — lazy, no replacesNullAt', () => {
+    const definition = validDefinition()
+    definition.parameters = {
+      value: { type: 'number' },
+      noMatchDefault: { type: 'any', required: false, evaluationMode: 'lazy' },
+    }
+    expect(defaultFamilyIssues(definition)).toEqual([])
+  })
+
+  test('leaves the bare word `default` outside the pattern (match.default)', () => {
+    const definition = validDefinition()
+    definition.parameters = { value: { type: 'any' }, default: { type: 'any' } }
+    expect(defaultFamilyIssues(definition)).toEqual([])
   })
 })
