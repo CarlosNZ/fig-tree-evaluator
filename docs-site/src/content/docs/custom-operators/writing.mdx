@@ -77,7 +77,7 @@ Now it can be used in a normal expression, with its parameters given by name or 
 
 ## What the engine does for you
 
-The `evaluate` function of `formatNumber` is a simple one-liner. It never checks what it's given — it doesn't need to: FigTree handles the parameters before calling it, and its result afterwards. So `evaluate` holds only the operator's own logic.
+The `evaluate` function of `formatNumber` is a simple one-liner. It never checks what it's given — it doesn't need to: FigTree handles the parameters before calling it, and its result afterwards. So `evaluate` holds only the operator's own logic. That handling is the same work for every operator, so it's done _once_, in FigTree, rather than repeated in every operator. And anything wrong is dealt with the same way, in one place.
 
 Before calling `evaluate`, FigTree has already (among other things):
 
