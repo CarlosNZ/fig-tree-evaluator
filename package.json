@@ -85,6 +85,7 @@
     "size:imports": "node codegen/importTree.mjs",
     "check:package": "node codegen/checkPackage.mjs",
     "compile": "rimraf ./build && tsc",
+    "build:logo": "node codegen/logo/build.mjs",
     "dev": "node codegen/dev.mjs",
     "bench": "node codegen/bench.mjs",
     "bench:browser": "node codegen/benchBrowser.mjs",
