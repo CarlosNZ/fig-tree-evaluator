@@ -2,6 +2,7 @@ import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
 import { distance } from './distance'
 import { formatNumber } from './formatNumber'
 import { hash } from './hash'
+import { sortBy } from './sortBy'
 
 /**
  * The custom operators the Custom operators pages' examples use, one file
@@ -12,4 +13,4 @@ import { hash } from './hash'
  * <Expression> and <Playground>): everywhere else, the site's editors and
  * the operator reference know only the package's own operators.
  */
-export const customOperators: ValidatedOperatorDefinition[] = [formatNumber, hash, distance]
+export const customOperators: ValidatedOperatorDefinition[] = [formatNumber, hash, distance, sortBy]
