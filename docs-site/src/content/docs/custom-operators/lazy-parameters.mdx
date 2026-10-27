@@ -15,6 +15,8 @@ import { Aside } from '@astrojs/starlight/components'
 
 What the non-eager modes are for (conditionals, iterators, short-circuiting), and the checks still applied when the body evaluates a value. `nullPolicy: 'propagate'` has no effect on these parameters, and a value that arrives dynamically (from data, say) is already resolved.
 
+{/* NOTE (from Parameters): open with a table of every mode and what `evaluate` receives for it, moved here from Parameters' "Evaluation modes" section, which now gives only the idea and links here (keep that anchor's link working). Pair each mode with its tag from the operator reference's key ("How to read this page" in reference/operators.mdx: lazy, lazy per entry, lazy in order, per element, stops early, literal only), so a reader can map the declared name to what configuration authors see. The table as drafted: 'eager' → the value; 'lazy' → a `LazyValue`, evaluated when asked for, at most once; 'lazyElements' → an array of `LazyValue`s, one for each element; 'lazyEntries' → an object of `LazyValue`s, one for each entry; 'perElement' → a `PerElement` handle, evaluated for each element of the array parameter that `over` names (as `map`'s `each` declares `over: 'input'`); 'race' → a stream of each element's result, with every element started at once; 'structural' → the value exactly as it's written, never evaluated. If #283 lands first, the field is `evaluationMode`. */}
+
 {/* NOTE (from Writing an operator): returning a handle itself (a `LazyValue`, a `PerElement` handle or a settlement stream) from `evaluate`, rather than the value it stands for, fails the node with `escaped-handle`. It's always a bug: a forgotten `.evaluate()`, as in returning `then` where `await then.evaluate()` was meant. TypeScript flags it too. Source: normalizeResult in src/evaluate/operator.ts. */}
 
 ## `lazy`
@@ -28,6 +30,8 @@ An array, or an object, of `LazyValue`s, each evaluated on its own: stopping ear
 ## `perElement`
 
 A `PerElement` handle over the `over` sibling: each index evaluated in its own scope binding `$element` and `$index`, renamed by a `structural` `as` parameter. `settle()` for every index at once.
+
+{/* NOTE (from Parameters): say why `over` is needed. A `'perElement'` parameter is the expression run for each element, not the array, so the declaration has to name the sibling that holds the array, as `map`'s `each` declares `over: 'input'`. FigTree never infers a parameter's role from its name or position, and an operator can have more than one array parameter (a zip pairing two lists, or an array-valued option beside `input`), so "the first array" or "the one called input" would be a guess. `defineOperator()` checks that `over` names a sibling array parameter. Parameters' declaration interface only glosses the field ("the other parameter, holding the array it runs over"). */}
 
 ## `race`
 

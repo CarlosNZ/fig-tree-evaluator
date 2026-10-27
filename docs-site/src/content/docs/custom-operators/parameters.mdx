@@ -5,34 +5,303 @@ sidebar:
   order: 2
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import OperatorSource from '../../../components/OperatorSource.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+An operator's `parameters` describe what it accepts — such as the _type_ of each value, whether it's _required_, and what a `null` does there. That's the idea behind every field on this page — each one is work you _declare_ rather than write. FigTree does all that work before calling `evaluate`, just as it does for the core operators ([What the engine does for you](/custom-operators/writing/#what-the-engine-does-for-you)).
+
+Most parameters need only a `type`, and perhaps a `default`. The rest of the fields are for operators that need more control, such as those that only evaluate certain parameters under specific conditions.
 
 ## Declaring parameters
 
-Names, `required` and `default`, including `default: EvaluationData`, which gives the body the evaluation's data when the parameter isn't supplied. `truthiness`, which hands the body a boolean judged the way the core operators judge it.
+Each parameter names a field on the `parameters` object, whose value is a declaration of this type:
+
+```ts
+import type {
+  Constraints,
+  EvaluationMode,
+  ExpectedType,
+  NullPolicy,
+  NullPolicyValue,
+} from 'fig-tree-evaluator'
+// ---cut---
+interface ParameterDeclaration {
+  // What the parameter accepts. Default: 'any'
+  type?: ExpectedType
+  // The value to use when the parameter isn't given. It has to fit the type
+  default?: unknown
+  // Is it required? Default: true, unless there's a default
+  required?: boolean
+  // Set to true to receive true or false in place of the value
+  truthiness?: boolean
+  // Further rules for an array
+  constraints?: Constraints
+  // What a null does here. Default: 'propagate'
+  nullPolicy?: NullPolicy
+  // What a null inside an array or object does
+  elementNullPolicy?: NullPolicyValue
+  // Replace a null in the named parameters with this parameter's value
+  replacesNullAt?: string[]
+  // When it's evaluated: up front ('eager', the default), or only as the
+  // operator needs it
+  evaluation?: EvaluationMode
+  // For 'perElement': the other parameter, holding the array it runs over
+  over?: string
+  // Anything your own tools need. FigTree never reads it
+  metadata?: Record<string, unknown>
+}
+```
+
+A parameter's name follows the [same rules as an operator's](/custom-operators/writing/#the-definition), except that only the node keys, such as `fallback` and `vars`, are reserved. So a parameter can be called `data`.
+
+### Reading the evaluation's data
+
+To have a parameter default to the evaluation's data, give it `EvaluationData` as its default. When the parameter isn't given, `evaluate` receives the whole data object in its place, but an expression can still point it at something else. This is how [`get`](/reference/operators/#op-get) reads from the data, or from its `from` value when one is supplied.
+
+Here, a `hash` operator hashes the whole data object, which would tell whether anything in a form has changed. Given a `value`, it hashes that instead:
+
+<OperatorSource name="hash" />
+
+<Expression
+  customOperators
+  title="Hashing the data"
+  code={`
+    {
+      // No value, so it hashes the whole data object
+      form: { $hash: {} },
+      billing: { $hash: '$data.billing' },
+    }
+  `}
+  data={`
+    // Change any field, and the form's hash changes. Change one in billing, and both do
+    {
+      name: 'Aroha Ngata',
+      email: 'aroha@example.com',
+      billing: { street: '12 Queen Street', city: 'Auckland' },
+    }
+  `}
+/>
+
+### Declaring a condition
+
+Where a parameter is a condition, such as `if`'s `condition` or the test in `filter`, declare it with `truthiness: true`. Whatever value the parameter receives, `evaluate` gets `true` or `false`, judged by FigTree's [truthiness rule](/concepts/evaluation/#types-and-truthiness). Here's how the core `if` operator uses it:
+
+```ts
+import { defineOperator } from 'fig-tree-evaluator'
+
+const ifOperator = defineOperator({
+  name: 'if',
+  alias: '?',
+  category: 'logic',
+  parameters: {
+    condition: { type: 'any', truthiness: true },
+    // Lazy, so only the branch it picks is evaluated
+    then: { type: 'any', evaluation: 'lazy' },
+    else: { type: 'any', evaluation: 'lazy', default: null },
+  },
+  positionalParams: ['condition', 'then', 'else'],
+  evaluate: ({ condition, then, else: otherwise }) =>
+    condition ? then.evaluate() : otherwise.evaluate(),
+})
+```
+
+Declaring it, rather than testing the value in `evaluate`, means:
+
+- **A missing condition counts as false.** Without `truthiness`, a `null` would make the whole node return `null` ([Null policy](#null-policy)), rather than take the `else` branch.
+- **Your operator agrees with the core ones** about what counts as true, since the rule is FigTree's, applied for you, not a copy of it in your own code.
+- **It works per element, too.** For a parameter evaluated once for each element, such as `filter`'s test, each element's result arrives already judged ([`perElement`](/custom-operators/lazy-parameters/#perelement)).
 
 ## Types and constraints
 
-The type vocabulary, literal types, and the constraints an array parameter can add.
+A parameter's `type` is one of:
 
-{/* NOTE (from Fragments): constraints apply to arrays only. There are three (`Constraints` in src/typeCheck.ts): `length`, the array's exact length; `homogeneous`, every element one basic type from an allowed list; and `elementShape`, every element an object of the given shape (each entry a `TypeDeclaration`: `type`, `required` (default true), nested `constraints`; extra keys on an element are allowed). Fragment parameters take the same `constraints`, and the Fragments page links its `constraints` bullet to this section. Its `averageOrder` example declares `orders` with `constraints: { elementShape: { amount: { type: 'number' } } }`: an order without an `amount` fails at the call with `type-check` ("parameter 'orders': expected property "amount", received missing"). */}
+- **A basic type:** `'string'`, `'number'`, `'integer'`, `'boolean'`, `'array'`, `'object'`, `'null'` or `'any'`. An `'integer'` is a whole number, and `'any'` accepts every value, `null` included.
+- **A list of basic types,** accepting a value of any of them, such as `['number', 'null']`.
+- **A fixed set of values,** written as `{ literal: ['km', 'mi'] }`, for a parameter that picks one of a few options. The values can be strings, numbers or booleans.
+
+A parameter that takes an array can add `constraints` — additional rules its array has to follow:
+
+- **`length`**: the array's exact length.
+- **`homogeneous`**: every element is the same type, one of those listed. With `['number', 'string']`, the elements are _all_ numbers or _all_ strings.
+- **`elementShape`**: every element is an object of the given shape. Each key in the shape has a declaration with a `type`, and optionally `required` (`true` by default) and `constraints` of its own. An element can have extra keys.
+
+This operator works out the distance between two points on a map. Each point has to be a pair of numbers, and the unit is one of two:
+
+<OperatorSource name="distance" />
+
+<Expression
+  customOperators
+  title="Auckland to Wellington"
+  code={`
+    {
+      km: {
+        $distance: {
+          from: '$data.auckland',
+          to: '$data.wellington',
+        },
+      },
+      // The same three parameters, by position: [from, to, unit]
+      miles: { $distance: ['$data.auckland', '$data.wellington', 'mi'] },
+    }
+  `}
+  data={`
+    // Add a third number to a point, such as an altitude, to see it fail
+    {
+      auckland: [-36.85, 174.76],
+      wellington: [-41.29, 174.78],
+    }
+  `}
+/>
+
+For an array of objects, `elementShape` checks each one. The core `buildObject` declares its `entries` like this:
+
+```ts
+const parameters = {
+  entries: {
+    type: 'array',
+    constraints: {
+      elementShape: {
+        key: { type: ['string', 'number', 'boolean'] },
+        value: { type: 'any' },
+      },
+    },
+  },
+}
+```
+
+<Expression
+  throws
+  title="An entry without a value"
+  code={`
+    {
+      $buildObject: [
+        { key: 'name', value: 'Aroha Ngata' },
+        // No value, and each key in the shape is required by default
+        { key: 'city' },
+      ],
+    }
+  `}
+/>
 
 ## Null policy
 
-What happens when a parameter is `null`: propagate it as the result, or pass it to the body. The conditional form. `elementNullPolicy`, the policy for each element of an array or value of an object, and `replacesNullAt`, a parameter whose value replaces a `null` at another.
+[Null handling](/concepts/evaluation/#null-handling) showed the four things a `null` can do at a parameter. You choose which of these applies to your operator's parameters, mostly through whether the parameter's type includes `null`:
+
+| Type includes `null`? | Then                                    | A `null` here…                                                    |
+| --------------------- | --------------------------------------- | ----------------------------------------------------------------- |
+| **Yes**               | `nullPolicy: 'propagate'` (the default) | makes the whole node return `null`                                |
+|                       | `nullPolicy: 'value'`                   | is used as a value                                                |
+| **No**                | the parameter is optional               | is the same as omitting it, so its default applies, if it has one |
+|                       | the parameter is required               | is a type error                                                   |
+
+The `nullPolicy` field is only allowed where the type includes `null`. Anywhere else, a `null` never gets that far, so a `nullPolicy` there is an `invalid-null-policy` error.
+
+<Callout kind="caution" title="'any' includes null">
+
+`'any'` includes `null`, so a parameter of type `'any'` follows the table's first row: a `null` there makes the whole node return `null`. If your operator needs to receive the `null`, declare `nullPolicy: 'value'` as well.
+
+</Callout>
+
+### Nulls inside an array or object
+
+A parameter's `nullPolicy` applies to a `null` in place of the whole value. A `null` _inside_ the array or object is just another element, so it reaches `evaluate`, unless a constraint such as `homogeneous` rejects it. To have a `null` element make the whole node return `null`, as one of `plus`'s values does, declare `elementNullPolicy: 'propagate'`. It's allowed where the type is `'array'`, `'object'` or `'any'`.
+
+```ts
+const parameters = {
+  // A null among the values makes the whole node return null
+  values: { type: 'array', elementNullPolicy: 'propagate' },
+}
+```
+
+### A policy that depends on another parameter
+
+A `null` at `convert`'s `value` makes the node return `null`, except when converting to a boolean, where it becomes `false`. For a case like this, `nullPolicy` can be a _function_ (the _only_ field that can), which returns the policy for each value of `to`:
+
+```ts
+const parameters = {
+  value: {
+    type: 'any',
+    // Called with the value of to, the only parameter with a fixed set
+    nullPolicy: (to: string) => (to === 'boolean' ? 'value' : 'propagate'),
+  },
+  to: { type: { literal: ['number', 'string', 'boolean', 'array'] } },
+}
+```
+
+The input to the function is whichever other parameter has a fixed set of values (so there can only be one), as in `{ type: { literal: [...] } }`.
+
+### A parameter that replaces null
+
+Several core operators take an optional parameter that stands in for a `null`, such as `plus`'s `nullValueDefault` ([Defaults for null, missing and no match](/reference/operators/#defaults-for-null-missing-and-no-match)). `replacesNullAt` names the parameter (or, rarely, parameters) whose `null` it replaces:
+
+```ts
+const parameters = {
+  values: { type: 'array', elementNullPolicy: 'propagate' },
+  nullValueDefault: {
+    type: ['number', 'string', 'array', 'object'],
+    required: false,
+    evaluation: 'lazy',
+    replacesNullAt: ['values'],
+  },
+}
+```
+
+How the replacement applies depends on the target parameter:
+
+- **Each `null` element**, where the target parameter declares an `elementNullPolicy`, as `plus`'s `values` does. With `{ $plus: { values: [1, null, 2], nullValueDefault: 0 } }`, `evaluate` receives `[1, 0, 2]`.
+- **The whole value** otherwise, as with the iterators' `nullInputDefault`. A `map` given `nullInputDefault: []` maps over an empty array when its `input` is missing, rather than failing with a type error.
+
+Either way, `evaluate` never sees the `null`, or the replacing parameter. A replacing parameter has to be:
+
+- **Optional, with no `default`.** A host that wants a replacement on every node can set one in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator).
+- **`'lazy'`**, so it's only evaluated when there's a `null` to replace.
 
 ## Evaluation modes
 
-A short table: each mode, and what the body receives for it. `eager`, the default, is the resolved value; the rest are covered in [Lazy and per-element parameters](/custom-operators/lazy-parameters/).
-
-## Positional parameters
-
-`positionalParams`, and the shorthand forms they allow.
+`evaluation` sets when a parameter is evaluated. Most parameters are `'eager'`, the default: FigTree evaluates them up front, and `evaluate` receives their values. The other modes are for a parameter the operator evaluates itself, if and when it needs it, as `if` does with its branches. [Lazy and per-element parameters](/custom-operators/lazy-parameters/) covers each of them.
 
 ## Typed `params`
 
-How the body's `params` type is inferred from the declarations.
+In TypeScript, `defineOperator()` types the `params` that `evaluate` receives from the declarations, with no annotations needed:
+
+```ts
+import { defineOperator } from 'fig-tree-evaluator'
+
+defineOperator({
+  name: 'formatPrice',
+  category: 'string',
+  parameters: {
+    amount: { type: ['number', 'null'] },
+    currency: { type: 'string', default: 'NZD' },
+    note: { type: ['string', 'null'], nullPolicy: 'value' },
+    locale: { type: 'string', required: false },
+    showCurrency: { type: 'any', truthiness: true },
+  },
+  evaluate: (params) => {
+    //       ^?
+    return ''
+  },
+})
+```
+
+Each declaration gives its parameter's type like this:
+
+- **The type** becomes its TypeScript type, which for most is the obvious one. The others are:
+  - `'integer'`: `number`
+  - `'array'`: `unknown[]`
+  - `'object'`: `Record<string, unknown>`
+  - `'any'`: `unknown`
+  - a fixed set: a union of its values, such as `'km' | 'mi'`
+- **Under `'propagate'`,** `null` is left out of the type, since `evaluate` never receives it: `amount` is a `number`. With `nullPolicy: 'value'`, it stays: `note` is `string | null`.
+- **An optional parameter without a default** is an optional key: `locale?: string`.
+- **`truthiness`** makes it a `boolean`.
+- **A mode other than `'eager'`** gives the type of what's received, such as `LazyValue<T>` ([Lazy and per-element parameters](/custom-operators/lazy-parameters/)).
+
+Constraints don't change the type, so in the [earlier example](#types-and-constraints), `distance`'s `evaluate` still sees `from` as `unknown[]`, which requires a cast: `from as number[]`.
+
+<Callout kind="caution" title="Shared declarations need as const">
+
+A declaration written as a separate `const`, to reuse it across operators, needs `as const`. Without it, TypeScript widens `'number'` to `string`, and `defineOperator()` won't accept it.
+
+</Callout>

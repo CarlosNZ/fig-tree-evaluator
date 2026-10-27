@@ -17,7 +17,7 @@ The evaluated parameters, under their declared names, with every check already a
 
 ## The context
 
-What `OperatorContext` gives a body: `options` (the instance's options with the call's laid over them, read-only), `signal`, `cache` and `trace`, each covered below. The evaluation's data isn't on it: a body gets that by declaring `default: EvaluationData`.
+What `OperatorContext` gives a body: `options` (the instance's options with the call's laid over them, read-only), `signal`, `cache` and `trace`, each covered below. The evaluation's data is on it too, as `options.data` (the same object a parameter declared with `default: EvaluationData` receives); Parameters covers that declaration, for a parameter that defaults to the data but can be pointed elsewhere.
 
 ## Cancellation
 

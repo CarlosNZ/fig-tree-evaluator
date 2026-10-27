@@ -119,7 +119,7 @@ Here is the full list of fields an operator definition can have. Four are requir
   - **`category`**: one of `logic`, `comparison`, `math`, `string`, `array`, `data`, `io`, or `other` for an operator that fits none of them. FigTree never reads it: it's for tools, such as an editor that groups its operators by category.
 - **Inputs:**
   - **`parameters`**: each parameter by name, with its type, default, and how it's evaluated ([Parameters](/custom-operators/parameters/)). An operator without any has `{}`.
-  - **`positionalParams`**: the parameters' names in order, for the positional shorthand ([Positional parameters](/custom-operators/parameters/#positional-parameters)). Without it, the operator takes its parameters by name only.
+  - **`positionalParams`**: the parameters' names in order, for the positional shorthand ([Positional parameters](#positional-parameters)). Without it, the operator takes its parameters by name only.
 - **Evaluation:**
   - **`evaluate`**: the function that does the actual evaluation work ([The evaluate function](/custom-operators/evaluate/)).
   - **`cache`**: set to `true` if your operator would benefit from caching its results, such as one that sends a slow request, and `evaluate` chooses what to cache ([Caching](/custom-operators/evaluate/#caching)).
@@ -133,6 +133,14 @@ Here is the full list of fields an operator definition can have. Four are requir
 
 <Callout kind="note" title="No description">
   A definition has no description. An operator's description, display name and colours go into a separate **catalog listing**, to avoid adding cruft to the runtime bundle ([Presenting your operator](/custom-operators/presenting/)).
+</Callout>
+
+### Positional parameters
+
+A parameter left out of `positionalParams` can only be given in the named form. The last entry can start with `...`, so it takes the rest of the array, as `plus` does with `['...values']`. A single value that isn't an array goes to the first entry, or, where that's a rest entry, to the rest parameter as it is, so `{ $plus: '$data.prices' }` adds up the whole array.
+
+<Callout kind="caution" title="An array is always positional">
+  If an operator's first parameter takes an array, an array written in its place is read as the parameters, not as that one value. Make the first entry a rest entry, as `plus` and [`length`](/reference/operators/#op-length) do, and the array goes to the parameter as a whole.
 </Callout>
 
 ## `defineOperator()`
