@@ -35,7 +35,10 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       // Gives the operators page its category headings' contents list
       routeMiddleware: './src/routeData.ts',
+      // public/favicon.svg and public/apple-touch-icon.png are copies of the
+      // files in the repo's images/logo/, which codegen/logo/ builds
       head: [
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
         // The colour palette (src/styles/palettes.mjs)
         { tag: 'style', content: paletteCss() },
         // Every link to another site opens in a new tab. Set when a link is

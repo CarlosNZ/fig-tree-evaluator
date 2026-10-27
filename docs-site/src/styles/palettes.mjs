@@ -24,7 +24,7 @@
  */
 
 /** @type {keyof typeof specs} */
-export const PALETTE = 'blue'
+export const PALETTE = 'green'
 
 /**
  * @typedef {object} Syntax
@@ -155,11 +155,12 @@ const specs = {
     accent: { h: 250, c: 0.15 },
     syntax: { key: 250, string: 150, literal: 30, keyword: 305, fn: 210, type: 85 },
   },
-  // Sage greys with a jade green
+  // The logo's green (#3b6c34 at the light accent's lightness), over faintly
+  // sage greys
   green: {
-    gray: { h: 165, c: 0.022 },
-    accent: { h: 160, c: 0.13 },
-    syntax: { key: 165, string: 95, literal: 30, keyword: 320, fn: 235, type: 195 },
+    gray: { h: 140, c: 0.015 },
+    accent: { h: 140, c: 0.115 },
+    syntax: { key: 165, string: 70, literal: 30, keyword: 320, fn: 235, type: 195 },
   },
 }
 
