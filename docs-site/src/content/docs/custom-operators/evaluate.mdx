@@ -106,9 +106,14 @@ Slow operators (due to external API requests or heavy computation) can [cache th
 The `key` says which result is which: a later call with an equal key gets the kept result back, without running `fn`. It can be any JSON-like data (anything else, such as a `Date`, doesn't work), and is compared by its _contents_, so two objects built separately with the same values are the same key. The key should include everything `fn`'s result depends on. Here's a simplified version of the core `http` operator:
 
 ```ts title="http.ts"
-import { defineOperator, resolvePath, type HttpClient } from 'fig-tree-evaluator'
-declare const mergeHeaders: (...sources: unknown[]) => Record<string, string>
+// @filename: mergeHeaders.ts
+export declare const mergeHeaders: (...sources: unknown[]) => Record<string, string>
+// @filename: http.ts
 // ---cut---
+import { defineOperator, resolvePath, type HttpClient } from 'fig-tree-evaluator'
+// Your own helper: merges headers, later ones overriding
+import { mergeHeaders } from './mergeHeaders'
+
 export const httpOperator = (client: HttpClient) =>
   defineOperator({
     name: 'http',
