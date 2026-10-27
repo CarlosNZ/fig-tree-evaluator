@@ -45,7 +45,7 @@ interface ParameterDeclaration {
   replacesNullAt?: string[]
   // When it's evaluated: up front ('eager', the default), or only as the
   // operator needs it
-  evaluation?: EvaluationMode
+  evaluationMode?: EvaluationMode
   // For 'perElement': the other parameter, holding the array it runs over
   over?: string
   // Anything your own tools need. FigTree never reads it
@@ -97,8 +97,8 @@ const ifOperator = defineOperator({
   parameters: {
     condition: { type: 'any', truthiness: true },
     // Lazy, so only the branch it picks is evaluated
-    then: { type: 'any', evaluation: 'lazy' },
-    else: { type: 'any', evaluation: 'lazy', default: null },
+    then: { type: 'any', evaluationMode: 'lazy' },
+    else: { type: 'any', evaluationMode: 'lazy', default: null },
   },
   positionalParams: ['condition', 'then', 'else'],
   evaluate: ({ condition, then, else: otherwise }) =>
@@ -241,7 +241,7 @@ const parameters = {
   nullValueDefault: {
     type: ['number', 'string', 'array', 'object'],
     required: false,
-    evaluation: 'lazy',
+    evaluationMode: 'lazy',
     replacesNullAt: ['values'],
   },
 }
@@ -259,7 +259,7 @@ Either way, `evaluate` never sees the `null`, or the replacing parameter. A repl
 
 ## Evaluation modes
 
-`evaluation` sets when a parameter is evaluated. Most parameters are `'eager'`, the default: FigTree evaluates them up front, and `evaluate` receives their values. The other modes are for a parameter the operator evaluates itself, if and when it needs it, as `if` does with its branches. [Lazy and per-element parameters](/custom-operators/lazy-parameters/) covers each of them.
+`evaluationMode` sets when a parameter is evaluated. Most parameters are `'eager'`, the default: FigTree evaluates them up front, and `evaluate` receives their values. The other modes are for a parameter the operator evaluates itself, if and when it needs it, as `if` does with its branches. [Lazy and per-element parameters](/custom-operators/lazy-parameters/) covers each of them.
 
 ## Typed `params`
 

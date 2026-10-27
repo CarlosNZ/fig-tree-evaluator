@@ -146,7 +146,7 @@ const nullTags = (p: CatalogParameter): NullTag[] => {
  * them. Eager parameters have none.
  */
 const evaluationTags: Record<
-  Exclude<NonNullable<ParameterInfo['evaluation']>, 'eager'>,
+  Exclude<NonNullable<ParameterInfo['evaluationMode']>, 'eager'>,
   { label: string; title: string }
 > = {
   lazy: { label: 'lazy', title: 'Evaluated only if needed, and at most once' },
@@ -248,9 +248,9 @@ const singleValueForm = (() => {
               <td>
                 <span class="fds-op-param">
                   <code>{name}</code>
-                  {p.evaluation && p.evaluation !== 'eager' && (
-                    <span class="fds-op-tag" title={evaluationTags[p.evaluation].title}>
-                      {evaluationTags[p.evaluation].label}
+                  {p.evaluationMode && p.evaluationMode !== 'eager' && (
+                    <span class="fds-op-tag" title={evaluationTags[p.evaluationMode].title}>
+                      {evaluationTags[p.evaluationMode].label}
                     </span>
                   )}
                 </span>

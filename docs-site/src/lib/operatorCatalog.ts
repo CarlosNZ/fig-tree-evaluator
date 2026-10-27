@@ -28,7 +28,7 @@ const literal: CatalogOperator = {
     value: {
       type: 'any',
       required: true,
-      evaluation: 'structural',
+      evaluationMode: 'structural',
       truthiness: false,
       nullPolicy: 'value',
       nullOutcome: 'value',
