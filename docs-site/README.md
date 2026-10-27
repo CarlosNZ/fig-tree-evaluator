@@ -46,6 +46,8 @@ Astro 7 runs `dev` and `preview` as background servers, so the command returns s
 
 **After changing the library or the editor,** rebuild that package (`pnpm build` in it). A running dev server picks up the new build; restart it if it doesn't.
 
+**The logo** is built at the repo root (`pnpm build:logo`, from `codegen/logo/`) into `images/logo/`, and the site reads it from there. The header logo and the home page's icon are imported directly; the favicon, the iOS home-screen icon and the link-preview image are copied into `public/` by `scripts/copyLogo.mjs`, which `pnpm dev` and `pnpm build` run first. Those copies are gitignored.
+
 **The build is also a test.** It fails if:
 
 - an expression example throws, when it doesn't say it should;
@@ -62,6 +64,7 @@ docs-site/
   ec.config.mjs             Expressive Code plugins (twoslash)
   tsconfig.twoslash.json    compiler options twoslash checks snippets with
   twoslash/globals.d.ts     globals every snippet can use without setting them up
+  scripts/copyLogo.mjs      copies the logo's favicon, home-screen icon and link-preview image into public/
   src/
     content.config.ts       the content collections: the pages, and the operator notes
     routeData.ts            Starlight route middleware: the operators page's contents list
@@ -69,7 +72,7 @@ docs-site/
       docs/                 the pages: index.mdx (home), playground.mdx, prototype.mdx, a folder per section
       operator-notes/       the docs' own notes on operators, one optional file each
     components/
-      Callout.astro           the callout kinds (note, tip, caution, danger, v2, why), over Starlight's <Aside>
+      Callout.astro           the callout kinds (note, tip, caution, danger, why), over Starlight's <Aside>
       Expression.astro        static expression block, evaluated at build time
       ExpressionTree.astro    an expression drawn as a tree, each node's result evaluated at build time
       FragmentSetup.astro     host code registering the Fragments page's fragments, from lib/fragments.ts
@@ -87,6 +90,7 @@ docs-site/
     lib/                    the shared FigTree instance and catalog, the SQLite database, JSON5, link encoding, notes, tree layout
       operators/            the Custom operators pages' operators, one file each, exactly as the pages show them
     styles/custom.css       the site's styles (classes use the `fds-` prefix)
+    styles/palettes.mjs     the colour palette: greys, accent, code and callout colours
 ```
 
 ## Writing examples

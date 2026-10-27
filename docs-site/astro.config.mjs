@@ -2,7 +2,29 @@
 import { defineConfig } from 'astro/config'
 import starlight from '@astrojs/starlight'
 import react from '@astrojs/react'
-import { paletteCss } from './src/styles/palettes.mjs'
+import { palette, paletteCss } from './src/styles/palettes.mjs'
+
+/**
+ * The site's address. A link preview's image has to be an absolute URL, so
+ * until it is set, shared links show no image. TO-DO: set it once hosting is
+ * decided (open question 2 in docs-dev/doc-planning.md); a GitHub Pages
+ * project site would also need Astro's `base`.
+ * @type {string | undefined}
+ */
+const SITE = undefined
+
+/**
+ * The link preview: public/social.png, 1280×640
+ * @type {{ tag: 'meta', attrs: Record<string, string> }[]}
+ */
+const linkPreview = SITE
+  ? [
+      { tag: 'meta', attrs: { property: 'og:image', content: new URL('/social.png', SITE).href } },
+      { tag: 'meta', attrs: { property: 'og:image:width', content: '1280' } },
+      { tag: 'meta', attrs: { property: 'og:image:height', content: '640' } },
+      { tag: 'meta', attrs: { name: 'twitter:card', content: 'summary_large_image' } },
+    ]
+  : []
 
 const externalLinksInNewTab = `
 document.addEventListener('click', (event) => {
@@ -12,6 +34,7 @@ document.addEventListener('click', (event) => {
 `
 
 export default defineConfig({
+  site: SITE,
   integrations: [
     starlight({
       title: 'FigTree',
@@ -35,10 +58,29 @@ export default defineConfig({
       customCss: ['./src/styles/custom.css'],
       // Gives the operators page its category headings' contents list
       routeMiddleware: './src/routeData.ts',
-      // public/favicon.svg and public/apple-touch-icon.png are copies of the
-      // files in the repo's images/logo/, which codegen/logo/ builds
+      // public/'s favicon.svg, apple-touch-icon.png and social.png are
+      // copied from the repo's images/logo/ by scripts/copyLogo.mjs
       head: [
         { tag: 'link', attrs: { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' } },
+        ...linkPreview,
+        // A phone browser's toolbar in the header's colour. It follows the
+        // system's light or dark mode, not the site's theme switch.
+        {
+          tag: 'meta',
+          attrs: {
+            name: 'theme-color',
+            content: palette.light.grays[7],
+            media: '(prefers-color-scheme: light)',
+          },
+        },
+        {
+          tag: 'meta',
+          attrs: {
+            name: 'theme-color',
+            content: palette.dark.grays[6],
+            media: '(prefers-color-scheme: dark)',
+          },
+        },
         // The colour palette (src/styles/palettes.mjs)
         { tag: 'style', content: paletteCss() },
         // Every link to another site opens in a new tab. Set when a link is

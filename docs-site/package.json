@@ -9,10 +9,10 @@
   },
   "packageManager": "pnpm@10.8.1",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "node scripts/copyLogo.mjs && astro dev",
+    "build": "node scripts/copyLogo.mjs && astro build",
     "preview": "astro preview",
-    "record:http": "DOCS_HTTP=record astro build",
+    "record:http": "node scripts/copyLogo.mjs && DOCS_HTTP=record astro build",
     "check": "astro check",
     "astro": "astro"
   },

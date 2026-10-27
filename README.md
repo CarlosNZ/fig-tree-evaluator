@@ -217,7 +217,3 @@ For a visual editor in your own app, see [fig-tree-editor-react](https://github.
 ## Help, feedback, suggestions
 
 Please [open an issue](https://github.com/CarlosNZ/fig-tree-evaluator/issues).
-
-## Credit
-
-Icon: Tree by ka reemov from [Noun Project](https://thenounproject.com/icon/tree-2665898/)

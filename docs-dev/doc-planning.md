@@ -175,8 +175,6 @@ The only tricky part is the text pane, because half-typed JSON5 doesn't parse.
 
 - **Keep a language-neutral standard in view.** Someone re-implementing FigTree in another language, such as Rust, would need an official standard: what an expression means, independent of this implementation. Not needed for v3.0, but the docs should be written so they can grow into one. Under the hood describes the model in implementation-free terms; its stage rules and guarantees, the shorthand grammar, the reference namespaces, null policy, truthiness, ordering, text rendering, path grammar, error codes and each operator's semantics are what a standard would have to pin down. The most useful single piece would be a conformance suite: the test cases as language-neutral data (expression, data, options, and the expected result or error code) that any implementation can run.
 
-- **Replace the logo.** The tree icon in the current logo is a third-party Noun Project resource, credited at the end of the README. Replace it with an original design, in light and dark variants for the README's `<picture>` element and for the site, then remove the README's Credit section.
-
 ## Next step
 
 A prototype: a bare Starlight skeleton with one page holding the two-pane widget, linked to the editor's `v3.0-dev` branch, and one reference page rendered from `coreDefinitions`. The same prototype can host the twoslash trial (open question 3), on a small sample of host-code snippets.
