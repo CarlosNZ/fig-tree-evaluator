@@ -344,7 +344,7 @@ export class Analysis {
     const parts: Part[] = []
     const children: Apart[] = []
     for (const [name, child] of Object.entries(node.params)) {
-      const mode = definition.parameters[name]?.evaluation
+      const mode = definition.parameters[name]?.evaluationMode
       if (mode === 'perElement') continue
       if (child.kind === 'elements' || child.kind === 'entries')
         outputs[name] = await this.container(name, child, inner, children)
@@ -403,7 +403,7 @@ export class Analysis {
           output: NOTHING,
           failures: [],
           reached: new Set(
-            children.filter((child) => definition.parameters[child.param].evaluation === 'race')
+            children.filter((child) => definition.parameters[child.param].evaluationMode === 'race')
           ),
           awaited: new Set(),
           escaped: new Set(),
@@ -428,7 +428,7 @@ export class Analysis {
       // Vetted as the body asks for it: a lazy parameter's own check is in
       // the inputs' failures, an `each` is checked per element
       const declared = definition.parameters[child.param]
-      if (declared.evaluation === 'perElement') {
+      if (declared.evaluationMode === 'perElement') {
         const failure = checkElementResult(node, child.param, declared, child.result.output)
         if (failure !== undefined) own.push(failure)
       } else if (ran !== undefined && child.at === undefined)

@@ -331,11 +331,11 @@ export function defineOperator(
       }
     }
 
-    if (d.evaluation !== undefined && !EVALUATION_MODES.has(d.evaluation as string))
+    if (d.evaluationMode !== undefined && !EVALUATION_MODES.has(d.evaluationMode as string))
       addIssue(
         ErrorCodes.invalidDefinition,
-        `'evaluation' must be one of ${[...EVALUATION_MODES].join(', ')}`,
-        at('evaluation'),
+        `'evaluationMode' must be one of ${[...EVALUATION_MODES].join(', ')}`,
+        at('evaluationMode'),
         paramName
       )
     if (d.truthiness !== undefined && typeof d.truthiness !== 'boolean')
@@ -446,12 +446,12 @@ export function defineOperator(
   // over ⇔ perElement pairing, and the target must admit an array
   for (const [paramName, d] of Object.entries(declarations)) {
     const paramPath: Path = ['parameters', paramName]
-    const isPerElement = d.evaluation === 'perElement'
+    const isPerElement = d.evaluationMode === 'perElement'
     if (d.over !== undefined && typeof d.over === 'string') {
       if (!isPerElement)
         addIssue(
           ErrorCodes.invalidDefinition,
-          `'over' is legal only with evaluation: 'perElement'`,
+          `'over' is legal only with evaluationMode: 'perElement'`,
           [...paramPath, 'over'],
           paramName
         )
@@ -478,8 +478,8 @@ export function defineOperator(
     } else if (isPerElement) {
       addIssue(
         ErrorCodes.invalidDefinition,
-        `evaluation: 'perElement' requires 'over' to name the iterated sibling`,
-        [...paramPath, 'evaluation'],
+        `evaluationMode: 'perElement' requires 'over' to name the iterated sibling`,
+        [...paramPath, 'evaluationMode'],
         paramName
       )
     }
@@ -491,10 +491,10 @@ export function defineOperator(
     if (!Array.isArray(d.replacesNullAt) || d.replacesNullAt.some((t) => typeof t !== 'string'))
       continue // shape issue already recorded
     const path: Path = ['parameters', paramName, 'replacesNullAt']
-    if (d.evaluation !== 'lazy')
+    if (d.evaluationMode !== 'lazy')
       addIssue(
         ErrorCodes.invalidDefinition,
-        `a 'replacesNullAt' holder must declare evaluation: 'lazy'`,
+        `a 'replacesNullAt' holder must declare evaluationMode: 'lazy'`,
         path,
         paramName
       )
@@ -535,11 +535,11 @@ export function defineOperator(
   // it resolves as ordinary data the body ignores, and the node silently
   // does the un-defaulted thing
   for (const [paramName, d] of Object.entries(declarations)) {
-    if (!DEFAULT_FAMILY.test(paramName) || d.evaluation === 'lazy') continue
+    if (!DEFAULT_FAMILY.test(paramName) || d.evaluationMode === 'lazy') continue
     addIssue(
       ErrorCodes.invalidDefinition,
-      `'${paramName}' is named for the '…Default' family, so it must declare evaluation: 'lazy' — add 'replacesNullAt', read it as a LazyValue in the body, or rename it`,
-      ['parameters', paramName, 'evaluation'],
+      `'${paramName}' is named for the '…Default' family, so it must declare evaluationMode: 'lazy' — add 'replacesNullAt', read it as a LazyValue in the body, or rename it`,
+      ['parameters', paramName, 'evaluationMode'],
       paramName
     )
   }

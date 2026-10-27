@@ -177,7 +177,7 @@ describe('cancellation still reaches a listener through unmaterialised ancestors
     const escapes = defineOperator({
       name: 'escapes',
       category: 'other',
-      parameters: { child: { type: 'any', evaluation: 'lazy' } },
+      parameters: { child: { type: 'any', evaluationMode: 'lazy' } },
       evaluate: ({ child }) => {
         late = new Promise((resolve) => setTimeout(resolve, 5)).then(() =>
           (child as LazyValue).evaluate()

@@ -551,7 +551,7 @@ export const authoredNames = (node: OperatorNode): ReadonlySet<string> =>
  */
 export const renamedBinding = (node: OperatorNode): string | null => {
   const declared = node.entry.definition.parameters.as
-  if (declared?.evaluation !== 'structural') return null
+  if (declared?.evaluationMode !== 'structural') return null
   const supplied = node.params.as
   if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
   return null

@@ -145,7 +145,7 @@ export const buildString = declareOperator({
     nullValueDefault: {
       type: ['string', 'number', 'boolean'],
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       replacesNullAt: ['substitutions'],
     },
   },
@@ -214,7 +214,7 @@ export const join = declareOperator({
     nullValueDefault: {
       type: ['string', 'number', 'boolean'],
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       replacesNullAt: ['values'],
     },
   },
@@ -296,7 +296,7 @@ export const regex = declareOperator({
       type: ['string', 'null'],
       default: null,
       nullPolicy: 'value',
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
     },
     // JS replacement patterns apply (`$1`, `$<name>`, `$&`, `$$`), so a
     // capture group can be kept; the default removes every match

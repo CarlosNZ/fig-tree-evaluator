@@ -129,7 +129,7 @@ export interface ParameterDeclaration extends TypeDeclaration {
   /** Opaque; engine never reads it. */
   metadata?: Record<string, unknown>
   /** How the engine delivers the value to the body. Default `'eager'`. */
-  evaluation?: EvaluationMode
+  evaluationMode?: EvaluationMode
   /** `'perElement'` only: the sibling array parameter iterated over. */
   over?: string
   /**
@@ -150,7 +150,7 @@ export interface ParameterDeclaration extends TypeDeclaration {
   elementNullPolicy?: NullPolicyValue
   /**
    * Marks a `…Default` parameter as the engine-side null replacement for the
-   * named sibling target(s). Requires `evaluation: 'lazy'`, optional, no
+   * named sibling target(s). Requires `evaluationMode: 'lazy'`, optional, no
    * `default`.
    */
   replacesNullAt?: readonly string[]
@@ -228,7 +228,7 @@ export interface ValidatedParameter {
   /** Present only when authored; may be the `EvaluationData` sentinel. */
   default?: unknown
   metadata?: Record<string, unknown>
-  evaluation: EvaluationMode
+  evaluationMode: EvaluationMode
   truthiness: boolean
   /**
    * The declared policy, else `'value'` where `truthiness` implies it, else

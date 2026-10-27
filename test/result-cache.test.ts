@@ -258,7 +258,7 @@ describe("the body's own key", () => {
     const raced = defineOperator({
       name: 'raced',
       category: 'other',
-      parameters: { values: { type: 'array', evaluation: 'race' } },
+      parameters: { values: { type: 'array', evaluationMode: 'race' } },
       positionalParams: ['...values'],
       cache: true,
       evaluate: ({ values }, context) =>

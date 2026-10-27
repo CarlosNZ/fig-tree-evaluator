@@ -299,7 +299,7 @@ const check = async (
 ) => {
   const rules: FailureRule[] = CORE_RULES[definition.name] ?? []
   const names = Object.entries(definition.parameters)
-    .filter(([, declared]) => declared.evaluation !== 'structural')
+    .filter(([, declared]) => declared.evaluationMode !== 'structural')
     .map(([name]) => name)
   const pools = names.map((name) => {
     const declared = definition.parameters[name]
@@ -373,11 +373,11 @@ const check = async (
     const given: Record<string, Known> = {}
     const children: Child[] = []
     for (const name of present) {
-      const { evaluation } = definition.parameters[name]
+      const { evaluationMode } = definition.parameters[name]
       const result = { verdict: 'no' as const, escapes: [], output: outputs[name] }
-      if (evaluation === 'lazy' || evaluation === 'perElement')
+      if (evaluationMode === 'lazy' || evaluationMode === 'perElement')
         children.push({ param: name, result })
-      if (evaluation !== 'perElement') given[name] = outputs[name]
+      if (evaluationMode !== 'perElement') given[name] = outputs[name]
     }
     const ran = await runNode(node, given, children, level)
     if (ran !== undefined) {

@@ -49,7 +49,7 @@ export const length = declareOperator({
  *
  * Spelled as `const` objects rather than built by a factory, because the
  * body's `params` type is inferred from these literals — a factory's
- * return type widens `evaluation` to `string` and the handle types are
+ * return type widens `evaluationMode` to `string` and the handle types are
  * lost. And named one by one in each definition rather than spread into
  * it: a bundler treats a spread as a possible side effect, since it could
  * run a getter, so a definition holding one is kept in every bundle of the
@@ -62,26 +62,26 @@ const inputParam = {
 const asParam = {
   type: 'string',
   required: false,
-  evaluation: 'structural',
+  evaluationMode: 'structural',
 } as const
 
 const nullInputDefaultParam = {
   type: 'array',
   required: false,
-  evaluation: 'lazy',
+  evaluationMode: 'lazy',
   replacesNullAt: ['input'],
 } as const
 
 /** `map`'s `each` takes any value; the other four judge truthiness. */
 const transformEach = {
   type: 'any',
-  evaluation: 'perElement',
+  evaluationMode: 'perElement',
   over: 'input',
 } as const
 
 const predicateEach = {
   type: 'any',
-  evaluation: 'perElement',
+  evaluationMode: 'perElement',
   over: 'input',
   truthiness: true,
 } as const
@@ -145,7 +145,7 @@ export const find = declareOperator({
     noMatchDefault: {
       type: 'any',
       default: null,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
     },
   },
   positionalParams: ['input', 'each'],

@@ -47,8 +47,8 @@ export const ifLike = (): OperatorDefinition => ({
   category: 'other',
   parameters: {
     condition: { type: 'any', truthiness: true },
-    then: { type: 'any', evaluation: 'lazy' },
-    else: { type: 'any', evaluation: 'lazy', default: null },
+    then: { type: 'any', evaluationMode: 'lazy' },
+    else: { type: 'any', evaluationMode: 'lazy', default: null },
   },
   positionalParams: ['condition', 'then', 'else'],
   evaluate: ({ condition, then, else: otherwise }) =>
@@ -92,7 +92,7 @@ export const nullReplacerLike = (): OperatorDefinition => ({
     values: { type: 'array', elementNullPolicy: 'propagate' },
     nullValueDefault: {
       type: 'any',
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       required: false,
       replacesNullAt: ['values'],
     },
@@ -362,10 +362,10 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   },
   {
     id: 'parameter-evaluation-outside-vocabulary',
-    definition: withValueParam({ evaluation: 'lazyish' }),
+    definition: withValueParam({ evaluationMode: 'lazyish' }),
     expected: {
       code: ErrorCodes.invalidDefinition,
-      pathTail: ['parameters', 'value', 'evaluation'],
+      pathTail: ['parameters', 'value', 'evaluationMode'],
     },
   },
   {
@@ -440,15 +440,15 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
   },
   {
     id: 'per-element-without-over',
-    definition: withValueParam({ evaluation: 'perElement' }),
+    definition: withValueParam({ evaluationMode: 'perElement' }),
     expected: {
       code: ErrorCodes.invalidDefinition,
-      pathTail: ['parameters', 'value', 'evaluation'],
+      pathTail: ['parameters', 'value', 'evaluationMode'],
     },
   },
   {
     id: 'over-names-unknown-sibling',
-    definition: withValueParam({ evaluation: 'perElement', over: 'nope' }),
+    definition: withValueParam({ evaluationMode: 'perElement', over: 'nope' }),
     expected: {
       code: ErrorCodes.invalidDefinition,
       pathTail: ['parameters', 'value', 'over'],
@@ -458,7 +458,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'over-target-type-excludes-array',
     definition: withParams({
       items: { type: 'string' },
-      each: { evaluation: 'perElement', over: 'items' },
+      each: { evaluationMode: 'perElement', over: 'items' },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -480,7 +480,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-holder-required',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluation: 'lazy', replacesNullAt: ['value'] },
+      holder: { evaluationMode: 'lazy', replacesNullAt: ['value'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -491,7 +491,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-holder-with-default',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluation: 'lazy', default: 0, replacesNullAt: ['value'] },
+      holder: { evaluationMode: 'lazy', default: 0, replacesNullAt: ['value'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -502,7 +502,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-unknown-target',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluation: 'lazy', required: false, replacesNullAt: ['nope'] },
+      holder: { evaluationMode: 'lazy', required: false, replacesNullAt: ['nope'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -513,7 +513,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     id: 'replaces-null-at-self-target',
     definition: withParams({
       value: { type: ['number', 'null'] },
-      holder: { evaluation: 'lazy', required: false, replacesNullAt: ['holder'] },
+      holder: { evaluationMode: 'lazy', required: false, replacesNullAt: ['holder'] },
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
@@ -528,7 +528,7 @@ export const invalidDefinitions: InvalidDefinitionFixture[] = [
     }),
     expected: {
       code: ErrorCodes.invalidDefinition,
-      pathTail: ['parameters', 'nullValueDefault', 'evaluation'],
+      pathTail: ['parameters', 'nullValueDefault', 'evaluationMode'],
     },
   },
   {

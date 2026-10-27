@@ -27,8 +27,8 @@ const iterator = (
     category: 'other',
     parameters: {
       input: { type: 'array' },
-      each: { type: 'any', evaluation: 'perElement', over: 'input', truthiness },
-      as: { type: 'string', required: false, evaluation: 'structural' },
+      each: { type: 'any', evaluationMode: 'perElement', over: 'input', truthiness },
+      as: { type: 'string', required: false, evaluationMode: 'structural' },
     },
     positionalParams: ['input', 'each'],
     evaluate: ({ input, each }) => body(each as PerElement, input as unknown[]),
@@ -237,7 +237,7 @@ test('a per-element type miss fails when that index is demanded', async () => {
     category: 'other',
     parameters: {
       input: { type: 'array' },
-      each: { type: 'number', evaluation: 'perElement', over: 'input' },
+      each: { type: 'number', evaluationMode: 'perElement', over: 'input' },
     },
     positionalParams: ['input', 'each'],
     evaluate: ({ each }) => (each as PerElement).evaluate(0),

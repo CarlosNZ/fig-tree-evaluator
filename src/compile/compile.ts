@@ -807,16 +807,15 @@ const finalizeParams = (
   if (node.name === 'get') rewriteGetSource(state, node, pending)
 
   let binding: string | undefined
-  if (iterates && definition.parameters.as?.evaluation === 'structural') {
+  if (iterates && definition.parameters.as?.evaluationMode === 'structural') {
     const asPending = pending.find((entry) => entry.name === 'as')
     if (asPending?.kind === 'value')
       binding = readAsBinding(state, node, asPending.value, asPending.path, order)
   }
 
   for (const entry of pending) {
-    const evaluation = definition.parameters[entry.name]?.evaluation
-    if (evaluation !== 'perElement')
-      node.params[entry.name] = walkPending(state, entry, evaluation, depth)
+    const mode = definition.parameters[entry.name]?.evaluationMode
+    if (mode !== 'perElement') node.params[entry.name] = walkPending(state, entry, mode, depth)
   }
   // Guarded because most operators iterate nothing, and on an
   // operator-dense tree a second pass over every node's parameters costs
@@ -824,9 +823,8 @@ const finalizeParams = (
   if (iterates) {
     if (binding !== undefined) state.scope.bindings.push(binding)
     for (const entry of pending) {
-      const evaluation = definition.parameters[entry.name]?.evaluation
-      if (evaluation === 'perElement')
-        node.params[entry.name] = walkPending(state, entry, evaluation, depth)
+      const mode = definition.parameters[entry.name]?.evaluationMode
+      if (mode === 'perElement') node.params[entry.name] = walkPending(state, entry, mode, depth)
     }
     if (binding !== undefined) state.scope.bindings.pop()
   }
@@ -1249,7 +1247,7 @@ const recordGetDependency = (state: WalkState, node: OperatorNode) => {
 const walkPending = (
   state: WalkState,
   entry: PendingParam,
-  evaluation: EvaluationMode | undefined,
+  mode: EvaluationMode | undefined,
   depth: number
 ): CompiledNode => {
   // The element- and entry-addressable modes keep a literal payload out of
@@ -1257,12 +1255,12 @@ const walkPending = (
   // demandable unit per element". A supplied value of any other shape goes
   // to the ordinary walk, and the runtime degeneration rule hands the body
   // pre-resolved handles.
-  const addressable = evaluation === 'lazyElements' || evaluation === 'race'
+  const addressable = mode === 'lazyElements' || mode === 'race'
   if (entry.kind === 'slice')
     return walkSynthetic(state, entry.elements, entry.basePath, entry.offset, depth, addressable)
   if (addressable && Array.isArray(entry.value))
     return walkSynthetic(state, entry.value, entry.path, 0, depth, true)
-  if (evaluation === 'lazyEntries') {
+  if (mode === 'lazyEntries') {
     const entries = walkEntriesParam(state, entry, depth)
     if (entries !== null) return entries
   }

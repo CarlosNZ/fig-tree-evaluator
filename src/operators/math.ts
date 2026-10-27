@@ -46,7 +46,7 @@ export const plus = declareOperator({
     nullValueDefault: {
       type: ['number', 'string', 'array', 'object'],
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       replacesNullAt: ['values'],
     },
   },
@@ -135,7 +135,7 @@ export const multiply = declareOperator({
     nullValueDefault: {
       type: 'number',
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       replacesNullAt: ['values'],
     },
   },
@@ -212,7 +212,7 @@ const extremum = (name: string, label: string, wins: (comparison: number) => boo
       nullValueDefault: {
         type: ['number', 'string'],
         required: false,
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
         replacesNullAt: ['values'],
       },
     },

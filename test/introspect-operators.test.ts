@@ -78,7 +78,7 @@ describe('what the snapshot contains', () => {
       type: 'integer',
       required: false, // computed from the presence of `default`
       default: 0,
-      evaluation: 'eager', // never authored
+      evaluationMode: 'eager', // never authored
       truthiness: false,
       nullPolicy: 'propagate',
     })

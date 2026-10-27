@@ -100,7 +100,7 @@ export const assembleOperator = (
     const parameter: ValidatedParameter = {
       type: cloneTypeExpression(type),
       required: d.required ?? !('default' in d),
-      evaluation: (d.evaluation as EvaluationMode) ?? 'eager',
+      evaluationMode: (d.evaluationMode as EvaluationMode) ?? 'eager',
       truthiness: d.truthiness ?? false,
       nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
@@ -127,7 +127,8 @@ export const assembleOperator = (
     resolution: planResolution(validatedParameters),
     restParam,
     deliversLazily: Object.values(validatedParameters).some(
-      (parameter) => parameter.evaluation !== 'eager' && parameter.evaluation !== 'structural'
+      (parameter) =>
+        parameter.evaluationMode !== 'eager' && parameter.evaluationMode !== 'structural'
     ),
     timeoutParam: def.timeoutParam ?? null,
     cache: def.cache === true,
@@ -217,9 +218,9 @@ const planResolution = (parameters: Record<string, ValidatedParameter>): Resolut
     entries,
     whole: entries.filter(
       ([, declared]) =>
-        declared.replacesNullAt === undefined && declared.evaluation !== 'perElement'
+        declared.replacesNullAt === undefined && declared.evaluationMode !== 'perElement'
     ),
-    perElement: entries.filter(([, declared]) => declared.evaluation === 'perElement'),
+    perElement: entries.filter(([, declared]) => declared.evaluationMode === 'perElement'),
   }
 }
 

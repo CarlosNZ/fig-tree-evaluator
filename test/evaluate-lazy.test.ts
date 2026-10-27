@@ -57,7 +57,7 @@ describe('a lazy parameter', () => {
     const never = defineOperator({
       name: 'never',
       category: 'other',
-      parameters: { branch: { type: 'any', evaluation: 'lazy' } },
+      parameters: { branch: { type: 'any', evaluationMode: 'lazy' } },
       positionalParams: ['branch'],
       evaluate: () => 'ignored',
     })
@@ -68,7 +68,7 @@ describe('a lazy parameter', () => {
   test('evaluates at most once however often it is demanded', async () => {
     const { calls, definition } = counter()
     const twice = demander('twice', ['branch', 'branch'], {
-      branch: { type: 'any', evaluation: 'lazy' },
+      branch: { type: 'any', evaluationMode: 'lazy' },
     })
     expect(await figWith([twice, definition]).evaluate({ $twice: { $count: 'x' } })).toEqual([
       'x',
@@ -91,7 +91,7 @@ describe('a lazy parameter', () => {
     const retry = defineOperator({
       name: 'retry',
       category: 'other',
-      parameters: { branch: { type: 'any', evaluation: 'lazy' } },
+      parameters: { branch: { type: 'any', evaluationMode: 'lazy' } },
       positionalParams: ['branch'],
       evaluate: async ({ branch }) => {
         try {
@@ -113,7 +113,7 @@ describe('a lazy parameter', () => {
 
 describe('the default chain reaches a lazy parameter', () => {
   const declare = (extra: Record<string, unknown>) => ({
-    branch: { type: 'any', evaluation: 'lazy', required: false, ...extra },
+    branch: { type: 'any', evaluationMode: 'lazy', required: false, ...extra },
   })
 
   test('a declared default arrives as a pre-resolved handle', async () => {
@@ -144,7 +144,7 @@ describe('the default chain reaches a lazy parameter', () => {
 
 describe('the layers move to the moment of demand', () => {
   const typed = () =>
-    demander('typed', ['branch'], { branch: { type: 'string', evaluation: 'lazy' } })
+    demander('typed', ['branch'], { branch: { type: 'string', evaluationMode: 'lazy' } })
 
   test('a wrong-typed value fails when demanded', async () => {
     const error = await rejection<FigTreeError>(
@@ -157,7 +157,7 @@ describe('the layers move to the moment of demand', () => {
     const ignoring = defineOperator({
       name: 'ignoring',
       category: 'other',
-      parameters: { branch: { type: 'string', evaluation: 'lazy' } },
+      parameters: { branch: { type: 'string', evaluationMode: 'lazy' } },
       positionalParams: ['branch'],
       evaluate: () => 'fine' as const,
     })
@@ -167,7 +167,7 @@ describe('the layers move to the moment of demand', () => {
   test('truthiness is applied to the demanded value', async () => {
     const judge = () =>
       demander('judge', ['branch'], {
-        branch: { type: 'any', evaluation: 'lazy', truthiness: true },
+        branch: { type: 'any', evaluationMode: 'lazy', truthiness: true },
       })
     expect(await figWith([judge()]).evaluate({ $judge: '' })).toEqual([false])
     expect(await figWith([judge()]).evaluate({ $judge: 'x' })).toEqual([true])
@@ -181,7 +181,7 @@ describe('lazyElements', () => {
     defineOperator({
       name: 'firstTwo',
       category: 'other',
-      parameters: { values: { type: 'array', evaluation: 'lazyElements' } },
+      parameters: { values: { type: 'array', evaluationMode: 'lazyElements' } },
       positionalParams: ['...values'],
       evaluate: async ({ values }) => [
         await values[0].evaluate(),
@@ -223,7 +223,7 @@ describe('lazyElements', () => {
       name: 'firstTwoOr',
       category: 'other',
       parameters: {
-        values: { type: 'array', evaluation: 'lazyElements', default: [7, 8, 9] },
+        values: { type: 'array', evaluationMode: 'lazyElements', default: [7, 8, 9] },
       },
       evaluate: async ({ values }) => [
         await values[0].evaluate(),
@@ -249,7 +249,7 @@ describe('lazyEntries', () => {
       category: 'other',
       parameters: {
         key: { type: 'string' },
-        entries: { type: 'object', evaluation: 'lazyEntries' },
+        entries: { type: 'object', evaluationMode: 'lazyEntries' },
       },
       positionalParams: ['key', 'entries'],
       evaluate: ({ key, entries }) =>
@@ -295,7 +295,7 @@ test('a body that returns a handle instead of demanding it fails loudly', async 
   const leaky = defineOperator({
     name: 'leaky',
     category: 'other',
-    parameters: { branch: { type: 'any', evaluation: 'lazy' } },
+    parameters: { branch: { type: 'any', evaluationMode: 'lazy' } },
     positionalParams: ['branch'],
     evaluate: ({ branch }) => branch as never,
   })

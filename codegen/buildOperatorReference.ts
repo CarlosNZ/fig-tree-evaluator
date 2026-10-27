@@ -157,7 +157,7 @@ const fromDefinition = (op: ValidatedOperatorDefinition): PageOperator => ({
                 : (JSON.stringify(p.default) ?? String(p.default)),
           }
         : {}),
-      ev: p.evaluation && p.evaluation !== 'eager' ? p.evaluation : null,
+      ev: p.evaluationMode && p.evaluationMode !== 'eager' ? p.evaluationMode : null,
       tr: p.truthiness === true,
       d: operatorListings[op.name]?.parameterDescriptions?.[name] ?? null,
     }

@@ -88,7 +88,9 @@ const defaultOf = (
 
 /** Whether a container-lazy parameter received its literal container. */
 const literalContainer = (declared: ValidatedParameter, supplied: CompiledNode): boolean =>
-  declared.evaluation === 'lazyEntries' ? supplied.kind === 'entries' : supplied.kind === 'elements'
+  declared.evaluationMode === 'lazyEntries'
+    ? supplied.kind === 'entries'
+    : supplied.kind === 'elements'
 
 /**
  * The policies a null at this parameter can meet: one, or either where a
@@ -145,7 +147,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
   // Pass 1: what each supplied parameter starts as
   for (const [name, declared] of entries) {
     const supplied = node.params[name]
-    switch (declared.evaluation) {
+    switch (declared.evaluationMode) {
       case 'eager':
         if (supplied !== undefined) pending[name] = { known: outputs[name], absent: false }
         break
@@ -218,7 +220,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     }
 
     // `propagate` is inert on a lazily delivered parameter
-    const lazily = declared.evaluation !== 'eager' && declared.evaluation !== 'structural'
+    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'structural'
     if (admitsNull(known) && typeNamesNull(declared.type) && !lazily) {
       const policies = policiesOf(declared, pending)
       if (policies.has('propagate')) {

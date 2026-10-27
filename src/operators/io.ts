@@ -209,7 +209,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
         type: 'any',
         default: null,
         nullPolicy: 'value',
-        evaluation: 'lazy',
+        evaluationMode: 'lazy',
       },
       timeout: TIMEOUT,
     },

@@ -29,11 +29,11 @@ export const ifOperator = declareOperator({
     },
     then: {
       type: 'any',
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
     },
     else: {
       type: 'any',
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
       default: null,
     },
   },
@@ -52,12 +52,12 @@ export const match = declareOperator({
     },
     branches: {
       type: 'object',
-      evaluation: 'lazyEntries',
+      evaluationMode: 'lazyEntries',
     },
     default: {
       type: 'any',
       required: false,
-      evaluation: 'lazy',
+      evaluationMode: 'lazy',
     },
   },
   positionalParams: ['value', 'branches', 'default'],
@@ -82,7 +82,7 @@ export const firstNonNull = declareOperator({
   parameters: {
     values: {
       type: 'array',
-      evaluation: 'lazyElements',
+      evaluationMode: 'lazyElements',
     },
   },
   positionalParams: ['...values'],
@@ -107,7 +107,7 @@ export const and = declareOperator({
     values: {
       type: 'array',
       truthiness: true,
-      evaluation: 'race',
+      evaluationMode: 'race',
     },
   },
   positionalParams: ['...values'],
@@ -123,7 +123,7 @@ export const or = declareOperator({
     values: {
       type: 'array',
       truthiness: true,
-      evaluation: 'race',
+      evaluationMode: 'race',
     },
   },
   positionalParams: ['...values'],
