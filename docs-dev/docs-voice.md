@@ -53,13 +53,15 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: "they differ in how they treat a value stored as `null`"; "can go in without being spread"
   - Before: "An `http` request's headers are `http.headers`, then the node's own `headers`."; "When a runtime failure isn't caught"
   - After: "…are merged from `http.headers`, then the node's own `headers`, each one overriding the one before."; "When no fallback catches a runtime failure"
-  - Before: "an optional field left blank"; After: "a form field left blank". Added: "a _global_ `timeout`", to tell it apart from the per-request one
+  - Added: "a _global_ `timeout`", to tell it apart from the per-request one
 - **Don't pick a word that implies more than is true.**
   - Before: "A value stored as `null`…"
   - After: "A data value that is actually `null`…", since it doesn't have to be stored
-- **State a requirement flatly.** A "can" or "might" inside a rule makes it sound vague.
+- **State a requirement flatly, and a convention as a recommendation.** A "can" or "might" inside a rule makes it sound vague. But where something is good practice rather than enforced, say what the core operators do and when the reader would want the same.
   - Before: "The key should include everything that can change what `fn` returns."
   - After: "The key should include everything `fn`'s result depends on."
+  - Before: "To fail the same way every time, throw the one with the lowest `index`, as the core operators do"
+  - After: "The core operators throw the failure with the lowest `index` instead… — we recommend doing the same if a consistent error response is desired."
 - **Where two of a kind are in play, name each by its role.**
   - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
   - After: "with the original's options and an update applied, leaving the original instance as is"
@@ -90,7 +92,7 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Cut: "`CompiledExpression` is exported as a type only, so `compile()` is the only way to make one…"
   - Before: "The exception is `noCache`: …"
   - After: "Since `noCache` only ever takes `true`, a default `noCache: true` turns off caching…"
-- **Lead with what happens, not a "never … because" opener,** which reads two ways. Where there's a way round a rule, present it as how to get what the reader wants, not as an exception to a "no".
+- **Lead with what happens, not a "never … because" opener,** which reads two ways, **or a denial of an idea nobody raised** ("Going in order and stopping early aren't settings" → "The order, and when to stop, are up to `evaluate`"). Where there's a way round a rule, present it as how to get what the reader wants, not as an exception to a "no".
   - Before: "**Throws:** never because of what's in the expression, however broken. It throws `invalid-options` when…"
   - After: "**Throws:** `invalid-options`, only when the options are wrong: … A problem in the expression, however serious, is reported in `issues` instead."
   - Before: "No fallback catches a timeout, and none starts once time has run out. The one exception is timeout shielding."
@@ -174,8 +176,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea.
   - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
   - Cut: a section on what an operator must handle when it's cancelled, repeated or skipped, ending "An operator that [changes anything outside FigTree] is responsible for what happens…"
-- **Advise the reader only on their own use of FigTree,** not on how other tools should handle its output.
+- **Advise the reader only on their own use of FigTree,** not on how other tools should handle its output. A warning is framed around what the reader is building, not around why FigTree's own feature works the way it does.
   - Cut: "code that reads a trace, such as a debug panel or a logger, should pass over an event whose `type` it doesn't recognise"
+  - After: "To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`…", rather than why the core iterators' `as` has to be known before anything runs
 - **Only what the reader can place here.** Cut what an earlier page covered, and allusions to features they haven't met; a bare API name that means nothing yet is better described by what it does. Not strict: a later feature is fine where it makes an important point and is clear without its page.
   - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
@@ -185,9 +188,6 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: one sentence on what `if` does, a short snippet, and a link
   - Before: a "Finding the gaps" section on Fallbacks and errors, with a `fallbackCoverage()` snippet and its report
   - After: a "Covering the whole expression" tip, ending with a link to `fallbackCoverage()`
-- **A list that explains an example keeps only what applies to it,** marked as partial.
-  - Before: three bullets on what happens to an `undefined`, a `NaN` and a lazy handle returned by `evaluate`, none of which `formatNumber` can return
-  - After: "Before calling `evaluate`, FigTree has already (among other things):", and "…turns an `undefined` into `null`, for example."
 - **Where a rule's exceptions are obvious from one or two examples, give those, not the full list.** Completeness belongs in the reference.
   - Before: "A few words are reserved: the node keys, such as `fallback` and `vars`, the reference names, such as `data` and its short form `d`, and `literal`."
   - After: "…or match a reserved word, such as `data` or `fallback`."
@@ -218,8 +218,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Set the scene before the rule, and give an example its own paragraph,** opening "In this example", or "Here" as the last words of a lead-in.
   - Before: "Unnamed, `$element` and `$index` belong to the innermost iterator. … as `$order.items` does here:"
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
-- **A general remark beside an example reads as a claim about that example.** Cut it, or move it away.
+- **Keep what's general apart from what's true of one example.** A general remark beside an example reads as a claim about that example: cut it, or move it away. A list after an example is either about the example, keeping only what applies to it and marked as partial, or general rules, with nothing only the example needs. Never a mix.
   - Cut: "A variable nothing reads can't fail.", just before an example whose variable is read, and fails
+  - After: "Before calling `evaluate`, FigTree has already (among other things):", without bullets on what `formatNumber` can't return; and the bullets after a simplified `and`, rewritten as rules for any `race` parameter, with its `truthiness` note cut
 - **Don't lean on something far up the page.** A recap that matches a table's rows to examples above it is cut. Where a back-reference is needed, it links to what it means.
   - Cut: "`formatNumber`'s `value` is passed on, and `distance`'s `unit` takes its default…", after the null table
   - Before: "which is why `distance`'s `evaluate` reads `from as number[]`"
@@ -292,6 +293,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: `import { formatNumber } from './operators/formatNumber'`, under `// A custom operator, written with defineOperator()`
   - Before: "or one you pass it, as `new FetchClient(myFetch)`"; `return pick(response, returnPath)`, with `pick` declared out of sight
   - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"; `const { found, value } = resolvePath(response, returnPath)`, the exported function the core `http` uses
+- **Operator code reads as it would in place,** with any wrapper it needs hidden by cut lines, and a comment wherever a line would look wrong, surprising or arbitrary, saying why.
+  - Before: `condition ? then : otherwise`; `// Every element's sort value, all evaluated at once`
+  - After: `return condition ? then : otherwise`; `// sort() can't await, so work out every element's sort value first`, and `// Every value is already running…` above a `for await` that reads as sequential
 
 ## Punctuation, formatting and links
 
@@ -303,12 +307,16 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Where a list spells out a group just named, introduce it with a colon,** or brackets where the sentence already has one; after a comma, the group's name reads as one more item.
   - After: "every operator on the Operators page except the I/O ones: `http`, `graphQL` and `sql`"
 - **An article follows how a word is said:** "an `SQLiteConnection`".
-- **Link an API or concept at its first mention on the page, to the section rather than the page.** A pointer in brackets uses the heading it lands on as its text, never a callout title or a paraphrase, and the section over a sub-section where both would do. A term linked in running text keeps its own words.
+- **Link an API or concept at its first mention on the page, to the section rather than the page.** Where a phrase in the sentence names the thing, the link goes on it, in its own words. Otherwise a pointer in brackets uses the heading it lands on as its text, never a callout title or a paraphrase, and the section over a sub-section where both would do.
+  - Before: "the same checks as an eager parameter's ([What the engine does for you](…))"
+  - After: "the [same checks](…) as an eager parameter's"
   - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))"
   - After: "([Missing values](/concepts/data/#missing-values))"
-  - Kept: "In a [`[*]` projection](/concepts/data/#path-syntax), only the path up to…"
 - **One name, one link,** so the comma or "and" between two names stays plain text.
   - After: "Like [`and`](…) and [`or`](…)"
+- **A comment in a code block the page shows fits the block, about 70 columns,** breaking at a natural pause. The repo's 80-column limit wraps mid-phrase on the page. Code lines may wrap.
+  - Before: `// FigTree's own comparison utility, as used by greaterThan and other core` / `// comparison operators`, which left "core" alone on a line
+  - After: `// FigTree's own comparison utility, as used by greaterThan` / `// and other core comparison operators`
 
 ## Reference pages
 
