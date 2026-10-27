@@ -9,7 +9,6 @@
  * - tip: advice on doing something better, not just correctly
  * - caution: a gotcha that will bite if missed
  * - danger: security or data loss; rare
- * - v2: where v3 differs from v2, for a reader migrating
  * - why: a short design reason, linking into Under the hood
  *
  * Every kind has a default title; a specific one helps a reader scanning the
@@ -17,7 +16,7 @@
  */
 import { Aside } from '@astrojs/starlight/components'
 
-type Kind = 'note' | 'tip' | 'caution' | 'danger' | 'v2' | 'why'
+type Kind = 'note' | 'tip' | 'caution' | 'danger' | 'why'
 
 interface Props {
   kind: Kind
@@ -29,8 +28,6 @@ const KINDS = {
   tip: { type: 'tip', title: 'Tip' },
   caution: { type: 'caution', title: 'Caution' },
   danger: { type: 'danger', title: 'Danger' },
-  // TO-DO: once the docs are written, drop this kind if few pages use it
-  v2: { type: 'note', title: 'Coming from v2', icon: 'clock' },
   why: { type: 'note', title: 'Why?', icon: 'open-book' },
 } as const satisfies Record<
   Kind,

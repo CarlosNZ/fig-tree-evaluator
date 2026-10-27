@@ -240,21 +240,10 @@ A passage that sits beside the main line goes in a callout. Each kind has one jo
   its text; pass the input as the query's values.
 </Callout>
 
-<Callout kind="v2">
-  **Coming from v2**: where v3 differs from v2, on the page where it matters, for a reader who is
-  migrating. In v2, `$If` and `$IF` both worked; v3's operator names are exact.
-</Callout>
-
 <Callout kind="why" title="Why unknown $ keys are errors">
   **Why?**: a short design reason, linking into Under the hood for the full story. A `$` key is
   always meant as a node, so a typo there fails loudly instead of quietly becoming data.
 </Callout>
-
-<Aside type="tip" title="Element: callouts">
-  `<Callout kind="…" title="…">` in `src/components/Callout.astro`, built on Starlight's `<Aside>`.
-  Four kinds are Starlight's own; `v2` and `why` add a colour and icon of their own. Restyling a
-  kind happens in one place.
-</Aside>
 
 ## Operator reference
 

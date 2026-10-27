@@ -14,7 +14,9 @@
  * The output sets, per mode, Starlight's grey scale and accent (the
  * variables its whole UI is drawn from), the current page's highlight, and
  * the syntax colours, which feed both the code blocks' Expressive Code
- * themes (ec.config.mjs) and the playground's editor pane (`--fds-code-*`).
+ * themes (ec.config.mjs) and the playground's editor pane (`--fds-code-*`),
+ * and the callouts' colours (`--fds-callout-*`, mapped onto Starlight's
+ * asides in custom.css).
  *
  * astro.config.mjs puts `paletteCss()` in every page's head, and
  * ec.config.mjs builds the code themes with `codeTheme`.
@@ -44,6 +46,10 @@ export const PALETTE = 'green'
  * @property {[string, string, string]} accent  low, accent, high
  * @property {{ bg: string, text: string }} current  the sidebar's current page
  * @property {Syntax} code
+ * @property {Record<CalloutKind | 'why', Callout>} callouts
+ *
+ * @typedef {{ bg: string, border: string, title: string }} Callout
+ * @typedef {'note' | 'tip' | 'caution' | 'danger'} CalloutKind
  *
  * @typedef {{ dark: Mode, light: Mode }} Palette
  *
@@ -55,6 +61,8 @@ export const PALETTE = 'green'
  *   a light-mode lightness and hue for a role whose colour would come out
  *   dull on the shared ladder: a dark amber is out of sRGB's reach, and its
  *   chroma is cut until it fits
+ * @property {Record<CalloutKind, number>} callout  a hue per callout kind; `why`
+ *   is drawn in the greys
  *
  * @typedef {'key' | 'string' | 'number' | 'literal' | 'keyword' | 'fn' | 'type'} SyntaxRole
  */
@@ -118,6 +126,34 @@ const ladders = {
   },
 }
 
+/**
+ * Each callout kind's lightness and chroma, as [L, C], for its tint, border
+ * and title; the hue comes from the palette, unless a third number gives one
+ * of its own. Note and tip are quiet: a faint tint, a title that stands out
+ * against it. The warnings have a more saturated border and title over a
+ * tint that stays soft. A red that is too saturated, or too light, reads as
+ * pink, which sets danger's limits. Light caution's tint leans yellow, since
+ * at its hue so pale a tint is close to danger's.
+ */
+const quietCallout = {
+  dark: { bg: [0.27, 0.035], border: [0.68, 0.12], title: [0.82, 0.09] },
+  light: { bg: [0.95, 0.025], border: [0.62, 0.13], title: [0.45, 0.12] },
+}
+const calloutLadders = {
+  dark: {
+    note: quietCallout.dark,
+    tip: quietCallout.dark,
+    caution: { bg: [0.3, 0.03], border: [0.7, 0.14], title: [0.76, 0.15] },
+    danger: { bg: [0.3, 0.03], border: [0.64, 0.19], title: [0.7, 0.18] },
+  },
+  light: {
+    note: quietCallout.light,
+    tip: quietCallout.light,
+    caution: { bg: [0.955, 0.035, 70], border: [0.66, 0.19], title: [0.58, 0.2] },
+    danger: { bg: [0.95, 0.04], border: [0.6, 0.21], title: [0.52, 0.2] },
+  },
+}
+
 /** @param {Spec} spec @param {'dark' | 'light'} type @returns {Mode} */
 const buildMode = (spec, type) => {
   const dark = type === 'dark'
@@ -138,6 +174,11 @@ const buildMode = (spec, type) => {
     const override = dark ? undefined : spec.lightSyntax?.[role]
     return override ? oklch(override.L, sC, override.h) : oklch(sL, sC, spec.syntax[role])
   }
+  const callout = (/** @type {CalloutKind} */ kind) => {
+    const { bg, border, title } = calloutLadders[type][kind]
+    const at = (/** @type {number[]} */ [L, C, h = spec.callout[kind]]) => oklch(L, C, h)
+    return { bg: at(bg), border: at(border), title: at(title) }
+  }
   return {
     grays,
     accent,
@@ -154,6 +195,13 @@ const buildMode = (spec, type) => {
       comment: gray(dark ? 0.66 : 0.51, 0.8),
       punct: gray(dark ? 0.74 : 0.44, 0.6),
     },
+    callouts: {
+      note: callout('note'),
+      tip: callout('tip'),
+      caution: callout('caution'),
+      danger: callout('danger'),
+      why: { bg: grays[6], border: grays[4], title: grays[2] },
+    },
   }
 }
 
@@ -164,6 +212,7 @@ const specs = {
     gray: { h: 252, c: 0.028 },
     accent: { h: 250, c: 0.15 },
     syntax: { key: 250, string: 150, number: 30, literal: 30, keyword: 305, fn: 210, type: 85 },
+    callout: { note: 250, tip: 300, caution: 50, danger: 30 },
   },
   // The logo's green (#3b6c34 at the light accent's lightness), over faintly
   // sage greys
@@ -174,6 +223,8 @@ const specs = {
     // Light strings as a burnt orange, since amber at the ladder's lightness
     // is brown
     lightSyntax: { string: { L: 0.52, h: 55 } },
+    // Tips in the accent's green
+    callout: { note: 245, tip: 140, caution: 50, danger: 30 },
   },
 }
 
@@ -186,7 +237,7 @@ export const palette = {
 // ── CSS ───────────────────────────────────────────────────────────────────
 
 /** @param {Mode} mode @param {boolean} light */
-const modeVars = ({ grays, accent, current, code }, light) => {
+const modeVars = ({ grays, accent, current, code, callouts }, light) => {
   const names = light
     ? ['white', 'gray-1', 'gray-2', 'gray-3', 'gray-4', 'gray-5', 'gray-6', 'gray-7', 'black']
     : ['white', 'gray-1', 'gray-2', 'gray-3', 'gray-4', 'gray-5', 'gray-6', 'black']
@@ -204,6 +255,11 @@ const modeVars = ({ grays, accent, current, code }, light) => {
     `--fds-code-comment: ${code.comment};`,
     `--fds-code-punct: ${code.punct};`,
     `--fds-selection: color-mix(in srgb, ${accent[1]} ${light ? 22 : 35}%, transparent);`,
+    ...Object.entries(callouts).flatMap(([kind, { bg, border, title }]) => [
+      `--fds-callout-${kind}-bg: ${bg};`,
+      `--fds-callout-${kind}-border: ${border};`,
+      `--fds-callout-${kind}-title: ${title};`,
+    ]),
   ].join(' ')
 }
 

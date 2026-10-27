@@ -196,17 +196,54 @@
   background: color-mix(in srgb, var(--code-background) 50%, transparent);
 }
 
-/* The two kinds of the site's own, over Starlight's note */
-.fds-callout--v2 .starlight-aside {
-  --sl-color-asides-text-accent: var(--sl-color-green-high);
-  --sl-color-asides-border: var(--sl-color-green);
-  background-color: var(--sl-color-green-low);
+/*
+ * Each kind's colours come from the palette (src/styles/palettes.mjs), in
+ * place of Starlight's own. `why` is the site's own kind, over Starlight's
+ * note.
+ */
+.starlight-aside--note {
+  --sl-color-asides-text-accent: var(--fds-callout-note-title);
+  --sl-color-asides-border: var(--fds-callout-note-border);
+  background-color: var(--fds-callout-note-bg);
+}
+
+.starlight-aside--tip {
+  --sl-color-asides-text-accent: var(--fds-callout-tip-title);
+  --sl-color-asides-border: var(--fds-callout-tip-border);
+  background-color: var(--fds-callout-tip-bg);
+}
+
+/*
+ * Tip's icon is a lightbulb (Lucide's `lightbulb`, ISC licence), which
+ * Starlight's icon set lacks: Starlight's rocket is hidden, and the bulb is
+ * drawn as a mask over its box in the title's colour.
+ */
+.starlight-aside--tip .starlight-aside__icon {
+  background-color: currentColor;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+}
+
+.starlight-aside--tip .starlight-aside__icon > * {
+  display: none;
+}
+
+.starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--fds-callout-caution-title);
+  --sl-color-asides-border: var(--fds-callout-caution-border);
+  background-color: var(--fds-callout-caution-bg);
+}
+
+.starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--fds-callout-danger-title);
+  --sl-color-asides-border: var(--fds-callout-danger-border);
+  background-color: var(--fds-callout-danger-bg);
 }
 
 .fds-callout--why .starlight-aside {
-  --sl-color-asides-text-accent: var(--sl-color-gray-2);
-  --sl-color-asides-border: var(--sl-color-gray-4);
-  background-color: var(--sl-color-gray-6);
+  --sl-color-asides-text-accent: var(--fds-callout-why-title);
+  --sl-color-asides-border: var(--fds-callout-why-border);
+  background-color: var(--fds-callout-why-bg);
 }
 
 /* ── Static expression blocks ───────────────────────────────────────────── */
