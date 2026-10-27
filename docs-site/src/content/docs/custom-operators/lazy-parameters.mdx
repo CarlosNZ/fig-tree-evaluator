@@ -1,42 +1,274 @@
 ---
 title: Lazy and per-element parameters
-description: 'Parameters the body evaluates itself: on demand, per element, or as a race'
+description: 'Parameters the operator evaluates itself: on demand, per element, or as a race'
 sidebar:
   order: 4
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
+import OperatorSource from '../../../components/OperatorSource.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+Most parameters are evaluated before `evaluate` is called, so it runs with its inputs ready for processing. But some operators delay evaluating certain parameters until they're sure they actually need them — `if`, for example, only evaluates _one of_ the `then` or `else` branches, so it waits until it knows which one it needs.
 
-## When a parameter isn't evaluated up front
+These operators declare those parameters with a different `evaluationMode`, and `evaluate` receives a **handle** in place of the value, which it evaluates only if and when it needs to.
 
-What the non-eager modes are for (conditionals, iterators, short-circuiting), and the checks still applied when the body evaluates a value. `nullPolicy: 'propagate'` has no effect on these parameters, and a value that arrives dynamically (from data, say) is already resolved.
+Operators can declare these evaluation modes for their parameters:
 
-{/* NOTE (from Parameters): open with a table of every mode and what `evaluate` receives for it, moved here from Parameters' "Evaluation modes" section, which now gives only the idea and links here (keep that anchor's link working). Pair each mode with its tag from the operator reference's key ("How to read this page" in reference/operators.mdx: lazy, lazy per entry, lazy in order, per element, stops early, literal only), so a reader can map the declared name to what configuration authors see. The table as drafted: 'eager' → the value; 'lazy' → a `LazyValue`, evaluated when asked for, at most once; 'lazyElements' → an array of `LazyValue`s, one for each element; 'lazyEntries' → an object of `LazyValue`s, one for each entry; 'perElement' → a `PerElement` handle, evaluated for each element of the array parameter that `over` names (as `map`'s `each` declares `over: 'input'`); 'race' → a stream of each element's result, with every element started at once; 'structural' → the value exactly as it's written, never evaluated. If #283 lands first, the field is `evaluationMode`. */}
+| `evaluationMode`                                  | `evaluate` receives                                                             | Tag in the [operator reference](/reference/operators/#how-to-read-this-page) |
+| ------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `'eager'` (the default)                           | the evaluated value                                                             | —                                                                            |
+| [`'lazy'`](#lazy)                                 | a `LazyValue`, evaluated when asked for                                         | lazy                                                                         |
+| [`'lazyElements'`](#lazyelements-and-lazyentries) | an _array_ of `LazyValue`s, one for each element                                | lazy in order                                                                |
+| [`'lazyEntries'`](#lazyelements-and-lazyentries)  | an _object_ of `LazyValue`s, one for each entry                                 | lazy per entry                                                               |
+| [`'perElement'`](#perelement)                     | a `PerElement` handle: _one_ expression, evaluated for each element of an array | per element                                                                  |
+| [`'race'`](#race)                                 | a stream of the elements' results, all started at once                          | stops early                                                                  |
+| [`'structural'`](#structural)                     | the value exactly as it's written, never evaluated                              | literal only                                                                 |
 
-{/* NOTE (from Writing an operator): returning a handle itself (a `LazyValue`, a `PerElement` handle or a settlement stream) from `evaluate`, rather than the value it stands for, fails the node with `escaped-handle`. It's always a bug: a forgotten `.evaluate()`, as in returning `then` where `await then.evaluate()` was meant. TypeScript flags it too. Source: normalizeResult in src/evaluate/operator.ts. */}
+## What FigTree still does
+
+A handle's value goes through the [same checks](/custom-operators/writing/#what-the-engine-does-for-you) as an eager parameter's. However, they only run when `evaluate` _asks_ for the value. That's also why `nullPolicy: 'propagate'` has no effect on a parameter that arrives as a handle: `evaluate` is already running by the time the value turns out to be `null`.
+
+A parameter like `firstNonNull`'s `values` can also be given a whole array from data, as in `{ $firstNonNull: '$data.rates' }`. Its elements are then plain values, but `evaluate` still receives them as handles, so it works the same either way.
+
+<Callout kind="caution" title="Don't forget to evaluate handles">
+
+It's easy to forget to call `.evaluate()` on a handle and accidentally return the handle itself. This is always a bug: the node fails with `escaped-handle`, and TypeScript flags it too:
+
+```ts
+import type { LazyValue } from 'fig-tree-evaluator'
+declare const condition: boolean
+declare const then: LazyValue
+declare const otherwise: LazyValue
+const evaluate = () => {
+// ---cut---
+// In the $if operator:
+// ❌️ Returns the handle -- Wrong!
+return condition ? then : otherwise
+// ✅️ Returns the value -- Correct
+// (as a promise, which FigTree awaits, so no need for await here)
+return condition ? then.evaluate() : otherwise.evaluate()
+// ---cut-after---
+}
+```
+
+</Callout>
 
 ## `lazy`
 
-A `LazyValue`: evaluated when the body asks, at most once.
+A `'lazy'` parameter arrives as a `LazyValue`:
+
+```ts
+interface LazyValue<T> {
+  evaluate(): Promise<T>
+}
+```
+
+A `LazyValue` is evaluated at most once, so it's possible (though rarely needed) to call a handle's `.evaluate()` without re-evaluating the parameter every time.
+
+When a node omits a `'lazy'` parameter:
+
+- **With a `default`,** it arrives as a handle that returns the default, as `if`'s `else` does with `default: null`.
+- **Optional, without one,** it isn't in `params` at all, as with `match`'s `default`, below.
 
 ## `lazyElements` and `lazyEntries`
 
-An array, or an object, of `LazyValue`s, each evaluated on its own: stopping early is the body not asking for more.
+Here, each _element_ of an array, or each _entry_ of an object, is its own `LazyValue`, so `evaluate` asks only for the ones it needs. `firstNonNull` declares its values this way:
+
+```ts
+import { defineOperator } from 'fig-tree-evaluator'
+
+const firstNonNull = defineOperator({
+  name: 'firstNonNull',
+  category: 'logic',
+  parameters: {
+    values: { type: 'array', evaluationMode: 'lazyElements' },
+  },
+  positionalParams: ['...values'],
+  evaluate: async ({ values }) => {
+    for (const candidate of values) {
+      // The next value isn't evaluated until this one has returned
+      const value = await candidate.evaluate()
+      if (value !== null) return value
+    }
+    return null
+  },
+})
+```
+
+The order, and when to stop, are up to `evaluate` — whereas `firstNonNull` goes through its values in sequence, `match` picks one of its `branches` by _key_, and evaluates only that one, or its `default`:
+
+```ts
+import { defineOperator, OperatorFailure, renderText } from 'fig-tree-evaluator'
+
+const match = defineOperator({
+  name: 'match',
+  category: 'logic',
+  parameters: {
+    value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
+    branches: { type: 'object', evaluationMode: 'lazyEntries' },
+    default: { type: 'any', required: false, evaluationMode: 'lazy' },
+  },
+  positionalParams: ['value', 'branches', 'default'],
+  evaluate: ({ value, branches, default: otherwise }) => {
+    const key = value === null ? null : renderText(value)
+    // Match by key, if possible
+    if (key !== null && Object.hasOwn(branches, key)) return branches[key].evaluate()
+    // Otherwise evaluate the default, if provided
+    if (otherwise !== undefined) return otherwise.evaluate()
+    throw new OperatorFailure(`no branch matches '${key}', and no default was supplied`)
+  },
+})
+```
+
+<Callout kind="caution" title="Elements aren't type-checked">
+  The parameter's `type` definition describes the whole array or object, so each element's value isn't type-checked: if it matters, check it in `evaluate`. Truthiness, where it's declared, still applies to each one.
+</Callout>
 
 ## `perElement`
 
-A `PerElement` handle over the `over` sibling: each index evaluated in its own scope binding `$element` and `$index`, renamed by a `structural` `as` parameter. `settle()` for every index at once.
+A `'perElement'` parameter is for [iterators](/concepts/iteration/). It tells the engine that this parameter's expression should be applied to each element of the array specified by the `over` property. The core iterators declare their `each` parameter this way. In this parameter's expression, `$element` and `$index` refer to each element and its position. They're only available there — they're an error outside a `'perElement'` parameter's expression.
 
-{/* NOTE (from Parameters): say why `over` is needed. A `'perElement'` parameter is the expression run for each element, not the array, so the declaration has to name the sibling that holds the array, as `map`'s `each` declares `over: 'input'`. FigTree never infers a parameter's role from its name or position, and an operator can have more than one array parameter (a zip pairing two lists, or an array-valued option beside `input`), so "the first array" or "the one called input" would be a guess. `defineOperator()` checks that `over` names a sibling array parameter. Parameters' declaration interface only glosses the field ("the other parameter, holding the array it runs over"). */}
+Here's an example `'perElement'` parameter as part of a `sortBy` custom operator:
+
+<OperatorSource name="sortBy" />
+
+In `by`'s declaration, `over: 'input'` names the parameter holding the array. FigTree doesn't guess, since an operator could take more than one array.
+
+<Expression
+  customOperators
+  title="Sorting orders"
+  code={`
+    {
+      byTotal: { $sortBy: { input: '$data.orders', by: '$element.total' } },
+      // With the element named, $order is the same as $element
+      byCustomer: {
+        $sortBy: {
+          input: '$data.orders',
+          as: 'order',
+          by: '$order.customer',
+        },
+      },
+    }
+  `}
+  data={`
+    // Remove an order's total, and byTotal fails,
+    // since by doesn't accept null
+    {
+      orders: [
+        { id: 1041, customer: 'Tane Walker', total: 86.5 },
+        { id: 1042, customer: 'Aroha Ngata', total: 240 },
+        { id: 1043, customer: 'Mere Kingi', total: 32 },
+      ],
+    }
+  `}
+/>
+
+`by` arrives as a `PerElement` handle:
+
+```ts
+import type { SettlementStream } from 'fig-tree-evaluator'
+// ---cut---
+interface PerElement<T> {
+  // The result for the element at this index
+  evaluate(index: number): Promise<T>
+  // Every element's result, as a stream
+  settle(): SettlementStream
+}
+```
+
+`sortBy` asks for each element by index, with `evaluate(index)`. An iterator that can stop as soon as it can determine its answer, as `some` and `every` do, calls `settle()` on the whole array instead. It starts every element at once, and returns a stream of their results in the order they finish, the same stream a [`'race'`](#race) parameter receives.
+
+<Callout kind="note" title="Elements are type-checked">
+  Unlike with [`'lazyElements'`](#lazyelements-and-lazyentries), the parameter's `type` definition here describes the value its expression gives for _each element_, not the whole array, so each one is type-checked.
+</Callout>
 
 ## `race`
 
-A settlement stream: every element started at once, settlements delivered as they complete. Failures are delivered, not thrown; with no element deciding the result, the body raises the lowest-index failure with the others attached as `related`. Returning cancels the rest.
+A `'race'` parameter is an array whose elements all start evaluating at once. `evaluate` receives a stream of their results, in the order they finish, so it can return as soon as it can determine its answer, without waiting for the rest. Each result is a `Settlement`:
+
+```ts
+interface Settlement {
+  // The element's position in the array
+  index: number
+  // false where the element failed
+  ok: boolean
+  value?: unknown
+  error?: unknown
+}
+```
+
+`and` and `or` declare their `values` this way. Here's a simplified `and`:
+
+```ts
+import { defineOperator, type Settlement } from 'fig-tree-evaluator'
+
+const and = defineOperator({
+  name: 'and',
+  category: 'logic',
+  parameters: {
+    values: { type: 'array', truthiness: true, evaluationMode: 'race' },
+  },
+  positionalParams: ['...values'],
+  returns: 'boolean',
+  evaluate: async ({ values }) => {
+    const failures: Settlement[] = []
+    // Every value is already running, and FigTree's race stream returns
+    // each result in the order it finishes
+    for await (const settled of values) {
+      // One false value decides the answer, whatever the others are
+      if (settled.ok && settled.value === false) return false
+      if (!settled.ok) failures.push(settled)
+    }
+    if (failures.length === 0) return true
+    // Without an answer, the node fails, with the failure that comes first
+    failures.sort((a, b) => a.index - b.index)
+    throw failures[0].error
+  },
+})
+```
+
+- **Failures arrive in the stream, not thrown.** Each `Settlement` carries `ok` and `error`, so `evaluate` decides if and when to throw — a failure that doesn't affect the result can be ignored.
+- **Returning cancels the rest.** When `evaluate` returns, any elements still running are cancelled ([Cancellation](/custom-operators/evaluate/#cancellation)).
+- **Throw the failure with the lowest index.** The first failure to arrive depends on timing, so throwing it could make the same expression fail differently from one run to the next. The core operators throw the failure with the lowest `index` instead, as soon as every element before it has succeeded — we recommend doing the same if a consistent error response is desired.
 
 ## `structural`
 
-The literal value as written, never evaluated; a dynamic value is an error when the expression is compiled.
+Declaring a parameter `'structural'` tells FigTree that its value can never be an expression, only a literal value. Among the core operators, its only use is [`as`](#perelement), whose name FigTree has to know before anything runs. Anything other than a literal, such as a `$data` reference, is an error when the expression is compiled:
+
+<Expression
+  throws
+  title="A name from data"
+  code={`
+    {
+      $map: {
+        input: '$data.orders',
+        // Write the name itself, such as 'order', and it works
+        as: '$data.name',
+        each: '$element.total',
+      },
+    }
+  `}
+  data={`
+    {
+      name: 'order',
+      orders: [
+        { id: 1041, total: 86.5 },
+        { id: 1042, total: 240 },
+      ],
+    }
+  `}
+/>
+
+<Callout kind="caution" title="Don't forget to make it structural">
+
+To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
+
+```ts
+// Wrong: no renaming, so '$order.total' is just text
+const wrong = { as: { type: 'string', required: false } }
+// Right
+const right = { as: { type: 'string', required: false, evaluationMode: 'structural' } }
+```
+
+</Callout>
