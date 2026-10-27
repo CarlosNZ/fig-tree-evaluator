@@ -15,6 +15,15 @@ Custom operators are _first class_: once they're registered, FigTree can't tell 
 
 An operator is written in JavaScript (or TypeScript), as a single definition structure: the parameters it takes, and a function that does the actual evaluation. FigTree does everything else, from checking its inputs to catching its failures.
 
+<Callout kind="tip" title="Operator or fragment?">
+
+Before writing an operator, check whether a [fragment](/guides/fragments/) would do. The general rule is: if you can express it as a combination of existing operators, make a fragment; if you need new functionality that can't be composed from existing operators, write an operator.
+
+- **A fragment** is _data_, written in the same language as your expressions. Configuration authors can read and change it, and it can be stored and updated alongside the expressions that call it, without releasing new code.
+- **An operator** is _code_, so it can call a library or a browser API (`Intl`, `crypto`), or do a calculation FigTree has no operators for, like trigonometry.
+
+</Callout>
+
 ## A first operator
 
 Here's an example operator definition that formats a number for a locale, using JavaScript's `Intl.NumberFormat`:
