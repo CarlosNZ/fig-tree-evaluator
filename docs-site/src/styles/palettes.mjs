@@ -123,7 +123,7 @@ const buildMode = (spec, type) => {
   // low, accent, high. Dark links are accent-high; light links are accent.
   const accent = /** @type {[string, string, string]} */ (
     dark
-      ? [oklch(0.33, A.c * 0.45, A.h), oklch(0.68, A.c, A.h), oklch(0.8, A.c * 0.7, A.h)]
+      ? [oklch(0.33, A.c * 0.45, A.h), oklch(0.765, A.c, A.h), oklch(0.8, A.c, A.h)]
       : [oklch(0.925, A.c * 0.28, A.h), oklch(0.47, A.c * 0.9, A.h), oklch(0.4, A.c * 0.8, A.h)]
   )
   const sL = dark ? 0.78 : 0.47
