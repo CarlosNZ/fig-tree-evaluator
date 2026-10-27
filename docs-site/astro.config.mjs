@@ -16,6 +16,12 @@ export default defineConfig({
     starlight({
       title: 'FigTree',
       description: 'Evaluate JSON-structured expression trees: dynamic logic as data.',
+      // The lockup from the repo's images/logo/ (built by codegen/logo/)
+      logo: {
+        light: '../images/logo/figtree-logo.svg',
+        dark: '../images/logo/figtree-logo-dark.svg',
+        replacesTitle: true,
+      },
       social: [
         {
           icon: 'github',

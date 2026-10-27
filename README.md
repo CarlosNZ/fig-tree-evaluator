@@ -1,9 +1,10 @@
 # fig-tree-evaluator
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="images/FigTreeEvaluator_logo_600_dark.png">
-  <img src="images/FigTreeEvaluator_logo_600_light.png" alt="Logo" width="300">
+  <source media="(prefers-color-scheme: dark)" srcset="images/logo/figtree-logo-dark.svg">
+  <img src="images/logo/figtree-logo.svg" alt="FigTree Evaluator" width="300">
 </picture>
+<br><br>
 
 **Dynamic logic for your config, written as plain JSON.**
 

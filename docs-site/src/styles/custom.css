@@ -147,6 +147,20 @@
   margin-bottom: 0.75rem;
 }
 
+/* ── Header ─────────────────────────────────────────────────────────────── */
+
+/*
+ * The logo is a three-line lockup, so the header is taller than Starlight's
+ * to give each line of the wordmark a readable size.
+ */
+:root {
+  --sl-nav-height: 5rem;
+}
+
+.site-title img {
+  height: 3.5rem;
+}
+
 /* ── Footnotes ──────────────────────────────────────────────────────────── */
 
 .sl-markdown-content .footnotes {
