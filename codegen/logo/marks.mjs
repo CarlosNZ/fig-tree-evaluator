@@ -8,7 +8,7 @@ the tree's leaves. Rings are stroked with currentColor and everything else takes
 the fill, so a wrapping element sets both colours.
 */
 
-import { taper, seg, dir, rim, ring, dot, f } from './geometry.mjs'
+import { taper, seg, dir, rim, ring, dot, f, yExtent } from './geometry.mjs'
 
 // Wordmark grid, in lockup units: the left edge of fig / tree / evaluator, and
 // the three baselines
@@ -18,10 +18,22 @@ export const BASELINES = [40, 88, 136]
 const NODE = { r: 9.5, w: 4.5, gap: 8 }
 const ROOT = { r: 20, w: 8 }
 
+// The outer arms: `leave` is the compass angle each leaves the root at, and
+// `hold` how long it keeps that direction before levelling out into its node,
+// as a fraction of the straight-line distance.
+//
+// The top arm curves slightly more than the bottom one, to use some of the
+// taller space above it. For an exact mirror of the bottom arm, use
+// { leave: 46, hold: 0.42 }.
+export const ARMS = {
+  top: { leave: 43, hold: 0.5 },
+  bottom: { leave: 134, hold: 0.42 },
+}
+
 // `starts` is the x where each line begins and `middles` the y of each line's
 // lowercase middle, where its node sits; `reach` is the root's distance from
 // the middle node. Returns the drawing and its left, top and bottom edges.
-export const lockupGraph = (starts, middles, reach) => {
+export const lockupGraph = (starts, middles, reach, arms = ARMS) => {
   const nodes = starts.map((x, i) => [x - NODE.gap - NODE.r, middles[i]])
   const R = [nodes[1][0] - reach, middles[1]]
   // Edges run from the root's rim to each ring's outer edge, so no line enters
@@ -31,15 +43,26 @@ export const lockupGraph = (starts, middles, reach) => {
   const opt = { capStart: false, capEnd: false }
   let s = ''
   s += taper(seg(from(90), into(nodes[1]), dir(90), dir(90), 0.4), ROOT.w * 0.8, NODE.w, opt)
-  s += taper(seg(from(46), into(nodes[0]), dir(46), dir(90), 0.42), ROOT.w, NODE.w, opt)
-  s += taper(seg(from(134), into(nodes[2]), dir(134), dir(90), 0.42), ROOT.w, NODE.w, opt)
+  const arm = ({ leave, hold }, node) => seg(from(leave), into(node), dir(leave), dir(90), hold)
+  const top = arm(arms.top, nodes[0])
+  const bottom = arm(arms.bottom, nodes[2])
+  s += taper(top, ROOT.w, NODE.w, opt)
+  s += taper(bottom, ROOT.w, NODE.w, opt)
   s += `<g class="nodes">${nodes.map((n) => ring(n, NODE.r, NODE.w)).join('')}</g>`
   s += `<g class="root">${ring(R, ROOT.r, ROOT.w)}</g>`
   return {
     body: `<g class="arms">${s}</g>`,
     left: R[0] - ROOT.r,
-    top: Math.min(R[1] - ROOT.r, ...nodes.map((n) => n[1] - NODE.r)),
-    bottom: Math.max(R[1] + ROOT.r, ...nodes.map((n) => n[1] + NODE.r)),
+    top: Math.min(
+      R[1] - ROOT.r,
+      ...nodes.map((n) => n[1] - NODE.r),
+      yExtent(top, ROOT.w, NODE.w)[0]
+    ),
+    bottom: Math.max(
+      R[1] + ROOT.r,
+      ...nodes.map((n) => n[1] + NODE.r),
+      yExtent(bottom, ROOT.w, NODE.w)[1]
+    ),
   }
 }
 

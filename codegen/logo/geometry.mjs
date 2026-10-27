@@ -23,6 +23,20 @@ const dbez = (p, t) => {
   )
 }
 
+// Highest and lowest y reached by a tapered stroke along the cubic `p`
+export const yExtent = (p, w0, w1) => {
+  let lo = Infinity
+  let hi = -Infinity
+  for (let i = 0; i <= 100; i++) {
+    const t = i / 100
+    const y = bez(p, t)[1]
+    const half = (w0 + (w1 - w0) * t) / 2
+    lo = Math.min(lo, y - half)
+    hi = Math.max(hi, y + half)
+  }
+  return [lo, hi]
+}
+
 // Unit vector for a compass angle in degrees: 0 points up, 90 points right
 export const dir = (deg) => [Math.sin(rad(deg)), -Math.cos(rad(deg))]
 
