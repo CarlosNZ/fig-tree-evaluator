@@ -5,19 +5,21 @@ export const sortBy = defineOperator({
   category: 'array',
   parameters: {
     input: { type: 'array' },
-    // A name for the element, used in place of $element
-    as: { type: 'string', required: false, evaluationMode: 'structural' },
     // Evaluated for each element of input: the value to sort it by
     by: { type: ['number', 'string'], evaluationMode: 'perElement', over: 'input' },
+    // A name for the element, used in place of $element
+    as: { type: 'string', required: false, evaluationMode: 'structural' },
   },
   positionalParams: ['input', 'by'],
   returns: 'array',
   evaluate: async ({ input, by }) => {
-    // Every element's sort value, all evaluated at once
+    // sort() can't await, so work out every element's sort value first
     const values = await Promise.all(input.map((_, index) => by.evaluate(index)))
-    // Put the positions in order of their values, then the elements in that order
-    const order = input.map((_, index) => index)
-    order.sort((a, b) => compareValues(values[a], values[b]))
-    return order.map((index) => input[index])
+    // Keep each value with its element as they're sorted
+    const pairs = input.map((element, index) => ({ element, value: values[index] }))
+    // FigTree's own comparison utility, as used by greaterThan
+    // and other core comparison operators
+    pairs.sort((a, b) => compareValues(a.value, b.value))
+    return pairs.map(({ element }) => element)
   },
 })
