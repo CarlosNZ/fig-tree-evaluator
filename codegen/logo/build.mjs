@@ -42,17 +42,23 @@ const BACKGROUND_OPACITY = 0.5
 // ── Lockup
 
 const SIZE = 40
-const ADVANCE = 24 // JetBrains Mono's 600-unit advance at 40px
 const REACH = 68
 
-const width = (word) => dimFont.getAdvanceWidth(word, SIZE, { kerning: true })
+// Everything below is measured from the fonts, so either can be swapped
+const width = (font, word) => font.getAdvanceWidth(word, SIZE, { kerning: true })
+const xHeight = (font) => {
+  const fromTable = font.tables.os2?.sxHeight
+  const units = fromTable || font.charToGlyph('x').getBoundingBox().y2
+  return (units / font.unitsPerEm) * SIZE
+}
+
 // fig / tree / evaluator share a column; the background words hang off it to
 // the left and right
 const words = [
-  [dimFont, COLUMN - width('con'), BASELINES[0], 'con', 'background'],
+  [dimFont, COLUMN - width(dimFont, 'con'), BASELINES[0], 'con', 'background'],
   [headFont, COLUMN, BASELINES[0], 'fig', 'headline'],
-  [dimFont, COLUMN + 3 * ADVANCE, BASELINES[0], 'uration', 'background'],
-  [dimFont, COLUMN - width('expression'), BASELINES[1], 'expression', 'background'],
+  [dimFont, COLUMN + width(headFont, 'fig'), BASELINES[0], 'uration', 'background'],
+  [dimFont, COLUMN - width(dimFont, 'expression'), BASELINES[1], 'expression', 'background'],
   [headFont, COLUMN, BASELINES[1], 'tree', 'headline'],
   [headFont, COLUMN, BASELINES[2], 'evaluator', 'headline'],
 ].map(([font, x, y, text, role]) => {
@@ -60,15 +66,22 @@ const words = [
   return { role, d: path.toPathData(2), box: path.getBoundingBox() }
 })
 
-const starts = [COLUMN - width('con'), COLUMN - width('expression'), COLUMN]
-const graph = lockupGraph(starts, REACH)
+// Each line's node sits level with the middle of the lowercase letters of the
+// word it leads into: a background word on the first two lines, evaluator on
+// the third
+const starts = [COLUMN - width(dimFont, 'con'), COLUMN - width(dimFont, 'expression'), COLUMN]
+const middles = [
+  BASELINES[0] - xHeight(dimFont) / 2,
+  BASELINES[1] - xHeight(dimFont) / 2,
+  BASELINES[2] - xHeight(headFont) / 2,
+]
+const graph = lockupGraph(starts, middles, REACH)
 
 const pad = 2
-const rootLeft = starts[1] - (8 + 9.5 + REACH + 20)
-const x0 = Math.floor(rootLeft - pad)
+const x0 = Math.floor(graph.left - pad)
 const x1 = Math.ceil(Math.max(...words.map((w) => w.box.x2)) + pad)
-const y0 = Math.floor(Math.min(...words.map((w) => w.box.y1), BASELINES[0] - 11 - 9.5) - pad)
-const y1 = Math.ceil(Math.max(...words.map((w) => w.box.y2), BASELINES[2] - 11 + 9.5) + pad)
+const y0 = Math.floor(Math.min(...words.map((w) => w.box.y1), graph.top) - pad)
+const y1 = Math.ceil(Math.max(...words.map((w) => w.box.y2), graph.bottom) + pad)
 const VIEWBOX = [x0, y0, x1 - x0, y1 - y0]
 
 const lockupBody = (c) => {
@@ -78,7 +91,7 @@ const lockupBody = (c) => {
       .map((w) => w.d)
       .join('')
   return (
-    `<g fill="${c.graph}" color="${c.graph}">${graph}</g>` +
+    `<g fill="${c.graph}" color="${c.graph}">${graph.body}</g>` +
     `<path fill="${c.headline}" d="${d('headline')}"/>` +
     `<path fill="${c.background}" fill-opacity="${BACKGROUND_OPACITY}" d="${d('background')}"/>`
   )

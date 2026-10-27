@@ -17,13 +17,13 @@ export const BASELINES = [40, 88, 136]
 
 const NODE = { r: 9.5, w: 4.5, gap: 8 }
 const ROOT = { r: 20, w: 8 }
-const X_HEIGHT_MIDDLE = 11 // the nodes sit level with the middle of the lowercase letters
 
-// `starts` is the x where each line begins; `reach` is the root's distance
-// from the middle node
-export const lockupGraph = (starts, reach) => {
-  const nodes = starts.map((x, i) => [x - NODE.gap - NODE.r, BASELINES[i] - X_HEIGHT_MIDDLE])
-  const R = [nodes[1][0] - reach, BASELINES[1] - X_HEIGHT_MIDDLE]
+// `starts` is the x where each line begins and `middles` the y of each line's
+// lowercase middle, where its node sits; `reach` is the root's distance from
+// the middle node. Returns the drawing and its left, top and bottom edges.
+export const lockupGraph = (starts, middles, reach) => {
+  const nodes = starts.map((x, i) => [x - NODE.gap - NODE.r, middles[i]])
+  const R = [nodes[1][0] - reach, middles[1]]
   // Edges run from the root's rim to each ring's outer edge, so no line enters
   // a ring
   const into = (n) => [n[0] - NODE.r + 0.5, n[1]]
@@ -35,7 +35,12 @@ export const lockupGraph = (starts, reach) => {
   s += taper(seg(from(134), into(nodes[2]), dir(134), dir(90), 0.42), ROOT.w, NODE.w, opt)
   s += `<g class="nodes">${nodes.map((n) => ring(n, NODE.r, NODE.w)).join('')}</g>`
   s += `<g class="root">${ring(R, ROOT.r, ROOT.w)}</g>`
-  return `<g class="arms">${s}</g>`
+  return {
+    body: `<g class="arms">${s}</g>`,
+    left: R[0] - ROOT.r,
+    top: Math.min(R[1] - ROOT.r, ...nodes.map((n) => n[1] - NODE.r)),
+    bottom: Math.max(R[1] + ROOT.r, ...nodes.map((n) => n[1] + NODE.r)),
+  }
 }
 
 // The icon on a 200 grid. Its node stagger copies the wordmark's ragged left
