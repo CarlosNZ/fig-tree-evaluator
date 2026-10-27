@@ -57,6 +57,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Don't pick a word that implies more than is true.**
   - Before: "A value stored as `null`…"
   - After: "A data value that is actually `null`…", since it doesn't have to be stored
+- **State a requirement flatly.** A "can" or "might" inside a rule makes it sound vague.
+  - Before: "The key should include everything that can change what `fn` returns."
+  - After: "The key should include everything `fn`'s result depends on."
 - **Where two of a kind are in play, name each by its role.**
   - Before: "with this one's options and an update applied, leaving this one as it is", on `with()`
   - After: "with the original's options and an update applied, leaving the original instance as is"
@@ -134,6 +137,11 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **For a feature the reader could build by hand, say what declaring it gives over doing it in their own code,** not only what it does, since they'll ask why they shouldn't just write it themselves.
   - Before: "With `truthiness: true`, whatever value the parameter receives is read as `true` or `false`, by FigTree's truthiness rule."
   - After: "Declaring it, rather than testing the value in `evaluate`, means:", then a missing condition counting as false, agreeing with the core operators, and working per element
+- **Spend the words on what the reader doesn't know.** A mechanism they already know, such as memoising, gets a clause. The explanation and the example go to what's particular to FigTree and what they have to decide, and an API they might not reach for opens with why they'd use it.
+  - Before: "The first call runs `fn` and keeps its result under the key, and a later call with an equal key returns the kept result without running `fn`."
+  - After: what goes in the key and what stays out, shown on a simplified `http`: "**Not in the key:** whatever doesn't change the response…"
+  - Before: "The core `buildObject` records an event when it's given the same key twice:", then the whole definition
+  - After: "A note is for something `evaluate` decides quietly, which the result doesn't show, but which someone debugging an expression would want to know."
 - **Give the idea behind a rule before its letter.**
   - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
   - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
@@ -165,6 +173,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Cut: "so an editor can highlight the right part of it", on an issue's `path`, after the page had said editors use issues
 - **Never suggest a use FigTree is designed against, even as a warning.** Naming it plants the idea.
   - Cut: "…so don't put anything in an `each` that mustn't run for every element, such as a `POST` that changes something"
+  - Cut: a section on what an operator must handle when it's cancelled, repeated or skipped, ending "An operator that [changes anything outside FigTree] is responsible for what happens…"
+- **Advise the reader only on their own use of FigTree,** not on how other tools should handle its output.
+  - Cut: "code that reads a trace, such as a debug panel or a logger, should pass over an event whose `type` it doesn't recognise"
 - **Only what the reader can place here.** Cut what an earlier page covered, and allusions to features they haven't met; a bare API name that means nothing yet is better described by what it does. Not strict: a later feature is fine where it makes an important point and is clear without its page.
   - Before: "`validate()` also warns about two things…", on a page that hadn't mentioned `validate()`
   - Before: "covers fallbacks in full: reading what went wrong with `$error`, a fallback for every use of an operator, and the errors your app receives"
@@ -276,11 +287,11 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: `map` with `input` and `each` named, then `// The same two parameters, by position: [input, each]` above the other four
   - Before: `['SELECT … = $1', '$data.categoryId']`
   - After: `['SELECT … = $1 AND unit_price < $2', '$data.categoryId', '$data.maxPrice']`
-- **In host code, show where each name comes from, and name it for what it does.** The import goes below the cut, and the prose says what kind of thing a new name is. The plain form comes before the variant, and a real call beats a made-up helper. A call that doesn't fit on a line puts each argument on its own line; where the example is about a parameter, use the named form.
+- **In host and operator code, show where each name comes from, and name it for what it does.** The import goes below the cut, and the prose says what kind of thing a new name is. The plain form comes before the variant, and a real call beats a made-up helper. A call that doesn't fit on a line puts each argument on its own line; where the example is about a parameter, use the named form.
   - Before: `operators: [coreOperators, httpOperators(new FetchClient()), shippingQuote]`, with `shippingQuote` declared out of sight
   - After: `import { formatNumber } from './operators/formatNumber'`, under `// A custom operator, written with defineOperator()`
-  - Before: "or one you pass it, as `new FetchClient(myFetch)`"; `showTrace(error.trace)`
-  - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"; `console.dir(error.trace, { depth: null })`
+  - Before: "or one you pass it, as `new FetchClient(myFetch)`"; `return pick(response, returnPath)`, with `pick` declared out of sight
+  - After: "`new FetchClient()`. To use a different one, such as a `fetch` wrapped to retry failed requests, pass it in: `new FetchClient(fetchWithRetry)`"; `const { found, value } = resolvePath(response, returnPath)`, the exported function the core `http` uses
 
 ## Punctuation, formatting and links
 
