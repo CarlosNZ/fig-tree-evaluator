@@ -103,9 +103,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 
 ## What to say
 
-- **Describe the effect, not the mechanism.** Where the reader has something to write or do, say exactly what, especially where a phrase could be read two ways. An instruction names the exact control and says how to read what the reader will see.
-  - Before: "It's allowed on any object, a node or plain data, can hold any value, and is removed before evaluation, so it never appears in a result"
-  - After: "It's allowed in any object, whether a node or a plain object, and has no effect on the result"
+- **Describe the effect, not the mechanism, or a label for it.** Where a term stands for an outcome, say the outcome. Where the reader has something to write or do, say exactly what, especially where a phrase could be read two ways. An instruction names the exact control and says how to read what the reader will see.
+  - Before: "**Passed on**", in the table of what a `null` does at a parameter
+  - After: "makes the whole node return `null`"
   - Before: "Give it `from: '$vars'`, and the path's first key names the variable"
   - After: "Give it `from: '$vars'`, and start the path with the variable's name"
   - After: "Press the $if button at the top of the tree, and each part is coloured by how it ran: orange where a fallback was used (the division), green where it returned a value, and dimmed where it never ran (the then branch)."
@@ -118,15 +118,22 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Before: "Set it to `'post'` for an API that takes its question as a body"
   - After: "Set it to `'post'` for an endpoint that expects a POST"
   - Cut: "…to offer a smaller set in an editor where people with less experience write rules", as the reason to leave operators out
-- **Give the real reason in a clause, or none.** If a feature is missing because it hasn't been built, say it isn't there and stop: a weak justification invites argument, and so does a true reason that implies it's the only one.
+- **Give the real reason in a clause, or none.** If a feature is missing because it hasn't been built, say it isn't there and stop: a weak justification invites argument, and so does a true reason that implies it's the only one. A sentence that only describes the rule's effect isn't a reason: state the rule, and how to get what the reader wants.
   - After: "For security reasons, a header's value never appears in a failure or a trace."
-  - Cut: "A fragment's parameters are yours to change, and a call that relied on their order would quietly pass the wrong values once they moved."
+  - Before: "**Optional, with no `default`:** when the replacing parameter isn't given, the target's own null policy applies, as if it weren't there."
+  - After: "**Optional, with no `default`.** A host that wants a replacement on every node can set one in `operatorDefaults`."
   - Cut: "the root never imports them, so an app that doesn't import one doesn't carry it", since the root entry is tree-shaken too
 - **Frame a design choice by what it gives the reader, not what it costs.** Lead with what's available, not the constraint that comes with it; where something stays fixed by design, say what stays fixed, not how to get round it.
   - Before: "evaluation is always asynchronous, even when there's nothing to wait for"
   - After: "evaluation is always _asynchronous_. Your code awaits every expression the same way, so it never needs to know what's inside one"
   - Before: "The `operators` option is the instance's whole set of operators, so giving it replaces the core operators rather than adding to them…"
   - After: "The core operators are included by default. The package also has these, which you can add:"
+- **Mark a special case as special,** so the reader doesn't generalise it and wonder what else works that way.
+  - Before: "Its `nullPolicy` is conditional, so it can provide a _function_"
+  - After: "For a case like this, `nullPolicy` can be a _function_ (the _only_ field that can)"
+- **For a feature the reader could build by hand, say what declaring it gives over doing it in their own code,** not only what it does, since they'll ask why they shouldn't just write it themselves.
+  - Before: "With `truthiness: true`, whatever value the parameter receives is read as `true` or `false`, by FigTree's truthiness rule."
+  - After: "Declaring it, rather than testing the value in `evaluate`, means:", then a missing condition counting as false, agreeing with the core operators, and working per element
 - **Give the idea behind a rule before its letter.**
   - Before: "A fallback counts as a plain value when it's built only from fixed values and `$error` reads"
   - After: "A fallback counts as a plain value when there's nothing to evaluate: it's built only from fixed values and `$error` reads"
@@ -202,6 +209,10 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: "When one iterator is inside the `each` of another, `$element` and `$index` belong to…", then a new paragraph: "In this example, the outer one is named. …"
 - **A general remark beside an example reads as a claim about that example.** Cut it, or move it away.
   - Cut: "A variable nothing reads can't fail.", just before an example whose variable is read, and fails
+- **Don't lean on something far up the page.** A recap that matches a table's rows to examples above it is cut. Where a back-reference is needed, it links to what it means.
+  - Cut: "`formatNumber`'s `value` is passed on, and `distance`'s `unit` takes its default…", after the null table
+  - Before: "which is why `distance`'s `evaluate` reads `from as number[]`"
+  - After: "so in the [earlier example](#types-and-constraints), `distance`'s `evaluate` still sees `from` as `unknown[]`, which requires a cast"
 - **Lists for options that each need a description,** nested where they fall into groups; **a shape as its type**, where some keys are typed and others are convention, with comments carrying only what the type can't say.
   - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, …; `noCache` (…); and `//`, a comment (…)."
   - After: one bullet per modifier
@@ -233,6 +244,12 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Before: an `$if` fallback whose else branch was `'$error.message'`, in an example about the fallback's `$divide` failing
   - After: `'Average unavailable'`
   - A setting needed only for the demo stays out of the expression, but a comment says it's in force: `// Caching is OFF for this example, so every run sends a new request`
+- **A custom operator in an example does something FigTree can't.** A thin variant of a core operator, which would really be a fragment, suggests operators are for trivial things. To show a declaration, a core operator's own definition is just as good, since they're first class.
+  - Before: `yesNo`, an `if`; `fullName`, a `buildString`; `average`, a `plus` over a `length`
+  - After: `hash` (SHA-256), `distance`, and the core `if` definition for `truthiness`
+- **The reader should grasp an example's premise at a glance,** so their effort goes on the point, not on working out what the example is for.
+  - Before: `missingFields`, which "lists which fields of a form are still empty", leaving the reader to work out which fields it expects
+  - After: `hash`, which "hashes the whole data object, which would tell whether anything in a form has changed"
 - **Start an example in the state that makes the point,** and let a comment say how to reach the others.
   - After: data that fails at runtime, with `// Make these both strings, and it works.`, so the Static error and Runtime error badges sit one above the other
 - **An example finishes what the prose just described,** and works under the default setup.
@@ -244,10 +261,11 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: "Its trace has a `request` event, and some `render` events:"
   - Before: "`value`'s type includes `null`, so a `null` there makes the node return `null`"
   - After: "the `value` parameter is declared as `['number', 'null']`, so it accepts `null`, and by default a `null` there is passed on"
-- **Comments point at what to notice or try, for the point the example makes,** in plain words, not category names or compressed notation. Say which value to change and what it shows; where the change adds values, give them as commented-out lines to uncomment. Where the prose already carries the point, no comment.
+- **Comments point at what to notice or try, for the point the example makes,** in plain words, not category names or compressed notation. Say which value to change and what it shows; where the change adds values, give them as commented-out lines to uncomment. Where the prose already carries the point, no comment. A comment describes the line it sits on, unambiguously: it names nothing the reader hasn't met, and never pairs code with an outcome so that either could be read as the cause.
   - Before: `// Passed on: plus doesn't run`; `controller.abort() // pending throws: aborted`
   - After: `// Can't be worked out without the shipping cost, so gives null`; `// When it's time to cancel` above `controller.abort()`
-  - Example: `// Uncomment shipping and decimals to see each value change` above `// shipping: 5.5,` and `// decimals: 2,`
+  - Before: `// { $isBlank: null } returns null, and evaluate never runs` above `const withoutPolicy = …`; `// The parameters whose nulls this one replaces`
+  - After: `// Replace a null in the named parameters with this parameter's value`
 - **A result in a comment is marked `// =>`,** a reason added to it opens with "since", and one that doesn't fit beside its call goes on the next line, indented under it.
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`; `fig.isEvaluable({ $flibble: 1 }) // => true, since an unknown operator is a static error`
 - **One comment per key in a config example,** on the key it describes; a comment above several keys reads as covering them all.
