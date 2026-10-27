@@ -13,7 +13,7 @@ Colours, the background-word opacity, the root's reach and the spacing below are
 The two fonts are loaded by file name near the top of `build.mjs`: `headFont` for **fig**, **tree** and **evaluator**, and `dimFont` for the background words. Put any replacement `.ttf` in `.cache/` and change the name. Everything that depends on the fonts is measured from them:
 
 - each background word's width, so the lines start where they should and every node lands at the start of its line;
-- the width of **fig**, so *uration* follows it directly;
+- the width of **fig**, so _uration_ follows it directly;
 - each font's x-height, so every node sits level with the middle of the lowercase letters of the word it leads into.
 
 `SIZE` sets the type size for both fonts, `BASELINES` and `COLUMN` in `marks.mjs` set the line spacing and the headline column, and the canvas is fitted to whatever results.
