@@ -164,10 +164,11 @@ export type {
   CatalogParameter,
   CategoryListing,
   CategoryListingMap,
+  ColorPair,
   FragmentMetadata,
+  Listing,
+  ListingMap,
   NullOutcome,
-  OperatorListing,
-  OperatorListingMap,
   TypeSeeds,
 } from './catalogTypes'
 

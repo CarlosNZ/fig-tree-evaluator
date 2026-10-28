@@ -23,7 +23,7 @@ import {
   type FragmentMetadata,
   type LazyValue,
   type OperatorContext,
-  type OperatorListingMap,
+  type ListingMap,
   type PerElement,
   type SettlementStream,
 } from '../src'
@@ -93,9 +93,10 @@ describe('operatorListings', () => {
     })
 
     test('with hex colours, text at 4.5:1 or better', () => {
-      expect(listing.backgroundColor).toMatch(HEX)
-      expect(listing.textColor).toMatch(HEX)
-      expect(contrast(listing.backgroundColor!, listing.textColor!)).toBeGreaterThanOrEqual(4.5)
+      const { background, text } = listing.colors!
+      expect(background).toMatch(HEX)
+      expect(text).toMatch(HEX)
+      expect(contrast(background, text)).toBeGreaterThanOrEqual(4.5)
     })
   })
 
@@ -187,10 +188,10 @@ describe('categoryListings', () => {
 
   test.each(Object.entries(categoryListings))(
     '%s: colours are hex, with text at 4.5:1 or better',
-    (_, listing) => {
-      expect(listing.backgroundColor).toMatch(HEX)
-      expect(listing.textColor).toMatch(HEX)
-      expect(contrast(listing.backgroundColor, listing.textColor)).toBeGreaterThanOrEqual(4.5)
+    (_, { colors: { background, text } }) => {
+      expect(background).toMatch(HEX)
+      expect(text).toMatch(HEX)
+      expect(contrast(background, text)).toBeGreaterThanOrEqual(4.5)
     }
   )
 })
@@ -239,8 +240,8 @@ describe('getCatalog', () => {
       })
       const snapshot = instance.getOperators()
       getCatalog(instance).operators.forEach((operator, i) => {
-        const { displayName, description, docUrl, backgroundColor, textColor, ...rest } = operator
-        void [displayName, description, docUrl, backgroundColor, textColor]
+        const { displayName, description, docUrl, colors, ...rest } = operator
+        void [displayName, description, docUrl, colors]
         const parameters = Object.fromEntries(
           Object.entries(rest.parameters).map(
             ([name, { description, seed, nullOutcome, elementNullOutcome, ...parameter }]) => {
@@ -260,8 +261,7 @@ describe('getCatalog', () => {
         displayName: listing.displayName,
         description: listing.description,
         docUrl: listing.docUrl,
-        backgroundColor: listing.backgroundColor,
-        textColor: listing.textColor,
+        colors: listing.colors,
       })
       expect(plus.parameters.values.description).toBe(listing.parameterDescriptions!.values)
       expect(plus.parameters.values.seed).toEqual(listing.seeds!.values)
@@ -270,8 +270,7 @@ describe('getCatalog', () => {
     test('an operator without a listing falls back on its name, category and types', () => {
       const [operator] = getCatalog(new FigTree({ operators: [tally] })).operators
       expect(operator.displayName).toBe('tally')
-      expect(operator.backgroundColor).toBe(categoryListings.math.backgroundColor)
-      expect(operator.textColor).toBe(categoryListings.math.textColor)
+      expect(operator.colors).toBe(categoryListings.math.colors)
       for (const key of ['description', 'docUrl']) expect(Object.hasOwn(operator, key)).toBe(false)
       const { values, mode, start } = operator.parameters
       expect(Object.hasOwn(values, 'description')).toBe(false)
@@ -287,8 +286,7 @@ describe('getCatalog', () => {
           description: 'Sum or count',
           parameterDescriptions: { mode: 'What to tally' },
           docUrl: 'https://example.com/tally',
-          backgroundColor: '#123456',
-          textColor: '#ffffff',
+          colors: { background: '#123456', text: '#ffffff' },
           seeds: { mode: 'count' },
         },
       }).operators
@@ -296,8 +294,7 @@ describe('getCatalog', () => {
         displayName: 'Tally',
         description: 'Sum or count',
         docUrl: 'https://example.com/tally',
-        backgroundColor: '#123456',
-        textColor: '#ffffff',
+        colors: { background: '#123456', text: '#ffffff' },
       })
       expect(operator.parameters.mode).toMatchObject({
         description: 'What to tally',
@@ -308,7 +305,7 @@ describe('getCatalog', () => {
 
     describe('listings merge over the package’s, field by field', () => {
       const instance = new FigTree({ operators: [coreOperators, tally] })
-      const operatorOf = (name: string, ...listings: OperatorListingMap[]) =>
+      const operatorOf = (name: string, ...listings: ListingMap[]) =>
         getCatalog(instance, ...listings).operators.find((op) => op.name === name)!
       const plus = operatorOf('plus')
 
@@ -380,24 +377,18 @@ describe('getCatalog', () => {
         expect(operator).toStrictEqual(plus)
       })
 
-      test('colours apply only as a pair, replacing the pair beneath', () => {
-        const half = operatorOf('plus', { plus: { backgroundColor: '#123456' } })
-        expect([half.backgroundColor, half.textColor]).toEqual([
-          plus.backgroundColor,
-          plus.textColor,
-        ])
-        const halfOverCategory = operatorOf('tally', { tally: { textColor: '#000000' } })
-        expect([halfOverCategory.backgroundColor, halfOverCategory.textColor]).toEqual([
-          categoryListings.math.backgroundColor,
-          categoryListings.math.textColor,
-        ])
-        // A pair replaces the package's, and a later half changes neither
+      test('colours replace the pair beneath, whole, and fall back on the category', () => {
+        const pair = { background: '#123456', text: '#ffffff' }
+        expect(operatorOf('plus', { plus: { colors: pair } }).colors).toBe(pair)
+        expect(operatorOf('tally', { tally: { colors: pair } }).colors).toBe(pair)
+        expect(operatorOf('tally').colors).toBe(categoryListings.math.colors)
+        // A later entry without colours keeps the pair beneath
         const restyled = operatorOf(
           'plus',
-          { plus: { backgroundColor: '#123456', textColor: '#ffffff' } },
-          { plus: { backgroundColor: '#abcdef' } }
+          { plus: { colors: pair } },
+          { plus: { displayName: 'Add' } }
         )
-        expect([restyled.backgroundColor, restyled.textColor]).toEqual(['#123456', '#ffffff'])
+        expect(restyled.colors).toBe(pair)
       })
 
       test('reads only keys a map or entry holds itself, never inherited ones', () => {
@@ -644,8 +635,7 @@ describe('getCatalog', () => {
           metadata: {
             displayName: 'Greeting',
             docUrl: 'https://example.com/greeting',
-            backgroundColor: '#477799',
-            textColor: '#ffffff',
+            colors: { background: '#477799', text: '#ffffff' },
             seeds: { name: 'Ada' },
           } satisfies FragmentMetadata,
         },
@@ -659,8 +649,8 @@ describe('getCatalog', () => {
       const snapshot = instance.getFragments()
       expect(fragments.map((fragment) => fragment.name)).toEqual(snapshot.map((f) => f.name))
       fragments.forEach((fragment, i) => {
-        const { displayName, docUrl, backgroundColor, textColor, ...rest } = fragment
-        void [displayName, docUrl, backgroundColor, textColor]
+        const { displayName, docUrl, colors, ...rest } = fragment
+        void [displayName, docUrl, colors]
         const parameters = Object.fromEntries(
           Object.entries(rest.parameters).map(([name, { seed, ...parameter }]) => {
             void seed
@@ -677,18 +667,18 @@ describe('getCatalog', () => {
         displayName: 'Greeting',
         description: 'A greeting',
         docUrl: 'https://example.com/greeting',
-        backgroundColor: '#477799',
-        textColor: '#ffffff',
+        colors: { background: '#477799', text: '#ffffff' },
       })
       expect(greeting.parameters.name).toMatchObject({ description: 'Who to greet', seed: 'Ada' })
       // The type rule, not the runtime default
       expect(greeting.parameters.punctuation.seed).toBe(typeSeeds.string)
     })
 
-    test('without display metadata: its name, and no colours, not even half a pair', () => {
+    test('without display metadata: its name, and no colours', () => {
       const bare = find('bare')
       expect(bare.displayName).toBe('bare')
-      for (const key of ['docUrl', 'backgroundColor', 'textColor'])
+      // A flat colour key is the host's own, not presentation
+      for (const key of ['docUrl', 'colors', 'backgroundColor'])
         expect(Object.hasOwn(bare, key)).toBe(false)
     })
   })
@@ -708,8 +698,7 @@ describe('FragmentMetadata', () => {
   test('a fragment may give a docUrl or leave it out, and gives no text', () => {
     const withoutDocs: FragmentMetadata = {
       displayName: 'Greeting',
-      backgroundColor: '#477799',
-      textColor: '#ffffff',
+      colors: { background: '#477799', text: '#ffffff' },
     }
     const withDocs: FragmentMetadata = { ...withoutDocs, docUrl: 'https://example.com/greeting' }
     // @ts-expect-error — a fragment's description is its definition's own

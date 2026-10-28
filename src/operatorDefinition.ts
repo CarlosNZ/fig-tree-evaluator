@@ -161,7 +161,7 @@ export type ParameterDeclarations = Record<string, ParameterDeclaration>
  * A definition as authored, before it passes through `defineOperator()`.
  * Generic over its own `parameters` so the body's `params` is typed from
  * them (src/inference.ts). How the operator is presented, its description
- * and its parameters' included, is an `OperatorListing`'s
+ * and its parameters' included, is a `Listing`'s
  * (src/catalogTypes.ts), so a host that never shows that text never ships
  * it.
  */

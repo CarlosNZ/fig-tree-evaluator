@@ -7,9 +7,9 @@
  *
  * Types only, exported from the root, so the subpath stays a plain data
  * module with no type surface of its own. They are also the key convention
- * for anyone else: a plugin author lists their operators with an
- * `OperatorListingMap`, and a host presents a fragment through its
- * definition's `metadata`, a `FragmentMetadata`.
+ * for anyone else: a plugin author lists their operators with a
+ * `ListingMap`, and a host presents a fragment through its definition's
+ * `metadata`, a `FragmentMetadata`.
  */
 import type { FragmentParameter } from './fragments'
 import type { FragmentInfo, OperatorInfo, ParameterInfo } from './introspect'
@@ -17,35 +17,29 @@ import type { CompiledNullPolicy, NullPolicyValue, OperatorCategory } from './op
 import type { BasicType } from './typeCheck'
 
 /**
- * How an operator is presented: its label, text, documentation, colours,
- * and what its parameters start as. Every field is optional, so a plugin
+ * How an operator or a fragment is presented, and what helps someone author
+ * with it: its label, text, documentation, colours, and what its parameters
+ * start as and can be tried with. Every field is optional, so a plugin
  * gives only what it has; the package's own listings are complete
- * (test/catalog.test.ts). `getCatalog` fills the gaps.
+ * (test/catalog.test.ts). `getCatalog` fills the gaps. The engine never
+ * reads a listing, so an app that only evaluates never carries one.
  *
  * A listing can also override another: `getCatalog` merges each over the
  * package's, field by field and, for `seeds` and `parameterDescriptions`,
  * parameter by parameter, so `{ plus: { displayName: 'Add' } }` keeps the
  * rest of `plus`'s. A field set to `undefined` changes nothing.
  */
-export interface OperatorListing {
+export interface Listing {
   /** A label for listings and node headers — `'String builder'`. */
   displayName?: string
-  /**
-   * What the operator does, in a line. It lives here rather than in the
-   * definition, so a host that never shows it never ships it.
-   */
+  /** What it does, in a line. */
   description?: string
   /** Each parameter's description, by name, as `description` is its own. */
   parameterDescriptions?: { [parameter: string]: string }
-  /** The operator's documentation, which an editor links each node to. */
+  /** Its documentation, which an editor links each node to. */
   docUrl?: string
-  /**
-   * A CSS colour; `textColor` on it reaches 4.5:1 contrast (WCAG AA). The
-   * two are a pair: `getCatalog` takes both or neither, so a listing giving
-   * one changes neither.
-   */
-  backgroundColor?: string
-  textColor?: string
+  /** The colours an editor draws it in. */
+  colors?: ColorPair
   /**
    * Starting values for parameters, by name, for an editor to fill in when a
    * parameter is added. A parameter without one starts from `TypeSeeds`: a
@@ -55,6 +49,24 @@ export interface OperatorListing {
    * change it from its default.
    */
   seeds?: { [parameter: string]: unknown }
+  /**
+   * Example values, by parameter name: realistic arguments to run it with,
+   * for trying it out, testing and documentation. Unlike a seed, which is
+   * often a placeholder, a sample is a value worth running.
+   */
+  samples?: { [parameter: string]: unknown }
+  /** The host's own keys, for tools. Never interpreted by FigTree. */
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * Two CSS colours: `text` on `background` reaches 4.5:1 contrast (WCAG
+ * AA). One field, so a listing gives both or neither. It is the pair for a
+ * light theme; a tool with a dark one derives its own from it.
+ */
+export interface ColorPair {
+  background: string
+  text: string
 }
 
 /**
@@ -62,7 +74,10 @@ export interface OperatorListing {
  * only, since the engine never reads it. The fragment's descriptions are its
  * definition's own, so its metadata has none.
  */
-export type FragmentMetadata = Omit<OperatorListing, 'description' | 'parameterDescriptions'>
+export type FragmentMetadata = Omit<
+  Listing,
+  'description' | 'parameterDescriptions' | 'samples' | 'metadata'
+>
 
 /** How a `category` is presented: its label, place and colour in a listing. */
 export interface CategoryListing {
@@ -71,15 +86,14 @@ export interface CategoryListing {
   /** Position in a grouped listing, from 0. */
   order: number
   /** The category's hue; its operators' colours are shades of it. */
-  backgroundColor: string
-  textColor: string
+  colors: ColorPair
 }
 
 /**
  * Listings by operator name: a plugin's for its operators, or a host's
  * overrides, which `getCatalog` merges over the package's in order.
  */
-export type OperatorListingMap = { [operator: string]: OperatorListing }
+export type ListingMap = { [name: string]: Listing }
 
 export type CategoryListingMap = { [category in OperatorCategory]: CategoryListing }
 
@@ -152,8 +166,7 @@ export interface CatalogOperator extends Omit<OperatorInfo, 'parameters'> {
   displayName: string
   description?: string
   docUrl?: string
-  backgroundColor: string
-  textColor: string
+  colors: ColorPair
   parameters: Record<string, CatalogParameter>
 }
 
@@ -172,8 +185,7 @@ export interface CatalogFragmentParameter extends FragmentParameter {
 export interface CatalogFragment extends Omit<FragmentInfo, 'parameters'> {
   displayName: string
   docUrl?: string
-  backgroundColor?: string
-  textColor?: string
+  colors?: ColorPair
   parameters: Record<string, CatalogFragmentParameter>
 }
 
