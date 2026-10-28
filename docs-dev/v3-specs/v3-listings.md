@@ -406,11 +406,11 @@ Every snapshot field travels unchanged, except the raw `listing`, whose fields a
 - **`textColor` and `backgroundColor`**, where both are strings, become `listing.colors`. They were the fragment's presentation in v2, and stay its presentation.
 - **Every other key** goes into the definition's `metadata`, including a `description` that is not a string and a colour without its partner. The bag is opaque, so nothing placed there is read as presentation.
 - **Each declaration's `description`**, where it is a string, becomes the listing's `parameterDescriptions` entry for that parameter.
-- **Any other key on a declaration** is dropped, with a `lossy-default` issue: v3 has no per-parameter `metadata`, and where such keys belong is the author's call. That includes a `description` that is not a string.
+- **Any other key on a declaration** is dropped, with a `lossy-default` issue for each: v3 has no per-parameter `metadata`, and where such keys belong is the author's call. That includes a `description` that is not a string.
 
-| Code                     | Emitted when                                                                          | Path            | Message                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------------------------------- |
-| `parameter-keys-dropped` | a v2 parameter declaration holds a key v3's declaration and listing have no place for | the declaration | `` `{keys}` on this parameter has no place in v3, which has no per-parameter metadata. Removed. `` |
+| Code                    | Emitted when                                                                                             | Path    | Message                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `parameter-key-dropped` | a v2 parameter declaration holds a key v3's declaration and listing have no place for, one issue per key | the key | ``A v3 parameter declaration has no place for `{key}`, and no per-parameter metadata. Removed.`` |
 
 `listing` is absent where none of its fields is given, as `metadata` is.
 
@@ -448,7 +448,7 @@ For the implementation, against the code as of `aede57a`:
 - **`getCatalog()`** takes a `CatalogOptions` object in place of its rest parameter of maps. `OperatorListingMap` becomes `ListingMap`, and its maps reach fragments and `literal` as well as operators. Category overrides are new.
 - **`Catalog`** reports only the categories in use, and gains `literal` and `issues`. `CatalogParameter` becomes `CatalogOperatorParameter`. Both parameter types gain `sample`, `CatalogFragmentParameter` gains `description`, and `CatalogFragment` gains `description` and always has `colors`. `metadata` is always present, the definition's and the listing's merged.
 - **`./catalog`** gains `fragmentColors`. Today the editor picks its own fragment colours (`fragmentBackground` / `fragmentText` in fig-tree-editor-react's `editorTheme.ts`), and that pair reaches only 3.49:1, so the package's needs a new one.
-- **The converter** writes `listing` (`description`, `colors`, `parameterDescriptions`) where it wrote `description` and the colour keys into `metadata`, and drops a declaration's other keys with the new `parameter-keys-dropped` issue where it wrote them into the parameter's `metadata`.
+- **The converter** writes `listing` (`description`, `colors`, `parameterDescriptions`) where it wrote `description` and the colour keys into `metadata`, and drops a declaration's other keys with the new `parameter-key-dropped` issue where it wrote them into the parameter's `metadata`.
 
 ## Elsewhere
 

@@ -245,7 +245,7 @@ export function defineOperator(
     const d = decl as ParameterDeclaration & Record<string, unknown>
 
     for (const [key, value] of Object.entries(d)) {
-      if (key === 'default' || key === 'metadata') continue
+      if (key === 'default') continue
       checkSentinelFree(value, at(key), paramName)
     }
 
@@ -279,13 +279,6 @@ export function defineOperator(
         ErrorCodes.invalidDefinition,
         `'required' must be a boolean`,
         at('required'),
-        paramName
-      )
-    if (d.metadata !== undefined && !isPlainObject(d.metadata))
-      addIssue(
-        ErrorCodes.invalidDefinition,
-        `'metadata' must be a plain object`,
-        at('metadata'),
         paramName
       )
 

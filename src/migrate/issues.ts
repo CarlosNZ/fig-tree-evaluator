@@ -181,6 +181,11 @@ export const CATALOGUE = {
     message: ({ type }: { type: string }) =>
       `\`${type}\` is not a v3 type, so the parameter takes \`'any'\`.`,
   },
+  'parameter-key-dropped': {
+    tag: 'lossy-default',
+    message: ({ key }: { key: string }) =>
+      `A v3 parameter declaration has no place for \`${key}\`, and no per-parameter metadata. Removed.`,
+  },
   'default-outside-type': {
     tag: 'lossy-default',
     message: ({ value, type }: { value: string; type: string }) =>
