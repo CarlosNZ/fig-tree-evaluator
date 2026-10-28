@@ -283,9 +283,31 @@ With no orders, there's nothing to add up, so its `plus` fails:
 
 A failed argument, such as a string passed as `amount`, belongs to the calling expression, so its `$error` has neither field.
 
+## Validating a fragment during authoring
+
+Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected:
+
+```ts title="checkBody.ts"
+const fragmentBody = {
+  $round: [{ $multiply: ['$params.amount', { $plus: [1, { $divide: ['$params.rat', 100] }] }] }, 2],
+}
+
+fig.validate(fragmentBody, { params: ['amount', 'rate'] })
+// => { valid: false, issues: [{ code: 'unresolved-param', suggestion: 'rate', … }] }
+```
+
+The `getDependencies()` method lists the parameters a body reads (the reverse of the above), so an editor can offer to declare them. The `dynamic` value is `true` when the body reads `$params` as a whole, where the list can't be known from the expression:
+
+```ts title="checkBody.ts"
+declare const fragmentBody: object
+// ---cut---
+fig.getDependencies(fragmentBody).params
+// => { names: ['amount', 'rat'], dynamic: false }
+```
+
 ## Fragments in an editor
 
-A fragment definition can carry two more keys, primarily for external tools such as a visual editor: a `listing`, with what an editor needs to present the fragment, and `metadata`, for anything of your own. FigTree itself never uses either:
+A fragment definition can carry two more keys, intended primarily for external tools such as a visual editor: a `listing`, with what an editor needs to present the fragment, and `metadata`, for anything of your own. FigTree itself never uses either:
 
 ```ts title="Types"
 import type { FragmentParameterDeclaration } from 'fig-tree-evaluator'
@@ -313,12 +335,12 @@ interface Listing {
   seeds?: { [parameter: string]: unknown }
   // Realistic arguments, by parameter name, for trying the body out
   samples?: { [parameter: string]: unknown }
-  // Anything your own tools need, as in the definition's metadata
+  // Merged over the definition's metadata in the catalog
   metadata?: Record<string, unknown>
 }
 ```
 
-[`getCatalog()`](/tooling/catalog/#fragments) shows how an editor uses them.
+[`getCatalog()`](/tooling/catalog/#fragments) shows how an editor retrieves them.
 
 ```ts title="fragments.ts"
 import { FigTree } from 'fig-tree-evaluator'
@@ -347,33 +369,12 @@ const fig = new FigTree({
         // A new call starts with one empty order, to show the shape
         seeds: { orders: [{ amount: 0 }] },
         samples: { orders: [{ amount: 120 }, { amount: 80.5 }, { amount: 42.25 }] },
+        metadata: { version: "1.0" },
       },
-      metadata: { owner: 'finance-team' },
+      metadata: { owner: 'finance-team', author: "Carl" },
     },
   },
 })
-```
-
-### Validating a fragment during authoring
-
-Like with normal expressions, a fragment body can be checked using `validate()`. The only difference is that you must provide a second argument, listing the parameters expected:
-
-```ts title="checkBody.ts"
-const fragmentBody = {
-  $round: [{ $multiply: ['$params.amount', { $plus: [1, { $divide: ['$params.rat', 100] }] }] }, 2],
-}
-
-fig.validate(fragmentBody, { params: ['amount', 'rate'] })
-// => { valid: false, issues: [{ code: 'unresolved-param', suggestion: 'rate', … }] }
-```
-
-The `getDependencies()` method lists the parameters a body reads (the reverse of the above), so an editor can offer to declare them. The `dynamic` value is `true` when the body reads `$params` as a whole, where the list can't be known from the expression:
-
-```ts title="checkBody.ts"
-declare const fragmentBody: object
-// ---cut---
-fig.getDependencies(fragmentBody).params
-// => { names: ['amount', 'rat'], dynamic: false }
 ```
 
 [Building tools](/tooling/overview/) covers the rest of what FigTree offers an editor.
