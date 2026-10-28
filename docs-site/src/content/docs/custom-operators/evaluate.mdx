@@ -12,10 +12,10 @@ An operator's `evaluate` function is where the real work happens. It's called wi
 
 ```ts
 import type { OperatorContext } from 'fig-tree-evaluator'
-declare const x: {
+declare namespace x {
 // ---cut---
 // params is typed from the parameter declarations
-evaluate(params: Record<string, unknown>, context: OperatorContext): unknown | Promise<unknown>
+function evaluate(params: Record<string, unknown>, context: OperatorContext): unknown | Promise<unknown>
 // ---cut-after---
 }
 ```

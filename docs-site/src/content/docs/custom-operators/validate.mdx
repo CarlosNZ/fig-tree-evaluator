@@ -5,28 +5,308 @@ sidebar:
   order: 5
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import Expression from '../../../components/Expression.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+FigTree checks every parameter against its operator definition before anything runs, but some expression mistakes can only be picked up by the operator itself, such as a [regex](/reference/operators/#op-regex) pattern that doesn't compile, or a path with a typo in its syntax. An operator can catch these with a `validate` **hook** — a function in its definition, which FigTree calls whenever it [checks an expression](/guides/validation/). They're then reported while the expression is being written as [static errors](/guides/validation/#static-errors), rather than failing every time it runs.
+
+An operator can also declare the type of value it `returns`, so FigTree can tell when a node's result could never be valid input for its parent node.
 
 ## The `validate` hook
 
-A function over the parameter values known when the expression is compiled: each literal written on the node, and for a parameter left unset, its default, from the instance's `operatorDefaults` or the definition. Its third argument, `authored`, names the parameters the node writes, for a check about what the author wrote rather than what the operator will get.
+FigTree calls the hook with a node's parameter values, and it returns a list of the problems it finds:
+
+```ts
+import type { ValidateFinding, ValidateHelpers } from 'fig-tree-evaluator'
+declare namespace x {
+// ---cut---
+function validate(
+  literalParams: Record<string, unknown>,
+  helpers: ValidateHelpers,
+  authored: ReadonlySet<string>
+): ValidateFinding[]
+// ---cut-after---
+}
+```
+
+Here's a simplified version of the core `regex` operator, whose hook checks that its pattern compiles:
+
+```ts title="regex.ts"
+import { defineOperator, OperatorFailure, type ValidateFinding } from 'fig-tree-evaluator'
+
+export const regex = defineOperator({
+  name: 'regex',
+  category: 'string',
+  parameters: {
+    value: { type: ['string', 'null'] },
+    pattern: { type: ['string', 'null'] },
+    // Simplified: the real regex has four modes, and flags
+    mode: { type: { literal: ['test', 'replace'] }, default: 'test' },
+    replacement: { type: 'string', default: '' },
+  },
+  positionalParams: ['value', 'pattern'],
+  returns: ['boolean', 'string'],
+  validate: ({ pattern, mode }, helpers, authored) => {
+    const findings: ValidateFinding[] = []
+    // A pattern from $data or another node isn't known yet, so it's absent
+    if (typeof pattern === 'string') {
+      try {
+        new RegExp(pattern)
+      } catch (error) {
+        findings.push({
+          severity: 'error',
+          parameter: 'pattern',
+          message: `pattern does not compile: ${(error as Error).message}`,
+        })
+      }
+    }
+    // A replacement does nothing outside 'replace' mode, so warn when one
+    // is written on the node (a default doesn't count) and its mode is known
+    if (typeof mode === 'string' && mode !== 'replace' && authored.has('replacement'))
+      findings.push({
+        severity: 'warning',
+        parameter: 'replacement',
+        message: `'replacement' applies only in mode: 'replace' — this node's mode is '${mode}'`,
+      })
+    return findings
+  },
+  evaluate: ({ value, pattern, mode, replacement }) => {
+    let compiled: RegExp
+    try {
+      compiled = new RegExp(pattern, mode === 'replace' ? 'g' : '')
+    } catch (error) {
+      // The runtime version of the hook's pattern check, for a pattern
+      // that comes from $data or another node
+      throw new OperatorFailure(`pattern does not compile: ${(error as Error).message}`)
+    }
+    return mode === 'replace' ? value.replace(compiled, replacement) : compiled.test(value)
+  },
+})
+```
+
+A pattern written into the expression is checked before anything runs, so a broken one is a static error, which no fallback catches:
+
+<Expression
+  throws
+  title="A pattern written in"
+  code={`
+    {
+      $regex: { value: '$data.postcode', pattern: '^[0-9{4}$' },
+      // Uncomment: a fallback doesn't catch a static error
+      // fallback: false,
+    }
+  `}
+  data={`
+    // Fix the pattern, as '^[0-9]{4}$', and it returns true
+    { postcode: '6011' }
+  `}
+/>
+
+A pattern from `$data` isn't known until the expression runs, so the hook never sees it. `regex`'s `evaluate` makes the same check itself, and a broken pattern fails the node at runtime, like any other [failure](/custom-operators/evaluate/#failing), which the fallback catches:
+
+<Expression
+  title="A pattern from the data"
+  code={`
+    {
+      $regex: { value: '$data.postcode', pattern: '$data.pattern' },
+      fallback: '$error.message',
+    }
+  `}
+  data={`
+    // Fix the pattern, as '^[0-9]{4}$', and it returns true
+    { postcode: '6011', pattern: '^[0-9{4}$' }
+  `}
+/>
+
+<Callout kind="why" title="Why the hook doesn't run at runtime">
+  The hook is for catching slips when an expression is written, and many of its findings are warnings, which only `validate()` reports. A value computed at runtime has to be dealt with by `evaluate` anyway, so a check the hook makes on a value that could come from `$data` belongs in `evaluate` as well, as the pattern check does in `regex`.
+</Callout>
+
+### What the hook receives
+
+The hook is called with three arguments:
+
+- **`literalParams`**: the node's parameter values that are known (i.e. don't need to be evaluated) before anything runs, by name. A parameter omitted from the node gets its default, where there is one: the instance's [`operatorDefaults`](/guides/setup/#defaults-for-an-operator) entry, or else the definition's `default`.
+- **`helpers`**: functions for reading and type-checking values the way FigTree itself does ([Helpers](#helpers)).
+- **`authored`**: a `Set` of the names of the parameters the configuration author wrote on the node, as values or as expressions (unlike `literalParams`), but _not_ those filled in with defaults.
+
+Here's what the hook receives for two nodes of the `regex` above:
+
+```json5 title="With a replacement"
+{
+  $regex: {
+    value: '$data.phone',
+    pattern: ' +',
+    replacement: '-',
+  },
+}
+```
+
+| Parameter     | In `literalParams` | In `authored` | Why                                                       |
+| ------------- | ------------------ | ------------- | --------------------------------------------------------- |
+| `value`       | —                  | ✓             | From `$data`, so it's not known                           |
+| `pattern`     | `' +'`             | ✓             |                                                           |
+| `mode`        | `'test'`           | —             | Its default                                               |
+| `replacement` | `'-'`              | ✓             | Written, but does nothing in this mode, so the hook warns |
+
+```json5 title="Without a replacement"
+{
+  $regex: {
+    value: '$data.phone',
+    pattern: ' +',
+  },
+}
+```
+
+| Parameter     | In `literalParams` | In `authored` | Why                                                    |
+| ------------- | ------------------ | ------------- | ------------------------------------------------------ |
+| `value`       | —                  | ✓             | From `$data`, so it's not known                        |
+| `pattern`     | `' +'`             | ✓             |                                                        |
+| `mode`        | `'test'`           | —             | Its default                                            |
+| `replacement` | `''`               | —             | Its default (even though it does nothing in this mode) |
+
+For a check about what the configuration author _wrote_, use `authored`. For example, `regex` warns about a `replacement` outside `'replace'` mode, where it does nothing, by checking `authored.has('replacement')`. Since `replacement` has a default, it's in `literalParams` whatever the `mode`, and it wouldn't make sense to warn the configuration author about something they didn't actually write (and can't change).
+
+<Callout kind="caution" title="Check each value's type">
+  `literalParams` isn't typed from the declarations, and a value of the wrong type still reaches the hook, with its type error reported separately. So check a value's type before using it, as `regex` does with `typeof pattern === 'string'`, which also tells you whether the value is known.
+</Callout>
 
 ## Findings
 
-Reporting a problem as a finding, with its severity and parameter.
+The hook returns an array of **findings**, empty when there's nothing wrong. Each one has:
+
+- **`severity`**: `'error'` or `'warning'`.
+- **`message`**: what's wrong, written for a person.
+- **`parameter`** (optional): the parameter it's about, which the issue's `path` then points at.
+
+FigTree turns each finding into an [issue](/guides/validation/#issues), with the code `operator-validate`. For the `regex` above:
+
+```ts
+fig.validate({ $regex: { value: '$data.phone', pattern: ' +', replacement: '-' } })
+// => {
+//      valid: true,
+//      issues: [
+//        {
+//          severity: 'warning',
+//          code: 'operator-validate',
+//          message: "'replacement' applies only in mode: 'replace' — this node's mode is 'test'",
+//          path: ['$regex', 'replacement'],
+//          operator: 'regex',
+//          parameter: 'replacement',
+//        },
+//      ],
+//    }
+```
+
+The severity decides what happens next, as for every issue ([Errors and warnings](/guides/validation/#errors-and-warnings)):
+
+- **An error** is a static error — `fig.evaluate()` throws before anything runs, so it should be dealt with during authoring.
+- **A warning** is allowed, but likely a mistake; the expression still runs.
+
+A hook that throws is reported as an error, `'regex' validate hook threw: …`, so catch what you expect to go wrong, as `regex` catches the `RegExp` constructor's error, and turn it into a finding.
 
 ## Helpers
 
-The toolbox the hook receives.
+The `helpers` argument holds functions for reading and type-checking values the way FigTree itself does. Four are also exported, with entries of their own:
+
+- **[`parsePath()`](/api/exports/#parsepath-and-wildcard)** and **[`resolvePath()`](/api/exports/#resolvepath)**: reading a path, as `$data` references do.
+- **[`renderText()`](/api/exports/#rendertext-array-and-object)**: a value as text, as `buildString` writes it.
+- **[`isTruthy()`](/api/exports/#istruthy)**: whether a value counts as true.
+
+The other three apply FigTree's type checks, with types and constraints written as in a parameter declaration ([Types and constraints](/custom-operators/parameters/#types-and-constraints)):
+
+```ts
+import type { Constraints, ExpectedType, TypeCheckResult } from 'fig-tree-evaluator'
+declare namespace helpers {
+// ---cut---
+// Whether a value fits a type
+function checkType(value: unknown, type: ExpectedType): TypeCheckResult
+// Whether an array follows a declaration's constraints
+function checkConstraints(value: unknown, constraints: Constraints): TypeCheckResult
+// A value's type, as FigTree's messages name it, such as 'array'
+function describeType(value: unknown): string
+// ---cut-after---
+}
+```
+
+When a check fails, its `expected` and `actual` describe the two types as text, which your hook can put in a finding's `message`:
+
+```ts
+import type { ValidateHelpers } from 'fig-tree-evaluator'
+declare const helpers: ValidateHelpers
+// ---cut---
+helpers.checkType('3.5', ['number', 'null'])
+// => { ok: false, expected: 'number | null', actual: 'string' }
+```
+
+For an example of a hook using a helper, the core `get` reads a path written into the expression with `parsePath()`, so a typo in its syntax is an error before anything runs:
+
+```ts
+import type { OperatorValidate } from 'fig-tree-evaluator'
+// ---cut---
+const validate: OperatorValidate = ({ path }, { parsePath }) => {
+  if (typeof path !== 'string') return []
+  try {
+    parsePath(path)
+    return []
+  } catch (error) {
+    return [{ severity: 'error', parameter: 'path', message: (error as Error).message }]
+  }
+}
+```
 
 ## When it runs
 
-At `validate()`, `compile()` and the first `evaluate()` of an expression. A value only known at runtime, such as a `$data` reference, isn't passed to the hook.
+The hook runs whenever an expression is checked, which is always before any of its nodes are evaluated. So it only ever sees what's written into the expression, not what each parameter evaluates to. A value computed as the expression runs reaches the operator's `evaluate` function without the hook seeing it.
+
+- **`fig.validate()`**: every call.
+- **`fig.compile()` and `fig.evaluate()`**: the first time an expression is compiled. Compiling is the first thing `fig.evaluate()` does, before it evaluates any nodes.[^evaluate] The two share compiled expressions, so a later call with the same expression doesn't run the hook again.
+- **Fragments:** when a fragment is registered, for each node in its body ([Checked when registered](/guides/fragments/#checked-when-registered)). An error there makes the call that registers it, such as `new FigTree()` or `updateOptions()`, throw `invalid-options`.
+
+Since an expression is compiled once, the hook costs nothing however often it's evaluated.
 
 ## Declaring what it returns
 
-`returns`, and the check it drives: a node whose declared result can't fit the parameter it feeds is an error when the expression is compiled. `returns` never includes `null`, and the engine never checks a body's result against it.
+Declaring an operator's `returns` type(s) tells FigTree what its result can be — so when the operator is used inside another node, FigTree can tell, before anything runs, whether that result could ever be valid input there.
+
+It isn't checked against what `evaluate` actually returns, though — it's a promise about the result, for validation purposes.
+
+For example, `formatNumber`, from [A first operator](/custom-operators/writing/#a-first-operator), declares `returns: 'string'`. So it can never give `round` the number it needs, and this is a static error:
+
+<Expression
+  customOperators
+  throws
+  title="Formatted, then rounded"
+  code={`
+    // Swap them, rounding inside formatNumber, and it works
+    { $round: { value: { $formatNumber: '$data.population' }, decimals: 1 } }
+  `}
+  data={`
+    { country: 'Germany', population: 83200000 }
+  `}
+/>
+
+An error is only reported when nothing could fit, though. `max` returns a number or a string, and `round`'s `value` takes a number, so the two overlap, and this passes the static checks. However, it _might_ still fail at runtime — the static checks only reject what could _never_ work.
+
+<Expression
+  throws
+  title="Might fit"
+  code={`
+    { $round: { value: { $max: '$data.ratings' }, decimals: 1 } }
+  `}
+  data={`
+    // Ratings from a form, which arrived as text.
+    // Make them numbers, and it works
+    { ratings: ['4.5', '3.8'] }
+  `}
+/>
+
+`returns` is written like a [parameter's type](/custom-operators/parameters/#declaring-parameters): a basic type, a list of them, or a fixed set of values. An operator without one counts as returning `'any'`, and is never checked. It should list every type `evaluate` can return, and no more.
+
+<Callout kind="caution" title="Leave null out, unless evaluate itself returns it">
+  `returns` describes what `evaluate` produces. A `null` passed on from a parameter never comes from `evaluate`: the engine returns it without calling `evaluate` at all, as the parameter's `'propagate'` [null policy](/custom-operators/parameters/#null-policy) declares. In "Formatted, then rounded" (above), a `null` population makes `formatNumber` and `round` both skip their work and yield `null`, and _any_ operator in `formatNumber`'s place would do the same, whether it fits `round` or not. Since the `null` case looks identical for a correct expression and a broken one, it can't tell the check anything, so the check compares only what `evaluate` produces. With `null` in `formatNumber`'s `returns`, the check would find a match on it, and that mismatch would go unreported.
+
+  A `null` that `evaluate` does return as an answer, such as `regex` finding no match, is a real result, and belongs in the list.
+</Callout>
+
+[^evaluate]: `fig.evaluate()` does go on to call each operator's own `evaluate` function, but only later, as each node runs. The hook runs before that, while none of the parameters have been evaluated yet, so it can only catch what's wrong with the expression as written (a static error), never a value that turns out wrong as it runs (a runtime error).
