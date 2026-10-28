@@ -46,6 +46,7 @@ const SPEC_CODES: Record<Tag, Code[]> = {
     'unknown-argument',
     'name-renamed',
     'unknown-parameter-type',
+    'parameter-key-dropped',
     'default-outside-type',
     'unused-output-type',
   ],
@@ -270,6 +271,19 @@ const ROWS: Row[] = [
       },
     },
     path: ['f', 'metadata', 'parameters', 0, 'type'],
+  },
+  {
+    code: 'parameter-key-dropped',
+    options: {
+      fragments: {
+        f: {
+          operator: '+',
+          values: ['$a', 1],
+          metadata: { parameters: [{ name: '$a', type: 'number', label: 'A' }] },
+        },
+      },
+    },
+    path: ['f', 'metadata', 'parameters', 0, 'label'],
   },
   {
     code: 'default-outside-type',

@@ -84,8 +84,6 @@ import { findCycles, isPlainObject } from './utils'
 export interface FragmentParameterDeclaration extends TypeDeclaration {
   default?: unknown
   description?: string
-  /** Opaque tooling bag; the engine never reads it. */
-  metadata?: Record<string, unknown>
 }
 
 /**
@@ -121,7 +119,6 @@ export interface FragmentParameter {
   required: boolean
   default?: unknown
   description?: string
-  metadata?: Record<string, unknown>
   constraints?: Constraints
 }
 
@@ -177,14 +174,7 @@ export interface FragmentEntry {
 }
 
 /** The declaration fields a fragment parameter may carry. */
-const DECLARATION_KEYS = new Set([
-  'type',
-  'required',
-  'default',
-  'description',
-  'metadata',
-  'constraints',
-])
+const DECLARATION_KEYS = new Set(['type', 'required', 'default', 'description', 'constraints'])
 
 /** The wrapper fields a fragment definition may carry. */
 const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata', 'samples'])
@@ -472,7 +462,6 @@ const validateDeclaration = (
   }
   if (hasDefault) normalized.default = declared.default
   if (typeof declared.description === 'string') normalized.description = declared.description
-  if (isPlainObject(declared.metadata)) normalized.metadata = declared.metadata
   if (constraints !== undefined) normalized.constraints = constraints
   return normalized
 }

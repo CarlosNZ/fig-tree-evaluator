@@ -38,6 +38,7 @@ export interface MigrationIssue {
     | 'unknown-argument'
     | 'name-renamed'
     | 'unknown-parameter-type'
+    | 'parameter-key-dropped'
     | 'default-outside-type'
     | 'unused-output-type'
     | 'deciding-value'

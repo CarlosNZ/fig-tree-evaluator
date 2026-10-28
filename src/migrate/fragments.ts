@@ -49,8 +49,6 @@ export interface ParameterInfo {
   required: boolean
   type?: unknown
   description?: unknown
-  /** The declaration's keys v3 has no place for */
-  metadata?: PlainObject
   default?: V2Default
   /**
    * Whether a call's unprefixed key of its name is exactly its argument: v2
@@ -245,9 +243,9 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
   if (!prefixed && target === undefined)
     info.issues.push(issue('unprefixed-parameter', [...at, 'name'], { name: entry.name }))
   const { type, required, default: value, description } = entry
-  const others = Object.fromEntries(
-    Object.entries(entry).filter(([k]) => !V2_DECLARATION_KEYS.includes(k))
-  )
+  // v3 declarations are strict and carry no metadata
+  for (const other of Object.keys(entry).filter((k) => !V2_DECLARATION_KEYS.includes(k)))
+    info.issues.push(issue('parameter-key-dropped', [...at, other], { key: other }))
   const parameter: ParameterInfo = {
     key,
     name: key.slice(1),
@@ -266,7 +264,6 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
     }
   }
   if (description !== undefined) parameter.description = description
-  if (Object.keys(others).length > 0) parameter.metadata = others
   // v2 inserted only a default that was not `undefined`
   if (value !== undefined) {
     const path = [...at, 'default']
@@ -489,7 +486,6 @@ const declaration = (
     ...(constant !== undefined && { default: constant.constant }),
     ...(text && { default: parameter.key }),
     ...(parameter.description !== undefined && { description: parameter.description as string }),
-    ...(parameter.metadata !== undefined && { metadata: parameter.metadata }),
   }
 }
 

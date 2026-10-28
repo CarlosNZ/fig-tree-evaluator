@@ -169,7 +169,7 @@ describe('definitions', () => {
               { name: '$b', type: 'date' },
               { name: '$c', type: 'undefined' },
               { name: '$d', type: 'string', default: 5 },
-              { name: '$e', type: 'number', required: true, label: 'E' },
+              { name: '$e', type: 'number', required: true },
             ],
           },
         },
@@ -182,7 +182,7 @@ describe('definitions', () => {
             b: { type: 'any', required: false },
             c: { type: 'any', required: false },
             d: { type: 'any', default: 5 },
-            e: { type: 'number', metadata: { label: 'E' } },
+            e: { type: 'number' },
           },
         },
       },
@@ -192,6 +192,29 @@ describe('definitions', () => {
         { code: 'default-outside-type', path: ['typed', 'metadata', 'parameters', 3, 'default'] },
       ],
       calls: [{ input: { fragment: 'typed', parameters: { $a: 1, $e: 0 } } }],
+    },
+    {
+      name: 'a declaration key v3 has no place for is dropped, each with an issue',
+      fragments: {
+        labelled: {
+          operator: '+',
+          values: ['$n', 1],
+          metadata: {
+            parameters: [{ name: '$n', type: 'number', default: 1, label: 'N', hint: 'Any' }],
+          },
+        },
+      },
+      expected: {
+        labelled: {
+          expression: { operator: 'plus', values: ['$params.n', 1] },
+          parameters: { n: { type: 'number', default: 1 } },
+        },
+      },
+      issues: [
+        { code: 'parameter-key-dropped', path: ['labelled', 'metadata', 'parameters', 0, 'label'] },
+        { code: 'parameter-key-dropped', path: ['labelled', 'metadata', 'parameters', 0, 'hint'] },
+      ],
+      calls: [{ input: { fragment: 'labelled', parameters: { $n: 2 } } }],
     },
     {
       name: "a top-level `$` key is the parameter's default",
