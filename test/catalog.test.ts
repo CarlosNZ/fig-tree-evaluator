@@ -22,7 +22,9 @@ import {
   type FragmentDefinition,
   type LazyValue,
   type OperatorContext,
+  type CatalogOptions,
   type CategoryOverrides,
+  type Listing,
   type ListingMap,
   type PerElement,
   type SettlementStream,
@@ -847,6 +849,114 @@ describe('getCatalog', () => {
       expect(Object.hasOwn(start, 'sample')).toBe(false)
       const { name, punctuation } = fragments[0].parameters
       expect([name.sample, punctuation.sample]).toEqual(['Grace', '?'])
+    })
+  })
+
+  describe('checks: a value of the wrong type is skipped and reported, never thrown', () => {
+    const instance = new FigTree({
+      operators: [coreOperators, tally],
+      fragments: {
+        greet: {
+          expression: '$params.name',
+          parameters: { name: { type: 'string' } },
+          // Registration checks only that it is an object
+          listing: { displayName: 'Greet', description: 42 } as unknown as Listing,
+        },
+      },
+    })
+    // Without the fragment, whose listing reports in every catalog
+    const clean = new FigTree({ operators: [coreOperators, tally] })
+    const issuesOf = (options: unknown) =>
+      getCatalog(clean, options as CatalogOptions).issues.map(({ path, message }) => [
+        path.join('.'),
+        message,
+      ])
+
+    test('well-formed input reports nothing, and unknown keys are ignored', () => {
+      const catalog = getCatalog(new FigTree({ operators: [tally] }), {
+        listings: [{ tally: { displayName: 'Tally', colours: 'blue' } as Listing }],
+      })
+      expect(catalog.issues).toEqual([])
+      expect(catalog.operators[0].displayName).toBe('Tally')
+    })
+
+    test('options that are not an object, or keys that are not options', () => {
+      expect(issuesOf(null)).toEqual([['', 'expected object, got null']])
+      // The rest-parameter shape: a map where the options belong
+      expect(issuesOf({ plus: { displayName: 'Add' } })).toEqual([
+        ['plus', 'not an option: expected listings or categories'],
+      ])
+      expect(getCatalog(clean, null as never).operators).toEqual(getCatalog(clean).operators)
+    })
+
+    test('a malformed option, map or entry is left out whole, the rest kept', () => {
+      expect(issuesOf({ listings: { tally: {} } })).toEqual([
+        ['listings', 'expected array, got object'],
+      ])
+      const { operators, issues } = getCatalog(clean, {
+        listings: ['nope', { tally: 5, plus: { displayName: 'Add' } }],
+      } as never)
+      expect(issues.map(({ path }) => path)).toEqual([
+        ['listings', 0],
+        ['listings', 1, 'tally'],
+      ])
+      expect(operators.find(({ name }) => name === 'plus')!.displayName).toBe('Add')
+      expect(operators.find(({ name }) => name === 'tally')!.displayName).toBe('tally')
+    })
+
+    test('a field of the wrong type is left out, the rest of its entry kept', () => {
+      const { operators, issues } = getCatalog(clean, {
+        listings: [
+          {
+            tally: {
+              displayName: 'Tally',
+              description: 42,
+              colors: { background: '#123456' },
+              seeds: [1],
+              parameterDescriptions: { values: 'What to tally', mode: false },
+              metadata: 'x',
+            },
+          },
+        ],
+      } as never)
+      expect(issues.map(({ path, message }) => [path.join('.'), message])).toEqual([
+        ['listings.0.tally.description', 'expected string, got number'],
+        ['listings.0.tally.colors.text', 'expected string, got undefined'],
+        ['listings.0.tally.seeds', 'expected object, got array'],
+        ['listings.0.tally.metadata', 'expected object, got string'],
+        ['listings.0.tally.parameterDescriptions.mode', 'expected string, got boolean'],
+      ])
+      const operator = operators.find(({ name }) => name === 'tally')!
+      expect(operator.displayName).toBe('Tally')
+      expect(Object.hasOwn(operator, 'description')).toBe(false)
+      expect(operator.colors).toBe(categoryListings.math.colors)
+      expect(operator.metadata).toEqual({})
+      expect(operator.parameters.values.description).toBe('What to tally')
+      expect(Object.hasOwn(operator.parameters.mode, 'description')).toBe(false)
+    })
+
+    test("a fragment definition's listing is checked at its own path", () => {
+      const { fragments, issues } = getCatalog(instance)
+      expect(issues).toEqual([
+        {
+          path: ['fragments', 'greet', 'listing', 'description'],
+          message: 'expected string, got number',
+        },
+      ])
+      expect(fragments[0].displayName).toBe('Greet')
+      expect(Object.hasOwn(fragments[0], 'description')).toBe(false)
+    })
+
+    test('a category override is checked the same way', () => {
+      const { categories, issues } = getCatalog(new FigTree({ operators: [tally] }), {
+        categories: [{ math: { displayName: 5, order: Number.NaN, colors: 'green' } }],
+      } as never)
+      expect(issues.map(({ path, message }) => [path.join('.'), message])).toEqual([
+        ['categories.0.math.displayName', 'expected string, got number'],
+        ['categories.0.math.order', 'expected number, got NaN'],
+        ['categories.0.math.colors', 'expected object, got string'],
+      ])
+      expect(categories).toEqual([{ name: 'math', ...categoryListings.math }])
     })
   })
 

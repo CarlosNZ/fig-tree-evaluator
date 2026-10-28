@@ -20,6 +20,7 @@ import type {
   Catalog,
   CatalogCategory,
   CatalogFragment,
+  CatalogIssue,
   CatalogLiteral,
   CatalogOperator,
   CatalogOperatorParameter,
@@ -699,6 +700,127 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
   for (const [key, value] of Object.entries(from ?? {})) if (value !== undefined) onto[key] = value
 }
 
+type Path = (string | number)[]
+
+/** Records a value of the wrong type at `path`, which is then skipped. */
+type Report = (path: Path, expected: string, value: unknown) => void
+
+/** A value's kind, as a check's message names it. */
+const kindOf = (value: unknown): string =>
+  value === null
+    ? 'null'
+    : Array.isArray(value)
+      ? 'array'
+      : Number.isNaN(value)
+        ? 'NaN'
+        : typeof value
+
+/** A plain object, as JSON gives one: not null, not an array. */
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * What a field must hold: a value of that kind, or an object of strings —
+ * the two `colors` must both hold, while a `parameterDescriptions` entry
+ * that doesn't is left out alone.
+ */
+type Rule = 'string' | 'number' | 'object' | 'colors' | 'texts'
+
+const LISTING_RULES: Record<string, Rule> = {
+  displayName: 'string',
+  description: 'string',
+  docUrl: 'string',
+  colors: 'colors',
+  seeds: 'object',
+  samples: 'object',
+  metadata: 'object',
+  parameterDescriptions: 'texts',
+}
+
+const CATEGORY_RULES: Record<string, Rule> = {
+  displayName: 'string',
+  order: 'number',
+  colors: 'colors',
+}
+
+/**
+ * An entry's own fields that keep their rule, each other one reported and
+ * left out. Unknown keys are ignored, as registration ignores them.
+ */
+const checkedFields = (
+  entry: Record<string, unknown>,
+  rules: Record<string, Rule>,
+  path: Path,
+  report: Report
+): Record<string, unknown> => {
+  const checked: Record<string, unknown> = {}
+  for (const [field, rule] of Object.entries(rules)) {
+    const value = own(entry, field)
+    if (value === undefined) continue
+    const kind = rule === 'string' || rule === 'number' ? rule : 'object'
+    if (kindOf(value) !== kind) {
+      report([...path, field], kind, value)
+      continue
+    }
+    if (rule !== 'colors' && rule !== 'texts') {
+      checked[field] = value
+      continue
+    }
+    const { background, text } = value as Record<string, unknown>
+    const strings = Object.entries(
+      rule === 'colors' ? { background, text } : (value as Record<string, unknown>)
+    ).filter(([key, string]) => {
+      const kept = typeof string === 'string' || (rule === 'texts' && string === undefined)
+      if (!kept) report([...path, field, key], 'string', string)
+      return kept
+    })
+    if (rule === 'texts') checked[field] = Object.fromEntries(strings)
+    else if (strings.length === 2) checked[field] = value
+  }
+  return checked
+}
+
+/** A listing, checked: its fields of the right type. */
+const checkedListing = (entry: Record<string, unknown>, path: Path, report: Report): Listing =>
+  checkedFields(entry, LISTING_RULES, path, report)
+
+/** A category override, checked: its fields of the right type. */
+const checkedCategory = (
+  entry: Record<string, unknown>,
+  path: Path,
+  report: Report
+): Partial<CategoryListing> => checkedFields(entry, CATEGORY_RULES, path, report)
+
+/**
+ * An option's layers, each checked: one that isn't an array of objects, or
+ * an entry that isn't an object, is reported and left out whole.
+ */
+const checkedLayers = <T>(
+  layers: unknown,
+  option: string,
+  check: (entry: Record<string, unknown>, path: Path, report: Report) => T,
+  report: Report
+): { [name: string]: T }[] => {
+  if (layers === undefined) return []
+  if (!Array.isArray(layers)) {
+    report([option], 'array', layers)
+    return []
+  }
+  const checked: { [name: string]: T }[] = []
+  layers.forEach((map: unknown, i) => {
+    if (!isObject(map)) return report([option, i], 'object', map)
+    const entries: [string, T][] = []
+    for (const [name, entry] of Object.entries(map)) {
+      if (entry === undefined) continue
+      if (isObject(entry)) entries.push([name, check(entry, [option, i, name], report)])
+      else report([option, i, name], 'object', entry)
+    }
+    // fromEntries defines each key as the map's own, `__proto__` included
+    checked.push(Object.fromEntries(entries))
+  })
+  return checked
+}
+
 /**
  * An entry's listing: its base layer, then each map's entry under its name,
  * each merged over the ones before it.
@@ -786,7 +908,22 @@ export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
   options: CatalogOptions = {}
 ): Catalog => {
-  const { listings = [], categories: overrides = [] } = options
+  const issues: CatalogIssue[] = []
+  const report: Report = (path, expected, value) => {
+    issues.push({ path, message: `expected ${expected}, got ${kindOf(value)}` })
+  }
+  if (!isObject(options)) report([], 'object', options)
+  const given = isObject(options) ? options : {}
+  for (const key of Object.keys(given))
+    if (key !== 'listings' && key !== 'categories')
+      issues.push({ path: [key], message: 'not an option: expected listings or categories' })
+  const listings: ListingMap[] = checkedLayers(given.listings, 'listings', checkedListing, report)
+  const overrides: CategoryOverrides[] = checkedLayers(
+    given.categories,
+    'categories',
+    checkedCategory,
+    report
+  )
   const snapshot = fig.getOperators()
 
   const inUse = new Set(snapshot.map(({ category }) => category))
@@ -832,7 +969,10 @@ export const getCatalog = (
 
   const fragments = fig
     .getFragments()
-    .map(({ name, parameters, listing: base, metadata, ...info }): CatalogFragment => {
+    .map(({ name, parameters, listing: written, metadata, ...info }): CatalogFragment => {
+      const base = isObject(written)
+        ? checkedListing(written, ['fragments', name, 'listing'], report)
+        : undefined
       const listing = resolveListing(base, name, listings)
       const fragment: CatalogFragment = {
         name,
@@ -852,5 +992,5 @@ export const getCatalog = (
     parameters: { value: parameterText(literalListing, 'value', 'any') },
   }
 
-  return { categories, operators, fragments, literal }
+  return { categories, operators, fragments, literal, issues }
 }

@@ -306,24 +306,26 @@ An entry's `metadata` is its definition's `metadata` with its resolved listing's
 
 ### Checking the layers
 
-The package's own listings are held to their types by tests. Every other layer (a fragment definition's `listing`, each `listings` map, each `categories` override) is checked as it is merged, and a value of the wrong type is skipped and reported in `Catalog.issues` rather than thrown, so one malformed fragment in a host's store never breaks a tool's whole catalog. The checks are basic, by type only:
+The package's own listings are held to their types by tests. Everything else is checked before anything merges: the options, each `listings` map and each `categories` override whole (so what is reported never depends on which operators the instance has), and each fragment definition's `listing`. A value of the wrong type is skipped and reported in `Catalog.issues` rather than thrown, so one malformed fragment in a host's store never breaks a tool's whole catalog. The checks are basic, by type only:
 
+- the options are a plain object, and each of their keys is `listings` or `categories`;
+- `listings` and `categories` are arrays;
 - a map, an override, a listing, or a by-name field (`seeds`, `samples`, `parameterDescriptions`, `metadata`) is a plain object;
-- `displayName`, `description`, `docUrl` and each `parameterDescriptions` value are strings, and `order` is a number;
+- `displayName`, `description`, `docUrl` and each `parameterDescriptions` value are strings, and `order` is a number other than `NaN`;
 - `colors` is a plain object whose `background` and `text` are strings.
 
-Where a map, an override or a listing fails, it is skipped whole. Unknown keys are ignored, as registration ignores them.
+Where an option, a map, an override or a listing fails, it is skipped whole; where a field fails, the rest of its listing is kept. Unknown keys inside a listing or an override are ignored, as registration ignores them. An unknown option key is reported, because a map passed where the options belong, `getCatalog(fig, { plus: … })`, would otherwise reach nothing silently.
 
 ```ts
 interface CatalogIssue {
   /** Where the value sits: ['listings', 1, 'plus', 'description']. */
   path: (string | number)[]
-  /** "expected string, got number". */
+  /** "expected string, got number", or for an option, "not an option: expected listings or categories". */
   message: string
 }
 ```
 
-A fragment definition's `listing` is reported under `['fragments', name, 'listing', …]`.
+A fragment definition's `listing` is reported under `['fragments', name, 'listing', …]`, and the options themselves under `[]`.
 
 ### The output
 

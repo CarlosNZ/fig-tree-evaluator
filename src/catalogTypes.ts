@@ -220,13 +220,26 @@ export interface CatalogLiteral {
 }
 
 /**
+ * A value `getCatalog` skipped: an option it doesn't know, or a listing, a
+ * field or an override of the wrong type.
+ */
+export interface CatalogIssue {
+  /** Where the value sits: `['listings', 1, 'plus', 'description']`. */
+  path: (string | number)[]
+  /** `'expected string, got number'`. */
+  message: string
+}
+
+/**
  * Everything an instance offers, as `getCatalog` presents it: the
  * categories its operators are in, in their `order`, then the operators and
- * fragments in registration order, and `literal`.
+ * fragments in registration order, and `literal`. `issues` holds whatever
+ * was skipped, and is empty when every input is well formed.
  */
 export interface Catalog {
   categories: CatalogCategory[]
   operators: CatalogOperator[]
   fragments: CatalogFragment[]
   literal: CatalogLiteral
+  issues: CatalogIssue[]
 }
