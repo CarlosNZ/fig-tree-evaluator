@@ -265,9 +265,9 @@ Declaring a parameter `'structural'` tells FigTree that its value can never be a
 To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
 
 ```ts
-// Wrong: no renaming, so '$order.total' is just text
+// ❌️ Wrong: no renaming, so '$order.total' is just text
 const wrong = { as: { type: 'string', required: false } }
-// Right
+// ✅️ Right
 const right = { as: { type: 'string', required: false, evaluationMode: 'structural' } }
 ```
 

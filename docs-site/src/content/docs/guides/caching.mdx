@@ -192,11 +192,11 @@ The compile cache recognises an expression it has seen before by the object itse
 let discount = { $multiply: ['$data.price', 0.9] }
 await fig.evaluate(discount, { data: { price: 100 } }) // => 90
 
-// Wrong: still 90, from the compile cache
+// ❌️ Wrong: still 90, from the compile cache
 discount.$multiply[1] = 0.8
 await fig.evaluate(discount, { data: { price: 100 } }) // => 90
 
-// Right: a new object
+// ✅️ Right: a new object
 discount = { $multiply: ['$data.price', 0.8] }
 await fig.evaluate(discount, { data: { price: 100 } }) // => 80
 ```

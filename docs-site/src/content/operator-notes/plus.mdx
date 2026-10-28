@@ -38,10 +38,10 @@
 An empty list of values has no sum, since there's no telling which kind it should be, so it fails. Give `expect`, and an empty list returns that kind's empty value instead: `0`, `''`, `[]` or `{}`.
 
 ```js
-// An error
+// ❌️ An error
 { $plus: [] }
 
-// These are fine
+// ✅️ These are fine
 { $plus: { values: [], expect: 'number' } } // => 0
 { $plus: { values: [], expect: 'string' } } // => ''
 ```
