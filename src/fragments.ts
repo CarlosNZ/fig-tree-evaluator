@@ -38,7 +38,7 @@
  * with no special case. Nothing here is barrel surface except the two
  * authored types.
  */
-import type { FragmentMetadata } from './catalogTypes'
+import type { Listing } from './catalogTypes'
 import { ErrorCodes } from './errorCodes'
 import type { Issue } from './issues'
 import { checkNameLegality, isReservedRegistrationName, RESERVED_NODE_KEYS } from './names'
@@ -73,9 +73,9 @@ import { findCycles, isPlainObject } from './utils'
 /**
  * A fragment parameter declaration as authored. Extends the same
  * `TypeDeclaration` base an operator's `ParameterDeclaration` extends, so
- * one, less its `description`, is a valid operator parameter declaration:
- * `type`, `required` and `constraints` are inherited and mean exactly what
- * they mean for an operator parameter.
+ * one is a valid operator parameter declaration: `type`, `required` and
+ * `constraints` are inherited and mean exactly what they mean for an
+ * operator parameter. Its description is in the fragment's listing.
  *
  * `default` is a constant value, never an expression — visible to tooling
  * verbatim, type-checked here, never evaluated. A computed default is
@@ -83,9 +83,6 @@ import { findCycles, isPlainObject } from './utils'
  */
 export interface FragmentParameterDeclaration extends TypeDeclaration {
   default?: unknown
-  description?: string
-  /** Opaque tooling bag; the engine never reads it. */
-  metadata?: Record<string, unknown>
 }
 
 /**
@@ -99,20 +96,14 @@ export interface FragmentDefinition {
   expression: unknown
   /** Declarations, keyed by parameter name. */
   parameters?: Record<string, FragmentParameterDeclaration>
-  description?: string
   /**
-   * How the fragment is presented, which `getCatalog` reads, and any other
-   * keys a host carries. The engine never reads it, and registration checks
+   * How the fragment is presented, its descriptions included, which
+   * `getCatalog` reads. The engine never reads it, and registration checks
    * only that it is a plain object.
    */
-  metadata?: FragmentMetadata & Record<string, unknown>
-  /**
-   * Example argument values, keyed by parameter name, for authoring and
-   * testing the fragment. Unlike a seed in `metadata`, which is what a new
-   * call starts with, a sample is a realistic value to run the body with.
-   * The engine never reads it.
-   */
-  samples?: { [parameter: string]: unknown }
+  listing?: Listing
+  /** The host's own keys. Never interpreted by FigTree. */
+  metadata?: Record<string, unknown>
 }
 
 /** A declaration after normalization — every documented default filled. */
@@ -120,8 +111,6 @@ export interface FragmentParameter {
   type: ExpectedType
   required: boolean
   default?: unknown
-  description?: string
-  metadata?: Record<string, unknown>
   constraints?: Constraints
 }
 
@@ -134,8 +123,8 @@ export interface FragmentParameter {
  */
 export interface FragmentEntry {
   name: string
-  description?: string
-  metadata?: FragmentMetadata & Record<string, unknown>
+  listing?: Listing
+  metadata?: Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /** The compiled body. Assigned in pass 2; never reassigned after. */
   body: CompiledNode
@@ -177,17 +166,10 @@ export interface FragmentEntry {
 }
 
 /** The declaration fields a fragment parameter may carry. */
-const DECLARATION_KEYS = new Set([
-  'type',
-  'required',
-  'default',
-  'description',
-  'metadata',
-  'constraints',
-])
+const DECLARATION_KEYS = new Set(['type', 'required', 'default', 'constraints'])
 
 /** The wrapper fields a fragment definition may carry. */
-const DEFINITION_KEYS = new Set(['expression', 'parameters', 'description', 'metadata', 'samples'])
+const DEFINITION_KEYS = new Set(['expression', 'parameters', 'listing', 'metadata'])
 
 type AddIssue = (code: string, message: string, path: NodePath) => void
 
@@ -300,7 +282,7 @@ const validateDefinition = (
   if (!isPlainObject(definition)) {
     addIssue(
       ErrorCodes.invalidDefinition,
-      `fragment '${name}' must be a wrapper object: { expression, parameters?, description?, metadata?, samples? }`,
+      `fragment '${name}' must be a wrapper object: { expression, parameters?, listing?, metadata? }`,
       at()
     )
     return undefined
@@ -337,18 +319,14 @@ const validateDefinition = (
     identityOnly: false,
     caches: false,
   }
-  if (definition.description !== undefined) {
-    if (typeof definition.description !== 'string')
-      addIssue(ErrorCodes.invalidDefinition, `'description' must be a string`, at('description'))
-    else entry.description = definition.description
+  // Only their shape: no key inside either is FigTree's to check here
+  for (const key of ['listing', 'metadata'] as const) {
+    const value = definition[key]
+    if (value === undefined) continue
+    if (!isPlainObject(value))
+      addIssue(ErrorCodes.invalidDefinition, `'${key}' must be a plain object`, at(key))
+    else entry[key] = value
   }
-  if (definition.metadata !== undefined) {
-    if (!isPlainObject(definition.metadata))
-      addIssue(ErrorCodes.invalidDefinition, `'metadata' must be a plain object`, at('metadata'))
-    else entry.metadata = definition.metadata
-  }
-  if (definition.samples !== undefined && !isPlainObject(definition.samples))
-    addIssue(ErrorCodes.invalidDefinition, `'samples' must be a plain object`, at('samples'))
   if (definition.parameters !== undefined) {
     if (!isPlainObject(definition.parameters))
       addIssue(
@@ -471,8 +449,6 @@ const validateDeclaration = (
     required: (declared.required as boolean | undefined) ?? !hasDefault,
   }
   if (hasDefault) normalized.default = declared.default
-  if (typeof declared.description === 'string') normalized.description = declared.description
-  if (isPlainObject(declared.metadata)) normalized.metadata = declared.metadata
   if (constraints !== undefined) normalized.constraints = constraints
   return normalized
 }

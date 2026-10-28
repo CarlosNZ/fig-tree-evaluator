@@ -105,7 +105,6 @@ export const assembleOperator = (
       nullPolicy: compiled ?? declaredPolicy ?? impliedPolicy,
     }
     if ('default' in d) parameter.default = d.default
-    if (d.metadata !== undefined) parameter.metadata = d.metadata
     if (d.elementNullPolicy !== undefined) parameter.elementNullPolicy = d.elementNullPolicy
     if (d.constraints !== undefined) parameter.constraints = deepClone(d.constraints)
     if (d.over !== undefined) parameter.over = d.over
@@ -154,9 +153,8 @@ export const assembleOperator = (
  * `alias` cannot change a result, and hashing it would invalidate a
  * persisted store's entries on a cosmetic edit; `metadata` is a host-owned
  * bag kept by reference that may hold anything, including values
- * `JSON.stringify` throws on. A parameter's own `metadata` is left out for
- * the same reason. `deliversLazily` and
- * `resolution` are derived from the parameters already in. A field added
+ * `JSON.stringify` throws on. `deliversLazily` and `resolution` are derived
+ * from the parameters already in. A field added
  * to the type later has to be admitted here deliberately. Functions,
  * symbols (the `EvaluationData` default) and regular expressions render as
  * their source text, which `JSON.stringify` would otherwise drop.
@@ -166,10 +164,7 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
     JSON.stringify(
       [
         d.name,
-        Object.entries(d.parameters).map(([name, parameter]) => [
-          name,
-          parameterContent(parameter),
-        ]),
+        Object.entries(d.parameters),
         d.positionalParams,
         d.restParam,
         d.returns,
@@ -184,13 +179,6 @@ const fingerprintOf = (d: ValidatedOperatorDefinition): string =>
           : value
     )
   )
-
-/** A parameter less the field the fingerprint leaves out. */
-const parameterContent = (parameter: ValidatedParameter): Record<string, unknown> => {
-  const content: Record<string, unknown> = { ...parameter }
-  delete content.metadata
-  return content
-}
 
 /** A fresh copy of a type expression, so freezing never touches the input. */
 const cloneTypeExpression = (type: ExpectedType): ExpectedType => {

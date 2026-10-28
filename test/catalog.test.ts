@@ -16,18 +16,26 @@ import {
   httpOperators,
   sqlOperators,
   type CatalogOperator,
-  type CatalogParameter,
+  type CatalogOperatorParameter,
   type ExpectedType,
   type FigTreeError,
   type FragmentDefinition,
-  type FragmentMetadata,
   type LazyValue,
   type OperatorContext,
-  type OperatorListingMap,
+  type CatalogOptions,
+  type CategoryOverrides,
+  type Listing,
+  type ListingMap,
   type PerElement,
   type SettlementStream,
 } from '../src'
-import { categoryListings, getCatalog, operatorListings, typeSeeds } from '../src/catalog'
+import {
+  categoryListings,
+  fragmentColors,
+  getCatalog,
+  operatorListings,
+  typeSeeds,
+} from '../src/catalog'
 import { isDeepStrictEqual } from 'node:util'
 import { checkConstraints, checkType } from '../src/typeCheck'
 import { MockHttpClient, MockSqlConnection } from './helpers'
@@ -93,9 +101,10 @@ describe('operatorListings', () => {
     })
 
     test('with hex colours, text at 4.5:1 or better', () => {
-      expect(listing.backgroundColor).toMatch(HEX)
-      expect(listing.textColor).toMatch(HEX)
-      expect(contrast(listing.backgroundColor!, listing.textColor!)).toBeGreaterThanOrEqual(4.5)
+      const { background, text } = listing.colors!
+      expect(background).toMatch(HEX)
+      expect(text).toMatch(HEX)
+      expect(contrast(background, text)).toBeGreaterThanOrEqual(4.5)
     })
   })
 
@@ -187,12 +196,19 @@ describe('categoryListings', () => {
 
   test.each(Object.entries(categoryListings))(
     '%s: colours are hex, with text at 4.5:1 or better',
-    (_, listing) => {
-      expect(listing.backgroundColor).toMatch(HEX)
-      expect(listing.textColor).toMatch(HEX)
-      expect(contrast(listing.backgroundColor, listing.textColor)).toBeGreaterThanOrEqual(4.5)
+    (_, { colors: { background, text } }) => {
+      expect(background).toMatch(HEX)
+      expect(text).toMatch(HEX)
+      expect(contrast(background, text)).toBeGreaterThanOrEqual(4.5)
     }
   )
+
+  test('fragmentColors: hex, with text at 4.5:1 or better', () => {
+    const { background, text } = fragmentColors
+    expect(background).toMatch(HEX)
+    expect(text).toMatch(HEX)
+    expect(contrast(background, text)).toBeGreaterThanOrEqual(4.5)
+  })
 })
 
 describe('typeSeeds', () => {
@@ -215,7 +231,7 @@ describe('getCatalog', () => {
   })
 
   describe('categories', () => {
-    test('every category, in its order, under its name', () => {
+    test('every category in use, in its order, under its name', () => {
       expect(catalog.categories.map((category) => category.name)).toEqual(
         Object.entries(categoryListings)
           .sort(([, a], [, b]) => a.order - b.order)
@@ -239,17 +255,23 @@ describe('getCatalog', () => {
       })
       const snapshot = instance.getOperators()
       getCatalog(instance).operators.forEach((operator, i) => {
-        const { displayName, description, docUrl, backgroundColor, textColor, ...rest } = operator
-        void [displayName, description, docUrl, backgroundColor, textColor]
+        const { displayName, description, docUrl, colors, metadata, ...rest } = operator
+        void [displayName, description, docUrl, colors, metadata]
         const parameters = Object.fromEntries(
           Object.entries(rest.parameters).map(
-            ([name, { description, seed, nullOutcome, elementNullOutcome, ...parameter }]) => {
-              void [description, seed, nullOutcome, elementNullOutcome]
+            ([
+              name,
+              { description, seed, sample, nullOutcome, elementNullOutcome, ...parameter },
+            ]) => {
+              void [description, seed, sample, nullOutcome, elementNullOutcome]
               return [name, parameter]
             }
           )
         )
-        expect({ ...rest, parameters }).toStrictEqual(snapshot[i])
+        // metadata is merged, so it is checked on its own
+        const { metadata: own, ...expected } = snapshot[i]
+        void own
+        expect({ ...rest, parameters }).toStrictEqual(expected)
       })
     })
 
@@ -260,8 +282,7 @@ describe('getCatalog', () => {
         displayName: listing.displayName,
         description: listing.description,
         docUrl: listing.docUrl,
-        backgroundColor: listing.backgroundColor,
-        textColor: listing.textColor,
+        colors: listing.colors,
       })
       expect(plus.parameters.values.description).toBe(listing.parameterDescriptions!.values)
       expect(plus.parameters.values.seed).toEqual(listing.seeds!.values)
@@ -270,8 +291,7 @@ describe('getCatalog', () => {
     test('an operator without a listing falls back on its name, category and types', () => {
       const [operator] = getCatalog(new FigTree({ operators: [tally] })).operators
       expect(operator.displayName).toBe('tally')
-      expect(operator.backgroundColor).toBe(categoryListings.math.backgroundColor)
-      expect(operator.textColor).toBe(categoryListings.math.textColor)
+      expect(operator.colors).toBe(categoryListings.math.colors)
       for (const key of ['description', 'docUrl']) expect(Object.hasOwn(operator, key)).toBe(false)
       const { values, mode, start } = operator.parameters
       expect(Object.hasOwn(values, 'description')).toBe(false)
@@ -282,22 +302,24 @@ describe('getCatalog', () => {
 
     test("a host's listing is joined in, its seeds over the type rule", () => {
       const [operator] = getCatalog(new FigTree({ operators: [tally] }), {
-        tally: {
-          displayName: 'Tally',
-          description: 'Sum or count',
-          parameterDescriptions: { mode: 'What to tally' },
-          docUrl: 'https://example.com/tally',
-          backgroundColor: '#123456',
-          textColor: '#ffffff',
-          seeds: { mode: 'count' },
-        },
+        listings: [
+          {
+            tally: {
+              displayName: 'Tally',
+              description: 'Sum or count',
+              parameterDescriptions: { mode: 'What to tally' },
+              docUrl: 'https://example.com/tally',
+              colors: { background: '#123456', text: '#ffffff' },
+              seeds: { mode: 'count' },
+            },
+          },
+        ],
       }).operators
       expect(operator).toMatchObject({
         displayName: 'Tally',
         description: 'Sum or count',
         docUrl: 'https://example.com/tally',
-        backgroundColor: '#123456',
-        textColor: '#ffffff',
+        colors: { background: '#123456', text: '#ffffff' },
       })
       expect(operator.parameters.mode).toMatchObject({
         description: 'What to tally',
@@ -308,8 +330,8 @@ describe('getCatalog', () => {
 
     describe('listings merge over the package’s, field by field', () => {
       const instance = new FigTree({ operators: [coreOperators, tally] })
-      const operatorOf = (name: string, ...listings: OperatorListingMap[]) =>
-        getCatalog(instance, ...listings).operators.find((op) => op.name === name)!
+      const operatorOf = (name: string, ...listings: ListingMap[]) =>
+        getCatalog(instance, { listings }).operators.find((op) => op.name === name)!
       const plus = operatorOf('plus')
 
       test('an entry changing one field keeps every other', () => {
@@ -380,24 +402,18 @@ describe('getCatalog', () => {
         expect(operator).toStrictEqual(plus)
       })
 
-      test('colours apply only as a pair, replacing the pair beneath', () => {
-        const half = operatorOf('plus', { plus: { backgroundColor: '#123456' } })
-        expect([half.backgroundColor, half.textColor]).toEqual([
-          plus.backgroundColor,
-          plus.textColor,
-        ])
-        const halfOverCategory = operatorOf('tally', { tally: { textColor: '#000000' } })
-        expect([halfOverCategory.backgroundColor, halfOverCategory.textColor]).toEqual([
-          categoryListings.math.backgroundColor,
-          categoryListings.math.textColor,
-        ])
-        // A pair replaces the package's, and a later half changes neither
+      test('colours replace the pair beneath, whole, and fall back on the category', () => {
+        const pair = { background: '#123456', text: '#ffffff' }
+        expect(operatorOf('plus', { plus: { colors: pair } }).colors).toBe(pair)
+        expect(operatorOf('tally', { tally: { colors: pair } }).colors).toBe(pair)
+        expect(operatorOf('tally').colors).toBe(categoryListings.math.colors)
+        // A later entry without colours keeps the pair beneath
         const restyled = operatorOf(
           'plus',
-          { plus: { backgroundColor: '#123456', textColor: '#ffffff' } },
-          { plus: { backgroundColor: '#abcdef' } }
+          { plus: { colors: pair } },
+          { plus: { displayName: 'Add' } }
         )
-        expect([restyled.backgroundColor, restyled.textColor]).toEqual(['#123456', '#ffffff'])
+        expect(restyled.colors).toBe(pair)
       })
 
       test('reads only keys a map or entry holds itself, never inherited ones', () => {
@@ -411,10 +427,11 @@ describe('getCatalog', () => {
           evaluate: () => null,
         })
         const [operator] = getCatalog(new FigTree({ operators: [constructed] }), {
-          constructed: { parameterDescriptions: {}, seeds: {} },
+          listings: [{ constructed: { parameterDescriptions: {}, samples: {}, seeds: {} } }],
         }).operators
         const parameter = operator.parameters['constructor' as string]
         expect(Object.hasOwn(parameter, 'description')).toBe(false)
+        expect(Object.hasOwn(parameter, 'sample')).toBe(false)
         expect(parameter.seed).toBe(typeSeeds.string)
       })
     })
@@ -562,7 +579,10 @@ describe('getCatalog', () => {
       })
       const engine = new FigTree({ operators: [recording, nothing] })
 
-      const observe = async (node: Record<string, unknown>, parameter: CatalogParameter) => {
+      const observe = async (
+        node: Record<string, unknown>,
+        parameter: CatalogOperatorParameter
+      ) => {
         received = undefined
         try {
           const result = await engine.evaluate(node)
@@ -584,7 +604,7 @@ describe('getCatalog', () => {
         Object.entries(operator.parameters)
           .filter(([, parameter]) => parameter.replacesNullAt === undefined)
           .map(([name, parameter]) => [`${operator.name}.${name}`, operator, name, parameter])
-      ) as [string, CatalogOperator, string, CatalogParameter][]
+      ) as [string, CatalogOperator, string, CatalogOperatorParameter][]
 
       test.each(cases)('%s', async (_, operator, name, parameter) => {
         underTest = { operator: operator.name, parameter: name, element: false }
@@ -637,19 +657,23 @@ describe('getCatalog', () => {
         greeting: {
           expression: { $buildString: ['Hello, %1', '$params.name'] },
           parameters: {
-            name: { type: 'string', description: 'Who to greet' },
+            name: { type: 'string' },
             punctuation: { type: 'string', default: '!' },
           },
-          description: 'A greeting',
-          metadata: {
+          listing: {
             displayName: 'Greeting',
+            description: 'A greeting',
+            parameterDescriptions: { name: 'Who to greet' },
             docUrl: 'https://example.com/greeting',
-            backgroundColor: '#477799',
-            textColor: '#ffffff',
+            colors: { background: '#477799', text: '#ffffff' },
             seeds: { name: 'Ada' },
-          } satisfies FragmentMetadata,
+          },
         },
-        bare: { expression: 1, metadata: { backgroundColor: '#477799' } },
+        // Presentation keys in metadata are the host's own, never read
+        bare: {
+          expression: 1,
+          metadata: { displayName: 'Bare', colors: { background: '#477799', text: '#ffffff' } },
+        },
       },
     })
     const { fragments } = getCatalog(instance)
@@ -659,37 +683,47 @@ describe('getCatalog', () => {
       const snapshot = instance.getFragments()
       expect(fragments.map((fragment) => fragment.name)).toEqual(snapshot.map((f) => f.name))
       fragments.forEach((fragment, i) => {
-        const { displayName, docUrl, backgroundColor, textColor, ...rest } = fragment
-        void [displayName, docUrl, backgroundColor, textColor]
+        const { displayName, description, docUrl, colors, metadata, ...rest } = fragment
+        void [displayName, description, docUrl, colors, metadata]
         const parameters = Object.fromEntries(
-          Object.entries(rest.parameters).map(([name, { seed, ...parameter }]) => {
-            void seed
-            return [name, parameter]
-          })
+          Object.entries(rest.parameters).map(
+            ([name, { seed, sample, description, ...parameter }]) => {
+              void [seed, sample, description]
+              return [name, parameter]
+            }
+          )
         )
-        expect({ ...rest, parameters }).toStrictEqual(snapshot[i])
+        // The raw listing is resolved onto the entry, not carried, and
+        // metadata is merged, so it is checked on its own
+        const { listing, metadata: own, ...expected } = snapshot[i]
+        void [listing, own]
+        expect({ ...rest, parameters }).toStrictEqual(expected)
       })
     })
 
-    test("a fragment's metadata is its display data, its text its definition's", () => {
+    test("a fragment's listing is its display data and its text", () => {
       const greeting = find('greeting')
       expect(greeting).toMatchObject({
         displayName: 'Greeting',
         description: 'A greeting',
         docUrl: 'https://example.com/greeting',
-        backgroundColor: '#477799',
-        textColor: '#ffffff',
+        colors: { background: '#477799', text: '#ffffff' },
       })
       expect(greeting.parameters.name).toMatchObject({ description: 'Who to greet', seed: 'Ada' })
       // The type rule, not the runtime default
       expect(greeting.parameters.punctuation.seed).toBe(typeSeeds.string)
     })
 
-    test('without display metadata: its name, and no colours, not even half a pair', () => {
+    test('without a listing: its name, no text, the shared colours, whatever its metadata says', () => {
       const bare = find('bare')
       expect(bare.displayName).toBe('bare')
-      for (const key of ['docUrl', 'backgroundColor', 'textColor'])
+      expect(bare.colors).toBe(fragmentColors)
+      for (const key of ['description', 'docUrl', 'listing'])
         expect(Object.hasOwn(bare, key)).toBe(false)
+      expect(bare.metadata).toEqual({
+        displayName: 'Bare',
+        colors: { background: '#477799', text: '#ffffff' },
+      })
     })
   })
 
@@ -701,32 +735,315 @@ describe('getCatalog', () => {
     expect(operators.map((op) => op.name)).toEqual([fig.getOperators()[0].name])
     expect(fragments).toEqual([])
   })
-})
 
-describe('FragmentMetadata', () => {
-  // Type-level: the file fails to compile if a literal is misjudged
-  test('a fragment may give a docUrl or leave it out, and gives no text', () => {
-    const withoutDocs: FragmentMetadata = {
-      displayName: 'Greeting',
-      backgroundColor: '#477799',
-      textColor: '#ffffff',
-    }
-    const withDocs: FragmentMetadata = { ...withoutDocs, docUrl: 'https://example.com/greeting' }
-    // @ts-expect-error — a fragment's description is its definition's own
-    const described: FragmentMetadata = { description: 'A greeting' }
-    expect([withDocs, described]).toHaveLength(2)
+  describe('categories in use, and their overrides', () => {
+    const instance = new FigTree({
+      operators: [coreOperators.filter(({ category }) => category === 'math'), tally],
+    })
+
+    test('only the categories an operator is in', () => {
+      expect(getCatalog(instance).categories.map(({ name }) => name)).toEqual(['math'])
+      expect(getCatalog(new FigTree({ operators: [] })).categories).toEqual([])
+    })
+
+    test('overrides merge over the package’s, in order, field by field', () => {
+      const pair = { background: '#123456', text: '#ffffff' }
+      const { categories, operators } = getCatalog(instance, {
+        categories: [
+          { math: { displayName: 'Maths', colors: pair } },
+          { math: { displayName: 'Mathématiques', order: undefined }, logic: { order: 0 } },
+        ],
+      })
+      expect(categories).toEqual([
+        {
+          name: 'math',
+          displayName: 'Mathématiques',
+          order: categoryListings.math.order,
+          colors: pair,
+        },
+      ])
+      // An operator without colours of its own takes its category's, overridden
+      expect(operators.find(({ name }) => name === 'tally')!.colors).toBe(pair)
+      expect(categoryListings.math.displayName).toBe('Arithmetic & math')
+    })
+
+    test('an overridden order reorders the categories', () => {
+      const both = new FigTree({ operators: [coreOperators] })
+      const names = (overrides: CategoryOverrides[]) =>
+        getCatalog(both, { categories: overrides }).categories.map(({ name }) => name)
+      expect(names([]).slice(0, 2)).toEqual(['logic', 'comparison'])
+      expect(names([{ comparison: { order: -1 } }]).slice(0, 2)).toEqual(['comparison', 'logic'])
+    })
+
+    test('reads only keys an override holds itself', () => {
+      const inherited = Object.create({ math: { displayName: 'Inherited' } })
+      expect(getCatalog(instance, { categories: [inherited] }).categories[0].displayName).toBe(
+        categoryListings.math.displayName
+      )
+    })
   })
 
-  test("a definition's metadata is typed by it, and takes a host's own keys", () => {
-    const hosted: FragmentDefinition = {
+  describe('metadata', () => {
+    const bag = { team: 'core', reviewed: false }
+    const tagged = defineOperator({
+      name: 'tagged',
+      category: 'other',
+      metadata: bag,
+      parameters: {},
+      evaluate: () => null,
+    })
+    const instance = new FigTree({
+      operators: [coreOperators, tagged],
+      fragments: {
+        frag: { expression: 1, metadata: { team: 'frag' }, listing: { metadata: { icon: 'f' } } },
+      },
+    })
+
+    test("the definition's, with each listing layer's merged over it, key by key", () => {
+      const { operators, fragments } = getCatalog(instance, {
+        listings: [
+          {
+            tagged: { metadata: { reviewed: true, icon: 'tag' } },
+            frag: { metadata: { team: 'over' } },
+          },
+          { tagged: { metadata: { icon: 'later', reviewed: undefined } } },
+        ],
+      })
+      expect(operators.find(({ name }) => name === 'tagged')!.metadata).toEqual({
+        team: 'core',
+        reviewed: true,
+        icon: 'later',
+      })
+      expect(fragments[0].metadata).toEqual({ team: 'over', icon: 'f' })
+      // The definition's bag is never written to
+      expect(bag).toEqual({ team: 'core', reviewed: false })
+      expect(instance.getOperators().find(({ name }) => name === 'tagged')!.metadata).toBe(bag)
+    })
+
+    test('{} where nothing gives any', () => {
+      expect(catalogOperator('plus').metadata).toEqual({})
+      expect(getCatalog(instance).literal.metadata).toEqual({})
+    })
+  })
+
+  describe('samples', () => {
+    test('a parameter takes its sample, merged per parameter across layers', () => {
+      const instance = new FigTree({
+        operators: [tally],
+        fragments: {
+          greet: {
+            expression: '$params.name',
+            parameters: { name: { type: 'string' }, punctuation: { type: 'string', default: '!' } },
+            listing: { samples: { name: 'Ada', punctuation: '?' } },
+          },
+        },
+      })
+      const { operators, fragments } = getCatalog(instance, {
+        listings: [
+          { tally: { samples: { values: [1, 2, 3], mode: 'sum' } } },
+          { tally: { samples: { mode: 'count' } }, greet: { samples: { name: 'Grace' } } },
+        ],
+      })
+      const { values, mode, start } = operators[0].parameters
+      expect([values.sample, mode.sample]).toEqual([[1, 2, 3], 'count'])
+      expect(Object.hasOwn(start, 'sample')).toBe(false)
+      const { name, punctuation } = fragments[0].parameters
+      expect([name.sample, punctuation.sample]).toEqual(['Grace', '?'])
+    })
+  })
+
+  describe('checks: a value of the wrong type is skipped and reported, never thrown', () => {
+    const instance = new FigTree({
+      operators: [coreOperators, tally],
+      fragments: {
+        greet: {
+          expression: '$params.name',
+          parameters: { name: { type: 'string' } },
+          // Registration checks only that it is an object
+          listing: { displayName: 'Greet', description: 42 } as unknown as Listing,
+        },
+      },
+    })
+    // Without the fragment, whose listing reports in every catalog
+    const clean = new FigTree({ operators: [coreOperators, tally] })
+    const issuesOf = (options: unknown) =>
+      getCatalog(clean, options as CatalogOptions).issues.map(({ path, message }) => [
+        path.join('.'),
+        message,
+      ])
+
+    test('well-formed input reports nothing, and unknown keys are ignored', () => {
+      const catalog = getCatalog(new FigTree({ operators: [tally] }), {
+        listings: [{ tally: { displayName: 'Tally', colours: 'blue' } as Listing }],
+      })
+      expect(catalog.issues).toEqual([])
+      expect(catalog.operators[0].displayName).toBe('Tally')
+    })
+
+    test('options that are not an object, or keys that are not options', () => {
+      expect(issuesOf(null)).toEqual([['', 'expected object, got null']])
+      // The rest-parameter shape: a map where the options belong
+      expect(issuesOf({ plus: { displayName: 'Add' } })).toEqual([
+        ['plus', 'not an option: expected listings or categories'],
+      ])
+      expect(getCatalog(clean, null as never).operators).toEqual(getCatalog(clean).operators)
+    })
+
+    test('a malformed option, map or entry is left out whole, the rest kept', () => {
+      expect(issuesOf({ listings: { tally: {} } })).toEqual([
+        ['listings', 'expected array, got object'],
+      ])
+      const { operators, issues } = getCatalog(clean, {
+        listings: ['nope', { tally: 5, plus: { displayName: 'Add' } }],
+      } as never)
+      expect(issues.map(({ path }) => path)).toEqual([
+        ['listings', 0],
+        ['listings', 1, 'tally'],
+      ])
+      expect(operators.find(({ name }) => name === 'plus')!.displayName).toBe('Add')
+      expect(operators.find(({ name }) => name === 'tally')!.displayName).toBe('tally')
+    })
+
+    test('a field of the wrong type is left out, the rest of its entry kept', () => {
+      const { operators, issues } = getCatalog(clean, {
+        listings: [
+          {
+            tally: {
+              displayName: 'Tally',
+              description: 42,
+              colors: { background: '#123456' },
+              seeds: [1],
+              parameterDescriptions: { values: 'What to tally', mode: false },
+              metadata: 'x',
+            },
+          },
+        ],
+      } as never)
+      expect(issues.map(({ path, message }) => [path.join('.'), message])).toEqual([
+        ['listings.0.tally.description', 'expected string, got number'],
+        ['listings.0.tally.colors.text', 'expected string, got undefined'],
+        ['listings.0.tally.seeds', 'expected object, got array'],
+        ['listings.0.tally.metadata', 'expected object, got string'],
+        ['listings.0.tally.parameterDescriptions.mode', 'expected string, got boolean'],
+      ])
+      const operator = operators.find(({ name }) => name === 'tally')!
+      expect(operator.displayName).toBe('Tally')
+      expect(Object.hasOwn(operator, 'description')).toBe(false)
+      expect(operator.colors).toBe(categoryListings.math.colors)
+      expect(operator.metadata).toEqual({})
+      expect(operator.parameters.values.description).toBe('What to tally')
+      expect(Object.hasOwn(operator.parameters.mode, 'description')).toBe(false)
+    })
+
+    test("a fragment definition's listing is checked at its own path", () => {
+      const { fragments, issues } = getCatalog(instance)
+      expect(issues).toEqual([
+        {
+          path: ['fragments', 'greet', 'listing', 'description'],
+          message: 'expected string, got number',
+        },
+      ])
+      expect(fragments[0].displayName).toBe('Greet')
+      expect(Object.hasOwn(fragments[0], 'description')).toBe(false)
+    })
+
+    test('a category override is checked the same way', () => {
+      const { categories, issues } = getCatalog(new FigTree({ operators: [tally] }), {
+        categories: [{ math: { displayName: 5, order: Number.NaN, colors: 'green' } }],
+      } as never)
+      expect(issues.map(({ path, message }) => [path.join('.'), message])).toEqual([
+        ['categories.0.math.displayName', 'expected string, got number'],
+        ['categories.0.math.order', 'expected number, got NaN'],
+        ['categories.0.math.colors', 'expected object, got string'],
+      ])
+      expect(categories).toEqual([{ name: 'math', ...categoryListings.math }])
+    })
+  })
+
+  describe('listing maps reach fragments and literal', () => {
+    const instance = new FigTree({
+      operators: [coreOperators],
+      fragments: {
+        greet: {
+          expression: '$params.name',
+          parameters: { name: { type: 'string' } },
+          listing: {
+            displayName: 'Greet',
+            description: 'A greeting',
+            parameterDescriptions: { name: 'Who to greet' },
+            seeds: { name: 'Ada' },
+          },
+        },
+      },
+    })
+
+    test("a map merges over a fragment's own listing, field by field", () => {
+      const pair = { background: '#123456', text: '#ffffff' }
+      const [greet] = getCatalog(instance, {
+        listings: [
+          { greet: { description: 'Une salutation', colors: pair, seeds: { name: 'Zoé' } } },
+        ],
+      }).fragments
+      expect(greet).toMatchObject({
+        displayName: 'Greet',
+        description: 'Une salutation',
+        colors: pair,
+      })
+      expect(greet.parameters.name).toMatchObject({ description: 'Who to greet', seed: 'Zoé' })
+      // The definition's listing is untouched
+      expect(instance.getFragments()[0].listing?.description).toBe('A greeting')
+    })
+
+    test('literal is listed from the package’s listing, and a map can change it', () => {
+      const listing = operatorListings.literal
+      expect(catalog.literal).toEqual({
+        displayName: listing.displayName,
+        docUrl: listing.docUrl,
+        colors: listing.colors,
+        metadata: {},
+        parameters: { value: { seed: listing.seeds!.value } },
+      })
+      const { literal } = getCatalog(instance, {
+        listings: [
+          { literal: { displayName: 'Littéral', parameterDescriptions: { value: 'Data' } } },
+        ],
+      })
+      expect(literal.displayName).toBe('Littéral')
+      expect(literal.colors).toBe(listing.colors)
+      expect(literal.parameters.value).toEqual({ description: 'Data', seed: listing.seeds!.value })
+    })
+
+    test('keys are canonical names: an alias, or a name nothing has, is ignored', () => {
+      const plus = catalogOperator('plus')
+      expect(
+        getCatalog(fig, {
+          listings: [{ '+': { displayName: 'Add' }, nothing: { displayName: 'X' } }],
+        }).operators.find(({ name }) => name === 'plus')
+      ).toStrictEqual(plus)
+    })
+  })
+})
+
+describe("a fragment definition's listing and metadata", () => {
+  // Type-level: the file fails to compile if a literal is misjudged
+  test('the listing is a Listing, text included, and typed by it', () => {
+    const listed: FragmentDefinition = {
       expression: 1,
-      metadata: { displayName: 'One', seeds: {}, team: 'config-admins' },
+      listing: { displayName: 'One', description: 'The number one', samples: {} },
     }
     const mistyped: FragmentDefinition = {
       expression: 1,
-      // @ts-expect-error — a display key keeps its type beside a host's
-      metadata: { displayName: 1 },
+      // @ts-expect-error — a listing field keeps its type
+      listing: { displayName: 1 },
     }
-    expect([hosted, mistyped]).toHaveLength(2)
+    expect([listed, mistyped]).toHaveLength(2)
+  })
+
+  test("metadata takes any of a host's own keys", () => {
+    const hosted: FragmentDefinition = {
+      expression: 1,
+      metadata: { displayName: 1, team: 'config-admins' },
+    }
+    expect(hosted.metadata).toBeDefined()
   })
 })

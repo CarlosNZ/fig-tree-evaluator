@@ -109,6 +109,7 @@ describe('definitions', () => {
             description: 'Greets someone',
             textColor: 'white',
             backgroundColor: '#123456',
+            team: 'greeters',
             parameters: [
               { name: '$name', type: 'string', required: true, description: 'Who to greet' },
             ],
@@ -123,9 +124,13 @@ describe('definitions', () => {
             substitutions: ['$params.name'],
             trim: true,
           },
-          parameters: { name: { type: 'string', description: 'Who to greet' } },
-          description: 'Greets someone',
-          metadata: { textColor: 'white', backgroundColor: '#123456' },
+          parameters: { name: { type: 'string' } },
+          listing: {
+            description: 'Greets someone',
+            parameterDescriptions: { name: 'Who to greet' },
+            colors: { background: '#123456', text: 'white' },
+          },
+          metadata: { team: 'greeters' },
         },
       },
       calls: [{ input: { $greet: { $name: 'Ann' } } }],
@@ -169,7 +174,7 @@ describe('definitions', () => {
               { name: '$b', type: 'date' },
               { name: '$c', type: 'undefined' },
               { name: '$d', type: 'string', default: 5 },
-              { name: '$e', type: 'number', required: true, label: 'E' },
+              { name: '$e', type: 'number', required: true },
             ],
           },
         },
@@ -182,7 +187,7 @@ describe('definitions', () => {
             b: { type: 'any', required: false },
             c: { type: 'any', required: false },
             d: { type: 'any', default: 5 },
-            e: { type: 'number', metadata: { label: 'E' } },
+            e: { type: 'number' },
           },
         },
       },
@@ -192,6 +197,29 @@ describe('definitions', () => {
         { code: 'default-outside-type', path: ['typed', 'metadata', 'parameters', 3, 'default'] },
       ],
       calls: [{ input: { fragment: 'typed', parameters: { $a: 1, $e: 0 } } }],
+    },
+    {
+      name: 'a declaration key v3 has no place for is dropped, each with an issue',
+      fragments: {
+        labelled: {
+          operator: '+',
+          values: ['$n', 1],
+          metadata: {
+            parameters: [{ name: '$n', type: 'number', default: 1, label: 'N', hint: 'Any' }],
+          },
+        },
+      },
+      expected: {
+        labelled: {
+          expression: { operator: 'plus', values: ['$params.n', 1] },
+          parameters: { n: { type: 'number', default: 1 } },
+        },
+      },
+      issues: [
+        { code: 'parameter-key-dropped', path: ['labelled', 'metadata', 'parameters', 0, 'label'] },
+        { code: 'parameter-key-dropped', path: ['labelled', 'metadata', 'parameters', 0, 'hint'] },
+      ],
+      calls: [{ input: { fragment: 'labelled', parameters: { $n: 2 } } }],
     },
     {
       name: "a top-level `$` key is the parameter's default",
@@ -445,10 +473,38 @@ describe('definitions', () => {
         short: {
           expression: { operator: 'plus', values: ['$params.n', 1] },
           parameters: { n: { type: 'any', default: '$n' } },
-          description: 'Adds one',
+          listing: { description: 'Adds one' },
         },
       },
       calls: [{ input: { $short: { $n: 1 } } }],
+    },
+    {
+      name: 'what is not text, or half a colour pair, stays out of the listing',
+      fragments: {
+        partial: {
+          operator: '+',
+          values: ['$n', 1],
+          metadata: {
+            description: 5,
+            textColor: 'white',
+            parameters: [{ name: '$n', type: 'number', default: 1, description: ['Any'] }],
+          },
+        },
+      },
+      expected: {
+        partial: {
+          expression: { operator: 'plus', values: ['$params.n', 1] },
+          parameters: { n: { type: 'number', default: 1 } },
+          metadata: { description: 5, textColor: 'white' },
+        },
+      },
+      issues: [
+        {
+          code: 'parameter-key-dropped',
+          path: ['partial', 'metadata', 'parameters', 0, 'description'],
+        },
+      ],
+      calls: [{ input: { $partial: { $n: 2 } } }],
     },
     {
       name: 'a `metadata` that is not an object is a key v2 ignored',

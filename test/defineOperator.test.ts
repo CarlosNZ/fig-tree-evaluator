@@ -305,18 +305,19 @@ describe('the fingerprint sees source text, not closure state', () => {
     expect(fromFactory('a').fingerprint).toBe(fromFactory('b').fingerprint)
   })
 
-  it('leaves out a parameter’s metadata, as the definition’s own', () => {
-    const withParameter = (declaration: Record<string, unknown>) =>
+  it('leaves out the metadata', () => {
+    const withMetadata = (metadata?: Record<string, unknown>) =>
       defineOperator({
         name: 'described',
         category: 'other',
-        parameters: { a: declaration },
+        ...(metadata !== undefined && { metadata }),
+        parameters: {},
         evaluate: () => null,
-      } as never).fingerprint
+      }).fingerprint
     // Host-owned, so it may hold what JSON cannot: a BigInt, a cycle
     const cycle: Record<string, unknown> = {}
     cycle.self = cycle
-    expect(withParameter({ metadata: { big: BigInt(1) } })).toBe(withParameter({}))
-    expect(withParameter({ metadata: cycle })).toBe(withParameter({}))
+    expect(withMetadata({ big: BigInt(1) })).toBe(withMetadata())
+    expect(withMetadata(cycle)).toBe(withMetadata())
   })
 })

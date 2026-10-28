@@ -12,6 +12,7 @@
  * against the catalogue, so the catalogue is found by walking every body
  * until no walk finds a new parameter. The walk is stage 2's, passed in.
  */
+import type { ColorPair, Listing } from '../catalogTypes'
 import type { FragmentDefinition, FragmentParameterDeclaration } from '../fragments'
 import type { MigrationIssue, V2Options } from '../migrationTypes'
 import { isUnder, issue, type Path } from './issues'
@@ -48,9 +49,7 @@ export interface ParameterInfo {
   /** v2's `required: true` */
   required: boolean
   type?: unknown
-  description?: unknown
-  /** The declaration's keys v3 has no place for */
-  metadata?: PlainObject
+  description?: string
   default?: V2Default
   /**
    * Whether a call's unprefixed key of its name is exactly its argument: v2
@@ -79,6 +78,7 @@ export interface FragmentInfo {
   /** By placeholder, declared ones first */
   parameters: Map<string, ParameterInfo>
   description?: string
+  colors?: ColorPair
   metadata?: PlainObject
   /** What was found before the body is converted */
   issues: MigrationIssue[]
@@ -188,6 +188,13 @@ const readDefinition = (key: string, definition: unknown, options: V2Options): F
     const { description, parameters, ...bag } = wrapper
     if (typeof description === 'string') info.description = description
     else if (description !== undefined) bag.description = description
+    // v2's colours were the fragment's presentation, as a pair is in v3
+    const { textColor, backgroundColor } = bag
+    if (typeof textColor === 'string' && typeof backgroundColor === 'string') {
+      info.colors = { background: backgroundColor, text: textColor }
+      delete bag.textColor
+      delete bag.backgroundColor
+    }
     if (Array.isArray(parameters))
       parameters.forEach((entry, index) => declare(info, entry, index, options))
     else if (parameters !== undefined) bag.parameters = parameters
@@ -245,9 +252,14 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
   if (!prefixed && target === undefined)
     info.issues.push(issue('unprefixed-parameter', [...at, 'name'], { name: entry.name }))
   const { type, required, default: value, description } = entry
-  const others = Object.fromEntries(
-    Object.entries(entry).filter(([k]) => !V2_DECLARATION_KEYS.includes(k))
+  // v3 declarations are strict and carry no metadata, and a description
+  // goes to the listing only as text
+  const dropped = Object.keys(entry).filter(
+    (k) =>
+      !V2_DECLARATION_KEYS.includes(k) ||
+      (k === 'description' && description !== undefined && typeof description !== 'string')
   )
+  for (const key of dropped) info.issues.push(issue('parameter-key-dropped', [...at, key], { key }))
   const parameter: ParameterInfo = {
     key,
     name: key.slice(1),
@@ -265,8 +277,7 @@ const declare = (info: FragmentInfo, entry: unknown, index: number, options: V2O
       info.issues.push(issue('unknown-parameter-type', [...at, 'type'], { type: shownType }))
     }
   }
-  if (description !== undefined) parameter.description = description
-  if (Object.keys(others).length > 0) parameter.metadata = others
+  if (typeof description === 'string') parameter.description = description
   // v2 inserted only a default that was not `undefined`
   if (value !== undefined) {
     const path = [...at, 'default']
@@ -488,13 +499,11 @@ const declaration = (
     ...(optional && { required: false }),
     ...(constant !== undefined && { default: constant.constant }),
     ...(text && { default: parameter.key }),
-    ...(parameter.description !== undefined && { description: parameter.description as string }),
-    ...(parameter.metadata !== undefined && { metadata: parameter.metadata }),
   }
 }
 
 /**
- * A fragment's v3 definition: `{ expression, parameters?, description?,
+ * A fragment's v3 definition: `{ expression, parameters?, listing?,
  * metadata? }`, its parameters declared ones first, then the rest by name
  */
 export const definitionOf = (
@@ -511,10 +520,18 @@ export const definitionOf = (
   const parameters = Object.fromEntries(
     ordered.map((p) => [p.name, declaration(p, defaults.get(p.key), issues)])
   )
+  const described = ordered.filter((p) => p.description !== undefined)
+  const listing: Listing = {
+    ...(fragment.description !== undefined && { description: fragment.description }),
+    ...(described.length > 0 && {
+      parameterDescriptions: Object.fromEntries(described.map((p) => [p.name, p.description!])),
+    }),
+    ...(fragment.colors !== undefined && { colors: fragment.colors }),
+  }
   return {
     expression,
     ...(ordered.length > 0 && { parameters }),
-    ...(fragment.description !== undefined && { description: fragment.description }),
+    ...(Object.keys(listing).length > 0 && { listing }),
     ...(fragment.metadata !== undefined && { metadata: fragment.metadata }),
   }
 }

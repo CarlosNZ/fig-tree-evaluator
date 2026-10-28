@@ -126,8 +126,6 @@ export interface ParameterDeclaration extends TypeDeclaration {
   // Inherited from TypeDeclaration: type?, required?, constraints?
   /** A constant or the `EvaluationData` sentinel. Presence implies optional. */
   default?: unknown
-  /** Opaque; engine never reads it. */
-  metadata?: Record<string, unknown>
   /** How the engine delivers the value to the body. Default `'eager'`. */
   evaluationMode?: EvaluationMode
   /** `'perElement'` only: the sibling array parameter iterated over. */
@@ -163,7 +161,7 @@ export type ParameterDeclarations = Record<string, ParameterDeclaration>
  * A definition as authored, before it passes through `defineOperator()`.
  * Generic over its own `parameters` so the body's `params` is typed from
  * them (src/inference.ts). How the operator is presented, its description
- * and its parameters' included, is an `OperatorListing`'s
+ * and its parameters' included, is a `Listing`'s
  * (src/catalogTypes.ts), so a host that never shows that text never ships
  * it.
  */
@@ -227,7 +225,6 @@ export interface ValidatedParameter {
   required: boolean
   /** Present only when authored; may be the `EvaluationData` sentinel. */
   default?: unknown
-  metadata?: Record<string, unknown>
   evaluationMode: EvaluationMode
   truthiness: boolean
   /**
@@ -235,7 +232,7 @@ export interface ValidatedParameter {
    * `'propagate'`, filled in even where no policy can apply: at a type that
    * doesn't name `null`, at a lazily delivered parameter, and at a holder.
    * What a `null` does at every parameter is the catalog's `nullOutcome`
-   * (`CatalogParameter`).
+   * (`CatalogOperatorParameter`).
    */
   nullPolicy: NullPolicyValue | CompiledNullPolicy
   elementNullPolicy?: NullPolicyValue
