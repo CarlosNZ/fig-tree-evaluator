@@ -24,8 +24,8 @@ import type {
   CatalogParameter,
   CategoryListingMap,
   FragmentMetadata,
-  OperatorListing,
-  OperatorListingMap,
+  Listing,
+  ListingMap,
   TypeSeeds,
 } from '../catalogTypes'
 import type { FigTree } from '../FigTree'
@@ -37,37 +37,32 @@ export const categoryListings: CategoryListingMap = {
   logic: {
     displayName: 'Logic & control',
     order: 0,
-    backgroundColor: '#632fbc',
-    textColor: '#ffffff',
+    colors: { background: '#632fbc', text: '#ffffff' },
   },
   comparison: {
     displayName: 'Comparison',
     order: 1,
-    backgroundColor: '#247f7c',
-    textColor: '#ffffff',
+    colors: { background: '#247f7c', text: '#ffffff' },
   },
   math: {
     displayName: 'Arithmetic & math',
     order: 2,
-    backgroundColor: '#2b8237',
-    textColor: '#ffffff',
+    colors: { background: '#2b8237', text: '#ffffff' },
   },
-  string: { displayName: 'Strings', order: 3, backgroundColor: '#a1660c', textColor: '#ffffff' },
+  string: { displayName: 'Strings', order: 3, colors: { background: '#a1660c', text: '#ffffff' } },
   array: {
     displayName: 'Arrays & iteration',
     order: 4,
-    backgroundColor: '#236ac7',
-    textColor: '#ffffff',
+    colors: { background: '#236ac7', text: '#ffffff' },
   },
   data: {
     displayName: 'Data & objects',
     order: 5,
-    backgroundColor: '#b93171',
-    textColor: '#ffffff',
+    colors: { background: '#b93171', text: '#ffffff' },
   },
-  io: { displayName: 'I/O', order: 6, backgroundColor: '#6e7a24', textColor: '#ffffff' },
+  io: { displayName: 'I/O', order: 6, colors: { background: '#6e7a24', text: '#ffffff' } },
   // Where an operator that fits no other category goes, plugins' included
-  other: { displayName: 'Other', order: 7, backgroundColor: '#606e8a', textColor: '#ffffff' },
+  other: { displayName: 'Other', order: 7, colors: { background: '#606e8a', text: '#ffffff' } },
 }
 
 export const typeSeeds: TypeSeeds = {
@@ -87,14 +82,13 @@ export const typeSeeds: TypeSeeds = {
 // that README has one per operator
 const DOCS = 'https://github.com/CarlosNZ/fig-tree-evaluator'
 
-export const operatorListings: OperatorListingMap = {
+export const operatorListings: ListingMap = {
   // ── Logic & control ────────────────────────────────────────────────────
   and: {
     displayName: 'Logical AND',
     description: 'True when every value is truthy — operands run in parallel',
     docUrl: DOCS,
-    backgroundColor: '#d6d0f0',
-    textColor: '#26183f',
+    colors: { background: '#d6d0f0', text: '#26183f' },
     seeds: { values: [true, true] },
     parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
   },
@@ -102,8 +96,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Logical OR',
     description: 'True when any value is truthy — operands run in parallel',
     docUrl: DOCS,
-    backgroundColor: '#cabfeb',
-    textColor: '#26183f',
+    colors: { background: '#cabfeb', text: '#26183f' },
     seeds: { values: [true, false] },
     parameterDescriptions: { values: 'Operands, judged by FigTree truthiness; null is falsy' },
   },
@@ -111,8 +104,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Logical NOT (!)',
     description: 'Negate the truthiness of a value',
     docUrl: DOCS,
-    backgroundColor: '#c0aee5',
-    textColor: '#26183f',
+    colors: { background: '#c0aee5', text: '#26183f' },
     seeds: { value: true },
     parameterDescriptions: {
       value: 'Judged by FigTree truthiness; null is falsy, so not(null) is true',
@@ -122,8 +114,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Conditional (?)',
     description: 'Choose between two branches — only the chosen branch evaluates',
     docUrl: DOCS,
-    backgroundColor: '#ddd0f0',
-    textColor: '#26183f',
+    colors: { background: '#ddd0f0', text: '#26183f' },
     seeds: {
       condition: true,
       then: 'The condition is true',
@@ -139,8 +130,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Match',
     description: 'Dispatch on a value — only the matching branch evaluates',
     docUrl: DOCS,
-    backgroundColor: '#d4bfeb',
-    textColor: '#26183f',
+    colors: { background: '#d4bfeb', text: '#26183f' },
     seeds: {
       value: 'matchMe',
       branches: { matchMe: 'YES', nonMatch: 'NO' },
@@ -157,8 +147,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'The first candidate that is not null (SQL COALESCE) — later candidates never evaluate',
     docUrl: DOCS,
-    backgroundColor: '#ccaee5',
-    textColor: '#26183f',
+    colors: { background: '#ccaee5', text: '#26183f' },
     seeds: { values: [null, 'The first non-null value'] },
     parameterDescriptions: { values: 'Candidates, tried in order; only null is skipped' },
   },
@@ -169,8 +158,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Are all the values equal? Deep, structural, key-order-insensitive; a cross-type comparison is false',
     docUrl: DOCS,
-    backgroundColor: '#d2efe9',
-    textColor: '#183f3e',
+    colors: { background: '#d2efe9', text: '#183f3e' },
     seeds: { values: ['These are equal', 'These are equal'] },
     parameterDescriptions: {
       values: 'The values compared; null is comparable (null equals null)',
@@ -181,8 +169,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Not equal (!=)',
     description: 'Are the values NOT all equal? The exact negation of equal (never "all distinct")',
     docUrl: DOCS,
-    backgroundColor: '#c1e9e3',
-    textColor: '#183f3e',
+    colors: { background: '#c1e9e3', text: '#183f3e' },
     seeds: { values: ['These items', "don't match"] },
     parameterDescriptions: {
       values: 'The values compared; null is comparable (null equals null)',
@@ -193,8 +180,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Greater than (>)',
     description: 'Is the first value strictly greater than the second?',
     docUrl: DOCS,
-    backgroundColor: '#b0e3e0',
-    textColor: '#183f3e',
+    colors: { background: '#b0e3e0', text: '#183f3e' },
     seeds: { values: [10, 9] },
     parameterDescriptions: {
       values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
@@ -205,8 +191,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Greater than or equal (>=)',
     description: 'Is the first value greater than or equal to the second?',
     docUrl: DOCS,
-    backgroundColor: '#d2efef',
-    textColor: '#183f3e',
+    colors: { background: '#d2efef', text: '#183f3e' },
     seeds: { values: [10, 10] },
     parameterDescriptions: {
       values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
@@ -217,8 +202,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Less than (<)',
     description: 'Is the first value strictly less than the second?',
     docUrl: DOCS,
-    backgroundColor: '#c1e6e9',
-    textColor: '#183f3e',
+    colors: { background: '#c1e6e9', text: '#183f3e' },
     seeds: { values: [9, 10] },
     parameterDescriptions: {
       values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
@@ -229,8 +213,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Less than or equal (<=)',
     description: 'Is the first value less than or equal to the second?',
     docUrl: DOCS,
-    backgroundColor: '#b0dbe3',
-    textColor: '#183f3e',
+    colors: { background: '#b0dbe3', text: '#183f3e' },
     seeds: { values: [9, 9] },
     parameterDescriptions: {
       values: 'Exactly two operands: both numbers, or both strings (codepoint order)',
@@ -244,8 +227,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Add numbers, concatenate strings or arrays, or shallow-merge objects — all operands must share one type',
     docUrl: DOCS,
-    backgroundColor: '#d7edd4',
-    textColor: '#193e1e',
+    colors: { background: '#d7edd4', text: '#193e1e' },
     seeds: { values: [1, 2, 3] },
     parameterDescriptions: {
       values: 'The operands; homogeneous: all numbers, strings, arrays or objects',
@@ -258,8 +240,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Subtract (-)',
     description: 'Subtract one number from another',
     docUrl: DOCS,
-    backgroundColor: '#bfe4bc',
-    textColor: '#193e1e',
+    colors: { background: '#bfe4bc', text: '#193e1e' },
     seeds: { value: 10, minus: 5 },
     parameterDescriptions: { value: 'The main operand', minus: 'The amount subtracted from value' },
   },
@@ -267,8 +248,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Multiply (*)',
     description: 'Multiply numbers together — an empty input is 1, the empty product',
     docUrl: DOCS,
-    backgroundColor: '#b4e0b3',
-    textColor: '#193e1e',
+    colors: { background: '#b4e0b3', text: '#193e1e' },
     seeds: { values: [5, 5] },
     parameterDescriptions: {
       values: 'The factors',
@@ -279,8 +259,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Divide (/)',
     description: 'Divide one number by another — true division; zero divisors fail',
     docUrl: DOCS,
-    backgroundColor: '#cceacd',
-    textColor: '#193e1e',
+    colors: { background: '#cceacd', text: '#193e1e' },
     seeds: { value: 100, by: 10 },
     parameterDescriptions: { value: 'The main operand', by: 'The divisor' },
   },
@@ -288,8 +267,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Modulo',
     description: 'The floored remainder: the result takes the sign of mod, so modulo(-7, 3) is 2',
     docUrl: DOCS,
-    backgroundColor: '#c3e7c6',
-    textColor: '#193e1e',
+    colors: { background: '#c3e7c6', text: '#193e1e' },
     seeds: { value: 10, mod: 3 },
     parameterDescriptions: { value: 'The main operand', mod: 'The modulus' },
   },
@@ -297,8 +275,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Power (^)',
     description: 'Raise a base to an exponent — overflow and complex results fail',
     docUrl: DOCS,
-    backgroundColor: '#acddb1',
-    textColor: '#193e1e',
+    colors: { background: '#acddb1', text: '#193e1e' },
     seeds: { base: 2, exponent: 3 },
     parameterDescriptions: { base: 'The number to raise', exponent: 'The power to raise it to' },
   },
@@ -307,8 +284,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Round to a number of decimal places — ties go half away from zero; negative decimals round to tens, hundreds, …',
     docUrl: DOCS,
-    backgroundColor: '#d4edd8',
-    textColor: '#193e1e',
+    colors: { background: '#d4edd8', text: '#193e1e' },
     seeds: { value: 3.14159, decimals: 2 },
     parameterDescriptions: {
       value: 'The number to round',
@@ -319,8 +295,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Round down',
     description: 'Round down toward negative infinity',
     docUrl: DOCS,
-    backgroundColor: '#bce4c4',
-    textColor: '#193e1e',
+    colors: { background: '#bce4c4', text: '#193e1e' },
     seeds: { value: 2.7 },
     parameterDescriptions: { value: 'The number to round down' },
   },
@@ -328,8 +303,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Round up',
     description: 'Round up toward positive infinity',
     docUrl: DOCS,
-    backgroundColor: '#b3e0be',
-    textColor: '#193e1e',
+    colors: { background: '#b3e0be', text: '#193e1e' },
     seeds: { value: 2.3 },
     parameterDescriptions: { value: 'The number to round up' },
   },
@@ -337,8 +311,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Absolute value',
     description: 'The absolute value',
     docUrl: DOCS,
-    backgroundColor: '#ccead5',
-    textColor: '#193e1e',
+    colors: { background: '#ccead5', text: '#193e1e' },
     seeds: { value: -5 },
     parameterDescriptions: { value: 'The number' },
   },
@@ -346,8 +319,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Minimum',
     description: 'The smallest of the values — numbers numerically, strings in codepoint order',
     docUrl: DOCS,
-    backgroundColor: '#c3e7cf',
-    textColor: '#193e1e',
+    colors: { background: '#c3e7cf', text: '#193e1e' },
     seeds: { values: [3, 1, 2] },
     parameterDescriptions: {
       values: 'The candidates: all numbers, or all strings (codepoint order)',
@@ -358,8 +330,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Maximum',
     description: 'The largest of the values — numbers numerically, strings in codepoint order',
     docUrl: DOCS,
-    backgroundColor: '#acddbf',
-    textColor: '#193e1e',
+    colors: { background: '#acddbf', text: '#193e1e' },
     seeds: { values: [3, 1, 2] },
     parameterDescriptions: {
       values: 'The candidates: all numbers, or all strings (codepoint order)',
@@ -372,8 +343,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'String builder',
     description: 'Render a template, filling its tokens — the result is always a string',
     docUrl: DOCS,
-    backgroundColor: '#f8d9c9',
-    textColor: '#3f2f18',
+    colors: { background: '#f8d9c9', text: '#3f2f18' },
     // A data reference rather than a substitution key, since `substitutions`
     // is optional and a new node is seeded with its required parameters only
     seeds: { template: 'Hello {{$data.name}}' },
@@ -392,8 +362,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Divide a string on a delimiter into an array of pieces — empty pieces are kept; an empty delimiter splits into code points',
     docUrl: DOCS,
-    backgroundColor: '#f5cbab',
-    textColor: '#3f2f18',
+    colors: { background: '#f5cbab', text: '#3f2f18' },
     // `trim` defaults to true, so it is added to turn it off
     seeds: { value: 'Alpha, Bravo, Charlie', delimiter: ',', trim: false },
     parameterDescriptions: {
@@ -406,8 +375,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Join text',
     description: 'Render array elements to text and concatenate them with a delimiter',
     docUrl: DOCS,
-    backgroundColor: '#f3cba0',
-    textColor: '#3f2f18',
+    colors: { background: '#f3cba0', text: '#3f2f18' },
     seeds: { values: ['Alpha', 'Bravo', 'Charlie'], delimiter: ', ' },
     parameterDescriptions: {
       values:
@@ -420,8 +388,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Lower case',
     description: 'Lowercase a string — Unicode default case mapping, locale-independent',
     docUrl: DOCS,
-    backgroundColor: '#f7e1bf',
-    textColor: '#3f2f18',
+    colors: { background: '#f7e1bf', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
     parameterDescriptions: { value: 'The string to lowercase' },
   },
@@ -429,8 +396,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Upper case',
     description: 'Uppercase a string — Unicode default case mapping, locale-independent',
     docUrl: DOCS,
-    backgroundColor: '#f6e1b4',
-    textColor: '#3f2f18',
+    colors: { background: '#f6e1b4', text: '#3f2f18' },
     seeds: { value: 'Hello World' },
     parameterDescriptions: { value: 'The string to uppercase' },
   },
@@ -438,8 +404,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Trim whitespace',
     description: 'Strip whitespace (the JS trim set) from both ends of a string',
     docUrl: DOCS,
-    backgroundColor: '#f2dd97',
-    textColor: '#3f2f18',
+    colors: { background: '#f2dd97', text: '#3f2f18' },
     seeds: { value: '  Hello World  ' },
     parameterDescriptions: { value: 'The string to trim' },
   },
@@ -447,8 +412,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Regular expression',
     description: 'Test, extract, match or replace in a string with a regular expression',
     docUrl: DOCS,
-    backgroundColor: '#f8f1c9',
-    textColor: '#3f2f18',
+    colors: { background: '#f8f1c9', text: '#3f2f18' },
     seeds: { value: 'test-this', pattern: '^[a-z]{4}-[a-z]{4}$', flags: 'i' },
     parameterDescriptions: {
       value: 'The subject string',
@@ -469,8 +433,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Length',
     description: "An array's element count, or a string's Unicode code-point count",
     docUrl: DOCS,
-    backgroundColor: '#cde5f3',
-    textColor: '#18293f',
+    colors: { background: '#cde5f3', text: '#18293f' },
     seeds: { value: [1, 2, 3, 4, 5] },
     parameterDescriptions: { value: 'The array or string measured' },
   },
@@ -478,8 +441,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Map each',
     description: 'Transform every element of an array',
     docUrl: DOCS,
-    backgroundColor: '#bbd7ef',
-    textColor: '#18293f',
+    colors: { background: '#bbd7ef', text: '#18293f' },
     seeds: { input: [1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The collection iterated over; a null input is a type error',
@@ -492,8 +454,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Filter',
     description: 'Keep the elements of an array whose predicate is truthy',
     docUrl: DOCS,
-    backgroundColor: '#a8c7eb',
-    textColor: '#18293f',
+    colors: { background: '#a8c7eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The collection iterated over; a null input is a type error',
@@ -506,8 +467,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Find first',
     description: 'The first element of an array whose predicate is truthy',
     docUrl: DOCS,
-    backgroundColor: '#cddcf3',
-    textColor: '#18293f',
+    colors: { background: '#cddcf3', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The collection iterated over; a null input is a type error',
@@ -521,8 +481,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'Any match',
     description: 'True when any element satisfies the predicate',
     docUrl: DOCS,
-    backgroundColor: '#bbccef',
-    textColor: '#18293f',
+    colors: { background: '#bbccef', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The collection iterated over; a null input is a type error',
@@ -535,8 +494,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'All match',
     description: 'True when every element satisfies the predicate',
     docUrl: DOCS,
-    backgroundColor: '#a8b9eb',
-    textColor: '#18293f',
+    colors: { background: '#a8b9eb', text: '#18293f' },
     seeds: { input: [0, 1, 2, 3], each: '$element', as: 'item' },
     parameterDescriptions: {
       input: 'The collection iterated over; a null input is a type error',
@@ -552,8 +510,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Read a path out of the evaluation data, or out of a supplied object — the dynamic face of a $data reference',
     docUrl: DOCS,
-    backgroundColor: '#f0d1e5',
-    textColor: '#3f182a',
+    colors: { background: '#f0d1e5', text: '#3f182a' },
     // `from` holds what `path` reads, so adding it gives a working lookup
     seeds: {
       path: 'path.to.value',
@@ -574,8 +531,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Assemble an object from computed key/value entries — for keys known only at runtime',
     docUrl: DOCS,
-    backgroundColor: '#eac0cc',
-    textColor: '#3f182a',
+    colors: { background: '#eac0cc', text: '#3f182a' },
     seeds: {
       entries: [
         { key: 'firstKey', value: 'firstValue' },
@@ -593,8 +549,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'Convert a value to a number, string, boolean or array — strict: a failed conversion is an error, never a guess',
     docUrl: DOCS,
-    backgroundColor: '#dddfe3',
-    textColor: '#272a30',
+    colors: { background: '#dddfe3', text: '#272a30' },
     seeds: { value: '42' },
     parameterDescriptions: {
       value: 'The value to convert; null propagates except for boolean, where it is false',
@@ -609,8 +564,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'HTTP request',
     description: 'One HTTP request — GET or POST — returning the parsed JSON response',
     docUrl: DOCS,
-    backgroundColor: '#eeedd2',
-    textColor: '#3a3f18',
+    colors: { background: '#eeedd2', text: '#3a3f18' },
     seeds: {
       url: 'https://restcountries.com/v3.1/name/zealand',
       returnPath: '[0].name.common',
@@ -632,8 +586,7 @@ export const operatorListings: OperatorListingMap = {
     displayName: 'GraphQL query',
     description: 'One GraphQL query — a POST of { query, variables } — returning the data field',
     docUrl: DOCS,
-    backgroundColor: '#e3e8c2',
-    textColor: '#3a3f18',
+    colors: { background: '#e3e8c2', text: '#3a3f18' },
     seeds: {
       query:
         'query getCountries {\n  countries(filter: { continent: { eq: "OC" } }) {\n    name\n  }\n}',
@@ -657,8 +610,7 @@ export const operatorListings: OperatorListingMap = {
     description:
       'One SQL query against the registered connection. Expressions are READS — give the connection a read-only role and run mutations host-side',
     docUrl: DOCS,
-    backgroundColor: '#d2e2b1',
-    textColor: '#3a3f18',
+    colors: { background: '#d2e2b1', text: '#3a3f18' },
     seeds: { query: 'SELECT contact_name FROM customers LIMIT 5', timeout: 5000 },
     parameterDescriptions: {
       query: 'SQL text with the driver’s own placeholders — FigTree never parses SQL',
@@ -678,8 +630,7 @@ export const operatorListings: OperatorListingMap = {
   literal: {
     displayName: 'Literal',
     docUrl: DOCS,
-    backgroundColor: '#d5dae4',
-    textColor: '#272a30',
+    colors: { background: '#d5dae4', text: '#272a30' },
     seeds: { value: 'No content inside a literal node is evaluated' },
   },
 }
@@ -687,15 +638,6 @@ export const operatorListings: OperatorListingMap = {
 /** The value under a key the map holds itself, not one it inherits. */
 const own = <T>(map: { [key: string]: T } | undefined, key: string): T | undefined =>
   map !== undefined && Object.hasOwn(map, key) ? map[key] : undefined
-
-/**
- * The colours an operator's listing or a fragment's metadata gives, where it
- * gives the pair.
- */
-const coloursOf = (display: FragmentMetadata) =>
-  display.backgroundColor !== undefined && display.textColor !== undefined
-    ? { backgroundColor: display.backgroundColor, textColor: display.textColor }
-    : undefined
 
 /**
  * What a parameter starts as: the seed its operator's listing or its
@@ -753,20 +695,20 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
  *
  * An operator's listing is the package's own entry in `operatorListings`,
  * then each map in `listings` in order, each merged over the ones before it,
- * so an override holds only what it changes. `displayName`, `description`
- * and `docUrl` are replaced where a later entry gives them; `seeds` and
- * `parameterDescriptions` are merged per parameter; colours are replaced
- * only by an entry giving the pair. A field or parameter entry set to
+ * so an override holds only what it changes. `displayName`, `description`,
+ * `docUrl` and `colors` are replaced where a later entry gives them; `seeds`
+ * and `parameterDescriptions` are merged per parameter. A field or
+ * parameter entry set to
  * `undefined` is skipped, so it never erases what is beneath it, and only
  * keys a map or entry holds itself are read. A fragment's metadata is its
  * definition's `metadata`, with nothing merged over it.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
-  ...listings: OperatorListingMap[]
+  ...listings: ListingMap[]
 ): Catalog => {
-  const listingOf = (name: string): OperatorListing => {
-    const listing: OperatorListing = { seeds: {}, parameterDescriptions: {} }
+  const listingOf = (name: string): Listing => {
+    const listing: Listing = { seeds: {}, parameterDescriptions: {} }
     for (const map of [operatorListings, ...listings]) {
       const layer = own(map, name)
       if (layer === undefined) continue
@@ -774,7 +716,7 @@ export const getCatalog = (
         const value = layer[field]
         if (value !== undefined) listing[field] = value
       }
-      Object.assign(listing, coloursOf(layer))
+      if (layer.colors !== undefined) listing.colors = layer.colors
       assignDefined(listing.seeds!, layer.seeds)
       assignDefined(listing.parameterDescriptions!, layer.parameterDescriptions)
     }
@@ -791,7 +733,7 @@ export const getCatalog = (
       name,
       displayName: listing.displayName ?? name,
       ...info,
-      ...(coloursOf(listing) ?? coloursOf(categoryListings[info.category])!),
+      colors: listing.colors ?? categoryListings[info.category].colors,
       parameters: {},
     }
     if (listing.description !== undefined) operator.description = listing.description
@@ -826,9 +768,9 @@ export const getCatalog = (
       name,
       displayName: metadata.displayName ?? name,
       ...info,
-      ...coloursOf(metadata),
       parameters: {},
     }
+    if (metadata.colors !== undefined) fragment.colors = metadata.colors
     if (metadata.docUrl !== undefined) fragment.docUrl = metadata.docUrl
     for (const [key, parameter] of Object.entries(parameters))
       fragment.parameters[key] = { ...parameter, seed: seedOf(metadata, key, parameter.type) }

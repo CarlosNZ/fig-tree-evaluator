@@ -29,8 +29,7 @@ const fig = new FigTree({
       // A fragment is presented by its own metadata
       metadata: {
         displayName: 'Greeting',
-        backgroundColor: '#477799',
-        textColor: '#ffffff',
+        colors: { background: '#477799', text: '#ffffff' },
         seeds: { name: 'Ada' },
       } satisfies FragmentMetadata,
     },
@@ -165,7 +164,7 @@ const main = async () => {
     }
     console.log(
       `  ${fragment.name}: shown as "${fragment.displayName}", ` +
-        `${fragment.backgroundColor ?? '(editor default)'} on ${fragment.textColor ?? '—'}, ` +
+        `${fragment.colors?.background ?? '(editor default)'} on ${fragment.colors?.text ?? '—'}, ` +
         `"${fragment.description}"`
     )
     console.log(`      ${block(node)} ${await outcome(() => fig.evaluate(node))}\n`)
