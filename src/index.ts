@@ -160,6 +160,7 @@ export type {
   CatalogCategory,
   CatalogFragment,
   CatalogFragmentParameter,
+  CatalogIssue,
   CatalogLiteral,
   CatalogOperator,
   CatalogOperatorParameter,
