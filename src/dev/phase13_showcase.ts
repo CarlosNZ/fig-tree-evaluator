@@ -49,18 +49,20 @@ const fig = new FigTree({
   fragments: {
     themeColour: {
       expression: { $get: 'settings.theme.colour' },
-      description: 'The configured theme colour',
-      metadata: { backgroundColor: '#B2E0FF' },
+      listing: { description: 'The configured theme colour' },
     },
     banner: {
       expression: {
         $buildString: ['%1 — %2', '$params.title', { $themeColour: {} }],
       },
       parameters: {
-        title: { type: 'string', description: 'The headline' },
+        title: { type: 'string' },
         upper: { type: 'boolean', default: false },
       },
-      description: 'A titled banner in the configured colour',
+      listing: {
+        description: 'A titled banner in the configured colour',
+        parameterDescriptions: { title: 'The headline' },
+      },
     },
     // A body whose `$` string resolves to nothing: inert data plus a
     // warning that registration has no other channel for
@@ -167,7 +169,7 @@ const main = async () => {
     const parameters = Object.entries(info.parameters)
       .map(([name, p]) => (p.required ? name : `${name}?`))
       .join(', ')
-    console.log(`  ${info.name}(${parameters}) — ${info.description ?? 'no description'}`)
+    console.log(`  ${info.name}(${parameters}) — ${info.listing?.description ?? 'no description'}`)
     console.log(`      reads    ${block(info.dependencies.data.paths) || '—'}`)
     console.log(
       `      calls    ${block([...info.dependencies.operators, ...info.dependencies.fragments])}`

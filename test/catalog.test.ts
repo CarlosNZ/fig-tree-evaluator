@@ -20,7 +20,6 @@ import {
   type ExpectedType,
   type FigTreeError,
   type FragmentDefinition,
-  type FragmentMetadata,
   type LazyValue,
   type OperatorContext,
   type ListingMap,
@@ -628,18 +627,23 @@ describe('getCatalog', () => {
         greeting: {
           expression: { $buildString: ['Hello, %1', '$params.name'] },
           parameters: {
-            name: { type: 'string', description: 'Who to greet' },
+            name: { type: 'string' },
             punctuation: { type: 'string', default: '!' },
           },
-          description: 'A greeting',
-          metadata: {
+          listing: {
             displayName: 'Greeting',
+            description: 'A greeting',
+            parameterDescriptions: { name: 'Who to greet' },
             docUrl: 'https://example.com/greeting',
             colors: { background: '#477799', text: '#ffffff' },
             seeds: { name: 'Ada' },
-          } satisfies FragmentMetadata,
+          },
         },
-        bare: { expression: 1, metadata: { backgroundColor: '#477799' } },
+        // Presentation keys in metadata are the host's own, never read
+        bare: {
+          expression: 1,
+          metadata: { displayName: 'Bare', colors: { background: '#477799', text: '#ffffff' } },
+        },
       },
     })
     const { fragments } = getCatalog(instance)
@@ -649,19 +653,22 @@ describe('getCatalog', () => {
       const snapshot = instance.getFragments()
       expect(fragments.map((fragment) => fragment.name)).toEqual(snapshot.map((f) => f.name))
       fragments.forEach((fragment, i) => {
-        const { displayName, docUrl, colors, ...rest } = fragment
-        void [displayName, docUrl, colors]
+        const { displayName, description, docUrl, colors, ...rest } = fragment
+        void [displayName, description, docUrl, colors]
         const parameters = Object.fromEntries(
-          Object.entries(rest.parameters).map(([name, { seed, ...parameter }]) => {
-            void seed
+          Object.entries(rest.parameters).map(([name, { seed, description, ...parameter }]) => {
+            void [seed, description]
             return [name, parameter]
           })
         )
-        expect({ ...rest, parameters }).toStrictEqual(snapshot[i])
+        // The raw listing is resolved onto the entry, not carried
+        const { listing, ...expected } = snapshot[i]
+        void listing
+        expect({ ...rest, parameters }).toStrictEqual(expected)
       })
     })
 
-    test("a fragment's metadata is its display data, its text its definition's", () => {
+    test("a fragment's listing is its display data and its text", () => {
       const greeting = find('greeting')
       expect(greeting).toMatchObject({
         displayName: 'Greeting',
@@ -674,12 +681,15 @@ describe('getCatalog', () => {
       expect(greeting.parameters.punctuation.seed).toBe(typeSeeds.string)
     })
 
-    test('without display metadata: its name, and no colours', () => {
+    test('without a listing: its name, no text and no colours, whatever its metadata says', () => {
       const bare = find('bare')
       expect(bare.displayName).toBe('bare')
-      // A flat colour key is the host's own, not presentation
-      for (const key of ['docUrl', 'colors', 'backgroundColor'])
+      for (const key of ['description', 'docUrl', 'colors', 'listing'])
         expect(Object.hasOwn(bare, key)).toBe(false)
+      expect(bare.metadata).toEqual({
+        displayName: 'Bare',
+        colors: { background: '#477799', text: '#ffffff' },
+      })
     })
   })
 
@@ -693,29 +703,26 @@ describe('getCatalog', () => {
   })
 })
 
-describe('FragmentMetadata', () => {
+describe("a fragment definition's listing and metadata", () => {
   // Type-level: the file fails to compile if a literal is misjudged
-  test('a fragment may give a docUrl or leave it out, and gives no text', () => {
-    const withoutDocs: FragmentMetadata = {
-      displayName: 'Greeting',
-      colors: { background: '#477799', text: '#ffffff' },
-    }
-    const withDocs: FragmentMetadata = { ...withoutDocs, docUrl: 'https://example.com/greeting' }
-    // @ts-expect-error — a fragment's description is its definition's own
-    const described: FragmentMetadata = { description: 'A greeting' }
-    expect([withDocs, described]).toHaveLength(2)
-  })
-
-  test("a definition's metadata is typed by it, and takes a host's own keys", () => {
-    const hosted: FragmentDefinition = {
+  test('the listing is a Listing, text included, and typed by it', () => {
+    const listed: FragmentDefinition = {
       expression: 1,
-      metadata: { displayName: 'One', seeds: {}, team: 'config-admins' },
+      listing: { displayName: 'One', description: 'The number one', samples: {} },
     }
     const mistyped: FragmentDefinition = {
       expression: 1,
-      // @ts-expect-error — a display key keeps its type beside a host's
-      metadata: { displayName: 1 },
+      // @ts-expect-error — a listing field keeps its type
+      listing: { displayName: 1 },
     }
-    expect([hosted, mistyped]).toHaveLength(2)
+    expect([listed, mistyped]).toHaveLength(2)
+  })
+
+  test("metadata takes any of a host's own keys", () => {
+    const hosted: FragmentDefinition = {
+      expression: 1,
+      metadata: { displayName: 1, team: 'config-admins' },
+    }
+    expect(hosted.metadata).toBeDefined()
   })
 })

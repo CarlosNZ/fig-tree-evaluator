@@ -49,11 +49,14 @@ const main = async () => {
       greeting: {
         expression: { $buildString: ['%1, %2!', '$params.salutation', '$params.name'] },
         parameters: {
-          name: { type: 'string', description: 'Who is being greeted' },
+          name: { type: 'string' },
           salutation: { type: 'string', default: 'Hello' },
         },
-        description: 'A greeting with a defaulted salutation',
-        metadata: { backgroundColor: '#B2E0FF', team: 'config-admins' },
+        listing: {
+          description: 'A greeting with a defaulted salutation',
+          parameterDescriptions: { name: 'Who is being greeted' },
+        },
+        metadata: { team: 'config-admins' },
       },
       banner: {
         expression: { $buildString: ['*** %1 ***', { $greeting: { name: '$params.who' } }] },

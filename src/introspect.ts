@@ -20,7 +20,7 @@ import {
   type ValidatedParameter,
 } from './operatorDefinition'
 import type { OperatorRegistry } from './registry'
-import type { FragmentMetadata } from './catalogTypes'
+import type { Listing } from './catalogTypes'
 import type { FragmentParameter } from './fragments'
 import type { Issue } from './issues'
 import type { ExpectedType } from './typeCheck'
@@ -179,9 +179,13 @@ export interface OperatorInfo extends Omit<
 /** One fragment as `getFragments()` reports it. The body is withheld. */
 export interface FragmentInfo {
   name: string
-  description?: string
-  /** The definition's `metadata`, as written: its keys are never checked. */
-  metadata?: FragmentMetadata & Record<string, unknown>
+  /**
+   * The definition's `listing`, as written: its keys are never checked.
+   * `getCatalog` reads it, merged with any listings it is given.
+   */
+  listing?: Listing
+  /** The definition's `metadata`, as written. */
+  metadata?: Record<string, unknown>
   parameters: Record<string, FragmentParameter>
   /**
    * What the body is known to return, inferred at registration from its
@@ -305,7 +309,7 @@ export const fragmentSnapshot = (registry: OperatorRegistry): FragmentInfo[] =>
       dependencies: toDependencies(entry.dependencies),
       caches: entry.caches,
     }
-    if (entry.description !== undefined) info.description = entry.description
+    if (entry.listing !== undefined) info.listing = entry.listing
     if (entry.metadata !== undefined) info.metadata = entry.metadata
     return info
   })

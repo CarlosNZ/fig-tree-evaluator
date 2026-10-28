@@ -9,7 +9,7 @@
  * module with no type surface of its own. They are also the key convention
  * for anyone else: a plugin author lists their operators with a
  * `ListingMap`, and a host presents a fragment through its definition's
- * `metadata`, a `FragmentMetadata`.
+ * `listing`.
  */
 import type { FragmentParameter } from './fragments'
 import type { FragmentInfo, OperatorInfo, ParameterInfo } from './introspect'
@@ -68,16 +68,6 @@ export interface ColorPair {
   background: string
   text: string
 }
-
-/**
- * How a fragment is presented: its definition's `metadata`, by convention
- * only, since the engine never reads it. The fragment's descriptions are its
- * definition's own, so its metadata has none.
- */
-export type FragmentMetadata = Omit<
-  Listing,
-  'description' | 'parameterDescriptions' | 'samples' | 'metadata'
->
 
 /** How a `category` is presented: its label, place and colour in a listing. */
 export interface CategoryListing {
@@ -170,20 +160,23 @@ export interface CatalogOperator extends Omit<OperatorInfo, 'parameters'> {
   parameters: Record<string, CatalogParameter>
 }
 
-/** A fragment's parameter in the catalog: the snapshot's, and its seed. */
+/** A fragment's parameter in the catalog: the snapshot's, and its text. */
 export interface CatalogFragmentParameter extends FragmentParameter {
-  /** As `CatalogParameter.seed`, from the fragment's metadata. */
+  /** The listing's `parameterDescriptions` entry. */
+  description?: string
+  /** As `CatalogParameter.seed`, from the fragment's listing. */
   seed: unknown
 }
 
 /**
- * A fragment in the catalog: its `getFragments()` entry with its `metadata`
- * joined in. `displayName` falls back to the name. A fragment has no
- * category, so its colours are only ever its metadata's, and an editor
- * picks its own for a fragment without them.
+ * A fragment in the catalog: its `getFragments()` entry with its listing
+ * resolved onto it, in place of the raw `listing`. `displayName` falls back
+ * to the name. A fragment has no category, so its colours are only ever its
+ * listing's, and an editor picks its own for a fragment without them.
  */
-export interface CatalogFragment extends Omit<FragmentInfo, 'parameters'> {
+export interface CatalogFragment extends Omit<FragmentInfo, 'parameters' | 'listing'> {
   displayName: string
+  description?: string
   docUrl?: string
   colors?: ColorPair
   parameters: Record<string, CatalogFragmentParameter>

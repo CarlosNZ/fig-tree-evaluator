@@ -13,15 +13,20 @@ import { FigTree, coreOperators } from '../src'
 import type { FragmentDefinition, FragmentInfo } from '../src'
 
 const bag = { colour: 'host-owned' }
+const listing = {
+  description: 'A greeting',
+  parameterDescriptions: { name: 'Who to greet' },
+  samples: { name: 'Ada' },
+}
 
 const fragments: Record<string, FragmentDefinition> = {
   greeting: {
     expression: { $buildString: ['Hello, %1', '$params.name'] },
     parameters: {
-      name: { type: 'string', description: 'Who to greet' },
+      name: { type: 'string' },
       loud: { type: 'boolean', default: false },
     },
-    description: 'A greeting',
+    listing,
     metadata: bag,
   },
   // A body whose `$` string resolves to nothing: inert data plus a
@@ -51,14 +56,19 @@ describe('what the snapshot contains', () => {
 
   test('declarations carry effective optionality and defaults', () => {
     expect(find('greeting').parameters).toEqual({
-      name: { type: 'string', required: true, description: 'Who to greet' },
+      name: { type: 'string', required: true },
       loud: { type: 'boolean', required: false, default: false },
     })
   })
 
-  test('description and the metadata bag travel, the bag by identity', () => {
-    expect(find('greeting').description).toBe('A greeting')
+  test('the listing and the metadata bag travel by identity, samples and all', () => {
+    expect(find('greeting').listing).toBe(listing)
+    expect(find('greeting').listing?.samples).toEqual({ name: 'Ada' })
     expect(find('greeting').metadata).toBe(bag)
+  })
+
+  test('a fragment without a listing or metadata has neither key', () => {
+    for (const key of ['listing', 'metadata']) expect(Object.hasOwn(find('inner'), key)).toBe(false)
   })
 
   test('the body’s registration warnings are reported', () => {
@@ -104,10 +114,10 @@ describe('copy posture', () => {
 
   test('mutating the snapshot cannot reach the registry', () => {
     const info = find('greeting')
-    info.description = 'clobbered'
+    info.listing = { description: 'clobbered' }
     info.parameters.name.required = false
     info.warnings.push({ severity: 'error', code: 'injected', message: 'x', path: [] })
-    expect(find('greeting').description).toBe('A greeting')
+    expect(find('greeting').listing).toBe(listing)
     expect(find('greeting').parameters.name.required).toBe(true)
     expect(find('greeting').warnings).toEqual([])
   })
