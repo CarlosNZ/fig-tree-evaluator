@@ -20,10 +20,14 @@ import type {
   Catalog,
   CatalogCategory,
   CatalogFragment,
-  CatalogFragmentParameter,
+  CatalogLiteral,
   CatalogOperator,
-  CatalogParameter,
+  CatalogOperatorParameter,
+  CatalogOptions,
+  CategoryListing,
   CategoryListingMap,
+  CategoryOverrides,
+  ColorPair,
   Listing,
   ListingMap,
   TypeSeeds,
@@ -64,6 +68,13 @@ export const categoryListings: CategoryListingMap = {
   // Where an operator that fits no other category goes, plugins' included
   other: { displayName: 'Other', order: 7, colors: { background: '#606e8a', text: '#ffffff' } },
 }
+
+/**
+ * The colours of a fragment whose listing gives none. One pair for every
+ * fragment, so fragments read as one kind, as an operator reads by its
+ * category.
+ */
+export const fragmentColors: ColorPair = { background: '#38607e', text: '#ebdf5a' }
 
 export const typeSeeds: TypeSeeds = {
   // Visible text rather than null, which an editor shows as nothing
@@ -651,19 +662,19 @@ const seedOf = (listing: Listing, parameter: string, type: ExpectedType): unknow
 }
 
 /**
- * What a `null` at the parameter does (`CatalogParameter.nullOutcome`), in
- * the order the engine meets it: the compiler first, which owns an
- * iterator's `as` binding, then parameter resolution
- * (src/evaluate/params.ts). Its null-naming test is the engine's
- * `typeNamesNull`, repeated since this module imports no engine code;
- * test/catalog.test.ts holds every package parameter's outcome to what the
- * engine does with a `null` there.
+ * What a `null` at the parameter does
+ * (`CatalogOperatorParameter.nullOutcome`), in the order the engine meets
+ * it: the compiler first, which owns an iterator's `as` binding, then
+ * parameter resolution (src/evaluate/params.ts). Its null-naming test is
+ * the engine's `typeNamesNull`, repeated since this module imports no
+ * engine code; test/catalog.test.ts holds every package parameter's outcome
+ * to what the engine does with a `null` there.
  */
 const nullOutcomeOf = (
   name: string,
   parameter: ParameterInfo,
   parameters: Record<string, ParameterInfo>
-): CatalogParameter['nullOutcome'] => {
+): CatalogOperatorParameter['nullOutcome'] => {
   const { type, evaluationMode } = parameter
   if (parameter.replacesNullAt) return 'none'
   // A binding name must be a literal string, so a null there is a compile
@@ -689,59 +700,119 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
 }
 
 /**
+ * An entry's listing: its base layer, then each map's entry under its name,
+ * each merged over the ones before it.
+ */
+const resolveListing = (base: Listing | undefined, name: string, maps: ListingMap[]): Listing => {
+  const listing: Listing = { seeds: {}, samples: {}, parameterDescriptions: {}, metadata: {} }
+  for (const layer of [base, ...maps.map((map) => own(map, name))]) {
+    if (layer === undefined) continue
+    for (const field of ['displayName', 'description', 'docUrl'] as const) {
+      const value = layer[field]
+      if (value !== undefined) listing[field] = value
+    }
+    if (layer.colors !== undefined) listing.colors = layer.colors
+    for (const field of ['seeds', 'samples', 'parameterDescriptions', 'metadata'] as const)
+      assignDefined<unknown>(listing[field]!, layer[field])
+  }
+  return listing
+}
+
+/**
+ * A category's listing: the package's, then each override's entry for it,
+ * each merged over the ones before it.
+ */
+const resolveCategory = (name: OperatorCategory, overrides: CategoryOverrides[]) => {
+  const listing: CategoryListing = { ...categoryListings[name] }
+  for (const layer of overrides.map((override) => own(override, name))) {
+    if (layer?.displayName !== undefined) listing.displayName = layer.displayName
+    if (layer?.order !== undefined) listing.order = layer.order
+    if (layer?.colors !== undefined) listing.colors = layer.colors
+  }
+  return listing
+}
+
+/**
+ * What an entry shows, from its listing: its label, text, docs link,
+ * colours, and its definition's `metadata` with the listing's merged over it.
+ */
+const presentation = (
+  name: string,
+  listing: Listing,
+  colors: ColorPair,
+  metadata: Record<string, unknown> | undefined
+) => {
+  const shown: Omit<CatalogLiteral, 'parameters'> = {
+    displayName: listing.displayName ?? name,
+    colors,
+    metadata: {},
+  }
+  if (listing.description !== undefined) shown.description = listing.description
+  if (listing.docUrl !== undefined) shown.docUrl = listing.docUrl
+  assignDefined(shown.metadata, metadata)
+  assignDefined(shown.metadata, listing.metadata)
+  return shown
+}
+
+/** What a parameter's listing gives it: its description, seed and sample. */
+const parameterText = (listing: Listing, parameter: string, type: ExpectedType) => {
+  const text: { description?: string; seed: unknown; sample?: unknown } = {
+    seed: seedOf(listing, parameter, type),
+  }
+  const description = own(listing.parameterDescriptions, parameter)
+  if (description !== undefined) text.description = description
+  if (Object.hasOwn(listing.samples!, parameter)) text.sample = listing.samples![parameter]
+  return text
+}
+
+/**
  * The instance's operators and fragments, each with its listing joined in,
- * and the categories the operators group under.
+ * `literal`, and the categories the operators are in.
  *
- * An operator's listing is the package's own entry in `operatorListings`,
- * then each map in `listings` in order, each merged over the ones before it,
- * so an override holds only what it changes. `displayName`, `description`,
- * `docUrl` and `colors` are replaced where a later entry gives them; `seeds`
- * and `parameterDescriptions` are merged per parameter. A field or
- * parameter entry set to
- * `undefined` is skipped, so it never erases what is beneath it, and only
- * keys a map or entry holds itself are read. A fragment's listing is its
- * definition's `listing`, with nothing merged over it.
+ * An entry's listing is its base layer, then each map in `listings`, in
+ * order, each merged over the ones before it, so an override holds only
+ * what it changes. The base layer is the package's `operatorListings`
+ * entry for a core or I/O operator and for `literal`, the definition's
+ * `listing` for a fragment, and nothing for any other operator.
+ * `displayName`, `description`, `docUrl` and `colors` are replaced where a
+ * later layer gives them; `seeds`, `samples` and `parameterDescriptions` are
+ * merged per parameter, and `metadata` per key. A field, parameter or key
+ * set to `undefined` is skipped, so it never erases what is beneath it, and
+ * only keys a map or entry holds itself are read. Maps are keyed by
+ * canonical name, so an alias key, or a key naming nothing here, is
+ * ignored. A category's listing is merged the same way, from `categories`.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
-  ...listings: ListingMap[]
+  options: CatalogOptions = {}
 ): Catalog => {
-  const listingOf = (name: string): Listing => {
-    const listing: Listing = { seeds: {}, parameterDescriptions: {} }
-    for (const map of [operatorListings, ...listings]) {
-      const layer = own(map, name)
-      if (layer === undefined) continue
-      for (const field of ['displayName', 'description', 'docUrl'] as const) {
-        const value = layer[field]
-        if (value !== undefined) listing[field] = value
-      }
-      if (layer.colors !== undefined) listing.colors = layer.colors
-      assignDefined(listing.seeds!, layer.seeds)
-      assignDefined(listing.parameterDescriptions!, layer.parameterDescriptions)
-    }
-    return listing
-  }
+  const { listings = [], categories: overrides = [] } = options
+  const snapshot = fig.getOperators()
 
-  const categories = Object.entries(categoryListings)
-    .map(([name, listing]): CatalogCategory => ({ name: name as OperatorCategory, ...listing }))
+  const inUse = new Set(snapshot.map(({ category }) => category))
+  const resolved = new Map(
+    (Object.keys(categoryListings) as OperatorCategory[])
+      .filter((name) => inUse.has(name))
+      .map((name) => [name, resolveCategory(name, overrides)])
+  )
+  const categories = [...resolved]
+    .map(([name, listing]): CatalogCategory => ({ name, ...listing }))
     .sort((a, b) => a.order - b.order)
 
-  const operators = fig.getOperators().map(({ name, parameters, ...info }): CatalogOperator => {
-    const listing = listingOf(name)
+  const operators = snapshot.map(({ name, parameters, metadata, ...info }): CatalogOperator => {
+    const listing = resolveListing(own(operatorListings, name), name, listings)
+    const colors = listing.colors ?? resolved.get(info.category)!.colors
     const operator: CatalogOperator = {
       name,
-      displayName: listing.displayName ?? name,
       ...info,
-      colors: listing.colors ?? categoryListings[info.category].colors,
+      ...presentation(name, listing, colors, metadata),
       parameters: {},
     }
-    if (listing.description !== undefined) operator.description = listing.description
-    if (listing.docUrl !== undefined) operator.docUrl = listing.docUrl
     for (const [key, parameter] of Object.entries(parameters)) {
-      const entry: CatalogParameter = {
+      const entry: CatalogOperatorParameter = {
         ...parameter,
         nullOutcome: nullOutcomeOf(key, parameter, parameters),
-        seed: seedOf(listing, key, parameter.type),
+        ...parameterText(listing, key, parameter.type),
       }
       // A holder has no outcome of its own, for its elements either
       if (
@@ -754,8 +825,6 @@ export const getCatalog = (
           parameter.elementNullPolicy ??
           (elementShape || (homogeneous && !homogeneous.includes('any')) ? 'error' : 'value')
       }
-      const description = own(listing.parameterDescriptions, key)
-      if (description !== undefined) entry.description = description
       operator.parameters[key] = entry
     }
     return operator
@@ -763,27 +832,25 @@ export const getCatalog = (
 
   const fragments = fig
     .getFragments()
-    .map(({ name, parameters, listing = {}, ...info }): CatalogFragment => {
+    .map(({ name, parameters, listing: base, metadata, ...info }): CatalogFragment => {
+      const listing = resolveListing(base, name, listings)
       const fragment: CatalogFragment = {
         name,
-        displayName: listing.displayName ?? name,
         ...info,
+        ...presentation(name, listing, listing.colors ?? fragmentColors, metadata),
         parameters: {},
       }
-      if (listing.description !== undefined) fragment.description = listing.description
-      if (listing.docUrl !== undefined) fragment.docUrl = listing.docUrl
-      if (listing.colors !== undefined) fragment.colors = listing.colors
-      for (const [key, parameter] of Object.entries(parameters)) {
-        const entry: CatalogFragmentParameter = {
-          ...parameter,
-          seed: seedOf(listing, key, parameter.type),
-        }
-        const description = own(listing.parameterDescriptions, key)
-        if (description !== undefined) entry.description = description
-        fragment.parameters[key] = entry
-      }
+      for (const [key, parameter] of Object.entries(parameters))
+        fragment.parameters[key] = { ...parameter, ...parameterText(listing, key, parameter.type) }
       return fragment
     })
 
-  return { categories, operators, fragments }
+  const literalListing = resolveListing(operatorListings.literal, 'literal', listings)
+  const literal: CatalogLiteral = {
+    // The package's listing gives the pair, and a layer can only replace it
+    ...presentation('literal', literalListing, literalListing.colors!, undefined),
+    parameters: { value: parameterText(literalListing, 'value', 'any') },
+  }
+
+  return { categories, operators, fragments, literal }
 }

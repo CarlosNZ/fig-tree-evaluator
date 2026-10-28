@@ -232,7 +232,7 @@ export interface ValidatedParameter {
    * `'propagate'`, filled in even where no policy can apply: at a type that
    * doesn't name `null`, at a lazily delivered parameter, and at a holder.
    * What a `null` does at every parameter is the catalog's `nullOutcome`
-   * (`CatalogParameter`).
+   * (`CatalogOperatorParameter`).
    */
   nullPolicy: NullPolicyValue | CompiledNullPolicy
   elementNullPolicy?: NullPolicyValue

@@ -80,12 +80,24 @@ export interface CategoryListing {
 }
 
 /**
- * Listings by operator name: a plugin's for its operators, or a host's
- * overrides, which `getCatalog` merges over the package's in order.
+ * Listings by canonical operator name, fragment name, or `literal`: a
+ * plugin's for its operators, or a host's overrides, which `getCatalog`
+ * merges in order over each entry's own.
  */
 export type ListingMap = { [name: string]: Listing }
 
 export type CategoryListingMap = { [category in OperatorCategory]: CategoryListing }
+
+/** Changes to categories' listings, merged in order over the package's. */
+export type CategoryOverrides = { [category in OperatorCategory]?: Partial<CategoryListing> }
+
+/** What `getCatalog` joins with an instance's snapshots. */
+export interface CatalogOptions {
+  /** Listing layers, merged in order over each entry's own. */
+  listings?: ListingMap[]
+  /** Category overrides, merged in order over `categoryListings`. */
+  categories?: CategoryOverrides[]
+}
 
 /** A starting value for each type in the metadata vocabulary. */
 export type TypeSeeds = { [type in BasicType]: unknown }
@@ -110,7 +122,7 @@ export interface CatalogCategory extends CategoryListing {
 export type NullOutcome = 'propagate' | 'value' | 'unset' | 'error' | 'none'
 
 /** An operator's parameter in the catalog: the snapshot's, and its text. */
-export interface CatalogParameter extends ParameterInfo {
+export interface CatalogOperatorParameter extends ParameterInfo {
   /**
    * What a `null` at the parameter does, as the engine resolves it. Unlike
    * `nullPolicy`, the declaration with its default filled in, this answers
@@ -145,50 +157,76 @@ export interface CatalogParameter extends ParameterInfo {
    * an object or array seed before changing it.
    */
   seed: unknown
+  /**
+   * A realistic value to run with: the listing's sample, absent where it
+   * gives none. Shared with the listings, as `seed` is.
+   */
+  sample?: unknown
 }
 
 /**
  * An operator in the catalog: its `getOperators()` entry with its listing
  * joined in. `displayName` falls back to the name, and the colours to the
- * category's.
+ * category's. `metadata` is the definition's with the listing's merged over
+ * it, key by key, and `{}` where neither gives any.
  */
-export interface CatalogOperator extends Omit<OperatorInfo, 'parameters'> {
+export interface CatalogOperator extends Omit<OperatorInfo, 'parameters' | 'metadata'> {
   displayName: string
   description?: string
   docUrl?: string
   colors: ColorPair
-  parameters: Record<string, CatalogParameter>
+  metadata: Record<string, unknown>
+  parameters: Record<string, CatalogOperatorParameter>
 }
 
 /** A fragment's parameter in the catalog: the snapshot's, and its text. */
 export interface CatalogFragmentParameter extends FragmentParameter {
   /** The listing's `parameterDescriptions` entry. */
   description?: string
-  /** As `CatalogParameter.seed`, from the fragment's listing. */
+  /** As `CatalogOperatorParameter.seed`, from the fragment's listing. */
   seed: unknown
+  /** As `CatalogOperatorParameter.sample`. */
+  sample?: unknown
 }
 
 /**
  * A fragment in the catalog: its `getFragments()` entry with its listing
  * resolved onto it, in place of the raw `listing`. `displayName` falls back
- * to the name. A fragment has no category, so its colours are only ever its
- * listing's, and an editor picks its own for a fragment without them.
+ * to the name. A fragment has no category, so its colours fall back to the
+ * one pair every fragment shares, `fragmentColors`. `metadata` is merged as
+ * an operator's is.
  */
-export interface CatalogFragment extends Omit<FragmentInfo, 'parameters' | 'listing'> {
+export interface CatalogFragment extends Omit<FragmentInfo, 'parameters' | 'listing' | 'metadata'> {
   displayName: string
   description?: string
   docUrl?: string
-  colors?: ColorPair
+  colors: ColorPair
+  metadata: Record<string, unknown>
   parameters: Record<string, CatalogFragmentParameter>
 }
 
 /**
- * Everything an instance offers, as `getCatalog` presents it: every
- * category in its `order`, then the operators and fragments in
- * registration order.
+ * `literal`, which an editor draws as an operator node. It is grammar, not
+ * an operator definition, so it has no category and no `getOperators()`
+ * entry, and its listing is all there is of it.
+ */
+export interface CatalogLiteral {
+  displayName: string
+  description?: string
+  docUrl?: string
+  colors: ColorPair
+  metadata: Record<string, unknown>
+  parameters: { value: { description?: string; seed: unknown; sample?: unknown } }
+}
+
+/**
+ * Everything an instance offers, as `getCatalog` presents it: the
+ * categories its operators are in, in their `order`, then the operators and
+ * fragments in registration order, and `literal`.
  */
 export interface Catalog {
   categories: CatalogCategory[]
   operators: CatalogOperator[]
   fragments: CatalogFragment[]
+  literal: CatalogLiteral
 }
