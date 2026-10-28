@@ -21,7 +21,7 @@ Joining an instance's operators and fragments with their listings, into one stru
 
 ## Listings for custom operators
 
-{/* NOTE (from Presenting your operator): that page covers writing a listing for a custom operator (every field, seeds vs defaults, the colour pair) and passing it to getCatalog(), including the merge order and the plugin convention of exporting a listing map beside the operators. Keep this section to a sentence and a link to /custom-operators/presenting/; spend this page's words on overriding the core operators' listings (rename, restyle, translate), which merge field by field, so an override holds only what it changes. */}
+{/* NOTE (from Presenting your operator): that page covers writing a listing for a custom operator (every field, seeds vs defaults vs samples, colors, where metadata goes) and passing it to getCatalog() as a single map in `listings` (a code comment says it also takes an array), with the full catalog entry that results, and a note that maps reach fragments too. Everything about several maps belongs here: the array form and its merge order with the full per-field table, an override example (e.g. a displayName-only map renaming an operator), renaming or restyling core operators, entries for unregistered operators being ignored, and the convention of a plugin exporting a listing map beside its operators for a host to pass before its own overrides. catalog.issues is Malformed input's. Keep this section to a sentence and a link to /custom-operators/presenting/; spend this page's words on overriding the core operators' listings (rename, restyle, translate), which merge field by field, so an override holds only what it changes. */}
 
 Passing your own listings, and the key convention for plugin operators.
 
