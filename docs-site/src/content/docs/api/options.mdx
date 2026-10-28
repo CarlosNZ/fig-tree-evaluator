@@ -5,6 +5,8 @@ sidebar:
   order: 2
 ---
 
+{/* TO-DO: the types in this page's signature blocks aren't syntax-coloured. The highlighter sees only the lines between the cut markers, and a bare signature written as properties inside a hidden `interface FigTreeOptions {` reads to it as a call, not a declaration, so its type positions get the plain text colour (twoslash still type-checks the whole block, so hovers work). Standalone functions are fixed by a hidden `declare namespace x {` with a visible `function name(…)`, as on api/exports and custom-operators/validate, but `function` is wrong for a method or property. Find a form that colours the types without changing what the signature reads as, perhaps by having Expressive Code highlight with the hidden context included (ec.config.mjs). */}
+
 A FigTree instance takes its options in the constructor, `new FigTree(options)`, and changes them with [`updateOptions()`](/api/figtree/#updateoptions) or [`with()`](/api/figtree/#with), which merge each change into the options already set ([Merge rules](#merge-rules)). Four of them can also be given to a single evaluation, replacing the instance's value for that call. [Setting up FigTree](/guides/setup/) walks through the ones you'll use most.
 
 | Option                                           | Per call | Default                | What it does                                               |
