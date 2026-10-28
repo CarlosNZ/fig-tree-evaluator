@@ -33,6 +33,12 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Nodes _fail_; evaluations _throw_.** A node's failure becomes a throw only when no fallback catches it.
   - Before: "with the node that threw marked `failed`"
   - After: "with the node the error came from marked `failed`"
+- **Only people and FigTree act.** A node, value or parameter doesn't write, decide or determine anything: name the configuration author, the host or FigTree.
+  - Before: "the parameters the node writes"; "allows other nodes in an expression to determine if…"
+  - After: "the parameters the configuration author wrote on the node"; "FigTree can tell, before anything runs, whether…"
+- **Where a method and a definition field share a name, write the method as `fig.validate()` or `fig.evaluate()`,** wherever both are in play, and say when each runs.
+  - Before: "**`compile()` and `evaluate()`**: the first time an expression is compiled", on a page about an operator's `evaluate`
+  - After: "**`fig.compile()` and `fig.evaluate()`**: … Compiling is the first thing `fig.evaluate()` does, before it evaluates any nodes"
 - **The concept's name in prose, the syntax only in code.**
   - Before: "A var's name can be any string…"
   - After: "A variable's name can be any string…", with `vars` and `$vars` kept for the syntax
@@ -168,7 +174,7 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Kept: "the values follow the query one after another, not in an array of their own", on `sql`, since the array form gets past `validate()` and fails in the database or quietly matches nothing
   - So a concept page shows one static error in an example, never the full list and never the warnings. A guide whose job is to list them (Checking expressions) lists them.
 - **Don't restate what a definition or an example already gives.** Its consequences don't need a sentence of their own, and prose doesn't spell out a detail the example just below shows.
-  - Cut: "`find` still gives the _first_ match in the array's order", after the `find` bullet had said so
+  - Cut: a second worked example (`plus` picking up `expect` from `operatorDefaults`), after a bullet had said defaults include the instance's
   - Before: "…and a `path` into the options, such as a `duplicate-operator` at `['operators', 1, 0]`…", above an example showing a path
   - After: "…each with its own `code`, such as `duplicate-operator`, and a `path` into the options"
 - **Say who a feature is for once, not beside every detail.**
@@ -228,6 +234,9 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Lists for options that each need a description,** nested where they fall into groups; **a shape as its type**, where some keys are typed and others are convention, with comments carrying only what the type can't say.
   - Before: "a node can carry a few modifiers …: `fallback`, the value to use if it fails (…); `vars`, …; `noCache` (…); and `//`, a comment (…)."
   - After: one bullet per modifier
+- **A comparison across cases goes in a table,** with code only for the inputs and a "Why" column in place of comments.
+  - Before: commented expressions, each followed by `literalParams // => …` and `authored // => …` with a comment on each
+  - After: each expression in a `json5` block, then a table of its parameters: In `literalParams`, In `authored`, Why
 - **On a guide page, an option's prose says what it's for and when you'd use it.** Its rules go in a callout, and its precise edge rules go to the reference.
   - Before: "`maxDepth` limits how deeply an expression nests, counting its plain objects and arrays as well as its nodes"
   - After: "`maxDepth` limits how deep an expression tree can go", with the counting rules in the Options reference
