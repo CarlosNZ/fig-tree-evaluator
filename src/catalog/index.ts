@@ -792,8 +792,10 @@ const checkedCategory = (
 ): Partial<CategoryListing> => checkedFields(entry, CATEGORY_RULES, path, report)
 
 /**
- * An option's layers, each checked: one that isn't an array of objects, or
- * an entry that isn't an object, is reported and left out whole.
+ * An option's layers, each checked: a single map counts as one layer, and
+ * an option that is neither a map nor an array of them, a layer that isn't
+ * an object, or an entry that isn't an object, is reported and left out
+ * whole. Paths follow what the host wrote: a single map's have no index.
  */
 const checkedLayers = <T>(
   layers: unknown,
@@ -802,18 +804,21 @@ const checkedLayers = <T>(
   report: Report
 ): { [name: string]: T }[] => {
   if (layers === undefined) return []
-  if (!Array.isArray(layers)) {
-    report([option], 'array', layers)
+  const single = isObject(layers)
+  if (!single && !Array.isArray(layers)) {
+    report([option], 'object or array of objects', layers)
     return []
   }
+  const maps: unknown[] = single ? [layers] : (layers as unknown[])
   const checked: { [name: string]: T }[] = []
-  layers.forEach((map: unknown, i) => {
-    if (!isObject(map)) return report([option, i], 'object', map)
+  maps.forEach((map, i) => {
+    const at: Path = single ? [option] : [option, i]
+    if (!isObject(map)) return report(at, 'object', map)
     const entries: [string, T][] = []
     for (const [name, entry] of Object.entries(map)) {
       if (entry === undefined) continue
-      if (isObject(entry)) entries.push([name, check(entry, [option, i, name], report)])
-      else report([option, i, name], 'object', entry)
+      if (isObject(entry)) entries.push([name, check(entry, [...at, name], report)])
+      else report([...at, name], 'object', entry)
     }
     // fromEntries defines each key as the map's own, `__proto__` included
     checked.push(Object.fromEntries(entries))
@@ -891,18 +896,19 @@ const parameterText = (listing: Listing, parameter: string, type: ExpectedType) 
  * The instance's operators and fragments, each with its listing joined in,
  * `literal`, and the categories the operators are in.
  *
- * An entry's listing is its base layer, then each map in `listings`, in
- * order, each merged over the ones before it, so an override holds only
- * what it changes. The base layer is the package's `operatorListings`
- * entry for a core or I/O operator and for `literal`, the definition's
- * `listing` for a fragment, and nothing for any other operator.
- * `displayName`, `description`, `docUrl` and `colors` are replaced where a
- * later layer gives them; `seeds`, `samples` and `parameterDescriptions` are
- * merged per parameter, and `metadata` per key. A field, parameter or key
- * set to `undefined` is skipped, so it never erases what is beneath it, and
- * only keys a map or entry holds itself are read. Maps are keyed by
- * canonical name, so an alias key, or a key naming nothing here, is
- * ignored. A category's listing is merged the same way, from `categories`.
+ * An entry's listing is its base layer, then the map in `listings`, or each
+ * of its maps in order, each merged over the ones before it, so an override
+ * holds only what it changes. The base layer is the package's
+ * `operatorListings` entry for a core or I/O operator and for `literal`, the
+ * definition's `listing` for a fragment, and nothing for any other
+ * operator. `displayName`, `description`, `docUrl` and `colors` are
+ * replaced where a later layer gives them; `seeds`, `samples` and
+ * `parameterDescriptions` are merged per parameter, and `metadata` per
+ * key. A field, parameter or key set to `undefined` is skipped, so it never
+ * erases what is beneath it, and only keys a map or entry holds itself are
+ * read. Maps are keyed by canonical name, so an alias key, or a key naming
+ * nothing here, is ignored. A category's listing is merged the same way,
+ * from `categories`.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,

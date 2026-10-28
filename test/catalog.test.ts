@@ -334,6 +334,14 @@ describe('getCatalog', () => {
         getCatalog(instance, { listings }).operators.find((op) => op.name === name)!
       const plus = operatorOf('plus')
 
+      test('a single map is one layer, as a one-element array is', () => {
+        const map: ListingMap = { plus: { displayName: 'Add', seeds: { values: [1, 2] } } }
+        const single = getCatalog(instance, { listings: map })
+        expect(single).toStrictEqual(getCatalog(instance, { listings: [map] }))
+        expect(single.issues).toEqual([])
+        expect(single.operators.find((op) => op.name === 'plus')!.displayName).toBe('Add')
+      })
+
       test('an entry changing one field keeps every other', () => {
         const renamed = operatorOf('plus', { plus: { displayName: 'Add' } })
         expect(renamed.displayName).toBe('Add')
@@ -767,6 +775,14 @@ describe('getCatalog', () => {
       expect(categoryListings.math.displayName).toBe('Arithmetic & math')
     })
 
+    test('a single override map is one layer, as a one-element array is', () => {
+      const overrides: CategoryOverrides = { math: { displayName: 'Maths', order: -1 } }
+      const single = getCatalog(instance, { categories: overrides })
+      expect(single).toStrictEqual(getCatalog(instance, { categories: [overrides] }))
+      expect(single.issues).toEqual([])
+      expect(single.categories[0]).toMatchObject({ displayName: 'Maths', order: -1 })
+    })
+
     test('an overridden order reorders the categories', () => {
       const both = new FigTree({ operators: [coreOperators] })
       const names = (overrides: CategoryOverrides[]) =>
@@ -890,8 +906,13 @@ describe('getCatalog', () => {
     })
 
     test('a malformed option, map or entry is left out whole, the rest kept', () => {
-      expect(issuesOf({ listings: { tally: {} } })).toEqual([
-        ['listings', 'expected array, got object'],
+      // Neither a map nor an array of maps
+      expect(issuesOf({ listings: 'plus', categories: 5 })).toEqual([
+        ['listings', 'expected object or array of objects, got string'],
+        ['categories', 'expected object or array of objects, got number'],
+      ])
+      expect(issuesOf({ listings: null })).toEqual([
+        ['listings', 'expected object or array of objects, got null'],
       ])
       const { operators, issues } = getCatalog(clean, {
         listings: ['nope', { tally: 5, plus: { displayName: 'Add' } }],
@@ -902,6 +923,22 @@ describe('getCatalog', () => {
       ])
       expect(operators.find(({ name }) => name === 'plus')!.displayName).toBe('Add')
       expect(operators.find(({ name }) => name === 'tally')!.displayName).toBe('tally')
+    })
+
+    test('paths follow what the host wrote: a single map has no index', () => {
+      const malformed = { plus: { description: 42 }, tally: 'x' }
+      expect(issuesOf({ listings: malformed, categories: { math: { order: '1' } } })).toEqual([
+        ['listings.plus.description', 'expected string, got number'],
+        ['listings.tally', 'expected object, got string'],
+        ['categories.math.order', 'expected number, got string'],
+      ])
+      expect(
+        issuesOf({ listings: [{}, malformed], categories: [{ math: { order: '1' } }] })
+      ).toEqual([
+        ['listings.1.plus.description', 'expected string, got number'],
+        ['listings.1.tally', 'expected object, got string'],
+        ['categories.0.math.order', 'expected number, got string'],
+      ])
     })
 
     test('a field of the wrong type is left out, the rest of its entry kept', () => {
