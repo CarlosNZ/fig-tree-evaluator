@@ -243,10 +243,10 @@ A fragment's `samples` are reported, inside its `listing`, so a tool that uses f
 getCatalog(fig: Pick<FigTree, 'getOperators' | 'getFragments'>, options?: CatalogOptions): Catalog
 
 interface CatalogOptions {
-  /** Listing layers, merged in order over each base layer. */
-  listings?: ListingMap[]
-  /** Category overrides, merged in order over `categoryListings`. */
-  categories?: CategoryOverrides[]
+  /** A listing layer, or layers merged in order, over each base layer. */
+  listings?: ListingMap | ListingMap[]
+  /** Category overrides, or layers of them merged in order, over `categoryListings`. */
+  categories?: CategoryOverrides | CategoryOverrides[]
 }
 
 /** Listings by canonical operator name, fragment name, or `literal`. */
@@ -256,6 +256,8 @@ type CategoryOverrides = { [category in OperatorCategory]?: Partial<CategoryList
 ```
 
 It takes anything with the two snapshot methods, so the module imports nothing from the engine.
+
+Each option takes one map, the common case, or an array of maps layered in order, such as a plugin's listings then a host's: `getCatalog(fig, { listings: { formatNumber: formatNumberListing } })`, or `{ listings: [pluginListings, hostListings] }`. A single map is one layer, the same as a one-element array. The forms never overlap, since a map is a plain object and the layered form an array.
 
 ### `./catalog`'s data
 
@@ -279,7 +281,7 @@ Every pair the package ships reaches 4.5:1 contrast, which a test holds.
 
 ### Resolving a listing
 
-An entry's listing is its base layer with each `listings` map merged over it, in order. The base layer is:
+An entry's listing is its base layer with the `listings` map, or each of its maps in order, merged over it. The base layer is:
 
 - for a core or I/O operator, or `literal`: its `operatorListings` entry;
 - for a fragment: its definition's `listing`;
@@ -296,7 +298,7 @@ Each layer merges over the ones before it, field by field:
 
 A field, parameter entry or key set to `undefined` is skipped, so it never erases what is beneath it. Only a map's or a listing's own keys are read. Map keys are canonical names only: an alias key, or a key naming nothing on the instance, is ignored. The second matters, since a plugin ships listings for all its operators whether or not a host's `operatorSet()` keeps them.
 
-A category's listing is its `categoryListings` entry with each `categories` override merged over it, `displayName`, `order` and `colors` each replaced, by the same rules.
+A category's listing is its `categoryListings` entry with the `categories` override, or each in order, merged over it, `displayName`, `order` and `colors` each replaced, by the same rules.
 
 Values are handed out by reference, never copied: an object or array seed, sample or `metadata` value is copied before it is changed.
 
@@ -309,7 +311,7 @@ An entry's `metadata` is its definition's `metadata` with its resolved listing's
 The package's own listings are held to their types by tests. Everything else is checked before anything merges: the options, each `listings` map and each `categories` override whole (so what is reported never depends on which operators the instance has), and each fragment definition's `listing`. A value of the wrong type is skipped and reported in `Catalog.issues` rather than thrown, so one malformed fragment in a host's store never breaks a tool's whole catalog. The checks are basic, by type only:
 
 - the options are a plain object, and each of their keys is `listings` or `categories`;
-- `listings` and `categories` are arrays;
+- `listings` and `categories` are each a plain object (one layer) or an array;
 - a map, an override, a listing, or a by-name field (`seeds`, `samples`, `parameterDescriptions`, `metadata`) is a plain object;
 - `displayName`, `description`, `docUrl` and each `parameterDescriptions` value are strings, and `order` is a number other than `NaN`;
 - `colors` is a plain object whose `background` and `text` are strings.
@@ -318,14 +320,14 @@ Where an option, a map, an override or a listing fails, it is skipped whole; whe
 
 ```ts
 interface CatalogIssue {
-  /** Where the value sits: ['listings', 1, 'plus', 'description']. */
+  /** Where the value sits: ['listings', 'plus', 'description'] in a single map, ['listings', 1, 'plus', 'description'] in an array. */
   path: (string | number)[]
   /** "expected string, got number", or for an option, "not an option: expected listings or categories". */
   message: string
 }
 ```
 
-A fragment definition's `listing` is reported under `['fragments', name, 'listing', …]`, and the options themselves under `[]`.
+A path follows what the host wrote: a value in a single map has no index, `['listings', 'plus', 'description']`, and one in the second map of an array has one, `['listings', 1, 'plus', 'description']`. An option that is neither a plain object nor an array, such as a string, is reported under its own name with "expected object or array of objects, got string" and skipped. A fragment definition's `listing` is reported under `['fragments', name, 'listing', …]`, and the options themselves under `[]`.
 
 ### The output
 

@@ -93,10 +93,13 @@ export type CategoryOverrides = { [category in OperatorCategory]?: Partial<Categ
 
 /** What `getCatalog` joins with an instance's snapshots. */
 export interface CatalogOptions {
-  /** Listing layers, merged in order over each entry's own. */
-  listings?: ListingMap[]
-  /** Category overrides, merged in order over `categoryListings`. */
-  categories?: CategoryOverrides[]
+  /** A listing layer, or layers merged in order, over each entry's own. */
+  listings?: ListingMap | ListingMap[]
+  /**
+   * Category overrides, or layers of them merged in order, over
+   * `categoryListings`.
+   */
+  categories?: CategoryOverrides | CategoryOverrides[]
 }
 
 /** A starting value for each type in the metadata vocabulary. */
