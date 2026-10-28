@@ -318,14 +318,14 @@ const checkSuppliedParam = (
       )
     return
   }
-  // 'as' is owned by the walk (invalid-as); other structural params must be
-  // literal too
-  if (supplied.kind !== 'constant' && declared.evaluationMode === 'structural' && name !== 'as') {
+  // 'as' is owned by the walk (invalid-as); every other literal parameter is
+  // checked here
+  if (supplied.kind !== 'constant' && declared.evaluationMode === 'literal' && name !== 'as') {
     emit(
       state,
       'error',
       ErrorCodes.typeCheck,
-      `'${owner.label}.${name}' is structural — it requires a literal value`,
+      `'${owner.label}.${name}' requires a literal value`,
       supplied.path,
       supplied.order,
       extra

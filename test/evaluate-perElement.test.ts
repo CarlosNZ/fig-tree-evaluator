@@ -28,7 +28,7 @@ const iterator = (
     parameters: {
       input: { type: 'array' },
       each: { type: 'any', evaluationMode: 'perElement', over: 'input', truthiness },
-      as: { type: 'string', required: false, evaluationMode: 'structural' },
+      as: { type: 'string', required: false, evaluationMode: 'literal' },
     },
     positionalParams: ['input', 'each'],
     evaluate: ({ input, each }) => body(each as PerElement, input as unknown[]),

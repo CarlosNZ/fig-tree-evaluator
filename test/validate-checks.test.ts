@@ -175,7 +175,7 @@ describe('as renaming', () => {
     }
   })
 
-  test('a dynamic as is a grammar error — structural means literal', () => {
+  test('a dynamic as is a grammar error — a literal parameter is never evaluated', () => {
     expect(errorCodes({ operator: 'map', input: [1], as: '$data.name', each: 1 })).toContain(
       'invalid-as'
     )

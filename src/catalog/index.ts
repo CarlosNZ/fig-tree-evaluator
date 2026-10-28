@@ -717,7 +717,7 @@ const nullOutcomeOf = (
   // error (invalid-as)
   if (
     name === 'as' &&
-    evaluationMode === 'structural' &&
+    evaluationMode === 'literal' &&
     Object.values(parameters).some((sibling) => sibling.evaluationMode === 'perElement')
   )
     return 'error'
@@ -727,9 +727,7 @@ const nullOutcomeOf = (
     return parameter.required || evaluationMode === 'lazy' || evaluationMode === 'perElement'
       ? 'error'
       : 'unset'
-  return evaluationMode === 'eager' || evaluationMode === 'structural'
-    ? parameter.nullPolicy
-    : 'value'
+  return evaluationMode === 'eager' || evaluationMode === 'literal' ? parameter.nullPolicy : 'value'
 }
 
 /** `from`'s own entries written onto `onto`, except any set to `undefined`. */

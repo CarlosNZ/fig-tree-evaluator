@@ -299,7 +299,7 @@ const check = async (
 ) => {
   const rules: FailureRule[] = CORE_RULES[definition.name] ?? []
   const names = Object.entries(definition.parameters)
-    .filter(([, declared]) => declared.evaluationMode !== 'structural')
+    .filter(([, declared]) => declared.evaluationMode !== 'literal')
     .map(([name]) => name)
   const pools = names.map((name) => {
     const declared = definition.parameters[name]

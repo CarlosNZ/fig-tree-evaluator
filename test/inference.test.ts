@@ -39,7 +39,7 @@ const op = defineOperator({
     candidates: { type: 'array', evaluationMode: 'lazyElements' },
     branches: { type: 'object', evaluationMode: 'lazyEntries' },
     racers: { type: 'array', evaluationMode: 'race' },
-    as: { type: 'string', required: false, evaluationMode: 'structural' },
+    as: { type: 'string', required: false, evaluationMode: 'literal' },
     from: { type: ['object', 'array'], default: EvaluationData },
     nullValueDefault: {
       type: 'number',

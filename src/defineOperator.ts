@@ -49,7 +49,7 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
   'lazyElements',
   'lazyEntries',
   'perElement',
-  'structural',
+  'literal',
 ])
 
 /**

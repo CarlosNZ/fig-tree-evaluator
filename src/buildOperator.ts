@@ -127,8 +127,7 @@ export const assembleOperator = (
     resolution: planResolution(validatedParameters),
     restParam,
     deliversLazily: Object.values(validatedParameters).some(
-      (parameter) =>
-        parameter.evaluationMode !== 'eager' && parameter.evaluationMode !== 'structural'
+      (parameter) => parameter.evaluationMode !== 'eager' && parameter.evaluationMode !== 'literal'
     ),
     timeoutParam: def.timeoutParam ?? null,
     cache: def.cache === true,

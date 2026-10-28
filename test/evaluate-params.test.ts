@@ -329,12 +329,12 @@ describe('truthiness delivery (ledger #4)', () => {
 })
 
 describe('delivery modes', () => {
-  test('structural parameters arrive as their literal value', async () => {
-    const spy = spyOp('struct', {
+  test('literal parameters arrive as written, never evaluated', async () => {
+    const spy = spyOp('verbatim', {
       input: { type: 'array' },
-      as: { type: 'string', required: false, evaluationMode: 'structural' },
+      as: { type: 'string', required: false, evaluationMode: 'literal' },
     })
-    await figWith([spy]).evaluate({ $struct: { input: [1], as: 'row' } })
+    await figWith([spy]).evaluate({ $verbatim: { input: [1], as: 'row' } })
     expect(spy.calls).toEqual([{ input: [1], as: 'row' }])
   })
 

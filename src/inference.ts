@@ -16,7 +16,7 @@
  *   - `evaluationMode: 'lazy'` → `LazyValue<T>`, `'perElement'` →
  *     `PerElement<T>`, `'lazyElements'` → `LazyValue<T>[]`,
  *     `'lazyEntries'` → `Record<string, LazyValue<T>>`, `'race'` →
- *     `SettlementStream`, `'structural'` → the literal type;
+ *     `SettlementStream`, `'literal'` → the literal type;
  *   - an optional parameter with no `default` is an optional key; with a
  *     `default` the key is always present;
  *   - a `replacesNullAt` holder never reaches the body, so it has no key.
@@ -92,7 +92,7 @@ type Truthy<P> = P extends { type: 'array' }
  * position delivers `PerElement<boolean>` — never `Truthy<P>`, which would
  * read a container type as per-element booleans.
  */
-export type ParamValue<P> = P extends { evaluationMode: 'structural' }
+export type ParamValue<P> = P extends { evaluationMode: 'literal' }
   ? TypeOf<DeclaredType<P>>
   : P extends { evaluationMode: 'race' }
     ? SettlementStream

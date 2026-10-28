@@ -44,7 +44,7 @@
  * `as` renaming. Renamed bindings (`$order`, `$orderIndex`) are
  * author-named reference strings, so *recognition* — and with it constancy
  * classification — depends on the enclosing `as` frames. `as` values are
- * structural (compile-time literals), which is what keeps this static.
+ * literal (fixed at compile time), which is what keeps this static.
  *
  * The steps, in order — 1–12 run per value visited (the walk recurses),
  * 13–16 once it returns:
@@ -582,7 +582,7 @@ const walkObject = (
 
 /**
  * A parameter awaiting its walk. Collection and walking are separated so
- * structural `as` values can be read (and the binding frame pushed) before
+ * literal `as` values can be read (and the binding frame pushed) before
  * any perElement subtree walks.
  */
 type PendingParam =
@@ -790,7 +790,7 @@ const collectNamedParam = (
 }
 
 /**
- * Walk the queued parameters: structural `as` first (building the binding
+ * Walk the queued parameters: literal `as` first (building the binding
  * frame), then ordinary parameters, then perElement subtrees under the
  * frame — the batch-5 rule that the binding scope is exactly the each
  * subtree.
@@ -807,7 +807,7 @@ const finalizeParams = (
   if (node.name === 'get') rewriteGetSource(state, node, pending)
 
   let binding: string | undefined
-  if (iterates && definition.parameters.as?.evaluationMode === 'structural') {
+  if (iterates && definition.parameters.as?.evaluationMode === 'literal') {
     const asPending = pending.find((entry) => entry.name === 'as')
     if (asPending?.kind === 'value')
       binding = readAsBinding(state, node, asPending.value, asPending.path, order)
@@ -1378,7 +1378,7 @@ const walkEntriesParam = (
 
 /**
  * Validate an `as` value and return it as the binding name. `as` is
- * structural — a compile-time literal identifier; a dynamic value is a
+ * literal — an identifier fixed at compile time; a dynamic value is a
  * grammar error. Names are checked against the shared legality rule, the
  * namespaces' leading letter or `_`, the reserved namespace words
  * (canonical and alias) and every enclosing `as` name, derived `…Index`

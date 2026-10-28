@@ -20,7 +20,7 @@ const mapish = defineOperator({
   parameters: {
     input: { type: 'array' },
     each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
-    as: { type: 'string', required: false, evaluationMode: 'structural' },
+    as: { type: 'string', required: false, evaluationMode: 'literal' },
   },
   positionalParams: ['input', 'each'],
   returns: 'array',
