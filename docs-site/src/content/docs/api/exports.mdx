@@ -751,8 +751,8 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`ObjectClass`](/tooling/format/#reading-primitives), `PositionalShape`, `PositionalLayout`, `ReferenceRecognition`, `ReferenceScope`, `ReferenceNamespace` | What the reading primitives take and return |
 | [`FallbackCoverage`](/tooling/authoring/#reading-the-report), `CoverageFinding`, `CoveredFinding` | What `fallbackCoverage()` returns |
 | [`FallbackCoverageOptions`](/tooling/authoring/#fallbackcoverage)             | What `fallbackCoverage()` takes                             |
-| [`MigrationResult`](/migrating/converter/#the-report), `FragmentMigrationResult`, `MigrationIssue` | What the converter returns     |
-| [`V2Options`](/migrating/converter/#migratev2expression)                      | The v2 options the converter reads                          |
+| [`MigrationResult`](/migrating/#the-converters-report), `FragmentMigrationResult`, `MigrationIssue` | What the converter returns     |
+| [`V2Options`](/migrating/#converting-expressions)                      | The v2 options the converter reads                          |
 
 ## Subpaths
 
@@ -885,4 +885,4 @@ The converter, which rewrites v2 expressions and fragments as v3.
 
 Neither one throws. Whatever can't be converted exactly comes back as the closest safe v3, with an issue saying so.
 
-**See also:** [The converter](/migrating/converter/)
+**See also:** [Converting expressions](/migrating/#converting-expressions)

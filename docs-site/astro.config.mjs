@@ -89,20 +89,35 @@ export default defineConfig({
         { tag: 'script', content: externalLinksInNewTab },
       ],
       // The home page has no entry: the header title links to it. One group
-      // per site section, each listing its folder's pages in
-      // `sidebar.order`, and the Playground as a single link. Previous/next
-      // links follow this order. The prototype page is deliberately absent:
-      // it is reachable only by its URL, /prototype/.
+      // per chapter, each listing its folder's pages in `sidebar.order`, and
+      // a single link for each one-page chapter. The groups after the
+      // Operator reference start collapsed, and Starlight opens one when the
+      // current page is in it. Previous/next links follow this order. The
+      // prototype page is deliberately absent: it is reachable only by its
+      // URL, /prototype/.
       sidebar: [
         { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
         { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
         { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
-        { label: 'Operator reference', items: [{ autogenerate: { directory: 'reference' } }] },
-        { label: 'Custom operators', items: [{ autogenerate: { directory: 'custom-operators' } }] },
-        { label: 'Beyond evaluation', items: [{ autogenerate: { directory: 'tooling' } }] },
-        { label: 'Under the hood', items: [{ autogenerate: { directory: 'under-the-hood' } }] },
-        { label: 'Migrating from v2', items: [{ autogenerate: { directory: 'migrating' } }] },
+        { label: 'Operator reference', link: '/reference/operators/' },
+        {
+          label: 'Custom operators',
+          collapsed: true,
+          items: [{ autogenerate: { directory: 'custom-operators' } }],
+        },
+        {
+          label: 'Beyond evaluation',
+          collapsed: true,
+          items: [{ autogenerate: { directory: 'tooling' } }],
+        },
+        {
+          label: 'Under the hood',
+          collapsed: true,
+          items: [{ autogenerate: { directory: 'under-the-hood' } }],
+        },
+        { label: 'Migrating from v2', link: '/migrating/' },
         { label: 'Playground', link: '/playground/' },
+        { label: 'Visual editor component', link: '/editor/' },
       ],
       // Expressive Code reads its plugins from ec.config.mjs, since the
       // twoslash plugin isn't serialisable into this file

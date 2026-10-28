@@ -1,0 +1,48 @@
+---
+title: Migrating from v2
+description: Upgrading from v2, converting stored expressions, and everything that changed
+---
+
+import { Aside } from '@astrojs/starlight/components'
+
+<Aside type="caution" title="Placeholder">
+  This page is a skeleton. Each heading notes what it will cover.
+</Aside>
+
+## At a glance
+
+Same package, version 3. A clean break, with a converter for stored expressions. Requirements: ESM only, and Node 22.12 or later.
+
+## The steps
+
+Update the package, convert your expressions, review the converter's report, then fix by hand what it flags.
+
+## Updating host code
+
+`FigTreeEvaluator` becomes `FigTree`, and the options and methods that changed: `evaluateExpression()` becomes `evaluate()`, the removed methods and what replaces them, and each v2 option and its v3 replacement. HTTP and SQL: I/O operators registered with a client, and the renamed SQL connections. Links to HTTP and SQL.
+
+## Converting expressions
+
+`migrateV2Expression()`: converting one expression, what it takes and what it returns. `migrateV2Fragments()`: converting a v2 instance's fragments. Running the converter over a store of expressions in bulk, and checking its output, including comparing v2 and v3 results for the same inputs.
+
+## The converter's report
+
+The issues it returns: `non-convertible`, `intentional-semantic-change` and `lossy-default`, and what to do with each. What it can't rewrite, and why. The changes it makes without raising an issue.
+
+### Custom functions
+
+v2's `CUSTOM_FUNCTIONS` become custom operators. The wrapper recipe for registering an existing function, and checking each converted call.
+
+## What's changed
+
+### Operators
+
+Each v2 operator and what it is in v3. Generated from the operators' definitions.
+
+### Recycled names
+
+`!`, `get`, `lower`, `join`, `data` and `convert` mean something different in v3. The converter handles them; anyone reading or editing by hand needs to know.
+
+### Results that differ on purpose
+
+No implicit type coercion, different null handling, evaluation of the whole expression by default, and `updateOptions()` merging `data` and `fragments`.
