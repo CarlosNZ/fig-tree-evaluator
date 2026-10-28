@@ -1,6 +1,6 @@
 ---
-title: Building tools
-description: 'Editors and analysis around FigTree: what each subpath is for'
+title: The helper tools
+description: Presenting operators, converting and analysing expressions, and reading what an instance holds
 sidebar:
   order: 1
 ---
@@ -13,7 +13,7 @@ import { Aside } from '@astrojs/starlight/components'
 
 ## Three subpaths
 
-`./format`, `./authoring` and `./catalog`: what each does, and why they are separate from the root entry.
+`fig-tree-evaluator/catalog`, `fig-tree-evaluator/format` and `fig-tree-evaluator/authoring`: what each does, and why they are separate from the root entry.
 
 ## What each costs
 
@@ -21,7 +21,7 @@ Their bundle sizes, and what they share with the root.
 
 ## Introspection on the instance
 
-`getOperators()` and `getFragments()`, which need no subpath. `getDependencies()` and `isEvaluable()` are covered in Checking expressions and `inspect()` in Tracing and debugging, so this section links to them rather than repeating them.
+`getOperators()` and `getFragments()`, which need no subpath. Most tools want `getCatalog()` instead, which joins these with the listings and fills the gaps, so this section says when the raw snapshots are the right choice and points to The catalog otherwise. `getDependencies()` and `isEvaluable()` are covered in Checking expressions and `inspect()` in Tracing and debugging, so this section links to them rather than repeating them.
 
 ## The visual editor
 

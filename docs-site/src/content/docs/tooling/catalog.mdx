@@ -1,8 +1,9 @@
 ---
-title: 'Listings: ./catalog'
+title: 'The catalog: fig-tree-evaluator/catalog'
 description: Display names, descriptions and colours for operators, categories and fragments
 sidebar:
-  order: 4
+  label: /catalog
+  order: 2
 ---
 
 import { Aside } from '@astrojs/starlight/components'
@@ -11,23 +12,19 @@ import { Aside } from '@astrojs/starlight/components'
   This page is a skeleton. Each heading notes what it will cover.
 </Aside>
 
-## The listings
-
-`operatorListings` and `categoryListings`: the core operators' and categories' presentation.
-
 ## `getCatalog()`
 
-Joining an instance's operators and fragments with their listings, into one structure an editor can render, including `literal`, and reporting malformed input in `issues`.
+The call, and what it returns: `categories` (only those in use), `operators`, `fragments`, `literal` and `issues`. What each field of an entry means, including `nullOutcome`, `seed` and `sample`, and `metadata` as the definition's merged with the listing's, the listing's winning on a clash. Writing a listing for your own operator is on Presenting your operator, which this links to rather than repeats.
 
-## Listings for custom operators
+## Combining listings
 
-{/* NOTE (from Presenting your operator): that page covers writing a listing for a custom operator (every field, seeds vs defaults vs samples, colors, where metadata goes) and passing it to getCatalog() as a single map in `listings` (a code comment says it also takes an array), with the full catalog entry that results, and a note that maps reach fragments too. Everything about several maps belongs here: the array form and its merge order with the full per-field table, an override example (e.g. a displayName-only map renaming an operator), renaming or restyling core operators, entries for unregistered operators being ignored, and the convention of a plugin exporting a listing map beside its operators for a host to pass before its own overrides. catalog.issues is Malformed input's. Keep this section to a sentence and a link to /custom-operators/presenting/; spend this page's words on overriding the core operators' listings (rename, restyle, translate), which merge field by field, so an override holds only what it changes. */}
+{/* NOTE (from Presenting your operator): that page covers writing a listing for a custom operator (every field, seeds vs defaults vs samples, colors, where metadata goes) and passing it to getCatalog() as a single map in `listings` (a code comment says it also takes an array), with the full catalog entry that results, and a note that maps reach fragments too. Everything about several maps belongs here: the array form and its merge order with the full per-field table (displayName/description/docUrl replaced, colors replaced whole, seeds/samples/parameterDescriptions per parameter, metadata per key, undefined skipped), an override example (e.g. a displayName-only map renaming an operator), renaming or restyling a core operator, entries for unregistered operators or aliases being ignored, and the convention of a plugin exporting a listing map beside its operators for a host to pass before its own overrides. */}
 
-Passing your own listings, and the key convention for plugin operators.
+`listings` as an array of maps, merged in order, field by field: overriding a core operator's listing, and publishing a listing map alongside your operators.
 
 ## Fragments
 
-How a fragment's `listing` appears in the catalog, and overriding or translating it with a listing map.
+How a fragment appears in the catalog: its definition's `listing`, with any maps merged over it, and `fragmentColors` for a fragment without colours of its own. Writing a fragment's listing is in Fragments in an editor, which this links to.
 
 ## Overriding categories
 
@@ -35,8 +32,12 @@ How a fragment's `listing` appears in the catalog, and overriding or translating
 
 ## Type seeds
 
-`typeSeeds`: starting values for a new parameter of each type.
+`typeSeeds`: the starting value for a new parameter of each type, and the rule `getCatalog()` uses to pick one for a parameter without a seed.
 
 ## Malformed input
 
-What `issues` reports, and what's skipped.
+What `issues` reports, and what's skipped: `getCatalog()` never throws over a malformed listing.
+
+## The package's data
+
+A short reference to what `fig-tree-evaluator/catalog` exports besides `getCatalog()`: `operatorListings` (including `literal`), `categoryListings`, `fragmentColors` and `typeSeeds`.

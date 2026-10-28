@@ -416,7 +416,7 @@ Every category an operator can belong to.
 **Details:**
 
 - An operator definition's `category` must be one of these. Its type, `OperatorCategory`, is one of the strings in the array.
-- The `./catalog` subpath gives each one a display name, colours and an order ([`getCatalog()`](/tooling/catalog/#getcatalog)).
+- The `fig-tree-evaluator/catalog` subpath gives each one a display name, colours and an order ([`getCatalog()`](/tooling/catalog/#getcatalog)).
 
 **See also:** [The definition](/custom-operators/writing/#the-definition)
 
@@ -743,7 +743,7 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [`Catalog`](/tooling/catalog/#getcatalog), `CatalogCategory`, `CatalogOperator`, `CatalogOperatorParameter`, `CatalogFragment`, `CatalogFragmentParameter`, `CatalogLiteral`, `CatalogIssue` | What `getCatalog()` returns, and its parts |
 | [`CatalogOptions`](/tooling/catalog/#getcatalog), `CategoryOverrides`           | What `getCatalog()` takes                                   |
-| [`Listing`](/tooling/catalog/#the-listings), `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap` | How operators, fragments and categories are presented |
+| [`Listing`](/custom-operators/presenting/#writing-a-listing), `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap` | How operators, fragments and categories are presented |
 | [`NullOutcome`](/tooling/catalog/#getcatalog)                                 | What a `null` does at a parameter, in the catalog           |
 | [`TypeSeeds`](/tooling/catalog/#type-seeds)                                   | A starting value for each type                              |
 | [`Registry`](/tooling/format/#tocanonical-and-toshorthand)                    | What the conversions read from an instance                  |
@@ -756,7 +756,7 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 
 ## Subpaths
 
-Four subpaths hold the tools around FigTree, for editors, analysis and migration. Each has its own import path, such as `fig-tree-evaluator/format`. [Building tools](/tooling/overview/) says what each is for.
+Four subpaths hold the tools around FigTree, for editors, analysis and migration. Each has its own import path, such as `fig-tree-evaluator/format`. [Beyond evaluation](/tooling/overview/) says what each is for.
 
 ### `fig-tree-evaluator/catalog`
 
@@ -794,7 +794,7 @@ Display names, descriptions and colours for operators, categories and fragments.
 | `fragmentColors`   | The colours of a fragment whose listing gives none                                                              |
 | `typeSeeds`        | A starting value for each type, for an editor adding a parameter                                                |
 
-**See also:** [Listings](/tooling/catalog/)
+**See also:** [The catalog](/tooling/catalog/)
 
 ### `fig-tree-evaluator/format`
 

@@ -99,7 +99,7 @@ export default defineConfig({
         { label: 'API reference', items: [{ autogenerate: { directory: 'api' } }] },
         { label: 'Operator reference', items: [{ autogenerate: { directory: 'reference' } }] },
         { label: 'Custom operators', items: [{ autogenerate: { directory: 'custom-operators' } }] },
-        { label: 'Tooling', items: [{ autogenerate: { directory: 'tooling' } }] },
+        { label: 'Beyond evaluation', items: [{ autogenerate: { directory: 'tooling' } }] },
         { label: 'Under the hood', items: [{ autogenerate: { directory: 'under-the-hood' } }] },
         { label: 'Migrating from v2', items: [{ autogenerate: { directory: 'migrating' } }] },
         { label: 'Playground', link: '/playground/' },
