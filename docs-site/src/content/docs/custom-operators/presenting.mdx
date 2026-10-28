@@ -5,20 +5,109 @@ sidebar:
   order: 6
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+{/* STAND-IN: Carl to rewrite */}
 
-## Listings
-
-An operator's text and presentation live in a catalog listing, outside its definition, so a host that never shows them never ships them.
+Editors, docs pages and other tools that show an instance's operators need more than a definition gives them: a readable name, a line on what the operator does and what each parameter is for, and colours to draw it in. That presentation lives in a **catalog listing**, kept apart from the definition, so an app that only evaluates expressions never ships it.
 
 ## Writing a listing
 
-Display name, description, parameter descriptions, colours and docs link.
+A listing is plain data, keyed by operator name. Here's one for the `formatNumber` operator from [Writing an operator](/custom-operators/writing/#a-first-operator):
+
+```ts title="formatNumberListing.ts"
+import type { OperatorListingMap } from 'fig-tree-evaluator'
+
+export const formatNumberListing: OperatorListingMap = {
+  formatNumber: {
+    displayName: 'Format number',
+    description: "Format a number with a locale's digit grouping and decimal mark",
+    parameterDescriptions: {
+      value: 'The number to format',
+      locale: "The locale to format for, such as 'de-DE' or 'en-IN'",
+    },
+    docUrl: 'https://wiki.example.com/operators/format-number',
+    backgroundColor: '#f6d4b0',
+    textColor: '#3f2f18',
+    // A string parameter otherwise starts as 'Replace me', which
+    // isn't a locale
+    seeds: { locale: 'de-DE' },
+  },
+}
+```
+
+Every field is optional, so give the ones your tools use:
+
+- **Text:**
+  - **`displayName`**: a label for menus and node headers. Without one, the operator's name is shown.
+  - **`description`**: what the operator does, in a line, which an editor can show as a tooltip.
+  - **`parameterDescriptions`**: a line on each parameter, by name.
+  - **`docUrl`**: the operator's documentation, which an editor can link each node to.
+- **Colours:**
+  - **`backgroundColor`** and **`textColor`**: CSS colours to draw the operator's nodes in. They're used only as a pair, so a listing that gives one without the other changes neither. Without them, the operator takes its category's colours. Nothing checks the contrast, so we recommend text at 4.5:1 or better against its background (WCAG AA), as the core operators' listings have.
+- **For an editor:**
+  - **`seeds`**: what each parameter starts as when it's added in an editor, by name. A parameter without a seed starts from a value for its type, such as `'Replace me'` for a string or `1` for a number, so give one wherever that wouldn't make a working example.
+
+<Callout kind="caution" title="A seed isn't a default">
+  A seed is what an editor fills in when someone _adds_ the parameter. The definition's `default` is what applies when they _leave it out_. A parameter is usually added to change it from its default, so a seed of `'en-NZ'` for `locale` would add a parameter that does nothing.
+</Callout>
 
 ## Joining listings to an instance
 
-Passing your listings to `getCatalog`. Links to Tooling.
+{/* STAND-IN: Carl to rewrite */}
+
+A tool doesn't read listings on their own. `getCatalog()`, from the `fig-tree-evaluator/catalog` subpath, joins them with an instance's operators, so the tool gets one list of everything the instance offers, each operator with its listing merged in:
+
+```ts title="catalog.ts"
+// @filename: operators/formatNumber.ts
+import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
+export declare const formatNumber: ValidatedOperatorDefinition
+// @filename: operators/formatNumberListing.ts
+import type { OperatorListingMap } from 'fig-tree-evaluator'
+export declare const formatNumberListing: OperatorListingMap
+// @filename: catalog.ts
+// ---cut---
+import { FigTree, coreOperators } from 'fig-tree-evaluator'
+import { getCatalog } from 'fig-tree-evaluator/catalog'
+import { formatNumber } from './operators/formatNumber'
+import { formatNumberListing } from './operators/formatNumberListing'
+
+const fig = new FigTree({ operators: [coreOperators, formatNumber] })
+
+const catalog = getCatalog(fig, formatNumberListing)
+```
+
+The core operators' listings come with `getCatalog()` itself, in the same `fig-tree-evaluator/catalog` subpath, so they're always included. The instance only says which operators are registered, and `getCatalog()` matches each one to its listing by name.
+
+Here's the `formatNumber` entry in `catalog.operators`, with the listing's fields beside what `getOperators()` reports about the operator:
+
+```json5
+{
+  name: 'formatNumber',
+  displayName: 'Format number',
+  description: "Format a number with a locale's digit grouping and decimal mark",
+  docUrl: 'https://wiki.example.com/operators/format-number',
+  backgroundColor: '#f6d4b0',
+  textColor: '#3f2f18',
+  category: 'string',
+  returns: 'string',
+  // ...and the rest of the getOperators() entry
+  parameters: {
+    // value is laid out the same way
+    locale: {
+      type: 'string',
+      required: false,
+      default: 'en-NZ',
+      description: "The locale to format for, such as 'de-DE' or 'en-IN'",
+      seed: 'de-DE',
+      // ...
+    },
+  },
+}
+```
+
+Without the listing, the same entry has `'formatNumber'` as its `displayName`, the `string` category's colours, no text, and `'Replace me'` as `locale`'s seed.
+
+You can pass as many maps as you have. They're merged in order, each over the ones before it, field by field, so a later map only needs the fields it changes. A map you pass can rename or restyle a core operator too ([Operator metadata](/tooling/catalog/)). A listing for an operator the instance hasn't registered is ignored, so one map can cover every operator you've written, whichever ones an instance uses.
+
+If you publish operators for others to use, export a listing map beside them. A host passes it to `getCatalog()`, followed by any overrides of its own.
