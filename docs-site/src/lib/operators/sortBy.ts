@@ -8,7 +8,7 @@ export const sortBy = defineOperator({
     // Evaluated for each element of input: the value to sort it by
     by: { type: ['number', 'string'], evaluationMode: 'perElement', over: 'input' },
     // A name for the element, used in place of $element
-    as: { type: 'string', required: false, evaluationMode: 'structural' },
+    as: { type: 'string', required: false, evaluationMode: 'literal' },
   },
   positionalParams: ['input', 'by'],
   returns: 'array',

@@ -23,7 +23,7 @@ Operators can declare these evaluation modes for their parameters:
 | [`'lazyEntries'`](#lazyelements-and-lazyentries)  | an _object_ of `LazyValue`s, one for each entry                                 | lazy per entry                                                               |
 | [`'perElement'`](#perelement)                     | a `PerElement` handle: _one_ expression, evaluated for each element of an array | per element                                                                  |
 | [`'race'`](#race)                                 | a stream of the elements' results, all started at once                          | stops early                                                                  |
-| [`'structural'`](#structural)                     | the value exactly as it's written, never evaluated                              | literal only                                                                 |
+| [`'literal'`](#literal)                           | the value exactly as it's written, never evaluated                              | literal only                                                                 |
 
 ## What FigTree still does
 
@@ -232,9 +232,9 @@ const and = defineOperator({
 - **Returning cancels the rest.** When `evaluate` returns, any elements still running are cancelled ([Cancellation](/custom-operators/evaluate/#cancellation)).
 - **Throw the failure with the lowest index.** The first failure to arrive depends on timing, so throwing it could make the same expression fail differently from one run to the next. The core operators throw the failure with the lowest `index` instead, as soon as every element before it has succeeded — we recommend doing the same if a consistent error response is desired.
 
-## `structural`
+## `literal`
 
-Declaring a parameter `'structural'` tells FigTree that its value can never be an expression, only a literal value. Among the core operators, its only use is [`as`](#perelement), whose name FigTree has to know before anything runs. Anything other than a literal, such as a `$data` reference, is an error when the expression is compiled:
+Declaring a parameter `'literal'` tells FigTree that its value can never be an expression, only a literal value. Among the core operators, its only use is [`as`](#perelement), whose name FigTree has to know before anything runs. Anything other than a literal, such as a `$data` reference, is an error when the expression is compiled:
 
 <Expression
   throws
@@ -260,15 +260,15 @@ Declaring a parameter `'structural'` tells FigTree that its value can never be a
   `}
 />
 
-<Callout kind="caution" title="Don't forget to make it structural">
+<Callout kind="caution" title="Don't forget to make it literal">
 
-To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'structural'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
+To let configuration authors rename `$element` in an iterator of your own, declare a parameter named `as` with `evaluationMode: 'literal'`, as [`sortBy`](#perelement) does. Without it, FigTree never recognises the new name, so a reference such as `'$order.total'` is read as plain text, and the expression gives that same text for every element instead of each order's total. `validate()` warns about it, but evaluating doesn't fail.
 
 ```ts
 // ❌️ Wrong: no renaming, so '$order.total' is just text
 const wrong = { as: { type: 'string', required: false } }
 // ✅️ Right
-const right = { as: { type: 'string', required: false, evaluationMode: 'structural' } }
+const right = { as: { type: 'string', required: false, evaluationMode: 'literal' } }
 ```
 
 </Callout>
