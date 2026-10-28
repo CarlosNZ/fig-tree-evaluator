@@ -360,8 +360,8 @@ export class FigTree<Trace extends boolean = false> {
    * Every registered fragment, in registration order ("Introspection &
    * housekeeping methods" in docs-dev/v3-specs/v3-evaluator-methods.md),
    * and read-only below its top tier as `getOperators()` is: fresh arrays
-   * and fragment and parameter objects, but `metadata`, parameter defaults
-   * and the issues in `warnings` are the registry's own.
+   * and fragment and parameter objects, but `listing`, `metadata`,
+   * parameter defaults and the issues in `warnings` are the registry's own.
    *
    * The body is withheld — a fragment is the host's own registration, and
    * the editor consumes the declaration surface — so the body's warnings

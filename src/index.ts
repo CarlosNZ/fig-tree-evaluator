@@ -154,7 +154,7 @@ export type { InspectDependencies, InspectIssue, InspectNode, InspectReport } fr
 // ── Catalog ──────────────────────────────────────────────────────────────
 // The shapes of the `./catalog` subpath's listings and of the catalog its
 // `getCatalog` builds, and the key convention for plugin operators and for
-// a fragment's `metadata`.
+// a fragment's `listing`.
 export type {
   Catalog,
   CatalogCategory,
@@ -165,7 +165,6 @@ export type {
   CategoryListing,
   CategoryListingMap,
   ColorPair,
-  FragmentMetadata,
   Listing,
   ListingMap,
   NullOutcome,

@@ -10,7 +10,7 @@
  */
 import { FigTree, FigTreeError, ErrorCodes, isFigTreeError, coreOperators } from '../src'
 import { buildRegistry } from '../src/registry'
-import type { FragmentDefinition } from '../src'
+import type { FragmentDefinition, Listing } from '../src'
 
 const rejects = (fragments: Record<string, unknown>): FigTreeError => {
   try {
@@ -66,38 +66,44 @@ describe('the definition shape', () => {
     expect(fig.validate({ $frag: {} }).valid).toBe(true)
   })
 
-  test('description and metadata are carried verbatim', () => {
-    const metadata = { backgroundColor: '#B2E0FF', team: 'config-admins' }
-    const built = registry({ frag: { expression: 1, description: 'A thing', metadata } })
+  test('the listing and metadata are carried by identity, their keys unchecked', () => {
+    // Keys no listing has, and a value of the wrong type: neither is
+    // registration's to judge
+    const listing = { description: 42, colours: 'blue' } as unknown as Listing
+    const metadata = { team: 'config-admins' }
+    const built = registry({ frag: { expression: 1, listing, metadata } })
     const entry = built.fragments.get('frag')
-    expect(entry?.description).toBe('A thing')
-    expect(entry?.metadata).toEqual(metadata)
+    expect(entry?.listing).toBe(listing)
+    expect(entry?.metadata).toBe(metadata)
   })
 
-  test('samples register, and nothing downstream reports them', () => {
-    const fig = new FigTree({
-      operators: [coreOperators],
-      fragments: {
-        greet: {
-          expression: { $buildString: ['Hello, %1', '$params.name'] },
-          parameters: { name: { type: 'string' } },
-          samples: { name: 'Ada' },
-        },
+  test.each(
+    ['listing', 'metadata'].flatMap((key) => [
+      [key, 'an array', [{ name: 'Ada' }]],
+      [key, 'a string', 'Ada'],
+      [key, 'null', null],
+    ])
+  )('%s as %s is reported at its path', (key, _label, value) => {
+    const error = rejects({ frag: { expression: 1, [key]: value } })
+    expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
+    expect(error.issues?.[0].message).toContain(`'${key}' must be a plain object`)
+    expect(error.issues?.[0].path).toEqual(['fragments', 'frag', key])
+  })
+
+  test('descriptions and samples are the listing’s, so a definition holding them is rejected', () => {
+    const error = rejects({
+      frag: {
+        expression: '$params.name',
+        parameters: { name: { type: 'string', description: 'Who' } },
+        description: 'A thing',
+        samples: { name: 'Ada' },
       },
     })
-    expect(fig.validate({ $greet: { name: 'Grace' } }).valid).toBe(true)
-    expect(Object.hasOwn(fig.getFragments()[0], 'samples')).toBe(false)
-  })
-
-  test.each([
-    ['an array', [{ name: 'Ada' }]],
-    ['a string', 'Ada'],
-    ['null', null],
-  ])('samples as %s is reported at its path', (_label, samples) => {
-    const error = rejects({ frag: { expression: 1, samples } })
-    expect(codes(error)).toEqual([ErrorCodes.invalidDefinition])
-    expect(error.issues?.[0].message).toContain("'samples' must be a plain object")
-    expect(error.issues?.[0].path).toEqual(['fragments', 'frag', 'samples'])
+    expect(error.issues?.map(({ path }) => path)).toEqual([
+      ['fragments', 'frag', 'description'],
+      ['fragments', 'frag', 'samples'],
+      ['fragments', 'frag', 'parameters', 'name', 'description'],
+    ])
   })
 })
 

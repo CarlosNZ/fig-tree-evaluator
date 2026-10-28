@@ -20,10 +20,10 @@ import type {
   Catalog,
   CatalogCategory,
   CatalogFragment,
+  CatalogFragmentParameter,
   CatalogOperator,
   CatalogParameter,
   CategoryListingMap,
-  FragmentMetadata,
   Listing,
   ListingMap,
   TypeSeeds,
@@ -640,12 +640,11 @@ const own = <T>(map: { [key: string]: T } | undefined, key: string): T | undefin
   map !== undefined && Object.hasOwn(map, key) ? map[key] : undefined
 
 /**
- * What a parameter starts as: the seed its operator's listing or its
- * fragment's metadata gives, else its type's.
+ * What a parameter starts as: the seed its listing gives, else its type's.
  */
-const seedOf = (display: FragmentMetadata, parameter: string, type: ExpectedType): unknown => {
-  if (display.seeds !== undefined && Object.hasOwn(display.seeds, parameter))
-    return display.seeds[parameter]
+const seedOf = (listing: Listing, parameter: string, type: ExpectedType): unknown => {
+  if (listing.seeds !== undefined && Object.hasOwn(listing.seeds, parameter))
+    return listing.seeds[parameter]
   if (typeof type === 'string') return typeSeeds[type]
   if ('literal' in type) return type.literal[0]
   return typeSeeds[type.find((member) => member !== 'null') ?? 'null']
@@ -690,8 +689,8 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
 }
 
 /**
- * The instance's operators, each with its listing joined in, its fragments,
- * each with its metadata joined in, and the categories they group under.
+ * The instance's operators and fragments, each with its listing joined in,
+ * and the categories the operators group under.
  *
  * An operator's listing is the package's own entry in `operatorListings`,
  * then each map in `listings` in order, each merged over the ones before it,
@@ -700,8 +699,8 @@ const assignDefined = <T>(onto: { [key: string]: T }, from: { [key: string]: T }
  * and `parameterDescriptions` are merged per parameter. A field or
  * parameter entry set to
  * `undefined` is skipped, so it never erases what is beneath it, and only
- * keys a map or entry holds itself are read. A fragment's metadata is its
- * definition's `metadata`, with nothing merged over it.
+ * keys a map or entry holds itself are read. A fragment's listing is its
+ * definition's `listing`, with nothing merged over it.
  */
 export const getCatalog = (
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
@@ -762,20 +761,29 @@ export const getCatalog = (
     return operator
   })
 
-  const fragments = fig.getFragments().map(({ name, parameters, ...info }): CatalogFragment => {
-    const metadata: FragmentMetadata = info.metadata ?? {}
-    const fragment: CatalogFragment = {
-      name,
-      displayName: metadata.displayName ?? name,
-      ...info,
-      parameters: {},
-    }
-    if (metadata.colors !== undefined) fragment.colors = metadata.colors
-    if (metadata.docUrl !== undefined) fragment.docUrl = metadata.docUrl
-    for (const [key, parameter] of Object.entries(parameters))
-      fragment.parameters[key] = { ...parameter, seed: seedOf(metadata, key, parameter.type) }
-    return fragment
-  })
+  const fragments = fig
+    .getFragments()
+    .map(({ name, parameters, listing = {}, ...info }): CatalogFragment => {
+      const fragment: CatalogFragment = {
+        name,
+        displayName: listing.displayName ?? name,
+        ...info,
+        parameters: {},
+      }
+      if (listing.description !== undefined) fragment.description = listing.description
+      if (listing.docUrl !== undefined) fragment.docUrl = listing.docUrl
+      if (listing.colors !== undefined) fragment.colors = listing.colors
+      for (const [key, parameter] of Object.entries(parameters)) {
+        const entry: CatalogFragmentParameter = {
+          ...parameter,
+          seed: seedOf(listing, key, parameter.type),
+        }
+        const description = own(listing.parameterDescriptions, key)
+        if (description !== undefined) entry.description = description
+        fragment.parameters[key] = entry
+      }
+      return fragment
+    })
 
   return { categories, operators, fragments }
 }

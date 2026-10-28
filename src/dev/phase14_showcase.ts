@@ -15,7 +15,7 @@ import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import * as root from '../index'
 import { FigTree, coreOperators, defineOperator, isFigTreeError } from '../index'
-import type { CatalogOperator, FragmentMetadata } from '../index'
+import type { CatalogOperator } from '../index'
 import { getCatalog } from '../catalog'
 import { block, outcome, section } from './showcase'
 
@@ -25,13 +25,13 @@ const fig = new FigTree({
     greeting: {
       expression: { $buildString: ['Hello, %1', '$params.name'] },
       parameters: { name: { type: 'string' } },
-      description: 'A greeting',
-      // A fragment is presented by its own metadata
-      metadata: {
+      // A fragment is presented by its own listing
+      listing: {
         displayName: 'Greeting',
+        description: 'A greeting',
         colors: { background: '#477799', text: '#ffffff' },
         seeds: { name: 'Ada' },
-      } satisfies FragmentMetadata,
+      },
     },
   },
 })
