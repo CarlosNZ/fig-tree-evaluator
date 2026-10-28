@@ -354,7 +354,7 @@ export class Analysis {
         children.push(apart)
       } else {
         // Evaluated before the body: an eager parameter, a container-lazy
-        // one handed anything but its literal container, a structural one
+        // one handed anything but its literal container, a literal one
         const result = await this.walk(child, inner)
         outputs[name] = result.output
         parts.push({ result, eager: true })

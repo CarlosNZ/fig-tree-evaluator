@@ -151,7 +151,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
       case 'eager':
         if (supplied !== undefined) pending[name] = { known: outputs[name], absent: false }
         break
-      case 'structural':
+      case 'literal':
         if (supplied?.kind === 'constant')
           pending[name] = { known: exactly(supplied.value), absent: false }
         break
@@ -220,7 +220,7 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
     }
 
     // `propagate` is inert on a lazily delivered parameter
-    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'structural'
+    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'literal'
     if (admitsNull(known) && typeNamesNull(declared.type) && !lazily) {
       const policies = policiesOf(declared, pending)
       if (policies.has('propagate')) {

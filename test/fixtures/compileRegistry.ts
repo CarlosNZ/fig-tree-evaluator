@@ -98,7 +98,7 @@ export const httpOp = () =>
     evaluate: noop,
   })
 
-/** `map` — the iterator shape: perElement `each`, structural `as`. */
+/** `map` — the iterator shape: perElement `each`, literal `as`. */
 export const mapOp = () =>
   defineOperator({
     name: 'map',
@@ -106,7 +106,7 @@ export const mapOp = () =>
     parameters: {
       input: { type: 'array' },
       each: { type: 'any', evaluationMode: 'perElement', over: 'input' },
-      as: { type: 'string', required: false, evaluationMode: 'structural' },
+      as: { type: 'string', required: false, evaluationMode: 'literal' },
     },
     positionalParams: ['input', 'each'],
     returns: 'array',

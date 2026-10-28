@@ -242,7 +242,7 @@ Suggested default: none. Note: `length` keeps `propagate` while the iterators' `
 | ------------------------------ | ----------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `input`                        | `array`                       | _(req)_                      | reject — a null collection is a runtime type error (**#24 — flipped at the group review**); `nullInputDefault` softens       |
 | `each`                         | `any` (expression)            | _(req)_                      | `value` — per-element results judged by the operator: `map` takes any value; predicates are truthiness positions, null falsy |
-| `as`                           | `string` — literal identifier | — (bind `$element`/`$index`) | structural                                                                                                                   |
+| `as`                           | `string` — literal identifier | — (bind `$element`/`$index`) | literal                                                                                                                      |
 | `noMatchDefault` (`find` only) | `any`                         | `null`                       | `value` — fires on no-match only; a found null passes through (#23)                                                          |
 
 Suggested default: `find` **already has `noMatchDefault`**. New for all five: **`nullInputDefault`**.

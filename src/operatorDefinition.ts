@@ -23,7 +23,7 @@ import type { ResolvedParams } from './inference'
  * and nowhere else, so a rename is one edit.
  */
 export type EvaluationMode =
-  'eager' | 'race' | 'lazy' | 'lazyElements' | 'lazyEntries' | 'perElement' | 'structural'
+  'eager' | 'race' | 'lazy' | 'lazyElements' | 'lazyEntries' | 'perElement' | 'literal'
 
 /**
  * The grouping vocabulary ("`category` — the closed vocabulary" in the

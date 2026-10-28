@@ -142,9 +142,9 @@ One field, one mode per parameter. Names provisional — this table is the secti
 | `'lazyElements'`    | `LazyValue[]`                             | each element individually lazy; sequencing and early stop are the body demanding elements in declared order and simply not demanding more (ledger #2)                               | `firstNonNull.values`                                                                                                                              |
 | `'lazyEntries'`     | `Record<string, LazyValue>`               | static data keys, individually-lazy values — the `vars` machinery family (ledger #3)                                                                                                | `match.branches` (literal-map mode)                                                                                                                |
 | `'perElement'`      | `PerElement` handle                       | evaluated once per element of the `over` sibling, on demand, memoized per index, each in a fresh child scope binding `$element`/`$index` (or the node's `as` renaming) (ledger #12) | the iterators' `each`                                                                                                                              |
-| `'structural'`      | the literal value, verbatim               | compile-time data, never evaluated; a dynamic value is a grammar error                                                                                                              | `as`                                                                                                                                               |
+| `'literal'`         | the literal value, verbatim               | compile-time data, never evaluated; a dynamic value is a grammar error                                                                                                              | `as`                                                                                                                                               |
 
-_Scoping generalization, recorded at Phase-3 implementation (needs confirming): the compiler treats **any** `perElement` parameter's subtree as a `$element`/`$index` binding scope, and reads the renaming from the structural parameter literally named `as` — so a custom operator gets iterator scoping by declaring the same shapes. If a custom perElement operator should ever bind differently, the hook would be a definition-level field, not a name convention._
+_Scoping generalization, recorded at Phase-3 implementation (needs confirming): the compiler treats **any** `perElement` parameter's subtree as a `$element`/`$index` binding scope, and reads the renaming from the `literal` parameter named `as` — so a custom operator gets iterator scoping by declaring the same shapes. If a custom perElement operator should ever bind differently, the hook would be a definition-level field, not a name convention._
 
 **When the layers run, for a value that does not exist yet** (settled at Phase-5 implementation, September 2026 — Carl). "`params` is post-everything" holds for every mode, not just `eager`; what moves is the _moment_. A handle's `evaluate()` resolves the subtree and then applies the same type check, constraints and truthiness an eager parameter passes before delivery, so a body still never sees an unvetted value — and `and`/`or` receive plain booleans rather than calling `isTruthy` themselves, which is what the `Settlement.value` note means by "booleans already". Two consequences worth stating: a wrongly-typed lazy branch fails **when demanded, and not at all if it is not**; and for `lazyElements` / `lazyEntries` / `race` the only layer with anything to say per element is truthiness, since the declared type describes the _container_ and there is no element-type declaration. **`perElement` is the exception among the plural modes, and runs the full vet per index** (confirmed at Phase-6 implementation): its declared type describes the _element result_ — `over` names the container — so the type check, the constraints and truthiness all apply to each index's value as it is demanded, exactly as they do to a `lazy` handle. A wrongly-typed element therefore fails at the index that produced it, and only if that index is demanded. A `homogeneous` or `elementShape` constraint therefore goes unchecked on a _literal_ container at those modes (`length` is checked statically against the element count, and the degeneration path below runs every constraint on the real value); no core operator declares one there.
 
@@ -489,15 +489,15 @@ evaluate: async ({ value, branches, default: defaultBranch }) => {
 }
 ```
 
-**`perElement` — `map`** (the engine owns scope creation, binding names and per-index memoization; `as` is structural and the body never reads it — the engine consumed it at compile to name the bindings):
+**`perElement` — `map`** (the engine owns scope creation, binding names and per-index memoization; `as` is `literal` and the body never reads it — the engine consumed it at compile to name the bindings):
 
 ```ts
 parameters: {
   input: { type: 'array' },
   each:  { type: 'any', evaluationMode: 'perElement', over: 'input' },
-  as:    { type: 'string', evaluationMode: 'structural', required: false },
+  as:    { type: 'string', evaluationMode: 'literal', required: false },
 },
 evaluate: ({ input, each }) => Promise.all(input.map((_, i) => each.evaluate(i)))
 ```
 
-**`eager` and `lazy`** are the worked examples in § The definition shape (`clamp`, `if`); **`structural`** is `as`, just above.
+**`eager` and `lazy`** are the worked examples in § The definition shape (`clamp`, `if`); **`literal`** is `as`, just above.

@@ -4,7 +4,7 @@
  * in docs-dev/v3-specs/v3-api.md). Three passes over the declarations:
  *
  * Pass 1 starts every eager parameter's evaluation concurrently, delivers
- * structural values verbatim, and turns `replacesNullAt` holders into
+ * `literal` values verbatim, and turns `replacesNullAt` holders into
  * evaluate-once thunks keyed by their targets. Everything eager is then
  * awaited together, so a failing operand fails the node before any null is
  * considered: failure beats propagation.
@@ -103,7 +103,7 @@ export const resolveParams = async (
           pending.push(evaluateNode(supplied, ctx))
         }
         break
-      case 'structural':
+      case 'literal':
         if (supplied?.kind === 'constant') resolved[name] = supplied.value
         break
       case 'lazy':
@@ -207,7 +207,7 @@ export const resolveParams = async (
     //    branch was ever demanded. The derived reject (layer 5) still
     //    applies: a null container at a degenerating parameter is a type
     //    error
-    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'structural'
+    const lazily = declared.evaluationMode !== 'eager' && declared.evaluationMode !== 'literal'
     if (value === null && typeNamesNull(declared.type) && !lazily) {
       if (effectivePolicy(node, declared, resolved) === 'propagate')
         return { params, propagate: true }

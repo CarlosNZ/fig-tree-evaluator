@@ -62,7 +62,7 @@ const inputParam = {
 const asParam = {
   type: 'string',
   required: false,
-  evaluationMode: 'structural',
+  evaluationMode: 'literal',
 } as const
 
 const nullInputDefaultParam = {

@@ -79,7 +79,7 @@ export interface ConstantNode extends CompiledBase {
  * iterator's `as` renaming (`as: 'order'` → `$order` / `$orderIndex`): the
  * as-name the reference resolves through. Recognition of renamed bindings
  * is scope-dependent, so it happens in the walk — `as` values are
- * structural (compile-time literals), which is what makes this static.
+ * literal (fixed at compile time), which is what makes this static.
  */
 export interface ReferenceNode extends CompiledBase {
   kind: 'reference'
@@ -545,13 +545,13 @@ export const authoredNames = (node: OperatorNode): ReadonlySet<string> =>
 /**
  * The `as` name this iterator binds under, or null for the default
  * `$element` / `$index` pair. The one definition of the convention the
- * contract's scoping generalization describes — a structural parameter
- * literally named `as` — read identically by the static checker and by the
+ * contract's scoping generalization describes — a `literal` parameter
+ * named `as` — read identically by the static checker and by the
  * runtime that builds the binding frames.
  */
 export const renamedBinding = (node: OperatorNode): string | null => {
   const declared = node.entry.definition.parameters.as
-  if (declared?.evaluationMode !== 'structural') return null
+  if (declared?.evaluationMode !== 'literal') return null
   const supplied = node.params.as
   if (supplied?.kind === 'constant' && typeof supplied.value === 'string') return supplied.value
   return null

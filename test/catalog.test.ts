@@ -138,11 +138,11 @@ describe('operatorListings', () => {
       expect(errorsOf(startingNode(operator))).toEqual([])
     })
 
-    // A structural parameter (an iterator's `as`) renames the bindings the
+    // A literal parameter (an iterator's `as`) renames the bindings the
     // rest of the node reads, so adding one is a rename for the editor to
     // carry through, not a starting value to check in isolation
     const optional = Object.entries(op.parameters).filter(
-      ([, declared]) => !declared.required && declared.evaluationMode !== 'structural'
+      ([, declared]) => !declared.required && declared.evaluationMode !== 'literal'
     )
     if (optional.length > 0)
       test.each(optional.map(([parameter]) => parameter))(
@@ -157,11 +157,11 @@ describe('operatorListings', () => {
         }
       )
 
-    const structural = Object.entries(op.parameters).filter(
-      ([, declared]) => declared.evaluationMode === 'structural'
+    const literal = Object.entries(op.parameters).filter(
+      ([, declared]) => declared.evaluationMode === 'literal'
     )
-    if (structural.length > 0)
-      test.each(structural.map(([parameter]) => parameter))(
+    if (literal.length > 0)
+      test.each(literal.map(([parameter]) => parameter))(
         'adding %s, with its bindings renamed through the node, keeps it valid',
         (parameter) => {
           const binding = operator.parameters[parameter].seed
@@ -448,7 +448,7 @@ describe('getCatalog', () => {
             required: false,
           },
           each: { type: 'any', evaluationMode: 'perElement', over: 'items' },
-          as: { type: 'string', evaluationMode: 'structural', required: false },
+          as: { type: 'string', evaluationMode: 'literal', required: false },
           nullValueDefault: {
             type: 'number',
             evaluationMode: 'lazy',
@@ -588,8 +588,8 @@ describe('getCatalog', () => {
 
       test.each(cases)('%s', async (_, operator, name, parameter) => {
         underTest = { operator: operator.name, parameter: name, element: false }
-        // A structural parameter takes only a literal
-        const missing = parameter.evaluationMode === 'structural' ? null : { operator: 'nothing' }
+        // A literal parameter takes only a literal value
+        const missing = parameter.evaluationMode === 'literal' ? null : { operator: 'nothing' }
         const node = { ...startingNode(operator), [name]: missing }
         const { nullOutcome } = parameter
         if (typeof nullOutcome === 'string') {
