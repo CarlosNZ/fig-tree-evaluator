@@ -1,6 +1,6 @@
 # FigTree v3 — listings
 
-_Status: **Draft** (October 2026, Claude, from discussion with Carl). It settles [issue #284](https://github.com/CarlosNZ/fig-tree-evaluator/issues/284), and revises "`./catalog`" in [v3-packaging.md](v3-packaging.md) and the fragment wrapper in "Fragments" in [v3-api.md](v3-api.md). It covers the concept, the definition types, registration's checks, the snapshots, the catalog, the v2 converter and the exports, then the changes against the current code and what they reach outside it._
+_Status: **Agreed and built** (October 2026, Claude, from discussion with Carl, built in six steps reviewed by Carl). It settles [issue #284](https://github.com/CarlosNZ/fig-tree-evaluator/issues/284), and revises "`./catalog`" in [v3-packaging.md](v3-packaging.md) and the fragment wrapper in "Fragments" in [v3-api.md](v3-api.md). It covers the concept, the definition types, registration's checks, the snapshots, the catalog, the v2 converter and the exports, then the changes against the current code and what they reach outside it._
 
 ## The concept
 
