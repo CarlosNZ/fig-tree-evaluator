@@ -83,8 +83,8 @@ A definition holds:
 
 - **`expression`:** the fragment's body, which can be any expression, including calls to other fragments. It reads its arguments with `$params` references, such as `$params.amount`.
 - **`parameters`:** what the fragment is called with, keyed by name. A fragment that needs none leaves it out.
-- **`description`:** what the fragment does, in a line, for editors and other tools to show.
-- **`metadata`** and **`samples`**: for editors ([Fragments in an editor](#fragments-in-an-editor)).
+- **`listing`:** how editors and other tools present the fragment, such as its description and its parameters' ([Fragments in an editor](#fragments-in-an-editor)).
+- **`metadata`:** anything your own tools need. FigTree never reads it.
 
 ### Declaring parameters
 
@@ -93,7 +93,6 @@ Each parameter can declare:
 - **`type`:** what it accepts, such as `'number'` or `['string', 'null']`, in the same terms as an operator's parameters ([Parameters](/custom-operators/parameters/)). If it's left out, any value is accepted.
 - **`default`:** the value used when a call leaves the parameter out. It's a fixed value, never an expression.
 - **`required`:** a parameter is required unless it has a `default` or sets `required: false`.
-- **`description`:** what the parameter is for, for editors to show.
 - **`constraints`:** further checks on an array, such as its exact `length`, or the shape each of its elements must have ([Types and constraints](/custom-operators/parameters/#types-and-constraints)).
 
 Passing `null` counts as leaving a parameter out, unless its `type` includes `null`:
@@ -286,33 +285,36 @@ A failed argument, such as a string passed as `amount`, belongs to the calling e
 
 ## Fragments in an editor
 
-A fragment definition can carry two more keys, `metadata` and `samples`, primarily for external tools such as a visual editor. FigTree itself never uses them:
+A fragment definition can carry two more keys, primarily for external tools such as a visual editor: a `listing`, with what an editor needs to present the fragment, and `metadata`, for anything of your own. FigTree itself never uses either:
 
 ```ts title="Types"
 import type { FragmentParameterDeclaration } from 'fig-tree-evaluator'
 // ---cut---
 interface FragmentDefinition {
-  // These three are covered above
+  // These two are covered above
   expression: unknown
   parameters?: Record<string, FragmentParameterDeclaration>
-  description?: string
-  // How the fragment is presented, plus any keys of your own
-  metadata?: FragmentMetadata & Record<string, unknown>
-  // Realistic arguments, by parameter name, for trying the body out
-  samples?: { [parameter: string]: unknown }
+  // How the fragment is presented
+  listing?: Listing
+  // Anything your own tools need
+  metadata?: Record<string, unknown>
 }
 
-// The keys of metadata that getCatalog() reads
-interface FragmentMetadata {
+// The same type an operator's listing is
+interface Listing {
   displayName?: string
+  description?: string
+  // Each parameter's description, by parameter name
+  parameterDescriptions?: { [parameter: string]: string }
   docUrl?: string
-  // CSS colours, used only when both are given
-  backgroundColor?: string
-  textColor?: string
+  // CSS colours to draw the fragment's nodes in
+  colors?: { background: string; text: string }
   // What a new call's arguments start with, by parameter name
   seeds?: { [parameter: string]: unknown }
-  // Any other keys are your own: metadata allows them,
-  // and getCatalog() ignores them
+  // Realistic arguments, by parameter name, for trying the body out
+  samples?: { [parameter: string]: unknown }
+  // Anything your own tools need, as in the definition's metadata
+  metadata?: Record<string, unknown>
 }
 ```
 
@@ -336,18 +338,17 @@ const fig = new FigTree({
           constraints: { elementShape: { amount: { type: 'number' } } },
         },
       },
-      description: "The average of a list of orders' amounts, rounded to the cent",
-      metadata: {
+      listing: {
         displayName: 'Average order',
+        description: "The average of a list of orders' amounts, rounded to the cent",
+        parameterDescriptions: { orders: 'The orders, each with a numeric amount' },
         docUrl: 'https://wiki.example.com/fragments/average-order',
-        backgroundColor: '#1F5F8B',
-        textColor: '#FFFFFF',
+        colors: { background: '#1F5F8B', text: '#FFFFFF' },
         // A new call starts with one empty order, to show the shape
         seeds: { orders: [{ amount: 0 }] },
-        // A key of your own
-        owner: 'finance-team',
+        samples: { orders: [{ amount: 120 }, { amount: 80.5 }, { amount: 42.25 }] },
       },
-      samples: { orders: [{ amount: 120 }, { amount: 80.5 }, { amount: 42.25 }] },
+      metadata: { owner: 'finance-team' },
     },
   },
 })

@@ -16,9 +16,9 @@ Editors, docs pages and other tools that show an instance's operators need more 
 A listing is plain data, keyed by operator name. Here's one for the `formatNumber` operator from [Writing an operator](/custom-operators/writing/#a-first-operator):
 
 ```ts title="formatNumberListing.ts"
-import type { OperatorListingMap } from 'fig-tree-evaluator'
+import type { ListingMap } from 'fig-tree-evaluator'
 
-export const formatNumberListing: OperatorListingMap = {
+export const formatNumberListing: ListingMap = {
   formatNumber: {
     displayName: 'Format number',
     description: "Format a number with a locale's digit grouping and decimal mark",
@@ -27,8 +27,7 @@ export const formatNumberListing: OperatorListingMap = {
       locale: "The locale to format for, such as 'de-DE' or 'en-IN'",
     },
     docUrl: 'https://wiki.example.com/operators/format-number',
-    backgroundColor: '#f6d4b0',
-    textColor: '#3f2f18',
+    colors: { background: '#f6d4b0', text: '#3f2f18' },
     // A string parameter otherwise starts as 'Replace me', which
     // isn't a locale
     seeds: { locale: 'de-DE' },
@@ -63,8 +62,8 @@ A tool doesn't read listings on their own. `getCatalog()`, from the `fig-tree-ev
 import type { ValidatedOperatorDefinition } from 'fig-tree-evaluator'
 export declare const formatNumber: ValidatedOperatorDefinition
 // @filename: operators/formatNumberListing.ts
-import type { OperatorListingMap } from 'fig-tree-evaluator'
-export declare const formatNumberListing: OperatorListingMap
+import type { ListingMap } from 'fig-tree-evaluator'
+export declare const formatNumberListing: ListingMap
 // @filename: catalog.ts
 // ---cut---
 import { FigTree, coreOperators } from 'fig-tree-evaluator'
@@ -74,7 +73,7 @@ import { formatNumberListing } from './operators/formatNumberListing'
 
 const fig = new FigTree({ operators: [coreOperators, formatNumber] })
 
-const catalog = getCatalog(fig, formatNumberListing)
+const catalog = getCatalog(fig, { listings: [formatNumberListing] })
 ```
 
 The core operators' listings come with `getCatalog()` itself, in the same `fig-tree-evaluator/catalog` subpath, so they're always included. The instance only says which operators are registered, and `getCatalog()` matches each one to its listing by name.

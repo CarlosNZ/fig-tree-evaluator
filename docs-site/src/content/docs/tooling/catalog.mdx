@@ -1,5 +1,5 @@
 ---
-title: 'Operator metadata: ./catalog'
+title: 'Listings: ./catalog'
 description: Display names, descriptions and colours for operators, categories and fragments
 sidebar:
   order: 4
@@ -17,7 +17,7 @@ import { Aside } from '@astrojs/starlight/components'
 
 ## `getCatalog()`
 
-Joining an instance's operators and fragments with their listings, into one structure an editor can render.
+Joining an instance's operators and fragments with their listings, into one structure an editor can render, including `literal`, and reporting malformed input in `issues`.
 
 ## Listings for custom operators
 
@@ -27,8 +27,16 @@ Passing your own listings, and the key convention for plugin operators.
 
 ## Fragments
 
-How a fragment's `metadata` appears in the catalog.
+How a fragment's `listing` appears in the catalog, and overriding or translating it with a listing map.
+
+## Overriding categories
+
+`categories`: changing a category's display name, order or colours.
 
 ## Type seeds
 
 `typeSeeds`: starting values for a new parameter of each type.
+
+## Malformed input
+
+What `issues` reports, and what's skipped.

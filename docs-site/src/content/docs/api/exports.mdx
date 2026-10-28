@@ -416,7 +416,7 @@ Every category an operator can belong to.
 **Details:**
 
 - An operator definition's `category` must be one of these. Its type, `OperatorCategory`, is one of the strings in the array.
-- The `./catalog` subpath gives each one a display name, a description, colours and an order ([`getCatalog()`](/tooling/catalog/#getcatalog)).
+- The `./catalog` subpath gives each one a display name, colours and an order ([`getCatalog()`](/tooling/catalog/#getcatalog)).
 
 **See also:** [The definition](/custom-operators/writing/#the-definition)
 
@@ -741,9 +741,9 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 
 | Type                                                                          | Describes                                                   |
 | ----------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [`Catalog`](/tooling/catalog/#getcatalog), `CatalogCategory`, `CatalogOperator`, `CatalogParameter`, `CatalogFragment`, `CatalogFragmentParameter` | What `getCatalog()` returns, and its parts |
-| [`OperatorListing`](/tooling/catalog/#the-listings), `OperatorListingMap`, `CategoryListing`, `CategoryListingMap` | How operators and categories are presented |
-| [`FragmentMetadata`](/guides/fragments/#fragments-in-an-editor)               | How a fragment is presented                                 |
+| [`Catalog`](/tooling/catalog/#getcatalog), `CatalogCategory`, `CatalogOperator`, `CatalogOperatorParameter`, `CatalogFragment`, `CatalogFragmentParameter`, `CatalogLiteral`, `CatalogIssue` | What `getCatalog()` returns, and its parts |
+| [`CatalogOptions`](/tooling/catalog/#getcatalog), `CategoryOverrides`           | What `getCatalog()` takes                                   |
+| [`Listing`](/tooling/catalog/#the-listings), `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap` | How operators, fragments and categories are presented |
 | [`NullOutcome`](/tooling/catalog/#getcatalog)                                 | What a `null` does at a parameter, in the catalog           |
 | [`TypeSeeds`](/tooling/catalog/#type-seeds)                                   | A starting value for each type                              |
 | [`Registry`](/tooling/format/#tocanonical-and-toshorthand)                    | What the conversions read from an instance                  |
@@ -761,15 +761,24 @@ Four subpaths hold the tools around FigTree, for editors, analysis and migration
 ### `fig-tree-evaluator/catalog`
 
 ```ts
-import type { Catalog, CategoryListingMap, FigTree, OperatorListingMap, TypeSeeds } from 'fig-tree-evaluator'
+import type {
+  Catalog,
+  CatalogOptions,
+  CategoryListingMap,
+  ColorPair,
+  FigTree,
+  ListingMap,
+  TypeSeeds,
+} from 'fig-tree-evaluator'
 declare namespace Catalog {
 // ---cut---
 function getCatalog(
   fig: Pick<FigTree, 'getOperators' | 'getFragments'>,
-  ...listings: OperatorListingMap[]
+  options?: CatalogOptions
 ): Catalog
-const operatorListings: OperatorListingMap
+const operatorListings: ListingMap
 const categoryListings: CategoryListingMap
+const fragmentColors: ColorPair
 const typeSeeds: TypeSeeds
 // ---cut-after---
 }
@@ -779,12 +788,13 @@ Display names, descriptions and colours for operators, categories and fragments.
 
 | Export             | What it is                                                                                                      |
 | ------------------ | --------------------------------------------------------------------------------------------------------------- |
-| `getCatalog()`     | An instance's operators and fragments, with how each is presented, and the categories, with listings given for custom operators merged over the package's own |
+| `getCatalog()`     | An instance's operators, fragments and `literal`, with how each is presented, and the categories in use, with any listings and category overrides you pass merged over the package's own |
 | `operatorListings` | How each of the package's operators is presented: its display name, description, colours, documentation link, and its parameters' descriptions and starting values |
 | `categoryListings` | How each category is presented, and its order                                                                   |
+| `fragmentColors`   | The colours of a fragment whose listing gives none                                                              |
 | `typeSeeds`        | A starting value for each type, for an editor adding a parameter                                                |
 
-**See also:** [Operator metadata](/tooling/catalog/)
+**See also:** [Listings](/tooling/catalog/)
 
 ### `fig-tree-evaluator/format`
 

@@ -8,7 +8,7 @@
 import type { CollectionEntry, render } from 'astro:content'
 import {
   EvaluationData,
-  type CatalogParameter,
+  type CatalogOperatorParameter,
   type CompiledNullPolicy,
   type ExpectedType,
   type NullOutcome,
@@ -46,7 +46,7 @@ const formatType = (type: ExpectedType): string => {
  * on, the type's `null` only lets it through to be passed on, so it's left
  * out: the Null column already says what a `null` does.
  */
-const paramType = (p: CatalogParameter): string => {
+const paramType = (p: CatalogOperatorParameter): string => {
   const type = formatType(
     p.nullOutcome === 'propagate' && Array.isArray(p.type)
       ? p.type.filter((member) => member !== 'null')
@@ -98,7 +98,10 @@ const nullOutcomes: Record<NullOutcome, NullTag> = {
 }
 
 /** The same for each element or entry of a list or object. */
-const elementOutcomes: Record<NonNullable<CatalogParameter['elementNullOutcome']>, NullTag> = {
+const elementOutcomes: Record<
+  NonNullable<CatalogOperatorParameter['elementNullOutcome']>,
+  NullTag
+> = {
   propagate: {
     label: 'passed on (each)',
     title: 'A null element makes the whole node null, and the operator doesn’t run',
@@ -130,7 +133,7 @@ const conditionalTags = ({ selector, table }: CompiledNullPolicy): NullTag[] => 
  * The parameter's Null cell, a line per tag: a list's or object's elements
  * first, then the whole value's outcome, marked as such beside them.
  */
-const nullTags = (p: CatalogParameter): NullTag[] => {
+const nullTags = (p: CatalogOperatorParameter): NullTag[] => {
   const whole =
     typeof p.nullOutcome === 'string' ? [nullOutcomes[p.nullOutcome]] : conditionalTags(p.nullOutcome)
   if (p.elementNullOutcome === undefined) return whole
@@ -203,7 +206,7 @@ const singleValueForm = (() => {
       showCategory && (
         <span
           class="fds-op-category"
-          style={`background:${category.backgroundColor};color:${category.textColor}`}
+          style={`background:${category.colors.background};color:${category.colors.text}`}
         >
           {category.displayName}
         </span>

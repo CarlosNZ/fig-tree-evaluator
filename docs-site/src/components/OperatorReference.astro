@@ -88,7 +88,7 @@ const index = 'index' in Astro.props ? operatorGroups() : null
     index && (
       <nav class="fds-ref-index" aria-label="Operators by category">
         {index.map(({ category, operators }) => (
-          <div class="fds-ref-index-group" style={`--fds-category:${category.backgroundColor}`}>
+          <div class="fds-ref-index-group" style={`--fds-category:${category.colors.background}`}>
             <a class="fds-ref-index-category" href={`#${categoryId(category.name)}`}>
               {category.displayName}
             </a>
@@ -108,7 +108,7 @@ const index = 'index' in Astro.props ? operatorGroups() : null
   }
   {
     groups?.map(({ category, Notes, entries }) => (
-      <section class="fds-ref-category" style={`--fds-category:${category.backgroundColor}`}>
+      <section class="fds-ref-category" style={`--fds-category:${category.colors.background}`}>
         {/* The id is the heading's, which the page's contents list tracks */}
         <h2 class="fds-ref-category-header" id={categoryId(category.name)}>
           {category.displayName}

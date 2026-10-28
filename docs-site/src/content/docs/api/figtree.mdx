@@ -403,16 +403,16 @@ For each fragment, everything but its body:
 import type {
   Dependencies,
   ExpectedType,
-  FragmentMetadata,
   FragmentParameter,
   Issue,
+  Listing,
 } from 'fig-tree-evaluator'
 // ---cut---
 interface FragmentInfo {
   name: string
-  description?: string
   // As written
-  metadata?: FragmentMetadata & Record<string, unknown>
+  listing?: Listing
+  metadata?: Record<string, unknown>
   // With required and any default filled in
   parameters: Record<string, FragmentParameter>
   // The type the body returns, from its root
@@ -432,7 +432,6 @@ interface FragmentInfo {
 - An operator's results are cached on this instance when `cache` is `true` and `hostNoCache` isn't.
 - A fragment's `returns` is worked out when it's registered, from the root of its body: an operator's declared `returns`, a called fragment's `returns`, a constant's own type, `array` or `object` for a container, and `any` for a reference.
 - A fragment's `warnings` are reported nowhere else: registration throws only on errors, and `validate()` on an expression that calls the fragment doesn't repeat them.
-- A fragment's `samples` are never reported.
 
 **See also:** [Declaring parameters](/custom-operators/parameters/#declaring-parameters), [Fragments in an editor](/guides/fragments/#fragments-in-an-editor)
 

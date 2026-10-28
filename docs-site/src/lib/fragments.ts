@@ -22,7 +22,7 @@ export const fragmentSources: Record<string, string> = {
     amount: { type: 'number' },
     rate: { type: 'number', default: 15 },
   },
-  description: 'A price with a percentage sales tax added, rounded to the cent',
+  listing: { description: 'A price with a percentage sales tax added, rounded to the cent' },
 }`,
   averageOrder: `{
   expression: {
@@ -38,7 +38,7 @@ export const fragmentSources: Record<string, string> = {
       constraints: { elementShape: { amount: { type: 'number' } } },
     },
   },
-  description: "The average of a list of orders' amounts, rounded to the cent",
+  listing: { description: "The average of a list of orders' amounts, rounded to the cent" },
 }`,
   countryCurrency: `{
   expression: {
@@ -57,7 +57,9 @@ export const fragmentSources: Record<string, string> = {
   parameters: {
     country: { type: 'string' },
   },
-  description: "A country's currency code, such as 'NZD', or null if the country isn't found",
+  listing: {
+    description: "A country's currency code, such as 'NZD', or null if the country isn't found",
+  },
 }`,
 }
 

@@ -8,8 +8,8 @@ export type CatalogCategory = (typeof listed.categories)[number]
 
 /**
  * `literal`, written as an operator entry. The compiler handles it itself, so
- * it's in no instance's operators and the catalog doesn't list it, but it's
- * written like an operator, and readers look it up like one.
+ * it's in no instance's operators and the catalog lists it apart from them,
+ * but it's written like an operator, and readers look it up like one.
  */
 const data = listed.categories.find((c) => c.name === 'data')!
 const literal: CatalogOperator = {
@@ -22,8 +22,8 @@ const literal: CatalogOperator = {
   returns: 'any',
   hasValidate: false,
   positionalParams: [],
-  backgroundColor: data.backgroundColor,
-  textColor: data.textColor,
+  colors: data.colors,
+  metadata: {},
   parameters: {
     value: {
       type: 'any',
