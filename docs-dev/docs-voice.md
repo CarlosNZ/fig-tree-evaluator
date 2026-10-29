@@ -248,9 +248,11 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
 - **Page openings.** A guide page on an idea Concepts introduced opens with the recap itself, with no intro paragraph or heading, and links back once. A page that covers more than one distinct thing mentions each in its intro, a secondary one in its own short paragraph after the opening example.
   - After: the page opens "[How evaluation works] introduced fallbacks. In short:"
   - Added, after the opening example of Tracing and debugging: "To understand the internal structure of a compiled expression, there's also `inspect()`…"
-- **A guide page's headings tend to say what the section does,** or name the confusion it heads off. A guideline: a bare name is fine where it reads better.
+- **A guide page's headings tend to say what the section does,** or name the confusion it heads off. A guideline: a bare name is fine where it reads better, and in a chapter for advanced readers, so is the technical term.
   - Before: "## `$error`"; "### Fragments and variables"
   - After: "## Reading the failure with `$error`"; "### Fragments vs variables"
+  - Before: "## Reading what an instance holds", in Beyond evaluation
+  - After: "## Instance introspection"
 - **Where the site's UI demonstrates a library feature, lead with the feature,** and present the UI as a way to try it.
   - After: "FigTree offers a few helper functions for converting between forms…", the snippet, then "In the playgrounds on this site, open the editor and hover…"
 
@@ -287,8 +289,10 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - After: `// Can't be worked out without the shipping cost, so gives null`; `// When it's time to cancel` above `controller.abort()`
   - Before: `// { $isBlank: null } returns null, and evaluate never runs` above `const withoutPolicy = …`; `// The parameters whose nulls this one replaces`
   - After: `// Replace a null in the named parameters with this parameter's value`
-- **A result in a comment is marked `// =>`,** a reason added to it opens with "since", and one that doesn't fit beside its call goes on the next line, indented under it.
+- **A result in a comment is marked `// =>`,** a reason added to it opens with "since", and one that doesn't fit beside its call goes on the next line, indented under it. A result longer than a few lines goes in a `json5` block of its own, after a one-line lead-in, since a long comment is hard to read.
   - After: `const sum = await fig.evaluate({ $plus: [1, 2] }) // => 3`; `fig.isEvaluable({ $flibble: 1 }) // => true, since an unknown operator is a static error`
+  - Before: a nine-line `// =>` comment under `divide?.parameters.by`
+  - After: the call alone in a `ts` block, "Here's what it returns for `divide`:", then the whole object in `json5`
 - **One comment per key in a config example,** on the key it describes; a comment above several keys reads as covering them all.
 - **An alternative setting goes in the snippet as a comment, where it would be written,** rather than in a sentence after it.
   - After: `// Pass { trace: true } here to trace every evaluation`, above `const fig = new FigTree()`
@@ -315,12 +319,15 @@ The bold headlines are the checklist: scan them against a draft. The examples ca
   - Kept: "Any other string is plain text, even one starting with `$`, such as `'$5.00'`."
 - **Where a list spells out a group just named, introduce it with a colon,** or brackets where the sentence already has one; after a comma, the group's name reads as one more item.
   - After: "every operator on the Operators page except the I/O ones: `http`, `graphQL` and `sql`"
+- **A dash qualifies or demonstrates a statement; a colon introduces a list or examples.**
+  - Before: "`getOperators()` and `getFragments()` need no subpath: they're methods on the instance"
+  - After: "…need no subpath — they're methods on the FigTree instance"
 - **An article follows how a word is said:** "an `SQLiteConnection`".
-- **Link an API or concept at its first mention on the page, to the section rather than the page.** Where a phrase in the sentence names the thing, the link goes on it, in its own words. Otherwise a pointer in brackets uses the heading it lands on as its text, never a callout title or a paraphrase, and the section over a sub-section where both would do.
+- **Link an API or concept at its first mention on the page, to the section rather than the page.** Where a phrase in the sentence names the thing, the link goes on it, in its own words. Otherwise a pointer in brackets uses the heading it lands on as its text, never a callout title or a paraphrase, and the section over a sub-section where both would do. A link to a whole page uses the page's name in the sidebar, so it doesn't look like it goes somewhere else.
   - Before: "the same checks as an eager parameter's ([What the engine does for you](…))"
   - After: "the [same checks](…) as an eager parameter's"
-  - Before: "([Missing by mistake](/concepts/evaluation/#null-handling))"
-  - After: "([Missing values](/concepts/data/#missing-values))"
+  - Before: "[Static analysis](/tooling/authoring/) covers reading the report.", where the sidebar lists the page as /authoring
+  - After: "The [`/authoring`](/tooling/authoring/) page covers reading the report."
 - **One name, one link,** so the comma or "and" between two names stays plain text.
   - After: "Like [`and`](…) and [`or`](…)"
 - **A comment in a code block the page shows fits the block, about 70 columns,** breaking at a natural pause. The repo's 80-column limit wraps mid-phrase on the page. Code lines may wrap.
