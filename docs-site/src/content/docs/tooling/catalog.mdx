@@ -29,7 +29,6 @@ import type {
   CatalogCategory,
   CatalogFragment,
   CatalogIssue,
-  CatalogLiteral,
   CatalogOperator,
 } from 'fig-tree-evaluator'
 // ---cut---
@@ -37,11 +36,10 @@ interface Catalog {
   // The categories that have at least one active operator, sorted
   // by each one's order field: logic first, other last
   categories: CatalogCategory[]
-  // Both in the order they were registered
+  // Both in the order they were registered, with literal last
+  // among the operators
   operators: CatalogOperator[]
   fragments: CatalogFragment[]
-  // The literal node, which an editor draws like an operator
-  literal: CatalogLiteral
   // Anything getCatalog() skipped, empty when nothing was wrong
   issues: CatalogIssue[]
 }
