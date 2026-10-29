@@ -60,6 +60,8 @@ And each parameter adds:
 - **`seed`**: what an editor should fill in when someone adds the parameter: either the listing's seed, or a generic one for its type ([Type seeds](#type-seeds)) — every parameter has one.
 - **`sample`**: a realistic value the parameter could have, from the listing ([Writing a listing](/custom-operators/presenting/#writing-a-listing)), absent where it has none.
 
+The list ends with [`literal`](/reference/operators/#op-literal), which `getOperators()` doesn't report, since FigTree's compiler handles it itself, but which an external tool should treat like any other.
+
 [Joining listings to an instance](/custom-operators/presenting/#joining-listings-to-an-instance) shows a whole entry, for a custom operator.
 
 ### What a null does at each parameter
@@ -73,19 +75,13 @@ Every parameter carries its [null behaviour](/concepts/evaluation/#null-handling
 | `'omit'`       | counts as leaving the parameter out, so its default applies, if it has one                           |
 | `'error'`      | is a type error                                                                                      |
 
-### `literal`
-
-[`literal`](/reference/operators/#op-literal) isn't an operator, but an editor draws it as a node, so the catalog has an entry for it: a display name, colours, `metadata`, and its one parameter, `value`. A listing map can change it, under the key `literal`, like any operator's.
-
 ## Fragments
 
-{/* STAND-IN: Carl to rewrite */}
+A fragment's entry is built the same way as an operator's, from what `getFragments()` reports about it and its listing, with a few small differences:
 
-A fragment's entry is built the same way as an operator's, from what `getFragments()` reports about it and its listing, with a few differences:
-
-- **Its listing** starts from the one on its definition ([Fragments in an editor](/guides/fragments/#fragments-in-an-editor)), and any maps in `listings` are merged over it, so a host can relabel a fragment it didn't write.
-- **`colors`**: the listing's, or `fragmentColors` where it has none. A fragment has no category, so every fragment without colours of its own shares the one pair, and fragments read as one kind in an editor.
-- **Its parameters** have a `description`, `seed` and `sample`, and a null behaviour like an operator's, but no `nullPolicy`: a fragment parameter's type, and whether it's required, decide what a `null` does.
+- Its listing starts from the one on its definition ([Fragments in an editor](/guides/fragments/#fragments-in-an-editor)), and any maps in `listings` are merged over it, so a host can relabel a fragment it didn't write.
+- Its `colors` are the listing's, or the package's default pair, [`fragmentColors`](/api/exports/#fig-tree-evaluatorcatalog), where it has none.
+- Its parameters have a `description`, `seed` and `sample`, and a null behaviour like an operator's, but no `nullPolicy`: a fragment parameter's type, and whether it's required, decide what a `null` does.
 
 In this example, a map gives `priceWithTax` a display name and a seed, over a listing with only a description:
 
@@ -118,20 +114,18 @@ const priceWithTax = catalog.fragments.find((fragment) => fragment.name === 'pri
 
 priceWithTax?.displayName // => 'Price with GST'
 priceWithTax?.description // => 'A price with a percentage sales tax added, rounded to the cent'
-priceWithTax?.colors // => { background: '#38607e', text: '#ebdf5a' }, from fragmentColors
+priceWithTax?.colors // => { background: '#38607e', text: '#ebdf5a' } (default fragmentColors)
 priceWithTax?.parameters.amount.seed // => 100
 priceWithTax?.parameters.rate.seed // => 1, the generic seed for a number
 ```
 
 ## Combining listings
 
-{/* STAND-IN: Carl to rewrite */}
+The `listings` option of `getCatalog()` takes one listing map, or an array of them, each merged over the ones before. That lets you layer listings from different places. For example, a library of custom operators can export listings for them, and you add your own changes on top.[^merging]
 
-[Presenting your operator](/custom-operators/presenting/#joining-listings-to-an-instance) gives `listings` one map. It also takes an _array_ of maps, each merged over the ones before it, which is how listings from different places combine: a plugin's for its operators, say, and then your own changes on top.
+In this example, a library exports a listing map beside its operators:
 
-In this example, a plugin exports a listing map beside its operators:
-
-```ts title="plugins/geo.ts"
+```ts title="geo-operators.ts"
 import type { ListingMap } from 'fig-tree-evaluator'
 
 export const geoListings: ListingMap = {
@@ -145,7 +139,7 @@ export const geoListings: ListingMap = {
 The host passes it to `getCatalog()`, followed by its own changes:
 
 ```ts title="catalog.ts"
-// @filename: plugins/geo.ts
+// @filename: geo-operators.ts
 import type { ListingMap, ValidatedOperatorDefinition } from 'fig-tree-evaluator'
 export declare const geoOperators: ValidatedOperatorDefinition[]
 export declare const geoListings: ListingMap
@@ -153,14 +147,14 @@ export declare const geoListings: ListingMap
 // ---cut---
 import { FigTree, coreOperators } from 'fig-tree-evaluator'
 import { getCatalog } from 'fig-tree-evaluator/catalog'
-import { geoOperators, geoListings } from './plugins/geo'
+import { geoOperators, geoListings } from './geo-operators'
 
 const fig = new FigTree({ operators: [coreOperators, geoOperators] })
 
 const catalog = getCatalog(fig, {
   listings: [
     geoListings,
-    // Merged over the plugin's listings and the package's own
+    // Merged over the library's listings and the package's own
     {
       plus: { displayName: 'Add' },
       distance: { description: 'Straight-line distance between two places' },
@@ -172,30 +166,31 @@ const plus = catalog.operators.find((operator) => operator.name === 'plus')
 const distance = catalog.operators.find((operator) => operator.name === 'distance')
 
 plus?.displayName // => 'Add'
-distance?.displayName // => 'Distance', from the plugin
+distance?.displayName // => 'Distance', from the library
 distance?.description // => 'Straight-line distance between two places'
 ```
 
-Each map is merged over the ones before it, starting from the package's own listing for a core operator, or the definition's for a fragment, field by field:
+Here's how each field is merged:
 
-| Field                                       | Merged                                                         |
-| ------------------------------------------- | -------------------------------------------------------------- |
-| `displayName`, `description`, `docUrl`      | replaced                                                       |
-| `colors`                                    | replaced as a whole, so a map gives both colours or neither    |
-| `seeds`, `samples`, `parameterDescriptions` | per parameter, so a map can change one and keep the rest       |
-| `metadata`                                  | per key                                                        |
+| Field                                       | A later map's value…                                                    |
+| ------------------------------------------- | ----------------------------------------------------------------------- |
+| `displayName`, `description`, `docUrl`      | replaces the earlier one                                                |
+| `colors`                                    | replaces the earlier pair whole, so a map gives both colours or neither |
+| `seeds`, `samples`, `parameterDescriptions` | is merged in per parameter, so a map can change one and keep the rest   |
+| `metadata`                                  | is merged in per key                                                    |
 
 So a map holds only what it changes. A field set to `undefined` changes nothing, rather than removing what's beneath it.
 
-A map's keys are operators' names, never their aliases, so `plus` rather than `+`. A key that doesn't name an operator or fragment the instance has is ignored, so a plugin's map can list all its operators, even where a host leaves some of them out with [`operatorSet()`](/guides/setup/#choosing-operators).
-
 <Callout kind="tip" title="Publishing operators of your own">
-  If you publish operators for other apps to use, export a listing map beside them, keyed by operator name, as `geoListings` is here. A host passes it first in `listings`, and their own changes after it.
+  If you publish operators for other apps to use, export a listing map beside them.
+  {/* TO-DO: point to Carl's published library of custom operators once it's available */}
 </Callout>
+
+[^merging]: That's better than spreading the maps together yourself, since a listing isn't merged as one flat object. A spread would let a later map's `seeds` replace an earlier one's whole, for example, where `getCatalog()` merges them parameter by parameter.
 
 ## Overriding categories
 
-Categories have listings too, from the package's `categoryListings`: a display name, a place in the order, and colours. The `categories` option changes them. It takes one map or an array of them, merged in order like `listings`, with each field replaced:
+Categories have listings too, from the package's `categoryListings`, though you won't need to reach for them too often. The `categories` option changes them. It takes a map or an array of them, merged in order just like `listings`, with each field replaced:
 
 ```ts title="categories.ts"
 import { getCatalog } from 'fig-tree-evaluator/catalog'
@@ -203,8 +198,9 @@ import { getCatalog } from 'fig-tree-evaluator/catalog'
 const catalog = getCatalog(fig, {
   categories: {
     array: { displayName: 'Lists' },
-    // The package's orders start at 0, so this goes first
+    // The package's orders start at 0, so this puts it first
     data: { order: -1 },
+    // A category can also take colors: { background, text }
   },
 })
 
@@ -213,8 +209,8 @@ catalog.categories.map((category) => category.displayName)
 //     'Strings', 'Lists', 'Other']
 ```
 
-<Callout kind="caution" title="Category colours don't reach the core operators">
-  Every core operator has colours of its own, so a category's `colors` changes only its heading, and any operator whose listing has none, such as a plugin's. To recolour a core operator, give it `colors` in `listings`.
+<Callout kind="note" title="Category colours are just fallbacks">
+  An operator takes its category's `colors` only where its own listing has none, so they can provide an overall fallback for custom operators that lack colour listings.
 </Callout>
 
 ## Type seeds
@@ -225,26 +221,28 @@ A parameter whose listing has no seed starts from `typeSeeds`, by its type:
 - **A union of types**, such as `['string', 'null']`, starts from the first type that isn't `null`.
 - **Any other type** starts from its own entry:
 
-| Type                | Seed           |                                                    |
-| ------------------- | -------------- | -------------------------------------------------- |
-| `string`, `any`     | `'Replace me'` | visible text, where `null` would show as nothing   |
-| `number`, `integer` | `1`            |                                                    |
+| Type                | Seed           |                                                         |
+| ------------------- | -------------- | ------------------------------------------------------- |
+| `string`, `any`     | `'Replace me'` | visible text, where `null` would show as nothing        |
+| `number`, `integer` | `1`            |                                                         |
 | `boolean`           | `true`         | since a flag is off by default, and added to turn it on |
-| `array`             | `[]`           |                                                    |
-| `object`            | `{}`           |                                                    |
-| `null`              | `null`         |                                                    |
+| `array`             | `[]`           |                                                         |
+| `object`            | `{}`           |                                                         |
+| `null`              | `null`         |                                                         |
 
-To start a parameter somewhere more useful, give it a seed in its listing ([Writing a listing](/custom-operators/presenting/#writing-a-listing)).
+To start a parameter with something more fitting, give it a seed in [its listing](/custom-operators/presenting/#writing-a-listing).
 
 ## Malformed input
 
-`getCatalog()` never throws over what it's given. Listings often come from places the host doesn't control, such as a plugin or a database of fragments, and one bad value shouldn't break a whole editor. So anything of the wrong type is skipped, and reported in `issues`.
+`getCatalog()` never throws over what it's given. Listings often come from places the host doesn't control, such as a library or a database of fragments, and one bad value shouldn't break a whole editor. So anything of the wrong type is skipped, and reported in `issues`.
 
 In this example, listings stored as JSON have two mistakes:
 
 ```json5
 {
+  // A displayName must be a string
   plus: { displayName: 42, description: 'Adds numbers together' },
+  // A listing must be an object, not just a display name
   subtract: 'Take away',
 }
 ```
@@ -272,17 +270,10 @@ Here's `catalog.issues`:
 - **A map or a listing that isn't an object** is skipped whole.
 - **A field of the wrong type** is skipped alone, and the rest of its listing is kept. `colors` needs both its colours as strings, or the pair is skipped.
 - **An unknown key in a listing** is ignored, without an issue, so a misspelt field such as `colours` does nothing.
-- **An unknown option** is reported, since a listing map passed in place of the options, as in `getCatalog(fig, { plus: … })`, would otherwise do nothing.
+- **An incompatible options object** (such as a listing at the root rather than in the `listings` field) is reported.
 
 An issue's `path` follows what you wrote: a field in the second map of an array is at `['listings', 1, 'plus', 'displayName']`, and one in a fragment definition's own listing at `['fragments', 'priceWithTax', 'listing', 'displayName']`.
 
 ## The package's data
 
-`fig-tree-evaluator/catalog` also exports the data `getCatalog()` starts from, for a tool that needs it without an instance, such as a docs generator listing every operator in the package:
-
-- **`operatorListings`**: the listing for each core and I/O operator, and for `literal`, by name.
-- **`categoryListings`**: the listing for each category.
-- **`fragmentColors`**: the colours of a fragment whose listing has none.
-- **`typeSeeds`**: the seed for each type.
-
-Their types are in [Other exports](/api/exports/#fig-tree-evaluatorcatalog).
+`fig-tree-evaluator/catalog` also exports the raw data that `getCatalog()` uses — see [Other exports](/api/exports/#fig-tree-evaluatorcatalog) for the details.
