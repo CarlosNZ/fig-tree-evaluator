@@ -66,49 +66,14 @@ And each parameter adds:
 
 ### What a null does at each parameter
 
-Every parameter carries its **null behaviour**, which FigTree works out when the operator is defined: `nullBehavior` for a `null` in place of the parameter, and, wherever its type allows an array or object, `elementNullBehavior` for a `null` inside it. A fragment's parameters have them too. An editor should show these rather than `nullPolicy`, which is only what the definition declares, and only where the type includes `null`. The operator reference's [Null column](/reference/operators/#what-a-null-does) is built from them, in the same words:
+Every parameter carries its [null behaviour](/concepts/evaluation/#null-handling), which FigTree works out when the operator is defined: `nullBehavior` for a `null` in place of the parameter, and, wherever its type allows an array or object, `elementNullBehavior` for a `null` inside it. A fragment's parameters have them too. An editor should show these rather than `nullPolicy`, which is only what the definition declares, and only where the type includes `null`. The operator reference's [Null behaviour column](/reference/operators/#what-a-null-does) is built from them, in the same words:
 
 | `nullBehavior` | A `null` here…                                                                                       |
 | -------------- | ---------------------------------------------------------------------------------------------------- |
 | `'propagate'`  | makes the whole node return `null`, and the operator doesn't run                                     |
 | `'accept'`     | reaches the operator, which decides what it means                                                    |
-| `'omit'`       | counts as leaving the parameter out, so its default applies; at a `replacesNullAt` parameter, it replaces nothing |
+| `'omit'`       | counts as leaving the parameter out, so its default applies, if it has one                           |
 | `'error'`      | is a type error                                                                                      |
-
-[How the null behaviour is worked out](/custom-operators/parameters/#how-the-null-behaviour-is-worked-out) has the rules. Here's `plus`'s `values`:
-
-```json5
-{
-  type: 'array',
-  required: true,
-  evaluationMode: 'eager',
-  truthiness: false,
-  elementNullPolicy: 'propagate',
-  constraints: { homogeneous: ['number', 'string', 'array', 'object'] },
-  nullBehavior: 'error', // values: null is a type error
-  elementNullBehavior: 'propagate', // A null among the values propagates
-  seed: [1, 2, 3],
-  description: 'The values to add, all of the same type',
-}
-```
-
-Both describe a `null` with nothing given to replace it, such as `plus`'s `nullValueDefault`.
-
-For one core parameter, `convert`'s `value`, the behaviour depends on another parameter: a `null` converted `to: 'boolean'` reaches the operator, and propagates otherwise. Its `nullBehavior` is the _only_ kind that isn't a string — a table, by the value of the parameter it depends on:
-
-```json5
-{
-  selector: 'to',
-  table: [
-    { value: 'number', behavior: 'propagate' },
-    { value: 'string', behavior: 'propagate' },
-    { value: 'boolean', behavior: 'accept' },
-    { value: 'array', behavior: 'propagate' },
-  ],
-}
-```
-
-A custom operator can declare its null policy the same way ([A policy that depends on another parameter](/custom-operators/parameters/#a-policy-that-depends-on-another-parameter)), so a tool reading `nullBehavior` should expect the table from any operator.
 
 ### `literal`
 
