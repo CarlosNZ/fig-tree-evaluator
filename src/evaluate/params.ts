@@ -268,9 +268,8 @@ const settledHandle = (value: unknown): LazyValue => ({
  *
  * Null policy is the one layer that cannot come along: `propagate` means
  * "resolve the node without running the body", and by the time a handle is
- * demanded the body is already running. Both readings coincide in practice
- * — every holder of a lazy parameter hands a null straight back — so the
- * setting is inert here rather than an error (ruled September 2026).
+ * demanded the body is already running. So `accept` is the only policy a
+ * lazily delivered parameter can declare (defineOperator).
  */
 const demand = (
   supplied: CompiledNode,
