@@ -82,7 +82,7 @@ The `evaluate` function of `formatNumber` is a simple one-liner. It never checks
 Before calling `evaluate`, FigTree has already (among other things):
 
 - **Checked the types:** each value against its parameter's declared type. A value of the wrong type is a `type-check` error, whether it's written into the expression (static) or computed as it runs (runtime).
-- **Handled `null`:** the `value` parameter is declared as `['number', 'null']`, so it accepts `null`, and by default a `null` there is passed on — the node returns `null` without calling `evaluate` ([Null policy](/custom-operators/parameters/#null-policy)).
+- **Handled `null`:** the `value` parameter is declared as `['number', 'null']`, so `null` is allowed there, and by default it propagates — the node returns `null` without calling `evaluate` ([Null policy](/custom-operators/parameters/#null-policy)).
 - **Filled in defaults:** a parameter the node omits takes the definition's `default`, unless the instance sets a default of its own, such as `operatorDefaults: { formatNumber: { locale: 'de-DE' } }` ([Defaults for an operator](/guides/setup/#defaults-for-an-operator)).
 
 For example, a population that isn't a number fails before `evaluate` is called, which a fallback catches like any other failure:
@@ -166,7 +166,7 @@ const formatNumber = defineOperator({
   category: 'string',
   parameters: {
     // A null policy, on a type without null
-    value: { type: 'number', nullPolicy: 'value' },
+    value: { type: 'number', nullPolicy: 'accept' },
     locale: { type: 'string', default: 'en-NZ' },
   },
   // Oops, typo -- doesn't match declared parameter name

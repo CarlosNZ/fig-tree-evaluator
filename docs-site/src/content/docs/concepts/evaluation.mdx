@@ -192,17 +192,17 @@ Here `shipping` is missing, and each operator that reads it does something diffe
 
 Each of these is the sensible reading for its operator. A total with an unknown shipping cost can't be worked out: treating the `null` as `0` would give a total that looks right but isn't, so `plus` gives `null` too. A label can still be written, just without the amount. And "is the shipping known?" has a definite answer: no.
 
-That rule is a parameter's **null policy**, shown for every parameter in the [operator reference](/reference/operators/). There are four:
+That rule is a parameter's **null behaviour**, shown for every parameter in the [operator reference](/reference/operators/). There are four:
 
-- **Passed on:** if a parameter with this policy receives `null`, the whole node gives `null`, and its operator doesn't run. This is the usual policy for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`. For a list of values, such as `plus`'s, one `null` among them is enough.
-- **Used as a value:** where `null` means something to the operator. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstNonNull` skips it, and a condition reads it as false.
-- **Default:** for an optional setting, such as the number of decimal places to `round` to, `null` means the setting wasn't given, so its default applies, as in `rounded` above.
-- **A type error:** where nothing sensible can be done with it, such as the `url` of an `http` request.
+- **Propagate:** if a parameter with this behaviour receives `null`, the whole node returns `null`, and its operator doesn't run. This is the usual behaviour for values an operator computes with, as in arithmetic, string operators and comparisons such as `greaterThan`. For a list of values, such as `plus`'s, one `null` among them is enough.
+- **Accept:** the operator receives the `null`, where it means something to it. `equal` and `notEqual` compare it like any other value, `buildString` writes it as nothing, `firstNonNull` skips it, and a condition reads it as false.
+- **Omit:** for an optional setting, such as the number of decimal places to `round` to, `null` means the setting wasn't given, so its default applies, as in `rounded` above.
+- **Error:** where nothing sensible can be done with it, such as the `url` of an `http` request, a `null` is a type error.
 
-A `null` that's passed on can still steer a decision: if `age` is missing, `{ $greaterThan: ['$data.age', 18] }` gives `null`, and an `if` reads that as false.
+A `null` that propagates can still steer a decision: if `age` is missing, `{ $greaterThan: ['$data.age', 18] }` gives `null`, and an `if` reads that as false.
 
 <Callout kind="caution" title="Missing by mistake">
-  A missing value and a stored `null` look the same, so a value missing by mistake, such as a misspelt path, is passed on just as quietly as one that's meant to be missing. When a missing value _should_ be an error instead, [Data references](/concepts/data/#missing-values) shows how to make it one.
+  A missing value and a stored `null` look the same, so a value missing by mistake, such as a misspelt path, propagates just as quietly as one that's meant to be missing. When a missing value _should_ be an error instead, [Data references](/concepts/data/#missing-values) shows how to make it one.
 </Callout>
 
 ## When evaluation fails

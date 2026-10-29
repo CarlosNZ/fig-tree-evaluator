@@ -30,8 +30,9 @@ const literal: CatalogOperator = {
       required: true,
       evaluationMode: 'literal',
       truthiness: false,
-      nullPolicy: 'value',
-      nullOutcome: 'value',
+      nullPolicy: 'accept',
+      nullBehavior: 'accept',
+      elementNullBehavior: 'accept',
       seed: null,
       description:
         'Returned exactly as written, including any keys prefixed with $ and $data strings inside it',

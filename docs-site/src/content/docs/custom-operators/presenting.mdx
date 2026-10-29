@@ -105,7 +105,7 @@ Here's the `formatNumber` entry in the catalog, with the listing combined with w
       evaluationMode: 'eager',
       truthiness: false,
       nullPolicy: 'propagate',
-      nullOutcome: 'propagate',
+      nullBehavior: 'propagate',
       seed: 1, // No seed in the listing, so the generic one for a number
       description: 'The number to format',
       sample: 83200000,
@@ -115,9 +115,8 @@ Here's the `formatNumber` entry in the catalog, with the listing combined with w
       required: false,
       evaluationMode: 'eager',
       truthiness: false,
-      nullPolicy: 'propagate',
       default: 'en-NZ',
-      nullOutcome: 'unset',
+      nullBehavior: 'omit', // No nullPolicy, since the type has no null
       seed: 'de-DE',
       description: "The locale to format for, such as 'de-DE' or 'en-IN'",
       sample: 'en-IN',

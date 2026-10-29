@@ -184,26 +184,26 @@ const parameters = {
 
 ## Null policy
 
-[Null handling](/concepts/evaluation/#null-handling) showed the four things a `null` can do at a parameter. You choose which of these applies to your operator's parameters, mostly through whether the parameter's type includes `null`:
+[Null handling](/concepts/evaluation/#null-handling) showed the four things a `null` can do at a parameter, its **null behaviour**. You choose which of these applies to your operator's parameters, mostly through whether the parameter's type includes `null`:
 
-| Type includes `null`? | Then                                    | A `null` here…                                                    |
-| --------------------- | --------------------------------------- | ----------------------------------------------------------------- |
-| **Yes**               | `nullPolicy: 'propagate'` (the default) | makes the whole node return `null`                                |
-|                       | `nullPolicy: 'value'`                   | is used as a value                                                |
-| **No**                | the parameter is optional               | is the same as omitting it, so its default applies, if it has one |
-|                       | the parameter is required               | is a type error                                                   |
+| Type includes `null`? | Then                                    | Null behaviour | A `null` here…                                                    |
+| --------------------- | --------------------------------------- | -------------- | ----------------------------------------------------------------- |
+| **Yes**               | `nullPolicy: 'propagate'` (the default) | propagate      | makes the whole node return `null`                                |
+|                       | `nullPolicy: 'accept'`                  | accept         | reaches `evaluate`, which decides what it means                   |
+| **No**                | the parameter is optional               | omit           | is the same as omitting it, so its default applies, if it has one |
+|                       | the parameter is required               | error          | is a type error                                                   |
 
 The `nullPolicy` field is only allowed where the type includes `null`. Anywhere else, a `null` never gets that far, so a `nullPolicy` there is an `invalid-null-policy` error.
 
 <Callout kind="caution" title="'any' includes null">
 
-`'any'` includes `null`, so a parameter of type `'any'` follows the table's first row: a `null` there makes the whole node return `null`. If your operator needs to receive the `null`, declare `nullPolicy: 'value'` as well.
+`'any'` includes `null`, so a parameter of type `'any'` follows the table's first row: a `null` there makes the whole node return `null`. If your operator needs to receive the `null`, declare `nullPolicy: 'accept'` as well.
 
 </Callout>
 
 ### Nulls inside an array or object
 
-A parameter's `nullPolicy` applies to a `null` in place of the whole value. A `null` _inside_ the array or object is just another element, so it reaches `evaluate`, unless a constraint such as `homogeneous` rejects it. To have a `null` element make the whole node return `null`, as one of `plus`'s values does, declare `elementNullPolicy: 'propagate'`. It's allowed where the type is `'array'`, `'object'` or `'any'`.
+A parameter's `nullPolicy` applies to a `null` in place of the whole value. A `null` _inside_ the array or object is just another element, so it reaches `evaluate`, unless a constraint such as `homogeneous` rejects it. To have a `null` element make the whole node return `null`, as one of `plus`'s values does, declare `elementNullPolicy: 'propagate'`. To let `null` elements through a constraint that would reject them, as `equal` does, declare `elementNullPolicy: 'accept'`. Either is allowed wherever the type allows an array or object, `'any'` included.
 
 ```ts
 const parameters = {
@@ -221,7 +221,7 @@ const parameters = {
   value: {
     type: 'any',
     // Called with the value of to, the only parameter with a fixed set
-    nullPolicy: (to: string) => (to === 'boolean' ? 'value' : 'propagate'),
+    nullPolicy: (to: string) => (to === 'boolean' ? 'accept' : 'propagate'),
   },
   to: { type: { literal: ['number', 'string', 'boolean', 'array'] } },
 }
@@ -254,6 +254,24 @@ Either way, `evaluate` never sees the `null`, or the replacing parameter. A repl
 
 - **Optional, with no `default`.** A host that wants a replacement on every node can set one in [`operatorDefaults`](/guides/setup/#defaults-for-an-operator).
 - **`'lazy'`**, so it's only evaluated when there's a `null` to replace.
+- **Of a type without `null`**, since a `null` there means no replacement. Leaving the type out makes it `'any'`, which includes `null`, so give it one.
+
+A computed replacement is checked against the replacing parameter's own type, so one of the wrong type is a `type-check` error that names the replacing parameter, not its target.
+
+### How the null behaviour is worked out
+
+FigTree works out every parameter's null behaviour when the operator is defined, and reports it as `nullBehavior` in [`getOperators()`](/api/figtree/#getoperators-and-getfragments) and the [catalog](/tooling/catalog/). The first rule that fits decides it:
+
+1. **A parameter with `replacesNullAt`:** omit, since a `null` there replaces nothing.
+2. **An iterator's `as`:** error, since the name has to be written out in the expression.
+3. **A type without `null`:** omit, where the parameter is optional and isn't `'lazy'` or `'perElement'`; otherwise error. A lazy value is checked when `evaluate` asks for it, with no default to fall back on.
+4. **Otherwise,** the `nullPolicy`. For a parameter that isn't `'eager'` or `'literal'`, that's always accept, since `evaluate` is already running by the time its value exists, so declaring `'propagate'` there is an `invalid-null-policy` error.
+
+A `null` _inside_ an array or object has its own behaviour, `elementNullBehavior`, wherever the type allows one:
+
+1. **The `elementNullPolicy`**, if there is one.
+2. **Error**, where a `homogeneous` constraint without `'any'`, or an `elementShape`, rules a `null` out.
+3. **Otherwise,** accept.
 
 ## Evaluation modes
 
@@ -272,7 +290,7 @@ defineOperator({
   parameters: {
     amount: { type: ['number', 'null'] },
     currency: { type: 'string', default: 'NZD' },
-    note: { type: ['string', 'null'], nullPolicy: 'value' },
+    note: { type: ['string', 'null'], nullPolicy: 'accept' },
     locale: { type: 'string', required: false },
     showCurrency: { type: 'any', truthiness: true },
   },
@@ -291,7 +309,7 @@ Each declaration gives its parameter's type like this:
   - `'object'`: `Record<string, unknown>`
   - `'any'`: `unknown`
   - a fixed set: a union of its values, such as `'km' | 'mi'`
-- **Under `'propagate'`,** `null` is left out of the type, since `evaluate` never receives it: `amount` is a `number`. With `nullPolicy: 'value'`, it stays: `note` is `string | null`.
+- **Under `'propagate'`,** `null` is left out of the type, since `evaluate` never receives it: `amount` is a `number`. With `nullPolicy: 'accept'`, it stays: `note` is `string | null`.
 - **An optional parameter without a default** is an optional key: `locale?: string`.
 - **`truthiness`** makes it a `boolean`.
 - **A mode other than `'eager'`** gives the type of what's received, such as `LazyValue<T>` ([Lazy and per-element parameters](/custom-operators/lazy-parameters/)).

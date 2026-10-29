@@ -27,32 +27,31 @@ Each operator has its name and alias, a description, a table with a row for each
   - **per element:** evaluated once for every element of the input, which may be many times or none.
   - **stops early:** every element starts at once and, as soon as one decides the answer, the rest are stopped.
   - **literal only:** never evaluated, so it has to be written out in the expression, as an iterator's `as` name is.
-- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match' | 'replace'`, are the only ones allowed. Where the Null column says **passed on**, `null` is accepted too, but isn't shown in the type, since it's only there to be passed on, never used by the operator.
+- **Type:** what the parameter accepts. `array[number | string]` is an array whose elements are _all_ numbers or _all_ strings, and quoted values, such as `'test' | 'extract' | 'match' | 'replace'`, are the only ones allowed. Where the Null behaviour column says **propagate**, `null` is allowed too, but isn't shown in the type, since the operator never receives it.
 - **Presence:** whether the parameter can be left out:
   - **required:** it has to be given, and leaving it out is an error.
   - **optional:** it can be left out, and has no default value.
   - **default:** it can be left out, and the value shown after it is used instead, such as `default 0`.
-- **Null:** what a `null` at this parameter does ([below](#what-a-null-does)).
+- **Null behaviour:** what a `null` at this parameter does ([below](#what-a-null-does)).
 
 **Positional form** shows the order of the parameters when they're given as an array. Where it's only a list, such as `plus`'s `[...values]`, the whole list can also be given as one value, such as `'$data.prices'`. **Single value** shows the form that takes just the first parameter, for an operator that needs no other, and **Returns** is the type of value the operator returns.
 
 ### What a null does
 
-Each parameter has its own rule for a `null` it receives, its null policy ([Null handling](/concepts/evaluation/#null-handling)). The Null column shows it as one of these:
+Each parameter has its own rule for a `null` it receives, its null behaviour ([Null handling](/concepts/evaluation/#null-handling)). The Null behaviour column shows it as one of these:
 
 <div class="fds-null-key">
 
-| Null      | A `null` here…                                                                                                                 |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| passed on | makes the whole node return `null`, and the operator doesn't run                                                               |
-| value     | is used like any other value: `equal` compares it, `firstNonNull` skips it, a condition reads it as false                      |
-| default   | counts as leaving the parameter out, so its default applies                                                                    |
-| error     | is a type error                                                                                                                |
-| —         | is the same as not giving the parameter at all (see [Defaults for null, missing and no match](#defaults-for-null-missing-and-no-match)) |
+| Null behaviour | A `null` here…                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| propagate      | makes the whole node return `null`, and the operator doesn't run                                                                                                                     |
+| accept         | reaches the operator, which uses it like any other value: `equal` compares it, `firstNonNull` skips it, a condition reads it as false                                                |
+| omit           | counts as leaving the parameter out, so its default applies; at a parameter that replaces a `null`, it replaces nothing (see [Defaults for null, missing and no match](#defaults-for-null-missing-and-no-match)) |
+| error          | is a type error                                                                                                                                                                      |
 
 </div>
 
-A parameter that takes an array or object can have two rules: **(each)** for a `null` element, and **(whole)** for a `null` in place of the whole array or object. In `plus`, for example, a `null` among the values is passed on, but `values: null` is an error.
+A parameter that takes an array or object can have two behaviours: **(each)** for a `null` element, and **(whole)** for a `null` in place of the whole array or object. In `plus`, for example, a `null` among the values propagates, but `values: null` is an error. Where the two are the same, the column shows one.
 
 ## Defaults for null, missing and no match
 

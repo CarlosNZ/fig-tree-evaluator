@@ -27,7 +27,7 @@ Operators can declare these evaluation modes for their parameters:
 
 ## What FigTree still does
 
-A handle's value goes through the [same checks](/custom-operators/writing/#what-the-engine-does-for-you) as an eager parameter's. However, they only run when `evaluate` _asks_ for the value. That's also why `nullPolicy: 'propagate'` has no effect on a parameter that arrives as a handle: `evaluate` is already running by the time the value turns out to be `null`.
+A handle's value goes through the [same checks](/custom-operators/writing/#what-the-engine-does-for-you) as an eager parameter's. However, they only run when `evaluate` _asks_ for the value. That's also why a parameter that arrives as a handle always accepts a `null`: `evaluate` is already running by the time the value turns out to be `null`, so declaring `nullPolicy: 'propagate'` there is an `invalid-null-policy` error.
 
 A parameter like `firstNonNull`'s `values` can also be given a whole array from data, as in `{ $firstNonNull: '$data.rates' }`. Its elements are then plain values, but `evaluate` still receives them as handles, so it works the same either way.
 
@@ -105,7 +105,7 @@ const match = defineOperator({
   name: 'match',
   category: 'logic',
   parameters: {
-    value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
+    value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'accept' },
     branches: { type: 'object', evaluationMode: 'lazyEntries' },
     default: { type: 'any', required: false, evaluationMode: 'lazy' },
   },

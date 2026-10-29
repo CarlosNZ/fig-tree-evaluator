@@ -61,25 +61,21 @@ And each parameter adds:
 - **`description`**: its entry in the listing's `parameterDescriptions`.
 - **`seed`**: what an editor should fill in when someone adds the parameter: either the listing's seed, or a generic one for its type ([Type seeds](#type-seeds)) — every parameter has one.
 - **`sample`**: a realistic value the parameter could have, from the listing ([Writing a listing](/custom-operators/presenting/#writing-a-listing)), absent where it has none.
-- **`nullOutcome`**, and **`elementNullOutcome`** for an array or object: what a `null` there does ([below](#what-a-null-does-at-each-parameter)).
 
 [Joining listings to an instance](/custom-operators/presenting/#joining-listings-to-an-instance) shows a whole entry, for a custom operator.
 
 ### What a null does at each parameter
 
-{/* TO-DO: rewrite this section once #287 lands: nullOutcome becomes nullBehavior ('propagate', 'accept', 'omit', 'error'), the column becomes "Null behaviour" in the same words, and the rules live in Declaring parameters' Null policy section, which this links to rather than restates. */}
+Every parameter carries its **null behaviour**, which FigTree works out when the operator is defined: `nullBehavior` for a `null` in place of the parameter, and, wherever its type allows an array or object, `elementNullBehavior` for a `null` inside it. A fragment's parameters have them too. An editor should show these rather than `nullPolicy`, which is only what the definition declares, and only where the type includes `null`. The operator reference's [Null column](/reference/operators/#what-a-null-does) is built from them, in the same words:
 
-Whether a parameter's [`nullPolicy`](/custom-operators/parameters/#null-policy) actually applies depends on its type and whether it's required. `nullOutcome` works that out, as one answer for every parameter, including the cases the table doesn't cover, such as a lazy parameter, which receives a `null` as a value. The operator reference's [Null column](/reference/operators/#what-a-null-does) is built from it:
+| `nullBehavior` | A `null` here…                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------- |
+| `'propagate'`  | makes the whole node return `null`, and the operator doesn't run                                     |
+| `'accept'`     | reaches the operator, which decides what it means                                                    |
+| `'omit'`       | counts as leaving the parameter out, so its default applies; at a `replacesNullAt` parameter, it replaces nothing |
+| `'error'`      | is a type error                                                                                      |
 
-| `nullOutcome` | Null column | A `null` here…                                                                                                      |
-| ------------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
-| `'propagate'` | passed on   | makes the whole node return `null`, and the operator doesn't run                                                    |
-| `'value'`     | value       | reaches the operator like any other value                                                                           |
-| `'unset'`     | default     | counts as leaving the parameter out, so its default applies                                                         |
-| `'error'`     | error       | is a type error                                                                                                     |
-| `'none'`      | —           | is the same as not giving the parameter at all, at a [`…Default` parameter](/reference/operators/#defaults-for-null-missing-and-no-match) |
-
-A parameter that takes only arrays or objects also has an `elementNullOutcome`, for a `null` _inside_ it, from the same list apart from `'unset'` and `'none'`. Here's `plus`'s `values`:
+[How the null behaviour is worked out](/custom-operators/parameters/#how-the-null-behaviour-is-worked-out) has the rules. Here's `plus`'s `values`:
 
 ```json5
 {
@@ -87,33 +83,32 @@ A parameter that takes only arrays or objects also has an `elementNullOutcome`, 
   required: true,
   evaluationMode: 'eager',
   truthiness: false,
-  nullPolicy: 'propagate',
   elementNullPolicy: 'propagate',
   constraints: { homogeneous: ['number', 'string', 'array', 'object'] },
-  nullOutcome: 'error', // values: null is a type error
+  nullBehavior: 'error', // values: null is a type error
+  elementNullBehavior: 'propagate', // A null among the values propagates
   seed: [1, 2, 3],
   description: 'The values to add, all of the same type',
-  elementNullOutcome: 'propagate', // A null among the values is passed on
 }
 ```
 
-Both describe a `null` with no `…Default` parameter given to replace it.
+Both describe a `null` with nothing given to replace it, such as `plus`'s `nullValueDefault`.
 
-For one core parameter, `convert`'s `value`, the outcome depends on another parameter: a `null` converted `to: 'boolean'` reaches the operator, and is passed on otherwise. Its `nullOutcome` is the _only_ kind that isn't a string — a table, by the value of the parameter it depends on:
+For one core parameter, `convert`'s `value`, the behaviour depends on another parameter: a `null` converted `to: 'boolean'` reaches the operator, and propagates otherwise. Its `nullBehavior` is the _only_ kind that isn't a string — a table, by the value of the parameter it depends on:
 
 ```json5
 {
   selector: 'to',
   table: [
-    { value: 'number', policy: 'propagate' },
-    { value: 'string', policy: 'propagate' },
-    { value: 'boolean', policy: 'value' },
-    { value: 'array', policy: 'propagate' },
+    { value: 'number', behavior: 'propagate' },
+    { value: 'string', behavior: 'propagate' },
+    { value: 'boolean', behavior: 'accept' },
+    { value: 'array', behavior: 'propagate' },
   ],
 }
 ```
 
-A custom operator can declare its null policy the same way ([A policy that depends on another parameter](/custom-operators/parameters/#a-policy-that-depends-on-another-parameter)), so a tool reading `nullOutcome` should expect the table from any operator.
+A custom operator can declare its null policy the same way ([A policy that depends on another parameter](/custom-operators/parameters/#a-policy-that-depends-on-another-parameter)), so a tool reading `nullBehavior` should expect the table from any operator.
 
 ### `literal`
 
@@ -127,7 +122,7 @@ A fragment's entry is built the same way as an operator's, from what `getFragmen
 
 - **Its listing** starts from the one on its definition ([Fragments in an editor](/guides/fragments/#fragments-in-an-editor)), and any maps in `listings` are merged over it, so a host can relabel a fragment it didn't write.
 - **`colors`**: the listing's, or `fragmentColors` where it has none. A fragment has no category, so every fragment without colours of its own shares the one pair, and fragments read as one kind in an editor.
-- **Its parameters** have a `description`, `seed` and `sample`, but no null outcomes.
+- **Its parameters** have a `description`, `seed` and `sample`, and a null behaviour like an operator's, but no `nullPolicy`: a fragment parameter's type, and whether it's required, decide what a `null` does.
 
 In this example, a map gives `priceWithTax` a display name and a seed, over a listing with only a description:
 

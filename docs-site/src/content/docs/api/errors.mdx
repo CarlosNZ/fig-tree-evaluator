@@ -225,7 +225,7 @@ Problems with the instance's options or an operator's definition. Each problem i
 | `invalid-definition`  | The code of every error `defineOperator()` throws. Also an issue a more specific code doesn't cover                                        |
 | `invalid-name`        | An operator, parameter or fragment name containing `.`, `[` or `]`. Also a static error for a variable's name                 |
 | `reserved-name`       | A name FigTree keeps for itself, such as an operator named `data` or a parameter named `fallback`                              |
-| `invalid-null-policy` | A parameter's `nullPolicy` that can't apply to it                                                                              |
+| `invalid-null-policy` | A parameter's `nullPolicy` or `elementNullPolicy` that can't apply where it's declared                                         |
 | `duplicate-operator`  | Two operators with the same name or alias                                                                                      |
 | `fragment-cycle`      | A fragment that calls itself, directly or through others                                                                       |
 

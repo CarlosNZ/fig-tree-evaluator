@@ -677,10 +677,11 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`OperatorSelector`](#operatorset)                                    | An operator name or a category, as `only` and `except` take them   |
 | [`OperatorSetOptions`](#operatorset)                                  | What `operatorSet()` takes last                                    |
 | [`ParameterDeclaration`](/custom-operators/parameters/#declaring-parameters), `ParameterDeclarations` | One parameter's declaration, and a definition's set of them |
-| [`ValidatedParameter`](/custom-operators/parameters/#declaring-parameters) | A parameter's declaration, with every default filled in       |
+| [`ValidatedParameter`](/custom-operators/parameters/#declaring-parameters) | A parameter's declaration, with every default and its null behaviour filled in       |
 | [`OperatorCategory`](#operator_categories)                            | One of `OPERATOR_CATEGORIES`                                       |
 | [`EvaluationMode`](/custom-operators/parameters/#evaluation-modes)    | How a parameter's value is delivered to the body                   |
-| [`NullPolicy`](/custom-operators/parameters/#null-policy), `NullPolicyValue`, `ConditionalNullPolicy`, `CompiledNullPolicy` | What a `null` does at a parameter, as declared and as reported |
+| [`NullPolicy`](/custom-operators/parameters/#null-policy), `NullPolicyValue`, `ConditionalNullPolicy`, `CompiledNullPolicy` | A parameter's null policy, as declared and as reported |
+| [`NullBehavior`](/custom-operators/parameters/#how-the-null-behaviour-is-worked-out), `ConditionalNullBehavior` | What a `null` actually does at a parameter |
 | [`OperatorEvaluate`](/custom-operators/evaluate/)                     | The `evaluate` body                                                |
 | [`OperatorValidate`](/custom-operators/validate/#the-validate-hook)   | The `validate` hook                                                |
 | [`ValidateFinding`](/custom-operators/validate/#findings)             | What the hook reports                                              |
@@ -744,7 +745,6 @@ Every public type is exported from `fig-tree-evaluator`, including those for the
 | [`Catalog`](/tooling/catalog/#getcatalog), `CatalogCategory`, `CatalogOperator`, `CatalogOperatorParameter`, `CatalogFragment`, `CatalogFragmentParameter`, `CatalogLiteral`, `CatalogIssue` | What `getCatalog()` returns, and its parts |
 | [`CatalogOptions`](/tooling/catalog/#getcatalog), `CategoryOverrides`           | What `getCatalog()` takes                                   |
 | [`Listing`](/custom-operators/presenting/#writing-a-listing), `ListingMap`, `ColorPair`, `CategoryListing`, `CategoryListingMap` | How operators, fragments and categories are presented |
-| [`NullOutcome`](/tooling/catalog/#getcatalog)                                 | What a `null` does at a parameter, in the catalog           |
 | [`TypeSeeds`](/tooling/catalog/#type-seeds)                                   | A starting value for each type                              |
 | [`Registry`](/tooling/format/#tocanonical-and-toshorthand)                    | What the conversions read from an instance                  |
 | [`Spelling`](/tooling/format/#tocanonical-and-toshorthand), `NameOptions`, `CanonicalOptions`, `ShorthandOptions` | The conversions' options |

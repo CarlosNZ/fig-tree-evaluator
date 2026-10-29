@@ -9,9 +9,9 @@ import type { CollectionEntry, render } from 'astro:content'
 import {
   EvaluationData,
   type CatalogOperatorParameter,
-  type CompiledNullPolicy,
+  type ConditionalNullBehavior,
   type ExpectedType,
-  type NullOutcome,
+  type NullBehavior,
   type NullPolicyValue,
   type ParameterInfo,
 } from 'fig-tree-evaluator'
@@ -42,13 +42,13 @@ const formatType = (type: ExpectedType): string => {
 }
 
 /**
- * The parameter's type as the reference shows it. Where a `null` is passed
- * on, the type's `null` only lets it through to be passed on, so it's left
- * out: the Null column already says what a `null` does.
+ * The parameter's type as the reference shows it. Where a `null`
+ * propagates, the type's `null` only lets it through to propagate, so it's
+ * left out: the Null behaviour column already says what a `null` does.
  */
 const paramType = (p: CatalogOperatorParameter): string => {
   const type = formatType(
-    p.nullOutcome === 'propagate' && Array.isArray(p.type)
+    p.nullBehavior === 'propagate' && Array.isArray(p.type)
       ? p.type.filter((member) => member !== 'null')
       : p.type
   )
@@ -77,68 +77,67 @@ interface NullTag {
 }
 
 /**
- * What a `null` at a parameter does (the catalog's `nullOutcome`), as the
+ * What a `null` at a parameter does (the catalog's `nullBehavior`), as the
  * reference words it, and the fuller explanation its tooltip gives.
  */
-const nullOutcomes: Record<NullOutcome, NullTag> = {
+const nullBehaviors: Record<NullBehavior, NullTag> = {
   propagate: {
-    label: 'passed on',
+    label: 'propagate',
     title: 'A null here makes the whole node null, and the operator doesn’t run',
   },
-  value: { label: 'value', title: 'The operator receives the null and uses it as a value' },
-  unset: {
-    label: 'default',
+  accept: { label: 'accept', title: 'The operator receives the null and decides what it means' },
+  omit: {
+    label: 'omit',
     title: 'A null here counts as leaving the parameter out, so its default applies',
   },
   error: { label: 'error', title: 'A null here is a type error' },
-  none: {
-    label: '—',
-    title: 'A null here replaces nothing: what the parameter it fills in for does applies',
-  },
 }
 
 /** The same for each element or entry of a list or object. */
-const elementOutcomes: Record<
-  NonNullable<CatalogOperatorParameter['elementNullOutcome']>,
+const elementBehaviors: Record<
+  NonNullable<CatalogOperatorParameter['elementNullBehavior']>,
   NullTag
 > = {
   propagate: {
-    label: 'passed on (each)',
+    label: 'propagate (each)',
     title: 'A null element makes the whole node null, and the operator doesn’t run',
   },
-  value: { label: 'value (each)', title: 'The operator receives a null element as a value' },
+  accept: { label: 'accept (each)', title: 'The operator receives a null element as it is' },
   error: { label: 'error (each)', title: 'A null element is a type error' },
 }
 
 /**
- * A policy that depends on another parameter: the outcome most of its
+ * A behaviour that depends on another parameter: the one most of its
  * values share reads as "otherwise", and the rest name their values.
  */
-const conditionalTags = ({ selector, table }: CompiledNullPolicy): NullTag[] => {
-  const byOutcome = new Map<NullPolicyValue, string[]>()
-  for (const { value, policy } of table)
-    byOutcome.set(policy, [...(byOutcome.get(policy) ?? []), toJson5(value)])
-  const [[otherwise], ...exceptions] = [...byOutcome].sort((a, b) => b[1].length - a[1].length)
-  if (exceptions.length === 0) return [nullOutcomes[otherwise]]
+const conditionalTags = ({ selector, table }: ConditionalNullBehavior): NullTag[] => {
+  const byBehavior = new Map<NullPolicyValue, string[]>()
+  for (const { value, behavior } of table)
+    byBehavior.set(behavior, [...(byBehavior.get(behavior) ?? []), toJson5(value)])
+  const [[otherwise], ...exceptions] = [...byBehavior].sort((a, b) => b[1].length - a[1].length)
+  if (exceptions.length === 0) return [nullBehaviors[otherwise]]
   return [
-    ...exceptions.map(([outcome, values]) => ({
-      ...nullOutcomes[outcome],
+    ...exceptions.map(([behavior, values]) => ({
+      ...nullBehaviors[behavior],
       after: ` if ${selector} is ${values.join(' or ')}`,
     })),
-    { ...nullOutcomes[otherwise], before: 'otherwise ' },
+    { ...nullBehaviors[otherwise], before: 'otherwise ' },
   ]
 }
 
 /**
- * The parameter's Null cell, a line per tag: a list's or object's elements
- * first, then the whole value's outcome, marked as such beside them.
+ * The parameter's Null behaviour cell, a line per tag: a list's or
+ * object's elements first, then the whole value's behaviour, marked as
+ * such beside them. Where the two are the same, one tag says it for both.
  */
 const nullTags = (p: CatalogOperatorParameter): NullTag[] => {
   const whole =
-    typeof p.nullOutcome === 'string' ? [nullOutcomes[p.nullOutcome]] : conditionalTags(p.nullOutcome)
-  if (p.elementNullOutcome === undefined) return whole
+    typeof p.nullBehavior === 'string'
+      ? [nullBehaviors[p.nullBehavior]]
+      : conditionalTags(p.nullBehavior)
+  if (p.elementNullBehavior === undefined || p.elementNullBehavior === p.nullBehavior) return whole
   return [
-    elementOutcomes[p.elementNullOutcome],
+    elementBehaviors[p.elementNullBehavior],
     ...whole.map((tag) => ({ ...tag, after: ' (whole)' })),
   ]
 }
@@ -235,10 +234,10 @@ const singleValueForm = (() => {
           <th>Type</th>
           <th>Presence</th>
           <th>
-            Null<a
+            Null behaviour<a
               class="fds-op-key"
               href="/reference/operators/#what-a-null-does"
-              title="What the Null labels mean">?</a
+              title="What the Null behaviour labels mean">?</a
             >
           </th>
           <th>Description</th>

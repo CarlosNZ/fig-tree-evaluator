@@ -413,7 +413,7 @@ interface FragmentInfo {
   // As written
   listing?: Listing
   metadata?: Record<string, unknown>
-  // With required and any default filled in
+  // With required, any default and the null behaviour filled in
   parameters: Record<string, FragmentParameter>
   // The type the body returns, from its root
   returns: ExpectedType
@@ -430,6 +430,7 @@ interface FragmentInfo {
 
 - `hostDefault` and `hostFallback` are present only where `operatorDefaults` sets them, and `null` is a value they can have, so test whether the key is there, not what its value is. They never replace the definition's own `default`, so a tool can tell the two apart.
 - An operator's results are cached on this instance when `cache` is `true` and `hostNoCache` isn't.
+- Each parameter's `nullBehavior` says what a `null` there does, and `elementNullBehavior` what a `null` inside it does, a fragment's parameters included ([How the null behaviour is worked out](/custom-operators/parameters/#how-the-null-behaviour-is-worked-out)). Its `nullPolicy` is present only where the type includes `null`, the only place one can be declared.
 - A fragment's `returns` is worked out when it's registered, from the root of its body: an operator's declared `returns`, a called fragment's `returns`, a constant's own type, `array` or `object` for a container, and `any` for a reference.
 - A fragment's `warnings` are reported nowhere else: registration throws only on errors, and `validate()` on an expression that calls the fragment doesn't repeat them.
 
