@@ -9,7 +9,7 @@ import Callout from '../../../components/Callout.astro'
 import Expression from '../../../components/Expression.astro'
 import Playground from '../../../components/playground/Playground.tsx'
 
-The examples on this site are written in _shorthand_ — using `$`-prefixed keys for operators. Each node also has a _canonical_ form (the playgrounds call it _full_), which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:
+The examples on this site are written in _shorthand_ — using `$`-prefixed keys for operators. Each node also has a _canonical_ form, which drops the `$` prefix in favour of an `operator` key, and keeps the parameters in the node alongside it, as in:
 
 ```json5
 {
@@ -121,7 +121,7 @@ toReference({ $get: 'user.name' }) // => '$d.user.name'
 
 The [`/format`](/tooling/format/) page has their options, such as named parameters rather than positional ones.
 
-In the playgrounds on this site, open the editor and hover over the top right of a node to see these conversions offered, such as **To shorthand** and **To full**. There's also a `{}` button beside each reference, which turns it into a full `get` node, and **To reference** turns it back.
+In the playgrounds on this site, open the editor and hover over the top right of a node to see these conversions offered, such as **To shorthand** and **To canonical**. There's also a `{}` button beside each reference, which turns it into a full `get` node, and **To reference** turns it back.
 
 Have a play with this one:
 

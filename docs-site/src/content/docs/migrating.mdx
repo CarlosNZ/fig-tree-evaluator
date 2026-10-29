@@ -25,6 +25,8 @@ Update the package, convert your expressions, review the converter's report, the
 
 `migrateV2Expression()`: converting one expression, what it takes and what it returns. `migrateV2Fragments()`: converting a v2 instance's fragments. Running the converter over a store of expressions in bulk, and checking its output, including comparing v2 and v3 results for the same inputs.
 
+{/* NOTE (from fig-tree-evaluator/format): the converter writes canonical v3 throughout. For shorthand output, pass its result through `toShorthand()`: `toShorthand(migrateV2Expression(expression).expression, fig)`, with `fig` the v3 instance (it reads the operators' positions from it). Link to /tooling/format/#tocanonical-and-toshorthand. */}
+
 ## The converter's report
 
 The issues it returns: `non-convertible`, `intentional-semantic-change` and `lossy-default`, and what to do with each. What it can't rewrite, and why. The changes it makes without raising an issue.
