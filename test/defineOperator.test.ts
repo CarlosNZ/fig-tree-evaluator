@@ -241,7 +241,7 @@ describe('defineOperator — a default meets its constraints as a value does', (
   it('null elements under an element null policy are the policy’s', () => {
     const values = {
       type: 'array',
-      elementNullPolicy: 'value',
+      elementNullPolicy: 'accept',
       constraints: { length: 2, homogeneous: ['number'] },
     }
     expect(() => withValues({ ...values, default: [1, null] })).not.toThrow()

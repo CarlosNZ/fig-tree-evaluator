@@ -90,7 +90,8 @@ import type {
   // The subpaths' shapes, kept at the root so the subpaths stay small
   Listing, ListingMap, ColorPair, CategoryListing, CategoryListingMap, CategoryOverrides,
   TypeSeeds, CatalogOptions, Catalog, CatalogCategory, CatalogOperator, CatalogOperatorParameter,
-  CatalogFragment, CatalogFragmentParameter, CatalogLiteral, CatalogIssue, NullOutcome,
+  CatalogFragment, CatalogFragmentParameter, CatalogLiteral, CatalogIssue, NullBehavior,
+  ConditionalNullBehavior,
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
   ObjectClass, PositionalLayout, PositionalShape, ReferenceRecognition, ReferenceNamespace,

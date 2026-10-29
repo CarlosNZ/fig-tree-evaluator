@@ -21,7 +21,7 @@ const allEqual = (values: unknown[], caseInsensitive: boolean): boolean => {
 const equalityParameters = {
   values: {
     type: 'array',
-    elementNullPolicy: 'value',
+    elementNullPolicy: 'accept',
   },
   caseInsensitive: {
     type: 'boolean',

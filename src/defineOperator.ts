@@ -60,7 +60,7 @@ const EVALUATION_MODES: ReadonlySet<string> = new Set([
  */
 const CATEGORIES: ReadonlySet<string> = new Set(OPERATOR_CATEGORIES)
 
-const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'value'])
+const NULL_POLICY_VALUES: ReadonlySet<string> = new Set(['propagate', 'accept'])
 
 type ReportIssue = (code: string, message: string, path: Path, parameter?: string) => void
 
@@ -354,7 +354,7 @@ export function defineOperator(
       if (typeof policy !== 'function' && !NULL_POLICY_VALUES.has(policy as string))
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'nullPolicy' must be 'propagate', 'value' or a conditional function`,
+          `'nullPolicy' must be 'propagate', 'accept' or a conditional function`,
           at('nullPolicy'),
           paramName
         )
@@ -369,7 +369,7 @@ export function defineOperator(
       if (d.truthiness === true && policy === 'propagate')
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'truthiness' implies null policy 'value' (null is falsy) — declaring 'propagate' is a conflict`,
+          `'truthiness' implies null policy 'accept' (null is falsy) — declaring 'propagate' is a conflict`,
           at('nullPolicy'),
           paramName
         )
@@ -378,7 +378,7 @@ export function defineOperator(
       if (!NULL_POLICY_VALUES.has(d.elementNullPolicy as string)) {
         addIssue(
           ErrorCodes.invalidNullPolicy,
-          `'elementNullPolicy' must be 'propagate' or 'value' — the conditional form is not admitted here`,
+          `'elementNullPolicy' must be 'propagate' or 'accept' — the conditional form is not admitted here`,
           at('elementNullPolicy'),
           paramName
         )
@@ -597,7 +597,7 @@ const compileNullPolicies = (
       if (typeof policy !== 'string' || !NULL_POLICY_VALUES.has(policy)) {
         report(
           ErrorCodes.invalidNullPolicy,
-          `the conditional 'nullPolicy' must return 'propagate' or 'value' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
+          `the conditional 'nullPolicy' must return 'propagate' or 'accept' for every member — got ${JSON.stringify(policy)} for ${JSON.stringify(member)}`,
           path,
           paramName
         )

@@ -44,7 +44,7 @@ const counter = () => {
   const definition = defineOperator({
     name: 'count',
     category: 'other',
-    parameters: { value: { type: 'any', nullPolicy: 'value' } },
+    parameters: { value: { type: 'any', nullPolicy: 'accept' } },
     positionalParams: ['value'],
     evaluate: ({ value }) => {
       calls.push(value)

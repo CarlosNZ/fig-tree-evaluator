@@ -30,7 +30,7 @@ let compiles = 0
 const counted = defineOperator({
   name: 'counted',
   category: 'other',
-  parameters: { value: { type: 'any', nullPolicy: 'value', default: null } },
+  parameters: { value: { type: 'any', nullPolicy: 'accept', default: null } },
   positionalParams: ['value'],
   validate: () => {
     compiles += 1

@@ -48,7 +48,7 @@ export const match = declareOperator({
   parameters: {
     value: {
       type: ['string', 'number', 'boolean', 'null'],
-      nullPolicy: 'value',
+      nullPolicy: 'accept',
     },
     branches: {
       type: 'object',

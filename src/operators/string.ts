@@ -132,7 +132,7 @@ export const buildString = declareOperator({
     substitutions: {
       type: ['array', 'object'],
       default: [],
-      elementNullPolicy: 'value',
+      elementNullPolicy: 'accept',
     },
     trim: {
       type: 'boolean',
@@ -205,7 +205,7 @@ export const join = declareOperator({
   parameters: {
     values: {
       type: 'array',
-      elementNullPolicy: 'value',
+      elementNullPolicy: 'accept',
     },
     delimiter: {
       type: 'string',
@@ -295,7 +295,7 @@ export const regex = declareOperator({
     noMatchDefault: {
       type: ['string', 'null'],
       default: null,
-      nullPolicy: 'value',
+      nullPolicy: 'accept',
       evaluationMode: 'lazy',
     },
     // JS replacement patterns apply (`$1`, `$<name>`, `$&`, `$$`), so a

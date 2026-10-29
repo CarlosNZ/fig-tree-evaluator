@@ -93,9 +93,9 @@ export const assembleOperator = (
     const compiled = compiledPolicies.get(paramName)
     const declaredPolicy = typeof d.nullPolicy === 'string' ? d.nullPolicy : undefined
     const type = d.type ?? 'any'
-    // truthiness implies 'value' where the type admits null at all
+    // truthiness implies 'accept' where the type admits null at all
     const impliedPolicy: NullPolicyValue =
-      d.truthiness === true && typeNamesNull(type) ? 'value' : 'propagate'
+      d.truthiness === true && typeNamesNull(type) ? 'accept' : 'propagate'
 
     const parameter: ValidatedParameter = {
       type: cloneTypeExpression(type),

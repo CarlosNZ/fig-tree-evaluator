@@ -169,9 +169,10 @@ export type {
   CategoryListingMap,
   CategoryOverrides,
   ColorPair,
+  ConditionalNullBehavior,
   Listing,
   ListingMap,
-  NullOutcome,
+  NullBehavior,
   TypeSeeds,
 } from './catalogTypes'
 

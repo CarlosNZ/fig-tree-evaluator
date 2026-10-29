@@ -25,7 +25,7 @@ export const get = declareOperator({
     },
     from: {
       type: 'any',
-      nullPolicy: 'value',
+      nullPolicy: 'accept',
       default: EvaluationData,
     },
     default: {

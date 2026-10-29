@@ -75,11 +75,11 @@ export const httpDefinition = (client: HttpClient) =>
       query: {
         type: 'object',
         required: false,
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
       },
       body: {
         // NOT `any`: register row 27 needs the type to EXCLUDE null, so a
-        // whole-null body reads as unset. With `any` the engine would
+        // whole-null body reads as omitted. With `any` the engine would
         // deliver `null` and a missing payload would POST a JSON null
         // document — the opposite of the ruling
         type: ['string', 'number', 'boolean', 'array', 'object'],
@@ -88,7 +88,7 @@ export const httpDefinition = (client: HttpClient) =>
       headers: {
         type: 'object',
         required: false,
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
       },
       returnPath: RETURN_PATH,
       timeout: TIMEOUT,
@@ -137,7 +137,7 @@ export const graphQLDefinition = (client: HttpClient) =>
       variables: {
         type: 'object',
         required: false,
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
       },
       url: {
         type: 'string',
@@ -146,7 +146,7 @@ export const graphQLDefinition = (client: HttpClient) =>
       headers: {
         type: 'object',
         required: false,
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
       },
       returnPath: RETURN_PATH,
       timeout: TIMEOUT,
@@ -199,7 +199,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
       values: {
         type: ['array', 'object'],
         required: false,
-        elementNullPolicy: 'value',
+        elementNullPolicy: 'accept',
       },
       shape: {
         type: { literal: ['rows', 'firstRow', 'column', 'firstValue'] },
@@ -208,7 +208,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
       noRowDefault: {
         type: 'any',
         default: null,
-        nullPolicy: 'value',
+        nullPolicy: 'accept',
         evaluationMode: 'lazy',
       },
       timeout: TIMEOUT,
@@ -233,7 +233,7 @@ export const sqlDefinition = (connection: SqlConnection) =>
 /**
  * The likely intent is a forgotten `method: 'post'`; the message says so.
  *
- * A literal `'get'` is linted, and so is an unset `method`, which the hook
+ * A literal `'get'` is linted, and so is an omitted `method`, which the hook
  * receives as its default. A dynamic `method` never reaches the hook, and
  * refusing `{ url, method: '$data.verb', body }` would refuse a legal
  * expression. The runtime check catches every case; this one is the

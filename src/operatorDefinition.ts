@@ -47,7 +47,7 @@ export const OPERATOR_CATEGORIES = [
 
 export type OperatorCategory = (typeof OPERATOR_CATEGORIES)[number]
 
-export type NullPolicyValue = 'propagate' | 'value'
+export type NullPolicyValue = 'propagate' | 'accept'
 
 /**
  * The conditional null-policy form ("The conditional null-policy form" in
@@ -107,7 +107,7 @@ export interface ValidateFinding {
 /**
  * The static validation hook (contract ledger #11). Runs at compile (Phase 3);
  * registration only checks it is a function. `literalParams` holds every
- * value known before evaluation: each literal on the node, and for an unset
+ * value known before evaluation: each literal on the node, and for an omitted
  * parameter its `operatorDefaults` entry, else its declared default. A
  * dynamic value is absent, as is the data `EvaluationData` stands for. The
  * `helpers` toolbox is the frozen primitives object of
@@ -132,7 +132,7 @@ export interface ParameterDeclaration extends TypeDeclaration {
   over?: string
   /**
    * The position is judged by the shared `isTruthy()`; the body receives
-   * actual booleans. Implies null policy `'value'` — declaring a conflicting
+   * actual booleans. Implies null policy `'accept'` — declaring a conflicting
    * `'propagate'` is a registration error.
    */
   truthiness?: boolean
@@ -147,8 +147,8 @@ export interface ParameterDeclaration extends TypeDeclaration {
    */
   elementNullPolicy?: NullPolicyValue
   /**
-   * Marks a `…Default` parameter as the engine-side null replacement for the
-   * named sibling target(s). Requires `evaluationMode: 'lazy'`, optional, no
+   * Makes this parameter the engine-side null replacement for the named
+   * sibling target(s). Requires `evaluationMode: 'lazy'`, optional, no
    * `default`.
    */
   replacesNullAt?: readonly string[]
@@ -228,10 +228,10 @@ export interface ValidatedParameter {
   evaluationMode: EvaluationMode
   truthiness: boolean
   /**
-   * The declared policy, else `'value'` where `truthiness` implies it, else
+   * The declared policy, else `'accept'` where `truthiness` implies it, else
    * `'propagate'`, filled in even where no policy can apply: at a type that
    * doesn't name `null`, at a lazily delivered parameter, and at a holder.
-   * What a `null` does at every parameter is the catalog's `nullOutcome`
+   * What a `null` does at every parameter is the catalog's `nullBehavior`
    * (`CatalogOperatorParameter`).
    */
   nullPolicy: NullPolicyValue | CompiledNullPolicy

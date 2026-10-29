@@ -228,7 +228,7 @@ export const matchOp = () =>
     name: 'match',
     category: 'other',
     parameters: {
-      value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'value' },
+      value: { type: ['string', 'number', 'boolean', 'null'], nullPolicy: 'accept' },
       branches: { type: 'object', evaluationMode: 'lazyEntries' },
       default: { type: 'any', required: false, evaluationMode: 'lazy' },
     },
@@ -243,7 +243,7 @@ export const getOp = () =>
     category: 'other',
     parameters: {
       path: { type: ['string', 'array', 'null'] },
-      from: { type: 'any', nullPolicy: 'value', default: EvaluationData },
+      from: { type: 'any', nullPolicy: 'accept', default: EvaluationData },
       default: { type: 'any', required: false, evaluationMode: 'lazy' },
     },
     positionalParams: ['path', 'default'],

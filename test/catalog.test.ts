@@ -261,9 +261,9 @@ describe('getCatalog', () => {
           Object.entries(rest.parameters).map(
             ([
               name,
-              { description, seed, sample, nullOutcome, elementNullOutcome, ...parameter },
+              { description, seed, sample, nullBehavior, elementNullBehavior, ...parameter },
             ]) => {
-              void [description, seed, sample, nullOutcome, elementNullOutcome]
+              void [description, seed, sample, nullBehavior, elementNullBehavior]
               return [name, parameter]
             }
           )
@@ -445,7 +445,7 @@ describe('getCatalog', () => {
     })
   })
 
-  describe('nullOutcome', () => {
+  describe('nullBehavior', () => {
     test('each rule, in the order the engine meets them', () => {
       const probe = defineOperator({
         name: 'probe',
@@ -455,11 +455,11 @@ describe('getCatalog', () => {
           count: { type: 'number' },
           places: { type: 'number', default: 1 },
           nullable: { type: ['number', 'null'] },
-          kept: { type: ['number', 'null'], nullPolicy: 'value' },
+          kept: { type: ['number', 'null'], nullPolicy: 'accept' },
           judged: { type: 'any', truthiness: true },
           chosen: {
             type: 'any',
-            nullPolicy: (mode: string) => (mode === 'keep' ? 'value' : 'propagate'),
+            nullPolicy: (mode: string) => (mode === 'keep' ? 'accept' : 'propagate'),
           },
           branch: { type: 'any', evaluationMode: 'lazy' },
           strictBranch: { type: 'number', evaluationMode: 'lazy', required: false },
@@ -484,48 +484,48 @@ describe('getCatalog', () => {
         evaluate: () => null,
       })
       const [operator] = getCatalog(new FigTree({ operators: [probe] })).operators
-      const outcomes = Object.fromEntries(
-        Object.entries(operator.parameters).map(([name, { nullOutcome }]) => [name, nullOutcome])
+      const behaviors = Object.fromEntries(
+        Object.entries(operator.parameters).map(([name, { nullBehavior }]) => [name, nullBehavior])
       )
-      expect(outcomes).toEqual({
-        mode: 'unset',
+      expect(behaviors).toEqual({
+        mode: 'omit',
         count: 'error',
-        places: 'unset',
+        places: 'omit',
         nullable: 'propagate',
-        kept: 'value',
-        judged: 'value',
+        kept: 'accept',
+        judged: 'accept',
         chosen: {
           selector: 'mode',
           table: [
-            { value: 'keep', policy: 'value' },
-            { value: 'drop', policy: 'propagate' },
+            { value: 'keep', behavior: 'accept' },
+            { value: 'drop', behavior: 'propagate' },
           ],
         },
-        branch: 'value',
+        branch: 'accept',
         strictBranch: 'error',
         items: 'error',
-        entries: 'unset',
-        numbers: 'unset',
-        mixed: 'unset',
-        rows: 'unset',
-        each: 'value',
+        entries: 'omit',
+        numbers: 'omit',
+        mixed: 'omit',
+        rows: 'omit',
+        each: 'accept',
         as: 'error',
-        nullValueDefault: 'none',
+        nullValueDefault: 'omit',
       })
-      // The placeholder the outcome replaces, for contrast
+      // The placeholder the behaviour replaces, for contrast
       expect(operator.parameters.places.nullPolicy).toBe('propagate')
       // Only the containers report their elements', and a constraint a null
       // fails rules a null element out where no policy takes it
-      const elementOutcomes = Object.fromEntries(
+      const elementBehaviors = Object.fromEntries(
         Object.entries(operator.parameters)
-          .filter(([, parameter]) => Object.hasOwn(parameter, 'elementNullOutcome'))
-          .map(([name, { elementNullOutcome }]) => [name, elementNullOutcome])
+          .filter(([, parameter]) => Object.hasOwn(parameter, 'elementNullBehavior'))
+          .map(([name, { elementNullBehavior }]) => [name, elementNullBehavior])
       )
-      expect(elementOutcomes).toEqual({
+      expect(elementBehaviors).toEqual({
         items: 'propagate',
-        entries: 'value',
+        entries: 'accept',
         numbers: 'error',
-        mixed: 'value',
+        mixed: 'accept',
         rows: 'error',
       })
     })
@@ -597,8 +597,8 @@ describe('getCatalog', () => {
           if (received === undefined) return result === null ? 'propagate' : `gave ${result}`
           const { has, value } = received as { has: boolean; value: unknown }
           // A judged position receives the null as false
-          if (value === null || (parameter.truthiness && value === false)) return 'value'
-          if (!has || isDeepStrictEqual(value, parameter.default)) return 'unset'
+          if (value === null || (parameter.truthiness && value === false)) return 'accept'
+          if (!has || isDeepStrictEqual(value, parameter.default)) return 'omit'
           return `received ${JSON.stringify(value)}`
         } catch (error) {
           const { code, message } = error as FigTreeError
@@ -619,27 +619,27 @@ describe('getCatalog', () => {
         // A literal parameter takes only a literal value
         const missing = parameter.evaluationMode === 'literal' ? null : { operator: 'nothing' }
         const node = { ...startingNode(operator), [name]: missing }
-        const { nullOutcome } = parameter
-        if (typeof nullOutcome === 'string') {
-          expect(await observe(node, parameter)).toBe(nullOutcome)
+        const { nullBehavior } = parameter
+        if (typeof nullBehavior === 'string') {
+          expect(await observe(node, parameter)).toBe(nullBehavior)
           return
         }
-        for (const { value, policy } of nullOutcome.table)
+        for (const { value, behavior } of nullBehavior.table)
           expect({
-            [nullOutcome.selector]: value,
-            outcome: await observe({ ...node, [nullOutcome.selector]: value }, parameter),
-          }).toEqual({ [nullOutcome.selector]: value, outcome: policy })
+            [nullBehavior.selector]: value,
+            behavior: await observe({ ...node, [nullBehavior.selector]: value }, parameter),
+          }).toEqual({ [nullBehavior.selector]: value, behavior })
       })
 
-      const elementCases = cases.filter(([, , , parameter]) => parameter.elementNullOutcome)
+      const elementCases = cases.filter(([, , , parameter]) => parameter.elementNullBehavior)
 
-      test('a holder reports no element outcome, even where it takes a list', () => {
+      test('a holder reports no element behaviour, even where it takes a list', () => {
         const holders = catalog.operators.flatMap((operator) =>
           Object.values(operator.parameters).filter((parameter) => parameter.replacesNullAt)
         )
         expect(holders.some((holder) => holder.type === 'array')).toBe(true)
         for (const holder of holders)
-          expect(Object.hasOwn(holder, 'elementNullOutcome')).toBe(false)
+          expect(Object.hasOwn(holder, 'elementNullBehavior')).toBe(false)
       })
 
       test.each(elementCases)('%s, a null element', async (_, operator, name, parameter) => {
@@ -653,7 +653,7 @@ describe('getCatalog', () => {
             : [nothing]
           : { ...(seed as object), probe: nothing }
         const node = { ...startingNode(operator), [name]: container }
-        expect(await observe(node, parameter)).toBe(parameter.elementNullOutcome)
+        expect(await observe(node, parameter)).toBe(parameter.elementNullBehavior)
       })
     })
   })
