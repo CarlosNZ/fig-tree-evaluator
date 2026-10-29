@@ -109,6 +109,13 @@ export const typeNamesNull = (type: ExpectedType): boolean => {
   return false
 }
 
+/** Does a declared type admit an array (the `over` target requirement)? */
+export const typeAdmitsArray = (type: ExpectedType): boolean => checkType([], type).ok
+
+/** Does a declared type admit an array or an object, which have elements? */
+export const typeAdmitsContainer = (type: ExpectedType): boolean =>
+  typeAdmitsArray(type) || checkType({}, type).ok
+
 /**
  * Does a declared type name a number? `any` does not: an operator that may
  * return anything hands values on rather than computing numbers.
@@ -129,13 +136,12 @@ export const nullMeansOmitted = (declared: { required: boolean; type: ExpectedTy
   !declared.required && !typeNamesNull(declared.type)
 
 /**
- * Whether a parameter's value leaves it omitted, so that its default
- * applies: nothing passed, or a null where null means omitted.
+ * Whether an operator parameter's value leaves it omitted, so that its
+ * default applies: nothing passed, or a null where its null behaviour is
+ * `omit`.
  */
-export const isOmitted = (
-  value: unknown,
-  declared: { required: boolean; type: ExpectedType }
-): boolean => value === undefined || (value === null && nullMeansOmitted(declared))
+export const isOmitted = (value: unknown, declared: { nullBehavior: unknown }): boolean =>
+  value === undefined || (value === null && declared.nullBehavior === 'omit')
 
 /** What `defaultFor` answers for a parameter with no default at all. */
 export const NO_DEFAULT: unique symbol = Symbol('fig-tree:noDefault')

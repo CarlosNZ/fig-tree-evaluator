@@ -13,7 +13,7 @@
  */
 import type { FragmentParameter } from './fragments'
 import type { FragmentInfo, OperatorInfo, ParameterInfo } from './introspect'
-import type { NullPolicyValue, OperatorCategory } from './operatorDefinition'
+import type { OperatorCategory } from './operatorDefinition'
 import type { BasicType } from './typeCheck'
 
 /**
@@ -110,58 +110,8 @@ export interface CatalogCategory extends CategoryListing {
   name: OperatorCategory
 }
 
-/**
- * What a `null` at a parameter does:
- * - `propagate`: the node resolves to `null` without its operator running;
- * - `accept`: the operator receives the `null` and decides what it means;
- * - `omit`: the `null` counts as leaving the parameter out, so its default
- *   applies, the host's or the declared one, else the operator runs without
- *   it. At a parameter declaring `replacesNullAt`, no replacement is made,
- *   and the target's behaviour follows;
- * - `error`: a type error.
- */
-export type NullBehavior = 'propagate' | 'accept' | 'omit' | 'error'
-
-/**
- * The behaviour of a conditional null policy: a row per member of its
- * selector's literal type, read through the selector's value.
- */
-export interface ConditionalNullBehavior {
-  /** The definition's single literal-union parameter. */
-  selector: string
-  table: { value: string | number | boolean; behavior: NullPolicyValue }[]
-}
-
 /** An operator's parameter in the catalog: the snapshot's, and its text. */
 export interface CatalogOperatorParameter extends ParameterInfo {
-  /**
-   * What a `null` at the parameter does, as the engine resolves it. Unlike
-   * `nullPolicy`, the declaration with its default filled in, this answers
-   * for every parameter, in the engine's order: a holder (a parameter
-   * declaring `replacesNullAt`) has `omit`; an iterator's `as` binding
-   * gives `error`, since it must be a literal name; a type that doesn't
-   * name `null` gives `error`, or `omit` at an optional parameter the
-   * engine resolves before the body runs; a lazily delivered parameter
-   * gives `accept`, since `propagate` cannot fire once the body is running;
-   * otherwise the declared policy applies. A conditional policy reports
-   * its table, whose rows are behaviours too.
-   *
-   * It describes a `null` with no holder supplied: where a sibling names
-   * this parameter in its `replacesNullAt`, supplying that sibling
-   * replaces the `null` first. A container's elements are
-   * `elementNullBehavior`'s.
-   */
-  nullBehavior: NullBehavior | ConditionalNullBehavior
-  /**
-   * What a `null` element (or an object's `null` value) does, at a
-   * parameter that takes only arrays or objects: the declared
-   * `elementNullPolicy`; else `error` where a `homogeneous` constraint
-   * without `any`, or an `elementShape`, rules a `null` out; else `accept`,
-   * since an element nothing covers reaches the operator as it is. Absent
-   * at every other parameter, and at a holder (`replacesNullAt`), whose
-   * `null` elements are the target's business as its `null` is.
-   */
-  elementNullBehavior?: NullPolicyValue | 'error'
   description?: string
   /**
    * What the parameter starts as when an editor adds it: the listing's

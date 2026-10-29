@@ -78,6 +78,8 @@ export type {
   NullPolicyValue,
   ConditionalNullPolicy,
   CompiledNullPolicy,
+  NullBehavior,
+  ConditionalNullBehavior,
   OperatorEvaluate,
   OperatorValidate,
   ValidateFinding,
@@ -169,10 +171,8 @@ export type {
   CategoryListingMap,
   CategoryOverrides,
   ColorPair,
-  ConditionalNullBehavior,
   Listing,
   ListingMap,
-  NullBehavior,
   TypeSeeds,
 } from './catalogTypes'
 

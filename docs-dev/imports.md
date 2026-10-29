@@ -77,7 +77,8 @@ import type {
   // Authoring operators
   OperatorDefinition, ParameterDeclaration, ParameterDeclarations, ValidatedOperatorDefinition,
   ValidatedParameter, OperatorCategory, EvaluationMode, NullPolicy, NullPolicyValue,
-  ConditionalNullPolicy, CompiledNullPolicy, OperatorEvaluate, OperatorValidate, ValidateFinding,
+  ConditionalNullPolicy, CompiledNullPolicy, NullBehavior, ConditionalNullBehavior,
+  OperatorEvaluate, OperatorValidate, ValidateFinding,
   BasicType, LiteralType, ExpectedType, Constraints, TypeDeclaration, TypeCheckResult,
   ValidateHelpers, OperatorFailureInit, OperatorContext, LazyValue, PerElement, Settlement,
   SettlementStream, TraceEvent, ResolvedParams, ParamValue, TypeOf,
@@ -90,8 +91,7 @@ import type {
   // The subpaths' shapes, kept at the root so the subpaths stay small
   Listing, ListingMap, ColorPair, CategoryListing, CategoryListingMap, CategoryOverrides,
   TypeSeeds, CatalogOptions, Catalog, CatalogCategory, CatalogOperator, CatalogOperatorParameter,
-  CatalogFragment, CatalogFragmentParameter, CatalogLiteral, CatalogIssue, NullBehavior,
-  ConditionalNullBehavior,
+  CatalogFragment, CatalogFragmentParameter, CatalogLiteral, CatalogIssue,
   FragmentMigrationResult, MigrationIssue, MigrationResult, V2Options,
   CanonicalOptions, NameOptions, Registry, ShorthandOptions, Spelling,
   ObjectClass, PositionalLayout, PositionalShape, ReferenceRecognition, ReferenceNamespace,
