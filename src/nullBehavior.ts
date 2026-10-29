@@ -8,11 +8,17 @@
  * `as` binding, then parameter resolution.
  */
 import type {
-  NullBehavior,
   ConditionalNullBehavior,
+  NullBehavior,
+  NullPolicyValue,
   ValidatedParameter,
 } from './operatorDefinition'
-import { typeAdmitsContainer, typeNamesNull } from './typeCheck'
+import {
+  typeAdmitsContainer,
+  typeNamesNull,
+  type Constraints,
+  type ExpectedType,
+} from './typeCheck'
 
 /** A parameter as `buildOperator` has it before its behaviours are known. */
 export type Declared = Omit<ValidatedParameter, 'nullBehavior' | 'elementNullBehavior'>
@@ -51,14 +57,30 @@ export const nullBehaviorOf = (
 }
 
 /**
+ * A fragment parameter's behaviour. It declares no policy and no delivery
+ * mode, and the body receives a null its type names; otherwise the null is
+ * a type error at a required parameter, and counts as left out at an
+ * optional one, which takes its default, else null.
+ */
+export const argumentNullBehaviorOf = (declared: {
+  type: ExpectedType
+  required: boolean
+}): 'accept' | 'omit' | 'error' =>
+  typeNamesNull(declared.type) ? 'accept' : declared.required ? 'error' : 'omit'
+
+/**
  * A null element's behaviour, where the type admits a container: the
  * declared element policy; else `error` where a `homogeneous` constraint
  * without `any`, or an `elementShape`, rules a null out; else `accept`,
- * since an element nothing covers reaches the operator as it is.
+ * since an element nothing covers reaches the operator as it is. A fragment
+ * parameter's too, which declares no element policy.
  */
-export const elementNullBehaviorOf = (
-  declared: Declared
-): ValidatedParameter['elementNullBehavior'] => {
+export const elementNullBehaviorOf = (declared: {
+  type: ExpectedType
+  constraints?: Constraints
+  elementNullPolicy?: NullPolicyValue
+  replacesNullAt?: readonly string[]
+}): ValidatedParameter['elementNullBehavior'] => {
   if (declared.replacesNullAt || !typeAdmitsContainer(declared.type)) return undefined
   if (declared.elementNullPolicy !== undefined) return declared.elementNullPolicy
   const { homogeneous, elementShape } = declared.constraints ?? {}

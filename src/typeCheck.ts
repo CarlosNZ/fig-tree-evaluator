@@ -127,15 +127,6 @@ export const typeNamesNumber = (type: ExpectedType): boolean => {
 }
 
 /**
- * Null-means-omitted: a null at an optional parameter whose type does not
- * name null behaves as if nothing had been passed, so its default applies.
- * The opt-out is the declaration itself — `type: ['string', 'null']`
- * receives a null as a value.
- */
-export const nullMeansOmitted = (declared: { required: boolean; type: ExpectedType }): boolean =>
-  !declared.required && !typeNamesNull(declared.type)
-
-/**
  * Whether an operator parameter's value leaves it omitted, so that its
  * default applies: nothing passed, or a null where its null behaviour is
  * `omit`.

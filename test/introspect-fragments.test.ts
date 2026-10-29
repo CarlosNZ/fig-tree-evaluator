@@ -56,8 +56,8 @@ describe('what the snapshot contains', () => {
 
   test('declarations carry effective optionality and defaults', () => {
     expect(find('greeting').parameters).toEqual({
-      name: { type: 'string', required: true },
-      loud: { type: 'boolean', required: false, default: false },
+      name: { type: 'string', required: true, nullBehavior: 'error' },
+      loud: { type: 'boolean', required: false, default: false, nullBehavior: 'omit' },
     })
   })
 

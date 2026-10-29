@@ -382,6 +382,18 @@ describe('the static layer applies null policy before the type check', () => {
     expect(errorCodes({ $format: { template: null } })).toContain('type-check')
   })
 
+  test('a literal null at an optional lazy parameter whose type excludes null is a type error', () => {
+    // A handle has no default to fall back on, so the runtime fails it too
+    const later = defineOperator({
+      name: 'later',
+      category: 'other',
+      parameters: { x: { type: 'number', evaluationMode: 'lazy', required: false } },
+      evaluate: () => null,
+    })
+    const issues = new FigTree({ operators: [later] }).validate({ $later: { x: null } }).issues
+    expect(issues.map((issue) => issue.code)).toEqual(['type-check'])
+  })
+
   test('a literal null at a required parameter whose type names null is admitted', () => {
     expect(errorCodes({ $clamp: [null] })).toHaveLength(0)
   })

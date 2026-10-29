@@ -8,7 +8,7 @@
  * behaviours, then the type check and constraints.
  */
 import { isTruthy } from '../primitives/truthiness'
-import { defaultFor, NO_DEFAULT, nullMeansOmitted } from '../typeCheck'
+import { defaultFor, NO_DEFAULT } from '../typeCheck'
 import { isPlainObject } from '../utils'
 import type { ExpectedType } from '../typeCheck'
 import type { CompiledNode, OperatorNode } from '../compile/artifact'
@@ -309,7 +309,7 @@ export const argumentInput = (
   declared: FragmentParameter,
   known: Known
 ): { known: Known; answer: Answer } => {
-  const omitted = nullMeansOmitted(declared) && admitsNull(known)
+  const omitted = declared.nullBehavior === 'omit' && admitsNull(known)
   const rest = omitted ? withoutNull(known) : known
   let answer = fits(rest, declared.type, declared.constraints)
   if (answer === 'yes' && declared.constraints !== undefined && admitsNull(rest)) answer = 'maybe'
