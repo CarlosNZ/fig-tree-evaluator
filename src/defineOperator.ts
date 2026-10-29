@@ -403,6 +403,18 @@ export function defineOperator(
             paramName
           )
       }
+    // A literal container at these modes reaches the operator as a handle
+    // per element, which no constraint over its elements can check, so one
+    // would be checked only when the container arrives whole
+    if (constraintsValid && (mode === 'lazyElements' || mode === 'race' || mode === 'lazyEntries'))
+      for (const key of ['homogeneous', 'elementShape'] as const)
+        if (d.constraints![key] !== undefined)
+          addIssue(
+            ErrorCodes.invalidDefinition,
+            `'${key}' is never checked on a literal container with evaluationMode '${mode}'`,
+            [...at('constraints'), key],
+            paramName
+          )
   }
 
   // ── Cross-parameter checks ─────────────────────────────────────────────
