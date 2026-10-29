@@ -146,7 +146,7 @@ interface ParameterDeclaration extends TypeDeclaration {
   nullPolicy?: NullPolicy
   /** Container parameters only: the policy per element or per value. */
   elementNullPolicy?: NullPolicyValue
-  /** Marks a `…Default` parameter as the null replacement for its targets. */
+  /** Makes this parameter the null replacement for its targets. */
   replacesNullAt?: readonly string[]
 }
 ```
@@ -230,6 +230,10 @@ interface FragmentParameter {
   required: boolean
   default?: unknown
   constraints?: Constraints
+  /** What a `null` argument does (#287). */
+  nullBehavior: 'accept' | 'omit' | 'error'
+  /** What a `null` element does, where the type admits a container. */
+  elementNullBehavior?: 'accept' | 'error'
 }
 ```
 
@@ -360,10 +364,6 @@ interface CatalogOperator extends Omit<OperatorInfo, 'parameters' | 'metadata'> 
 }
 
 interface CatalogOperatorParameter extends ParameterInfo {
-  /** What a `null` here does, as the engine resolves it. */
-  nullOutcome: NullOutcome | CompiledNullPolicy
-  /** What a `null` element does, at an array- or object-only parameter. */
-  elementNullOutcome?: NullPolicyValue | 'error'
   /** The listing's `parameterDescriptions` entry. */
   description?: string
   /** The listing's seed, else the `typeSeeds` rule's. */
@@ -400,7 +400,7 @@ interface CatalogLiteral {
 }
 ```
 
-Every snapshot field travels unchanged, except the raw `listing`, whose fields are resolved onto the entry. `nullOutcome` and `elementNullOutcome` follow the rules in "`./catalog`" in [v3-packaging.md](v3-packaging.md). A fragment's parameters have neither.
+Every snapshot field travels unchanged, except the raw `listing`, whose fields are resolved onto the entry. That includes each parameter's `nullBehavior` and `elementNullBehavior`, an operator's and a fragment's alike, worked out at registration ("Null behaviour" in [v3-operator-contract.md](v3-operator-contract.md), #287); the catalog drew up its own `nullOutcome` until then.
 
 ## The v2 converter
 
@@ -431,9 +431,9 @@ The types export from the root, as all of `./catalog`'s shapes do:
 | `Catalog`, `CatalogCategory`, `CatalogLiteral`, `CatalogIssue` | what `getCatalog()` returns                   |
 | `CatalogOperator`, `CatalogOperatorParameter`                  | an operator in the catalog, and its parameter |
 | `CatalogFragment`, `CatalogFragmentParameter`                  | a fragment in the catalog, and its parameter  |
-| `NullOutcome`, `TypeSeeds`                                     | unchanged                                     |
+| `TypeSeeds`                                                    | unchanged                                     |
 
-`OperatorListing`, `OperatorListingMap`, `FragmentMetadata` and `CatalogParameter` are deleted.
+`OperatorListing`, `OperatorListingMap`, `FragmentMetadata` and `CatalogParameter` are deleted. `NullOutcome` became `NullBehavior` at #287, exported with the operator-contract types.
 
 `./catalog` exports four values and one function: `operatorListings`, `categoryListings`, `fragmentColors`, `typeSeeds` and `getCatalog`. `operatorListings` keeps its name although it holds `literal`'s listing too, since an editor draws `literal` as an operator node.
 
