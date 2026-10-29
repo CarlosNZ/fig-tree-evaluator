@@ -97,7 +97,7 @@ fig.validate({ $buildString: ['Hello, %1', '$dta.name'] })
 Every error `validate()` reports is a static error, found before anything runs, so a `fallback` never catches it. These are all of them:
 
 - **An unknown operator or fragment:**
-  - `{ $flibble: [1, 2] }` — FigTree doesn't recognize `$flibble`
+  - `{ $flibble: [1, 2] }` — FigTree doesn't recognise `$flibble`
   - `{ $graeterThan: [10, 9] }` — a near-miss, comes with a suggestion
   - `{ title: 'Sale', $colour: 'red' }` — also reports a `$`-prefixed key in plain data, which should be inside `literal`
 - **A malformed node:**
