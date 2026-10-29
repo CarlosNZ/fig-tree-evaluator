@@ -219,6 +219,28 @@ describe('replacesNullAt — the engine-side null replacement (ledger #18)', () 
     expect(counter.calls).toHaveLength(0)
     expect(spy.calls).toEqual([{ values: [1, 2] }])
   })
+  test("a computed replacement meets the holder's own type; a null replaces nothing", async () => {
+    const spy = spyOp('repl', {
+      target: { type: ['number', 'null'] },
+      nullValueDefault: {
+        type: 'number',
+        required: false,
+        evaluationMode: 'lazy',
+        replacesNullAt: ['target'],
+      },
+    })
+    const fig = figWith([spy])
+    const error = await rejection(
+      fig.evaluate({ $repl: { target: null, nullValueDefault: { $echo: 'five' } } })
+    )
+    expect(error.code).toBe('type-check')
+    expect(error.message).toMatch(/parameter 'nullValueDefault': expected number, received string/)
+    expect(spy.calls).toHaveLength(0)
+    expect(await fig.evaluate({ $repl: { target: null, nullValueDefault: { $echo: null } } })).toBe(
+      null
+    )
+    expect(spy.calls).toEqual([])
+  })
 })
 
 describe('element-wise null policy (ledger #8)', () => {

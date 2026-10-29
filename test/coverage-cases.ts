@@ -1096,6 +1096,19 @@ export const sections: Record<string, CoverageCase[]> = {
         },
       ],
     },
+    {
+      name: 'a null replacement of the wrong type fails at the replacement',
+      expression: { $plus: { values: ['$data.a', 1], nullValueDefault: '$data.s' } },
+      uncovered: [
+        { at: [], code: 'type-check', parameter: 'values', witness: { a: 'x' } },
+        {
+          at: [],
+          code: 'type-check',
+          parameter: 'nullValueDefault',
+          witness: { a: null, s: true },
+        },
+      ],
+    },
   ],
 
   'Iterators and bindings': [

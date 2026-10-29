@@ -208,14 +208,23 @@ export const resolveInputs = (node: OperatorNode, outputs: Record<string, Known>
 
     const holder = holders[name]
     if (holder !== undefined) {
-      const replaced =
-        declared.elementNullPolicy !== undefined ? containsNull(known) !== 'no' : admitsNull(known)
+      const perElement = declared.elementNullPolicy !== undefined
+      const replaced = perElement ? containsNull(known) !== 'no' : admitsNull(known)
       if (replaced) {
         consulted.add(holder.name)
-        known =
-          declared.elementNullPolicy !== undefined
-            ? replaceNullElements(known, holder.known)
-            : union(withoutNull(known), holder.known)
+        // The holder's value meets its own type first, a null excepted,
+        // which is no replacement. It fails surely only where a null surely
+        // asks for it and it can't be null
+        const holderDeclared = definition.parameters[holder.name]
+        const surely = perElement ? containsNull(known) === 'yes' : onlyNull(known)
+        const value = withoutNull(holder.known)
+        check(holder.name, holderDeclared, value, surely && !admitsNull(holder.known))
+        const replacement = admitsNull(holder.known)
+          ? union(narrow(value, holderDeclared.type), exactly(null))
+          : narrow(value, holderDeclared.type)
+        known = perElement
+          ? replaceNullElements(known, replacement)
+          : union(withoutNull(known), replacement)
       }
     }
 

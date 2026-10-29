@@ -107,9 +107,15 @@ export const resolveParams = async (
           // default by registration rule)
           const fallback =
             supplied === undefined ? defaultFor(node.entry, name, declared) : undefined
+          // A computed value meets the holder's own type first, so a failure
+          // names the holder rather than its target. A null is no
+          // replacement, which its target's behaviour follows
           const thunk =
             supplied !== undefined
-              ? once(() => evaluateNode(supplied, ctx))
+              ? once(async () => {
+                  const value = await evaluateNode(supplied, ctx)
+                  return value === null ? null : vet(value, node, name, declared)
+                })
               : fallback !== NO_DEFAULT
                 ? once(() => fallback)
                 : undefined
