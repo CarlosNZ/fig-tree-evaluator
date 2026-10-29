@@ -1,28 +1,128 @@
 ---
 title: The helper tools
-description: Presenting operators, converting and analysing expressions, and reading what an instance holds
+description: Presenting operators, converting and analysing expressions, and instance introspection
 sidebar:
   order: 1
 ---
 
-import { Aside } from '@astrojs/starlight/components'
+import Callout from '../../../components/Callout.astro'
+import ImportCosts from '../../../components/ImportCosts.astro'
 
-<Aside type="caution" title="Placeholder">
-  This page is a skeleton. Each heading notes what it will cover.
-</Aside>
+The core FigTree package keeps things tight — it holds only what you need to set up FigTree and evaluate expressions. Tools for working _with_ expressions, such as [getting an instance's operator and fragment listings](/tooling/catalog/), [converting between expression forms](/tooling/format/), or [checking fallback coverage](/tooling/authoring/), are in separate subpaths, each with its own import path. They're what the [visual editor](/editor/) is built on.
 
-## Three subpaths
+## The subpaths
 
-`fig-tree-evaluator/catalog`, `fig-tree-evaluator/format` and `fig-tree-evaluator/authoring`: what each does, and why they are separate from the root entry.
+### `fig-tree-evaluator/catalog`
 
-## What each costs
+The **catalog** is every operator and fragment an instance has, each reported with its declaration plus how to _present_ it, such as a display name, a description, colours, and starting values for its parameters. `getCatalog()` builds it from the instance, adding the listings for the built-in operators that come with `/catalog`, and any you've written for your custom ones ([Presenting your operator](/custom-operators/presenting/)):
 
-Their bundle sizes, and what they share with the root.
+```ts title="catalog.ts"
+import { getCatalog } from 'fig-tree-evaluator/catalog'
 
-## Introspection on the instance
+const catalog = getCatalog(fig)
+const plus = catalog.operators.find((op) => op.name === 'plus')
 
-`getOperators()` and `getFragments()`, which need no subpath. Most tools want `getCatalog()` instead, which joins these with the listings and fills the gaps, so this section says when the raw snapshots are the right choice and points to The catalog otherwise. `getDependencies()` and `isEvaluable()` are covered in Checking expressions and `inspect()` in Tracing and debugging, so this section links to them rather than repeating them.
+plus?.displayName // => 'Plus (+)'
+plus?.colors // => { background: '#d7edd4', text: '#193e1e' }
+```
 
-## The visual editor
+The [`/catalog`](/tooling/catalog/) page covers the whole of what `getCatalog()` returns, and how to change how operators are presented.
 
-A sentence and a link to The visual editor (/editor/): `fig-tree-editor-react`, a ready-made editor built on these, is a separate package with a page of its own.
+### `fig-tree-evaluator/format`
+
+We've already met this subpath's functions for [converting between expression forms](/concepts/forms/#converting). It also has functions for things such as classifying parts of an expression tree or recognising reference strings, the same way FigTree does internally:
+
+```ts title="format.ts"
+import { recognizeReference } from 'fig-tree-evaluator/format'
+
+recognizeReference('$data.user.name')
+// => {
+//      kind: 'reference',
+//      namespace: 'data',
+//      segments: ['user', 'name'],
+//      drill: '.user.name',
+//    }
+recognizeReference('$5.00') // => { kind: 'unrecognized' }
+```
+
+The [`/format`](/tooling/format/) page covers every function in the subpath, with their options.
+
+### `fig-tree-evaluator/authoring`
+
+`fallbackCoverage()` checks an expression before it runs, finding every way each node can fail, and which fallback, if any, catches each failure:
+
+```ts title="coverage.ts"
+import { fallbackCoverage } from 'fig-tree-evaluator/authoring'
+
+const report = await fallbackCoverage(fig, {
+  $divide: ['$data.total', '$data.count'],
+})
+
+report.uncovered.map(({ code, parameter }) => `${code} at ${parameter}`)
+// => ['type-check at value', 'type-check at by', 'non-finite-result at by']
+```
+
+The [`/authoring`](/tooling/authoring/) page covers reading the report.
+
+The fourth subpath, `fig-tree-evaluator/migrate`, converts v2 expressions to v3, and is covered in [Migrating from v2](/migrating/).
+
+## What they cost
+
+The table shows the size of a bundle holding each import, minified and compressed. But since the subpaths share some code with `FigTree`, the figures in the "added to `FigTree`" column show just the extra code for an app that already uses it:
+
+<ImportCosts
+  baseline={{ entry: 'fig-tree-evaluator', names: ['FigTree'] }}
+  rows={[
+    { entry: 'fig-tree-evaluator/catalog' },
+    { entry: 'fig-tree-evaluator/format' },
+    { entry: 'fig-tree-evaluator/authoring' },
+  ]}
+/>
+
+`fallbackCoverage()` analyses an expression as FigTree compiles it, so it uses FigTree's own engine. That accounts for most of its size, but anyone calling it passes it a FigTree instance, so the engine is in their bundle already.
+
+<Callout kind="tip" title="Only what you use">
+  The figures are for whole subpaths, but their exports are tree-shakeable, so importing just the functions you need costs less ([Other exports](/api/exports/)).
+</Callout>
+
+## Instance introspection
+
+`getOperators()` and `getFragments()` need no subpath — they're methods on the FigTree instance, and just return plain data about the registered operators and fragments. For each operator, that's its declaration as the instance uses it, with every default filled in:
+
+```ts title="operators.ts"
+const divide = fig.getOperators().find((op) => op.name === 'divide')
+```
+
+Here's what it returns for `divide`:
+
+```json5
+{
+  name: 'divide',
+  alias: '/',
+  category: 'math',
+  parameters: {
+    value: {
+      type: ['number', 'null'],
+      required: true,
+      evaluationMode: 'eager',
+      truthiness: false,
+      nullPolicy: 'propagate',
+    },
+    by: {
+      type: ['number', 'null'],
+      required: true,
+      evaluationMode: 'eager',
+      truthiness: false,
+      nullPolicy: 'propagate',
+    },
+  },
+  positionalParams: ['value', 'by'],
+  restParam: null,
+  timeoutParam: null,
+  cache: false,
+  returns: 'number',
+  hasValidate: false,
+}
+```
+
+`getFragments()` gives the same for each fragment, without its body. `getCatalog()` calls both methods for the declarations in the catalog. The full types are in the [API reference](/api/figtree/#getoperators-and-getfragments).
