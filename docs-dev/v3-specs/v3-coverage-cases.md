@@ -1,6 +1,6 @@
 # FigTree v3 — Fallback coverage cases
 
-_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 182 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
+_Generated from test/coverage-cases.ts by `pnpm coverageCases`: edit the cases there, not this page. 183 cases for the precise `fallbackCoverage` of [#217](https://github.com/CarlosNZ/fig-tree-evaluator/issues/217), checked against the engine by test/coverage-cases.test.ts. The decisions behind them are in [v3-coverage-decisions.md](v3-coverage-decisions.md)._
 
 Each case is an expression and what the analysis should report for it:
 
@@ -980,6 +980,15 @@ Where a case uses an instance other than `new FigTree()`:
 
 - ✗ **plus** at the root — may fail: `type-check` on `values`. E.g. data `{ a: 'x' }`
 - ✗ **lower** at `$plus.nullValueDefault` — may fail: `type-check` on `value`. E.g. data `{ a: null, s: 1 }`
+
+**a null replacement of the wrong type fails at the replacement**
+
+```json5
+{ $plus: { values: ['$data.a', 1], nullValueDefault: '$data.s' } }
+```
+
+- ✗ **plus** at the root — may fail: `type-check` on `values`. E.g. data `{ a: 'x' }`
+- ✗ **plus** at the root — may fail: `type-check` on `nullValueDefault`. E.g. data `{ a: null, s: true }`
 
 ## Iterators and bindings
 
