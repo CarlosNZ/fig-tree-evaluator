@@ -509,8 +509,9 @@ describe('getCatalog', () => {
         as: 'error',
         nullValueDefault: 'omit',
       })
-      // The placeholder the behaviour replaces, for contrast
-      expect(operator.parameters.places.nullPolicy).toBe('propagate')
+      // A policy only where the type names null, where one can be declared
+      expect(Object.hasOwn(operator.parameters.places, 'nullPolicy')).toBe(false)
+      expect(operator.parameters.branch.nullPolicy).toBe('accept')
       // Every type admitting a container reports its elements', and a
       // constraint a null fails rules a null element out where no policy
       // takes it
