@@ -102,7 +102,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   )
   const initialText = seed?.expression ?? props.expression
   const initialData = seed ? (seed.data ?? '{}') : (props.data ?? '{}')
-  const figTree = exampleFigTree(seed ?? props)
+  const figTree = seed ? exampleFigTree(seed) : (props.figTree ?? exampleFigTree(props))
   const action = (seed ?? props).action
   const actionSpec = action === undefined ? undefined : exampleAction(action)
   const traces = actionSpec !== undefined && 'view' in actionSpec
@@ -342,6 +342,7 @@ export default function PlaygroundWidget(props: PlaygroundProps) {
   const treeEditor = (
     <FigTreeEditor
       figTree={figTree}
+      operatorListings={props.operatorListings}
       expression={expression}
       setExpression={replaceExpression}
       evaluationData={data}

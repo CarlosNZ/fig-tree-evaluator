@@ -1,0 +1,42 @@
+---
+import type { ImageMetadata, MarkdownInstance } from 'astro'
+import PlaygroundPage, { type Blurb } from './PlaygroundPage.tsx'
+
+/**
+ * The Playground page's island, with each example's blurb rendered here, by
+ * the site's own Markdown, so the island ships HTML rather than a Markdown
+ * renderer. A blurb's heading is its panel's title, since the page has its
+ * own; its images, referenced by relative path for the demo app's sake too
+ * (src/playground/examples.ts), get the URLs the build gives them.
+ */
+const files = import.meta.glob<MarkdownInstance<Record<string, never>>>(
+  '../../playground/blurbs/*.md',
+  { eager: true }
+)
+const images = import.meta.glob<{ default: ImageMetadata }>('../../playground/blurbs/img/*', {
+  eager: true,
+})
+
+const fileName = (path: string) => path.split('/').pop()!
+
+const imageUrls = new Map(
+  Object.entries(images).map(([path, image]) => [fileName(path), image.default.src])
+)
+
+const blurbs: Record<string, Blurb> = {}
+for (const [path, file] of Object.entries(files)) {
+  const html = (await file.compiledContent())
+    .replace(/<h1[^>]*>[\s\S]*?<\/h1>\s*/, '')
+    .replace(/src="\.\/img\/([^"]+)"/g, (_, name: string) => {
+      const url = imageUrls.get(name)
+      if (!url) throw new Error(`${fileName(path)}: no image ./img/${name}`)
+      return `src="${url}"`
+    })
+  blurbs[fileName(path).replace(/\.md$/, '')] = {
+    title: file.getHeadings()[0]?.text ?? '',
+    html,
+  }
+}
+---
+
+<PlaygroundPage client:only="react" blurbs={blurbs} />

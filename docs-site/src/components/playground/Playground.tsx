@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
+import type { FigTree, ListingMap } from 'fig-tree-evaluator'
 import { dedent } from '../../lib/dedent'
 import type { ExampleActionName } from './exampleActions'
 
@@ -29,6 +30,13 @@ export interface PlaygroundProps {
   customOperators?: boolean
   /** Evaluate with nothing cached, so every run sends its requests. */
   noCache?: boolean
+  /**
+   * The instance to evaluate with, in place of the three flags above. Only
+   * from another component: an MDX page can't pass an instance.
+   */
+  figTree?: FigTree
+  /** How the tree editor presents operators and fragments the package doesn't list. */
+  operatorListings?: ListingMap
   /** An extra button in the toolbar, beside Reset (./exampleActions.tsx). */
   action?: ExampleActionName
   /**

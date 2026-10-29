@@ -26,7 +26,7 @@ const siteDatabase: SqlConnection = {
   },
 }
 
-const siteOperators = [
+export const siteOperators = [
   coreOperators,
   httpOperators(new FetchClient(siteFetch)),
   sqlOperators(siteDatabase),

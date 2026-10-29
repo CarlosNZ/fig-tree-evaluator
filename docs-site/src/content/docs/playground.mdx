@@ -5,7 +5,7 @@ tableOfContents: false
 ---
 
 import { Aside } from '@astrojs/starlight/components'
-import Playground from '../../components/playground/Playground.tsx'
+import PlaygroundPage from '../../components/playground/PlaygroundPage.astro'
 
 <Aside type="caution" title="Placeholder">
   This page is a skeleton. It will be a full-width playground that opens any example on the site, and whose expressions can be shared by URL.
@@ -13,16 +13,4 @@ import Playground from '../../components/playground/Playground.tsx'
 
 {/* NOTE (from Variables): the site's `http` operator sends real requests from the reader's browser, so say that one of their own APIs only works here if it allows cross-origin requests (CORS). The site's examples use JSONPlaceholder, which does. */}
 
-<Playground
-  client:visible
-  id="playground"
-  readFromUrl
-  expression={`
-    {
-      $buildString: 'Hello {{$data.name}}',
-    }
-  `}
-  data={`
-    { name: 'World' }
-  `}
-/>
+<PlaygroundPage />

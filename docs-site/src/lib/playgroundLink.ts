@@ -15,7 +15,8 @@ export type PlaygroundSeed = {
   action?: ExampleActionName
 }
 
-const PARAM = 'example'
+/** Not `example`, which names one of the Playground's own (PlaygroundPage.tsx). */
+const PARAM = 'seed'
 
 const toBase64Url = (text: string): string => {
   const bytes = new TextEncoder().encode(text)
